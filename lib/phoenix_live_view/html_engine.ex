@@ -390,10 +390,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     slots = %{}
     file = state.file
     {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
-    {assigns, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
+    {assigns, call_info, state} = build_self_close_component_assigns(attrs, tag_meta.line, state)
 
     mod = Macro.expand(mod_ast, state.caller)
-    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line, state.caller)
+    store_component_call({mod, fun}, slots, call_info, line, state)
 
     ast =
       quote line: tag_meta.line do
@@ -432,18 +432,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     mod = Macro.expand(mod_ast, state.caller)
     named_slots = get_slots(state)
     attrs = remove_phx_no_break(attrs)
-    {assigns, state} = build_component_assigns(mod, fun, attrs, line, state)
+    {assigns, call_info, state} = build_component_assigns(mod, fun, attrs, line, state)
     all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
-    store_component_call(
-      state.module,
-      {mod, fun},
-      all_slots,
-      attrs,
-      state.file,
-      line,
-      state.caller
-    )
+    store_component_call({mod, fun}, all_slots, call_info, line, state)
 
     ast =
       quote line: line do
@@ -468,10 +460,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     slots = %{}
     fun = String.to_atom(name)
-    {assigns, state} = build_self_close_component_assigns(attrs, line, state)
+    {assigns, call_info, state} = build_self_close_component_assigns(attrs, line, state)
 
     mod = actual_component_module(state.caller, fun)
-    store_component_call(state.module, {mod, fun}, slots, attrs, state.file, line, state.caller)
+    store_component_call({mod, fun}, slots, call_info, line, state)
 
     ast =
       quote line: line do
@@ -504,7 +496,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{line: line} = tag_meta
     slot_name = String.to_atom(slot_name)
 
-    {let, roots, attrs} = split_component_attrs(attrs, state.file)
+    {let, roots, attrs, _call_info} = split_component_attrs(attrs, state.file)
 
     with {_, let_meta} <- let do
       raise ParseError,
@@ -533,7 +525,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     slot_name = String.to_atom(slot_name)
 
-    {let, roots, attrs} = split_component_attrs(attrs, state.file)
+    {let, roots, attrs, _call_info} = split_component_attrs(attrs, state.file)
     clauses = build_component_clauses(let, state)
 
     ast =
@@ -566,18 +558,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     named_slots = get_slots(state)
     fun = String.to_atom(fun_name)
     mod = actual_component_module(state.caller, fun)
-    {assigns, state} = build_component_assigns(mod, fun, attrs, line, state)
+    {assigns, call_info, state} = build_component_assigns(mod, fun, attrs, line, state)
     all_slots = merge_default_slot(named_slots, assigns, tag_close_meta)
 
-    store_component_call(
-      state.module,
-      {mod, fun},
-      all_slots,
-      attrs,
-      state.file,
-      line,
-      state.caller
-    )
+    store_component_call({mod, fun}, all_slots, call_info, line, state)
 
     ast =
       quote line: line do
@@ -906,13 +890,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
   ## build_self_close_component_assigns/build_component_assigns
 
   defp build_self_close_component_assigns(attrs, line, %{file: file} = state) do
-    {let, roots, attrs} = split_component_attrs(attrs, file)
+    {let, roots, attrs, locs} = split_component_attrs(attrs, file)
+    call_info = {roots != [], attrs, locs}
     raise_if_let!(let, file)
-    {merge_component_attrs(roots, attrs, line), state}
+
+    {merge_component_attrs(roots, attrs, line), call_info, state}
   end
 
   defp build_component_assigns(_mod, _fun, attrs, line, %{file: file} = state) do
-    {let, roots, attrs} = split_component_attrs(attrs, file)
+    {let, roots, attrs, locs} = split_component_attrs(attrs, file)
+    call_info = {roots != [], attrs, locs}
+
     clauses = build_component_clauses(let, state)
 
     inner_block_assigns =
@@ -931,39 +919,39 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slot_assigns]
-    {merge_component_attrs(roots, attrs, line), state}
+    {merge_component_attrs(roots, attrs, line), call_info, state}
   end
 
   defp split_component_attrs(attrs, file) do
     attrs
     |> Enum.reverse()
-    |> Enum.reduce({nil, [], []}, &split_component_attr(&1, &2, file))
+    |> Enum.reduce({nil, [], [], []}, &split_component_attr(&1, &2, file))
   end
 
   defp split_component_attr(
          {:root, {:expr, value, %{line: line, column: col}}, _attr_meta},
-         {let, r, a},
+         {let, r, a, locs},
          file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
     quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
-    {let, [quoted_value | r], a}
+    {let, [quoted_value | r], a, locs}
   end
 
   # TODO: deprecate "let" in favor of `:let` on LV v0.19.
   defp split_component_attr(
          {let, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
-         {nil, r, a},
+         {nil, r, a, locs},
          file
        )
        when let in ["let", ":let"] do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
-    {{quoted_value, meta}, r, a}
+    {{quoted_value, meta}, r, a, locs}
   end
 
   defp split_component_attr(
          {let, {:expr, _value, previous_meta}, _attr_meta},
-         {{_, meta}, _, _},
+         {{_, meta}, _, _, _},
          file
        )
        when let in ["let", ":let"] do
@@ -996,21 +984,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp split_component_attr(
-         {name, {:expr, value, %{line: line, column: col}}, _attr_meta},
-         {let, r, a},
+         {name, {:expr, value, %{line: line, column: col}}, attr_meta},
+         {let, r, a, locs},
          file
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
-    {let, r, [{String.to_atom(name), quoted_value} | a]}
+    {let, r, [{String.to_atom(name), quoted_value} | a], [line_column(attr_meta) | locs]}
   end
 
-  defp split_component_attr({name, {:string, value, _}, _attr_meta}, {let, r, a}, _file) do
-    {let, r, [{String.to_atom(name), value} | a]}
+  defp split_component_attr(
+         {name, {:string, value, _meta}, attr_meta},
+         {let, r, a, locs},
+         _file
+       ) do
+    {let, r, [{String.to_atom(name), value} | a], [line_column(attr_meta) | locs]}
   end
 
-  defp split_component_attr({name, nil, _attr_meta}, {let, r, a}, _file) do
-    {let, r, [{String.to_atom(name), true} | a]}
+  defp split_component_attr({name, nil, attr_meta}, {let, r, a, locs}, _file) do
+    {let, r, [{String.to_atom(name), true} | a], [line_column(attr_meta) | locs]}
   end
+
+  defp line_column(%{line: line, column: column}), do: {line, column}
 
   defp merge_component_attrs(roots, attrs, line) do
     entries =
@@ -1090,50 +1084,34 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp store_component_call(module, component, slots, attrs, file, line, env) do
+  defp store_component_call(component, slots, call_info, line, %{module: module} = state) do
     if Module.open?(module) do
       pruned_slots =
         for {slot_name, slot_values} <- slots,
-            do: {slot_name, Enum.map(slot_values, &slot_call_value(&1, env))},
+            do: {slot_name, Enum.map(slot_values, &slot_call_value(&1))},
             into: %{}
+
+      {root?, attrs, locs} = call_info
 
       pruned_attrs =
-        for {attr, value, meta} <- attrs,
-            is_binary(attr) and not String.starts_with?(attr, ":"),
-            type_value = component_call_value(value, env),
-            do: {String.to_atom(attr), {meta[:line], meta[:column], type_value}},
+        for {{attr, value}, {line, column}} <- Enum.zip(attrs, locs),
+            do: {attr, {line, column, attr_type(value)}},
             into: %{}
-
-      root = List.keymember?(attrs, :root, 0)
 
       call = %{
         component: component,
         slots: pruned_slots,
         attrs: pruned_attrs,
-        file: file,
+        file: state.file,
         line: line,
-        root: root
+        root: root?
       }
 
       Module.put_attribute(module, :__components_calls__, call)
     end
   end
 
-  defp component_call_value({:string, value, _meta}, _env) do
-    {:string, value}
-  end
-
-  defp component_call_value(nil, _env) do
-    {:boolean, true}
-  end
-
-  defp component_call_value({:expr, value, %{line: line, column: column}}, env) do
-    value
-    |> Code.string_to_quoted!(line: line, column: column, file: env.file)
-    |> attr_type()
-  end
-
-  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}, _env) do
+  defp slot_call_value({{_, _, slot_attrs}, %{line: line, column: column}}) do
     for {name, value} <- slot_attrs, name != :__slot__, into: %{} do
       {name, {line, column, attr_type(value)}}
     end
