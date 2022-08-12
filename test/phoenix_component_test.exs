@@ -1403,6 +1403,19 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    test "raise if :inner_block is attribute" do
+      msg = ~r"cannot define attribute called :inner_block. Maybe you wanted to use `slot` instead?"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule InnerSlotAttr do
+          use Elixir.Phoenix.Component
+
+          attr :inner_block, :string
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
     test "raise on more than one :global attr" do
       msg = ~r"cannot define :global attribute :rest2 because one is already defined as :rest"
 

@@ -705,6 +705,14 @@ defmodule Phoenix.Component do
 
   @doc false
   def __attr__!(module, slot, name, type, opts, line, file) do
+    if name == :inner_block do
+      compile_error!(
+        line,
+        file,
+        "cannot define attribute called :inner_block. Maybe you wanted to use `slot` instead?"
+      )
+    end
+
     if type == :global and Keyword.has_key?(opts, :required) do
       compile_error!(line, file, "global attributes do not support the :required option")
     end
@@ -763,7 +771,7 @@ defmodule Phoenix.Component do
         compile_error!(line, file, """
         cannot define :global attribute #{inspect(name)} because one \
         is already defined as #{attr_slot(existing.name, slot)}. \
-        Only a single :global attribute may be defined
+        Only a single :global attribute may be defined\
         """)
 
       true ->
@@ -842,7 +850,7 @@ defmodule Phoenix.Component do
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, message = invalid_attr_message(key, slot) do
       compile_error!(line, file, """
-      invalid option #{inspect(key)} for attr #{attr_slot(name, slot)}. #{message}
+      invalid option #{inspect(key)} for attr #{attr_slot(name, slot)}. #{message}\
       """)
     end
   end
@@ -856,7 +864,7 @@ defmodule Phoenix.Component do
 
   defp invalid_attr_message(:required, _), do: nil
   defp invalid_attr_message(_key, nil), do: "The supported options are: [:required, :default]"
-  defp invalid_attr_message(_key, _slot), do: "The supported options are: [:required]"
+  defp invalid_attr_message(_key, _slot), do: "The supported options inside slots are: [:required]"
 
   defp compile_error!(line, file, msg) do
     raise CompileError, line: line, file: file, description: msg
