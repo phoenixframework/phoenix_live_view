@@ -1390,10 +1390,10 @@ defmodule Phoenix.ComponentTest do
 
     test "raise if a slot and attr share the same name" do
       msg =
-        ~r"cannot define an attribute with name :named, as a slot with that name already exists"
+        ~r"cannot define a slot with name :named, as an attribute with that name already exists"
 
       assert_raise CompileError, msg, fn ->
-        defmodule Phoenix.ComponentTest.SlotAttrNameConflict do
+        defmodule SlotAttrNameConflict do
           use Elixir.Phoenix.Component
 
           slot :named
@@ -1403,11 +1403,8 @@ defmodule Phoenix.ComponentTest do
         end
       end
 
-      msg =
-        ~r"cannot define a slot with name :named, as an attribute with that name already exists"
-
       assert_raise CompileError, msg, fn ->
-        defmodule Phoenix.ComponentTest.SlotAttrNameConflict do
+        defmodule SlotAttrNameConflict do
           use Elixir.Phoenix.Component
 
           attr :named, :any

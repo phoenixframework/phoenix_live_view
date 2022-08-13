@@ -523,6 +523,9 @@ defmodule Phoenix.Component do
     prefixes
   end
 
+  @doc """
+  Declares a slot. See `slot/3` for more information.
+  """
   defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
     {block, opts} = Keyword.pop(opts, :do, nil)
 
@@ -596,14 +599,6 @@ defmodule Phoenix.Component do
     if Enum.find(slots, &(&1.name == slot.name)) do
       compile_error!(line, file, """
       a duplicate slot with name #{inspect(slot.name)} already exists\
-      """)
-    end
-
-    attrs = Module.get_attribute(module, :__attrs__) || []
-
-    if Enum.find(attrs, &(&1.name == slot.name)) do
-      compile_error!(line, file, """
-      cannot define a slot with name #{inspect(slot.name)}, as an attribute with that name already exists\
       """)
     end
 
@@ -799,16 +794,6 @@ defmodule Phoenix.Component do
 
       true ->
         :ok
-    end
-
-    if key == :__attrs__ do
-      slots = Module.get_attribute(module, :__slots__) || []
-
-      if Enum.find(slots, &(&1.name == name)) do
-        compile_error!(line, file, """
-        cannot define an attribute with name #{inspect(name)}, as a slot with that name already exists\
-        """)
-      end
     end
 
     case Atom.to_string(type) do
@@ -1090,8 +1075,14 @@ defmodule Phoenix.Component do
     cond do
       slots != [] or attrs != [] ->
         check_if_defined? and raise_if_function_already_defined!(env, name, slots, attrs)
-
         register_component_doc(env, kind, slots, attrs)
+
+        for %{name: slot_name, line: line} <- slots,
+            Enum.find(attrs, &(&1.name == slot_name)) do
+          compile_error!(line, env.file, """
+          cannot define a slot with name #{inspect(slot_name)}, as an attribute with that name already exists\
+          """)
+        end
 
         components =
           env.module
