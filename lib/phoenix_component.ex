@@ -309,7 +309,7 @@ defmodule Phoenix.Component do
           <%= user.name %>
         </:col>
 
-        <:col :let={user} label="Address" if={ @current_user.role == :admin }>
+        <:col :let={user} label="Address" if={@current_user.role == :admin}>
           <%= user.address %>
         </:col>
       </.table>
