@@ -847,7 +847,7 @@ class TransitionSet {
 
   reset(){
     this.transitions.forEach(timer => {
-      cancelTimeout(timer)
+      clearTimeout(timer)
       this.transitions.delete(timer)
     })
     this.flushPendingOps()
