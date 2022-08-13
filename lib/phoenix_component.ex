@@ -321,13 +321,13 @@ defmodule Phoenix.Component do
         ~H"""
         <table>
           <tr>
-            <%= for col <- @col, col[:if] != false do %>
+            <%= for col <- @col, Map.get(col, :if, true) do %>
               <th><%= col.label %></th>
             <% end %>
           </tr>
           <%= for row <- @rows do %>
             <tr>
-              <%= for col <- @col, col[:if] != false do %>
+              <%= for col <- @col, Map.get(col, :if, true) do %>
                 <td><%= render_slot(col, row) %></td>
               <% end %>
             </tr>
