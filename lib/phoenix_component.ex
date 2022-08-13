@@ -314,7 +314,6 @@ defmodule Phoenix.Component do
         </:col>
       </.table>
 
-
   Then you can check for that attribute within the component:
 
       def table(assigns) do
