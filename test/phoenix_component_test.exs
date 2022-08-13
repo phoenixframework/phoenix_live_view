@@ -884,8 +884,8 @@ defmodule Phoenix.ComponentTest do
       assert StructTypes.example(%{other: 2, uri: uri}) == "two"
     end
 
-    test "provides defaults" do
-      defmodule Defaults do
+    test "provides attr defaults" do
+      defmodule AttrDefaults do
         use Phoenix.Component
 
         attr :one, :integer, default: 1
@@ -903,16 +903,37 @@ defmodule Phoenix.ComponentTest do
         def no_default(assigns), do: ~H[<%= inspect @value %>]
       end
 
-      assert render(Defaults, :add, %{}) == "3"
-      assert render(Defaults, :example, %{}) == "nil"
-      assert render(Defaults, :no_default, %{value: 123}) == "123"
+      assert render(AttrDefaults, :add, %{}) == "3"
+      assert render(AttrDefaults, :example, %{}) == "nil"
+      assert render(AttrDefaults, :no_default, %{value: 123}) == "123"
 
       assert_raise KeyError, ~r":value not found", fn ->
-        render(Defaults, :no_default, %{})
+        render(AttrDefaults, :no_default, %{})
       end
     end
 
-    test "supports :doc for attr documentation" do
+    test "provides slot defaults" do
+      defmodule SlotDefaults do
+        use Phoenix.Component
+
+        slot :inner_block
+
+        def func(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+
+        slot :inner_block, required: true
+        def func_required(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+      end
+
+      assigns = %{}
+      assert "" == rendered_to_string(~H[<SlotDefaults.func />])
+      assert "hello" == rendered_to_string(~H[<SlotDefaults.func>hello</SlotDefaults.func>])
+
+      assert_raise KeyError, ~r":inner_block not found", fn ->
+        rendered_to_string(~H[<SlotDefaults.func_required />])
+      end
+    end
+
+    test "supports :doc for attr and slot documentation" do
       defmodule AttrDocs do
         use Phoenix.Component
 
@@ -1404,7 +1425,8 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if :inner_block is attribute" do
-      msg = ~r"cannot define attribute called :inner_block. Maybe you wanted to use `slot` instead?"
+      msg =
+        ~r"cannot define attribute called :inner_block. Maybe you wanted to use `slot` instead?"
 
       assert_raise CompileError, msg, fn ->
         defmodule InnerSlotAttr do

@@ -864,7 +864,9 @@ defmodule Phoenix.Component do
 
   defp invalid_attr_message(:required, _), do: nil
   defp invalid_attr_message(_key, nil), do: "The supported options are: [:required, :default]"
-  defp invalid_attr_message(_key, _slot), do: "The supported options inside slots are: [:required]"
+
+  defp invalid_attr_message(_key, _slot),
+    do: "The supported options inside slots are: [:required]"
 
   defp compile_error!(line, file, msg) do
     raise CompileError, line: line, file: file, description: msg
@@ -968,12 +970,19 @@ defmodule Phoenix.Component do
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
 
     names_and_defs =
-      for {name, %{kind: kind, attrs: attrs}} <- components do
-        defaults =
+      for {name, %{kind: kind, attrs: attrs, slots: slots}} <- components do
+        attr_defaults =
           for %{name: name, required: false, opts: opts} <- attrs,
               Keyword.has_key?(opts, :default) do
             {name, Macro.escape(opts[:default])}
           end
+
+        slot_defaults =
+          for %{name: name, required: false} <- slots do
+            {name, []}
+          end
+
+        defaults = attr_defaults ++ slot_defaults
 
         {global_name, global_default} =
           case Enum.find(attrs, fn attr -> attr.type == :global end) do
