@@ -523,6 +523,21 @@ defmodule Phoenix.Component do
     prefixes
   end
 
+  defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
+    {block, opts} = Keyword.pop(opts, :do, nil)
+
+    quote do
+      Phoenix.Component.__slot__!(
+        __MODULE__,
+        unquote(name),
+        unquote(opts),
+        __ENV__.line,
+        __ENV__.file,
+        fn -> unquote(block) end
+      )
+    end
+  end
+
   defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
     quote do
       Phoenix.Component.__slot__!(
@@ -584,9 +599,17 @@ defmodule Phoenix.Component do
       """)
     end
 
+    attrs = Module.get_attribute(module, :__attrs__) || []
+
+    if Enum.find(attrs, &(&1.name == slot.name)) do
+      compile_error!(line, file, """
+      cannot define a slot with name #{inspect(slot.name)}, as an attribute with that name already exists\
+      """)
+    end
+
     if slot.name == :inner_block and slot.attrs != [] do
       compile_error!(line, file, """
-      cannot define attributes in slot #{inspect(slot.name)}
+      cannot define attributes in a slot with name #{inspect(slot.name)}
       """)
     end
   end
@@ -776,6 +799,16 @@ defmodule Phoenix.Component do
 
       true ->
         :ok
+    end
+
+    if key == :__attrs__ do
+      slots = Module.get_attribute(module, :__slots__) || []
+
+      if Enum.find(slots, &(&1.name == name)) do
+        compile_error!(line, file, """
+        cannot define an attribute with name #{inspect(name)}, as a slot with that name already exists\
+        """)
+      end
     end
 
     case Atom.to_string(type) do
@@ -1296,21 +1329,6 @@ defmodule Phoenix.Component do
         slots must be defined before the first function clause at line #{meta[:line]}
         """)
       end
-    end
-  end
-
-  defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
-    {block, opts} = Keyword.pop(opts, :do, nil)
-
-    quote do
-      Phoenix.Component.__slot__!(
-        __MODULE__,
-        unquote(name),
-        unquote(opts),
-        __ENV__.line,
-        __ENV__.file,
-        fn -> unquote(block) end
-      )
     end
   end
 end
