@@ -1388,6 +1388,36 @@ defmodule Phoenix.ComponentTest do
       end
     end
 
+    test "raise if a slot and attr share the same name" do
+      msg =
+        ~r"cannot define an attribute with name :named, as a slot with that name already exists"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotAttrNameConflict do
+          use Elixir.Phoenix.Component
+
+          slot :named
+          attr :named, :any
+
+          def func(assigns), do: ~H[]
+        end
+      end
+
+      msg =
+        ~r"cannot define a slot with name :named, as an attribute with that name already exists"
+
+      assert_raise CompileError, msg, fn ->
+        defmodule Phoenix.ComponentTest.SlotAttrNameConflict do
+          use Elixir.Phoenix.Component
+
+          attr :named, :any
+          slot :named
+
+          def func(assigns), do: ~H[]
+        end
+      end
+    end
+
     test "does not raise if multiple slots with different names share the same attr names" do
       mod = fn ->
         defmodule MultipleSlotAttrs do
@@ -1409,7 +1439,7 @@ defmodule Phoenix.ComponentTest do
     end
 
     test "raise if slot with name :inner_block has slot attrs" do
-      msg = ~r"cannot define attributes in slot :inner_block"
+      msg = ~r"cannot define attributes in a slot with name :inner_block"
 
       assert_raise CompileError, msg, fn ->
         defmodule AttrsInDefaultSlot do
