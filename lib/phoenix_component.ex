@@ -749,6 +749,33 @@ defmodule Phoenix.Component do
 
   * Calls made to the component are tracked for reflection and 
     validation purposes.
+
+  ## Documentation Generation
+
+  Public function components that define slots will have their docs 
+  injected into the function's documentation, depending on the value 
+  of the `@doc` module attribute:
+
+  * if `@doc` is a string, the slot docs are injected into that string.
+    The optional placeholder `[[INJECT LVDOCS]]` can be used to specify where
+    in the string the docs are injected. Otherwise, the docs are appended
+    to the end of the `@doc` string.
+
+  * if `@doc` is unspecified, the slot docs are used as the
+    default `@doc` string.
+
+  * if `@doc` is `false`, the slot docs are omitted entirely.
+
+  The injected slot docs are formatted as a markdown list:
+
+  ```markdown
+  * `name` (required) - slot docs. Accepts attributes:
+    * `name` (`:type`) (required) - attr docs. Defaults to `:default`.
+  ```
+
+  By default, all slots will have their docs injected into
+  the function `@doc` string. To hide a specific slot, you can set
+  the value of `:doc` to `false`.
   """
   defmacro slot(name, opts, block)
 
