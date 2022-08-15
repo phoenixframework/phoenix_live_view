@@ -1,140 +1,236 @@
 defmodule Phoenix.Component do
   @moduledoc ~S'''
-  API for function components.
+  An Elixir API for defining reusable HEEx function components.
 
-  A function component is any function that receives
-  an assigns map as argument and returns a rendered
-  struct built with [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`).
-
-  Here is an example:
+  A function component is any function that receives an assigns map as argument and returns 
+  a rendered struct built with [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`):
 
   ```elixir
   defmodule MyComponent do
     use Phoenix.Component
-
-    # Optionally also bring the HTML helpers
-    # import Phoenix.LiveView.Helpers
     
-    attr :name, :string, required: true
-
     def greet(assigns) do
       ~H"""
-      <p>Hello, <%= assigns.name %></p>
+      <p>Hello, <%= @name %>!</p>
       """
     end
   end
   ```
 
-  The component can be invoked as a regular function:
+  When invoked within a `~H` sigil or HEEx template file:
 
-  ```elixir
-  MyComponent.greet(%{name: "Jane"})
-  ```
-
-  But it is typically invoked using the function component
-  syntax from the `~H` sigil:
-
-  ```elixir
-  ~H"""
+  ```heex
   <MyComponent.greet name="Jane" />
-  """
   ```
 
-  If the `MyComponent` module is imported or if the function
-  is defined locally, you can skip the module name:
+  The following HTML is rendered:
 
-  ```elixir
-  ~H"""
+  ```html
+  <p>Hello, Jane!</p>
+  ```
+
+  If the function component is defined locally, or its module imported, then the caller can
+  invoke the function directly without specifying the module:
+
+  ```heex
   <.greet name="Jane" />
-  """
   ```
 
-  Similar to any HTML tag inside the `~H` sigil, you can
-  interpolate attributes values too:
+  For dynamic values, you can interpolate Elixir expressions into a function component:
 
-  ```elixir
-  ~H"""
+  ```heex
   <.greet name={@user.name} />
-  """
   ```
 
-  You can learn more about the `~H` sigil [in its documentation](`Phoenix.LiveView.Helpers.sigil_H/2`).
+  Function components can also accept blocks of HEEx content (more on this later):
 
-  ## `use Phoenix.Component`
+  ```heex
+  <.card>
+    <p>This is the body of my card!</p>
+  </.card>
+  ```
 
-  Modules that define function components should call
-  `use Phoenix.Component` at the top. Doing so will import
-  the functions from both `Phoenix.LiveView` and
-  `Phoenix.LiveView.Helpers` modules. `Phoenix.LiveView`
-  and `Phoenix.LiveComponent` automatically invoke
-  `use Phoenix.Component` for you.
+  Like `Phoenix.LiveView` and `Phoenix.LiveComponent`, function components are implemented using
+  a map of assigns, and follow [the same rules and best practices](../guides/server/assigns-eex.md).
+  However, we typically do not implement function components by manipulating the assigns map 
+  directly, as `Phoenix.Component` provides two higher-level abstractions for us: 
+  attributes and slots.
 
-  Unlike LiveViews and LiveComponents, you should avoid
-  defining a module for each function component. Instead,
-  you should use modules to group related function
-  components together.
-
-  ## Assigns
-
-  While inside a function component, you must use `Phoenix.LiveView.assign/3`
-  and `Phoenix.LiveView.assign_new/3` to manipulate assigns,
-  so that LiveView can track changes to the assigns values.
-  For example, let's imagine a component that receives the first
-  name and last name and must compute the name assign. One option
-  would be:
+  Note that attributes and slots requires the `:phoenix_live_view` compiler to be added to your
+  `:compiler` options in your `mix.exs`'s `project` configuration:
 
   ```elixir
-  def show_name(assigns) do
-    assigns = assign(assigns, :name, assigns.first_name <> assigns.last_name)
+  def project do
+    [
+      # ...
+      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      # ...
+    ]
+  end
+  ```
 
+  ## Attributes
+
+  `Phoenix.Component` provides the `attr/3` macro to declare what attributes a function component
+  expects to recieve when invoked:
+
+  ```elixir
+  attr :name, :string, required: true
+
+  def greet(assigns) do
     ~H"""
-    <p>Your name is: <%= @name %></p>
+    <p>Hello, <%= @name %>!</p>
     """
   end
   ```
 
-  However, when possible, it may be cleaner to break the logic over function
-  calls instead of precomputed assigns:
+  By calling `attr/3`, it is clear to the caller that `greet/1` requires a string called `name` 
+  present in its assigns map to properly render. Failing to do so will result in a compilation 
+  warning being emitted:
 
-  ```elixir
-  def show_name(assigns) do
-    ~H"""
-    <p>Your name is: <%= full_name(@first_name, @last_name) %></p>
-    """
-  end
-
-  defp full_name(first_name, last_name), do: first_name <> last_name
+  ```heex
+  <MyComponent.greet />
+  <!--
+    warning: missing required attribute "name" for component MyAppWeb.MyComponent.greet/1
+             lib/app_web/my_component.ex:15
+  -->
   ```
 
-  Another example is making an assign optional by providing
-  a default value:
+  Attributes can provide default values that are automatically merged into the assigns map:
 
   ```elixir
-  def field_label(assigns) do
-    assigns = assign_new(assigns, :help, fn -> nil end)
+  attr :name, :string, default: "Bob"
+  ```
 
+  Now you can invoke the function component without providing a value for `name`:
+
+  ```heex
+  <.greet />
+  ```
+
+  And the following HTML will be rendered:
+
+  ```html
+  <p>Hello, Bob!</p>
+  ```
+
+  Multiple attributes can be defined for the same function component:
+
+  ```elixir
+  attr :name, :string, required: true
+  attr :age, :integer, required: true
+
+  def celebrate(assigns) do
     ~H"""
-    <label>
-      <%= @text %>
-
-      <%= if @help do %>
-        <span class="help"><%= @help %></span>
-      <% end %>
-    </label>
+    <p>
+      Happy birthday <%= @name %>!
+      You are <%= @age %> years old.
+    <p>
     """
   end
   ```
+
+  Which is easily called from HEEx:
+
+  ```heex
+  <.celebrate name="Genevieve" age={34} />
+  ```
+
+  To render the following HTML:
+
+  ```html
+  <p>
+    Happy birthday Genevieve!
+    You are 34 years old.
+  </p>
+  ```
+
+  ### Global Attributes
+
+  Global attributes are a set of attributes that a function component can accept when it
+  declares an attribute of type `:global`. By default, the global attributes are attributes
+  [common to all HTML elements](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes).
+
+  Below is an example of a function component that accepts a dynamic number of global attributes:
+
+  ```elixir
+  attr :message, :string, required: true
+  attr :rest, :global
+
+  def notification(assigns) do
+    ~H"""
+    <span {@rest}><%= @message %></span>
+    """
+  end
+  ```
+
+  The caller can pass global attributes (such as `phx-*` bindings or the `class` attribute):
+
+  ```heex
+  <.notification message="You've got mail!" class="bg-green-200" phx-click="close" />
+  ```
+
+  Rendering the following HTML:
+
+  ```html
+  <span class="bg-green-200" phx-click="close">You've got mail!</span>
+  ```
+
+  Note that the function component did not have to declare a `class` or `phx-click` attribute in 
+  order to render. 
+
+  Global attribute defaults are merged with caller attributes. For example, you 
+  may declare a default `class` if the caller does not provide one:
+
+  ```elixir
+  attr :rest, :global, default: %{class: "bg-blue-200"}
+  ```
+
+  Calling the function component without a `class` attribute:
+
+  ```heex
+  <.notification message="You've got mail!" phx-click="close" />
+  ```
+
+  Will render the following HTML:
+
+  ```html
+  <span class="bg-blue-200" phx-click="close">You've got mail!</span>
+  ```
+
+  ### Custom Global Attribute Prefixes
+
+  In addition to common HTML elements, the following global attribute prefixes are supported: 
+  `phx-`, `aria-`, and `data-`. To add additional prefixes, such as the `x-` prefix used by 
+  [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to 
+  `use Phoenix.Component`:
+
+  ```elixir
+  use Phoenix.Component, global_prefixes: ~w(x-)
+  ```
+
+  You can learn more about attributes by reading the documentation for `Phoenix.Component.attr/3`.
 
   ## Slots
 
-  Slots is a mechanism to give HTML blocks to function components
-  as in regular HTML tags.
+  In addition to attributes, function components also accept blocks of HEEx content, referred to as
+  as slots, enabling further customization of the rendered HTML. `Phoenix.Component` provides the 
+  `slot/3` macro used to declare slots for function components:
 
-  ### The Default Slot
+  ```elixir
+  slot :inner_block, required: true
 
-  Any content you pass inside a component is assigned to the default slot
-  called `@inner_block`. For example, imagine you want to create a button
-  component like this:
+  def button(assigns) do
+    ~H"""
+    <button>
+      <%= render_slot(@inner_block) %>
+    </button>
+    """
+  end
+  ```
+
+  The expression `render_slot(@inner_block)` renders the HEEx content. You can invoke this 
+  function component like so:
 
   ```heex
   <.button>
@@ -142,33 +238,39 @@ defmodule Phoenix.Component do
   </.button>
   ```
 
-  It is quite simple to do so. Simply define your component and call
-  `render_slot(@inner_block)` where you want to inject the content:
+  Which renderes the following HTML:
 
-  ```elixir
-  def button(assigns) do
-    ~H"""
-    <button class="btn">
-      <%= render_slot(@inner_block) %>
-    </button>
-    """
-  end
+  ```html
+  <button>
+    This renders <strong>inside</strong> the button!
+  </button>
   ```
 
-  In a nutshell, the contents given to the component is assigned to
-  the `@inner_block` assign and then we use `Phoenix.LiveView.Helpers.render_slot/2`
-  to render it.
+  Like the `attr/3` macro, using the `slot/3` macro will provide compile-time validations. 
+  For example, invoking `button/1` without a slot of HEEx content will result in a compilation 
+  warning being emitted:
 
-  This gives us a separation of concerns: the component specifies reusable
-  markup for a button, and the caller specifies the contents for a specific
-  button.
+  ```heex
+  <.button />
+  <!--
+    warning: missing required slot "inner_block" for component MyAppWeb.MyComponent.button/1
+             lib/app_web/my_component.ex:15
+  -->
+  ```
 
-  But what if the contents themselves need to be dynamic?
+  ### The Default Slot
 
-  In that case, you can have the component give a value back to the caller
-  by passing it as the second argument to `render_slot/2`:
+  The example above uses the default slot, accesible as an assign named `@inner_block`, to render 
+  custom HEEx content via the `Phoenix.LiveView.Helpers.render_slot/2` function.
+
+  If the values rendered in the slot need to be dynamic, you can pass a second value back to the
+  caller's HEEx content by calling `render_slot/2`:
 
   ```elixir
+  slot :inner_block, required: true
+
+  attr :entries, :list, default: []
+    
   def unordered_list(assigns) do
     ~H"""
     <ul>
@@ -180,81 +282,48 @@ defmodule Phoenix.Component do
   end
   ```
 
-  When calling the component, you can use the special attribute `:let` (note
-  the leading `:`) to take the value that the component passes back and bind it
-  to a variable:
+  When invoking the function component, you can use the special attribute `:let` to take the value 
+  that the function component passes back and bind it to a variable:
 
   ```heex
-  <.unordered_list :let={an_entry} entries={~w(apple banana cherry)}>
-    I like <%= an_entry %>
+  <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
+    I like <%= fruit %>!
   </.unordered_list>
   ```
 
-  In this way, the separation of concerns is maintained: the caller can specify
-  multiple items of dynamic content without having to specify the markup that
-  surrounds and separates them.
+  Rendering the following HTML:
 
-  You can also pattern match the arguments provided to the render block. Let's
-  make our `unordered_list` component fancier:
-
-  ```elixir
-  def unordered_list(assigns) do
-    ~H"""
-    <ul>
-      <%= for entry <- @entries do %>
-        <li><%= render_slot(@inner_block, %{entry: entry, gif_url: random_gif()}) %></li>
-      <% end %>
-    </ul>
-    """
-  end
+  ```html
+  <ul>
+    <li>I like apples!</li>
+    <li>I like bananas!</li>
+    <li>I like cherries!</li>
+  </ul>
   ```
 
-  And now we can invoke it like this:
-
-  ```heex
-  <.unordered_list :let={%{entry: an_entry, gif_url: url}} entries={~w(apple banana cherry)}>
-    I like <%= an_entry %>. <img src={url} />
-  </.unordered_list>
-  ```
+  Now the separation of concerns is maintained: the caller can specify multiple values in a list
+  attribute without having to specify the HEEx content that surrounds and separates them.
 
   ### Named Slots
 
-  Besides `@inner_block`, it is also possible to pass named slots
-  to the component. For example, imagine that you want to create
-  a modal component. The modal component has a header, a footer,
-  and the body of the modal, which we would use like this:
-
-  ```heex
-  <.modal>
-    <:header>
-      This is the top of the modal.
-    </:header>
-
-    This is the body - everything not in a
-    named slot goes to @inner_block.
-
-    <:footer>
-      <button>Save</button>
-    </:footer>
-
-    This is also included in @inner_block.
-  </.modal>
-  ```
-
-  The component itself could be implemented like this:
+  In addition to the default slot, it is possible to pass multiple, named slots to a function
+  component. For example, imagine you want to create a modal that has a body, as well as a header
+  and footer:
 
   ```elixir
+  slot :header
+  slot :inner_block
+  slot :footer
+
   def modal(assigns) do
     ~H"""
     <div class="modal">
       <div class="modal-header">
         <%= render_slot(@header) %>
       </div>
-
       <div class="modal-body">
         <%= render_slot(@inner_block) %>
       </div>
-
       <div class="modal-footer">
         <%= render_slot(@footer) %>
       </div>
@@ -263,237 +332,62 @@ defmodule Phoenix.Component do
   end
   ```
 
-  If you want to make the `@header` and `@footer` optional,
-  you can assign them a default of an empty list at the top
-  before the `~H` sigil:
-
-  ```elixir
-  assigns =
-    assigns
-    |> assign_new(:header, fn -> [] end)
-    |> assign_new(:footer, fn -> [] end)
-  ```
-
-  ### Named Slots With Attributes
-
-  It is also possible to pass the same named slot multiple
-  times and also give attributes to each of them.
-
-  If multiple slot entries are defined for the same slot,
-  `render_slot/2` will automatically render all entries,
-  merging their contents. But sometimes we want more fine
-  grained control over each individual slot, including access
-  to their attributes. Let's see an example. Imagine we want
-  to implement a table component
-
-  For example, imagine a table component:
+  You can invoke this function component using the named slot HEEx syntax:
 
   ```heex
-  <.table rows={@users}>
-    <:col :let={user} label="Name">
-      <%= user.name %>
-    </:col>
-
-    <:col :let={user} label="Address">
-      <%= user.address %>
-    </:col>
-  </.table>
+  <.modal>
+    <:header>
+      This is the top of the modal.
+    </:header>
+    This is the body, everything not in a named slot is rendered in the default slot.
+    <:footer>
+      This is the bottom of the modal.
+    </:footer>
+  </.modal>
   ```
 
-  At the top level, we pass the rows as an assign and we define
-  a `:col` slot for each column we want in the table. Each
-  column also has a `label`, which we are going to use in the
-  table header.
+  Rendering the following HTML:
 
-  Inside the component, you can render the table with headers,
-  rows, and columns:
-
-  ```elixir
-  def table(assigns) do
-    ~H"""
-    <table>
-      <tr>
-        <%= for col <- @col do %>
-          <th><%= col.label %></th>
-        <% end %>
-      </tr>
-      <%= for row <- @rows do %>
-        <tr>
-          <%= for col <- @col do %>
-            <td><%= render_slot(col, row) %></td>
-          <% end %>
-        </tr>
-      <% end %>
-    </table>
-    """
-  end
-  ```
-
-  Each named slot (including the `@inner_block`) is a list of maps,
-  where the map contains all slot attributes, allowing us to access
-  the label as `col.label`. This gives us complete control over how
-  we render them.
-
-  What if you need to conditionally render a slot - for example, to only render
-  the user's address if the current user is an admin?
-  You can't wrap a conditional around a slot because a slot entry must be
-  a direct child of a component.
-  But you can accomplish this by passing an attribute.
-
-  ```heex
-  <.table rows={@users}>
-    <:col :let={user} label="Name">
-      <%= user.name %>
-    </:col>
-
-    <:col :let={user} label="Address" if={@current_user.role == :admin}>
-      <%= user.address %>
-    </:col>
-  </.table>
-  ```
-
-  Then you can check for that attribute within the component:
-
-  ```elixir
-  def table(assigns) do
-    ~H"""
-    <table>
-      <tr>
-        <%= for col <- @col, Map.get(col, :if, true) do %>
-          <th><%= col.label %></th>
-        <% end %>
-      </tr>
-      <%= for row <- @rows do %>
-        <tr>
-          <%= for col <- @col, Map.get(col, :if, true) do %>
-            <td><%= render_slot(col, row) %></td>
-          <% end %>
-        </tr>
-      <% end %>
-    </table>
-    """
-  end
-  ```
-
-  ## Declarative Attributes
-
-  Function components support declarative attributes with compile-time
-  verification and validation. For example a progress bar function
-  component may declare its attributes like so:
-
-  ```elixir
-  attr :id, :string, required: true
-  attr :min, :integer, default: 0
-  attr :max, :integer, default: 100
-  attr :value, :integer, default: nil
-  attr :rest, :global, default: %{class: "w-4 h-4 inline-block"}
-
-  def progress_bar(assigns) do
-    ~H"""
-    <div id={@id} data-min={@min} data-max={@max} data-val={@value || @min} {@rest}></div>
-    """
-  end
-  ```
-
-  And a caller rendering such a component would receive helpful errors by the
-  LiveView compiler if they rendered it incorrectly:
-
-  ```heex
-  <.progress_bar value={@percent} />
-  <!--
-    warning: missing required attribute "id" for component MyAppWeb.LiveHelpers.progress_bar/1
-             lib/app_web/live_helpers.ex:15
-  -->
-  ```
-
-  Additionally, a subset of attribute types support type validation for literals:
-
-  ```heex
-  <.progress_bar id={@id} value="not an integer" />
-  <!--
-    warning: attribute "value" in component MyAppWeb.LiveHelpers.progress_bar/1 must be an :integer, got: "not an integer"
-             lib/app_web/live_helpers.ex:15
-  -->
-  ```
-
-  See `Phoenix.Component.attr/3` for full usage details.
-
-  ### Global Attributes
-
-  Global attributes may be provided to any component that declares a
-  `:global` attribute. By default, the supported global attributes are
-  those common to all HTML elements. The full list can be found
-  [here](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes)
-
-  Custom attribute prefixes can be provided by the caller module with
-  the `:global_prefixes` option to `use Phoenix.Component`. For example, the
-  following would allow Alpine JS annotations, such as `x-on:click`,
-  `x-data`, etc:
-
-  ```elixir
-  use Phoenix.Component, global_prefixes: ~w(x-)
-  ```
-
-  Global attribute defaults are merged with caller attributes. For example
-  you may declare a default class if the caller does not provide one:
-
-  ```elixir
-  attr :rest, :global, default: %{class: "w-4 h-4 inline-block"}
-  ```
-
-  ## Declarative Slots
-
-  In addition to attributes, function components support declarative slots
-  with compile-time verification and validation. Recall our button component
-  from earlier? Below is an implementation using declarative slots:
-
-  ```elixir
-  slot :inner_block, required: true
-
-  def button(assigns) do
-    ~H"""
-    <button class="btn">
-      <%= render_slot(@inner_block) %>
-    </button>
-    """
-  end
-  ```
-
-  A caller rendering such a component would receive helpful errors by the
-  LiveView compiler if they rendered it incorrectly:
-
-  ```heex
-  <.button />
-  <!--
-    warning: missing required slot "inner_block" for component MyAppWeb.LiveHelpers.button/1
-             lib/app_web/live_helpers.ex:15
-  -->
+  ```html
+  <div class="modal">
+    <div class="modal-header">
+      This is the top of the modal.
+    </div>
+    <div class="modal-body">
+      This is the body, everything not in a named slot is rendered in the default slot.
+    </div>
+    <div class="modal-footer">
+      This is the bottom of the modal.
+    </div>
+  </div>
   ```
 
   ### Slot Attributes
 
-  Declarative slots that accept attributes can be defined by passing a block containing
-  calls to `Phoenix.Component.attr/3`. Below is an example using our table component,
-  illustrating the use of declarative attributes, slots, and slot attributes:
+  Unlike the default slot, it is possible to pass a value for the same named slot multiple times, 
+  as well as declare attributes for each slot value passed. If multiple values are passed for the 
+  same named slot,`Phoenix.LiveView.Helpers.render_slot/2` will merge and render all the values.
+
+  Below is a table component illustrating multiple named slots with attributes:
 
   ```elixir
-  attr :rows, :list, default: []
-
-  slot :col do
+  slot :column do
     attr :label, :string, required: true
   end
+
+  attr :rows, :list, default: []
 
   def table(assigns) do
     ~H"""
     <table>
       <tr>
-        <%= for col <- @col do %>
+        <%= for col <- @column do %>
           <th><%= col.label %></th>
         <% end %>
       </tr>
       <%= for row <- @rows do %>
         <tr>
-          <%= for col <- @col do %>
+          <%= for col <- @column do %>
             <td><%= render_slot(col, row) %></td>
           <% end %>
         </tr>
@@ -503,19 +397,39 @@ defmodule Phoenix.Component do
   end
   ```
 
-  See `Phoenix.Component.slot/3` for full usage details.
+  You can invoke this function component like so:
 
-  *Note*: Declarative attributes and slots requires the `:phoenix_live_view` compiler to be added
-  to your `:compiler` options in your `mix.exs`'s `project` configuration:
-
-  ```elixir
-  def project do
-    [
-      # ...,
-      compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
-    ]
-  end
+  ```heex
+  <.table rows={[%{name: "Jane", age: "34"}, %{name: "Bob", age: "51"}]}>
+    <:column :let={user} label="Name">
+      <%= user.name %>
+    </:column>
+    <:column :let={user} label="Age">
+      <%= user.age %>
+    </:column>    
+  </.table>
   ```
+
+  Rendering the following HTML:
+
+  ```html
+  <table>
+    <tr>
+      <th>Name</th>
+      <th>Age</th>
+    </tr>
+    <tr>
+      <td>Jane</td>
+      <td>34</td>
+    </tr>
+    <tr>
+      <td>Bob</td>
+      <td>51</td>
+    </tr>
+  </table>
+  ```
+
+  You can learn more about slots and the `slot/3` macro [in its documentation](`Phoenix.Component.slot/3`).
   '''
 
   @global_prefixes ~w(
@@ -699,20 +613,19 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Declares slots for a HEEx function components with compile-time verification and documentation generation.
+  Declares a function component slot.
 
   ## Arguments
 
-  * `name` - an atom defining the name of the slot. Note that slots cannot define
-  the same name as any other slots or attributes declared for the same component.
+  * `name` - an atom defining the name of the slot. Note that slots cannot define the same name 
+  as any other slots or attributes declared for the same component.
   * `opts` - a keyword list of options. Defaults to `[]`.
   * `block` - a code block containing calls to `Phoenix.Component.attr/3`. Defaults to `nil`.
 
   ### Options
 
-  * `:required` - marks a slot as required. If a caller does not pass
-  a value for a required slot, a compile warning is issued. 
-  Otherwise, an omitted slot will default to `[]`.
+  * `:required` - marks a slot as required. If a caller does not pass a value for a required slot, 
+  a compilation warning is emitted. Otherwise, an omitted slot will default to `[]`.
   * `:doc` - documentation for the slot. Any slot attributes declared
   will have their documentation listed alongside the slot.
 
@@ -727,14 +640,13 @@ defmodule Phoenix.Component do
 
   The default slot can be declared by passing `:inner_block` as the `name` of the slot.
 
-  Note that the default slot cannot accept a block. Passing one 
-  will result in a compile warning being issued.
+  Note that the default slot cannot accept a block. Passing one will result in a compilation
+  warning being emitted.
 
   ## Compile-Time Validations
 
-  LiveView performs some validation of slots via the `:phoenix_live_view`
-  compiler. When slots are defined, LiveView will warn at compilation
-  time on the caller if:
+  LiveView performs some validation of slots via the `:phoenix_live_view` compiler. 
+  When slots are defined, LiveView will warn at compilation time on the caller if:
 
   * A required slot of a component is missing.
 
@@ -742,13 +654,12 @@ defmodule Phoenix.Component do
 
   * An unknown slot attribute is given.
 
-  On the side of the LiveView component itself, defining attributes provides
-  the following quality of life improvements:
+  On the side of the function component itself, defining attributes provides the following 
+  quality of life improvements:
 
   * Slot documentation is generated for the component.
 
-  * Calls made to the component are tracked for reflection and 
-    validation purposes.
+  * Calls made to the component are tracked for reflection and validation purposes.
 
   ## Documentation Generation
 
