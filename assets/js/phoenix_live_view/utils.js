@@ -36,7 +36,7 @@ export let clone = (obj) => { return JSON.parse(JSON.stringify(obj)) }
 
 export let closestPhxBinding = (el, binding, borderEl) => {
   do {
-    if(el.matches(`[${binding}]`)){ return el }
+    if(el.matches(`[${binding}]`) && !el.disabled){ return el }
     el = el.parentElement || el.parentNode
   } while(el !== null && el.nodeType === 1 && !((borderEl && borderEl.isSameNode(el)) || el.matches(PHX_VIEW_SELECTOR)))
   return null
