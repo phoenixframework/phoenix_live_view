@@ -635,7 +635,7 @@ defmodule Phoenix.ComponentTest do
           <:col :let={user} label="Address">
             <%= user.address %>
           </:col>
-        </.table>        
+        </.table>
         """
       end
     end
@@ -1554,5 +1554,37 @@ defmodule Phoenix.ComponentTest do
 
       assert mod.()
     end
+  end
+
+
+  test "renders slot with rest" do
+    defmodule SlotWithGlobal do
+      use Phoenix.Component
+
+      attr :rest, :global
+      slot :inner_block, required: true
+      slot :col, required: true
+
+      def test(assigns) do
+        ~H"""
+        <div {@rest}>
+          <%= render_slot(@inner_block) %>
+          <%= for col <- @col do %><%= render_slot(col) %>,<% end %>
+        </div>
+        """
+      end
+    end
+
+    assigns = %{}
+
+    template = ~H"""
+    <SlotWithGlobal.test class="my-class">
+      block
+      <:col>col1</:col>
+      <:col>col2</:col>
+    </SlotWithGlobal.test>
+    """
+
+    assert h2s(template) == ~s|<div class="my-class">\n  \n  block\n  \n  col1,col2,\n</div>|
   end
 end

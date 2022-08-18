@@ -1058,7 +1058,9 @@ defmodule Phoenix.Component do
             nil -> {nil, nil}
           end
 
-        known_keys = for(attr <- attrs, do: attr.name) ++ __reserved_assigns__()
+        attr_names = for(attr <- attrs, do: attr.name)
+        slot_names = for(slot <- slots, do: slot.name)
+        known_keys = attr_names ++ slot_names ++ __reserved_assigns__()
 
         def_body =
           if global_name do
