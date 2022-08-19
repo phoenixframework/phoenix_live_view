@@ -44,17 +44,6 @@ defmodule Phoenix.Component do
   directly, as `Phoenix.Component` provides two higher-level abstractions for us: 
   attributes and slots.
 
-  Note that attributes and slots requires the `:phoenix_live_view` compiler to be added to your
-  `:compiler` options in your `mix.exs`'s `project` configuration:
-
-      def project do
-        [
-          # ...
-          compilers: [:phoenix_live_view] ++ Mix.compilers(),
-          # ...
-        ]
-      end
-
   ## Attributes
 
   `Phoenix.Component` provides the `attr/3` macro to declare what attributes a function component
@@ -749,19 +738,19 @@ defmodule Phoenix.Component do
 
   An attribute is declared by its name, type, and options. The following types are supported:
 
-  * `:any` - any term.
-  * `:string` - any binary string.
-  * `:atom` - any atom (including `true`, `false`, and `nil`).
-  * `:boolean` - any boolean.
-  * `:integer` - any integer.
-  * `:float` - any float.
-  * `:list` - a list of any aribitrary types.
-  * `:global` - represents all other undefined attributes.
-    passed by the caller that match common HTML attributes as well as
-    those defined via the `:global_prefixes` option to `use Phoenix.Component`.
-    The optional map of global attribute defaults are merged with caller attributes.
-    See the `Phoenix.Component` module documenation for full details.
-  * Any module that defines a struct.
+
+  | Name            | Description                                                                     |
+  |-----------------|---------------------------------------------------------------------------------|
+  | `:any`          | any term                                                                        |
+  | `:string`       | any binary string                                                               |
+  | `:atom`         | any atom (including `true`, `false`, and `nil`)                                 |
+  | `:boolean`      | any boolean                                                                     |
+  | `:integer`      | any integer                                                                     |
+  | `:float`        | any float                                                                       |
+  | `:list`         | a list of any arbitrary types                                                   |
+  | `:global`       | any undefined, common HTML attributes, plus those defined by `:global_prefixes` |
+  | A struct module | any module that defines a struct with `defstruct/1`                             |
+
 
   ### Options
 
