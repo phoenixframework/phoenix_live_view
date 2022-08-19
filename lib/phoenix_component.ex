@@ -114,7 +114,8 @@ defmodule Phoenix.Component do
       </p>
 
   With the `attr/3` macro you have the core ingredients to create reusable function components.
-  But what if you need your function components to support a dynamic number of attributes?
+  But what if you need your function components to support dynamic attributes, such as common HTML 
+  attributes to mix into a component's container?
 
   ### Global Attributes
 
