@@ -41,6 +41,7 @@ Additionally, the special `let` attribute on function components have been depre
   - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessbility
   - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
   - Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
+  - Add `phx-dblclick` event
 
 ### Bug fixes
   - Fix external upload issue where listeners are not cleaned up when an external failure happens on the client

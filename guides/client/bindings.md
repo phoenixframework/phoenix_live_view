@@ -16,7 +16,7 @@ callback, for example:
 | Binding                | Attributes |
 |------------------------|------------|
 | [Params](#click-events) | `phx-value-*` |
-| [Click Events](#click-events) | `phx-click`, `phx-click-away` |
+| [Click Events](#click-events) | `phx-click`, `phx-click-away`, `phx-dblclick` |
 | [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
 | [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
@@ -67,6 +67,10 @@ sent to the server will be chosen with the following priority:
 
 The `phx-click-away` event is fired when a click event happens outside of the element.
 This is useful for hiding toggled containers like drop-downs.
+
+The `phx-dblclick` event is fired when an element is doubled clicked.
+
+Note: when `phx-dblclick` is used together with `phx-click`, the `phx-click` event will fire on both clicks.
 
 ## Focus and Blur Events
 
