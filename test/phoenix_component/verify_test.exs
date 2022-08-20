@@ -2,6 +2,8 @@ defmodule Phoenix.ComponentVerifyTest do
   use ExUnit.Case, async: true
 
   @moduletag :after_verify
+  import ExUnit.CaptureIO
+
   alias Mix.Task.Compiler.Diagnostic
 
   defp verify(module) do
@@ -13,50 +15,41 @@ defmodule Phoenix.ComponentVerifyTest do
     result
   end
 
-  defmodule RequiredAttrs do
-    use Phoenix.Component
-
-    attr :name, :any, required: true
-    attr :phone, :any
-    attr :email, :any, required: true
-
-    def func(assigns), do: ~H[]
-
-    def line, do: __ENV__.line + 4
-
-    def render(assigns) do
-      ~H"""
-      <.func/>
-      """
-    end
-  end
-
   test "validate required attributes" do
-    line = get_line(RequiredAttrs)
-    diagnostics = verify(RequiredAttrs)
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule RequiredAttrs do
+          use Phoenix.Component
 
-    assert diagnostics == [
-             %Diagnostic{
-               compiler_name: "phoenix_live_view",
-               file: __ENV__.file,
-               message: """
-               missing required attribute "email" for component \
-               Phoenix.ComponentVerifyTest.RequiredAttrs.func/1\
-               """,
-               position: line,
-               severity: :warning
-             },
-             %Diagnostic{
-               compiler_name: "phoenix_live_view",
-               file: __ENV__.file,
-               message: """
-               missing required attribute "name" for component \
-               Phoenix.ComponentVerifyTest.RequiredAttrs.func/1\
-               """,
-               position: line,
-               severity: :warning
-             }
-           ]
+          attr :name, :any, required: true
+          attr :phone, :any
+          attr :email, :any, required: true
+
+          def func(assigns), do: ~H[]
+
+          def line, do: __ENV__.line + 4
+
+          def render(assigns) do
+            ~H"""
+            <.func/>
+            """
+          end
+        end
+      end)
+
+    line = get_line(__MODULE__.RequiredAttrs)
+
+    assert warnings =~ """
+           missing required attribute "email" for component \
+           Phoenix.ComponentVerifyTest.RequiredAttrs.func/1
+             test/phoenix_component/verify_test.exs:#{line}: (file)
+           """
+
+    assert warnings =~ """
+           missing required attribute "name" for component \
+           Phoenix.ComponentVerifyTest.RequiredAttrs.func/1
+             test/phoenix_component/verify_test.exs:#{line}: (file)
+           """
   end
 
   defmodule RequiredAttrsWithDynamic do
