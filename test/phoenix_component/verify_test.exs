@@ -4,15 +4,6 @@ defmodule Phoenix.ComponentVerifyTest do
   @moduletag :after_verify
   import ExUnit.CaptureIO
 
-  defp verify(module) do
-    {result, _} =
-      ExUnit.CaptureIO.with_io(:stderr, fn ->
-        module.__phoenix_component_verify__(module)
-      end)
-
-    result
-  end
-
   test "validate required attributes" do
     warnings =
       capture_io(:stderr, fn ->
@@ -48,25 +39,6 @@ defmodule Phoenix.ComponentVerifyTest do
            Phoenix.ComponentVerifyTest.RequiredAttrs.func/1
              test/phoenix_component/verify_test.exs:#{line}: (file)
            """
-  end
-
-  test "do not validate required attributes when passing dynamic attr" do
-    defmodule RequiredAttrsWithDynamic do
-      use Phoenix.Component
-
-      attr :name, :any, required: true
-
-      def func(assigns), do: ~H[]
-
-      def render(assigns) do
-        ~H"""
-        <.func {[foo: 1]}/>
-        """
-      end
-    end
-
-    diagnostics = verify(RequiredAttrsWithDynamic)
-    assert diagnostics == []
   end
 
   test "validate undefined attributes" do
@@ -273,14 +245,18 @@ defmodule Phoenix.ComponentVerifyTest do
         end
       end)
 
+    line = get_line(__MODULE__.TypeAttrs, :global_line)
+
     assert warnings =~ """
            global attribute "global" in component \
            Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
            may not be provided directly
-             test/phoenix_component/verify_test.exs:#{__MODULE__.TypeAttrs.global_line()}: (file)
+             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.TypeAttrs, :render_string_line)
+
+    for {value, offset} <- [
           {:string, 1},
           {true, 2},
           {1, 3},
@@ -292,11 +268,13 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "string" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :string, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.TypeAttrs.render_string_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.TypeAttrs, :render_atom_line)
+
+    for {value, offset} <- [
           {"atom", 0},
           {1, 3},
           {1.0, 4},
@@ -306,11 +284,13 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "atom" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be an :atom, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.TypeAttrs.render_atom_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.TypeAttrs, :render_boolean_line)
+
+    for {value, offset} <- [
           {"boolean", 0},
           {:boolean, 1},
           {1, 3},
@@ -322,11 +302,13 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "boolean" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :boolean, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.TypeAttrs.render_boolean_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.TypeAttrs, :render_integer_line)
+
+    for {value, offset} <- [
           {"integer", 0},
           {:integer, 1},
           {true, 2},
@@ -338,11 +320,13 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "integer" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be an :integer, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.TypeAttrs.render_integer_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.TypeAttrs, :render_float_line)
+
+    for {value, offset} <- [
           {"float", 0},
           {:float, 1},
           {true, 2},
@@ -354,11 +338,13 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "float" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :float, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.TypeAttrs.render_float_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.TypeAttrs, :render_list_line)
+
+    for {value, offset} <- [
           {"list", 0},
           {:list, 1},
           {true, 2},
@@ -370,27 +356,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "list" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :list, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.TypeAttrs.render_list_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
-  end
-
-  defmodule NoAttrs do
-    use Phoenix.Component
-
-    def func(assigns), do: ~H[]
-
-    def render(assigns) do
-      ~H"""
-      <.func width="btn"/>
-      """
-    end
-  end
-
-  test "do not validate if component doesn't have any attr declared" do
-    diagnostics = verify(NoAttrs)
-
-    assert diagnostics == []
   end
 
   test "validate required slots" do
@@ -608,15 +576,19 @@ defmodule Phoenix.ComponentVerifyTest do
         end
       end)
 
+    line = get_line(__MODULE__.SlotAttrs, :render_global_line)
+
     assert warnings =~ """
            global attribute "global" \
            in slot \"slot\" \
            for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
            may not be provided directly
-             test/phoenix_component/verify_test.exs:#{__MODULE__.SlotAttrs.render_global_line()}: (file)
+             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.SlotAttrs, :render_string_line)
+
+    for {value, offset} <- [
           {:string, 1},
           {true, 2},
           {1, 3},
@@ -629,11 +601,13 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :string, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.SlotAttrs.render_string_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.SlotAttrs, :render_atom_line)
+
+    for {value, offset} <- [
           {"atom", 0},
           {1, 3},
           {1.0, 4},
@@ -644,11 +618,13 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be an :atom, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.SlotAttrs.render_atom_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.SlotAttrs, :render_boolean_line)
+
+    for {value, offset} <- [
           {"boolean", 0},
           {:boolean, 1},
           {1, 3},
@@ -661,11 +637,13 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :boolean, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.SlotAttrs.render_boolean_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.SlotAttrs, :render_integer_line)
+
+    for {value, offset} <- [
           {"integer", 0},
           {:integer, 1},
           {true, 2},
@@ -678,11 +656,13 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be an :integer, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.SlotAttrs.render_integer_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.SlotAttrs, :render_float_line)
+
+    for {value, offset} <- [
           {"float", 0},
           {:float, 1},
           {true, 2},
@@ -695,11 +675,13 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :float, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.SlotAttrs.render_float_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
 
-    for {value, line} <- [
+    line = get_line(__MODULE__.SlotAttrs, :render_list_line)
+
+    for {value, offset} <- [
           {"list", 0},
           {:list, 1},
           {true, 2},
@@ -712,7 +694,7 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :list, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{__MODULE__.SlotAttrs.render_list_line() + line}: (file)
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
   end
@@ -832,7 +814,7 @@ defmodule Phoenix.ComponentVerifyTest do
            """
   end
 
-  defp get_line(module) do
-    module.line()
+  defp get_line(module, fun \\ :line) do
+    apply(module, fun, [])
   end
 end

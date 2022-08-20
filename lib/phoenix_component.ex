@@ -1463,8 +1463,9 @@ defmodule Phoenix.Component do
     for %{component: {submod, fun}} = call <- component_calls,
         function_exported?(submod, :__components__, 0),
         component = submod.__components__()[fun],
-        diagnostic <- verify(module, call, component),
-        do: diagnostic
+        do: verify(module, call, component)
+
+    :ok
   end
 
   defp verify(
@@ -1472,139 +1473,125 @@ defmodule Phoenix.Component do
          %{slots: slots, attrs: attrs, root: root} = call,
          %{slots: slots_defs, attrs: attrs_defs}
        ) do
-    {attrs_warnings, {attrs, has_global?}} =
-      Enum.flat_map_reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
+    {attrs, has_global?} =
+      Enum.reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
         %{name: name, required: required, type: type} = attr_def
         {value, attrs} = Map.pop(attrs, name)
 
-        warnings =
-          case {type, value} do
-            # missing required attr
-            {_type, nil} when not root and required ->
-              message = "missing required attribute \"#{name}\" for component #{component_fa(call)}"
-              [warn(message, call.file, call.line)]
+        case {type, value} do
+          # missing required attr
+          {_type, nil} when not root and required ->
+            message = "missing required attribute \"#{name}\" for component #{component_fa(call)}"
+            warn(message, call.file, call.line)
 
-            # missing optional attr, or dynamic attr
-            {_type, nil} when root or not required ->
-              []
+          # missing optional attr, or dynamic attr
+          {_type, nil} when root or not required ->
+            :ok
 
-            # global attrs cannot be directly used
-            {:global, {line, _column, _type_value}} ->
+          # global attrs cannot be directly used
+          {:global, {line, _column, _type_value}} ->
+            message =
+              "global attribute \"#{name}\" in component #{component_fa(call)} may not be provided directly"
+
+            warn(message, call.file, line)
+
+          {type, {line, _column, type_value}} ->
+            if value_ast_to_string = type_mismatch(type, type_value) do
               message =
-                "global attribute \"#{name}\" in component #{component_fa(call)} may not be provided directly"
+                "attribute \"#{name}\" in component #{component_fa(call)} must be #{type_with_article(type)}, got: " <>
+                  value_ast_to_string
 
               [warn(message, call.file, line)]
+            end
+        end
 
-            {type, {line, _column, type_value}} ->
-              if value_ast_to_string = type_mismatch(type, type_value) do
-                message =
-                  "attribute \"#{name}\" in component #{component_fa(call)} must be #{type_with_article(type)}, got: " <>
-                    value_ast_to_string
-
-                [warn(message, call.file, line)]
-              else
-                []
-              end
-          end
-
-        {warnings, {attrs, has_global? || type == :global}}
+        {attrs, has_global? || type == :global}
       end)
 
-    attrs_undefined =
-      for {name, {line, _column, _type_value}} <- attrs,
-          not (has_global? and __global__?(caller_module, Atom.to_string(name))) do
-        message = "undefined attribute \"#{name}\" for component #{component_fa(call)}"
-        warn(message, call.file, line)
-      end
+    for {name, {line, _column, _type_value}} <- attrs,
+        not (has_global? and __global__?(caller_module, Atom.to_string(name))) do
+      message = "undefined attribute \"#{name}\" for component #{component_fa(call)}"
+      warn(message, call.file, line)
+    end
 
-    {slots_warnings, slots} =
-      Enum.flat_map_reduce(slots_defs, slots, fn slot_def, slots ->
+    slots =
+      Enum.reduce(slots_defs, slots, fn slot_def, slots ->
         %{name: slot_name, required: required, attrs: attrs} = slot_def
         {slot_values, slots} = Map.pop(slots, slot_name)
 
-        warnings =
-          case slot_values do
-            # missing required slot
-            nil when required ->
-              message = "missing required slot \"#{slot_name}\" for component #{component_fa(call)}"
-              [warn(message, call.file, call.line)]
+        case slot_values do
+          # missing required slot
+          nil when required ->
+            message = "missing required slot \"#{slot_name}\" for component #{component_fa(call)}"
+            warn(message, call.file, call.line)
 
-            # missing optional slot
-            nil ->
-              []
+          # missing optional slot
+          nil ->
+            :ok
 
-            # slot with attributes
-            _ ->
-              has_global? = Enum.any?(attrs, &(&1.type == :global))
-              slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
-              required_attrs = for {attr_name, %{required: true}} <- slot_attr_defs, do: attr_name
+          # slot with attributes
+          _ ->
+            has_global? = Enum.any?(attrs, &(&1.type == :global))
+            slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
+            required_attrs = for {attr_name, %{required: true}} <- slot_attr_defs, do: attr_name
 
-              missing_slot_attrs =
-                for %{attrs: slot_attrs, line: slot_line, root: false} <- slot_values,
-                    attr_name <- required_attrs,
-                    not Map.has_key?(slot_attrs, attr_name) do
+            for %{attrs: slot_attrs, line: slot_line, root: false} <- slot_values,
+                attr_name <- required_attrs,
+                not Map.has_key?(slot_attrs, attr_name) do
+              message =
+                "missing required attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                  "for component #{component_fa(call)}"
+
+              warn(message, call.file, slot_line)
+            end
+
+            for %{attrs: slot_attrs} <- slot_values,
+                {attr_name, {line, _column, type_value}} <- slot_attrs do
+              case slot_attr_defs do
+                %{^attr_name => %{type: :global}} ->
                   message =
-                    "missing required attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
-                      "for component #{component_fa(call)}"
+                    "global attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                      "for component #{component_fa(call)} may not be provided directly"
 
-                  warn(message, call.file, slot_line)
-                end
+                  warn(message, call.file, line)
 
-              slot_attrs_errors =
-                for %{attrs: slot_attrs} <- slot_values,
-                    {attr_name, {line, _column, type_value}} <- slot_attrs,
-                    reduce: [] do
-                  errors ->
-                    case slot_attr_defs do
-                      %{^attr_name => %{type: :global}} ->
-                        message =
-                          "global attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
-                            "for component #{component_fa(call)} may not be provided directly"
+                %{^attr_name => %{type: type}} ->
+                  if value_ast_to_string = type_mismatch(type, type_value) do
+                    message =
+                      "attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                        "for component #{component_fa(call)} must be #{type_with_article(type)}, got: " <>
+                        value_ast_to_string
 
-                        [warn(message, call.file, line) | errors]
+                    warn(message, call.file, line)
+                  end
 
-                      %{^attr_name => %{type: type}} ->
-                        if value_ast_to_string = type_mismatch(type, type_value) do
-                          message =
-                            "attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
-                              "for component #{component_fa(call)} must be #{type_with_article(type)}, got: " <>
-                              value_ast_to_string
+                # undefined attribute
+                %{} ->
+                  if attr_name == :inner_block or
+                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
+                    :ok
+                  else
+                    message =
+                      "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                        "for component #{component_fa(call)}"
 
-                          [warn(message, call.file, line) | errors]
-                        else
-                          errors
-                        end
+                    warn(message, call.file, line)
+                  end
+              end
+            end
+        end
 
-                      # undefined attribute
-                      %{} ->
-                        if attr_name == :inner_block or
-                             (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
-                          errors
-                        else
-                          message =
-                            "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
-                              "for component #{component_fa(call)}"
-
-                          [warn(message, call.file, line) | errors]
-                        end
-                    end
-                end
-
-              missing_slot_attrs ++ slot_attrs_errors
-          end
-
-        {warnings, slots}
+        slots
       end)
 
-    slots_undefined =
-      for {slot_name, slot_values} <- slots,
-          slot_name != :inner_block,
-          %{line: line} <- slot_values do
-        message = "undefined slot \"#{slot_name}\" for component #{component_fa(call)}"
-        warn(message, call.file, line)
-      end
+    for {slot_name, slot_values} <- slots,
+        slot_name != :inner_block,
+        %{line: line} <- slot_values do
+      message = "undefined slot \"#{slot_name}\" for component #{component_fa(call)}"
+      warn(message, call.file, line)
+    end
 
-    slots_warnings ++ slots_undefined ++ attrs_warnings ++ attrs_undefined
+    :ok
   end
 
   defp type_mismatch(:any, _type_value), do: nil
@@ -1623,17 +1610,8 @@ defmodule Phoenix.Component do
   defp type_with_article(type), do: "a #{inspect(type)}"
 
   # TODO: Provide column information in error messages
-  # TODO: Rewrite tests and stop returning diagnostics
   # TODO: Also validate local function component calls (and what about private components?)
   defp warn(message, file, line) do
     IO.warn(message, file: file, line: line)
-
-    %Mix.Task.Compiler.Diagnostic{
-      compiler_name: "phoenix_live_view",
-      file: file,
-      message: message,
-      position: line,
-      severity: :warning
-    }
   end
 end
