@@ -9,7 +9,7 @@ locals_without_parens = [
 [
   import_deps: [:phoenix],
   inputs: ["*.{ex,exs}", "{config,lib,test}/**/*.{ex,exs}"],
-  # TODO remove these for 0.18 release since phoenix provides them already
+  # TODO: Remove these on Phoenix v1.7 since Phoenix provides them already
   locals_without_parens: locals_without_parens,
   export: [locals_without_parens: locals_without_parens]
 ]

@@ -4,17 +4,7 @@
 
 0.18.0 includes a major new feature in the form of declarative assigns with a new `attr`
 macro for specifying which attributes a function component supports, the type, and default values.
-Attributes are compile-time verified with warnings. To support `attr` in your existing applications
-add the `:phoenix_live_view` compiler to your `mix.exs`'s `project` configuration:
-
-```elixir
-def project do
-  [
-    ...,
-    compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
-  ]
-end
-```
+Attributes are compile-time verified and emit warnings in case of incompatibilities from Elixir v1.14.0 and later.
 
 0.18.0 includes a number of new function components which replace their EEx expression counterparts `<%= ... %>`.
 For example, `live_redirect`, `live_patch`, and Phoenix.HTML's `link` have been replaced by a unified
