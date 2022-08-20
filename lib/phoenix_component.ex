@@ -250,14 +250,14 @@ defmodule Phoenix.Component do
   content. For example, imagine you want to create a modal that has a header, body, and footer:
 
       slot :header
-      slot :inner_block
-      slot :footer
+      slot :inner_block, required: true
+      slot :footer, required: true
 
       def modal(assigns) do
         ~H"""
         <div class="modal">
           <div class="modal-header">
-            <%= render_slot(@header) %>
+            <%= render_slot(@header) || "Modal" %>
           </div>
           <div class="modal-body">
             <%= render_slot(@inner_block) %>
@@ -272,9 +272,6 @@ defmodule Phoenix.Component do
   You can invoke this function component using the named slot HEEx syntax:
 
       <.modal>
-        <:header>
-          This is the top of the modal.
-        </:header>
         This is the body, everything not in a named slot is rendered in the default slot.
         <:footer>
           This is the bottom of the modal.
@@ -285,7 +282,7 @@ defmodule Phoenix.Component do
 
       <div class="modal">
         <div class="modal-header">
-          This is the top of the modal.
+          Modal.
         </div>
         <div class="modal-body">
           This is the body, everything not in a named slot is rendered in the default slot.
@@ -294,6 +291,9 @@ defmodule Phoenix.Component do
           This is the bottom of the modal.
         </div>
       </div>
+
+  As shown in the example above, `render_slot/1` returns `nil` when an optional slot
+  is declared and none is given. This can be used to attach default behaviour.
 
   ### Slot Attributes
 
@@ -568,8 +568,8 @@ defmodule Phoenix.Component do
 
   The default slot can be declared by passing `:inner_block` as the `name` of the slot.
 
-  Note that the default slot cannot accept a block. Passing one will result in a compilation
-  warning being emitted.
+  Note that the `:inner_block` slot declaration cannot accept a block. Passing one will
+  result in a compilation error.
 
   ## Compile-Time Validations
 
@@ -617,24 +617,28 @@ defmodule Phoenix.Component do
   ## Example
     
       slot :header
-      slot :inner_block
+      slot :inner_block, required: true
       slot :footer
 
       def modal(assigns) do
         ~H"""
         <div class="modal">
           <div class="modal-header">
-            <%= render_slot(@header) %>
+            <%= render_slot(@header) || "Modal" %>
           </div>
           <div class="modal-body">
             <%= render_slot(@inner_block) %>
           </div>
           <div class="modal-footer">
-            <%= render_slot(@footer) %>
+            <%= render_slot(@footer) || submit_button() %>
           </div>
         </div>
         """
       end
+
+  As shown in the example above, `render_slot/1` returns `nil`
+  when an optional slot is declared and none is given. This can
+  be used to attach default behaviour.
   '''
   defmacro slot(name, opts, block)
 
