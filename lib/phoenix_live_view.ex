@@ -115,7 +115,7 @@ defmodule Phoenix.LiveView do
   *Note:* the above assumes there is `plug :put_root_layout` call
   in your router that configures the LiveView layout. This call is
   automatically included in Phoenix v1.6 apps and described in
-  the installation guide.
+  [the installation guide](installation.md#layouts).
 
   Alternatively, you can `live_render` from any template. In your view:
 
