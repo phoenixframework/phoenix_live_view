@@ -10,7 +10,6 @@ defmodule Phoenix.LiveView.MixProject do
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: compilers(Mix.env()),
       package: package(),
       xref: [exclude: [Floki]],
       deps: deps(),
@@ -23,9 +22,6 @@ defmodule Phoenix.LiveView.MixProject do
       """
     ]
   end
-
-  defp compilers(:test), do: [:phoenix] ++ Mix.compilers()
-  defp compilers(_), do: Mix.compilers()
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]

@@ -40,19 +40,6 @@ def deps do
   ]
 ```
 
-Next, add the the `:phoenix_live_view` compiler to your `:compiler` options in your `mix.exs`'s `project` configuration:
-
-```elixir
-# mix.exs
-
-def project do
-  [
-    ...,
-    compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
-  ]
-end
-```
-
 Once installed, update your endpoint's configuration to include a signing salt.
 You can generate a signing salt by running `mix phx.gen.secret 32`:
 
