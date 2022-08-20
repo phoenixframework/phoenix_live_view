@@ -793,6 +793,16 @@ export default class LiveSocket {
       if(!phxEvent){ return }
       e.preventDefault()
       e.target.disabled = true
+      if (e.submitter && e.submitter.name) {
+        // it would be cleaner to put e.submitter.name into the args of "push" below, 
+        // without creating a hidden input. That requires changing exec_push (which doesn't
+        // pass args to submitForm), or reusing some parts that it does pass
+        let isubmitter = document.createElement('input')
+        isubmitter.setAttribute('type', 'hidden')
+        isubmitter.setAttribute('name', 'phx_submitted_by')
+        isubmitter.setAttribute('value', e.submitter.name)
+        e.target.appendChild(isubmitter)
+      }
       this.withinOwners(e.target, view => {
         JS.exec("submit", phxEvent, view, e.target, ["push", {}])
       })
