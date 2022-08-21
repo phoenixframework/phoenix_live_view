@@ -412,7 +412,7 @@ defmodule Phoenix.LiveView.Router do
         raise ArgumentError, """
         unknown live option :#{key}.
 
-        Supported options include: :container, :as, :metadata, :private.
+        Supported options include: :container, :as, :metadata, :private, :warn_on_verify.
 
         Got: #{inspect([{key, val}])}
         """
