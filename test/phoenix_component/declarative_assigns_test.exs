@@ -479,7 +479,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       attr :two, :integer, default: 2
 
       def add(assigns) do
-        assigns = Phoenix.LiveView.assign(assigns, :foo, :bar)
+        assigns = Phoenix.Component.assign(assigns, :foo, :bar)
         ~H[<%= @one + @two %>]
       end
 

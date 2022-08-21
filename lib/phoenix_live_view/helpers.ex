@@ -4,7 +4,6 @@ defmodule Phoenix.LiveView.Helpers do
   """
   use Phoenix.Component
 
-  alias Phoenix.LiveView
   alias Phoenix.LiveView.{Component, Socket, Static, Utils}
 
   @doc """
@@ -247,8 +246,8 @@ defmodule Phoenix.LiveView.Helpers do
 
         assigns =
           assigns
-          |> Phoenix.LiveView.assign(:target, target)
-          |> Phoenix.LiveView.assign(:extra, extra)
+          |> assign(:target, target)
+          |> assign(:extra, extra)
 
         ~H"""
         <a href={@href} target={@target} {@extra}>
@@ -791,7 +790,7 @@ defmodule Phoenix.LiveView.Helpers do
         data_phx_update: "ignore"
       )
 
-    assigns = LiveView.assign(%{__changed__: nil}, attrs: attrs)
+    assigns = assign(%{__changed__: nil}, attrs: attrs)
 
     ~H"<img {@attrs}/>"
   end
@@ -1061,7 +1060,7 @@ defmodule Phoenix.LiveView.Helpers do
       end
 
     assigns =
-      LiveView.assign(assigns,
+      assign(assigns,
         form: form,
         csrf_token: csrf_token,
         hidden_method: hidden_method,

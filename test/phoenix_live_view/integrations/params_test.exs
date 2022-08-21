@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.ParamsTest do
   import Phoenix.LiveViewTest
   import Phoenix.LiveView.TelemetryTestHelpers
 
-  alias Phoenix.LiveView
+  alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
 
   @endpoint Endpoint
@@ -319,7 +319,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         send(self(), {:set, :val, 1000})
 
         new_socket =
-          LiveView.assign(socket, :on_handle_params, fn socket ->
+          Component.assign(socket, :on_handle_params, fn socket ->
             {:noreply, LiveView.push_patch(socket, to: "/counter/123?from=rehandled_params")}
           end)
 
@@ -352,7 +352,7 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       next = fn socket ->
         new_socket =
-          LiveView.assign(socket, :on_handle_params, fn socket ->
+          Component.assign(socket, :on_handle_params, fn socket ->
             {:noreply, LiveView.push_navigate(socket, to: "/thermo/123")}
           end)
 

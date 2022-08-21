@@ -1,18 +1,18 @@
 defmodule Phoenix.LiveViewTest.InitAssigns do
-  alias Phoenix.LiveView
+  alias Phoenix.Component
 
   def on_mount(:default, _params, _session, socket) do
     {:cont,
      socket
-     |> LiveView.assign(:init_assigns_mount, true)
-     |> LiveView.assign(:last_on_mount, :init_assigns_mount)}
+     |> Component.assign(:init_assigns_mount, true)
+     |> Component.assign(:last_on_mount, :init_assigns_mount)}
   end
 
   def on_mount(:other, _params, _session, socket) do
     {:cont,
      socket
-     |> LiveView.assign(:init_assigns_other_mount, true)
-     |> LiveView.assign(:last_on_mount, :init_assigns_other_mount)}
+     |> Component.assign(:init_assigns_other_mount, true)
+     |> Component.assign(:last_on_mount, :init_assigns_other_mount)}
   end
 end
 
@@ -186,13 +186,13 @@ defmodule Phoenix.LiveViewTest.HooksLive.Noop do
 end
 
 defmodule Phoenix.LiveViewTest.HaltConnectedMount do
-  alias Phoenix.LiveView
+  alias Phoenix.{Component, LiveView}
 
   def on_mount(_arg, _params, _session, socket) do
     if LiveView.connected?(socket) do
       {:halt, LiveView.push_navigate(socket, to: "/lifecycle")}
     else
-      {:cont, LiveView.assign(socket, :last_on_mount, __MODULE__)}
+      {:cont, Component.assign(socket, :last_on_mount, __MODULE__)}
     end
   end
 end

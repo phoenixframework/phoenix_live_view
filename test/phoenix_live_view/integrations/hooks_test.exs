@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.HooksTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveView
+  alias Phoenix.Component
   alias Phoenix.LiveViewTest.{Endpoint, HooksLive}
 
   @endpoint Endpoint
@@ -70,7 +70,7 @@ defmodule Phoenix.LiveView.HooksTest do
 
     HooksLive.attach_hook(lv, :multiply_inc, :handle_event, fn
       "inc", _, socket ->
-        {:halt, LiveView.update(socket, :count, &(&1 * 2))}
+        {:halt, Component.update(socket, :count, &(&1 * 2))}
 
       "dec", _, socket ->
         {:cont, socket}
@@ -104,10 +104,10 @@ defmodule Phoenix.LiveView.HooksTest do
 
     HooksLive.attach_hook(lv, :hook, :handle_params, fn
       _params, _uri, %{assigns: %{params_hook_ref: _}} = socket ->
-        {:halt, LiveView.update(socket, :params_hook_ref, &(&1 + 1))}
+        {:halt, Component.update(socket, :params_hook_ref, &(&1 + 1))}
 
       _params, _uri, socket ->
-        {:halt, LiveView.assign(socket, :params_hook_ref, 0)}
+        {:halt, Component.assign(socket, :params_hook_ref, 0)}
     end)
 
     lv |> element("#patch") |> render_click() =~ "params_hook:0"
@@ -129,13 +129,13 @@ defmodule Phoenix.LiveView.HooksTest do
 
     HooksLive.attach_hook(lv, :hook, :handle_params, fn
       _params, _uri, %{assigns: %{params_hook_ref: 0}} = socket ->
-        {:halt, LiveView.update(socket, :params_hook_ref, &(&1 + 1))}
+        {:halt, Component.update(socket, :params_hook_ref, &(&1 + 1))}
 
       _params, _uri, %{assigns: %{params_hook_ref: 1}} = socket ->
         {:cont, socket}
 
       _params, _uri, socket ->
-        {:halt, LiveView.assign(socket, :params_hook_ref, 0)}
+        {:halt, Component.assign(socket, :params_hook_ref, 0)}
     end)
 
     lv |> element("#patch") |> render_click() =~ "params_hook:0"

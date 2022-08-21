@@ -1,7 +1,7 @@
 # Assigns and HEEx templates
 
 All of the data in a LiveView is stored in the socket as assigns.
-The `Phoenix.LiveView.assign/2` and `Phoenix.LiveView.assign/3`
+The `Phoenix.Component.assign/2` and `Phoenix.Component.assign/3`
 functions help store those values. Those values can be accessed
 in the LiveView as `socket.assigns.name` but they are accessed
 inside LiveView templates as `@name`.

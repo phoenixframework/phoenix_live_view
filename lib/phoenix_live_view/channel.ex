@@ -1145,7 +1145,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp assign_action(socket, action) do
-    Phoenix.LiveView.assign(socket, :live_action, action)
+    Phoenix.Component.assign(socket, :live_action, action)
   end
 
   defp maybe_update_uploads(%Socket{} = socket, %{"uploads" => uploads} = payload) do

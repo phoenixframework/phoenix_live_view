@@ -46,7 +46,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def textarea(assigns) do
-    assigns = Phoenix.LiveView.assign(assigns, :extra_assigns, assigns_to_attributes(assigns, []))
+    assigns = Phoenix.Component.assign(assigns, :extra_assigns, assigns_to_attributes(assigns, []))
     ~H"<textarea {@extra_assigns}><%= render_slot(@inner_block) %></textarea>"
   end
 

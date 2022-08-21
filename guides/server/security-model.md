@@ -80,7 +80,7 @@ as you would with plug:
     end
 
 
-We use [`assign_new/3`](`Phoenix.LiveView.assign_new/3`). This is a
+We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
 convenience to avoid fetching the `current_user` multiple times across
 LiveViews.
 

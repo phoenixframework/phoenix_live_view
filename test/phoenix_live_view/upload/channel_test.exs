@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveView
+  alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.{UploadClient, UploadLive, UploadLiveWithComponent}
 
   @endpoint Phoenix.LiveViewTest.Endpoint
@@ -70,7 +70,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
             {:ok, entry.client_name}
           end)
 
-        LiveView.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
+        Phoenix.Component.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
       else
         socket
       end
@@ -644,14 +644,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "component:myfile1.jpeg:1%"
 
-      GenServer.call(lv.pid, {:setup, fn socket -> LiveView.assign(socket, uploads_count: 2) end})
+      GenServer.call(lv.pid, {:setup, fn socket -> Component.assign(socket, uploads_count: 2) end})
 
       GenServer.call(
         lv.pid,
         {:setup,
          fn socket ->
            run = fn component_socket ->
-             new_socket = Phoenix.LiveView.allow_upload(component_socket, :avatar, accept: :any)
+             new_socket = LiveView.allow_upload(component_socket, :avatar, accept: :any)
              {:reply, :ok, new_socket}
            end
 
@@ -732,7 +732,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "get allowed uploads from the form's target cid", %{lv: lv} do
-      GenServer.call(lv.pid, {:setup, fn socket -> LiveView.assign(socket, uploads_count: 2) end})
+      GenServer.call(lv.pid, {:setup, fn socket -> Component.assign(socket, uploads_count: 2) end})
 
       GenServer.call(
         lv.pid,

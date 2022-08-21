@@ -1419,7 +1419,7 @@ defmodule Phoenix.LiveView.DiffTest do
       # Now let's add one level of nesting directly
       {diff, diff_components, :extra} =
         Diff.write_component(socket, 1, diff_components, fn socket, _component ->
-          {Phoenix.LiveView.assign(socket, children: [{2, []}]), :extra}
+          {Phoenix.Component.assign(socket, children: [{2, []}]), :extra}
         end)
 
       assert diff == %{
