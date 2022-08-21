@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.IntegrationHooksTest do
   use ExUnit.Case, async: true
 
-  alias Phoenix.{Component, LiveView}
+  alias Phoenix.LiveView
   alias Phoenix.LiveView.Lifecycle
 
   defp build_socket(router \\ Phoenix.LiveViewTest.Router) do
