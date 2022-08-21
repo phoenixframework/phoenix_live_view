@@ -814,6 +814,56 @@ defmodule Phoenix.ComponentVerifyTest do
            """
   end
 
+  test "validates calls for locally defined components" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule LocalComponents do
+          use Phoenix.Component
+
+          attr :attr, :string, required: true
+
+          def public(assigns) do
+            ~H"""
+            <%= @attr %>
+            """
+          end
+
+          attr :attr, :string, required: true
+
+          defp private(assigns) do
+            ~H"""
+            <%= @attr %>
+            """
+          end
+
+          def line, do: __ENV__.line + 2
+
+          def render(assigns) do
+            ~H"""
+            <.public />
+            <.private />
+            """
+          end
+        end
+      end)
+
+    line = get_line(__MODULE__.LocalComponents)
+
+    assert warnings =~ """
+           missing required attribute "attr" \
+           for component \
+           Phoenix.ComponentVerifyTest.LocalComponents.public/1
+             test/phoenix_component/verify_test.exs:#{line + 2}: (file)
+           """
+
+    assert warnings =~ """
+           missing required attribute "attr" \
+           for component \
+           Phoenix.ComponentVerifyTest.LocalComponents.private/1
+             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
+           """
+  end
+
   defp get_line(module, fun \\ :line) do
     apply(module, fun, [])
   end
