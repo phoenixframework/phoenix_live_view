@@ -218,7 +218,6 @@ defmodule Phoenix.LiveView.Helpers do
       engine: Phoenix.LiveView.HTMLEngine,
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
-      module: __CALLER__.module,
       caller: __CALLER__,
       indentation: meta[:indentation] || 0
     ]

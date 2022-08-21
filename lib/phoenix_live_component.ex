@@ -438,10 +438,10 @@ defmodule Phoenix.LiveComponent do
   defmacro __using__(_) do
     quote do
       @behaviour Phoenix.LiveComponent
-      use Phoenix.Component
-
-      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
+
+      # Phoenix.Component must come last so its @before_compile runs last
+      use Phoenix.Component
 
       @doc false
       def __live__, do: %{kind: :component, module: __MODULE__}

@@ -481,14 +481,14 @@ defmodule Phoenix.LiveView do
 
     quote bind_quoted: [opts: opts] do
       @behaviour Phoenix.LiveView
-      use Phoenix.Component
-
-      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
       @phoenix_live_opts opts
       Module.register_attribute(__MODULE__, :phoenix_live_mount, accumulate: true)
       @before_compile Phoenix.LiveView
+
+      # Phoenix.Component must come last so its @before_compile runs last
+      use Phoenix.Component
     end
   end
 

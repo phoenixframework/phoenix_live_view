@@ -139,7 +139,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @impl true
   def init(opts) do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
-    {module, opts} = Keyword.pop(opts, :module)
 
     unless subengine do
       raise ArgumentError, ":subengine is missing for HTMLEngine"
@@ -150,7 +149,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
       tokens: [],
       subengine: subengine,
       substate: subengine.init([]),
-      module: module,
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0),
       caller: Keyword.get(opts, :caller),
@@ -200,7 +198,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp token_state(
-         %{subengine: subengine, substate: substate, file: file, module: module, caller: caller},
+         %{subengine: subengine, substate: substate, file: file, caller: caller},
          root
        ) do
     %{
@@ -210,7 +208,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
       stack: [],
       tags: [],
       slots: [],
-      module: module,
       caller: caller,
       root: root,
       previous_token_slot?: false
@@ -1076,8 +1073,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  defp store_component_call(component, attr_info, slot_info, line, %{module: module} = state) do
-    if Module.open?(module) do
+  defp store_component_call(component, attr_info, slot_info, line, %{caller: caller} = state) do
+    module = caller.module
+
+    if module && Module.open?(module) do
       pruned_slots =
         for {slot_name, slot_values} <- slot_info, into: %{} do
           values =
