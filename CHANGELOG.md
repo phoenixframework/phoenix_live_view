@@ -2,20 +2,25 @@
 
 ## 0.18.0
 
-0.18.0 includes a major new feature in the form of declarative assigns with a new `attr`
-macro for specifying which attributes a function component supports, the type, and default values.
-Attributes are compile-time verified and emit warnings in case of incompatibilities from Elixir v1.14.0 and later.
+LiveView v0.18 includes a major new feature in the form of declarative assigns with new `attr`
+and `slot` APIs for specifying which attributes a function component supports, the type,
+and default values. Attributes and slots are compile-time verified and emit warnings (requires Elixir v1.14.0+).
 
-0.18.0 includes a number of new function components which replace their EEx expression counterparts `<%= ... %>`.
-For example, `live_redirect`, `live_patch`, and Phoenix.HTML's `link` have been replaced by a unified
-`Phoenix.LiveView.Helpers.link/1` function component:
+v0.18 includes a number of new function components which replace their EEx expression
+counterparts `<%= ... %>`. For example, `live_redirect`, `live_patch`, and Phoenix.HTML's
+`link` have been replaced by a unified `Phoenix.Component.link/1` function component:
 
     <.link href="https://myapp.com">my app</.link>
     <.link navigate={@path}>remount</.link>
     <.link patch={@path}>patch</.link>
 
-Additionally, the special `let` attribute on function components have been deprecated by a `:let` usage.
+Those new components live in the `Phoenix.Component` module. `Phoenix.LiveView.Helpers`
+itself has been soft deprecated and all relevant functionality has been migrated.
+You must `import Phoenix.Component` where you previously imported `Phoenix.LiveView.Helpers`
+when upgrading.
 
+Additionally, the special `let` attribute on function components have been deprecated by
+a `:let` usage.
 
 ### Deprecations
   - `live_redirect` - deprecate in favor of new `<.link navigate={..}>` component of `Phoenix.LiveView.Helpers`
@@ -23,17 +28,18 @@ Additionally, the special `let` attribute on function components have been depre
   - `push_redirect` - deprecate in favor of new `push_navigate` function on `Phoenix.LiveView`
 
 ### Enhancements
-  - Add declarative assigns with compile-time verifications and warnings via `attr` macro above function components
+  - [Component] Add declarative assigns with compile-time verifications and warnings via `attr`/`slot`
+  - [Component] Add `dynamic_tag` function component
+  - [Component] Add `link` function component
+  - [Component] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessibility
+  - [Component] Add new attrs `:let` and `:for`. We still support `let` but the formatter will convert it to `:let` and soon it will be deprecated.
   - [Logger] Add new LiveView logger with telemetry instrumentation for lifecycle events
-  - [Helpers] Add `dynamic_tag` function component
-  - [Helpers] Add `link` function component
-  - [Helpers] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessibility
-  - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessbility
-  - Add new attrs `:let` and `:for`. We still support `let` but the Formatter will convert it to `:let` and soon it will be deprecated.
-  - Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
+  - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessibility
+  - [Socket] Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
 
 ### Bug fixes
   - Fix external upload issue where listeners are not cleaned up when an external failure happens on the client
+  - Do not debounce `phx-blur`
 
 ## 0.17.11 (2022-07-11)
 
