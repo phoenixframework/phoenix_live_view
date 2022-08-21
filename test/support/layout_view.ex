@@ -1,7 +1,8 @@
 defmodule Phoenix.LiveViewTest.LayoutView do
   use Phoenix.View, root: ""
+  use Phoenix.Component
+
   alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
-  import Phoenix.LiveView.Helpers
 
   def render("app.html", assigns) do
     # Assert those assigns are always available

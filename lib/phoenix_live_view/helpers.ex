@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Helpers do
   """
   use Phoenix.Component
 
-  alias Phoenix.LiveView.{Component, Socket, Static, Utils}
+  alias Phoenix.LiveView.{Component, Socket, Utils}
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.

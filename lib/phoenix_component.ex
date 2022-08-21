@@ -3,7 +3,7 @@ defmodule Phoenix.Component do
   Define reusable function components with HEEx templates.
 
   A function component is any function that receives an assigns map as an argument and returns 
-  a rendered struct built with [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`):
+  a rendered struct built with [the `~H` sigil](`sigil_H/2`):
 
       defmodule MyComponent do
         use Phoenix.Component
@@ -164,7 +164,7 @@ defmodule Phoenix.Component do
   Now all function components defined in this module will accept any number of attributes prefixed
   with `x-`, in addition to the default global prefixes.
 
-  You can learn more about attributes by reading the documentation for `Phoenix.Component.attr/3`.
+  You can learn more about attributes by reading the documentation for `attr/3`.
 
   ## Slots
 
@@ -207,7 +207,7 @@ defmodule Phoenix.Component do
   ### The Default Slot
 
   The example above uses the default slot, accesible as an assign named `@inner_block`, to render 
-  HEEx content via the `Phoenix.LiveView.Helpers.render_slot/2` function.
+  HEEx content via the `render_slot/2` function.
 
   If the values rendered in the slot need to be dynamic, you can pass a second value back to the
   HEEx content by calling `render_slot/2`:
@@ -299,8 +299,7 @@ defmodule Phoenix.Component do
 
   Unlike the default slot, it is possible to pass a named slot multiple pieces of HEEx content. 
   Named slots can also accept attributes, defined by passing a block to the `slot/3` macro. 
-  If multiple pieces of content are passed,`Phoenix.LiveView.Helpers.render_slot/2` will merge 
-  and render all the values.
+  If multiple pieces of content are passed, `render_slot/2` will merge and render all the values.
 
   Below is a table component illustrating multiple named slots with attributes:
 
@@ -357,12 +356,12 @@ defmodule Phoenix.Component do
         </tr>
       </table>
 
-  You can learn more about slots and the `slot/3` macro [in its documentation](`Phoenix.Component.slot/3`).
+  You can learn more about slots and the `slot/3` macro [in its documentation](`slot/3`).
   '''
 
   ## Functions
 
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.{Static, Socket}
 
   @reserved_assigns [:__changed__, :__slot__, :inner_block, :myself, :flash, :socket]
 
@@ -736,7 +735,7 @@ defmodule Phoenix.Component do
 
     case module.__live__() do
       %{kind: :component} ->
-        %Component{id: id, assigns: assigns, component: module}
+        %Phoenix.LiveView.Component{id: id, assigns: assigns, component: module}
 
       %{kind: kind} ->
         raise ArgumentError, "expected #{inspect(module)} to be a component, but it is a #{kind}"
@@ -1351,6 +1350,7 @@ defmodule Phoenix.Component do
       quote bind_quoted: [opts: opts] do
         import Kernel, except: [def: 2, defp: 2]
         import Phoenix.Component
+        import Phoenix.Component.Declarative
         import Phoenix.LiveView
 
         @doc false
@@ -1404,7 +1404,7 @@ defmodule Phoenix.Component do
   * `name` - an atom defining the name of the slot. Note that slots cannot define the same name 
   as any other slots or attributes declared for the same component.
   * `opts` - a keyword list of options. Defaults to `[]`.
-  * `block` - a code block containing calls to `Phoenix.Component.attr/3`. Defaults to `nil`.
+  * `block` - a code block containing calls to `attr/3`. Defaults to `nil`.
 
   ### Options
 
@@ -1415,7 +1415,7 @@ defmodule Phoenix.Component do
 
   ### Slot Attributes
 
-  A named slot may declare attributes by passing a block with calls to `Phoenix.Component.attr/3`.
+  A named slot may declare attributes by passing a block with calls to `attr/3`.
 
   Unlike attributes, slot attributes cannot accept the `:default` option. Passing one
   will result in a compile warning being issued.
@@ -1512,7 +1512,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Declares a slot. See `Phoenix.Component.slot/3` for more information.
+  Declares a slot. See `slot/3` for more information.
   """
   defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
     {block, opts} = Keyword.pop(opts, :do, nil)
@@ -1873,35 +1873,6 @@ defmodule Phoenix.Component do
   defp compile_error!(line, file, msg) do
     raise CompileError, line: line, file: file, description: msg
   end
-
-  @doc false
-  defmacro def(expr, body) do
-    quote do
-      Kernel.def(unquote(annotate_def(:def, expr)), unquote(body))
-    end
-  end
-
-  @doc false
-  defmacro defp(expr, body) do
-    quote do
-      Kernel.defp(unquote(annotate_def(:defp, expr)), unquote(body))
-    end
-  end
-
-  defp annotate_def(kind, expr) do
-    case expr do
-      {:when, meta, [left, right]} -> {:when, meta, [annotate_call(kind, left), right]}
-      left -> annotate_call(kind, left)
-    end
-  end
-
-  defp annotate_call(_kind, {name, meta, [{:\\, _, _} = arg]}), do: {name, meta, [arg]}
-
-  defp annotate_call(kind, {name, meta, [arg]}),
-    do: {name, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
-
-  defp annotate_call(_kind, left),
-    do: left
 
   defmacro __pattern__!(kind, arg) do
     {name, 1} = __CALLER__.function

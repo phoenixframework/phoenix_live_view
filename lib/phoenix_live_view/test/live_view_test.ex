@@ -241,7 +241,7 @@ defmodule Phoenix.LiveViewTest do
     * `:session` - the session to be given to the LiveView
 
   All other options are forwarded to the LiveView for rendering. Refer to
-  `Phoenix.LiveView.Helpers.live_render/3` for a list of supported render
+  `Phoenix.Component.live_render/3` for a list of supported render
   options.
 
   ## Examples

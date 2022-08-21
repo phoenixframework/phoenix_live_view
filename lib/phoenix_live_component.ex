@@ -4,7 +4,7 @@ defmodule Phoenix.LiveComponent do
   events in LiveView.
 
   LiveComponents are defined by using `Phoenix.LiveComponent` and are used
-  by calling `Phoenix.LiveView.Helpers.live_component/1` in a parent LiveView.
+  by calling `Phoenix.Component.live_component/1` in a parent LiveView.
   They run inside the LiveView process but have their own state and
   life-cycle. For this reason, they are also often called "stateful components".
   This is a contrast to `Phoenix.Component`, also known as "function components",
@@ -41,10 +41,10 @@ defmodule Phoenix.LiveComponent do
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
-  When [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`) is called,
+  When [`live_component/1`](`Phoenix.Component.live_component/1`) is called,
   `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
   receives the `socket` as argument. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`).
+  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`).
   If `c:update/2` is not defined all assigns are simply merged into the socket.
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -224,7 +224,7 @@ defmodule Phoenix.LiveComponent do
 
   If the board LiveView is the source of truth, it will be responsible
   for fetching all of the cards in a board. Then it will call
-  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`)
+  [`live_component/1`](`Phoenix.Component.live_component/1`)
   for each card, passing the card struct as argument to `CardComponent`:
 
       <%= for card <- @cards do %>

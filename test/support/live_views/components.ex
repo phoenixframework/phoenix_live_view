@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveViewTest.FunctionComponent do
-  import Phoenix.LiveView.Helpers
+  use Phoenix.Component
 
   def render(assigns) do
     ~H"""

@@ -95,7 +95,7 @@ Let's look at an annotated example:
     <%# a regular click event whose handler will invoke Phoenix.LiveView.cancel_upload/3 %>
     <button phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">&times;</button>
 
-    <%# Phoenix.LiveView.Helpers.upload_errors/2 returns a list of error atoms %>
+    <%# Phoenix.Component.upload_errors/2 returns a list of error atoms %>
     <%= for err <- upload_errors(@uploads.avatar, entry) do %>
       <p class="alert alert-danger"><%= error_to_string(err) %></p>
     <% end %>
@@ -103,7 +103,7 @@ Let's look at an annotated example:
   </article>
 <% end %>
 
-<%# Phoenix.LiveView.Helpers.upload_errors/1 returns a list of error atoms %>
+<%# Phoenix.Component.upload_errors/1 returns a list of error atoms %>
 <%= for err <- upload_errors(@uploads.avatar) do %>
   <p class="alert alert-danger"><%= error_to_string(err) %></p>
 <% end %>
@@ -137,7 +137,7 @@ end
 
 Entries for files that do not match the [`allow_upload/3`]
 spec will contain errors. Use
-`Phoenix.LiveView.Helpers.upload_errors/2` and your own
+`Phoenix.Component.upload_errors/2` and your own
 helper function to render a friendly error message:
 
 ```elixir
@@ -146,7 +146,7 @@ def error_to_string(:not_accepted), do: "You have selected an unacceptable file 
 ```
 
 For error messages that affect all entries, use
-`Phoenix.LiveView.Helpers.upload_errors/1`, and your own
+`Phoenix.Component.upload_errors/1`, and your own
 helper function to render a friendly error message:
 
 ```elixir

@@ -9,7 +9,7 @@ inside LiveView templates as `@name`.
 Phoenix template language is called HEEx (HTML+EEx). Those templates
 are either files with the `.heex` extension or they are created
 directly in source files via the `~H` sigil. You can learn more about
-the HEEx syntax by checking the docs for [the `~H` sigil](`Phoenix.LiveView.Helpers.sigil_H/2`).
+the HEEx syntax by checking the docs for [the `~H` sigil](`Phoenix.Component.sigil_H/2`).
 
 In this section, we are going to cover how LiveView minimizes
 the payload over the wire by understanding the interplay between

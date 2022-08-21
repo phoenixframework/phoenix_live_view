@@ -217,4 +217,14 @@ defmodule Phoenix.ComponentUnitTest do
       assert changed?(assigns, :key)
     end
   end
+
+  test "assigns_to_attributes/2" do
+    assert assigns_to_attributes(%{}) == []
+    assert assigns_to_attributes(%{}, [:non_exists]) == []
+    assert assigns_to_attributes(%{one: 1, two: 2}) == [one: 1, two: 2]
+    assert assigns_to_attributes(%{one: 1, two: 2}, [:one]) == [two: 2]
+    assert assigns_to_attributes(%{__changed__: %{}, one: 1, two: 2}, [:one]) == [two: 2]
+    assert assigns_to_attributes(%{__changed__: %{}, inner_block: fn -> :ok end, a: 1}) == [a: 1]
+    assert assigns_to_attributes(%{__slot__: :foo, inner_block: fn -> :ok end, a: 1}) == [a: 1]
+  end
 end

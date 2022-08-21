@@ -97,7 +97,7 @@ defmodule Phoenix.LiveView do
   template, which stands for HTML+EEx. They are an extension of Elixir's
   builtin EEx templates, with support for HTML validation, syntax-based
   components, smart change tracking, and more. You can learn more about
-  the template syntax in `Phoenix.LiveView.Helpers.sigil_H/2`.
+  the template syntax in `Phoenix.Component.sigil_H/2`.
 
   Next, decide where you want to use your LiveView.
 
@@ -251,7 +251,7 @@ defmodule Phoenix.LiveView do
   Perhaps you want to move part of the state or part of the events in your
   LiveView to a separate module. For these cases, LiveView provides
   `Phoenix.LiveComponent`, which are rendered using
-  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`):
+  [`live_component/1`](`Phoenix.Component.live_component/1`):
 
       <.live_component module={UserComponent} id={user.id} user={user} />
 
@@ -263,7 +263,7 @@ defmodule Phoenix.LiveView do
 
   Finally, if you want complete isolation between parts of a LiveView, you can
   always render a LiveView inside another LiveView by calling
-  [`live_render/3`](`Phoenix.LiveView.Helpers.live_render/3`). This child LiveView
+  [`live_render/3`](`Phoenix.Component.live_render/3`). This child LiveView
   runs in a separate process than the parent, with its own callbacks. If a child
   LiveView crashes, it won't affect the parent. If the parent crashes, all children
   are terminated.
@@ -366,7 +366,7 @@ defmodule Phoenix.LiveView do
   new content must be rendered and sent to the client.
 
   If you define this function, it must return a template
-  defined via the `Phoenix.LiveView.Helpers.sigil_H/2`.
+  defined via the `Phoenix.Component.sigil_H/2`.
 
   If you don't define this function, LiveView will attempt
   to render a template in the same directory as your LiveView.
