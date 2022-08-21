@@ -91,16 +91,15 @@ defmodule Phoenix.LiveView.MixProject do
   defp groups_for_modules do
     # Ungrouped Modules:
     #
+    # Phoenix.Component
     # Phoenix.LiveView
     # Phoenix.LiveView.Controller
-    # Phoenix.LiveView.Helpers
     # Phoenix.LiveView.Router
     # Phoenix.LiveView.Socket
     # Phoenix.LiveViewTest
 
     [
-      Components: [
-        Phoenix.Component,
+      "Live Components": [
         Phoenix.LiveComponent,
         Phoenix.LiveComponent.CID
       ],

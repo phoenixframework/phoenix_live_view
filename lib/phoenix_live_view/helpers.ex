@@ -1,7 +1,5 @@
 defmodule Phoenix.LiveView.Helpers do
-  @moduledoc """
-  A collection of helpers to be imported into your views.
-  """
+  @moduledoc false
   use Phoenix.Component
 
   alias Phoenix.LiveView.{Component, Socket, Utils}

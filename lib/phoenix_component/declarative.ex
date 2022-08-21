@@ -1,4 +1,6 @@
 defmodule Phoenix.Component.Declarative do
+  @moduledoc false
+
   @doc false
   defmacro def(expr, body) do
     quote do
