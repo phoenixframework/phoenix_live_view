@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveComponent do
-  @moduledoc """
+  @moduledoc ~S'''
   LiveComponents are a mechanism to compartmentalize state, markup, and
   events in LiveView.
 
@@ -18,9 +18,9 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~H"\""
+          ~H"""
           <div class="hero"><%= @content %></div>
-          "\""
+          """
         end
       end
 
@@ -62,11 +62,11 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~H"\""
+          ~H"""
           <div id={"user-\#{@id}"} class="user">
             <%= @user.name %>
           </div>
-          "\""
+          """
         end
       end
 
@@ -412,7 +412,7 @@ defmodule Phoenix.LiveComponent do
   `<svg>` tags to be nested, you can wrap the component content into an
   `<svg>` tag. This will ensure that it is correctly interpreted by the
   browser.
-  """
+  '''
 
   defmodule CID do
     @moduledoc """
