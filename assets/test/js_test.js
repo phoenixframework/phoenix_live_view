@@ -564,5 +564,23 @@ describe("JS", () => {
       JS.exec("click", setTrue.getAttribute("phx-click"), view, setTrue)
       expect(modal.getAttribute("aria-expanded")).toEqual("true")
     })
+
+    test("setting an input's value updates the value", () => {
+      let view = setupView(`
+      <form id="my-form" phx-change="validate" phx-submit='[["push", {"event": "save"}]]'>
+        <input type="text" name="username" id="username" value="initial value"/>
+      </form>
+      <div id="set-value" phx-click='[["set_attr", {"to": "#username", "attr": ["value", "new value"]}]]'></div>
+      `)
+      let input = document.querySelector("#username")
+      let setValue = document.querySelector("#set-value")
+      expect(input.value).toEqual("initial value")
+
+      // Modify the input's value directly, simulating form input
+      input.value = "set directly"
+
+      JS.exec("click", setValue.getAttribute("phx-click"), view, setValue)
+      expect(input.value).toEqual("new value")
+    })
   })
 })

@@ -204,7 +204,14 @@ let JS = {
 
     DOM.putSticky(el, "attrs", currentEl => {
       newRemoves.forEach(attr => currentEl.removeAttribute(attr))
-      newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val))
+      newSets.forEach(([attr, val]) => {
+        // Special case for input value, see https://developer.mozilla.org/en-US/docs/Web/API/Element/setAttribute#gecko_notes
+        if(attr === "value"){
+          currentEl.value = val
+        } else {
+          currentEl.setAttribute(attr, val)
+        }
+      })
       return [newSets, newRemoves]
     })
   },
