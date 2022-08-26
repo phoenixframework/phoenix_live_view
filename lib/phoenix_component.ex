@@ -1308,6 +1308,7 @@ defmodule Phoenix.Component do
     itemscope
     itemtype
     lang
+    method
     nonce
     part
     role
