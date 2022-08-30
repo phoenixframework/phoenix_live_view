@@ -437,6 +437,7 @@ defmodule Phoenix.LiveComponent do
 
   defmacro __using__(_) do
     quote do
+      import Phoenix.LiveView
       @behaviour Phoenix.LiveComponent
       @before_compile Phoenix.LiveView.Renderer
 

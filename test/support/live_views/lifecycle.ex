@@ -17,7 +17,7 @@ defmodule Phoenix.LiveViewTest.InitAssigns do
 end
 
 defmodule Phoenix.LiveViewTest.MountArgs do
-  use Phoenix.Component
+  import Phoenix.LiveView
 
   def on_mount(:inlined, _params, _session, socket) do
     qs = URI.encode_query(%{called: true, inlined: true})
@@ -26,8 +26,6 @@ defmodule Phoenix.LiveViewTest.MountArgs do
 end
 
 defmodule Phoenix.LiveViewTest.OnMount do
-  use Phoenix.Component
-
   def on_mount(:default, _params, _session, socket) do
     {:cont, socket}
   end
@@ -38,8 +36,6 @@ defmodule Phoenix.LiveViewTest.OnMount do
 end
 
 defmodule Phoenix.LiveViewTest.OtherOnMount do
-  use Phoenix.Component
-
   def on_mount(:default, _params, _session, socket) do
     {:cont, socket}
   end

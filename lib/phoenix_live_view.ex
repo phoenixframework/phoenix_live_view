@@ -481,6 +481,7 @@ defmodule Phoenix.LiveView do
       end
 
     quote bind_quoted: [opts: opts] do
+      import Phoenix.LiveView
       @behaviour Phoenix.LiveView
       @before_compile Phoenix.LiveView.Renderer
 

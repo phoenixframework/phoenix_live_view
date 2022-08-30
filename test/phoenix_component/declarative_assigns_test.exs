@@ -17,14 +17,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "__global__?" do
-    assert Phoenix.Component.__global__?("id")
-    refute Phoenix.Component.__global__?("idnope")
-    refute Phoenix.Component.__global__?("not-global")
+    assert Phoenix.Component.Declarative.__global__?("id")
+    refute Phoenix.Component.Declarative.__global__?("idnope")
+    refute Phoenix.Component.Declarative.__global__?("not-global")
 
     # prefixes
-    assert Phoenix.Component.__global__?("aria-label")
-    assert Phoenix.Component.__global__?("data-whatever")
-    assert Phoenix.Component.__global__?("phx-click")
+    assert Phoenix.Component.Declarative.__global__?("aria-label")
+    assert Phoenix.Component.Declarative.__global__?("data-whatever")
+    assert Phoenix.Component.Declarative.__global__?("phx-click")
   end
 
   defmodule RemoteFunctionComponentWithAttrs do
