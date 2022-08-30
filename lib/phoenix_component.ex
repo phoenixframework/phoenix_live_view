@@ -691,65 +691,6 @@ defmodule Phoenix.Component do
     Static.nested_render(parent, view, opts)
   end
 
-  @doc """
-  A function component for rendering `Phoenix.LiveComponent`
-  within a parent LiveView.
-
-  While `LiveView`s can be nested, each LiveView starts its
-  own process. A `LiveComponent` provides similar functionality
-  to `LiveView`, except they run in the same process as the
-  `LiveView`, with its own encapsulated state. That's why they
-  are called stateful components.
-
-  See `Phoenix.LiveComponent` for more information.
-
-  ## Examples
-
-  `.live_component` requires the component `:module` and its
-  `:id` to be given:
-
-      <.live_component module={MyApp.WeatherComponent} id="thermostat" city="Kraków" />
-
-  The `:id` is used to identify this `LiveComponent` throughout the
-  LiveView lifecycle. Note the `:id` won't necessarily be used as the
-  DOM ID. That's up to the component.
-  """
-  def live_component(assigns) when is_map(assigns) do
-    id = assigns[:id]
-
-    {module, assigns} =
-      assigns
-      |> Map.delete(:__changed__)
-      |> Map.pop(:module)
-
-    if module == nil or not is_atom(module) do
-      raise ArgumentError,
-            ".live_component expects module={...} to be given and to be an atom, " <>
-              "got: #{inspect(module)}"
-    end
-
-    if id == nil do
-      raise ArgumentError, ".live_component expects id={...} to be given, got: nil"
-    end
-
-    case module.__live__() do
-      %{kind: :component} ->
-        %Phoenix.LiveView.Component{id: id, assigns: assigns, component: module}
-
-      %{kind: kind} ->
-        raise ArgumentError, "expected #{inspect(module)} to be a component, but it is a #{kind}"
-    end
-  end
-
-  def live_component(component) when is_atom(component) do
-    IO.warn(
-      "<%= live_component Component %> is deprecated, " <>
-        "please use <.live_component module={Component} id=\"hello\" /> inside HEEx templates instead"
-    )
-
-    Phoenix.LiveView.Helpers.__live_component__(component.__live__(), %{}, nil)
-  end
-
   @doc ~S'''
   Renders a slot entry with the given optional `argument`.
 
@@ -1495,7 +1436,7 @@ defmodule Phoenix.Component do
 
   ## Components
 
-  # TODO: Verify docs for components
+  # TODO: Insert docs for components
   # TODO: Move live_img_preview and live_file_input here
 
   import Kernel, except: [def: 2, defp: 2]
@@ -1509,6 +1450,70 @@ defmodule Phoenix.Component do
     Declarative.__attr__!(__MODULE__, name, type, opts, __ENV__.line, __ENV__.file)
   end
 
+  slot = fn name, opts ->
+    Declarative.__slot__!(__MODULE__, name, opts, __ENV__.line, __ENV__.file, fn -> nil end)
+  end
+
+  @doc """
+  A function component for rendering `Phoenix.LiveComponent`
+  within a parent LiveView.
+
+  While `LiveView`s can be nested, each LiveView starts its
+  own process. A `LiveComponent` provides similar functionality
+  to `LiveView`, except they run in the same process as the
+  `LiveView`, with its own encapsulated state. That's why they
+  are called stateful components.
+
+  See `Phoenix.LiveComponent` for more information.
+
+  ## Examples
+
+  `.live_component` requires the component `:module` and its
+  `:id` to be given:
+
+      <.live_component module={MyApp.WeatherComponent} id="thermostat" city="Kraków" />
+
+  The `:id` is used to identify this `LiveComponent` throughout the
+  LiveView lifecycle. Note the `:id` won't necessarily be used as the
+  DOM ID. That's up to the component.
+  """
+  @doc type: :component
+  def live_component(assigns) when is_map(assigns) do
+    id = assigns[:id]
+
+    {module, assigns} =
+      assigns
+      |> Map.delete(:__changed__)
+      |> Map.pop(:module)
+
+    if module == nil or not is_atom(module) do
+      raise ArgumentError,
+            ".live_component expects module={...} to be given and to be an atom, " <>
+              "got: #{inspect(module)}"
+    end
+
+    if id == nil do
+      raise ArgumentError, ".live_component expects id={...} to be given, got: nil"
+    end
+
+    case module.__live__() do
+      %{kind: :component} ->
+        %Phoenix.LiveView.Component{id: id, assigns: assigns, component: module}
+
+      %{kind: kind} ->
+        raise ArgumentError, "expected #{inspect(module)} to be a component, but it is a #{kind}"
+    end
+  end
+
+  def live_component(component) when is_atom(component) do
+    IO.warn(
+      "<%= live_component Component %> is deprecated, " <>
+        "please use <.live_component module={Component} id=\"hello\" /> inside HEEx templates instead"
+    )
+
+    Phoenix.LiveView.Helpers.__live_component__(component.__live__(), %{}, nil)
+  end
+
   @doc """
   Renders a title with automatic prefix/suffix on `@page_title` updates.
 
@@ -1519,8 +1524,10 @@ defmodule Phoenix.Component do
       <.live_title suffix="- MyApp"><%= assigns[:page_title] || "Welcome" %></.live_title>
 
   """
+  @doc type: :component
   attr.(:prefix, :string, default: nil)
   attr.(:suffix, :string, default: nil)
+  slot.(:inner_block, required: true)
 
   def live_title(assigns) do
     ~H"""
@@ -1623,6 +1630,7 @@ defmodule Phoenix.Component do
         <%= text_input f, :body %>
       </.form>
   """
+  @doc type: :component
   attr.(:for, :any, required: true)
   attr.(:action, :string, default: nil)
   attr.(:as, :atom, [])
@@ -1631,6 +1639,7 @@ defmodule Phoenix.Component do
   attr.(:csrf_token, :boolean, [])
   attr.(:errors, :list, [])
   attr.(:rest, :global, [])
+  slot.(:inner_block, required: true)
 
   def form(assigns) do
     # Extract options and then to the same call as form_for
@@ -1805,6 +1814,7 @@ defmodule Phoenix.Component do
 
   By default, CSRF tokens are generated through `Plug.CSRFProtection`.
   """
+  @doc type: :component
   attr.(:navigate, :string, [])
   attr.(:patch, :string, [])
   attr.(:href, :any, [])
@@ -1812,6 +1822,7 @@ defmodule Phoenix.Component do
   attr.(:method, :string, default: "get")
   attr.(:csrf_token, :string, [])
   attr.(:rest, :global, [])
+  slot.(:inner_block, required: true)
 
   def link(%{navigate: _to} = assigns) do
     ~H"""
@@ -1892,8 +1903,10 @@ defmodule Phoenix.Component do
         </div>
       </.focus_wrap>
   """
+  @doc type: :component
   attr.(:id, :string, required: true)
   attr.(:rest, :global, [])
+  slot.(:inner_block, required: true)
 
   def focus_wrap(assigns) do
     ~H"""
@@ -1925,8 +1938,10 @@ defmodule Phoenix.Component do
       <.dynamic_tag name="p">content</.dynamic_tag>
       #=> "<p>content</p>"
   """
+  @doc type: :component
   attr.(:name, :string, required: true)
   attr.(:rest, :global, [])
+  slot.(:inner_block, [])
 
   def dynamic_tag(%{name: name, rest: rest} = assigns) do
     tag_name = to_string(name)
@@ -1946,7 +1961,7 @@ defmodule Phoenix.Component do
       |> assign(:tag, tag)
       |> assign(:escaped_attrs, Phoenix.HTML.attributes_escape(rest))
 
-    if Map.has_key?(assigns, :inner_block) do
+    if assigns.inner_block != [] do
       ~H"""
       <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe, [?<, ?/, @tag, ?>]} %>
       """

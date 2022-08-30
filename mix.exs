@@ -56,6 +56,9 @@ defmodule Phoenix.LiveView.MixProject do
       extras: extras(),
       groups_for_extras: groups_for_extras(),
       groups_for_modules: groups_for_modules(),
+      groups_for_functions: [
+        "Components": &(&1[:type] == :component)
+      ],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
   end
