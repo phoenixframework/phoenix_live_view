@@ -17,6 +17,6 @@ defmodule Phoenix.LiveView.HelpersTest do
     assert render(
              ~H|<%= live_file_input %Phoenix.LiveView.UploadConfig{}, class: "<script>alert('nice try');</script>" %>|
            ) ==
-             ~s|<input type="file" accept="" phx-hook="Phoenix.LiveFileUpload" class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;" data-phx-update="ignore" data-phx-active-refs="" data-phx-done-refs="" data-phx-preflighted-refs="">|
+             ~s|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="" data-phx-done-refs="" data-phx-preflighted-refs="" class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;">|
   end
 end

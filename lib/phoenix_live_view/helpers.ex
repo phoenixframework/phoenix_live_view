@@ -242,18 +242,17 @@ defmodule Phoenix.LiveView.Helpers do
   """
   # TODO: convert to function component
   def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
-    attrs =
-      Keyword.merge(opts,
-        id: opts[:id] || "phx-preview-#{ref}",
-        data_phx_upload_ref: entry.upload_ref,
-        data_phx_entry_ref: ref,
-        data_phx_hook: "Phoenix.LiveImgPreview",
-        data_phx_update: "ignore"
-      )
-
+    attrs = Keyword.put_new_lazy(opts, :id, fn -> "phx-preview-#{ref}" end)
     assigns = assign(%{__changed__: nil}, attrs: attrs)
 
-    ~H"<img {@attrs}/>"
+    ~H"""
+    <img
+      data-phx-upload-ref={entry.upload_ref},
+      data-phx-entry-ref={ref},
+      data-phx-hook="Phoenix.LiveImgPreview"
+      data-phx-update="ignore"
+      {@attrs} />
+    """
   end
 
   @doc """
@@ -293,7 +292,6 @@ defmodule Phoenix.LiveView.Helpers do
 
   # attr :upload, Phoenix.LiveView.UploadConfig, required: true
   # attr :rest, :global
-  # TODO define attrs
   def live_file_input(%{} = assigns) do
     conf =
       case assigns do
@@ -314,17 +312,6 @@ defmodule Phoenix.LiveView.Helpers do
     preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
     done_entries = for entry <- conf.entries, entry.done?, do: entry
     valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
-
-    rest =
-      Keyword.merge(rest,
-        data_phx_update: "ignore",
-        data_phx_upload_ref: conf.ref,
-        data_phx_active_refs: Enum.map_join(conf.entries, ",", & &1.ref),
-        data_phx_done_refs: Enum.map_join(done_entries, ",", & &1.ref),
-        data_phx_preflighted_refs: Enum.map_join(preflighted_entries, ",", & &1.ref),
-        data_phx_auto_upload: valid? && conf.auto_upload?
-      )
-
     assigns = assign(assigns, :rest, rest)
 
     ~H"""
@@ -333,7 +320,13 @@ defmodule Phoenix.LiveView.Helpers do
       type="file"
       name={@upload.name}
       accept={@upload.accept != :any && @upload.accept}
-      phx-hook="Phoenix.LiveFileUpload"
+      data-phx-hook="Phoenix.LiveFileUpload"
+      data-phx-update="ignore"
+      data-phx-upload-ref={conf.ref}
+      data-phx-active-refs={Enum.map_join(conf.entries, ",", & &1.ref)}
+      data-phx-done-refs={Enum.map_join(done_entries, ",", & &1.ref)}
+      data-phx-preflighted-refs={Enum.map_join(preflighted_entries, ",", & &1.ref)}
+      data-phx-auto_upload={valid? && conf.auto_upload?}
       {@rest}
     />
     """
