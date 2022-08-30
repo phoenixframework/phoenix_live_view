@@ -672,6 +672,56 @@ defmodule Phoenix.LiveView.JS do
     put_op(js, "pop_focus", %{})
   end
 
+  @doc """
+  Sends a navigation event to the server and updates the browser's pushState history.
+
+  ## Options
+
+    * `:replace` - Whether to replace the browser's pushState history. Defaults false.
+
+  ## Examples
+
+      JS.navigate("/my-path")
+  """
+  def navigate(href) when is_binary(href) do
+    navigate(%JS{}, href, [])
+  end
+  def navigate(href, opts) when is_binary(href) and is_list(opts) do
+    navigate(%JS{}, href, opts)
+  end
+  def navigate(%JS{} = js, href) when is_binary(href) do
+    navigate(js, href, [])
+  end
+  def navigate(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    opts = validate_keys(opts, :navigate, [:replace])
+    put_op(js, "navigate", %{href: href, replace: !!opts[:replace]})
+  end
+
+  @doc """
+  Sends a patch event to the server and updates the browser's pushState history.
+
+  ## Options
+
+    * `:replace` - Whether to replace the browser's pushState history. Defaults false.
+
+  ## Examples
+
+      JS.patch("/my-path")
+  """
+  def patch(href) when is_binary(href) do
+    patch(%JS{}, href, [])
+  end
+  def patch(href, opts) when is_binary(href) and is_list(opts) do
+    patch(%JS{}, href, opts)
+  end
+  def patch(%JS{} = js, href) when is_binary(href) do
+    patch(js, href, [])
+  end
+  def patch(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    opts = validate_keys(opts, :patch, [:replace])
+    put_op(js, "patch", %{href: href, replace: !!opts[:replace]})
+  end
+
   defp put_op(%JS{ops: ops} = js, kind, %{} = args) do
     %JS{js | ops: ops ++ [[kind, args]]}
   end

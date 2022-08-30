@@ -54,6 +54,14 @@ let JS = {
     })
   },
 
+  exec_navigate(eventType, phxEvent, view, sourceEl, el, {href, replace}){
+    view.liveSocket.historyRedirect(href, replace ? "replace" : "push")
+  },
+
+  exec_patch(eventType, phxEvent, view, sourceEl, el, {href, replace}){
+    view.liveSocket.pushHistoryPatch(href, replace ? "replace" : "push", sourceEl)
+  },
+
   exec_focus(eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => ARIA.attemptFocus(el))
   },
