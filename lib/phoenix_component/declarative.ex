@@ -171,11 +171,14 @@ defmodule Phoenix.Component.Declarative do
   def __setup__(module, opts) do
     {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
 
+    prefix_matches =
     for prefix <- prefixes do
       unless String.ends_with?(prefix, "-") do
         raise ArgumentError,
               "global prefixes for #{inspect(module)} must end with a dash, got: #{inspect(prefix)}"
       end
+
+      quote(do: {unquote(prefix) <> _, true})
     end
 
     if invalid_opts != [] do
@@ -195,7 +198,11 @@ defmodule Phoenix.Component.Declarative do
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
 
-    prefixes
+    if prefix_matches == [] do
+      []
+    else
+      prefix_matches ++ [quote(do: {_, false})]
+    end
   end
 
   @doc false
