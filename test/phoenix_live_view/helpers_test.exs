@@ -2,7 +2,6 @@ defmodule Phoenix.LiveView.HelpersTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveView.Helpers
-  import Phoenix.HTML.Form
   import Phoenix.Component
 
   defp render(template) do

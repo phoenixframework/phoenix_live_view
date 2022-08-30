@@ -84,8 +84,7 @@ Let's look at an annotated example:
   <article class="upload-entry">
 
     <figure>
-      <%# Phoenix.LiveView.Helpers.live_img_preview/2 renders a client-side preview %>
-      <%= live_img_preview entry %>
+      <.live_img_preview entry={entry} />
       <figcaption><%= entry.client_name %></figcaption>
     </figure>
 

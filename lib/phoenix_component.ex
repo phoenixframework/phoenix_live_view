@@ -2,12 +2,12 @@ defmodule Phoenix.Component do
   @moduledoc ~S'''
   Define reusable function components with HEEx templates.
 
-  A function component is any function that receives an assigns map as an argument and returns 
+  A function component is any function that receives an assigns map as an argument and returns
   a rendered struct built with [the `~H` sigil](`sigil_H/2`):
 
       defmodule MyComponent do
         use Phoenix.Component
-    
+
         def greet(assigns) do
           ~H"""
           <p>Hello, <%= @name %>!</p>
@@ -40,8 +40,8 @@ defmodule Phoenix.Component do
 
   Like `Phoenix.LiveView` and `Phoenix.LiveComponent`, function components are implemented using
   a map of assigns, and follow [the same rules and best practices](../guides/server/assigns-eex.md).
-  However, we typically do not implement function components by manipulating the assigns map 
-  directly, as `Phoenix.Component` provides two higher-level abstractions for us: 
+  However, we typically do not implement function components by manipulating the assigns map
+  directly, as `Phoenix.Component` provides two higher-level abstractions for us:
   attributes and slots.
 
   ## Attributes
@@ -57,8 +57,8 @@ defmodule Phoenix.Component do
         """
       end
 
-  By calling `attr/3`, it is now clear that `greet/1` requires a string attribute called `name` 
-  present in its assigns map to properly render. Failing to do so will result in a compilation 
+  By calling `attr/3`, it is now clear that `greet/1` requires a string attribute called `name`
+  present in its assigns map to properly render. Failing to do so will result in a compilation
   warning:
 
       <MyComponent.greet />
@@ -103,7 +103,7 @@ defmodule Phoenix.Component do
       </p>
 
   With the `attr/3` macro you have the core ingredients to create reusable function components.
-  But what if you need your function components to support dynamic attributes, such as common HTML 
+  But what if you need your function components to support dynamic attributes, such as common HTML
   attributes to mix into a component's container?
 
   ### Global Attributes
@@ -133,10 +133,10 @@ defmodule Phoenix.Component do
 
       <span class="bg-green-200" phx-click="close">You've got mail!</span>
 
-  Note that the function component did not have to explicitly declare a `class` or `phx-click` 
-  attribute in order to render. 
+  Note that the function component did not have to explicitly declare a `class` or `phx-click`
+  attribute in order to render.
 
-  Global attribute can define defaults which are merged with attributes provided by the caller. 
+  Global attribute can define defaults which are merged with attributes provided by the caller.
   For example, you may declare a default `class` if the caller does not provide one:
 
       attr :rest, :global, default: %{class: "bg-blue-200"}
@@ -152,11 +152,11 @@ defmodule Phoenix.Component do
   ### Custom Global Attribute Prefixes
 
   You can extend the set of global attributes by providing a list of attribute prefixes to
-  `use Phoenix.Component`. Like the default attributes common to all HTML elements, 
+  `use Phoenix.Component`. Like the default attributes common to all HTML elements,
   any number of attributes with that start with a global prefix will be accepted by function
-  components defined in this module. By default, the following prefixes are supported: 
-  `phx-`, `aria-`, and `data-`. For example, to support the `x-` prefix used by 
-  [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to 
+  components defined in this module. By default, the following prefixes are supported:
+  `phx-`, `aria-`, and `data-`. For example, to support the `x-` prefix used by
+  [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to
   `use Phoenix.Component`:
 
       use Phoenix.Component, global_prefixes: ~w(x-)
@@ -170,7 +170,7 @@ defmodule Phoenix.Component do
 
   In addition to attributes, function components can accept blocks of HEEx content, referred to as
   as slots. Slots enable further customization of the rendered HTML, as the caller can pass the
-  function component HEEx content they want the component to render. `Phoenix.Component` provides 
+  function component HEEx content they want the component to render. `Phoenix.Component` provides
   the `slot/3` macro used to declare slots for function components:
 
       slot :inner_block, required: true
@@ -183,7 +183,7 @@ defmodule Phoenix.Component do
         """
       end
 
-  The expression `render_slot(@inner_block)` renders the HEEx content. You can invoke this function 
+  The expression `render_slot(@inner_block)` renders the HEEx content. You can invoke this function
   component like so:
 
       <.button>
@@ -196,8 +196,8 @@ defmodule Phoenix.Component do
         This renders <strong>inside</strong> the button!
       </button>
 
-  Like the `attr/3` macro, using the `slot/3` macro will provide compile-time validations. 
-  For example, invoking `button/1` without a slot of HEEx content will result in a compilation 
+  Like the `attr/3` macro, using the `slot/3` macro will provide compile-time validations.
+  For example, invoking `button/1` without a slot of HEEx content will result in a compilation
   warning being emitted:
 
       <.button />
@@ -206,7 +206,7 @@ defmodule Phoenix.Component do
 
   ### The Default Slot
 
-  The example above uses the default slot, accesible as an assign named `@inner_block`, to render 
+  The example above uses the default slot, accesible as an assign named `@inner_block`, to render
   HEEx content via the `render_slot/2` function.
 
   If the values rendered in the slot need to be dynamic, you can pass a second value back to the
@@ -226,7 +226,7 @@ defmodule Phoenix.Component do
         """
       end
 
-  When invoking the function component, you can use the special attribute `:let` to take the value 
+  When invoking the function component, you can use the special attribute `:let` to take the value
   that the function component passes back and bind it to a variable:
 
       <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
@@ -297,8 +297,8 @@ defmodule Phoenix.Component do
 
   ### Slot Attributes
 
-  Unlike the default slot, it is possible to pass a named slot multiple pieces of HEEx content. 
-  Named slots can also accept attributes, defined by passing a block to the `slot/3` macro. 
+  Unlike the default slot, it is possible to pass a named slot multiple pieces of HEEx content.
+  Named slots can also accept attributes, defined by passing a block to the `slot/3` macro.
   If multiple pieces of content are passed, `render_slot/2` will merge and render all the values.
 
   Below is a table component illustrating multiple named slots with attributes:
@@ -336,7 +336,7 @@ defmodule Phoenix.Component do
         </:column>
         <:column :let={user} label="Age">
           <%= user.age %>
-        </:column>    
+        </:column>
       </.table>
 
   Rendering the following HTML:
@@ -1184,14 +1184,14 @@ defmodule Phoenix.Component do
 
   ## Arguments
 
-  * `name` - an atom defining the name of the slot. Note that slots cannot define the same name 
+  * `name` - an atom defining the name of the slot. Note that slots cannot define the same name
   as any other slots or attributes declared for the same component.
   * `opts` - a keyword list of options. Defaults to `[]`.
   * `block` - a code block containing calls to `attr/3`. Defaults to `nil`.
 
   ### Options
 
-  * `:required` - marks a slot as required. If a caller does not pass a value for a required slot, 
+  * `:required` - marks a slot as required. If a caller does not pass a value for a required slot,
   a compilation warning is emitted. Otherwise, an omitted slot will default to `[]`.
   * `:doc` - documentation for the slot. Any slot attributes declared
   will have their documentation listed alongside the slot.
@@ -1212,7 +1212,7 @@ defmodule Phoenix.Component do
 
   ## Compile-Time Validations
 
-  LiveView performs some validation of slots via the `:phoenix_live_view` compiler. 
+  LiveView performs some validation of slots via the `:phoenix_live_view` compiler.
   When slots are defined, LiveView will warn at compilation time on the caller if:
 
   * A required slot of a component is missing.
@@ -1221,7 +1221,7 @@ defmodule Phoenix.Component do
 
   * An unknown slot attribute is given.
 
-  On the side of the function component itself, defining attributes provides the following 
+  On the side of the function component itself, defining attributes provides the following
   quality of life improvements:
 
   * Slot documentation is generated for the component.
@@ -1230,8 +1230,8 @@ defmodule Phoenix.Component do
 
   ## Documentation Generation
 
-  Public function components that define slots will have their docs 
-  injected into the function's documentation, depending on the value 
+  Public function components that define slots will have their docs
+  injected into the function's documentation, depending on the value
   of the `@doc` module attribute:
 
   * if `@doc` is a string, the slot docs are injected into that string.
@@ -1254,7 +1254,7 @@ defmodule Phoenix.Component do
   the value of `:doc` to `false`.
 
   ## Example
-    
+
       slot :header
       slot :inner_block, required: true
       slot :footer
@@ -1358,7 +1358,7 @@ defmodule Phoenix.Component do
 
   * You specify a literal attribute (such as `value="string"` or `value`,
     but not `value={expr}`) and the type does not match. The following
-    types currently support literal validation: `:string`, `:atom`, `:boolean`, 
+    types currently support literal validation: `:string`, `:atom`, `:boolean`,
     `:integer`, `:float`, `:list`.
 
   LiveView does not perform any validation at runtime. This means the type
@@ -1368,19 +1368,19 @@ defmodule Phoenix.Component do
   the following quality of life improvements:
 
   * The default value of all attributes will be added to the `assigns`
-    map upfront. Note that unless an attribute is marked as required 
-    or has a default defined, omitting a value for an attribute will 
+    map upfront. Note that unless an attribute is marked as required
+    or has a default defined, omitting a value for an attribute will
     result in `nil` being passed as the default value to the `assigns`
     map, regardless of the type defined for the attribute.
-      
+
   * Attribute documentation is generated for the component.
 
   * Required struct types are annotated and emit compilation warnings.
     For example, if you specify `attr :user, User, required: true` and
     then you write `@user.non_valid_field` in your template, a warning
     will be emitted.
-    
-  * Calls made to the component are tracked for reflection and 
+
+  * Calls made to the component are tracked for reflection and
     validation purposes.
 
   ## Documentation Generation
@@ -1408,7 +1408,7 @@ defmodule Phoenix.Component do
   the value of `:doc` to `false`.
 
   ## Example
-    
+
       attr :name, :string, required: true
       attr :age, :integer, required: true
 
@@ -1437,7 +1437,6 @@ defmodule Phoenix.Component do
   ## Components
 
   # TODO: Insert docs for components
-  # TODO: Move live_img_preview and live_file_input here
 
   import Kernel, except: [def: 2, defp: 2]
   import Phoenix.Component.Declarative
@@ -1970,5 +1969,126 @@ defmodule Phoenix.Component do
       <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?/, ?>]} %>
       """
     end
+  end
+
+  @doc """
+  Builds a file input tag for a LiveView upload.
+
+  ## Attributes
+
+    * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
+
+  Arbitrary attributes may be passed to be applied to the file input tag.
+
+  ## Drag and Drop
+
+  Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
+  attribute pointing to the DOM ID of the file input. By default, the file input ID is the
+  upload `ref`, so the following markup is all that is required for drag and drop support:
+
+      <div class="container" phx-drop-target={@uploads.avatar.ref}>
+          ...
+          <.live_file_input upload={@uploads.avatar} />
+      </div>
+
+  ## Examples
+
+      <.live_file_input upload={@uploads.avatar} />
+  """
+  @doc type: :component
+
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
+    IO.warn(
+      "live_file_input(upload) is deprecatead, please use <.live_file_input upload={upload} /> instead"
+    )
+
+    Phoenix.LiveView.Helpers.live_file_input(conf, [])
+  end
+
+  # TODO: Use attr when the backwards compatibility clause above is removed.
+  # attr :upload, Phoenix.LiveView.UploadConfig, required: true
+  # attr :rest, :global
+  def live_file_input(%{} = assigns) do
+    conf =
+      case assigns do
+        %{id: _} -> raise ArgumentError, "the :id cannot be overridden on a live_file_input"
+        %{upload: %Phoenix.LiveView.UploadConfig{} = conf} -> conf
+        %{} -> raise ArgumentError, "missing required :upload attribute to <.live_file_input/>"
+      end
+
+    rest = assigns_to_attributes(assigns, [:upload])
+
+    rest =
+      if conf.max_entries > 1 do
+        Keyword.put(rest, :multiple, true)
+      else
+        rest
+      end
+
+    preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
+    done_entries = for entry <- conf.entries, entry.done?, do: entry
+    valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
+    assigns = assign(assigns, :rest, rest)
+
+    ~H"""
+    <input
+      id={@upload.ref}
+      type="file"
+      name={@upload.name}
+      accept={@upload.accept != :any && @upload.accept}
+      data-phx-hook="Phoenix.LiveFileUpload"
+      data-phx-update="ignore"
+      data-phx-upload-ref={conf.ref}
+      data-phx-active-refs={Enum.map_join(conf.entries, ",", & &1.ref)}
+      data-phx-done-refs={Enum.map_join(done_entries, ",", & &1.ref)}
+      data-phx-preflighted-refs={Enum.map_join(preflighted_entries, ",", & &1.ref)}
+      data-phx-auto_upload={valid? && conf.auto_upload?}
+      {@rest}
+    />
+    """
+  end
+
+  @doc """
+  Generates an image preview on the client for a selected file.
+
+  ## Examples
+
+      <%= for entry <- @uploads.avatar.entries do %>
+        <.live_img_preview entry={entry} width="75" />
+      <% end %>
+  """
+  @doc type: :component
+
+  def live_img_preview(%Phoenix.LiveView.UploadEntry{} = entry) do
+    IO.warn(
+      "live_img_preview(entry) is deprecatead, please use <.live_img_preview entry={entry} /> instead"
+    )
+
+    live_img_preview(%{entry: entry})
+  end
+
+  # TODO: Use attr when the backwards compatibility clause above is removed.
+  # attr :entry, Phoenix.LiveView.UploadEntry, required: true
+  # attr :rest, :global
+  def live_img_preview(%{entry: %Phoenix.LiveView.UploadEntry{ref: ref} = entry} = assigns) do
+    rest =
+      assigns
+      |> assigns_to_attributes([:entry])
+      |> Keyword.put_new_lazy(:id, fn -> "phx-preview-#{ref}" end)
+
+    assigns = assign(assigns, :rest, rest)
+
+    ~H"""
+    <img
+      data-phx-upload-ref={entry.upload_ref},
+      data-phx-entry-ref={ref},
+      data-phx-hook="Phoenix.LiveImgPreview"
+      data-phx-update="ignore"
+      {@rest} />
+    """
+  end
+
+  def live_img_preview(_assigns) do
+    raise ArgumentError, "missing required :entry attribute to <.live_img_preview/>"
   end
 end

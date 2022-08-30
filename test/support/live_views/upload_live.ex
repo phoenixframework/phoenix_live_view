@@ -17,7 +17,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
           error:<%= inspect(msg) %>
         <% end %>
       <% end %>
-      <%= live_file_input @uploads.avatar %>
+      <%= live_file_input @uploads.avatar, [] %>
       <button type="submit">save</button>
     </form>
     """
@@ -93,7 +93,7 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
             error:<%= inspect(msg) %>
           <% end %>
         <% end %>
-        <%= live_file_input @uploads.avatar %>
+        <%= live_file_input @uploads.avatar, [] %>
         <button type="submit">save</button>
       </form>
     </div>

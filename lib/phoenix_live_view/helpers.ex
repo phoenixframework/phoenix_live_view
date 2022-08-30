@@ -231,105 +231,16 @@ defmodule Phoenix.LiveView.Helpers do
   def __render_block__([%{inner_block: fun}]), do: fun
   def __render_block__(fun), do: fun
 
-  @doc """
-  Generates an image preview on the client for a selected file.
+  @doc deprecated: "Use <.live_img_preview /> instead"
+  def live_img_preview(entry, opts) do
+    live_img_preview(Enum.into(opts, %{entry: entry}))
+  end 
 
-  ## Examples
-
-      <%= for entry <- @uploads.avatar.entries do %>
-        <%= live_img_preview entry, width: 75 %>
-      <% end %>
-  """
-  # TODO: convert to function component
-  def live_img_preview(%Phoenix.LiveView.UploadEntry{ref: ref} = entry, opts \\ []) do
-    attrs = Keyword.put_new_lazy(opts, :id, fn -> "phx-preview-#{ref}" end)
-    assigns = assign(%{__changed__: nil}, attrs: attrs)
-
-    ~H"""
-    <img
-      data-phx-upload-ref={entry.upload_ref},
-      data-phx-entry-ref={ref},
-      data-phx-hook="Phoenix.LiveImgPreview"
-      data-phx-update="ignore"
-      {@attrs} />
-    """
-  end
-
-  @doc """
-  Builds a file input tag for a LiveView upload.
-
-  ## Attributes
-
-    * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
-
-  Arbitrary attributes may be passed to be applied to the file input tag.
-
-  ## Drag and Drop
-
-  Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
-  attribute pointing to the DOM ID of the file input. By default, the file input ID is the
-  upload `ref`, so the following markup is all that is required for drag and drop support:
-
-      <div class="container" phx-drop-target={@uploads.avatar.ref}>
-          ...
-          <.live_file_input upload={@uploads.avatar} />
-      </div>
-
-  ## Examples
-
-      <.live_file_input upload={@uploads.avatar} />
-  """
-  # TODO deprecated, remove non-function component form in in 0.20
+  @doc deprecated: "Use <.live_file_input /> instead"
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts) when is_list(opts) do
     require Phoenix.LiveViewTest
     assigns = Enum.into(opts, %{upload: conf})
     {:safe, Phoenix.LiveViewTest.render_component(&live_file_input/1, assigns)}
-  end
-
-  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
-    live_file_input(conf, [])
-  end
-
-  # attr :upload, Phoenix.LiveView.UploadConfig, required: true
-  # attr :rest, :global
-  def live_file_input(%{} = assigns) do
-    conf =
-      case assigns do
-        %{id: _} -> raise ArgumentError, "the :id cannot be overridden on a live_file_input"
-        %{upload: %Phoenix.LiveView.UploadConfig{} = conf} -> conf
-        %{} -> raise ArgumentError, "missing required :upload attribute to <.live_file_input/>"
-      end
-
-    rest = assigns_to_attributes(assigns, [:upload])
-
-    rest =
-      if conf.max_entries > 1 do
-        Keyword.put(rest, :multiple, true)
-      else
-        rest
-      end
-
-    preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
-    done_entries = for entry <- conf.entries, entry.done?, do: entry
-    valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
-    assigns = assign(assigns, :rest, rest)
-
-    ~H"""
-    <input
-      id={@upload.ref}
-      type="file"
-      name={@upload.name}
-      accept={@upload.accept != :any && @upload.accept}
-      data-phx-hook="Phoenix.LiveFileUpload"
-      data-phx-update="ignore"
-      data-phx-upload-ref={conf.ref}
-      data-phx-active-refs={Enum.map_join(conf.entries, ",", & &1.ref)}
-      data-phx-done-refs={Enum.map_join(done_entries, ",", & &1.ref)}
-      data-phx-preflighted-refs={Enum.map_join(preflighted_entries, ",", & &1.ref)}
-      data-phx-auto_upload={valid? && conf.auto_upload?}
-      {@rest}
-    />
-    """
   end
 
   @doc """
