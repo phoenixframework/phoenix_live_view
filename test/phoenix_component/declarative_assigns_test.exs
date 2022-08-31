@@ -31,6 +31,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     use Phoenix.Component
 
     attr :id, :any, required: true
+    slot :inner_block
     def remote(assigns), do: ~H[]
   end
 
@@ -42,6 +43,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     def func1_line, do: __ENV__.line
     attr :id, :any, required: true
     attr :email, :string, default: nil
+    slot :inner_block
     def func1(assigns), do: ~H[]
 
     def func2_line, do: __ENV__.line
@@ -129,7 +131,16 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    line: func1_line + 1
                  }
                ],
-               slots: []
+               slots: [
+                 %{
+                   attrs: [],
+                   doc: nil,
+                   line: func1_line + 3,
+                   name: :inner_block,
+                   opts: [],
+                   required: false
+                 }
+               ]
              },
              func2: %{
                kind: :def,

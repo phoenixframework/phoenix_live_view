@@ -165,21 +165,20 @@ defmodule Phoenix.Component.Declarative do
 
   ## Attrs/slots
 
-
   @doc false
   @valid_opts [:global_prefixes]
   def __setup__(module, opts) do
     {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
 
     prefix_matches =
-    for prefix <- prefixes do
-      unless String.ends_with?(prefix, "-") do
-        raise ArgumentError,
-              "global prefixes for #{inspect(module)} must end with a dash, got: #{inspect(prefix)}"
-      end
+      for prefix <- prefixes do
+        unless String.ends_with?(prefix, "-") do
+          raise ArgumentError,
+                "global prefixes for #{inspect(module)} must end with a dash, got: #{inspect(prefix)}"
+        end
 
-      quote(do: {unquote(prefix) <> _, true})
-    end
+        quote(do: {unquote(prefix) <> _, true})
+      end
 
     if invalid_opts != [] do
       raise ArgumentError, """
@@ -259,8 +258,6 @@ defmodule Phoenix.Component.Declarative do
       """)
     end
   end
-
-
 
   @doc false
   def __attr__!(module, name, type, opts, line, file) do
@@ -858,7 +855,7 @@ defmodule Phoenix.Component.Declarative do
   defp verify(
          caller_module,
          %{slots: slots, attrs: attrs, root: root} = call,
-         %{slots: slots_defs, attrs: attrs_defs}
+         %{slots: slots_defs, attrs: attrs_defs} = _component
        ) do
     {attrs, has_global?} =
       Enum.reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
@@ -901,7 +898,7 @@ defmodule Phoenix.Component.Declarative do
       warn(message, call.file, line)
     end
 
-    slots =
+    undefined_slots =
       Enum.reduce(slots_defs, slots, fn slot_def, slots ->
         %{name: slot_name, required: required, attrs: attrs} = slot_def
         {slot_values, slots} = Map.pop(slots, slot_name)
@@ -971,14 +968,18 @@ defmodule Phoenix.Component.Declarative do
         slots
       end)
 
-    for {slot_name, slot_values} <- slots,
-        slot_name != :inner_block,
-        %{line: line} <- slot_values do
+    for {slot_name, slot_values} <- undefined_slots,
+        %{line: line} <- slot_values,
+        not implicit_inner_block?(slot_name, slots_defs) do
       message = "undefined slot \"#{slot_name}\" for component #{component_fa(call)}"
       warn(message, call.file, line)
     end
 
     :ok
+  end
+
+  defp implicit_inner_block?(slot_name, slots_defs) do
+    slot_name == :inner_block and length(slots_defs) > 0
   end
 
   defp type_mismatch(:any, _type_value), do: nil

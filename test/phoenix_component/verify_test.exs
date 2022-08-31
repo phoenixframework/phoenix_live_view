@@ -762,6 +762,10 @@ defmodule Phoenix.ComponentVerifyTest do
         defmodule UndefinedSlots do
           use Phoenix.Component
 
+          attr :attr, :any
+
+          def fun_no_slots(assigns), do: ~H[]
+
           slot :inner_block
 
           def func(assigns), do: ~H[]
@@ -774,12 +778,17 @@ defmodule Phoenix.ComponentVerifyTest do
 
           def render(assigns) do
             ~H"""
-            <!-- undefined slot -->
+            <!-- undefined default slot -->
+            <.fun_no_slots>
+              hello
+            </.fun_no_slots>
+
+            <!-- undefined named slot -->
             <.func>
             <:undefined />
             </.func>
 
-            <!-- slot with undefined attrs -->
+            <!-- named slot with undefined attrs -->
             <.func_undefined_slot_attrs>
             <:named undefined />
             <:named undefined="undefined" />
@@ -792,16 +801,14 @@ defmodule Phoenix.ComponentVerifyTest do
     line = get_line(__MODULE__.UndefinedSlots)
 
     assert warnings =~ """
-           undefined slot "undefined" for component \
-           Phoenix.ComponentVerifyTest.UndefinedSlots.func/1
-             test/phoenix_component/verify_test.exs:#{line + 4}: (file)
+           undefined slot "inner_block" for component \
+           Phoenix.ComponentVerifyTest.UndefinedSlots.fun_no_slots/1
+             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
 
     assert warnings =~ """
-           undefined attribute "undefined" \
-           in slot "named" \
-           for component \
-           Phoenix.ComponentVerifyTest.UndefinedSlots.func_undefined_slot_attrs/1
+           undefined slot "undefined" for component \
+           Phoenix.ComponentVerifyTest.UndefinedSlots.func/1
              test/phoenix_component/verify_test.exs:#{line + 9}: (file)
            """
 
@@ -810,7 +817,15 @@ defmodule Phoenix.ComponentVerifyTest do
            in slot "named" \
            for component \
            Phoenix.ComponentVerifyTest.UndefinedSlots.func_undefined_slot_attrs/1
-             test/phoenix_component/verify_test.exs:#{line + 10}: (file)
+             test/phoenix_component/verify_test.exs:#{line + 14}: (file)
+           """
+
+    assert warnings =~ """
+           undefined attribute "undefined" \
+           in slot "named" \
+           for component \
+           Phoenix.ComponentVerifyTest.UndefinedSlots.func_undefined_slot_attrs/1
+             test/phoenix_component/verify_test.exs:#{line + 15}: (file)
            """
   end
 
