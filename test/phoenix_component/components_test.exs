@@ -1,7 +1,6 @@
 defmodule Phoenix.LiveView.ComponentsTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView.Helpers
   import Phoenix.HTML.Form
   import Phoenix.Component
 
