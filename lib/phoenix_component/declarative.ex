@@ -722,7 +722,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: doc}, []) do
-    [" - ", doc]
+    [" - ", build_doc(doc)]
   end
 
   defp build_slot_doc(%{doc: nil}, slot_attrs) do
@@ -730,7 +730,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: doc}, slot_attrs) do
-    [" - ", doc, ". Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+    [" - ", build_doc(doc), " Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
   end
 
   defp build_slot_attrs_docs(slot_attrs) do
@@ -780,7 +780,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}) do
-    [" - ", doc, ". Defaults to `", inspect(default), "`."]
+    [" - ", build_doc(doc), " Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: nil}) do
@@ -788,7 +788,12 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc}) do
-    [" - ", doc]
+    [" - ", build_doc(doc)]
+  end
+
+  defp build_doc(doc) do
+    suffix = if String.ends_with?(doc, "."), do: "", else: "."
+    [doc, suffix]
   end
 
   defp build_right_doc("") do

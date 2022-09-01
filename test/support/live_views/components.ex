@@ -61,6 +61,9 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr, :any, doc: "attr docs"
   def fun_with_attr_doc(assigns), do: ~H[]
 
+  attr :attr, :any, default: "foo", doc: "attr docs."
+  def fun_with_attr_doc_period(assigns), do: ~H[]
+
   attr :attr1, :any
   attr :attr2, :any, doc: false
   def fun_with_hidden_attr(assigns), do: ~H[]
