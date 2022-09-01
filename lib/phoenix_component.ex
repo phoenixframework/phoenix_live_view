@@ -1235,7 +1235,7 @@ defmodule Phoenix.Component do
   of the `@doc` module attribute:
 
   * if `@doc` is a string, the slot docs are injected into that string.
-    The optional placeholder `[[INJECT LVDOCS]]` can be used to specify where
+    The optional placeholder `[INSERT LVATTRDOCS]` can be used to specify where
     in the string the docs are injected. Otherwise, the docs are appended
     to the end of the `@doc` string.
 
@@ -1390,7 +1390,7 @@ defmodule Phoenix.Component do
   value of the `@doc` module attribute:
 
   * if `@doc` is a string, the attribute docs are injected into that string.
-    The optional placeholder `[[INJECT LVDOCS]]` can be used to specify where
+    The optional placeholder `[INSERT LVATTRDOCS]` can be used to specify where
     in the string the docs are injected. Otherwise, the docs are appended
     to the end of the `@doc` string.
 

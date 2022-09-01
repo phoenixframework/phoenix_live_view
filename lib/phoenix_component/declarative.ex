@@ -642,7 +642,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_component_doc(doc \\ "", slots, attrs) do
-    [left | right] = String.split(doc, "[[INSERT LVDOCS]]")
+    [left | right] = String.split(doc, "[INSERT LVATTRDOCS]")
 
     IO.iodata_to_binary([
       build_left_doc(left),
