@@ -504,10 +504,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert render(AttrDefaults, :add, %{}) == "3"
     assert render(AttrDefaults, :example, %{}) == "nil"
     assert render(AttrDefaults, :no_default, %{value: 123}) == "123"
-
-    assert_raise KeyError, ~r":value not found", fn ->
-      render(AttrDefaults, :no_default, %{})
-    end
+    render(AttrDefaults, :no_default, %{}) == "nil"
   end
 
   test "provides slot defaults" do

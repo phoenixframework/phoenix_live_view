@@ -500,9 +500,8 @@ defmodule Phoenix.Component.Declarative do
     names_and_defs =
       for {name, %{kind: kind, attrs: attrs, slots: slots}} <- components do
         attr_defaults =
-          for %{name: name, required: false, opts: opts} <- attrs,
-              Keyword.has_key?(opts, :default) do
-            {name, Macro.escape(opts[:default])}
+          for %{name: name, required: false, opts: opts} <- attrs do
+            {name, Macro.escape(Keyword.get(opts, :default, nil))}
           end
 
         slot_defaults =

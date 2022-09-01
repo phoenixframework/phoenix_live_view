@@ -77,11 +77,15 @@ defmodule Phoenix.LiveView.ComponentsTest do
                ~s|<a href="/" class=\"foo\">text</a>|
     end
 
-    test "with no href or # href" do
+    test "with no href" do
       assigns = %{}
 
       assert render(~H|<.link phx-click="click">text</.link>|) ==
                ~s|<a href="#" phx-click="click">text</a>|
+    end
+
+    test "with # ref" do
+      assigns = %{}
 
       assert render(~H|<.link href="#" phx-click="click">text</.link>|) ==
                ~s|<a href="#" phx-click="click">text</a>|
@@ -90,9 +94,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
     test "with nil href" do
       assigns = %{}
 
-      assert_raise ArgumentError, ~r/expected non-nil value for :href in <.link>/, fn ->
-        render(~H|<.link href={nil}>text</.link>|)
-      end
+      assert render(~H|<.link href={nil} phx-click="click">text</.link>|) ==
+               ~s|<a href="#" phx-click="click">text</a>|
     end
 
     test "csrf with get method" do

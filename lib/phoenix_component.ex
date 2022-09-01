@@ -440,13 +440,13 @@ defmodule Phoenix.Component do
 
   The following attribute values have special meaning:
 
-    * `true` - if a value is `true`, the attribute is rendered with no value at all.
-      For example, `<input required={true}>` is the same as `<input required>`;
+  * `true` - if a value is `true`, the attribute is rendered with no value at all.
+    For example, `<input required={true}>` is the same as `<input required>`;
 
-    * `false` or `nil` - if a value is `false` or `nil`, the attribute is not rendered;
+  * `false` or `nil` - if a value is `false` or `nil`, the attribute is not rendered;
 
-    * `list` (only for the `class` attribute) - each element of the list is processed
-      as a different class. `nil` and `false` elements are discarded.
+  * `list` (only for the `class` attribute) - each element of the list is processed
+    as a different class. `nil` and `false` elements are discarded.
 
   For multiple dynamic attributes, you can use the same notation but without
   assigning the expression to any specific attribute.
@@ -518,13 +518,11 @@ defmodule Phoenix.Component do
   This is used by components and slots that want to yield a value back to the
   caller. For an example, see how `form/1` works:
 
-  ```heex
-  <.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
-    <%= label(f, :username) %>
-    <%= text_input(f, :username) %>
-    ...
-  </.form>
-  ```
+      <.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
+        <%= label(f, :username) %>
+        <%= text_input(f, :username) %>
+        ...
+      </.form>
 
   Notice how the variable `f`, defined by `.form`, is used by `label` and
   `text_input`. The `Phoenix.Component` module has detailed documentation on
@@ -535,13 +533,11 @@ defmodule Phoenix.Component do
   It is a syntax sugar for `<%= for .. do %>` that can be used only in regular HTML
   tags, therefore `:for` will not work on components.
 
-  ```heex
-  <table id="my-table">
-    <tr :for={user <- @users}>
-      <td><%= user.name %>
-    </tr>
-  <table>
-  ```
+      <table id="my-table">
+        <tr :for={user <- @users}>
+          <td><%= user.name %>
+        </tr>
+      <table>
 
   The snippet above will generate a `tr` per user as you would expect.
   '''
@@ -611,37 +607,37 @@ defmodule Phoenix.Component do
 
   This is useful in two situations:
 
-    * When rendering a child LiveView inside a LiveView
+  * When rendering a child LiveView inside a LiveView
 
-    * When rendering a LiveView inside a regular (non-live) controller/view
+  * When rendering a LiveView inside a regular (non-live) controller/view
 
   ## Options
 
-    * `:session` - a map of binary keys with extra session data to be
-      serialized and sent to the client. All session data currently in
-      the connection is automatically available in LiveViews. You can
-      use this option to provide extra data. Remember all session data
-      is serialized and sent to the client, so you should always
-      keep the data in the session to a minimum. For example, instead
-      of storing a User struct, you should store the "user_id" and load
-      the User when the LiveView mounts.
+  * `:session` - a map of binary keys with extra session data to be
+    serialized and sent to the client. All session data currently in
+    the connection is automatically available in LiveViews. You can
+    use this option to provide extra data. Remember all session data
+    is serialized and sent to the client, so you should always
+    keep the data in the session to a minimum. For example, instead
+    of storing a User struct, you should store the "user_id" and load
+    the User when the LiveView mounts.
 
-    * `:container` - an optional tuple for the HTML tag and DOM
-      attributes to be used for the LiveView container. For example:
-      `{:li, style: "color: blue;"}`. By default it uses the module
-      definition container. See the "Containers" section below for more
-      information.
+  * `:container` - an optional tuple for the HTML tag and DOM
+    attributes to be used for the LiveView container. For example:
+    `{:li, style: "color: blue;"}`. By default it uses the module
+    definition container. See the "Containers" section below for more
+    information.
 
-    * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
-      An `:id` is automatically generated when rendering root LiveViews
-      but it is a required option when rendering a child LiveView.
+  * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
+    An `:id` is automatically generated when rendering root LiveViews
+    but it is a required option when rendering a child LiveView.
 
-    * `:sticky` - an optional flag to maintain the LiveView across
-      live redirects, even if it is nested within another LiveView.
-      If you are rendering the sticky view within your live layout,
-      make sure that the sticky view itself does not use the same
-      layout. You can do so by returning `{:ok, socket, layout: false}`
-      from mount.
+  * `:sticky` - an optional flag to maintain the LiveView across
+    live redirects, even if it is nested within another LiveView.
+    If you are rendering the sticky view within your live layout,
+    make sure that the sticky view itself does not use the same
+    layout. You can do so by returning `{:ok, socket, layout: false}`
+    from mount.
 
   ## Examples
 
@@ -665,14 +661,14 @@ defmodule Phoenix.Component do
 
   The container can be customized in different ways:
 
-    * You can change the default `container` on `use Phoenix.LiveView`:
+  * You can change the default `container` on `use Phoenix.LiveView`:
 
-          use Phoenix.LiveView, container: {:tr, id: "foo-bar"}
+        use Phoenix.LiveView, container: {:tr, id: "foo-bar"}
 
-    * You can override the container tag and pass extra attributes when
-      calling `live_render` (as well as on your `live` call in your router):
+  * You can override the container tag and pass extra attributes when
+    calling `live_render` (as well as on your `live` call in your router):
 
-          live_render socket, MyLiveView, container: {:tr, class: "highlight"}
+        live_render socket, MyLiveView, container: {:tr, class: "highlight"}
 
   """
   def live_render(conn_or_socket, view, opts \\ [])
@@ -801,7 +797,7 @@ defmodule Phoenix.Component do
 
   The following error may be returned:
 
-    * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
+  * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
 
   ## Examples
 
@@ -822,8 +818,8 @@ defmodule Phoenix.Component do
 
   The following errors may be returned:
 
-    * `:too_large` - The entry exceeds the `:max_file_size` constraint
-    * `:not_accepted` - The entry does not match the `:accept` MIME types
+  * `:too_large` - The entry exceeds the `:max_file_size` constraint
+  * `:not_accepted` - The entry does not match the `:accept` MIME types
 
   ## Examples
 
@@ -1186,13 +1182,16 @@ defmodule Phoenix.Component do
 
   * `name` - an atom defining the name of the slot. Note that slots cannot define the same name
   as any other slots or attributes declared for the same component.
+
   * `opts` - a keyword list of options. Defaults to `[]`.
+
   * `block` - a code block containing calls to `attr/3`. Defaults to `nil`.
 
   ### Options
 
   * `:required` - marks a slot as required. If a caller does not pass a value for a required slot,
   a compilation warning is emitted. Otherwise, an omitted slot will default to `[]`.
+
   * `:doc` - documentation for the slot. Any slot attributes declared
   will have their documentation listed alongside the slot.
 
@@ -1319,7 +1318,9 @@ defmodule Phoenix.Component do
 
   * `name` - an atom defining the name of the attribute. Note that attributes cannot define
   the same name as any other attributes or slots declared for the same component.
+
   * `type` - an atom defining the type of the attribute.
+
   * `opts` - a keyword list of options. Defaults to `[]`.
 
   ### Types
@@ -1343,7 +1344,9 @@ defmodule Phoenix.Component do
 
   * `:required` - marks an attribute as required. If a caller does not pass
     the given attribute, a compile warning is issued.
+
   * `:default` - the default value for the attribute if not provided.
+
   * `:doc` - documentation for the attribute.
 
   ## Compile-Time Validations
@@ -1477,6 +1480,7 @@ defmodule Phoenix.Component do
   DOM ID. That's up to the component.
   """
   @doc type: :component
+  # TODO: add declarative attrs once we support non-global dynamic attrs
   def live_component(assigns) when is_map(assigns) do
     id = assigns[:id]
 
@@ -1515,6 +1519,8 @@ defmodule Phoenix.Component do
 
   @doc """
   Renders a title with automatic prefix/suffix on `@page_title` updates.
+  
+  [INSERT LVATTRDOCS]
 
   ## Examples
 
@@ -1524,9 +1530,9 @@ defmodule Phoenix.Component do
 
   """
   @doc type: :component
-  attr.(:prefix, :string, default: nil)
-  attr.(:suffix, :string, default: nil)
-  slot.(:inner_block, required: true)
+  attr.(:prefix, :string, doc: "A prefix added before the content of `inner_block`.")
+  attr.(:suffix, :string, doc: "A suffix added after the content of `inner_block`.")
+  slot.(:inner_block, required: true, doc: "Content rendered inside the `title` tag.")
 
   def live_title(assigns) do
     ~H"""
@@ -1540,43 +1546,8 @@ defmodule Phoenix.Component do
   This function is built on top of `Phoenix.HTML.Form.form_for/4`. For
   more information about options and how to build inputs, see
   `Phoenix.HTML.Form`.
-
-  ## Options
-
-  The following attribute is required:
-
-    * `:for` - the form source data
-
-  The following attributes are optional:
-
-    * `:action` - the action to submit the form on. This attribute must be
-      given if you intend to submit the form to a URL without LiveView.
-
-    * `:as` - the server side parameter in which all params for this
-      form will be collected (i.e. `as: :user_params` would mean all fields
-      for this form will be accessed as `conn.params.user_params` server
-      side). Automatically inflected when a changeset is given.
-
-    * `:multipart` - when true, sets enctype to "multipart/form-data".
-      Required when uploading files
-
-    * `:method` - the HTTP method. It is only used if an `:action` is given.
-      If the method is not "get" nor "post", an input tag with name `_method`
-      is generated along-side the form tag. Defaults to "post".
-
-    * `:csrf_token` - a token to authenticate the validity of requests.
-      One is automatically generated when an action is given and the method
-      is not "get". When set to false, no token is generated.
-
-    * `:errors` - use this to manually pass a keyword list of errors to the form
-      (for example from `conn.assigns[:errors]`). This option is only used when a
-      connection is used as the form source and it will make the errors available
-      under `f.errors`
-
-    * `:id` - the ID of the form attribute. If an ID is given, all form inputs
-      will also be prefixed by the given ID
-
-  All further assigns will be passed to the form tag.
+  
+  [INSERT LVATTRDOCS]
 
   ## Examples
 
@@ -1630,15 +1601,26 @@ defmodule Phoenix.Component do
       </.form>
   """
   @doc type: :component
-  attr.(:for, :any, required: true)
-  attr.(:action, :string, default: nil)
-  attr.(:as, :atom, [])
-  attr.(:multipart, :boolean, default: false)
-  attr.(:method, :string, [])
-  attr.(:csrf_token, :boolean, [])
-  attr.(:errors, :list, [])
-  attr.(:rest, :global, [])
-  slot.(:inner_block, required: true)
+  attr.(:for, :any, required: true, doc: "The form source data.")
+  attr.(:action, :string, doc: "The action to submit the form on.
+  This attribute must be given if you intend to submit the form to a URL without LiveView.")
+  attr.(:as, :atom, doc: "The server side parameter in which all params for this form 
+  will be collected (i.e. `as: :user_params` would mean all fields for this form will be 
+  accessed as `conn.params.user_params` server side).
+  Automatically inflected when a changeset is given.")
+  attr.(:multipart, :boolean, default: false, doc: "Sets `enctype` to `multipart/form-data`.
+  Required when uploading files.")
+  attr.(:method, :string, doc: "The HTTP method.
+  It is only used if an `:action` is given. If the method is not `get` nor `post`,
+  an input tag with name `_method` is generated alongside the form tag.")
+  attr.(:csrf_token, :boolean, default: false, doc: "A token to authenticate the validity of requests. 
+  Once is automatically generated when an action is given and the method is not `get`. 
+  When set to `false`, no token is generated.")
+  attr.(:errors, :list, doc: "Use this to manually pass a keyword list of errors to the form, 
+  e.g. `conn.assigns[:errors]`. This option is only used when a connection is used as the form 
+  source and it will make the errors available under `f.errors`.")
+  attr.(:rest, :global, doc: "Additional HTML attributes to add to the form tag.")
+  slot.(:inner_block, required: true, doc: "The content rendered inside of the form tag.")
 
   def form(assigns) do
     # Extract options and then to the same call as form_for
@@ -1657,7 +1639,7 @@ defmodule Phoenix.Component do
     # unless the action is given.
     {attrs, hidden_method, csrf_token} =
       if action do
-        {method, opts} = Keyword.pop(opts, :method, "post")
+        {method, opts} = Keyword.pop!(opts, :method)
         {method, hidden_method} = form_method(method)
 
         {csrf_token, opts} =
@@ -1699,41 +1681,14 @@ defmodule Phoenix.Component do
     """
   end
 
+  defp form_method(nil) , do: {"post", nil}
   defp form_method(method) when method in ~w(get post), do: {method, nil}
   defp form_method(method) when is_binary(method), do: {"post", method}
 
   @doc """
   Generates a link for live and href navigation.
-
-  There are three possible types of links, in the order of efficiency:
-
-    * `:href` - uses traditional browser navigation to the new location.
-      This means the whole page is reloaded on the browser.
-
-    * `:navigate` - navigates from a LiveView to a new LiveView. The browser
-      page is kept, but a new LiveView process is mounted and its content
-      on the page reloaded. It is only possible to navigate between LiveViews
-      declared under the same router `Phoenix.LiveView.Router.live_session/3`.
-      Otherwise a full browser redirect is used.
-
-    * `:patch` - patches the current LiveView. The `handle_params` callback
-      of the current LiveView will be invoked and the minimum content will be
-      sent over there wire, as any other LiveView diff.
-
-  ## Attributes
-
-    * `:method` - the method to use with the link. In case the method is not
-      `:get`, the link is generated inside the form which sets the proper
-      information. In order to submit the form, JavaScript must be enabled.
-
-    * `:csrf_token` - a custom token to use for links with a method
-      other than `:get`.
-
-     * `:replace` - when using `:patch` or `:navigate`, whether to replace the
-       browser's pushState history. Default false.
-
-  Arbitrary global attributes, such as `class`, `id`, etc, will be applied to the
-  generated `a` tag.
+  
+  [INSERT LVATTRDOCS]
 
   ## Examples
 
@@ -1762,9 +1717,9 @@ defmodule Phoenix.Component do
   Data attributes are added as a keyword list passed to the `data` key.
   The following data attributes are supported:
 
-    * `data-confirm` - shows a confirmation prompt before
-      generating and submitting the form when `:method`
-      is not `:get`.
+  * `data-confirm` - shows a confirmation prompt before
+    generating and submitting the form when `:method`
+    is not `:get`.
 
   ### Overriding the default confirm behaviour
 
@@ -1814,16 +1769,26 @@ defmodule Phoenix.Component do
   By default, CSRF tokens are generated through `Plug.CSRFProtection`.
   """
   @doc type: :component
-  attr.(:navigate, :string, [])
-  attr.(:patch, :string, [])
-  attr.(:href, :any, [])
-  attr.(:replace, :boolean, default: false)
-  attr.(:method, :string, default: "get")
-  attr.(:csrf_token, :string, [])
-  attr.(:rest, :global, [])
-  slot.(:inner_block, required: true)
+  attr.(:navigate, :string, doc: "Navigates from a LiveView to a new LiveView.
+  The browser page is kept, but a new LiveView process is mounted and its content on the page 
+  is reloaded. It is only possible to navigate between LiveViews declared under the same router 
+  `Phoenix.LiveView.Router.live_session/3`. Otherwise, a full browser redirect is used.")
+  attr.(:patch, :string, doc: "Patches the current LiveView.
+  The `handle_params` callback of the current LiveView will be invoked and the minimum content
+  will be sent over the wire, as any other LiveView diff.")
+  attr.(:href, :any, doc: "Uses traditional browser navigation to the new location.
+  This means the whole page is reloaded on the browser.")
+  attr.(:replace, :boolean, doc: "When using `:patch` or `:navigate`,
+  should the browser's history be replaced with `pushState`?")
+  attr.(:method, :string, default: "get", doc: "The HTTP method to use with the link.
+  In case the method is not `get`, the link is generated inside the form which sets the proper
+  information. In order to submit the form, JavaScript must be enabled in the browser.")
+  attr.(:csrf_token, :string, doc: "A custom token to use for links with an HTTP method
+  other than `get`.")
+  attr.(:rest, :global, doc: "Additional HTML attributes added to the `a` tag.")
+  slot.(:inner_block, required: true, doc: "The content rendered inside of the `a` tag.")
 
-  def link(%{navigate: _to} = assigns) do
+  def link(%{navigate: to} = assigns) when is_binary(to) do
     ~H"""
     <a
       href={@navigate}
@@ -1834,7 +1799,7 @@ defmodule Phoenix.Component do
     """
   end
 
-  def link(%{patch: _to} = assigns) do
+  def link(%{patch: to} = assigns) when is_binary(to) do
     ~H"""
     <a
       href={@patch}
@@ -1845,15 +1810,16 @@ defmodule Phoenix.Component do
     """
   end
 
-  def link(%{href: href} = assigns) when href != "#" do
-    if is_nil(href), do: raise(ArgumentError, "expected non-nil value for :href in <.link>")
-
+  def link(%{href: href} = assigns) when href != "#" and not is_nil(href) do
     assigns =
       case Phoenix.LiveView.Utils.valid_destination!(href, "<.link>") do
         href when is_binary(href) ->
           assigns
           |> assign(:href, href)
-          |> assign_new(:csrf_token, fn -> Phoenix.HTML.Tag.csrf_token_value(href) end)
+          |> update(:csrf_token, fn
+            nil -> Phoenix.HTML.Tag.csrf_token_value(href)
+            csrf_token -> csrf_token
+          end)
 
         href ->
           assign(assigns, :href, href)
@@ -1882,11 +1848,7 @@ defmodule Phoenix.Component do
   This is an essential accessibility feature for interfaces
   such as modals, dialogs, and menus.
 
-  ## Attributes
-
-    * `:id` - The required string container ID
-
-  All other HTML attributes are applied to the rendered container.
+  [INSERT LVATTRDOCS]
 
   ## Examples
 
@@ -1903,9 +1865,9 @@ defmodule Phoenix.Component do
       </.focus_wrap>
   """
   @doc type: :component
-  attr.(:id, :string, required: true)
-  attr.(:rest, :global, [])
-  slot.(:inner_block, required: true)
+  attr.(:id, :string, required: true, doc: "The DOM identifier of the contianer tag.")
+  attr.(:rest, :global, doc: "Additional HTML attributes to add to the container tag.")
+  slot.(:inner_block, required: true, doc: "The content rendered inside of the container tag.")
 
   def focus_wrap(assigns) do
     ~H"""
@@ -1920,14 +1882,9 @@ defmodule Phoenix.Component do
   @doc """
   Generates a dynamically named HTML tag.
 
-  Raises ArgumentError if the tag name is found to be unsafe HTML.
+  Raises an `ArgumentError` if the tag name is found to be unsafe HTML.
 
-  ## Attributes
-
-    * `:name` - The required  name of the tag, such as: "div"
-
-  All other attributes are added to the generated tag, ensuring
-  proper HTML escaping.
+  [INSERT LVATTRDOCS]
 
   ## Examples
 
@@ -1938,8 +1895,8 @@ defmodule Phoenix.Component do
       #=> "<p>content</p>"
   """
   @doc type: :component
-  attr.(:name, :string, required: true)
-  attr.(:rest, :global, [])
+  attr.(:name, :string, required: true, doc: "The name of the tag, such as `div`.")
+  attr.(:rest, :global, doc: "Additional HTML attributes to add to the tag, ensuring proper escaping.")
   slot.(:inner_block, [])
 
   def dynamic_tag(%{name: name, rest: rest} = assigns) do
@@ -1976,7 +1933,7 @@ defmodule Phoenix.Component do
 
   ## Attributes
 
-    * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
+  * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
 
   Arbitrary attributes may be passed to be applied to the file input tag.
 
