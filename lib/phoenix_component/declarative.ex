@@ -500,9 +500,8 @@ defmodule Phoenix.Component.Declarative do
     names_and_defs =
       for {name, %{kind: kind, attrs: attrs, slots: slots}} <- components do
         attr_defaults =
-          for %{name: name, required: false, opts: opts} <- attrs,
-              Keyword.has_key?(opts, :default) do
-            {name, Macro.escape(opts[:default])}
+          for %{name: name, required: false, opts: opts} <- attrs do
+            {name, Macro.escape(Keyword.get(opts, :default, nil))}
           end
 
         slot_defaults =
@@ -642,7 +641,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_component_doc(doc \\ "", slots, attrs) do
-    [left | right] = String.split(doc, "[[INSERT LVDOCS]]")
+    [left | right] = String.split(doc, "[INSERT LVATTRDOCS]")
 
     IO.iodata_to_binary([
       build_left_doc(left),
@@ -723,7 +722,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: doc}, []) do
-    [" - ", doc]
+    [" - ", build_doc(doc)]
   end
 
   defp build_slot_doc(%{doc: nil}, slot_attrs) do
@@ -731,7 +730,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: doc}, slot_attrs) do
-    [" - ", doc, ". Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+    [" - ", build_doc(doc), " Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
   end
 
   defp build_slot_attrs_docs(slot_attrs) do
@@ -781,7 +780,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}) do
-    [" - ", doc, ". Defaults to `", inspect(default), "`."]
+    [" - ", build_doc(doc), " Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: nil}) do
@@ -789,7 +788,12 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc}) do
-    [" - ", doc]
+    [" - ", build_doc(doc)]
+  end
+
+  defp build_doc(doc) do
+    suffix = if String.ends_with?(doc, "."), do: "", else: "."
+    [doc, suffix]
   end
 
   defp build_right_doc("") do
