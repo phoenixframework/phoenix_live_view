@@ -81,7 +81,7 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           }
 
   * `[:phoenix, :live_view, :handle_params, :exception]` - Dispatched by a `Phoenix.LiveView`
-    when the when an exception is raised in the [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) callback.
+    when an exception is raised in the [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) callback.
 
     * Measurement:
 
