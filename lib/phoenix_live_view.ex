@@ -120,7 +120,7 @@ defmodule Phoenix.LiveView do
 
   Alternatively, you can `live_render` from any template. In your view:
 
-      import Phoenix.LiveView.Helpers
+      import Phoenix.Component
 
   Then in your template:
 

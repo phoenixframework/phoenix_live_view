@@ -134,11 +134,11 @@ defmodule Phoenix.LiveViewTest do
   However, for complex components, often the simplest way to test them
   is by using the `~H` sigil itself:
 
-      import Phoenix.LiveView.Helpers
+      import Phoenix.Component
       import Phoenix.LiveViewTest
 
       test "greets" do
-        assigns = []
+        assigns = %{}
         assert rendered_to_string(~H"""
                <MyComponents.greet name="Mary" />
                """) ==
@@ -496,13 +496,16 @@ defmodule Phoenix.LiveViewTest do
 
   ## Examples
 
-      iex> import Phoenix.LiveView.Helpers
-      iex> assigns = []
-      iex> ~H"""
-      ...> <div>example</div>
-      ...> """
-      ...> |> rendered_to_string()
-      "<div>example</div>"
+      import Phoenix.Component
+      import Phoenix.LiveViewTest
+
+      test "greets" do
+        assigns = %{}
+        assert rendered_to_string(~H"""
+               <MyComponents.greet name="Mary" />
+               """) ==
+                 "<div>Hello, Mary!</div>"
+      end
 
   '''
   def rendered_to_string(rendered) do
