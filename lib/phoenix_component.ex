@@ -93,7 +93,7 @@ defmodule Phoenix.Component do
   <p>Hello, Bob!</p>
   ```
 
-  Accessing an attribute which are is required and does not have a default values will fail.
+  Accessing an attribute which is required and does not have a default values will fail.
   You must explicitly declare `default: nil` or assign a value programmatically with the
   `assign_new/3` function.
 
@@ -1416,9 +1416,9 @@ defmodule Phoenix.Component do
   * `:required` - marks an attribute as required. If a caller does not pass the given attribute,
   a compile warning is issued.
 
-  * `:default` - the default value for the attribute if not provided. If not default is given
-    and the attribute is not given, accessing the attribute will fail unless a value is
-    explicitly set with `assign_new/3`.
+  * `:default` - the default value for the attribute if not provided. If this option is
+    not set and the attribute is not given, accessing the attribute will fail unless a
+    value is explicitly set with `assign_new/3`.
 
   * `:doc` - documentation for the attribute.
 
