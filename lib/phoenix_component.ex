@@ -93,7 +93,7 @@ defmodule Phoenix.Component do
   <p>Hello, Bob!</p>
   ```
 
-  Accessing an attribute which is required and does not have a default values will fail.
+  Accessing an attribute which is required and does not have a default value will fail.
   You must explicitly declare `default: nil` or assign a value programmatically with the
   `assign_new/3` function.
 
