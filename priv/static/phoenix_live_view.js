@@ -2112,6 +2112,12 @@ within:
         }
       });
     },
+    exec_navigate(eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+      view.liveSocket.historyRedirect(href, replace ? "replace" : "push");
+    },
+    exec_patch(eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+      view.liveSocket.pushHistoryPatch(href, replace ? "replace" : "push", sourceEl);
+    },
     exec_focus(eventType, phxEvent, view, sourceEl, el) {
       window.requestAnimationFrame(() => aria_default.attemptFocus(el));
     },
@@ -3438,7 +3444,6 @@ within:
         if (!latency) {
           cb(data);
         } else {
-          console.log(`simulating ${latency}ms of latency from server to client`);
           setTimeout(() => cb(data), latency);
         }
       });
@@ -3459,7 +3464,6 @@ within:
           return push();
         }
       }
-      console.log(`simulating ${latency}ms of latency from client to server`);
       let fakePush = {
         receives: [],
         receive(kind, cb) {
@@ -3898,6 +3902,10 @@ within:
       this.registerNewLocation(window.location);
     }
     historyRedirect(href, linkState, flash) {
+      if (/^\/[^\/]+.*$/.test(href)) {
+        let { protocol, host } = window.location;
+        href = `${protocol}//${host}${href}`;
+      }
       let scroll = window.scrollY;
       this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
         this.replaceMain(href, flash, () => {
@@ -4014,7 +4022,7 @@ within:
     }
     reset() {
       this.transitions.forEach((timer) => {
-        cancelTimeout(timer);
+        clearTimeout(timer);
         this.transitions.delete(timer);
       });
       this.flushPendingOps();
