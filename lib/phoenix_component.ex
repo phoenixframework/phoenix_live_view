@@ -136,7 +136,7 @@ defmodule Phoenix.Component do
   declares an attribute of type `:global`. By default, the set of attributes accepted are those
   [common to all HTML elements](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes).
   Once a global attribute is declared, any number of attributes in the set can be passed by
-  the caller without having to modify the function componet itself.
+  the caller without having to modify the function component itself.
 
   Below is an example of a function component that accepts a dynamic number of global attributes:
 
@@ -185,7 +185,7 @@ defmodule Phoenix.Component do
 
   You can extend the set of global attributes by providing a list of attribute prefixes to
   `use Phoenix.Component`. Like the default attributes common to all HTML elements,
-  any number of attributes with that start with a global prefix will be accepted by function
+  any number of attributes that start with a global prefix will be accepted by function
   components defined in this module. By default, the following prefixes are supported:
   `phx-`, `aria-`, and `data-`. For example, to support the `x-` prefix used by
   [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to
@@ -224,7 +224,7 @@ defmodule Phoenix.Component do
   </.button>
   ```
 
-  Which renderes the following HTML:
+  Which renders the following HTML:
 
   ```html
   <button>
@@ -244,7 +244,7 @@ defmodule Phoenix.Component do
 
   ### The Default Slot
 
-  The example above uses the default slot, accesible as an assign named `@inner_block`, to render
+  The example above uses the default slot, accessible as an assign named `@inner_block`, to render
   HEEx content via the `render_slot/2` function.
 
   If the values rendered in the slot need to be dynamic, you can pass a second value back to the
