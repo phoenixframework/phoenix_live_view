@@ -504,7 +504,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert render(AttrDefaults, :add, %{}) == "3"
     assert render(AttrDefaults, :example, %{}) == "nil"
     assert render(AttrDefaults, :no_default, %{value: 123}) == "123"
-    assert render(AttrDefaults, :no_default, %{}) == "nil"
+
+    assert_raise KeyError, ~r":value not found", fn ->
+      render(AttrDefaults, :no_default, %{})
+    end
   end
 
   test "provides slot defaults" do
@@ -718,7 +721,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       fun_doc_injection: "fun docs\n\n## Attributes\n\n* `attr` (`:any`)\n\nfun docs\n",
       fun_multiple_attr: "## Attributes\n\n* `attr1` (`:any`)\n* `attr2` (`:any`)\n",
       fun_with_attr_doc: "## Attributes\n\n* `attr` (`:any`) - attr docs.\n",
-      fun_with_attr_doc_period: "## Attributes\n\n* `attr` (`:any`) - attr docs. Defaults to `\"foo\"`.\n",
+      fun_with_attr_doc_period:
+        "## Attributes\n\n* `attr` (`:any`) - attr docs. Defaults to `\"foo\"`.\n",
       fun_with_hidden_attr: "## Attributes\n\n* `attr1` (`:any`)\n",
       fun_with_doc: "fun docs\n## Attributes\n\n* `attr` (`:any`)\n",
       fun_slot: "## Slots\n\n* `inner_block`\n",
