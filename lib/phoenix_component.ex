@@ -93,9 +93,9 @@ defmodule Phoenix.Component do
   <p>Hello, Bob!</p>
   ```
 
-  Attributes without default values will only be present in assigns if the caller
-  passed the attribute. Declare an attribute with `default: nil` for times the component
-  should always expect the attribute to be present.
+  Accessing an attribute which are is required and does not have a default values will fail.
+  You must explicitly declare `default: nil` or assign a value programmatically with the
+  `assign_new/3` function.
 
   Multiple attributes can be declared for the same function component:
 
@@ -1411,13 +1411,14 @@ defmodule Phoenix.Component do
   | `:global`       | any common HTML attributes, plus those defined by `:global_prefixes` |
   | A struct module | any module that defines a struct with `defstruct/1`                  |
 
-
   ### Options
 
   * `:required` - marks an attribute as required. If a caller does not pass the given attribute,
   a compile warning is issued.
 
-  * `:default` - the default value for the attribute if not provided.
+  * `:default` - the default value for the attribute if not provided. If not default is given
+    and the attribute is not given, accessing the attribute will fail unless a value is
+    explicitly set with `assign_new/3`.
 
   * `:doc` - documentation for the attribute.
 
