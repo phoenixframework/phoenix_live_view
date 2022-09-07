@@ -1603,6 +1603,7 @@ defmodule Phoenix.Component do
   """
   @doc type: :component
   attr.(:prefix, :string, default: nil, doc: "A prefix added before the content of `inner_block`.")
+
   attr.(:suffix, :string, default: nil, doc: "A suffix added after the content of `inner_block`.")
   slot.(:inner_block, required: true, doc: "Content rendered inside the `title` tag.")
 
@@ -1726,11 +1727,10 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:csrf_token, :boolean,
-    default: false,
+  attr.(:csrf_token, :any,
     doc: """
     A token to authenticate the validity of requests.
-    Once is automatically generated when an action is given and the method is not `get`.
+    One is automatically generated when an action is given and the method is not `get`.
     When set to `false`, no token is generated.
     """
   )
