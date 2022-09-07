@@ -110,6 +110,10 @@ defmodule Phoenix.Component.Declarative do
     target
     title
     translate
+    method
+    required
+    for
+    action
   )
 
   @doc false
