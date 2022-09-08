@@ -856,7 +856,8 @@ export default class View {
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
     let formData
-    if(inputEl.getAttribute(this.binding("change"))){
+
+    if(!opts._formRecovery && inputEl.getAttribute(this.binding("change"))){
       formData = serializeForm(inputEl.form, {_target: opts._target}, [inputEl.name])
     } else {
       formData = serializeForm(inputEl.form, {_target: opts._target})
@@ -1032,8 +1033,9 @@ export default class View {
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = form.elements[0]
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
+      let pushOpts = {_target: input.name, _formRecovery: true, newCid: newCid, callback: callback}
 
-      JS.exec("change", phxEvent, view, input, ["push", {_target: input.name, newCid: newCid, callback: callback}])
+      JS.exec("change", phxEvent, view, input, ["push", pushOpts])
     })
   }
 
