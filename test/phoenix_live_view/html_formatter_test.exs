@@ -1145,16 +1145,40 @@ if Version.match?(System.version(), ">= 1.13.0") do
     end
 
     test "formats eex within script tag" do
-      input = """
+      assert_formatter_doesnt_change("""
       <script>
         var foo = 1;
         var bar = <%= @bar %>
         var baz = <%= @baz %>
         console.log(1)
       </script>
-      """
+      """)
 
-      assert_formatter_doesnt_change(input)
+      assert_formatter_output(
+        """
+        <script type="text/props">
+          <%= %{
+          a: 1,
+          b: 2
+        } %>
+        </script>
+        """,
+        """
+        <script type="text/props">
+            <%= %{
+            a: 1,
+            b: 2
+          } %>
+        </script>
+        """
+      )
+
+      assert_formatter_doesnt_change("""
+      <script type="text/props">
+          <%= raw(Jason.encode!(%{whatEndpoint: Routes.api_search_options_path(@conn, :role_search_options)},
+        escape: :html_safe)) %>
+      </script>
+      """)
     end
 
     test "formats style tag" do
