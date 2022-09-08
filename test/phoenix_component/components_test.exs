@@ -300,6 +300,28 @@ defmodule Phoenix.LiveView.ComponentsTest do
              ] = html
     end
 
+    test "generates a csrf_token if if an action is set" do
+      assigns = %{}
+
+      html =
+        parse(~H"""
+        <.form :let={f} for={:myform} action="/">
+          <%= text_input f, :foo %>
+        </.form>
+        """)
+
+      csrf_token = Plug.CSRFProtection.get_csrf_token_for("/")
+
+      assert [
+               {"form", [{"action", "/"}, {"method", "post"}],
+                [
+                  {"input", [{"name", "_csrf_token"}, {"type", "hidden"}, {"value", ^csrf_token}],
+                   []},
+                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                ]}
+             ] = html
+    end
+
     test "does not generate csrf_token if method is not post or if no action" do
       assigns = %{}
 
