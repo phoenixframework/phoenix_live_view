@@ -399,17 +399,21 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         attr -> attr
       end
 
-    case Code.string_to_quoted(value) do
-      {:ok, string} when is_binary(string) ->
+    case expr_to_quoted(value, meta) do
+      {{:__block__, _, [string]}, []} when is_binary(string) ->
         ~s(#{attr}="#{string}")
 
-      {:ok, {atom, _, _}} when atom in [:<<>>, :<>] ->
+      {{atom, _, _}, []} when atom in [:<<>>, :<>] ->
         concat(["#{attr}={", string(value), "}"])
 
-      _ ->
+      {{:__block__, _, [[_ | _]]} = quoted, []} ->
+        expr = quoted_to_code_algebra(quoted, [], opts)
+        group(concat(["#{attr}={", expr, "}"]))
+
+      {quoted, comments} ->
         expr =
           break("")
-          |> concat(expr_to_code_algebra(value, meta, opts))
+          |> concat(quoted_to_code_algebra(quoted, comments, opts))
           |> nest(2)
 
         group(concat(["#{attr}={", expr, concat(break(""), "}")]))
@@ -447,7 +451,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {concat(document, next), stab?}
   end
 
-  defp expr_to_code_algebra(expr, meta, opts) do
+  defp expr_to_quoted(expr, meta) do
     string_to_quoted_opts = [
       literal_encoder: &{:ok, {:__block__, &2, [&1]}},
       token_metadata: true,
@@ -456,7 +460,15 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       column: meta.column
     ]
 
-    {quoted, comments} = Code.string_to_quoted_with_comments!(expr, string_to_quoted_opts)
+    Code.string_to_quoted_with_comments!(expr, string_to_quoted_opts)
+  end
+
+  defp expr_to_code_algebra(expr, meta, opts) do
+    {quoted, comments} = expr_to_quoted(expr, meta)
+    quoted_to_code_algebra(quoted, comments, opts)
+  end
+
+  defp quoted_to_code_algebra(quoted, comments, opts) do
     Code.quoted_to_algebra(quoted, Keyword.merge(opts, escape: false, comments: comments))
   end
 
