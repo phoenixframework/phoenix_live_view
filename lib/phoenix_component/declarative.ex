@@ -114,6 +114,7 @@ defmodule Phoenix.Component.Declarative do
     required
     for
     action
+    placeholder
   )
 
   @doc false
