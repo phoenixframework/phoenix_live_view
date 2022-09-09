@@ -1528,7 +1528,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/:for must be a generator expresion between {...}/
+      message = ~r/:for must be a generator expression between {...}/
 
       assert_raise(ParseError, message, fn ->
         eval("""
