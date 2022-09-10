@@ -46,7 +46,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def textarea(assigns) do
-    assigns = Phoenix.Component.assign(assigns, :extra_assigns, assigns_to_attributes(assigns, []))
+    assigns =
+      Phoenix.Component.assign(assigns, :extra_assigns, assigns_to_attributes(assigns, []))
+
     ~H"<textarea {@extra_assigns}><%= render_slot(@inner_block) %></textarea>"
   end
 
@@ -1563,6 +1565,100 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
         """)
       end)
+    end
+  end
+
+  describe ":if attr" do
+    test "handle :if attr on HTML element" do
+      assigns = %{flag: true}
+
+      assert compile("""
+               <div :if={@flag} id="test">yes</div>
+             """) =~ "<div id=\"test\">yes</div>"
+
+      assert compile("""
+               <div :if={!@flag} id="test">yes</div>
+             """) == ""
+    end
+
+    test "handle :if attr on self closed HTML element" do
+      assigns = %{flag: true}
+
+      assert compile("""
+               <div :if={@flag} id="test" />
+             """) =~ "<div id=\"test\"></div>"
+
+      assert compile("""
+               <div :if={!@flag} id="test" />
+             """) == ""
+    end
+
+    test "raise on invalid :if expr" do
+      message = ~r/:if must be an expression between {...}/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :if="1">test</div>
+        """)
+      end)
+    end
+
+    test "raise when used in components" do
+      message = ~r/unsupported attribute \":if\" in component/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.local_function_component :if={true} />")
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :if={true} />
+        """)
+      end)
+    end
+
+    test "raise on duplicated :if" do
+      message =
+        ~r/cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :if={true} :if={false}>test</div>
+        """)
+      end)
+    end
+  end
+
+  describe ":for and :if attr together" do
+    test "handle attrs on HTML element" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+               <div :for={i <- @items} :if={rem(i, 2) == 0}><%= i %></div>
+             """) =~ "<div>2</div><div>4</div>"
+
+      assert compile("""
+               <div :for={i <- @items} :if={rem = rem(i, 2)}><%= i %>,<%= rem %></div>
+             """) =~ "<div>1,1</div><div>2,0</div><div>3,1</div><div>4,0</div>"
+
+      assert compile("""
+               <div :for={i <- @items} :if={false}><%= i %></div>
+             """) == ""
+    end
+
+    test "handle attrs on self closed HTML element" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+               <div :for={i <- @items} :if={rem(i, 2) == 0} id={"post-" <> to_string(i)} />
+             """) =~ "<div id=\"post-2\"></div><div id=\"post-4\"></div>"
+
+      assert compile("""
+               <div :for={i <- @items} :if={false}><%= i %></div>
+             """) == ""
     end
   end
 end

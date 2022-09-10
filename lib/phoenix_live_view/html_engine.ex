@@ -579,18 +579,26 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
-    case pop_special_attr!(attrs, ":for", state) do
-      {{":for", expr, _meta}, attrs} ->
-        state
-        |> update_subengine(:handle_begin, [])
-        |> set_root_on_not_tag()
-        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
-        |> handle_for_expr(expr, state)
+    {new_meta, attrs} =
+      Enum.reduce([:for, :if], {tag_meta, attrs}, fn attr, {meta_acc, attrs_acc} ->
+        string_attr = ":#{attr}"
 
-      nil ->
-        state
-        |> set_root_on_tag()
-        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+        case pop_special_attr!(attrs_acc, string_attr, state) do
+          {{^string_attr, expr, _meta}, attrs} -> {Map.put(meta_acc, attr, {expr, state}), attrs}
+          nil -> {meta_acc, attrs_acc}
+        end
+      end)
+
+    if new_meta == tag_meta do
+      state
+      |> set_root_on_tag()
+      |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+    else
+      state
+      |> update_subengine(:handle_begin, [])
+      |> set_root_on_not_tag()
+      |> handle_tag_and_attrs(name, attrs, suffix, to_location(new_meta))
+      |> handle_special_expr(new_meta)
     end
   end
 
@@ -600,19 +608,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
     attrs = remove_phx_no_break(attrs)
 
-    case pop_special_attr!(attrs, ":for", state) do
-      {{":for", expr, _meta}, attrs} ->
-        state
-        |> update_subengine(:handle_begin, [])
-        |> set_root_on_not_tag()
-        |> push_tag({:tag_open, name, attrs, Map.put(tag_meta, :for, {expr, state})})
-        |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+    {new_meta, attrs} =
+      Enum.reduce([:for, :if], {tag_meta, attrs}, fn attr, {meta_acc, attrs_acc} ->
+        string_attr = ":#{attr}"
 
-      nil ->
-        state
-        |> set_root_on_tag()
-        |> push_tag(token)
-        |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+        case pop_special_attr!(attrs_acc, string_attr, state) do
+          {{^string_attr, expr, _meta}, attrs} -> {Map.put(meta_acc, attr, {expr, state}), attrs}
+          nil -> {meta_acc, attrs_acc}
+        end
+      end)
+
+    if new_meta == tag_meta do
+      state
+      |> set_root_on_tag()
+      |> push_tag(token)
+      |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+    else
+      state
+      |> update_subengine(:handle_begin, [])
+      |> set_root_on_not_tag()
+      |> push_tag({:tag_open, name, attrs, new_meta})
+      |> handle_tag_and_attrs(name, attrs, ">", to_location(new_meta))
     end
   end
 
@@ -620,12 +636,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {{:tag_open, _name, _attrs, tag_open_meta}, state} = pop_tag!(state, token)
     state = update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
 
-    case tag_open_meta[:for] do
-      {expr, outer_state} ->
-        handle_for_expr(state, expr, outer_state)
-
-      nil ->
-        state
+    if tag_open_meta[:for] || tag_open_meta[:if] do
+      handle_special_expr(state, tag_open_meta)
+    else
+      state
     end
   end
 
@@ -711,12 +725,33 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp handle_for_expr(state, expr, outer_state) do
-    expr = parse_expr!(expr, state)
+  defp handle_special_expr(state, meta) do
+    {_expr, outer_state} = meta[:for] || meta[:if]
 
     ast =
-      quote do
-        for unquote(expr), do: unquote(invoke_subengine(state, :handle_end, []))
+      case meta do
+        %{for: {for_expr, outer_state}, if: {if_expr, outer_state}} ->
+          for_expr = parse_expr!(for_expr, outer_state)
+          if_expr = parse_expr!(if_expr, outer_state)
+
+          quote do
+            for unquote(for_expr), unquote(if_expr),
+              do: unquote(invoke_subengine(state, :handle_end, []))
+          end
+
+        %{for: {for_expr, outer_state}} ->
+          for_expr = parse_expr!(for_expr, outer_state)
+
+          quote do
+            for unquote(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
+          end
+
+        %{if: {if_expr, outer_state}} ->
+          if_expr = parse_expr!(if_expr, outer_state)
+
+          quote do
+            if unquote(if_expr), do: unquote(invoke_subengine(state, :handle_end, []))
+          end
       end
 
     update_subengine(outer_state, :handle_expr, ["=", ast])
@@ -1218,6 +1253,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_phx_attrs!([{"phx-hook", _, _} | t], meta, state, _attr, id?),
     do: validate_phx_attrs!(t, meta, state, "phx-hook", id?)
+
+  defp validate_phx_attrs!([{":if", {:expr, _, _}, _} | t], meta, state, attr, id?),
+    do: validate_phx_attrs!(t, meta, state, attr, id?)
+
+  defp validate_phx_attrs!([{":if", _, attr_meta} | _], _meta, state, _attr, _id?) do
+    raise ParseError,
+      line: attr_meta.line,
+      column: attr_meta.column,
+      file: state.file,
+      description: ":if must be an expression between {...}"
+  end
 
   @loop [":for"]
 
