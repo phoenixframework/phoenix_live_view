@@ -634,13 +634,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_close, name, tag_meta} = token, state) do
     {{:tag_open, _name, _attrs, tag_open_meta}, state} = pop_tag!(state, token)
-    state = update_subengine(state, :handle_text, [to_location(tag_meta), "</#{name}>"])
 
-    if tag_open_meta[:for] || tag_open_meta[:if] do
-      handle_special_expr(state, tag_open_meta)
-    else
-      state
-    end
+    state
+    |> update_subengine(:handle_text, [to_location(tag_meta), "</#{name}>"])
+    |> handle_special_expr(tag_open_meta)
   end
 
   # Pop the given attr from attrs. Raises if the given attr is duplicated within
@@ -725,37 +722,42 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp handle_special_expr(state, meta) do
-    {_expr, outer_state} = meta[:for] || meta[:if]
+  defp handle_special_expr(state, %{for: {for_expr, outer_state}, if: {if_expr, outer_state}}) do
+    for_expr = parse_expr!(for_expr, outer_state)
+    if_expr = parse_expr!(if_expr, outer_state)
 
     ast =
-      case meta do
-        %{for: {for_expr, outer_state}, if: {if_expr, outer_state}} ->
-          for_expr = parse_expr!(for_expr, outer_state)
-          if_expr = parse_expr!(if_expr, outer_state)
-
-          quote do
-            for unquote(for_expr), unquote(if_expr),
-              do: unquote(invoke_subengine(state, :handle_end, []))
-          end
-
-        %{for: {for_expr, outer_state}} ->
-          for_expr = parse_expr!(for_expr, outer_state)
-
-          quote do
-            for unquote(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
-          end
-
-        %{if: {if_expr, outer_state}} ->
-          if_expr = parse_expr!(if_expr, outer_state)
-
-          quote do
-            if unquote(if_expr), do: unquote(invoke_subengine(state, :handle_end, []))
-          end
+      quote do
+        for unquote(for_expr), unquote(if_expr),
+          do: unquote(invoke_subengine(state, :handle_end, []))
       end
 
     update_subengine(outer_state, :handle_expr, ["=", ast])
   end
+
+  defp handle_special_expr(state, %{for: {for_expr, outer_state}}) do
+    for_expr = parse_expr!(for_expr, outer_state)
+
+    ast =
+      quote do
+        for unquote(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
+      end
+
+    update_subengine(outer_state, :handle_expr, ["=", ast])
+  end
+
+  defp handle_special_expr(state, %{if: {if_expr, outer_state}}) do
+    if_expr = parse_expr!(if_expr, outer_state)
+
+    ast =
+      quote do
+        if unquote(if_expr), do: unquote(invoke_subengine(state, :handle_end, []))
+      end
+
+    update_subengine(outer_state, :handle_expr, ["=", ast])
+  end
+
+  defp handle_special_expr(state, %{} = _meta), do: state
 
   defp parse_expr!({:expr, value, %{line: line, column: col}}, state) do
     Code.string_to_quoted!(value, line: line, column: col, file: state.file)
