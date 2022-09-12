@@ -1566,6 +1566,18 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
     end
+
+    test "raise on :for in slots" do
+      message = ~r/unsupported attribute \":for\" in slot :slot/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'>
+          <:slot :for={i <- []}>slot</:slot>
+        </Phoenix.LiveView.HTMLEngineTest.remote_function_component>
+        """)
+      end)
+    end
   end
 
   describe ":if attr" do
@@ -1603,21 +1615,24 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "raise when used in components" do
-      message = ~r/unsupported attribute \":if\" in component/
+    test ":if in components" do
+      assigns = %{flag: true}
 
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <.local_function_component :if={true} />")
-        """)
-      end)
+      assert compile("""
+             <.local_function_component value="123" :if={@flag} />
+             """) == "LOCAL COMPONENT: Value: 123"
 
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :if={true} />
-        """)
-      end)
+      assert compile("""
+             <.local_function_component value="123" :if={!@flag}>test</.local_function_component>
+             """) == ""
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={@flag} />
+             """) == "REMOTE COMPONENT: Value: 123"
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={!@flag}>test</Phoenix.LiveView.HTMLEngineTest.remote_function_component>
+             """) == ""
     end
 
     test "raise on duplicated :if" do
@@ -1629,6 +1644,38 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div :if={true} :if={false}>test</div>
         """)
       end)
+    end
+
+    def slot_if(assigns) do
+      ~H"""
+      <div><%= @value %>-<%= render_slot(@slot, @value) %></div>
+      """
+    end
+
+    def slot_if_self_close(assigns) do
+      ~H"""
+      <div><%= @value %>-<%= for slot <- @slot do %><%= slot.val %>-<% end %></div>
+      """
+    end
+
+    test ":if in slots" do
+      assigns = %{flag: true}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :if={@flag}>slot1</:slot>
+               <:slot :if={!@flag}>slot2</:slot>
+               <:slot :if={@flag}>slot3</:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot1slot3</div>"
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if_self_close value={0}>
+               <:slot :if={@flag} val={1} />
+               <:slot :if={!@flag} val={2} />
+               <:slot :if={@flag} val={3} />
+             </Phoenix.LiveView.HTMLEngineTest.slot_if_self_close>
+             """) == "<div>0-1-3-</div>"
     end
   end
 

@@ -269,10 +269,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
          slot_name,
          slot_assigns,
          slot_info,
-         tag_meta
+         tag_meta,
+         special_attrs
        )
        when first in ?A..?Z or first == ?. do
-    slot = {slot_name, slot_assigns, {tag_meta, slot_info}}
+    slot = {slot_name, slot_assigns, special_attrs, {tag_meta, slot_info}}
     %{state | slots: [[slot | slots] | other_slots], previous_token_slot?: true}
   end
 
@@ -281,7 +282,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
          slot_name,
          _slot_assigns,
          _slot_info,
-         %{line: line, column: column} = _tag_meta
+         %{line: line, column: column} = _tag_meta,
+         _special_attrs
        ) do
     message =
       "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component"
@@ -291,17 +293,29 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp pop_slots(%{slots: [slots | other_slots]} = state) do
     # Perform group_by by hand as we need to group two distinct maps.
-    {acc_assigns, acc_info} =
-      Enum.reduce(slots, {%{}, %{}}, fn {key, assigns, info}, {acc_assigns, acc_info} ->
+    {acc_assigns, acc_info, ifs} =
+      Enum.reduce(slots, {%{}, %{}, %{}}, fn {key, assigns, special, info},
+                                             {acc_assigns, acc_info, ifs} ->
         case acc_assigns do
           %{^key => existing_assigns} ->
             acc_assigns = %{acc_assigns | key => [assigns | existing_assigns]}
             %{^key => existing_info} = acc_info
             acc_info = %{acc_info | key => [info | existing_info]}
-            {acc_assigns, acc_info}
+            {acc_assigns, acc_info, ifs}
 
           %{} ->
-            {Map.put(acc_assigns, key, [assigns]), Map.put(acc_info, key, [info])}
+            ifs = Map.put(ifs, key, Map.has_key?(special, ":if"))
+            {Map.put(acc_assigns, key, [assigns]), Map.put(acc_info, key, [info]), ifs}
+        end
+      end)
+
+    # filter out nil slots via :if exclusion only when :if is present
+    acc_assigns =
+      Enum.into(acc_assigns, %{}, fn {key, assigns_ast} ->
+        if Map.fetch!(ifs, key) do
+          {key, quote(do: Enum.filter(unquote(assigns_ast), & &1))}
+        else
+          {key, assigns_ast}
         end
       end)
 
@@ -383,20 +397,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
     file = state.file
     {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
 
-    {assigns, attr_info, state} =
+    {assigns, special, attr_info, state} =
       build_self_close_component_assigns(tag_name, attrs, tag_meta.line, state)
 
     mod = Macro.expand(mod_ast, state.caller)
     store_component_call({mod, fun}, attr_info, [], line, state)
 
     ast =
-      quote line: tag_meta.line do
-        Phoenix.LiveView.HTMLEngine.component(
-          &(unquote(mod_ast).unquote(fun) / 1),
-          unquote(assigns),
-          {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
-        )
-      end
+      maybe_if(
+        special,
+        quote line: tag_meta.line do
+          Phoenix.LiveView.HTMLEngine.component(
+            &(unquote(mod_ast).unquote(fun) / 1),
+            unquote(assigns),
+            {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
+          )
+        end
+      )
 
     state
     |> set_root_on_not_tag()
@@ -426,19 +443,22 @@ defmodule Phoenix.LiveView.HTMLEngine do
     mod = Macro.expand(mod_ast, state.caller)
     attrs = remove_phx_no_break(attrs)
 
-    {assigns, attr_info, slot_info, state} =
+    {assigns, special, attr_info, slot_info, state} =
       build_component_assigns(name, attrs, line, tag_meta, state)
 
     store_component_call({mod, fun}, attr_info, slot_info, line, state)
 
     ast =
-      quote line: line do
-        Phoenix.LiveView.HTMLEngine.component(
-          &(unquote(mod_ast).unquote(fun) / 1),
-          unquote(assigns),
-          {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
-        )
-      end
+      maybe_if(
+        special,
+        quote line: line do
+          Phoenix.LiveView.HTMLEngine.component(
+            &(unquote(mod_ast).unquote(fun) / 1),
+            unquote(assigns),
+            {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
+          )
+        end
+      )
 
     state
     |> pop_substate_from_stack()
@@ -453,19 +473,24 @@ defmodule Phoenix.LiveView.HTMLEngine do
        ) do
     attrs = remove_phx_no_break(attrs)
     fun = String.to_atom(name)
-    {assigns, attr_info, state} = build_self_close_component_assigns(tag_name, attrs, line, state)
+
+    {assigns, special, attr_info, state} =
+      build_self_close_component_assigns(tag_name, attrs, line, state)
 
     mod = actual_component_module(state.caller, fun)
     store_component_call({mod, fun}, attr_info, [], line, state)
 
     ast =
-      quote line: line do
-        Phoenix.LiveView.HTMLEngine.component(
-          &(unquote(Macro.var(fun, __MODULE__)) / 1),
-          unquote(assigns),
-          {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
-        )
-      end
+      maybe_if(
+        special,
+        quote line: line do
+          Phoenix.LiveView.HTMLEngine.component(
+            &(unquote(Macro.var(fun, __MODULE__)) / 1),
+            unquote(assigns),
+            {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
+          )
+        end
+      )
 
     state
     |> set_root_on_not_tag()
@@ -491,7 +516,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     %{line: line} = tag_meta
     slot_name = String.to_atom(slot_name)
-    {let, roots, attrs, attr_info} = split_component_attrs(attrs, state.file, tag_name)
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state.file, tag_name)
+    let = special[":let"]
 
     with {_, let_meta} <- let do
       raise ParseError,
@@ -502,8 +528,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
-    assigns = merge_component_attrs(roots, attrs, line)
-    add_slot!(state, slot_name, assigns, attr_info, tag_meta)
+    assigns = maybe_if(special, merge_component_attrs(roots, attrs, line))
+    add_slot!(state, slot_name, assigns, attr_info, tag_meta, special)
   end
 
   # Slot (with inner content)
@@ -520,8 +546,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     slot_name = String.to_atom(slot_name)
 
-    {let, roots, attrs, attr_info} = split_component_attrs(attrs, state.file, tag_name)
-    clauses = build_component_clauses(let, state)
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state.file, tag_name)
+    clauses = build_component_clauses(special[":let"], state)
 
     ast =
       quote line: line do
@@ -529,10 +555,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end
 
     attrs = [__slot__: slot_name, inner_block: ast] ++ attrs
-    assigns = merge_component_attrs(roots, attrs, line)
+    assigns = maybe_if(special, merge_component_attrs(roots, attrs, line))
+    inner = add_inner_block(attr_info, ast, tag_meta)
 
     state
-    |> add_slot!(slot_name, assigns, add_inner_block(attr_info, ast, tag_meta), tag_meta)
+    |> add_slot!(slot_name, assigns, inner, tag_meta, special)
     |> pop_substate_from_stack()
   end
 
@@ -553,19 +580,22 @@ defmodule Phoenix.LiveView.HTMLEngine do
     fun = String.to_atom(fun_name)
     mod = actual_component_module(state.caller, fun)
 
-    {assigns, attr_info, slot_info, state} =
+    {assigns, special, attr_info, slot_info, state} =
       build_component_assigns(name, attrs, line, tag_meta, state)
 
     store_component_call({mod, fun}, attr_info, slot_info, line, state)
 
     ast =
-      quote line: line do
-        Phoenix.LiveView.HTMLEngine.component(
-          &(unquote(Macro.var(fun, __MODULE__)) / 1),
-          unquote(assigns),
-          {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
-        )
-      end
+      maybe_if(
+        special,
+        quote line: line do
+          Phoenix.LiveView.HTMLEngine.component(
+            &(unquote(Macro.var(fun, __MODULE__)) / 1),
+            unquote(assigns),
+            {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
+          )
+        end
+      )
 
     state
     |> pop_substate_from_stack()
@@ -922,14 +952,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
   ## build_self_close_component_assigns/build_component_assigns
 
   defp build_self_close_component_assigns(component, attrs, line, %{file: file} = state) do
-    {let, roots, attrs, attr_info} = split_component_attrs(attrs, file, component)
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, file, component)
+    let = special[":let"]
     raise_if_let!(let, file)
-    {merge_component_attrs(roots, attrs, line), attr_info, state}
+    {merge_component_attrs(roots, attrs, line), special, attr_info, state}
   end
 
   defp build_component_assigns(component, attrs, line, tag_meta, %{file: file} = state) do
-    {let, roots, attrs, attr_info} = split_component_attrs(attrs, file, component)
-    clauses = build_component_clauses(let, state)
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, file, component)
+    clauses = build_component_clauses(special[":let"], state)
 
     inner_block =
       quote line: line do
@@ -952,58 +983,57 @@ defmodule Phoenix.LiveView.HTMLEngine do
     ]
 
     attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slot_assigns]
-    {merge_component_attrs(roots, attrs, line), attr_info, slot_info, state}
+    {merge_component_attrs(roots, attrs, line), special, attr_info, slot_info, state}
   end
 
   defp split_component_attrs(attrs, file, component_or_slot) do
-    {let, roots, attrs, locs} =
+    {special, roots, attrs, locs} =
       attrs
       |> Enum.reverse()
-      |> Enum.reduce({nil, [], [], []}, &split_component_attr(&1, &2, file, component_or_slot))
+      |> Enum.reduce({%{}, [], [], []}, &split_component_attr(&1, &2, file, component_or_slot))
 
-    {let, roots, attrs, {roots != [], attrs, locs}}
+    {special, roots, attrs, {roots != [], attrs, locs}}
   end
 
   defp split_component_attr(
          {:root, {:expr, value, %{line: line, column: col}}, _attr_meta},
-         {let, r, a, locs},
+         {special, r, a, locs},
          file,
          _component_or_slot
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
     quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
-    {let, [quoted_value | r], a, locs}
+    {special, [quoted_value | r], a, locs}
   end
 
   # TODO: deprecate "let" in favor of `:let` on LV v0.19.
+  @special_attrs ~w(let :let :if)
   defp split_component_attr(
-         {let, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
-         {nil, r, a, locs},
+         {attr, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
+         {special, r, a, locs},
          file,
          _component_or_slot
        )
-       when let in ["let", ":let"] do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
-    {{quoted_value, meta}, r, a, locs}
-  end
+       when attr in @special_attrs do
+    attr = if String.starts_with?(attr, ":"), do: attr, else: ":#{attr}"
 
-  defp split_component_attr(
-         {let, {:expr, _value, previous_meta}, _attr_meta},
-         {{_, meta}, _, _, _},
-         file,
-         _component_or_slot
-       )
-       when let in ["let", ":let"] do
-    message = """
-    cannot define multiple :let attributes. \
-    Another :let has already been defined at line #{previous_meta.line}\
-    """
+    case Map.fetch(special, attr) do
+      {:ok, {_, attr_meta}} ->
+        message = """
+        cannot define multiple #{attr} attributes. \
+        Another #{attr} has already been defined at line #{meta.line}\
+        """
 
-    raise ParseError,
-      line: meta.line,
-      column: meta.column,
-      file: file,
-      description: message
+        raise ParseError,
+          line: attr_meta.line,
+          column: attr_meta.column,
+          file: file,
+          description: message
+
+      :error ->
+        quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
+        {Map.put(special, attr, {quoted_value, meta}), r, a, locs}
+    end
   end
 
   defp split_component_attr({":let", _, meta}, _state, file, component_or_slot) do
@@ -1028,25 +1058,30 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp split_component_attr(
          {name, {:expr, value, %{line: line, column: col}}, attr_meta},
-         {let, r, a, locs},
+         {special, r, a, locs},
          file,
          _component_or_slot
        ) do
     quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
-    {let, r, [{String.to_atom(name), quoted_value} | a], [line_column(attr_meta) | locs]}
+    {special, r, [{String.to_atom(name), quoted_value} | a], [line_column(attr_meta) | locs]}
   end
 
   defp split_component_attr(
          {name, {:string, value, _meta}, attr_meta},
-         {let, r, a, locs},
+         {special, r, a, locs},
          _file,
          _component_or_slot
        ) do
-    {let, r, [{String.to_atom(name), value} | a], [line_column(attr_meta) | locs]}
+    {special, r, [{String.to_atom(name), value} | a], [line_column(attr_meta) | locs]}
   end
 
-  defp split_component_attr({name, nil, attr_meta}, {let, r, a, locs}, _file, _component_or_slot) do
-    {let, r, [{String.to_atom(name), true} | a], [line_column(attr_meta) | locs]}
+  defp split_component_attr(
+         {name, nil, attr_meta},
+         {special, r, a, locs},
+         _file,
+         _component_or_slot
+       ) do
+    {special, r, [{String.to_atom(name), true} | a], [line_column(attr_meta) | locs]}
   end
 
   defp line_column(%{line: line, column: column}), do: {line, column}
@@ -1292,4 +1327,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
     do: validate_phx_attrs!(t, meta, state, attr, id?)
+
+  defp maybe_if(special, ast) do
+    case special[":if"] do
+      {expr, %{line: line}} ->
+        quote line: line do
+          if unquote(expr) do
+            unquote(ast)
+          end
+        end
+
+      nil ->
+        ast
+    end
+  end
 end
