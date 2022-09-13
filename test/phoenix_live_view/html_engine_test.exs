@@ -560,17 +560,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "raise when it is not let" do
-      message = ~r"unsupported attribute \":for\" in component"
-
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :for={item <- [1]}
-        />
-        """)
-      end)
-
+    test "raise with invalid special attr" do
       message = ~r"unsupported attribute \":bar\" in component"
 
       assert_raise(ParseError, message, fn ->
@@ -1539,21 +1529,52 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "raise when used in components" do
-      message = ~r/unsupported attribute \":for\" in component/
+    test ":if components change tracking" do
+      assert %Phoenix.LiveView.Rendered{static: ["", ""], dynamic: dynamic} =
+               eval(
+                 """
+                 <Phoenix.LiveView.HTMLEngineTest.remote_function_component value={@val} :if={@val == 1} />
+                 """,
+                 %{__changed__: %{val: true}, val: 1}
+               )
 
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <.local_function_component :for={item <- [1, 2]} />")
-        """)
-      end)
+      assert [%Phoenix.LiveView.Rendered{static: ["", ""]}] = dynamic.(true)
+    end
 
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :for={item <- [1, 2]}/>
-        """)
-      end)
+    test ":for components change tracking" do
+      %Phoenix.LiveView.Rendered{static: ["", ""], dynamic: dynamic} =
+        eval(
+          """
+          <Phoenix.LiveView.HTMLEngineTest.remote_function_component :for={val <- @items} value={val} />
+          """,
+          %{__changed__: %{items: true}, items: [1, 2]}
+        )
+
+      assert [%Phoenix.LiveView.Comprehension{static: ["", ""]}] = dynamic.(true)
+    end
+
+    test ":for in components" do
+      assigns = %{items: [1, 2]}
+
+      assert compile("""
+             <.local_function_component :for={val <- @items} value={val} />
+             """) == "LOCAL COMPONENT: Value: 1LOCAL COMPONENT: Value: 2"
+
+      assert compile("""
+             <br>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component :for={val <- @items} value={val} />
+             """) == "<br>\nREMOTE COMPONENT: Value: 1REMOTE COMPONENT: Value: 2"
+
+      assert compile("""
+             <br>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block :for={val <- @items} value={val}>inner<%= val %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
+             """) ==
+               "<br>\nREMOTE COMPONENT: Value: 1, Content: inner1REMOTE COMPONENT: Value: 2, Content: inner2"
+
+      assert compile("""
+             <.local_function_component_with_inner_block :for={val <- @items} value={val}>inner<%= val %></.local_function_component_with_inner_block>
+             """) ==
+               "LOCAL COMPONENT: Value: 1, Content: inner1LOCAL COMPONENT: Value: 2, Content: inner2"
     end
 
     test "raise on duplicated :for" do
@@ -1565,6 +1586,36 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
         """)
       end)
+    end
+
+    test ":for in slots" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :for={i <- @items}>slot<%= i %></:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot1slot2slot3slot4</div>"
+    end
+
+    test ":for and :if in slots" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :for={i <- @items} :if={rem(i, 2) == 0}>slot<%= i %></:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot2slot4</div>"
+    end
+
+    test ":for and :if and :let in slots" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :for={i <- @items} :if={rem(i, 2) == 0} :let={val}>slot<%= i %>(<%= val %>)</:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot2(0)slot4(0)</div>"
     end
   end
 
@@ -1603,21 +1654,24 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "raise when used in components" do
-      message = ~r/unsupported attribute \":if\" in component/
+    test ":if in components" do
+      assigns = %{flag: true}
 
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <.local_function_component :if={true} />")
-        """)
-      end)
+      assert compile("""
+             <.local_function_component value="123" :if={@flag} />
+             """) == "LOCAL COMPONENT: Value: 123"
 
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :if={true} />
-        """)
-      end)
+      assert compile("""
+             <.local_function_component value="123" :if={!@flag}>test</.local_function_component>
+             """) == ""
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={@flag} />
+             """) == "REMOTE COMPONENT: Value: 123"
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={!@flag}>test</Phoenix.LiveView.HTMLEngineTest.remote_function_component>
+             """) == ""
     end
 
     test "raise on duplicated :if" do
@@ -1629,6 +1683,38 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div :if={true} :if={false}>test</div>
         """)
       end)
+    end
+
+    def slot_if(assigns) do
+      ~H"""
+      <div><%= @value %>-<%= render_slot(@slot, @value) %></div>
+      """
+    end
+
+    def slot_if_self_close(assigns) do
+      ~H"""
+      <div><%= @value %>-<%= for slot <- @slot do %><%= slot.val %>-<% end %></div>
+      """
+    end
+
+    test ":if in slots" do
+      assigns = %{flag: true}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :if={@flag}>slot1</:slot>
+               <:slot :if={!@flag}>slot2</:slot>
+               <:slot :if={@flag}>slot3</:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot1slot3</div>"
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if_self_close value={0}>
+               <:slot :if={@flag} val={1} />
+               <:slot :if={!@flag} val={2} />
+               <:slot :if={@flag} val={3} />
+             </Phoenix.LiveView.HTMLEngineTest.slot_if_self_close>
+             """) == "<div>0-1-3-</div>"
     end
   end
 
@@ -1659,6 +1745,27 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
                <div :for={i <- @items} :if={false}><%= i %></div>
              """) == ""
+    end
+
+    test "handle attrs on components" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+               <.local_function_component  :for={i <- @items} :if={rem(i, 2) == 0} value={i}/>
+             """) == "LOCAL COMPONENT: Value: 2LOCAL COMPONENT: Value: 4"
+
+      assert compile("""
+               <Phoenix.LiveView.HTMLEngineTest.remote_function_component  :for={i <- @items} :if={rem(i, 2) == 0} value={i}/>
+             """) == "REMOTE COMPONENT: Value: 2REMOTE COMPONENT: Value: 4"
+
+      assert compile("""
+               <.local_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></.local_function_component_with_inner_block>
+             """) == "LOCAL COMPONENT: Value: 2, Content: 2LOCAL COMPONENT: Value: 4, Content: 4"
+
+      assert compile("""
+               <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
+             """) ==
+               "REMOTE COMPONENT: Value: 2, Content: 2REMOTE COMPONENT: Value: 4, Content: 4"
     end
   end
 end

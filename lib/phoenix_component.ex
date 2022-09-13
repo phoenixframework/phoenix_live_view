@@ -601,20 +601,53 @@ defmodule Phoenix.Component do
   `text_input`. The `Phoenix.Component` module has detailed documentation on
   how to use and implement such functionality.
 
-  #### :for
+  #### :if and :for
 
-  It is a syntax sugar for `<%= for .. do %>` that can be used only in regular HTML
-  tags, therefore `:for` will not work on components.
+  It is a syntax sugar for `<%= if .. do %>` and `<%= for .. do %>` that can be
+  used in regular HTML, function components, and slots.
+
+  For example in an HTML tag:
 
   ```heex
-  <table id="my-table">
+  <table id="admin-table" :if={@admin?}>
     <tr :for={user <- @users}>
       <td><%= user.name %>
     </tr>
   <table>
   ```
 
-  The snippet above will generate a `tr` per user as you would expect.
+  The snippet above will only render the table if `@admin?` is true,
+  and generate a `tr` per user as you would expect from the collection.
+
+  `:for` can be used similarly in function components:
+
+  ```heex
+  <.error :for={msg <- @errors} message={msg}/>
+  ```
+
+  Which is equivalent to writing:
+
+  ```heex
+  <%= for msg <- @errors do %>
+    <.error message={msg} />
+  <% end %>
+  ```
+
+  And `:for` in slots behaves the same way:
+
+  ```heex
+  <.table id="my-table" rows={@users}>
+    <:col :for={header <- @headers} let={user}>
+      <td><%= user[:header] %></td>
+    </:col>
+  <table>
+  ```
+
+  You can also combine `:for` and `:if` for tags, components, and slot to act as a filter:
+
+  ```heex
+  <.error :for={msg <- @errors} :if={msg != nil} message={msg} />
+  ```
   '''
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
