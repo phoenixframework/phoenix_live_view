@@ -362,12 +362,13 @@ export default class LiveSocket {
   }
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
+    let liveReferer = this.currentLocation.href
     this.outgoingMainEl = this.outgoingMainEl || this.main.el
     let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
 
-    this.main = this.newRootView(newMainEl, flash)
+    this.main = this.newRootView(newMainEl, flash, liveReferer)
     this.main.setRedirect(href)
     this.transitionRemoves()
     this.main.join((joinCount, onDone) => {
@@ -395,8 +396,8 @@ export default class LiveSocket {
 
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_SESSION) !== null }
 
-  newRootView(el, flash){
-    let view = new View(el, this, null, flash)
+  newRootView(el, flash, liveReferer){
+    let view = new View(el, this, null, flash, liveReferer)
     this.roots[view.id] = view
     return view
   }

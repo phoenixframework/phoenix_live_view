@@ -36,6 +36,7 @@ a `:let` usage.
   - [Logger] Add new LiveView logger with telemetry instrumentation for lifecycle events
   - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessibility
   - [Socket] Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
+  - Add `_live_referer` connect param for handling `push_navigate` referal URL
 
 ### Bug fixes
   - Fix external upload issue where listeners are not cleaned up when an external failure happens on the client

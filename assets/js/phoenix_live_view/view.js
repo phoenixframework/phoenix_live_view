@@ -74,7 +74,7 @@ let serializeForm = (form, meta, onlyNames = []) => {
 }
 
 export default class View {
-  constructor(el, liveSocket, parentView, flash){
+  constructor(el, liveSocket, parentView, flash, liveReferer){
     this.liveSocket = liveSocket
     this.flash = flash
     this.parent = parentView
@@ -103,10 +103,10 @@ export default class View {
       return {
         redirect: this.redirect ? this.href : undefined,
         url: this.redirect ? undefined : this.href || undefined,
-        params: this.connectParams(),
+        params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash
+        flash: this.flash,
       }
     })
     this.showLoader(this.liveSocket.loaderTimeout)
@@ -122,7 +122,7 @@ export default class View {
 
   isMain(){ return this.el.getAttribute(PHX_MAIN) !== null }
 
-  connectParams(){
+  connectParams(liveReferer){
     let params = this.liveSocket.params(this.el)
     let manifest =
       DOM.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`)
@@ -130,6 +130,7 @@ export default class View {
 
     if(manifest.length > 0){ params["_track_static"] = manifest }
     params["_mounts"] = this.joinCount
+    params["_live_referer"] = liveReferer
 
     return params
   }
