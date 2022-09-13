@@ -1060,7 +1060,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           file: file,
           description: message
 
-      :error ->
+      %{} ->
         quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
         {Map.put(special, attr, {quoted_value, meta}), r, a, locs}
     end
