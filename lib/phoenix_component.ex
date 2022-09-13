@@ -601,22 +601,23 @@ defmodule Phoenix.Component do
   `text_input`. The `Phoenix.Component` module has detailed documentation on
   how to use and implement such functionality.
 
-  #### :for
+  #### :if an d:for
 
-  It is a syntax sugar for `<%= for .. do %>` that can be used in regular HTML,
-  function components, and slots.
+  It is a syntax sugar for `<%= if .. do %>` and `<%= for .. do %>` that can be
+  used in regular HTML, function components, and slots.
 
   For example in an HTML tag:
 
   ```heex
-  <table id="my-table">
+  <table id="admin-table" :if={@admin?}>
     <tr :for={user <- @users}>
       <td><%= user.name %>
     </tr>
   <table>
   ```
 
-  The snippet above will generate a `tr` per user as you would expect.
+  The snippet above will only render the table if `@admin?` is true,
+  and generate a `tr` per user as you would expect from the collection.
 
   `:for` can be used similarly in function components:
 
