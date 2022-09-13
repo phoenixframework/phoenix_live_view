@@ -314,7 +314,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     acc_assigns =
       Enum.into(acc_assigns, %{}, fn {key, assigns_ast} ->
         if Map.fetch!(specials, key) do
-          {key, quote(do: Enum.flat_map(unquote(assigns_ast), & &1))}
+          {key, quote(do: List.flatten(unquote(assigns_ast)))}
         else
           {key, assigns_ast}
         end
