@@ -601,7 +601,7 @@ defmodule Phoenix.Component do
   `text_input`. The `Phoenix.Component` module has detailed documentation on
   how to use and implement such functionality.
 
-  #### :if an d:for
+  #### :if and :for
 
   It is a syntax sugar for `<%= if .. do %>` and `<%= for .. do %>` that can be
   used in regular HTML, function components, and slots.
