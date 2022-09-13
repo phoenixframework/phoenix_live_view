@@ -2259,7 +2259,7 @@ var serializeForm = (form, meta, onlyNames = []) => {
   return params.toString();
 };
 var View = class {
-  constructor(el, liveSocket, parentView, flash) {
+  constructor(el, liveSocket, parentView, flash, liveReferer) {
     this.liveSocket = liveSocket;
     this.flash = flash;
     this.parent = parentView;
@@ -2291,7 +2291,7 @@ var View = class {
       return {
         redirect: this.redirect ? this.href : void 0,
         url: this.redirect ? void 0 : this.href || void 0,
-        params: this.connectParams(),
+        params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
         flash: this.flash
@@ -2310,13 +2310,14 @@ var View = class {
   isMain() {
     return this.el.getAttribute(PHX_MAIN) !== null;
   }
-  connectParams() {
+  connectParams(liveReferer) {
     let params = this.liveSocket.params(this.el);
     let manifest = dom_default.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`).map((node) => node.src || node.href).filter((url) => typeof url === "string");
     if (manifest.length > 0) {
       params["_track_static"] = manifest;
     }
     params["_mounts"] = this.joinCount;
+    params["_live_referer"] = liveReferer;
     return params;
   }
   isConnected() {
@@ -3512,11 +3513,12 @@ var LiveSocket = class {
     browser_default.redirect(to, flash);
   }
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
+    let liveReferer = this.currentLocation.href;
     this.outgoingMainEl = this.outgoingMainEl || this.main.el;
     let newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
     this.main.showLoader(this.loaderTimeout);
     this.main.destroy();
-    this.main = this.newRootView(newMainEl, flash);
+    this.main = this.newRootView(newMainEl, flash, liveReferer);
     this.main.setRedirect(href);
     this.transitionRemoves();
     this.main.join((joinCount, onDone) => {
@@ -3543,8 +3545,8 @@ var LiveSocket = class {
   isPhxView(el) {
     return el.getAttribute && el.getAttribute(PHX_SESSION) !== null;
   }
-  newRootView(el, flash) {
-    let view = new View(el, this, null, flash);
+  newRootView(el, flash, liveReferer) {
+    let view = new View(el, this, null, flash, liveReferer);
     this.roots[view.id] = view;
     return view;
   }

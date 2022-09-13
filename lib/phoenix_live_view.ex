@@ -1098,6 +1098,8 @@ defmodule Phoenix.LiveView do
     * `"_track_static"` - set automatically with a list of all href/src from
       tags with the `phx-track-static` annotation in them. If there are no
       such tags, nothing is sent
+    * `_live_referer` - sent by the client as the referer URL when a
+      live navigation has occurred from `push_navigate` or client link navigate.
 
   ## Examples
 
