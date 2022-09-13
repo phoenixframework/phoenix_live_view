@@ -1047,8 +1047,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
        when attr in @special_attrs do
     attr = if String.starts_with?(attr, ":"), do: attr, else: ":#{attr}"
 
-    case Map.fetch(special, attr) do
-      {:ok, {_, attr_meta}} ->
+    case special, do
+      %{^attr => {_, attr_meta}} ->
         message = """
         cannot define multiple #{attr} attributes. \
         Another #{attr} has already been defined at line #{meta.line}\
