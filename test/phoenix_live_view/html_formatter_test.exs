@@ -1753,7 +1753,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "add attrs starting with `:` at the beginning" do
+    test "order :let :for and :if over HTML attributes" do
       assert_formatter_output(
         """
         <.form for={@changeset} :let={f} class="form">
@@ -1764,6 +1764,24 @@ if Version.match?(System.version(), ">= 1.13.0") do
         <.form :let={f} for={@changeset} class="form">
           <%= input(f, :foo) %>
         </.form>
+        """
+      )
+
+      assert_formatter_output(
+        """
+        <div :for={item <- @items} :if={true} :let={@name} />
+        """,
+        """
+        <div :let={@name} :for={item <- @items} :if={true} />
+        """
+      )
+
+      assert_formatter_output(
+        """
+        <div id="id" class="class" :if={true} :for={item <- @items} :let={@name} />
+        """,
+        """
+        <div :let={@name} :for={item <- @items} :if={true} id="id" class="class" />
         """
       )
     end
