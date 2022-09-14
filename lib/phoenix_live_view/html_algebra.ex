@@ -362,16 +362,28 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp build_attrs(attrs, on_break, opts) do
     attrs
-    |> Enum.sort_by(&attrs_sorter/1, :desc)
+    |> Enum.sort_by(&attrs_sorter/1)
     |> Enum.reduce(empty(), &concat([&2, break(" "), render_attribute(&1, opts)]))
     |> nest(2)
     |> concat(break(on_break))
     |> group()
   end
 
-  # Just add attrs that starts with `:` such as `:let` at the beginning.
-  defp attrs_sorter({attr, _, _}) when is_binary(attr), do: :binary.first(attr) == ?:
-  defp attrs_sorter({_, _, _}), do: false
+  @attrs_order %{
+    ":let" => 1,
+    ":for" => 2,
+    ":if" => 3
+  }
+
+  # Sort attrs by @attrs_order. This will set :let, :for and :if at the beginning
+  # and ordinary HTML attributes at the end. HTML attributes will not change their
+  # order.
+  defp attrs_sorter({attr_name, _, _}) do
+    case @attrs_order[attr_name] do
+      nil -> 4
+      attrs_order -> attrs_order
+    end
+  end
 
   defp format_tag_open(name, [attr], context),
     do: concat(["<#{name} ", render_attribute(attr, context.opts), ">"])
