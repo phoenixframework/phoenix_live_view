@@ -2273,6 +2273,7 @@ var serializeForm = (form, meta, onlyNames = []) => {
 };
 var View = class {
   constructor(el, liveSocket, parentView, flash, liveReferer) {
+    this.isDead = false;
     this.liveSocket = liveSocket;
     this.flash = flash;
     this.parent = parentView;
@@ -2377,9 +2378,13 @@ var View = class {
       this.setContainerClasses(PHX_DISCONNECTED_CLASS);
     }
   }
+  execAll(binding) {
+    dom_default.all(this.el, `[${binding}]`, (el) => this.liveSocket.execJS(el, el.getAttribute(binding)));
+  }
   hideLoader() {
     clearTimeout(this.loaderTimer);
     this.setContainerClasses(PHX_CONNECTED_CLASS);
+    this.execAll(this.binding("connected"));
   }
   triggerReconnected() {
     for (let id in this.viewHooks) {
@@ -2483,16 +2488,19 @@ var View = class {
     this.el = dom_default.byId(this.id);
     this.el.setAttribute(PHX_ROOT_ID, this.root.id);
   }
+  execNewMounted() {
+    dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
+      this.maybeAddNewHook(hookEl);
+    });
+    dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => this.maybeMounted(el));
+  }
   applyJoinPatch(live_patch, html, events) {
     this.attachTrueDocEl();
     let patch = new DOMPatch(this, this.el, this.id, html, null);
     patch.markPrunableContentForRemoval();
     this.performPatch(patch, false);
     this.joinNewChildren();
-    dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
-      this.maybeAddNewHook(hookEl);
-    });
-    dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => this.maybeMounted(el));
+    this.execNewMounted();
     this.joinPending = false;
     this.liveSocket.dispatchEvents(events);
     this.applyPendingUpdates();
@@ -2763,6 +2771,9 @@ var View = class {
   isDestroyed() {
     return this.destroyed;
   }
+  joinDead() {
+    this.isDead = true;
+  }
   join(callback) {
     if (this.isMain()) {
       this.stopCallback = this.liveSocket.withPageLoading({ to: this.href, kind: "initial" });
@@ -2831,6 +2842,7 @@ var View = class {
     }
     this.showLoader();
     this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS);
+    this.execAll(this.binding("disconnected"));
   }
   pushWithReply(refGenerator, event, payload, onReply = function() {
   }) {
@@ -3258,7 +3270,7 @@ var View = class {
     }
   }
   ownsElement(el) {
-    return el.getAttribute(PHX_PARENT_ID) === this.id || maybe(el.closest(PHX_VIEW_SELECTOR), (node) => node.id) === this.id;
+    return this.isDead || el.getAttribute(PHX_PARENT_ID) === this.id || maybe(el.closest(PHX_VIEW_SELECTOR), (node) => node.id) === this.id;
   }
   submitForm(form, targetCtx, phxEvent, opts = {}) {
     dom_default.putPrivate(form, PHX_HAS_SUBMITTED, true);
@@ -3374,6 +3386,8 @@ var LiveSocket = class {
         this.socket.connect();
       } else if (this.main) {
         this.socket.connect();
+      } else {
+        this.joinDeadView();
       }
     };
     if (["complete", "loaded", "interactive"].indexOf(document.readyState) >= 0) {
@@ -3506,6 +3520,14 @@ var LiveSocket = class {
   channel(topic, params) {
     return this.socket.channel(topic, params);
   }
+  joinDeadView() {
+    this.bindTopLevelEvents({ dead: true });
+    let view = this.newRootView(document.body);
+    view.setHref(this.getHref());
+    view.joinDead();
+    this.main = view;
+    window.requestAnimationFrame(() => view.execNewMounted());
+  }
   joinRootViews() {
     let rootsFound = false;
     dom_default.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, (rootEl) => {
@@ -3633,7 +3655,7 @@ var LiveSocket = class {
       this.prevActive.blur();
     }
   }
-  bindTopLevelEvents() {
+  bindTopLevelEvents({ dead } = {}) {
     if (this.boundTopLevelEvents) {
       return;
     }
@@ -3652,9 +3674,13 @@ var LiveSocket = class {
         window.location.reload();
       }
     }, true);
-    this.bindNav();
+    if (!dead) {
+      this.bindNav();
+    }
     this.bindClicks();
-    this.bindForms();
+    if (!dead) {
+      this.bindForms();
+    }
     this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, targetEl, phxEvent, eventTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY));
       let pressedKey = e.key && e.key.toLowerCase();
@@ -3872,6 +3898,9 @@ var LiveSocket = class {
     return callback ? callback(done) : done;
   }
   pushHistoryPatch(href, linkState, targetEl) {
+    if (!this.isConnected()) {
+      return browser_default.redirect(href);
+    }
     this.withPageLoading({ to: href, kind: "patch" }, (done) => {
       this.main.pushLinkPatch(href, targetEl, (linkRef) => {
         this.historyPatch(href, linkState, linkRef);
@@ -3887,6 +3916,9 @@ var LiveSocket = class {
     this.registerNewLocation(window.location);
   }
   historyRedirect(href, linkState, flash) {
+    if (!this.isConnected()) {
+      return browser_default.redirect(href, flash);
+    }
     if (/^\/[^\/]+.*$/.test(href)) {
       let { protocol, host } = window.location;
       href = `${protocol}//${host}${href}`;
