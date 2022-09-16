@@ -181,6 +181,11 @@ or removed by the server, a hook object may be provided via `phx-hook`.
   * `disconnected` - the element's parent LiveView has disconnected from the server
   * `reconnected` - the element's parent LiveView has reconnected to the server
 
+*Note:* When using hooks outside the context of a LiveView, `mounted` is the only
+callback invoked, and only those elements on the page at DOM ready will be tracked.
+For dynamic tracking of the DOM as elements are added, removed, and updated, a LiveView
+should be used.
+
 The above life-cycle callbacks have in-scope access to the following attributes:
 
   * `el` - attribute referencing the bound DOM node
@@ -229,7 +234,7 @@ DOM management, the `LiveSocket` constructor accepts a `dom` option with an
 function just before the DOM patch operations occurs in LiveView. This allows external
 libraries to (re)initialize DOM elements or copy attributes as necessary as LiveView
 performs its own patch operations. The update operation cannot be cancelled or deferred,
-and the return value is ignored. 
+and the return value is ignored.
 
 For example, the following option could be used to add
 [Alpine.js](https://github.com/alpinejs/alpine) support to your project:
@@ -248,8 +253,8 @@ In the following example, all attributes starting with `data-js-` won't be repla
 
     onBeforeElUpdated(from, to){
       for (const attr of from.attributes){
-        if (attr.name.startsWith("data-js-")){ 
-          to.setAttribute(attr.name, attr.value); 
+        if (attr.name.startsWith("data-js-")){
+          to.setAttribute(attr.name, attr.value);
         }
       }
     }

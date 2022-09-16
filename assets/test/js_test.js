@@ -1,22 +1,13 @@
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 import JS from "phoenix_live_view/js"
-import {simulateJoinedView, liveViewDOM} from "./test_helpers"
+import {simulateJoinedView, simulateVisibility, liveViewDOM} from "./test_helpers"
 
 let setupView = (content) => {
   let el = liveViewDOM(content)
   global.document.body.appendChild(el)
   let liveSocket = new LiveSocket("/live", Socket)
   return simulateJoinedView(el, liveSocket)
-}
-
-let simulateVisibility = el => {
-  el.getClientRects = () => {
-    let style = window.getComputedStyle(el)
-    let visible = !(style.opacity === 0 || style.display === "none")
-    return visible ? {length: 1} : {length: 0}
-  }
-  return el
 }
 
 describe("JS", () => {

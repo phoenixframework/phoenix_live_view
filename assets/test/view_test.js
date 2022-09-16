@@ -3,7 +3,7 @@ import LiveSocket from "phoenix_live_view/live_socket"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
-import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM} from "./test_helpers"
+import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
 
 describe("View + DOM", function(){
   beforeEach(() => {
@@ -596,19 +596,31 @@ describe("View", function(){
     expect(el.classList.contains("phx-connected")).toBeTruthy()
   })
 
-  test("displayError", async () => {
+  test("displayError and hideLoader", done => {
     let liveSocket = new LiveSocket("/live", Socket)
     let loader = document.createElement("span")
     let phxView = document.querySelector("[data-phx-session]")
     phxView.parentNode.insertBefore(loader, phxView.nextSibling)
     let el = document.querySelector("[data-phx-session]")
+    let status = el.querySelector("#status")
 
     let view = simulateJoinedView(el, liveSocket)
+
+    expect(status.style.display).toBe("none")
     view.displayError()
     expect(el.classList.contains("phx-loading")).toBeTruthy()
     expect(el.classList.contains("phx-error")).toBeTruthy()
     expect(el.classList.contains("phx-connected")).toBeFalsy()
     expect(el.classList.contains("user-implemented-class")).toBeTruthy()
+    window.requestAnimationFrame(() => {
+      expect(status.style.display).toBe("block")
+      simulateVisibility(status)
+      view.hideLoader()
+      window.requestAnimationFrame(() => {
+        expect(status.style.display).toBe("none")
+        done()
+      })
+    })
   })
 
   test("join", async () => {

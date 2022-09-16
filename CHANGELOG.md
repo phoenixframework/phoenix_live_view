@@ -37,6 +37,9 @@ a `:let` usage.
   - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessibility
   - [Socket] Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
   - Add `_live_referer` connect param for handling `push_navigate` referal URL
+  - Add new `phx-connected` and `phx-disconnected` bindings for reacting to lifecycle changes
+  - Add dead view support for JS commands
+  - Add dead view support for hooks
 
 ### Bug fixes
   - Fix external upload issue where listeners are not cleaned up when an external failure happens on the client

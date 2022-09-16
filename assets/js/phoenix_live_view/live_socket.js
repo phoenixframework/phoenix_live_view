@@ -209,6 +209,8 @@ export default class LiveSocket {
         this.socket.connect()
       } else if(this.main){
         this.socket.connect()
+      } else {
+        this.joinDeadView()
       }
     }
     if(["complete", "loaded", "interactive"].indexOf(document.readyState) >= 0){
@@ -342,6 +344,15 @@ export default class LiveSocket {
 
   channel(topic, params){ return this.socket.channel(topic, params) }
 
+  joinDeadView(){
+    this.bindTopLevelEvents({dead: true})
+    let view = this.newRootView(document.body)
+    view.setHref(this.getHref())
+    view.joinDead()
+    this.main = view
+    window.requestAnimationFrame(() => view.execNewMounted())
+  }
+
   joinRootViews(){
     let rootsFound = false
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
@@ -474,7 +485,7 @@ export default class LiveSocket {
     if(this.prevActive !== document.body){ this.prevActive.blur() }
   }
 
-  bindTopLevelEvents(){
+  bindTopLevelEvents({dead} = {}){
     if(this.boundTopLevelEvents){ return }
 
     this.boundTopLevelEvents = true
@@ -492,9 +503,9 @@ export default class LiveSocket {
         window.location.reload()
       }
     }, true)
-    this.bindNav()
+    if(!dead){ this.bindNav() }
     this.bindClicks()
-    this.bindForms()
+    if(!dead){ this.bindForms() }
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
@@ -708,6 +719,8 @@ export default class LiveSocket {
   }
 
   pushHistoryPatch(href, linkState, targetEl){
+    if(!this.isConnected()){ return Browser.redirect(href) }
+
     this.withPageLoading({to: href, kind: "patch"}, done => {
       this.main.pushLinkPatch(href, targetEl, linkRef => {
         this.historyPatch(href, linkState, linkRef)
@@ -725,6 +738,7 @@ export default class LiveSocket {
 
   historyRedirect(href, linkState, flash){
     // convert to full href if only path prefix
+    if(!this.isConnected()){ return Browser.redirect(href, flash) }
     if(/^\/[^\/]+.*$/.test(href)){
       let {protocol, host} = window.location
       href = `${protocol}//${host}${href}`
