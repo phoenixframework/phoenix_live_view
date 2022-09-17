@@ -731,7 +731,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: nil}, slot_attrs) do
-    ["Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+    [" - ", "Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
   end
 
   defp build_slot_doc(%{doc: doc}, slot_attrs) do
