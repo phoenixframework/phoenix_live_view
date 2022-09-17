@@ -681,8 +681,7 @@ defmodule Phoenix.Component.Declarative do
 
   defp build_slots_docs(slots) do
     [
-      "## Slots",
-      ?\n,
+      "## Slots\n",
       for slot <- slots, slot.doc != false, into: [] do
         slot_attrs =
           for slot_attr <- slot.attrs,
@@ -691,8 +690,7 @@ defmodule Phoenix.Component.Declarative do
               do: slot_attr
 
         [
-          ?\n,
-          "* ",
+          "\n* ",
           build_slot_name(slot),
           build_slot_required(slot),
           build_slot_doc(slot, slot_attrs)
@@ -703,16 +701,14 @@ defmodule Phoenix.Component.Declarative do
 
   defp build_attrs_docs(attrs) do
     [
-      "## Attributes",
-      ?\n,
+      "## Attributes\n",
       for attr <- attrs, attr.doc != false, into: [] do
         [
-          ?\n,
-          "* ",
+          "\n* ",
           build_attr_name(attr),
           build_attr_type(attr),
           build_attr_required(attr),
-          build_attr_doc_and_default(attr)
+          build_attr_doc_and_default(attr, "  ")
         ]
       end
     ]
@@ -727,7 +723,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: doc}, []) do
-    [" - ", build_doc(doc)]
+    [" - ", build_doc(doc, "  ")]
   end
 
   defp build_slot_doc(%{doc: nil}, slot_attrs) do
@@ -735,19 +731,17 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: doc}, slot_attrs) do
-    [" - ", build_doc(doc), " Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+    [" - ", build_doc(doc, "  "), " Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
   end
 
   defp build_slot_attrs_docs(slot_attrs) do
     for slot_attr <- slot_attrs do
       [
-        ?\n,
-        ?\t,
-        "* ",
+        "\n  * ",
         build_attr_name(slot_attr),
         build_attr_type(slot_attr),
         build_attr_required(slot_attr),
-        build_attr_doc_and_default(slot_attr)
+        build_attr_doc_and_default(slot_attr, "    ")
       ]
     end
   end
@@ -780,25 +774,36 @@ defmodule Phoenix.Component.Declarative do
     []
   end
 
-  defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}) do
+  defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}, _indent) do
     [" - Defaults to `", inspect(default), "`."]
   end
 
-  defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}) do
-    [" - ", build_doc(doc), " Defaults to `", inspect(default), "`."]
+  defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}, indent) do
+    middle = if String.contains?(doc, "\n"), do: ["\n\n", indent], else: " "
+    [" - ", build_doc(doc, indent), middle, "Defaults to `", inspect(default), "`."]
   end
 
-  defp build_attr_doc_and_default(%{doc: nil}) do
+  defp build_attr_doc_and_default(%{doc: nil}, _indent) do
     []
   end
 
-  defp build_attr_doc_and_default(%{doc: doc}) do
-    [" - ", build_doc(doc)]
+  defp build_attr_doc_and_default(%{doc: doc}, indent) do
+    [" - ", build_doc(doc, indent)]
   end
 
-  defp build_doc(doc) do
+  defp build_doc(doc, indent) do
+    doc = String.trim(doc)
     suffix = if String.ends_with?(doc, "."), do: "", else: "."
-    [doc, suffix]
+
+    [head | tail] = String.split(doc, ["\r\n", "\n"])
+
+    tail =
+      Enum.map(tail, fn
+        "" -> "\n"
+        other -> [?\n, indent | other]
+      end)
+
+    [[head | tail], suffix]
   end
 
   defp build_right_doc("") do
