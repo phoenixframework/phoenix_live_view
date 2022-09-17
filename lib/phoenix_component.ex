@@ -349,8 +349,8 @@ defmodule Phoenix.Component do
 
   Below is a table component illustrating multiple named slots with attributes:
 
-      slot :column do
-        attr :label, :string, required: true
+      slot :column, doc: "Columns with column labels" do
+        attr :label, :string, required: true, doc: "Column label"
       end
 
       attr :rows, :list, default: []
