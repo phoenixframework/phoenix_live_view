@@ -64,14 +64,17 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr, :any, default: "foo", doc: "attr docs."
   def fun_with_attr_doc_period(assigns), do: ~H[]
 
-  attr :attr, :any, default: "foo", doc: """
-  attr docs with bullets:
+  attr :attr, :any,
+    default: "foo",
+    doc: """
+    attr docs with bullets:
 
-    * foo
-    * bar
+      * foo
+      * bar
 
-  and that's it.
-  """
+    and that's it.
+    """
+
   def fun_with_attr_doc_multiline(assigns), do: ~H[]
 
   attr :attr1, :any
@@ -113,6 +116,44 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   end
 
   def fun_slot_with_attrs(assigns), do: ~H[]
+
+  slot :named, required: true do
+    attr :attr1, :any, required: true, doc: "a slot attr doc"
+    attr :attr2, :any, doc: "a slot attr doc"
+  end
+
+  def fun_slot_no_doc_with_attrs(assigns), do: ~H[]
+
+  slot :named,
+    required: true,
+    doc: """
+    Important slot:
+
+    * for a
+    * for b
+    """ do
+    attr :attr1, :any, required: true, doc: "a slot attr doc"
+    attr :attr2, :any, doc: "a slot attr doc"
+  end
+
+  def fun_slot_doc_multiline_with_attrs(assigns), do: ~H[]
+
+  slot :named, required: true do
+    attr :attr1, :any,
+      required: true,
+      doc: """
+      attr docs with bullets:
+
+        * foo
+        * bar
+
+      and that's it.
+      """
+
+    attr :attr2, :any, doc: "a slot attr doc"
+  end
+
+  def fun_slot_doc_with_attrs_multiline(assigns), do: ~H[]
 end
 
 defmodule Phoenix.LiveViewTest.StatefulComponent do

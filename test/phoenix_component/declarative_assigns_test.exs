@@ -741,7 +741,36 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       fun_slot_doc: "## Slots\n\n* `inner_block` - slot docs.\n",
       fun_slot_required: "## Slots\n\n* `inner_block` (required)\n",
       fun_slot_with_attrs:
-        "## Slots\n\n* `named` (required) - a named slot. Accepts attributes: \n  * `attr1` (`:any`) (required) - a slot attr doc.\n  * `attr2` (`:any`) - a slot attr doc.\n"
+        "## Slots\n\n* `named` (required) - a named slot. Accepts attributes:\n\n  * `attr1` (`:any`) (required) - a slot attr doc.\n  * `attr2` (`:any`) - a slot attr doc.\n",
+      fun_slot_no_doc_with_attrs:
+        "## Slots\n\n* `named` (required) - Accepts attributes:\n\n  * `attr1` (`:any`) (required) - a slot attr doc.\n  * `attr2` (`:any`) - a slot attr doc.\n",
+      fun_slot_doc_multiline_with_attrs: """
+      ## Slots
+
+      * `named` (required) - Important slot:
+
+        * for a
+        * for b
+
+        Accepts attributes:
+
+        * `attr1` (`:any`) (required) - a slot attr doc.
+        * `attr2` (`:any`) - a slot attr doc.
+      """,
+      fun_slot_doc_with_attrs_multiline: """
+      ## Slots
+
+      * `named` (required) - Accepts attributes:
+
+        * `attr1` (`:any`) (required) - attr docs with bullets:
+
+            * foo
+            * bar
+
+          and that's it.
+
+        * `attr2` (`:any`) - a slot attr doc.
+      """
     }
 
     for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do

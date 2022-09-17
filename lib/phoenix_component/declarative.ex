@@ -723,15 +723,20 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_slot_doc(%{doc: doc}, []) do
-    [" - ", build_doc(doc, "  ")]
+    [" - ", build_doc(doc, "  ", false)]
   end
 
   defp build_slot_doc(%{doc: nil}, slot_attrs) do
-    [" - Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+    [" - Accepts attributes:\n", build_slot_attrs_docs(slot_attrs)]
   end
 
   defp build_slot_doc(%{doc: doc}, slot_attrs) do
-    [" - ", build_doc(doc, "  "), " Accepts attributes: ", build_slot_attrs_docs(slot_attrs)]
+    [
+      " - ",
+      build_doc(doc, "  ", true),
+      "Accepts attributes:\n",
+      build_slot_attrs_docs(slot_attrs)
+    ]
   end
 
   defp build_slot_attrs_docs(slot_attrs) do
@@ -779,8 +784,13 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}, indent) do
-    middle = if String.contains?(doc, "\n"), do: ["\n\n", indent], else: " "
-    [" - ", build_doc(doc, indent), middle, "Defaults to `", inspect(default), "`."]
+    [
+      " - ",
+      build_doc(doc, indent, true),
+      "Defaults to `",
+      inspect(default),
+      "`."
+    ]
   end
 
   defp build_attr_doc_and_default(%{doc: nil}, _indent) do
@@ -788,14 +798,13 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc}, indent) do
-    [" - ", build_doc(doc, indent)]
+    [" - ", build_doc(doc, indent, false)]
   end
 
-  defp build_doc(doc, indent) do
+  defp build_doc(doc, indent, text_after?) do
     doc = String.trim(doc)
-    suffix = if String.ends_with?(doc, "."), do: "", else: "."
-
     [head | tail] = String.split(doc, ["\r\n", "\n"])
+    dot = if String.ends_with?(doc, "."), do: [], else: [?.]
 
     tail =
       Enum.map(tail, fn
@@ -803,7 +812,21 @@ defmodule Phoenix.Component.Declarative do
         other -> [?\n, indent | other]
       end)
 
-    [[head | tail], suffix]
+    case tail do
+      # Single line
+      [] when text_after? ->
+        [[head | tail], dot, ?\s]
+
+      [] ->
+        [[head | tail], dot]
+
+      # Multi-line
+      _ when text_after? ->
+        [[head | tail], "\n\n", indent]
+
+      _ ->
+        [[head | tail], "\n"]
+    end
   end
 
   defp build_right_doc("") do
