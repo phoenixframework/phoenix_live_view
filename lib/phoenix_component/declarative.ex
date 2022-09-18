@@ -297,12 +297,22 @@ defmodule Phoenix.Component.Declarative do
       compile_error!(line, file, "only one of :required or :default must be given")
     end
 
+    # {values, opts} = Keyword.pop(opts, :values, nil)
+
+    # TODO: grab values, default to nil
+
+    # TODO: grab examples, default to nil, equal to values if present
+
     key = if slot, do: :__slot_attrs__, else: :__attrs__
     type = validate_attr_type!(module, key, slot, name, type, line, file)
     validate_attr_opts!(slot, name, opts, line, file)
 
     if Keyword.has_key?(opts, :default) do
       validate_attr_default!(slot, name, type, opts[:default], line, file)
+    end
+
+    if Keyword.has_key?(opts, :values) do
+      validate_attr_values!(slot, name, type, opts[:values], line, file)
     end
 
     attr = %{
@@ -408,6 +418,49 @@ defmodule Phoenix.Component.Declarative do
     """)
   end
 
+  defp validate_attr_values!(slot, name, type, values, line, file) do
+    for value <- values do
+      case {type, value} do
+        {_type, nil} ->
+          :ok
+
+        {:any, _value} ->
+          :ok
+
+        {:string, value} when not is_binary(value) ->
+          bad_value!(slot, name, type, value, line, file)
+
+        {:atom, value} when not is_atom(value) ->
+          bad_value!(slot, name, type, value, line, file)
+
+        {:boolean, value} when not is_boolean(value) ->
+          bad_value!(slot, name, type, value, line, file)
+
+        {:integer, value} when not is_integer(value) ->
+          bad_value!(slot, name, type, value, line, file)
+
+        {:float, value} when not is_float(value) ->
+          bad_value!(slot, name, type, value, line, file)
+
+        {:list, value} when not is_list(value) ->
+          bad_value!(slot, name, type, value, line, file)
+
+        {{:struct, mod}, value} when not is_struct(value) ->
+          bad_value!(slot, name, mod, value, line, file)
+
+        {_type, _value} ->
+          :ok
+      end
+    end
+  end
+
+  defp bad_value!(slot, name, type, value, line, file) do
+    compile_error!(line, file, """
+    expected the values for attr #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
+    got: #{inspect(value)}
+    """)
+  end
+
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, message = invalid_attr_message(key, slot) do
       compile_error!(line, file, """
@@ -424,6 +477,7 @@ defmodule Phoenix.Component.Declarative do
         "instead use Map.get/3 with a default value when accessing a slot attribute"
 
   defp invalid_attr_message(:required, _), do: nil
+  defp invalid_attr_message(:values, _), do: nil
   defp invalid_attr_message(_key, nil), do: "The supported options are: [:required, :default]"
 
   defp invalid_attr_message(_key, _slot),

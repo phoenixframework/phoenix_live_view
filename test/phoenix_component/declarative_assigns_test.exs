@@ -62,6 +62,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     def button_with_defaults_line, do: __ENV__.line
     attr :rest, :global, default: %{class: "primary"}
     def button_with_defaults(assigns), do: ~H[<button {@rest}/>]
+    
+    def button_with_values_line, do: __ENV__.line
+    attr :text, :string, values: ["Save", "Cancel"]
+    def button_with_values(assigns), do: ~H[<button><%= @text %></button>]
 
     def render_line, do: __ENV__.line
 
@@ -107,6 +111,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     func2_line = FunctionComponentWithAttrs.func2_line()
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
+    button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
 
     assert FunctionComponentWithAttrs.__components__() == %{
              func1: %{
@@ -219,7 +224,22 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                  }
                ],
                slots: []
-             }
+             },
+            button_with_values: %{
+              kind: :def,
+              attrs: [
+                %{
+                  line: button_with_values_line + 1,
+                  name: :text,
+                  opts: [values: ["Save", "Cancel"]],
+                  required: false,
+                  doc: nil,
+                  slot: nil,
+                  type: :string
+                }
+              ],
+              slots: []
+            }
            }
   end
 
@@ -971,6 +991,20 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         slot :named do
           raise "boom!"
         end
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+  
+  test "raise if attr value does not match the type" do
+    msg = ~r"expected the values for attr :foo to be a :string, got: :not_a_string"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrValueTypeMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: ["a string", :not_a_string]
 
         def func(assigns), do: ~H[]
       end
