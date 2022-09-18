@@ -62,10 +62,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     def button_with_defaults_line, do: __ENV__.line
     attr :rest, :global, default: %{class: "primary"}
     def button_with_defaults(assigns), do: ~H[<button {@rest}/>]
-    
+
     def button_with_values_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"]
     def button_with_values(assigns), do: ~H[<button><%= @text %></button>]
+
+    def button_with_examples_line, do: __ENV__.line
+    attr :text, :string, examples: ["Save", "Cancel"]
+    def button_with_examples(assigns), do: ~H[<button><%= @text %></button>]
 
     def render_line, do: __ENV__.line
 
@@ -112,6 +116,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
     button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
+    button_with_examples_line = FunctionComponentWithAttrs.button_with_examples_line()
 
     assert FunctionComponentWithAttrs.__components__() == %{
              func1: %{
@@ -225,21 +230,36 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                ],
                slots: []
              },
-            button_with_values: %{
-              kind: :def,
-              attrs: [
-                %{
-                  line: button_with_values_line + 1,
-                  name: :text,
-                  opts: [values: ["Save", "Cancel"]],
-                  required: false,
-                  doc: nil,
-                  slot: nil,
-                  type: :string
-                }
-              ],
-              slots: []
-            }
+             button_with_values: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_values_line + 1,
+                   name: :text,
+                   opts: [values: ["Save", "Cancel"]],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
+                 }
+               ],
+               slots: []
+             },
+             button_with_examples: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_examples_line + 1,
+                   name: :text,
+                   opts: [examples: ["Save", "Cancel"]],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
+                 }
+               ],
+               slots: []
+             }
            }
   end
 
@@ -996,7 +1016,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       end
     end
   end
-  
+
   test "raise if attr value does not match the type" do
     msg = ~r"expected the values for attr :foo to be a :string, got: :not_a_string"
 
@@ -1005,6 +1025,90 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :foo, :string, values: ["a string", :not_a_string]
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr example does not match the type" do
+    msg = ~r"expected the examples for attr :foo to be a :string, got: :not_a_string"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrExampleTypeMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, examples: ["a string", :not_a_string]
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr values is not a list" do
+    msg = ~r":values must be a non-empty list, got: :ok"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsValuesNotAList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: :ok
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr examples is not a list" do
+    msg = ~r":examples must be a non-empty list, got: :ok"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsExamplesNotAList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, examples: :ok
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr values is an empty list" do
+    msg = ~r":values must be a non-empty list, got: \[\]"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsValuesEmptyList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: []
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr examples is an empty list" do
+    msg = ~r":examples must be a non-empty list, got: \[\]"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsExamplesEmptyList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, examples: []
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attrs has both values and examples" do
+    msg = ~r"only one of :values or :examples must be given"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrDefaultTypeMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: ["a string"], examples: ["a string"]
 
         def func(assigns), do: ~H[]
       end

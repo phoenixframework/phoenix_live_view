@@ -297,12 +297,6 @@ defmodule Phoenix.Component.Declarative do
       compile_error!(line, file, "only one of :required or :default must be given")
     end
 
-    # {values, opts} = Keyword.pop(opts, :values, nil)
-
-    # TODO: grab values, default to nil
-
-    # TODO: grab examples, default to nil, equal to values if present
-
     key = if slot, do: :__slot_attrs__, else: :__attrs__
     type = validate_attr_type!(module, key, slot, name, type, line, file)
     validate_attr_opts!(slot, name, opts, line, file)
@@ -311,8 +305,16 @@ defmodule Phoenix.Component.Declarative do
       validate_attr_default!(slot, name, type, opts[:default], line, file)
     end
 
+    if Keyword.has_key?(opts, :values) and Keyword.has_key?(opts, :examples) do
+      compile_error!(line, file, "only one of :values or :examples must be given")
+    end
+
     if Keyword.has_key?(opts, :values) do
       validate_attr_values!(slot, name, type, opts[:values], line, file)
+    end
+
+    if Keyword.has_key?(opts, :examples) do
+      validate_attr_examples!(slot, name, type, opts[:examples], line, file)
     end
 
     attr = %{
@@ -419,6 +421,12 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp validate_attr_values!(slot, name, type, values, line, file) do
+    unless is_list(values) and not Enum.empty?(values) do
+      compile_error!(line, file, """
+      :values must be a non-empty list, got: #{inspect(values)}
+      """)
+    end
+
     for value <- values do
       case {type, value} do
         {_type, nil} ->
@@ -461,6 +469,55 @@ defmodule Phoenix.Component.Declarative do
     """)
   end
 
+  defp validate_attr_examples!(slot, name, type, examples, line, file) do
+    unless is_list(examples) and not Enum.empty?(examples) do
+      compile_error!(line, file, """
+      :examples must be a non-empty list, got: #{inspect(examples)}
+      """)
+    end
+
+    for example <- examples do
+      case {type, example} do
+        {_type, nil} ->
+          :ok
+
+        {:any, _example} ->
+          :ok
+
+        {:string, example} when not is_binary(example) ->
+          bad_example!(slot, name, type, example, line, file)
+
+        {:atom, example} when not is_atom(example) ->
+          bad_example!(slot, name, type, example, line, file)
+
+        {:boolean, example} when not is_boolean(example) ->
+          bad_example!(slot, name, type, example, line, file)
+
+        {:integer, example} when not is_integer(example) ->
+          bad_example!(slot, name, type, example, line, file)
+
+        {:float, example} when not is_float(example) ->
+          bad_example!(slot, name, type, example, line, file)
+
+        {:list, example} when not is_list(example) ->
+          bad_example!(slot, name, type, example, line, file)
+
+        {{:struct, mod}, example} when not is_struct(example) ->
+          bad_example!(slot, name, mod, example, line, file)
+
+        {_type, _example} ->
+          :ok
+      end
+    end
+  end
+
+  defp bad_example!(slot, name, type, example, line, file) do
+    compile_error!(line, file, """
+    expected the examples for attr #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
+    got: #{inspect(example)}
+    """)
+  end
+
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, message = invalid_attr_message(key, slot) do
       compile_error!(line, file, """
@@ -478,7 +535,10 @@ defmodule Phoenix.Component.Declarative do
 
   defp invalid_attr_message(:required, _), do: nil
   defp invalid_attr_message(:values, _), do: nil
-  defp invalid_attr_message(_key, nil), do: "The supported options are: [:required, :default]"
+  defp invalid_attr_message(:examples, _), do: nil
+
+  defp invalid_attr_message(_key, nil),
+    do: "The supported options are: [:required, :default, :values, :examples]"
 
   defp invalid_attr_message(_key, _slot),
     do: "The supported options inside slots are: [:required]"
