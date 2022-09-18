@@ -102,12 +102,14 @@ Then access `@page_title` in the root layout:
 <title><%= @page_title %></title>
 ```
 
-You can also use `Phoenix.LiveView.Helpers.live_title_tag/2` to support
+You can also use the `Phoenix.Component.live_title/1` component to support
 adding automatic prefix and suffix to the page title when rendered and
 on subsequent updates:
 
 ```heex
-<%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
+<Phoenix.Component.live_title prefix="MyApp – ">
+  <%= assigns[:page_title] || "Welcome" %>
+</Phoenix.Component.live_title>
 ```
 
 Although the root layout is not updated by LiveView, by simply assigning
