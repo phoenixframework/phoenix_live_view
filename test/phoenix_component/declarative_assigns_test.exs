@@ -740,7 +740,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
            }
   end
 
-  test "inserts attr docs to function component @doc string" do
+  test "inserts attr & slot docs into function component @doc string" do
     {_, _, :elixir, "text/markdown", _, _, docs} =
       Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
 
