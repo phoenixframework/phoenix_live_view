@@ -102,6 +102,7 @@ defmodule Phoenix.Component.Declarative do
     lang
     nonce
     part
+    rel
     role
     slot
     spellcheck
