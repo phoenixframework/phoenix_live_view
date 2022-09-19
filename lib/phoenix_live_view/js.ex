@@ -118,6 +118,8 @@ defmodule Phoenix.LiveView.JS do
 
   defstruct ops: []
 
+  @opaque t :: %__MODULE__{}
+
   @default_transition_time 200
 
   defimpl Phoenix.HTML.Safe, for: Phoenix.LiveView.JS do
