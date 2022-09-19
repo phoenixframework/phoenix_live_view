@@ -745,24 +745,87 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
 
     components = %{
-      fun_attr_any: "## Attributes\n\n* `attr` (`:any`)\n",
-      fun_attr_string: "## Attributes\n\n* `attr` (`:string`)\n",
-      fun_attr_atom: "## Attributes\n\n* `attr` (`:atom`)\n",
-      fun_attr_boolean: "## Attributes\n\n* `attr` (`:boolean`)\n",
-      fun_attr_integer: "## Attributes\n\n* `attr` (`:integer`)\n",
-      fun_attr_float: "## Attributes\n\n* `attr` (`:float`)\n",
-      fun_attr_list: "## Attributes\n\n* `attr` (`:list`)\n",
-      fun_attr_global: "## Attributes\n\n* `attr` (`:global`)\n",
-      fun_attr_struct:
-        "## Attributes\n\n* `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)\n",
-      fun_attr_required: "## Attributes\n\n* `attr` (`:any`) (required)\n",
-      fun_attr_default: "## Attributes\n\n* `attr` (`:any`) - Defaults to `%{}`.\n",
+      fun_attr_any: """
+      ## Attributes
+
+      * `attr` (`:any`)
+      """,
+      fun_attr_string: """
+      ## Attributes
+
+      * `attr` (`:string`)
+      """,
+      fun_attr_atom: """
+      ## Attributes
+
+      * `attr` (`:atom`)
+      """,
+      fun_attr_boolean: """
+      ## Attributes
+
+      * `attr` (`:boolean`)
+      """,
+      fun_attr_integer: """
+      ## Attributes
+
+      * `attr` (`:integer`)
+      """,
+      fun_attr_float: """
+      ## Attributes
+
+      * `attr` (`:float`)
+      """,
+      fun_attr_list: """
+      ## Attributes
+
+      * `attr` (`:list`)
+      """,
+      fun_attr_global: """
+      ## Attributes
+
+      * `attr` (`:global`)
+      """,
+      fun_attr_struct: """
+      ## Attributes
+
+      * `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)
+      """,
+      fun_attr_required: """
+      ## Attributes
+
+      * `attr` (`:any`) (required)
+      """,
+      fun_attr_default: """
+      ## Attributes
+
+      * `attr` (`:any`) - Defaults to `%{}`.
+      """,
       fun_doc_false: :hidden,
-      fun_doc_injection: "fun docs\n\n## Attributes\n\n* `attr` (`:any`)\n\nfun docs\n",
-      fun_multiple_attr: "## Attributes\n\n* `attr1` (`:any`)\n* `attr2` (`:any`)\n",
-      fun_with_attr_doc: "## Attributes\n\n* `attr` (`:any`) - attr docs.\n",
-      fun_with_attr_doc_period:
-        "## Attributes\n\n* `attr` (`:any`) - attr docs. Defaults to `\"foo\"`.\n",
+      fun_doc_injection: """
+      fun docs
+
+      ## Attributes
+
+      * `attr` (`:any`)
+
+      fun docs
+      """,
+      fun_multiple_attr: """
+      ## Attributes
+
+      * `attr1` (`:any`)
+      * `attr2` (`:any`)
+      """,
+      fun_with_attr_doc: """
+      ## Attributes
+
+      * `attr` (`:any`) - attr docs.
+      """,
+      fun_with_attr_doc_period: """
+      ## Attributes
+
+      * `attr` (`:any`) - attr docs. Defaults to `\"foo\"`.
+      """,
       fun_with_attr_doc_multiline: """
       ## Attributes
 
@@ -775,15 +838,48 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         Defaults to `"foo"`.
       """,
-      fun_with_hidden_attr: "## Attributes\n\n* `attr1` (`:any`)\n",
-      fun_with_doc: "fun docs\n## Attributes\n\n* `attr` (`:any`)\n",
-      fun_slot: "## Slots\n\n* `inner_block`\n",
-      fun_slot_doc: "## Slots\n\n* `inner_block` - slot docs.\n",
-      fun_slot_required: "## Slots\n\n* `inner_block` (required)\n",
-      fun_slot_with_attrs:
-        "## Slots\n\n* `named` (required) - a named slot. Accepts attributes:\n\n  * `attr1` (`:any`) (required) - a slot attr doc.\n  * `attr2` (`:any`) - a slot attr doc.\n",
-      fun_slot_no_doc_with_attrs:
-        "## Slots\n\n* `named` (required) - Accepts attributes:\n\n  * `attr1` (`:any`) (required) - a slot attr doc.\n  * `attr2` (`:any`) - a slot attr doc.\n",
+      fun_with_hidden_attr: """
+      ## Attributes
+
+      * `attr1` (`:any`)
+      """,
+      fun_with_doc: """
+      fun docs
+      ## Attributes
+
+      * `attr` (`:any`)
+      """,
+      fun_slot: """
+      ## Slots
+
+      * `inner_block`
+      """,
+      fun_slot_doc: """
+      ## Slots
+
+      * `inner_block` - slot docs.
+      """,
+      fun_slot_required: """
+      ## Slots
+
+      * `inner_block` (required)
+      """,
+      fun_slot_with_attrs: """
+      ## Slots
+
+      * `named` (required) - a named slot. Accepts attributes:
+
+        * `attr1` (`:any`) (required) - a slot attr doc.
+        * `attr2` (`:any`) - a slot attr doc.
+      """,
+      fun_slot_no_doc_with_attrs: """
+      ## Slots
+
+      * `named` (required) - Accepts attributes:
+
+        * `attr1` (`:any`) (required) - a slot attr doc.
+        * `attr2` (`:any`) - a slot attr doc.
+      """,
       fun_slot_doc_multiline_with_attrs: """
       ## Slots
 
@@ -810,6 +906,12 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
           and that's it.
 
         * `attr2` (`:any`) - a slot attr doc.
+      """,
+      fun_attr_values_examples: """
+      ## Attributes
+
+      * `attr1` (`:atom`) - Must be one of `:foo`, `:bar`, or `:baz`.
+      * `attr2` (`:atom`) - Examples include `:foo`, `:bar`, and `:baz`.
       """
     }
 

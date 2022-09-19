@@ -823,7 +823,10 @@ defmodule Phoenix.Component.Declarative do
           build_attr_name(attr),
           build_attr_type(attr),
           build_attr_required(attr),
-          build_attr_doc_and_default(attr, "  ")
+          build_hyphen(attr),
+          build_attr_doc_and_default(attr, "  "),
+          build_attr_values(attr),
+          build_attr_examples(attr)
         ]
       end
     ]
@@ -861,7 +864,10 @@ defmodule Phoenix.Component.Declarative do
         build_attr_name(slot_attr),
         build_attr_type(slot_attr),
         build_attr_required(slot_attr),
-        build_attr_doc_and_default(slot_attr, "    ")
+        build_hyphen(slot_attr),
+        build_attr_doc_and_default(slot_attr, "    "),
+        build_attr_values(slot_attr),
+        build_attr_examples(slot_attr)
       ]
     end
   end
@@ -895,17 +901,11 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}, _indent) do
-    [" - Defaults to `", inspect(default), "`."]
+    ["Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}, indent) do
-    [
-      " - ",
-      build_doc(doc, indent, true),
-      "Defaults to `",
-      inspect(default),
-      "`."
-    ]
+    [build_doc(doc, indent, true), "Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: nil}, _indent) do
@@ -913,7 +913,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc}, indent) do
-    [" - ", build_doc(doc, indent, false)]
+    [build_doc(doc, indent, false)]
   end
 
   defp build_doc(doc, indent, text_after?) do
@@ -944,8 +944,43 @@ defmodule Phoenix.Component.Declarative do
     end
   end
 
+  defp build_attr_values(%{opts: [values: values]}) do
+    ["Must be one of ", build_literals_list(values, "or"), ?.]
+  end
+
+  defp build_attr_values(_attr) do
+    []
+  end
+
+  defp build_attr_examples(%{opts: [examples: examples]}) do
+    ["Examples include ", build_literals_list(examples, "and"), ?.]
+  end
+
+  defp build_attr_examples(_attr) do
+    []
+  end
+
+  defp build_literals_list(literals, condition) do
+    literals
+    |> Enum.map(&[?`, inspect(&1), ?`])
+    |> Enum.intersperse([", "])
+    |> List.insert_at(-2, [condition, " "])
+  end
+
+  defp build_hyphen(%{doc: doc}) when is_binary(doc) do
+    [" - "]
+  end
+
+  defp build_hyphen(%{opts: []}) do
+    []
+  end
+
+  defp build_hyphen(%{opts: _opts}) do
+    [" - "]
+  end
+
   defp build_right_doc("") do
-    [""]
+    []
   end
 
   defp build_right_doc(right) do
