@@ -1130,6 +1130,7 @@ defmodule Phoenix.Component.Declarative do
             for %{attrs: slot_attrs} <- slot_values,
                 {attr_name, {line, _column, type_value}} <- slot_attrs do
               case slot_attr_defs do
+                # slots cannot accept global attributes
                 %{^attr_name => %{type: :global}} ->
                   message =
                     "global attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
@@ -1137,6 +1138,21 @@ defmodule Phoenix.Component.Declarative do
 
                   warn(message, call.file, line)
 
+                # slot attrs must be one of values
+                %{^attr_name => %{type: _type, opts: [values: attr_values]}}
+                when is_tuple(type_value) and tuple_size(type_value) == 2 ->
+                  {_, attr_value} = type_value
+
+                  unless attr_value in attr_values do
+                    message =
+                      "attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                        "for component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: " <>
+                        inspect(attr_value)
+
+                    warn(message, call.file, line)
+                  end
+
+                # slot attrs must be of the declared type
                 %{^attr_name => %{type: type}} ->
                   if value_ast_to_string = type_mismatch(type, type_value) do
                     message =
@@ -1147,7 +1163,7 @@ defmodule Phoenix.Component.Declarative do
                     warn(message, call.file, line)
                   end
 
-                # undefined attribute
+                # undefined slot attr
                 %{} ->
                   if attr_name == :inner_block or
                        (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
