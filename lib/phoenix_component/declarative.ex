@@ -281,6 +281,14 @@ defmodule Phoenix.Component.Declarative do
       compile_error!(line, file, "global attributes do not support the :required option")
     end
 
+    if type == :global and Keyword.has_key?(opts, :values) do
+      compile_error!(line, file, "global attributes do not support the :values option")
+    end
+
+    if type == :global and Keyword.has_key?(opts, :examples) do
+      compile_error!(line, file, "global attributes do not support the :examples option")
+    end
+
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
     unless is_binary(doc) or is_nil(doc) or doc == false do

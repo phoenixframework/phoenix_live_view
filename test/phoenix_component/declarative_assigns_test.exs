@@ -1447,10 +1447,36 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     msg = ~r"global attributes do not support the :required option"
 
     assert_raise CompileError, msg, fn ->
-      defmodule Phoenix.ComponentTest.GlobalOpts do
+      defmodule Phoenix.ComponentTest.GlobalRequiredOpts do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, required: true
+        def func(assigns), do: ~H[<%= @rest %>]
+      end
+    end
+  end
+
+  test "raise if global provides :values" do
+    msg = ~r"global attributes do not support the :values option"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.GlobalValueOpts do
+        use Elixir.Phoenix.Component
+
+        attr :rest, :global, values: ["placeholder", "rel"]
+        def func(assigns), do: ~H[<%= @rest %>]
+      end
+    end
+  end
+
+  test "raise if global provides :examples" do
+    msg = ~r"global attributes do not support the :examples option"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.GlobalExampleOpts do
+        use Elixir.Phoenix.Component
+
+        attr :rest, :global, examples: ["placeholder", "rel"]
         def func(assigns), do: ~H[<%= @rest %>]
       end
     end
