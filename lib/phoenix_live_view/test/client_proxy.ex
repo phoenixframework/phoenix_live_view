@@ -932,12 +932,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp maybe_event(:click, {"a", _, _} = node, element) do
+    live_nav = DOM.attribute(node, "data-phx-link")
     cond do
-      event = DOM.attribute(node, "phx-click") ->
+      event = is_nil(live_nav) && DOM.attribute(node, "phx-click") ->
         {:ok, event}
 
       to = DOM.attribute(node, "href") ->
-        case DOM.attribute(node, "data-phx-link") do
+        case live_nav do
           "patch" ->
             {:patch, proxy_topic(element), to}
 
