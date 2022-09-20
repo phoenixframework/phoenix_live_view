@@ -1119,7 +1119,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr value does not match the type" do
+  test "raise if attr :values does not match the type" do
     msg = ~r"expected the values for attr :foo to be a :string, got: :not_a_string"
 
     assert_raise CompileError, msg, fn ->
@@ -1133,7 +1133,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr example does not match the type" do
+  test "raise if attr :example does not match the type" do
     msg = ~r"expected the examples for attr :foo to be a :string, got: :not_a_string"
 
     assert_raise CompileError, msg, fn ->
@@ -1147,7 +1147,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr values is not a list" do
+  test "raise if attr :values is not a list" do
     msg = ~r":values must be a non-empty list, got: :ok"
 
     assert_raise CompileError, msg, fn ->
@@ -1161,7 +1161,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr examples is not a list" do
+  test "raise if attr :examples is not a list" do
     msg = ~r":examples must be a non-empty list, got: :ok"
 
     assert_raise CompileError, msg, fn ->
@@ -1175,7 +1175,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr values is an empty list" do
+  test "raise if attr :values is an empty list" do
     msg = ~r":values must be a non-empty list, got: \[\]"
 
     assert_raise CompileError, msg, fn ->
@@ -1189,7 +1189,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr examples is an empty list" do
+  test "raise if attr :examples is an empty list" do
     msg = ~r":examples must be a non-empty list, got: \[\]"
 
     assert_raise CompileError, msg, fn ->
@@ -1203,7 +1203,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attrs has both values and examples" do
+  test "raise if attr has both :values and :examples" do
     msg = ~r"only one of :values or :examples must be given"
 
     assert_raise CompileError, msg, fn ->
@@ -1217,7 +1217,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr default does not match the type" do
+  test "raise if attr :default does not match the type" do
     msg = ~r"expected the default value for attr :foo to be a :string, got: :not_a_string"
 
     assert_raise CompileError, msg, fn ->
@@ -1231,7 +1231,22 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if slot attr has default" do
+  test "raise if attr :default is not one of :values" do
+    msg =
+      ~r'expected the default value for attr :foo to be one of \["foo", "bar", "baz"\], got: "boom"'
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrDefaultValuesMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, default: "boom", values: ["foo", "bar", "baz"]
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if slot attr has :default" do
     msg = ~r" invalid option :default for attr :foo in slot :named"
 
     assert_raise CompileError, msg, fn ->

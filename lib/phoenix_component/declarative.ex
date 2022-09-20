@@ -301,10 +301,6 @@ defmodule Phoenix.Component.Declarative do
     type = validate_attr_type!(module, key, slot, name, type, line, file)
     validate_attr_opts!(slot, name, opts, line, file)
 
-    if Keyword.has_key?(opts, :default) do
-      validate_attr_default!(slot, name, type, opts[:default], line, file)
-    end
-
     if Keyword.has_key?(opts, :values) and Keyword.has_key?(opts, :examples) do
       compile_error!(line, file, "only one of :values or :examples must be given")
     end
@@ -315,6 +311,10 @@ defmodule Phoenix.Component.Declarative do
 
     if Keyword.has_key?(opts, :examples) do
       validate_attr_examples!(slot, name, type, opts[:examples], line, file)
+    end
+
+    if Keyword.has_key?(opts, :default) do
+      validate_attr_default!(slot, name, type, opts, line, file)
     end
 
     attr = %{
@@ -379,7 +379,16 @@ defmodule Phoenix.Component.Declarative do
   defp attr_slot(name, nil), do: "#{inspect(name)}"
   defp attr_slot(name, slot), do: "#{inspect(name)} in slot #{inspect(slot)}"
 
-  defp validate_attr_default!(slot, name, type, default, line, file) do
+  defp validate_attr_default!(slot, name, _type, [default: default, values: values], line, file) do
+    unless default in values do
+      compile_error!(line, file, """
+      expected the default value for attr #{attr_slot(name, slot)} to be one of #{inspect(values)}, \
+      got: #{inspect(default)}
+      """)
+    end
+  end
+
+  defp validate_attr_default!(slot, name, type, [default: default], line, file) do
     case {type, default} do
       {_type, nil} ->
         :ok
