@@ -281,6 +281,14 @@ defmodule Phoenix.Component.Declarative do
       compile_error!(line, file, "global attributes do not support the :required option")
     end
 
+    if type == :global and Keyword.has_key?(opts, :values) do
+      compile_error!(line, file, "global attributes do not support the :values option")
+    end
+
+    if type == :global and Keyword.has_key?(opts, :examples) do
+      compile_error!(line, file, "global attributes do not support the :examples option")
+    end
+
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
     unless is_binary(doc) or is_nil(doc) or doc == false do
@@ -301,8 +309,20 @@ defmodule Phoenix.Component.Declarative do
     type = validate_attr_type!(module, key, slot, name, type, line, file)
     validate_attr_opts!(slot, name, opts, line, file)
 
+    if Keyword.has_key?(opts, :values) and Keyword.has_key?(opts, :examples) do
+      compile_error!(line, file, "only one of :values or :examples must be given")
+    end
+
+    if Keyword.has_key?(opts, :values) do
+      validate_attr_values!(slot, name, type, opts[:values], line, file)
+    end
+
+    if Keyword.has_key?(opts, :examples) do
+      validate_attr_examples!(slot, name, type, opts[:examples], line, file)
+    end
+
     if Keyword.has_key?(opts, :default) do
-      validate_attr_default!(slot, name, type, opts[:default], line, file)
+      validate_attr_default!(slot, name, type, opts, line, file)
     end
 
     attr = %{
@@ -367,37 +387,18 @@ defmodule Phoenix.Component.Declarative do
   defp attr_slot(name, nil), do: "#{inspect(name)}"
   defp attr_slot(name, slot), do: "#{inspect(name)} in slot #{inspect(slot)}"
 
-  defp validate_attr_default!(slot, name, type, default, line, file) do
-    case {type, default} do
-      {_type, nil} ->
-        :ok
+  defp validate_attr_default!(slot, name, _type, [default: default, values: values], line, file) do
+    unless default in values do
+      compile_error!(line, file, """
+      expected the default value for attr #{attr_slot(name, slot)} to be one of #{inspect(values)}, \
+      got: #{inspect(default)}
+      """)
+    end
+  end
 
-      {:any, _default} ->
-        :ok
-
-      {:string, default} when not is_binary(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:atom, default} when not is_atom(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:boolean, default} when not is_boolean(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:integer, default} when not is_integer(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:float, default} when not is_float(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:list, default} when not is_list(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {{:struct, mod}, default} when not is_struct(default) ->
-        bad_default!(slot, name, mod, default, line, file)
-
-      {_type, _default} ->
-        :ok
+  defp validate_attr_default!(slot, name, type, [default: default], line, file) do
+    unless valid_value?(type, default) do
+      bad_default!(slot, name, type, default, line, file)
     end
   end
 
@@ -407,6 +408,55 @@ defmodule Phoenix.Component.Declarative do
     got: #{inspect(default)}
     """)
   end
+
+  defp validate_attr_values!(slot, name, type, values, line, file) do
+    unless is_list(values) and not Enum.empty?(values) do
+      compile_error!(line, file, """
+      :values must be a non-empty list, got: #{inspect(values)}
+      """)
+    end
+
+    for value <- values,
+        not valid_value?(type, value),
+        do: bad_value!(slot, name, type, value, line, file)
+  end
+
+  defp bad_value!(slot, name, type, value, line, file) do
+    compile_error!(line, file, """
+    expected the values for attr #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
+    got: #{inspect(value)}
+    """)
+  end
+
+  defp validate_attr_examples!(slot, name, type, examples, line, file) do
+    unless is_list(examples) and not Enum.empty?(examples) do
+      compile_error!(line, file, """
+      :examples must be a non-empty list, got: #{inspect(examples)}
+      """)
+    end
+
+    for example <- examples,
+        not valid_value?(type, example),
+        do: bad_example!(slot, name, type, example, line, file)
+  end
+
+  defp bad_example!(slot, name, type, example, line, file) do
+    compile_error!(line, file, """
+    expected the examples for attr #{attr_slot(name, slot)} to be #{type_with_article(type)}, \
+    got: #{inspect(example)}
+    """)
+  end
+
+  defp valid_value?(_type, nil), do: true
+  defp valid_value?(:any, _value), do: true
+  defp valid_value?(:string, value), do: is_binary(value)
+  defp valid_value?(:atom, value), do: is_atom(value)
+  defp valid_value?(:boolean, value), do: is_boolean(value)
+  defp valid_value?(:integer, value), do: is_integer(value)
+  defp valid_value?(:float, value), do: is_float(value)
+  defp valid_value?(:list, value), do: is_list(value)
+  defp valid_value?({:struct, mod}, value), do: is_struct(value, mod)
+  defp valid_value?(_type, _value), do: true
 
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, message = invalid_attr_message(key, slot) do
@@ -424,7 +474,11 @@ defmodule Phoenix.Component.Declarative do
         "instead use Map.get/3 with a default value when accessing a slot attribute"
 
   defp invalid_attr_message(:required, _), do: nil
-  defp invalid_attr_message(_key, nil), do: "The supported options are: [:required, :default]"
+  defp invalid_attr_message(:values, _), do: nil
+  defp invalid_attr_message(:examples, _), do: nil
+
+  defp invalid_attr_message(_key, nil),
+    do: "The supported options are: [:required, :default, :values, :examples]"
 
   defp invalid_attr_message(_key, _slot),
     do: "The supported options inside slots are: [:required]"
@@ -709,7 +763,9 @@ defmodule Phoenix.Component.Declarative do
           build_attr_name(attr),
           build_attr_type(attr),
           build_attr_required(attr),
-          build_attr_doc_and_default(attr, "  ")
+          build_hyphen(attr),
+          build_attr_doc_and_default(attr, "  "),
+          build_attr_values_or_examples(attr)
         ]
       end
     ]
@@ -747,7 +803,9 @@ defmodule Phoenix.Component.Declarative do
         build_attr_name(slot_attr),
         build_attr_type(slot_attr),
         build_attr_required(slot_attr),
-        build_attr_doc_and_default(slot_attr, "    ")
+        build_hyphen(slot_attr),
+        build_attr_doc_and_default(slot_attr, "    "),
+        build_attr_values_or_examples(slot_attr)
       ]
     end
   end
@@ -781,17 +839,11 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}, _indent) do
-    [" - Defaults to `", inspect(default), "`."]
+    ["Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}, indent) do
-    [
-      " - ",
-      build_doc(doc, indent, true),
-      "Defaults to `",
-      inspect(default),
-      "`."
-    ]
+    [build_doc(doc, indent, true), "Defaults to `", inspect(default), "`."]
   end
 
   defp build_attr_doc_and_default(%{doc: nil}, _indent) do
@@ -799,7 +851,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc}, indent) do
-    [" - ", build_doc(doc, indent, false)]
+    [build_doc(doc, indent, false)]
   end
 
   defp build_doc(doc, indent, text_after?) do
@@ -830,8 +882,38 @@ defmodule Phoenix.Component.Declarative do
     end
   end
 
+  defp build_attr_values_or_examples(%{opts: [values: values]}) do
+    ["Must be one of ", build_literals_list(values, "or"), ?.]
+  end
+
+  defp build_attr_values_or_examples(%{opts: [examples: examples]}) do
+    ["Examples include ", build_literals_list(examples, "and"), ?.]
+  end
+
+  defp build_attr_values_or_examples(_attr) do
+    []
+  end
+
+  defp build_literals_list(literals, condition) do
+    literals
+    |> Enum.map_intersperse(", ", &[?`, inspect(&1), ?`])
+    |> List.insert_at(-2, [condition, " "])
+  end
+
+  defp build_hyphen(%{doc: doc}) when is_binary(doc) do
+    [" - "]
+  end
+
+  defp build_hyphen(%{opts: []}) do
+    []
+  end
+
+  defp build_hyphen(%{opts: _opts}) do
+    [" - "]
+  end
+
   defp build_right_doc("") do
-    [""]
+    []
   end
 
   defp build_right_doc(right) do
@@ -897,7 +979,8 @@ defmodule Phoenix.Component.Declarative do
        ) do
     {attrs, has_global?} =
       Enum.reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
-        %{name: name, required: required, type: type} = attr_def
+        %{name: name, required: required, type: type, opts: opts} = attr_def
+        attr_values = Keyword.get(opts, :values, nil)
         {value, attrs} = Map.pop(attrs, name)
 
         case {type, value} do
@@ -917,6 +1000,16 @@ defmodule Phoenix.Component.Declarative do
 
             warn(message, call.file, line)
 
+          # attrs must be one of values
+          {_type, {line, _column, {_, type_value}}} when is_list(attr_values) ->
+            unless type_value in attr_values do
+              message =
+                "attribute \"#{name}\" in component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: #{inspect(type_value)}"
+
+              warn(message, call.file, line)
+            end
+
+          # attrs must be of the declared type
           {type, {line, _column, type_value}} ->
             if value_ast_to_string = type_mismatch(type, type_value) do
               message =
@@ -970,6 +1063,7 @@ defmodule Phoenix.Component.Declarative do
             for %{attrs: slot_attrs} <- slot_values,
                 {attr_name, {line, _column, type_value}} <- slot_attrs do
               case slot_attr_defs do
+                # slots cannot accept global attributes
                 %{^attr_name => %{type: :global}} ->
                   message =
                     "global attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
@@ -977,6 +1071,21 @@ defmodule Phoenix.Component.Declarative do
 
                   warn(message, call.file, line)
 
+                # slot attrs must be one of values
+                %{^attr_name => %{type: _type, opts: [values: attr_values]}}
+                when is_tuple(type_value) and tuple_size(type_value) == 2 ->
+                  {_, attr_value} = type_value
+
+                  unless attr_value in attr_values do
+                    message =
+                      "attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                        "for component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: " <>
+                        inspect(attr_value)
+
+                    warn(message, call.file, line)
+                  end
+
+                # slot attrs must be of the declared type
                 %{^attr_name => %{type: type}} ->
                   if value_ast_to_string = type_mismatch(type, type_value) do
                     message =
@@ -987,7 +1096,7 @@ defmodule Phoenix.Component.Declarative do
                     warn(message, call.file, line)
                   end
 
-                # undefined attribute
+                # undefined slot attr
                 %{} ->
                   if attr_name == :inner_block or
                        (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do

@@ -361,6 +361,91 @@ defmodule Phoenix.ComponentVerifyTest do
     end
   end
 
+  test "validates attr values" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule AttrValues do
+          use Phoenix.Component
+
+          attr :attr, :string, values: ["foo", "bar", "baz"]
+          def func_string(assigns), do: ~H[]
+
+          attr :attr, :atom, values: [:foo, :bar, :baz]
+          def func_atom(assigns), do: ~H[]
+
+          def line, do: __ENV__.line + 2
+
+          def render(assigns) do
+            ~H"""
+            <.func_string attr="boom" />
+            <.func_atom attr={:boom} />
+            <.func_string attr={@string} />
+            <.func_atom attr={@atom} />
+            """
+          end
+        end
+      end)
+
+    line = get_line(__MODULE__.AttrValues, :line)
+
+    assert warnings =~ """
+           attribute "attr" in component \
+           Phoenix.ComponentVerifyTest.AttrValues.func_string/1 \
+           must be one of ["foo", "bar", "baz"], got: "boom"
+             test/phoenix_component/verify_test.exs:#{line + 2}: (file)
+           """
+
+    assert warnings =~ """
+           attribute "attr" in component \
+           Phoenix.ComponentVerifyTest.AttrValues.func_atom/1 \
+           must be one of [:foo, :bar, :baz], got: :boom
+             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
+           """
+  end
+
+  test "validates slot attr values" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule SlotAttrValues do
+          use Phoenix.Component
+
+          slot :named do
+            attr :string, :string, values: ["foo", "bar", "baz"]
+            attr :atom, :atom, values: [:foo, :bar, :baz]
+          end
+
+          def func(assigns), do: ~H[]
+
+          def line, do: __ENV__.line + 2
+
+          def render(assigns) do
+            ~H"""
+            <.func>
+              <:named string="boom" atom={:boom} />
+              <:named string={@string} atom={@atom} />
+            </.func>
+            """
+          end
+        end
+      end)
+
+    line = get_line(__MODULE__.SlotAttrValues, :line)
+
+    assert warnings =~ """
+           attribute "string" in slot "named" for component \
+           Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
+           must be one of ["foo", "bar", "baz"], got: "boom"
+             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
+           """
+
+    assert warnings =~ """
+           attribute "atom" in slot "named" for component \
+           Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
+           must be one of [:foo, :bar, :baz], got: :boom
+             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
+           """
+  end
+
   test "validate required slots" do
     warnings =
       capture_io(:stderr, fn ->

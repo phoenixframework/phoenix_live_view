@@ -154,6 +154,11 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   end
 
   def fun_slot_doc_with_attrs_multiline(assigns), do: ~H[]
+  
+  attr :attr1, :atom, values: [:foo, :bar, :baz]
+  attr :attr2, :atom, examples: [:foo, :bar, :baz]
+  
+  def fun_attr_values_examples(assigns), do: ~H[]
 end
 
 defmodule Phoenix.LiveViewTest.StatefulComponent do

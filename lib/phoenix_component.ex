@@ -1452,6 +1452,12 @@ defmodule Phoenix.Component do
   * `:default` - the default value for the attribute if not provided. If this option is
     not set and the attribute is not given, accessing the attribute will fail unless a
     value is explicitly set with `assign_new/3`.
+    
+  * `:examples` - a non-exhaustive list of values accepted by the attribute, used for documentation
+    purposes.
+
+  * `:values` - an exhaustive list of values accepted by the attributes. If a caller passes a literal
+    not contained in this list, a compile warning is issued.
 
   * `:doc` - documentation for the attribute.
 
@@ -1467,6 +1473,8 @@ defmodule Phoenix.Component do
   * You specify a literal attribute (such as `value="string"` or `value`, but not `value={expr}`)
   and the type does not match. The following types currently support literal validation:
   `:string`, `:atom`, `:boolean`, `:integer`, `:float`, and `:list`.
+
+  * You specify a literal attribute and it is not a member of the `:values` list.
 
   LiveView does not perform any validation at runtime. This means the type information is mostly
   used for documentation and reflection purposes.
@@ -2075,7 +2083,7 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
-  attr.(:id, :string, required: true, doc: "The DOM identifier of the contianer tag.")
+  attr.(:id, :string, required: true, doc: "The DOM identifier of the container tag.")
 
   attr.(:rest, :global, doc: "Additional HTML attributes to add to the container tag.")
 

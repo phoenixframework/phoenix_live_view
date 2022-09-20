@@ -63,6 +63,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     attr :rest, :global, default: %{class: "primary"}
     def button_with_defaults(assigns), do: ~H[<button {@rest}/>]
 
+    def button_with_values_line, do: __ENV__.line
+    attr :text, :string, values: ["Save", "Cancel"]
+    def button_with_values(assigns), do: ~H[<button><%= @text %></button>]
+
+    def button_with_examples_line, do: __ENV__.line
+    attr :text, :string, examples: ["Save", "Cancel"]
+    def button_with_examples(assigns), do: ~H[<button><%= @text %></button>]
+
     def render_line, do: __ENV__.line
 
     def render(assigns) do
@@ -107,6 +115,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     func2_line = FunctionComponentWithAttrs.func2_line()
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
+    button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
+    button_with_examples_line = FunctionComponentWithAttrs.button_with_examples_line()
 
     assert FunctionComponentWithAttrs.__components__() == %{
              func1: %{
@@ -216,6 +226,36 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    doc: nil,
                    slot: nil,
                    type: :global
+                 }
+               ],
+               slots: []
+             },
+             button_with_values: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_values_line + 1,
+                   name: :text,
+                   opts: [values: ["Save", "Cancel"]],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
+                 }
+               ],
+               slots: []
+             },
+             button_with_examples: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_examples_line + 1,
+                   name: :text,
+                   opts: [examples: ["Save", "Cancel"]],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
                  }
                ],
                slots: []
@@ -700,29 +740,92 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
            }
   end
 
-  test "inserts attr docs to function component @doc string" do
+  test "inserts attr & slot docs into function component @doc string" do
     {_, _, :elixir, "text/markdown", _, _, docs} =
       Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
 
     components = %{
-      fun_attr_any: "## Attributes\n\n* `attr` (`:any`)\n",
-      fun_attr_string: "## Attributes\n\n* `attr` (`:string`)\n",
-      fun_attr_atom: "## Attributes\n\n* `attr` (`:atom`)\n",
-      fun_attr_boolean: "## Attributes\n\n* `attr` (`:boolean`)\n",
-      fun_attr_integer: "## Attributes\n\n* `attr` (`:integer`)\n",
-      fun_attr_float: "## Attributes\n\n* `attr` (`:float`)\n",
-      fun_attr_list: "## Attributes\n\n* `attr` (`:list`)\n",
-      fun_attr_global: "## Attributes\n\n* `attr` (`:global`)\n",
-      fun_attr_struct:
-        "## Attributes\n\n* `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)\n",
-      fun_attr_required: "## Attributes\n\n* `attr` (`:any`) (required)\n",
-      fun_attr_default: "## Attributes\n\n* `attr` (`:any`) - Defaults to `%{}`.\n",
+      fun_attr_any: """
+      ## Attributes
+
+      * `attr` (`:any`)
+      """,
+      fun_attr_string: """
+      ## Attributes
+
+      * `attr` (`:string`)
+      """,
+      fun_attr_atom: """
+      ## Attributes
+
+      * `attr` (`:atom`)
+      """,
+      fun_attr_boolean: """
+      ## Attributes
+
+      * `attr` (`:boolean`)
+      """,
+      fun_attr_integer: """
+      ## Attributes
+
+      * `attr` (`:integer`)
+      """,
+      fun_attr_float: """
+      ## Attributes
+
+      * `attr` (`:float`)
+      """,
+      fun_attr_list: """
+      ## Attributes
+
+      * `attr` (`:list`)
+      """,
+      fun_attr_global: """
+      ## Attributes
+
+      * `attr` (`:global`)
+      """,
+      fun_attr_struct: """
+      ## Attributes
+
+      * `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)
+      """,
+      fun_attr_required: """
+      ## Attributes
+
+      * `attr` (`:any`) (required)
+      """,
+      fun_attr_default: """
+      ## Attributes
+
+      * `attr` (`:any`) - Defaults to `%{}`.
+      """,
       fun_doc_false: :hidden,
-      fun_doc_injection: "fun docs\n\n## Attributes\n\n* `attr` (`:any`)\n\nfun docs\n",
-      fun_multiple_attr: "## Attributes\n\n* `attr1` (`:any`)\n* `attr2` (`:any`)\n",
-      fun_with_attr_doc: "## Attributes\n\n* `attr` (`:any`) - attr docs.\n",
-      fun_with_attr_doc_period:
-        "## Attributes\n\n* `attr` (`:any`) - attr docs. Defaults to `\"foo\"`.\n",
+      fun_doc_injection: """
+      fun docs
+
+      ## Attributes
+
+      * `attr` (`:any`)
+
+      fun docs
+      """,
+      fun_multiple_attr: """
+      ## Attributes
+
+      * `attr1` (`:any`)
+      * `attr2` (`:any`)
+      """,
+      fun_with_attr_doc: """
+      ## Attributes
+
+      * `attr` (`:any`) - attr docs.
+      """,
+      fun_with_attr_doc_period: """
+      ## Attributes
+
+      * `attr` (`:any`) - attr docs. Defaults to `\"foo\"`.
+      """,
       fun_with_attr_doc_multiline: """
       ## Attributes
 
@@ -735,15 +838,48 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         Defaults to `"foo"`.
       """,
-      fun_with_hidden_attr: "## Attributes\n\n* `attr1` (`:any`)\n",
-      fun_with_doc: "fun docs\n## Attributes\n\n* `attr` (`:any`)\n",
-      fun_slot: "## Slots\n\n* `inner_block`\n",
-      fun_slot_doc: "## Slots\n\n* `inner_block` - slot docs.\n",
-      fun_slot_required: "## Slots\n\n* `inner_block` (required)\n",
-      fun_slot_with_attrs:
-        "## Slots\n\n* `named` (required) - a named slot. Accepts attributes:\n\n  * `attr1` (`:any`) (required) - a slot attr doc.\n  * `attr2` (`:any`) - a slot attr doc.\n",
-      fun_slot_no_doc_with_attrs:
-        "## Slots\n\n* `named` (required) - Accepts attributes:\n\n  * `attr1` (`:any`) (required) - a slot attr doc.\n  * `attr2` (`:any`) - a slot attr doc.\n",
+      fun_with_hidden_attr: """
+      ## Attributes
+
+      * `attr1` (`:any`)
+      """,
+      fun_with_doc: """
+      fun docs
+      ## Attributes
+
+      * `attr` (`:any`)
+      """,
+      fun_slot: """
+      ## Slots
+
+      * `inner_block`
+      """,
+      fun_slot_doc: """
+      ## Slots
+
+      * `inner_block` - slot docs.
+      """,
+      fun_slot_required: """
+      ## Slots
+
+      * `inner_block` (required)
+      """,
+      fun_slot_with_attrs: """
+      ## Slots
+
+      * `named` (required) - a named slot. Accepts attributes:
+
+        * `attr1` (`:any`) (required) - a slot attr doc.
+        * `attr2` (`:any`) - a slot attr doc.
+      """,
+      fun_slot_no_doc_with_attrs: """
+      ## Slots
+
+      * `named` (required) - Accepts attributes:
+
+        * `attr1` (`:any`) (required) - a slot attr doc.
+        * `attr2` (`:any`) - a slot attr doc.
+      """,
       fun_slot_doc_multiline_with_attrs: """
       ## Slots
 
@@ -770,6 +906,12 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
           and that's it.
 
         * `attr2` (`:any`) - a slot attr doc.
+      """,
+      fun_attr_values_examples: """
+      ## Attributes
+
+      * `attr1` (`:atom`) - Must be one of `:foo`, `:bar`, or `:baz`.
+      * `attr2` (`:atom`) - Examples include `:foo`, `:bar`, and `:baz`.
       """
     }
 
@@ -977,7 +1119,105 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr default does not match the type" do
+  test "raise if attr :values does not match the type" do
+    msg = ~r"expected the values for attr :foo to be a :string, got: :not_a_string"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrValueTypeMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: ["a string", :not_a_string]
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr :example does not match the type" do
+    msg = ~r"expected the examples for attr :foo to be a :string, got: :not_a_string"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrExampleTypeMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, examples: ["a string", :not_a_string]
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr :values is not a list" do
+    msg = ~r":values must be a non-empty list, got: :ok"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsValuesNotAList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: :ok
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr :examples is not a list" do
+    msg = ~r":examples must be a non-empty list, got: :ok"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsExamplesNotAList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, examples: :ok
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr :values is an empty list" do
+    msg = ~r":values must be a non-empty list, got: \[\]"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsValuesEmptyList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: []
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr :examples is an empty list" do
+    msg = ~r":examples must be a non-empty list, got: \[\]"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrsExamplesEmptyList do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, examples: []
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr has both :values and :examples" do
+    msg = ~r"only one of :values or :examples must be given"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrDefaultTypeMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, values: ["a string"], examples: ["a string"]
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr :default does not match the type" do
     msg = ~r"expected the default value for attr :foo to be a :string, got: :not_a_string"
 
     assert_raise CompileError, msg, fn ->
@@ -991,7 +1231,22 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if slot attr has default" do
+  test "raise if attr :default is not one of :values" do
+    msg =
+      ~r'expected the default value for attr :foo to be one of \["foo", "bar", "baz"\], got: "boom"'
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrDefaultValuesMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :string, default: "boom", values: ["foo", "bar", "baz"]
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if slot attr has :default" do
     msg = ~r" invalid option :default for attr :foo in slot :named"
 
     assert_raise CompileError, msg, fn ->
@@ -1192,10 +1447,36 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     msg = ~r"global attributes do not support the :required option"
 
     assert_raise CompileError, msg, fn ->
-      defmodule Phoenix.ComponentTest.GlobalOpts do
+      defmodule Phoenix.ComponentTest.GlobalRequiredOpts do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, required: true
+        def func(assigns), do: ~H[<%= @rest %>]
+      end
+    end
+  end
+
+  test "raise if global provides :values" do
+    msg = ~r"global attributes do not support the :values option"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.GlobalValueOpts do
+        use Elixir.Phoenix.Component
+
+        attr :rest, :global, values: ["placeholder", "rel"]
+        def func(assigns), do: ~H[<%= @rest %>]
+      end
+    end
+  end
+
+  test "raise if global provides :examples" do
+    msg = ~r"global attributes do not support the :examples option"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.GlobalExampleOpts do
+        use Elixir.Phoenix.Component
+
+        attr :rest, :global, examples: ["placeholder", "rel"]
         def func(assigns), do: ~H[<%= @rest %>]
       end
     end
