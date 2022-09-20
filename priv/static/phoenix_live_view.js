@@ -817,6 +817,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         let uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF);
         fileData[uploadRef] = fileData[uploadRef] || [];
         entry.ref = this.genFileRef(file);
+        entry.last_modified = file.lastModified;
         entry.name = file.name || entry.ref;
         entry.relative_path = file.webkitRelativePath;
         entry.type = file.type;

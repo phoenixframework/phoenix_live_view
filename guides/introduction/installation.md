@@ -23,8 +23,7 @@ If installing from Hex, use the latest version from there:
 ```elixir
 def deps do
   [
-    # TODO: bump to released vsn for 0.18
-    {:phoenix_live_view, github: "phoenixframework/phoenix_live_view"},
+    {:phoenix_live_view, "~> 0.18"},
     {:floki, ">= 0.30.0", only: :test}
   ]
 end

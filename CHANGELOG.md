@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.18.0
+## 0.18.0 (2022-09-20)
 
 LiveView v0.18 includes a major new feature in the form of declarative assigns with new `attr`
 and `slot` APIs for specifying which attributes a function component supports, the type,
@@ -29,10 +29,10 @@ a `:let` usage.
 
 ### Enhancements
   - [Component] Add declarative assigns with compile-time verifications and warnings via `attr`/`slot`
+  - [Component] Add new attrs `:let` and `:for`, and `:if` with HTML tag, function component, and slot support. We still support `let` but the formatter will convert it to `:let` and soon it will be deprecated.
   - [Component] Add `dynamic_tag` function component
   - [Component] Add `link` function component
   - [Component] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessibility
-  - [Component] Add new attrs `:let` and `:for`, and `:if` with HTML tag, function component, and slot support. We still support `let` but the formatter will convert it to `:let` and soon it will be deprecated.
   - [Logger] Add new LiveView logger with telemetry instrumentation for lifecycle events
   - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessibility
   - [Socket] Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
