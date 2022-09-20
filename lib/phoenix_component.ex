@@ -2231,7 +2231,7 @@ defmodule Phoenix.Component do
       data-phx-active-refs={Enum.map_join(conf.entries, ",", & &1.ref)}
       data-phx-done-refs={Enum.map_join(done_entries, ",", & &1.ref)}
       data-phx-preflighted-refs={Enum.map_join(preflighted_entries, ",", & &1.ref)}
-      data-phx-auto_upload={valid? && conf.auto_upload?}
+      data-phx-auto-upload={valid? && conf.auto_upload?}
       {@rest}
     />
     """
