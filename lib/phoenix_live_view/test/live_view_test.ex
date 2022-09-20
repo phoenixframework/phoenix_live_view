@@ -358,7 +358,7 @@ defmodule Phoenix.LiveViewTest do
     to = hd(Plug.Conn.get_resp_header(conn, "location"))
 
     opts =
-      if flash = conn.private[:phoenix_flash] do
+      if flash = conn.assigns[:flash] || conn.private[:phoenix_flash] do
         %{to: to, flash: flash}
       else
         %{to: to}
@@ -505,7 +505,7 @@ defmodule Phoenix.LiveViewTest do
   Converts a rendered template to a string.
 
   ## Examples
-      
+
       iex> import Phoenix.LiveView.Helpers
       iex> assigns = []
       iex> ~H"""

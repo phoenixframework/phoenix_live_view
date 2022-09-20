@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.17.11"
+  @version "0.17.12"
 
   def project do
     [
@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      {:phoenix, "~> 1.6.0"},
+      {:phoenix, "~> 1.6.0 or ~> 1.7.0-rc"},
       {:phoenix_html, "~> 3.1"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},

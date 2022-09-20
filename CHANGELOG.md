@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.17.12 (2022-09-20)
+
+### Enhancements
+  - Add support for upcoming Phoenix 1.7 flash interface
+
 ## 0.17.11 (2022-07-11)
 
 ### Enhancements

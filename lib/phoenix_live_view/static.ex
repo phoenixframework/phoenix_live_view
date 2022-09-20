@@ -86,7 +86,7 @@ defmodule Phoenix.LiveView.Static do
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
-    flash = Map.get(conn.private, :phoenix_flash, %{})
+    flash = conn.assigns[:flash] || Map.get(conn.private, :phoenix_flash, %{})
     request_url = Plug.Conn.request_url(conn)
     host_uri = URI.parse(request_url)
 
