@@ -35,8 +35,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      # TODO bump to 1.6 or ~> 1.7
-      {:phoenix, github: "phoenixframework/phoenix"},
+      {:phoenix, "~> 1.6 or ~> 1.7"},
       {:phoenix_html, "~> 3.1"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},

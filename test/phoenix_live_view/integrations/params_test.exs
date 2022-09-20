@@ -105,7 +105,8 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?from=handle_params")
 
       assert redirected_to(conn) == "/"
-      assert Phoenix.Flash.get(conn.assigns.flash, :info) == "msg"
+      # TODO use Phoenix.Flash.get when 1.7 is released
+      assert get_flash(conn, :info) == "msg"
     end
 
     test "push_patch", %{conn: conn} do
