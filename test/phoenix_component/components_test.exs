@@ -397,4 +397,20 @@ defmodule Phoenix.LiveView.ComponentsTest do
              ] = html
     end
   end
+
+  describe "live_file_input/1" do
+    test "renders attributes" do
+      assigns = %{}
+
+      conf = %Phoenix.LiveView.UploadConfig{
+        auto_upload?: true,
+        entries: [%{preflighted?: false, done?: false, ref: "foo"}]
+      }
+
+      assert render(
+               ~H|<.live_file_input upload={conf} class={"<script>alert('nice try');</script>"} />|
+             ) ==
+               ~s|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-auto-upload class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;">|
+    end
+  end
 end
