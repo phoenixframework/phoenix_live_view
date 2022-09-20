@@ -389,36 +389,8 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp validate_attr_default!(slot, name, type, [default: default], line, file) do
-    case {type, default} do
-      {_type, nil} ->
-        :ok
-
-      {:any, _default} ->
-        :ok
-
-      {:string, default} when not is_binary(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:atom, default} when not is_atom(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:boolean, default} when not is_boolean(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:integer, default} when not is_integer(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:float, default} when not is_float(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {:list, default} when not is_list(default) ->
-        bad_default!(slot, name, type, default, line, file)
-
-      {{:struct, mod}, default} when not is_struct(default) ->
-        bad_default!(slot, name, mod, default, line, file)
-
-      {_type, _default} ->
-        :ok
+    unless valid_value?(type, default) do
+      bad_default!(slot, name, type, default, line, file)
     end
   end
 
@@ -436,39 +408,9 @@ defmodule Phoenix.Component.Declarative do
       """)
     end
 
-    for value <- values do
-      case {type, value} do
-        {_type, nil} ->
-          :ok
-
-        {:any, _value} ->
-          :ok
-
-        {:string, value} when not is_binary(value) ->
-          bad_value!(slot, name, type, value, line, file)
-
-        {:atom, value} when not is_atom(value) ->
-          bad_value!(slot, name, type, value, line, file)
-
-        {:boolean, value} when not is_boolean(value) ->
-          bad_value!(slot, name, type, value, line, file)
-
-        {:integer, value} when not is_integer(value) ->
-          bad_value!(slot, name, type, value, line, file)
-
-        {:float, value} when not is_float(value) ->
-          bad_value!(slot, name, type, value, line, file)
-
-        {:list, value} when not is_list(value) ->
-          bad_value!(slot, name, type, value, line, file)
-
-        {{:struct, mod}, value} when not is_struct(value) ->
-          bad_value!(slot, name, mod, value, line, file)
-
-        {_type, _value} ->
-          :ok
-      end
-    end
+    for value <- values,
+        not valid_value?(type, value),
+        do: bad_value!(slot, name, type, value, line, file)
   end
 
   defp bad_value!(slot, name, type, value, line, file) do
@@ -485,39 +427,9 @@ defmodule Phoenix.Component.Declarative do
       """)
     end
 
-    for example <- examples do
-      case {type, example} do
-        {_type, nil} ->
-          :ok
-
-        {:any, _example} ->
-          :ok
-
-        {:string, example} when not is_binary(example) ->
-          bad_example!(slot, name, type, example, line, file)
-
-        {:atom, example} when not is_atom(example) ->
-          bad_example!(slot, name, type, example, line, file)
-
-        {:boolean, example} when not is_boolean(example) ->
-          bad_example!(slot, name, type, example, line, file)
-
-        {:integer, example} when not is_integer(example) ->
-          bad_example!(slot, name, type, example, line, file)
-
-        {:float, example} when not is_float(example) ->
-          bad_example!(slot, name, type, example, line, file)
-
-        {:list, example} when not is_list(example) ->
-          bad_example!(slot, name, type, example, line, file)
-
-        {{:struct, mod}, example} when not is_struct(example) ->
-          bad_example!(slot, name, mod, example, line, file)
-
-        {_type, _example} ->
-          :ok
-      end
-    end
+    for example <- examples,
+        not valid_value?(type, example),
+        do: bad_example!(slot, name, type, example, line, file)
   end
 
   defp bad_example!(slot, name, type, example, line, file) do
@@ -526,6 +438,17 @@ defmodule Phoenix.Component.Declarative do
     got: #{inspect(example)}
     """)
   end
+
+  defp valid_value?(_type, nil), do: true
+  defp valid_value?(:any, _value), do: true
+  defp valid_value?(:string, value), do: is_binary(value)
+  defp valid_value?(:atom, value), do: is_atom(value)
+  defp valid_value?(:boolean, value), do: is_boolean(value)
+  defp valid_value?(:integer, value), do: is_integer(value)
+  defp valid_value?(:float, value), do: is_float(value)
+  defp valid_value?(:list, value), do: is_list(value)
+  defp valid_value?({:struct, mod}, value), do: is_struct(value, mod)
+  defp valid_value?(_type, _value), do: true
 
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, message = invalid_attr_message(key, slot) do
@@ -834,8 +757,7 @@ defmodule Phoenix.Component.Declarative do
           build_attr_required(attr),
           build_hyphen(attr),
           build_attr_doc_and_default(attr, "  "),
-          build_attr_values(attr),
-          build_attr_examples(attr)
+          build_attr_values_or_examples(attr)
         ]
       end
     ]
@@ -875,8 +797,7 @@ defmodule Phoenix.Component.Declarative do
         build_attr_required(slot_attr),
         build_hyphen(slot_attr),
         build_attr_doc_and_default(slot_attr, "    "),
-        build_attr_values(slot_attr),
-        build_attr_examples(slot_attr)
+        build_attr_values_or_examples(slot_attr)
       ]
     end
   end
@@ -953,26 +874,21 @@ defmodule Phoenix.Component.Declarative do
     end
   end
 
-  defp build_attr_values(%{opts: [values: values]}) do
+  defp build_attr_values_or_examples(%{opts: [values: values]}) do
     ["Must be one of ", build_literals_list(values, "or"), ?.]
   end
 
-  defp build_attr_values(_attr) do
-    []
-  end
-
-  defp build_attr_examples(%{opts: [examples: examples]}) do
+  defp build_attr_values_or_examples(%{opts: [examples: examples]}) do
     ["Examples include ", build_literals_list(examples, "and"), ?.]
   end
 
-  defp build_attr_examples(_attr) do
+  defp build_attr_values_or_examples(_attr) do
     []
   end
 
   defp build_literals_list(literals, condition) do
     literals
-    |> Enum.map(&[?`, inspect(&1), ?`])
-    |> Enum.intersperse([", "])
+    |> Enum.map_intersperse(", ", &[?`, inspect(&1), ?`])
     |> List.insert_at(-2, [condition, " "])
   end
 
