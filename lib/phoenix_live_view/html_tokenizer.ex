@@ -562,7 +562,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp trim_context([:comment_start, :comment_end | [_ | _] = rest]), do: trim_context(rest)
-
   defp trim_context(rest), do: rest
 
   defp get_context([]), do: nil
