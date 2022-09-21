@@ -28,12 +28,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   defmodule CustomGlobals do
-    use Phoenix.Component, global_prefixes: ~w(myprefix-)
+    use Phoenix.Component, globals: ~w(customattr), global_prefixes: ~w(myprefix-)
   end
 
   test "custom __global__?" do
     assert CustomGlobals.__global__?("myprefix-a")
     refute CustomGlobals.__global__?("otherprefix-a")
+
+    assert CustomGlobals.__global__?("customattr")
   end
 
   defmodule RemoteFunctionComponentWithAttrs do

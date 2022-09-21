@@ -174,9 +174,15 @@ defmodule Phoenix.Component.Declarative do
   ## Attrs/slots
 
   @doc false
-  @valid_opts [:global_prefixes]
+  @valid_opts [:globals, :global_prefixes]
   def __setup__(module, opts) do
+    {globals, opts} = Keyword.pop(opts, :globals, [])
     {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
+
+    matches =
+      for global <- globals do
+        quote(do: {unquote(global), true})
+      end
 
     prefix_matches =
       for prefix <- prefixes do
@@ -205,10 +211,10 @@ defmodule Phoenix.Component.Declarative do
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
 
-    if prefix_matches == [] do
+    if matches == [] and prefix_matches == [] do
       []
     else
-      prefix_matches ++ [quote(do: {_, false})]
+      matches ++ prefix_matches ++ [quote(do: {_, false})]
     end
   end
 
