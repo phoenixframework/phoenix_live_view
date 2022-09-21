@@ -88,6 +88,7 @@ defmodule Phoenix.Component.Declarative do
     contenteditable
     contextmenu
     dir
+    download
     draggable
     enterkeyhint
     exportparts
