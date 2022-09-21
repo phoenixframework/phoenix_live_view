@@ -553,7 +553,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
     meta =
       if context = get_context(context) do
-        Map.put(meta, :context, context)
+        Map.put(meta, :context, Enum.uniq(context))
       else
         meta
       end
