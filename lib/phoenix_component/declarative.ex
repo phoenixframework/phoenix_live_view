@@ -82,6 +82,7 @@ defmodule Phoenix.Component.Declarative do
     onwaiting
     accesskey
     autocapitalize
+    autocomplete
     autofocus
     class
     contenteditable
