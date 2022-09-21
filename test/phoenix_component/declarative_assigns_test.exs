@@ -27,6 +27,15 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert Phoenix.Component.Declarative.__global__?("phx-click")
   end
 
+  defmodule CustomGlobals do
+    use Phoenix.Component, global_prefixes: ~w(myprefix-)
+  end
+
+  test "custom __global__?" do
+    assert CustomGlobals.__global__?("myprefix-a")
+    refute CustomGlobals.__global__?("otherprefix-a")
+  end
+
   defmodule RemoteFunctionComponentWithAttrs do
     use Phoenix.Component
 
