@@ -136,7 +136,7 @@ defmodule Phoenix.LiveView.MixProject do
       },
       files:
         ~w(assets/js lib priv) ++
-          ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)
+          ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md .formatter.exs)
     ]
   end
 
