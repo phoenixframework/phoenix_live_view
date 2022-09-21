@@ -553,13 +553,17 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
     meta =
       if context = get_context(context) do
-        Map.put(meta, :context, Enum.uniq(context))
+        Map.put(meta, :context, trim_context(context))
       else
         meta
       end
 
     [{:text, buffer_to_string(buffer), meta} | acc]
   end
+
+  defp trim_context([:comment_start, :comment_end | [_ | _] = rest]), do: trim_context(rest)
+
+  defp trim_context(rest), do: rest
 
   defp get_context([]), do: nil
   defp get_context(context), do: Enum.reverse(context)
