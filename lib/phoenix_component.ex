@@ -181,10 +181,10 @@ defmodule Phoenix.Component do
   <span class="bg-blue-200" phx-click="close">You've got mail!</span>
   ```
 
-  ### Custom Global Attribute Prefixes
+  ### Custom Global Attributes
 
-  You can extend the set of global attributes by providing a list of attribute prefixes to
-  `use Phoenix.Component`. Like the default attributes common to all HTML elements,
+  You can extend the set of global attributes by providing a list of attributes or attribute
+  prefixes to `use Phoenix.Component`. Like the default attributes common to all HTML elements,
   any number of attributes that start with a global prefix will be accepted by function
   components defined in this module. By default, the following prefixes are supported:
   `phx-`, `aria-`, and `data-`. For example, to support the `x-` prefix used by
@@ -195,6 +195,10 @@ defmodule Phoenix.Component do
 
   Now all function components defined in this module will accept any number of attributes prefixed
   with `x-`, in addition to the default global prefixes.
+
+  You can also pass a list of specific global attribute names:
+
+      use Phoenix.Component, globals: ~w(custom-attr)
 
   You can learn more about attributes by reading the documentation for `attr/3`.
 
@@ -1452,7 +1456,7 @@ defmodule Phoenix.Component do
   * `:default` - the default value for the attribute if not provided. If this option is
     not set and the attribute is not given, accessing the attribute will fail unless a
     value is explicitly set with `assign_new/3`.
-    
+
   * `:examples` - a non-exhaustive list of values accepted by the attribute, used for documentation
     purposes.
 
