@@ -87,6 +87,7 @@ defmodule Phoenix.Component.Declarative do
     class
     contenteditable
     contextmenu
+    data
     dir
     download
     draggable
