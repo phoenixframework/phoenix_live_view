@@ -88,6 +88,8 @@ defmodule Phoenix.Component.Declarative do
     class
     contenteditable
     contextmenu
+    crossorigin
+    decoding
     dir
     download
     draggable
@@ -98,18 +100,24 @@ defmodule Phoenix.Component.Declarative do
     id
     inputmode
     is
+    ismap
     itemid
     itemprop
     itemref
     itemscope
     itemtype
     lang
+    loading
     nonce
     part
+    referrerpolicy
     rel
     role
+    sizes
     slot
     spellcheck
+    src
+    srcset
     style
     tabindex
     target
@@ -122,6 +130,7 @@ defmodule Phoenix.Component.Declarative do
     action
     placeholder
     pattern
+    usemap
     width
   )
 
