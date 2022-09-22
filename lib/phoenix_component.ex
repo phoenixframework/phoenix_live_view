@@ -2279,8 +2279,8 @@ defmodule Phoenix.Component do
 
     ~H"""
     <img
-      data-phx-upload-ref={entry.upload_ref},
-      data-phx-entry-ref={ref},
+      data-phx-upload-ref={entry.upload_ref}
+      data-phx-entry-ref={ref}
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
       {@rest} />
