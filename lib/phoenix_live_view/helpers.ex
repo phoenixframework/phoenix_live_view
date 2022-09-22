@@ -1,9 +1,5 @@
 defmodule Phoenix.LiveView.Helpers do
-  @moduledoc """
-  This module is deprecated and all of its functions.
-
-  You must `use Phoenix.Component` instead.
-  """
+  @moduledoc false
   import Phoenix.Component
 
   alias Phoenix.LiveView.{Component, Socket}

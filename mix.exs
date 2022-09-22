@@ -95,16 +95,18 @@ defmodule Phoenix.LiveView.MixProject do
     # Ungrouped Modules:
     #
     # Phoenix.Component
+    # Phoenix.LiveComponent
     # Phoenix.LiveView
     # Phoenix.LiveView.Controller
+    # Phoenix.LiveView.JS
     # Phoenix.LiveView.Router
-    # Phoenix.LiveView.Socket
     # Phoenix.LiveViewTest
 
     [
-      "Live Components": [
-        Phoenix.LiveComponent,
-        Phoenix.LiveComponent.CID
+      "Configuration": [
+        Phoenix.LiveView.HTMLFormatter,
+        Phoenix.LiveView.Logger,
+        Phoenix.LiveView.Socket
       ],
       "Testing structures": [
         Phoenix.LiveViewTest.Element,
@@ -116,9 +118,9 @@ defmodule Phoenix.LiveView.MixProject do
         Phoenix.LiveView.UploadEntry
       ],
       "Plugin API": [
+        Phoenix.LiveComponent.CID,
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.HTMLEngine,
-        Phoenix.LiveView.HTMLFormatter,
         Phoenix.LiveView.Component,
         Phoenix.LiveView.Rendered,
         Phoenix.LiveView.Comprehension
