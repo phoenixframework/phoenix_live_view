@@ -81,6 +81,7 @@ defmodule Phoenix.Component.Declarative do
     onvolumechange
     onwaiting
     accesskey
+    aria
     autocapitalize
     autocomplete
     autofocus
