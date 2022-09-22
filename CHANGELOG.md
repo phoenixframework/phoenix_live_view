@@ -23,8 +23,8 @@ Additionally, the special `let` attribute on function components have been depre
 a `:let` usage.
 
 ### Deprecations
-  - `live_redirect` - deprecate in favor of new `<.link navigate={..}>` component of `Phoenix.LiveView.Helpers`
-  - `live_patch` - deprecate in favor of new `<.link patch={..}>` component of `Phoenix.LiveView.Helpers`
+  - `live_redirect` - deprecate in favor of new `<.link navigate={..}>` component of `Phoenix.Component`
+  - `live_patch` - deprecate in favor of new `<.link patch={..}>` component of `Phoenix.Component`
   - `push_redirect` - deprecate in favor of new `push_navigate` function on `Phoenix.LiveView`
 
 ### Enhancements
