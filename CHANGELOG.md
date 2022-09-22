@@ -17,7 +17,7 @@ counterparts `<%= ... %>`. For example, `live_redirect`, `live_patch`, and Phoen
 Those new components live in the `Phoenix.Component` module. `Phoenix.LiveView.Helpers`
 itself has been soft deprecated and all relevant functionality has been migrated.
 You must `import Phoenix.Component` where you previously imported `Phoenix.LiveView.Helpers`
-when upgrading.
+when upgrading. You may also need to `import Phoenix.Component` where you also imported `Phoenix.LiveView` and some of its functions have been moved to `Phoenix.Component`.
 
 Additionally, the special `let` attribute on function components have been deprecated by
 a `:let` usage.
