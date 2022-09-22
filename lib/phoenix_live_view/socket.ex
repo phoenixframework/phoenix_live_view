@@ -17,26 +17,35 @@ defmodule Phoenix.LiveView.Socket do
 
   This is typically mounted directly in your endpoint.
 
-      socket "/live", Phoenix.LiveView.Socket
+      socket "/live", Phoenix.LiveView.Socket,
+        websocket: [connect_info: [session: @session_options]]
 
+  To share an underlying transport connection between regular
+  Phoenix channels and LiveView processes, `use Phoenix.LiveView.Socket`
+  from your own `MyAppWeb.UserSocket` module.
+
+  Next, declare your `channel` definitions and optional `connect/3`, and
+  `id/1` callbacks to handle your channel specific needs, then mount
+  your own socket in your endpoint:
+
+      socket "/live", MyAppWeb.UserSocket,
+        websocket: [connect_info: [session: @session_options]]
   """
   use Phoenix.Socket
 
   require Logger
 
-  if Version.match?(System.version(), ">= 1.8.0") do
-    @derive {Inspect,
-             only: [
-               :id,
-               :endpoint,
-               :router,
-               :view,
-               :parent_pid,
-               :root_pid,
-               :assigns,
-               :transport_pid
-             ]}
-  end
+  @derive {Inspect,
+           only: [
+             :id,
+             :endpoint,
+             :router,
+             :view,
+             :parent_pid,
+             :root_pid,
+             :assigns,
+             :transport_pid
+           ]}
 
   defstruct id: nil,
             endpoint: nil,
@@ -84,4 +93,32 @@ defmodule Phoenix.LiveView.Socket do
 
   @impl Phoenix.Socket
   def id(socket), do: socket.private.connect_info[:session]["live_socket_id"]
+
+  defmacro __using__(_opts) do
+    quote do
+      use Phoenix.Socket
+
+      channel "lvu:*", Phoenix.LiveView.UploadChannel
+      channel "lv:*", Phoenix.LiveView.Channel
+
+      def connect(params, socket, info), do: {:ok, socket}
+      defdelegate id(socket), to: unquote(__MODULE__)
+
+      defoverridable connect: 3, id: 1
+
+      @before_compile unquote(__MODULE__)
+    end
+  end
+
+  defmacro __before_compile__(_env) do
+    quote do
+      defoverridable connect: 3, id: 1
+
+      def connect(params, %Phoenix.Socket{} = socket, connect_info) do
+        with {:ok, %Phoenix.Socket{} = new_socket} <- super(params, socket, connect_info) do
+          Phoenix.LiveView.Socket.connect(params, new_socket, connect_info)
+        end
+      end
+    end
+  end
 end

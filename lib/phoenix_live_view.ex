@@ -97,7 +97,8 @@ defmodule Phoenix.LiveView do
   template, which stands for HTML+EEx. They are an extension of Elixir's
   builtin EEx templates, with support for HTML validation, syntax-based
   components, smart change tracking, and more. You can learn more about
-  the template syntax in `Phoenix.LiveView.Helpers.sigil_H/2`.
+  the template syntax in `Phoenix.Component.sigil_H/2` (note all
+  `Phoenix.Component` is imported when you use `Phoenix.LiveView`).
 
   Next, decide where you want to use your LiveView.
 
@@ -115,11 +116,11 @@ defmodule Phoenix.LiveView do
   *Note:* the above assumes there is `plug :put_root_layout` call
   in your router that configures the LiveView layout. This call is
   automatically included in Phoenix v1.6 apps and described in
-  the installation guide.
+  [the installation guide](installation.md#layouts).
 
   Alternatively, you can `live_render` from any template. In your view:
 
-      import Phoenix.LiveView.Helpers
+      import Phoenix.Component
 
   Then in your template:
 
@@ -251,7 +252,7 @@ defmodule Phoenix.LiveView do
   Perhaps you want to move part of the state or part of the events in your
   LiveView to a separate module. For these cases, LiveView provides
   `Phoenix.LiveComponent`, which are rendered using
-  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`):
+  [`live_component/1`](`Phoenix.Component.live_component/1`):
 
       <.live_component module={UserComponent} id={user.id} user={user} />
 
@@ -263,7 +264,7 @@ defmodule Phoenix.LiveView do
 
   Finally, if you want complete isolation between parts of a LiveView, you can
   always render a LiveView inside another LiveView by calling
-  [`live_render/3`](`Phoenix.LiveView.Helpers.live_render/3`). This child LiveView
+  [`live_render/3`](`Phoenix.Component.live_render/3`). This child LiveView
   runs in a separate process than the parent, with its own callbacks. If a child
   LiveView crashes, it won't affect the parent. If the parent crashes, all children
   are terminated.
@@ -366,7 +367,7 @@ defmodule Phoenix.LiveView do
   new content must be rendered and sent to the client.
 
   If you define this function, it must return a template
-  defined via the `Phoenix.LiveView.Helpers.sigil_H/2`.
+  defined via the `Phoenix.Component.sigil_H/2`.
 
   If you don't define this function, LiveView will attempt
   to render a template in the same directory as your LiveView.
@@ -458,14 +459,15 @@ defmodule Phoenix.LiveView do
       use Phoenix.LiveView,
         namespace: MyAppWeb,
         container: {:tr, class: "colorized"},
-        layout: {MyAppWeb.LayoutView, "live.html"}
+        layout: {MyAppWeb.LayoutView, "live.html"},
+        log: :info
 
   ## Options
 
     * `:namespace` - configures the namespace the `LiveView` is in
     * `:container` - configures the container the `LiveView` will be wrapped in
     * `:layout` - configures the layout the `LiveView` will be rendered in
-
+    * `:log` - configures the log level for the `LiveView`
   """
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
@@ -479,15 +481,16 @@ defmodule Phoenix.LiveView do
       end
 
     quote bind_quoted: [opts: opts] do
+      import Phoenix.LiveView
       @behaviour Phoenix.LiveView
-      use Phoenix.Component
-
-      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
 
       @phoenix_live_opts opts
       Module.register_attribute(__MODULE__, :phoenix_live_mount, accumulate: true)
       @before_compile Phoenix.LiveView
+
+      # Phoenix.Component must come last so its @before_compile runs last
+      use Phoenix.Component
     end
   end
 
@@ -508,6 +511,14 @@ defmodule Phoenix.LiveView do
                   "got: #{inspect(other)}"
       end
 
+    log =
+      case Keyword.fetch(opts, :log) do
+        {:ok, false} -> false
+        {:ok, log} when is_atom(log) -> log
+        :error -> :debug
+        _ -> raise ArgumentError, ":log expects an atom or false, got: #{inspect(opts[:log])}"
+      end
+
     phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
     lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_mount)
 
@@ -523,7 +534,8 @@ defmodule Phoenix.LiveView do
       kind: :view,
       module: env.module,
       layout: layout,
-      lifecycle: lifecycle
+      lifecycle: lifecycle,
+      log: log
     }
 
     quote do
@@ -668,323 +680,13 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
-  @doc ~S'''
-  Assigns the given `key` with value from `fun` into `socket_or_assigns` if
-  one does not yet exist.
-
-  The first argument is either a LiveView `socket` or an `assigns` map from
-  function components.
-
-  This function is useful for lazily assigning values and referencing parent
-  assigns. We will cover both use cases next.
-
-  ## Lazy assigns
-
-  Imagine you have a function component that accepts a color:
-
-      <.my_component color="red" />
-
-  The color is also optional, so you can skip it:
-
-      <.my_component />
-
-  In such cases, the implementation can use `assign_new` to lazily
-  assign a color if none is given. Let's make it so it picks a random one
-  when none is given:
-
-      def my_component(assigns) do
-        assigns = assign_new(assigns, :color, fn -> Enum.random(~w(red green blue)) end)
-
-        ~H"""
-        <div class={"bg-#{@color}"}>
-          Example
-        </div>
-        """
-      end
-
-  ## Referencing parent assigns
-
-  When a user first accesses an application using LiveView, the LiveView is first
-  rendered in its disconnected state, as part of a regular HTML response. In some
-  cases, there may be data that is shared by your Plug pipelines and your LiveView,
-  such as the `:current_user` assign.
-
-  By using `assign_new` in the mount callback of your LiveView, you can instruct
-  LiveView to re-use any assigns set in your Plug pipelines as part of `Plug.Conn`,
-  avoiding sending additional queries to the database. Imagine you have a Plug
-  that does:
-
-      # A plug
-      def authenticate(conn, _opts) do
-        if user_id = get_session(conn, :user_id) do
-          assign(conn, :current_user, Accounts.get_user!(user_id))
-        else
-          send_resp(conn, :forbidden)
-        end
-      end
-
-  You can re-use the `:current_user` assign in your LiveView during the initial
-  render:
-
-      def mount(_params, %{"user_id" => user_id}, socket) do
-        {:ok, assign_new(socket, :current_user, fn -> Accounts.get_user!(user_id) end)}
-      end
-
-  In such case `conn.assigns.current_user` will be used if present. If there is no
-  such `:current_user` assign or the LiveView was mounted as part of the live
-  navigation, where no Plug pipelines are invoked, then the anonymous function is
-  invoked to execute the query instead.
-
-  LiveView is also able to share assigns via `assign_new` within nested LiveView.
-  If the parent LiveView defines a `:current_user` assign and the child LiveView
-  also uses `assign_new/3` to fetch the `:current_user` in its `mount/3` callback,
-  as above, the assign will be fetched from the parent LiveView, once again
-  avoiding additional database queries.
-
-  Note that `fun` also provides access to the previously assigned values:
-
-      assigns =
-          assigns
-          |> assign_new(:foo, fn -> "foo" end)
-          |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar" end)
-  '''
-  def assign_new(socket_or_assigns, key, fun)
-
-  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 1) do
-    validate_assign_key!(key)
-
-    case socket do
-      %{assigns: %{^key => _}} ->
-        socket
-
-      %{private: %{assign_new: {assigns, keys}}} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
-
-        Phoenix.LiveView.Utils.force_assign(
-          socket,
-          key,
-          case assigns do
-            %{^key => value} -> value
-            %{} -> fun.(socket.assigns)
-          end
-        )
-
-      %{assigns: assigns} ->
-        Phoenix.LiveView.Utils.force_assign(socket, key, fun.(assigns))
-    end
-  end
-
-  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 0) do
-    validate_assign_key!(key)
-
-    case socket do
-      %{assigns: %{^key => _}} ->
-        socket
-
-      %{private: %{assign_new: {assigns, keys}}} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
-        Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, fun))
-
-      %{} ->
-        Phoenix.LiveView.Utils.force_assign(socket, key, fun.())
-    end
-  end
-
-  def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 1) do
-    case assigns do
-      %{^key => _} -> assigns
-      %{} -> Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.(assigns))
-    end
-  end
-
-  def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 0) do
-    case assigns do
-      %{^key => _} -> assigns
-      %{} -> Phoenix.LiveView.Utils.force_assign(assigns, changed, key, fun.())
-    end
-  end
-
-  def assign_new(assigns, _key, fun) when is_function(fun, 0) or is_function(fun, 1) do
-    raise_bad_socket_or_assign!("assign_new/3", assigns)
-  end
-
-  defp raise_bad_socket_or_assign!(name, assigns) do
-    extra =
-      case assigns do
-        %_{} ->
-          ""
-
-        %{} ->
-          """
-          You passed an assigns map that does not have the relevant change tracking \
-          information. This typically means you are calling a function component by \
-          hand instead of using the HEEx template syntax. If you are using HEEx, make \
-          sure you are calling a component using:
-
-              <.component attribute={value} />
-
-          If you are outside of HEEx and you want to test a component, use \
-          Phoenix.LiveViewTest.render_component/2:
-
-              Phoenix.LiveViewTest.render_component(&component/1, attribute: "value")
-
-          """
-
-        _ ->
-          ""
-      end
-
-    raise ArgumentError,
-          "#{name} expects a socket from Phoenix.LiveView/Phoenix.LiveComponent " <>
-            " or an assigns map from Phoenix.Component as first argument, got: " <>
-            inspect(assigns) <> extra
-  end
-
-  @doc """
-  Adds a `key`-`value` pair to `socket_or_assigns`.
-
-  The first argument is either a LiveView `socket` or an
-  `assigns` map from function components.
-
-  ## Examples
-
-      iex> assign(socket, :name, "Elixir")
-
-  """
-  def assign(socket_or_assigns, key, value)
-
-  def assign(%Socket{} = socket, key, value) do
-    validate_assign_key!(key)
-    Phoenix.LiveView.Utils.assign(socket, key, value)
-  end
-
-  def assign(%{__changed__: changed} = assigns, key, value) do
-    case assigns do
-      %{^key => ^value} ->
-        assigns
-
-      %{} ->
-        Phoenix.LiveView.Utils.force_assign(assigns, changed, key, value)
-    end
-  end
-
-  def assign(assigns, _key, _val) do
-    raise_bad_socket_or_assign!("assign/3", assigns)
-  end
-
-  @doc """
-  Adds key-value pairs to assigns.
-
-  The first argument is either a LiveView `socket` or an
-  `assigns` map from function components.
-
-  A keyword list or a map of assigns must be given as argument
-  to be merged into existing assigns.
-
-  ## Examples
-
-      iex> assign(socket, name: "Elixir", logo: "💧")
-      iex> assign(socket, %{name: "Elixir"})
-
-  """
-  def assign(socket_or_assigns, keyword_or_map)
-      when is_map(keyword_or_map) or is_list(keyword_or_map) do
-    Enum.reduce(keyword_or_map, socket_or_assigns, fn {key, value}, acc ->
-      assign(acc, key, value)
-    end)
-  end
-
-  defp validate_assign_key!(:flash) do
-    raise ArgumentError,
-          ":flash is a reserved assign by LiveView and it cannot be set directly. " <>
-            "Use the appropriate flash functions instead."
-  end
-
-  defp validate_assign_key!(_key), do: :ok
-
-  @doc """
-  Updates an existing `key` with `fun` in the given `socket_or_assigns`.
-
-  The first argument is either a LiveView `socket` or an
-  `assigns` map from function components.
-
-  The update function receives the current key's value and
-  returns the updated value. Raises if the key does not exist.
-
-  The update function may also be of arity 2, in which case it receives
-  the current key's value as the first argument and the current assigns
-  as the second argument. Raises if the key does not exist.
-
-  ## Examples
-
-      iex> update(socket, :count, fn count -> count + 1 end)
-      iex> update(socket, :count, &(&1 + 1))
-      iex> update(socket, :max_users_this_session, fn current_max, %{users: users} -> max(current_max, length(users)) end)
-  """
-  def update(socket_or_assigns, key, fun)
-
-  def update(%Socket{assigns: assigns} = socket, key, fun) when is_function(fun, 2) do
-    update(socket, key, &fun.(&1, assigns))
-  end
-
-  def update(%Socket{assigns: assigns} = socket, key, fun) when is_function(fun, 1) do
-    case assigns do
-      %{^key => val} -> assign(socket, key, fun.(val))
-      %{} -> raise KeyError, key: key, term: assigns
-    end
-  end
-
-  def update(assigns, key, fun) when is_function(fun, 2) do
-    update(assigns, key, &fun.(&1, assigns))
-  end
-
-  def update(assigns, key, fun) when is_function(fun, 1) do
-    case assigns do
-      %{^key => val} -> assign(assigns, key, fun.(val))
-      %{} -> raise KeyError, key: key, term: assigns
-    end
-  end
-
-  def update(assigns, _key, fun) when is_function(fun, 1) or is_function(fun, 2) do
-    raise_bad_socket_or_assign!("update/3", assigns)
-  end
-
-  @doc """
-  Checks if the given key changed in `socket_or_assigns`.
-
-  The first argument is either a LiveView `socket` or an
-  `assigns` map from function components.
-
-  ## Examples
-
-      iex> changed?(socket, :count)
-
-  """
-  def changed?(socket_or_assigns, key)
-
-  def changed?(%Socket{assigns: assigns}, key) do
-    Phoenix.LiveView.Utils.changed?(assigns, key)
-  end
-
-  def changed?(%{__changed__: _} = assigns, key) do
-    Phoenix.LiveView.Utils.changed?(assigns, key)
-  end
-
-  def changed?(assigns, _key) do
-    raise_bad_socket_or_assign!("changed?/2", assigns)
-  end
-
   @doc """
   Adds a flash message to the socket to be displayed.
 
   *Note*: While you can use `put_flash/3` inside a `Phoenix.LiveComponent`,
   components have their own `@flash` assigns. The `@flash` assign
   in a component is only copied to its parent LiveView if the component
-  calls `push_redirect/2` or `push_patch/2`.
+  calls `push_navigate/2` or `push_patch/2`.
 
   *Note*: You must also place the `Phoenix.LiveView.Router.fetch_live_flash/2`
   plug in your browser's pipeline in place of `fetch_flash` for LiveView flash
@@ -1237,13 +939,23 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to. It must always be a local path
     * `:external` - an external path to redirect to
   """
+  def redirect(socket, opts \\ [])
+
   def redirect(%Socket{} = socket, to: url) do
     validate_local_url!(url, "redirect/2")
     put_redirect(socket, {:redirect, %{to: url}})
   end
 
   def redirect(%Socket{} = socket, external: url) do
-    put_redirect(socket, {:redirect, %{external: url}})
+    case url do
+      url when is_binary(url) ->
+        external_url = Phoenix.LiveView.Utils.valid_string_destination!(url, "redirect/2")
+        put_redirect(socket, {:redirect, %{external: external_url}})
+
+      other ->
+        raise ArgumentError,
+              "expected :external option in redirect/2 to be valid URL, got: #{inspect(other)}"
+    end
   end
 
   def redirect(%Socket{}, _) do
@@ -1257,7 +969,7 @@ defmodule Phoenix.LiveView do
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
   whole page while also maintaining the current scroll position.
-  For live redirects to another LiveView, use `push_redirect/2`.
+  For live navigation to another LiveView, use `push_navigate/2`.
 
   ## Options
 
@@ -1293,10 +1005,38 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
+      {:noreply, push_navigate(socket, to: "/")}
+      {:noreply, push_navigate(socket, to: "/", replace: true)}
+
+  """
+  def push_navigate(%Socket{} = socket, opts) do
+    opts = push_opts!(opts, "push_navigate/2")
+    put_redirect(socket, {:live, :redirect, opts})
+  end
+
+  @doc """
+  Annotates the socket for navigation to another LiveView.
+
+  The current LiveView will be shutdown and a new one will be mounted
+  in its place, without reloading the whole page. This can
+  also be used to remount the same LiveView, in case you want to start
+  fresh. If you want to navigate to the same LiveView without remounting
+  it, use `push_patch/2` instead.
+
+  ## Options
+
+    * `:to` - the required path to link to. It must always be a local path
+    * `:replace` - the flag to replace the current history or push a new state.
+      Defaults `false`.
+
+  ## Examples
+
       {:noreply, push_redirect(socket, to: "/")}
       {:noreply, push_redirect(socket, to: "/", replace: true)}
 
   """
+  @doc deprecated: "Use push_navigate/2 instead"
+  # Deprecate in 0.19
   def push_redirect(%Socket{} = socket, opts) do
     opts = push_opts!(opts, "push_redirect/2")
     put_redirect(socket, {:live, :redirect, opts})
@@ -1358,6 +1098,8 @@ defmodule Phoenix.LiveView do
     * `"_track_static"` - set automatically with a list of all href/src from
       tags with the `phx-track-static` annotation in them. If there are no
       such tags, nothing is sent
+    * `"_live_referer"` - sent by the client as the referer URL when a
+      live navigation has occurred from `push_navigate` or client link navigate.
 
   ## Examples
 
@@ -1584,7 +1326,7 @@ defmodule Phoenix.LiveView do
         ...
         pid = self()
 
-        Task.async(fn ->
+        Task.start(fn ->
           # Do something asynchronously
           send_update(pid, Cart, id: "cart", status: "cancelled")
         end)
@@ -1617,7 +1359,7 @@ defmodule Phoenix.LiveView do
         ...
         pid = self()
 
-        Task.async(fn ->
+        Task.start(fn ->
           # Do something asynchronously
           send_update_after(pid, Cart, [id: "cart", status: "cancelled"], 3000)
         end)

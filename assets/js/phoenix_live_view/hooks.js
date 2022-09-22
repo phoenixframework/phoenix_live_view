@@ -6,6 +6,7 @@ import {
 } from "./constants"
 
 import LiveUploader from "./live_uploader"
+import ARIA from "./aria"
 
 let Hooks = {
   LiveFileUpload: {
@@ -40,6 +41,18 @@ let Hooks = {
     },
     destroyed(){
       URL.revokeObjectURL(this.url)
+    }
+  },
+  FocusWrap: {
+    mounted(){
+      this.focusStart = this.el.firstElementChild
+      this.focusEnd = this.el.lastElementChild
+      this.focusStart.addEventListener("focus", () => ARIA.focusLast(this.el))
+      this.focusEnd.addEventListener("focus", () => ARIA.focusFirst(this.el))
+      this.el.addEventListener("phx:show-end", () => this.el.focus())
+      if(window.getComputedStyle(this.el).display !== "none"){
+        ARIA.focusFirst(this.el)
+      }
     }
   }
 }

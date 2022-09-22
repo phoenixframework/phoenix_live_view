@@ -41,6 +41,8 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/components", WithComponentLive
     live "/multi-targets", WithMultipleTargets
     live "/assigns-not-in-socket", AssignsNotInSocketLive
+    live "/log-override", WithLogOverride
+    live "/log-disabled", WithLogDisabled
     live "/errors", ErrorsLive
 
     # controller test
@@ -161,6 +163,10 @@ defmodule Phoenix.LiveViewTest.Router do
         {Phoenix.LiveViewTest.OtherOnMount, :other}
       ] do
       live "/lifecycle/mount-mods-args", HooksLive.Noop
+    end
+
+    live_session :layout, layout: {Phoenix.LiveViewTest.LayoutView, "live-override.html"} do
+      live "/dashboard-live-session-layout", LayoutLive
     end
   end
 

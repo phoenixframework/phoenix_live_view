@@ -24,7 +24,7 @@ For example, to handle real-time form validation and saving, your form would
 use both `phx-change` and `phx-submit` bindings:
 
 ```
-<.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
+<.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
   <%= label f, :username %>
   <%= text_input f, :username %>
   <%= error_tag f, :username %>
@@ -83,7 +83,7 @@ a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
 ```
-<.form let={f} for={@changeset} phx-change="validate" phx-submit="save">
+<.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
   ...
   <%= label f, :county %>
   <%= text_input f, :email, phx_change: "email_changed", phx_target: @myself %>
@@ -124,7 +124,7 @@ For example, your `MyAppWeb.ErrorHelpers` may use this function:
 
 Now, any DOM container with the `phx-feedback-for` attribute will receive a
 `phx-no-feedback` class in cases where the form fields has yet to receive
-user input/focus. The following css rules are generated in new projects
+user input/focus. The following CSS rules are generated in new projects
 to hide the errors:
 
     .phx-no-feedback.invalid-feedback, .phx-no-feedback .invalid-feedback {
@@ -168,6 +168,30 @@ requires explicitly setting the `:value` in your markup, for example:
 <%= error_tag f, :password_confirmation %>
 ```
 
+## Nested inputs
+
+Nested inputs are handled using `inputs_for` form helpers. There are two versions
+of `inputs_for` - one that takes an anonymous function and one that doesn't. The version
+that takes an anonymous function won't work properly with LiveView as it prevents rendering
+of LiveComponents. Instead of using this:
+
+```heex
+<%= inputs_for f, :friend, fn fp -> %>
+  <%= text_input fp, :url %>
+<% end %>
+```
+
+you should use this:
+
+```heex
+<%= for fp <- inputs_for(f, :friends) do %>
+  <%= hidden_inputs_for(fp) %>
+  <%= text_input fp, :name %>
+<% end %>
+```
+
+Note that you will need to include a call to `hidden_inputs_for` as the version of inputs_for that does not take an anonymous function also does not automatically generate any necessary hidden fields for tracking ids of Ecto associations.
+
 ## File inputs
 
 LiveView forms support [reactive file inputs](uploads.md),
@@ -193,9 +217,9 @@ Plug session mutation. For example, in your LiveView template you can
 annotate the `phx-trigger-action` with a boolean assign:
 
 ```heex
-<.form let={f} for={@changeset}
+<.form :let={f} for={@changeset}
   action={Routes.reset_password_path(@socket, :create)}
-  phx-submit="save",
+  phx-submit="save"
   phx-trigger-action={@trigger_submit}>
 ```
 
@@ -216,10 +240,11 @@ Once `phx-trigger-action` is true, LiveView disconnects and then submits the for
 
 ## Recovery following crashes or disconnects
 
-By default, all forms marked with `phx-change` will recover input values
-automatically after the user has reconnected or the LiveView has remounted
-after a crash. This is achieved by the client triggering the same `phx-change`
-to the server as soon as the mount has been completed.
+By default, all forms marked with `phx-change` and having `id`
+attribute will recover input values automatically after the user has
+reconnected or the LiveView has remounted after a crash. This is
+achieved by the client triggering the same `phx-change` to the server
+as soon as the mount has been completed.
 
 **Note:** if you want to see form recovery working in development, please
 make sure to disable live reloading in development by commenting out the
@@ -237,7 +262,7 @@ to trigger for recovery, which will receive the form params as usual. For exampl
 imagine a LiveView wizard form where the form is stateful and built based on what
 step the user is on and by prior selections:
 
-    <form phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
+    <form id="wizard" phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
 
 On the server, the `"validate_wizard_step"` event is only concerned with the
 current client form data, but the server maintains the entire state of the wizard.
@@ -267,7 +292,7 @@ errors, or additive UX around the user's input values as they fill out a form.
 For these use cases, the `phx-change` input does not concern itself with disabling
 input editing while an event to the server is in flight. When a `phx-change` event
 is sent to the server, the input tag and parent form tag receive the
-`phx-change-loading` css class, then the payload is pushed to the server with a
+`phx-change-loading` CSS class, then the payload is pushed to the server with a
 `"_target"` param in the root payload containing the keyspace of the input name
 which triggered the change event.
 
@@ -330,3 +355,30 @@ You can show and hide content with the following markup:
 Additionally, we strongly recommend including a unique HTML "id" attribute on the form.
 When DOM siblings change, elements without an ID will be replaced rather than moved,
 which can cause issues such as form fields losing focus.
+
+## Triggering `phx-` form events with JavaScript
+
+Often it is desirable to trigger an event on a DOM element without explicit
+user interaction on the element. For example, a custom form element such as a
+date picker or custom select input which utilizes a hidden input element to
+store the selected state.
+
+In these cases, the event functions on the DOM API can be used, for example
+to trigger a `phx-change` event:
+
+```
+document.getElementById("my-select").dispatchEvent(
+  new Event("input", {bubbles: true})
+)
+```
+
+When using a client hook, `this.el` can be used to determine the element as
+outlined in the "Client hooks" documentation.
+
+It is also possible to trigger a `phx-submit` using a "submit" event:
+
+```
+document.getElementById("my-form").dispatchEvent(
+  new Event("submit", {bubbles: true, cancelable: true})
+)
+```

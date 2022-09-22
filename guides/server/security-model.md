@@ -80,7 +80,7 @@ as you would with plug:
     end
 
 
-We use [`assign_new/3`](`Phoenix.LiveView.assign_new/3`). This is a
+We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
 convenience to avoid fetching the `current_user` multiple times across
 LiveViews.
 
@@ -99,7 +99,7 @@ to run it on all LiveViews by default:
     def live_view do
       quote do
         use Phoenix.LiveView,
-          layout: {<%= web_namespace %>.LayoutView, "live.html"}
+          layout: {MyAppWeb.LayoutView, "live.html"}
 
         on_mount MyAppWeb.UserLiveAuth
         unquote(view_helpers())

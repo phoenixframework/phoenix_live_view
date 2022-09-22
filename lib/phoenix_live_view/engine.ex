@@ -102,7 +102,7 @@ defmodule Phoenix.LiveView.Rendered do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamic, :fingerprint, :root]
+  defstruct [:static, :dynamic, :fingerprint, :root, caller: :not_available]
 
   @type t :: %__MODULE__{
           static: [String.t()],
@@ -116,7 +116,11 @@ defmodule Phoenix.LiveView.Rendered do
                  | Phoenix.LiveView.Component.t()
                ]),
           fingerprint: integer(),
-          root: nil | true | false
+          root: nil | true | false,
+          caller:
+            :not_available
+            | {module(), function :: {atom(), non_neg_integer()}, file :: String.t(),
+               line :: pos_integer()}
         }
 
   defimpl Phoenix.HTML.Safe do
@@ -284,9 +288,7 @@ defmodule Phoenix.LiveView.Engine do
 
   @behaviour Phoenix.Template.Engine
 
-  # TODO: Use @impl true instead of @doc false when we require Elixir v1.12
-
-  @doc false
+  @impl true
   def compile(path, _name) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
     EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim)
@@ -295,7 +297,7 @@ defmodule Phoenix.LiveView.Engine do
   @behaviour EEx.Engine
   @assigns_var Macro.var(:assigns, nil)
 
-  @doc false
+  @impl true
   def init(_opts) do
     # Phoenix.LiveView.HTMLEngine calls this engine in a non-linear order
     # to evaluate slots, which can lead to variable conflicts. Therefore we
@@ -307,19 +309,19 @@ defmodule Phoenix.LiveView.Engine do
     }
   end
 
-  @doc false
+  @impl true
   def handle_begin(state) do
     %{state | static: [], dynamic: []}
   end
 
-  @doc false
+  @impl true
   def handle_end(state) do
     %{static: static, dynamic: dynamic} = state
     safe = {:safe, Enum.reverse(static)}
     {:__block__, [live_rendered: true], Enum.reverse([safe | dynamic])}
   end
 
-  @doc false
+  @impl true
   def handle_body(state, opts \\ []) do
     {:ok, rendered} = to_rendered_struct(handle_end(state), {:untainted, %{}}, %{}, opts)
 
@@ -329,18 +331,13 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  @doc false
-  def handle_text(state, text) do
-    handle_text(state, [], text)
-  end
-
-  @doc false
+  @impl true
   def handle_text(state, _meta, text) do
     %{static: static} = state
     %{state | static: [text | static]}
   end
 
-  @doc false
+  @impl true
   def handle_expr(state, "=", ast) do
     %{static: static, dynamic: dynamic, counter: counter} = state
     i = :counters.get(counter, 1)
@@ -452,7 +449,7 @@ defmodule Phoenix.LiveView.Engine do
     call = extract_call(left)
 
     args =
-      if classify_taint(call, args) in [:live, :render] do
+      if classify_taint(call, args) == :live do
         {args, [opts]} = Enum.split(args, -1)
 
         # The reason we can safely ignore assigns here is because
@@ -494,8 +491,11 @@ defmodule Phoenix.LiveView.Engine do
     args =
       case {call, args} do
         # If we have a component, we provide change tracking to individual keys.
-        {:component, [fun, expr]} -> [fun, to_component_tracking(fun, expr, [], vars)]
-        {_, _} -> args
+        {:component, [fun, expr, caller]} ->
+          [fun, to_component_tracking(fun, expr, [], vars), caller]
+
+        {_, _} ->
+          args
       end
 
     to_safe({left, meta, args}, true)
@@ -505,7 +505,11 @@ defmodule Phoenix.LiveView.Engine do
     to_safe(expr, true)
   end
 
+  # TODO: Remove me when live_component/2/3 are removed
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}),
+    do: func
+
+  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :HTMLEngine]}, func]}),
     do: func
 
   defp extract_call(call),
@@ -731,17 +735,26 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp slots_to_rendered(static, vars) do
-    Macro.postwalk(static, fn
-      {call, meta, [name, [do: block]]} = node ->
-        if extract_call(call) == :inner_block do
-          {call, meta, [name, [do: maybe_block_to_rendered(block, vars)]]}
+    for {key, value} <- static do
+      value =
+        if is_list(value) do
+          for maybe_slot <- value do
+            with {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} <-
+                   maybe_slot,
+                 {call, meta, [^key, [do: block]]} <- inner_block,
+                 :inner_block <- extract_call(call) do
+              inner_block = {call, meta, [key, [do: maybe_block_to_rendered(block, vars)]]}
+              {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs}
+            else
+              _ -> maybe_slot
+            end
+          end
         else
-          node
+          value
         end
 
-      node ->
-        node
-    end)
+      {key, value}
+    end
   end
 
   ## Extracts binaries and variable from iodata
@@ -789,8 +802,14 @@ defmodule Phoenix.LiveView.Engine do
     {ast, keys, vars}
   end
 
-  # Expanded assign access. The non-expanded form is handled on root,
-  # then all further traversals happen on the expanded form
+  # @name
+  defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, nest)
+       when is_atom(name) and is_atom(context) do
+    expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
+    {expr, vars, Map.put(assigns, [name | nest], true)}
+  end
+
+  # assigns.name
   defp analyze_assign(
          {{:., _, [{:assigns, _, nil}, name]}, _, args} = expr,
          vars,
@@ -801,7 +820,7 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
-  # Nested assign
+  # Maybe: assigns.foo[:bar]
   defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
     {args, vars, assigns} =
       if Macro.quoted_literal?(right) do
@@ -816,17 +835,11 @@ defmodule Phoenix.LiveView.Engine do
     {{{:., dot_meta, [Access, :get]}, meta, args}, vars, assigns}
   end
 
+  # Maybe: assigns.foo.bar
   defp analyze_assign({{:., dot_meta, [left, right]}, meta, args}, vars, assigns, nest)
        when args in [[], nil] do
     {left, vars, assigns} = analyze_assign(left, vars, assigns, [{:struct, right} | nest])
     {{{:., dot_meta, [left, right]}, meta, []}, vars, assigns}
-  end
-
-  # Non-expanded assign
-  defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, nest)
-       when is_atom(name) and is_atom(context) do
-    expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
-    {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
   defp analyze_assign(expr, vars, assigns, _nest) do
@@ -909,19 +922,18 @@ defmodule Phoenix.LiveView.Engine do
         code = quote do: unquote(__MODULE__).__raise__(unquote(call), unquote(length(args)))
         {code, vars, assigns}
 
-      :render ->
-        {args, [opts]} = Enum.split(args, -1)
-        {args, vars, assigns} = analyze_list(args, vars, assigns, [])
-        {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns)
-        {{left, meta, args ++ [opts]}, vars, assigns}
-
       :none ->
         {left, vars, assigns} = analyze(left, vars, assigns)
         {args, vars, assigns} = analyze_list(args, vars, assigns, [])
         {{left, meta, args}, vars, assigns}
 
-      # :never or :live
-      _ ->
+      :live ->
+        {args, [opts]} = Enum.split(args, -1)
+        {args, vars, assigns} = analyze_skip_assignment_list(args, vars, assigns, [])
+        {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns)
+        {{left, meta, args ++ [opts]}, vars, assigns}
+
+      :never ->
         {args, vars, assigns} = analyze_with_restricted_vars(args, vars, assigns)
         {{left, meta, args}, vars, assigns}
     end
@@ -947,6 +959,20 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp analyze_list([], vars, assigns, acc) do
+    {Enum.reverse(acc), vars, assigns}
+  end
+
+  defp analyze_skip_assignment_list([{:=, meta, [left, right]} | tail], vars, assigns, acc) do
+    {right, vars, assigns} = analyze(right, vars, assigns)
+    analyze_skip_assignment_list(tail, vars, assigns, [{:=, meta, [left, right]} | acc])
+  end
+
+  defp analyze_skip_assignment_list([head | tail], vars, assigns, acc) do
+    {head, vars, assigns} = analyze(head, vars, assigns)
+    analyze_skip_assignment_list(tail, vars, assigns, [head | acc])
+  end
+
+  defp analyze_skip_assignment_list([], vars, assigns, acc) do
     {Enum.reverse(acc), vars, assigns}
   end
 
@@ -980,6 +1006,10 @@ defmodule Phoenix.LiveView.Engine do
   ## Callbacks
 
   defp fingerprint(block, static) do
+    # The fingerprint must be unique and we don’t check for collisions in the
+    # Diff module as doing so would be expensive. Therefore it is important
+    # that the algorithm we use here has a low number of collisions.
+
     <<fingerprint::8*16>> =
       [block | static]
       |> :erlang.term_to_binary()
@@ -990,7 +1020,7 @@ defmodule Phoenix.LiveView.Engine do
 
   @doc false
   defmacro __raise__(special_form, arity) do
-    message =  "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
+    message = "cannot invoke special form #{special_form}/#{arity} inside HEEx templates"
     reraise ArgumentError.exception(message), Macro.Env.stacktrace(__CALLER__)
   end
 
@@ -1019,8 +1049,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Calls to attributes escape is always safe
   defp to_safe(
-         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} =
-           safe,
+         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} = safe,
          line,
          _extra_clauses?
        ) do
@@ -1125,23 +1154,30 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  # For case/if/unless, we are not leaking the variable given as argument,
-  # such as `if var = ... do`. This does not follow Elixir semantics, but
-  # yields better optimizations.
+  # For case/if/unless in particular, we are not leaking the
+  # variables defined in arguments, such as `if var = ... do`.
+  # This does not follow Elixir semantics, but yields better
+  # optimizations.
   defp classify_taint(:case, [_, _]), do: :live
   defp classify_taint(:if, [_, _]), do: :live
   defp classify_taint(:unless, [_, _]), do: :live
   defp classify_taint(:cond, [_]), do: :live
   defp classify_taint(:try, [_]), do: :live
   defp classify_taint(:receive, [_]), do: :live
+
+  # with/for are specially handled during analyze
   defp classify_taint(:with, _), do: :live
+  defp classify_taint(:for, _), do: :live
+
+  # Constructs from Phoenix and HTMLEngine
+  defp classify_taint(:inner_block, [_, [do: _]]), do: :live
+  defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
 
   # TODO: Remove me when live_component/2/3 are removed
-  defp classify_taint(:live_component, [_, [do: _]]), do: :render
-  defp classify_taint(:live_component, [_, _, [do: _]]), do: :render
-  defp classify_taint(:inner_block, [_, [do: _]]), do: :render
-  defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :render
+  defp classify_taint(:live_component, [_, [do: _]]), do: :live
+  defp classify_taint(:live_component, [_, _, [do: _]]), do: :live
 
+  # Special forms are forbidden and raise.
   defp classify_taint(:alias, [_]), do: :special_form
   defp classify_taint(:import, [_]), do: :special_form
   defp classify_taint(:require, [_]), do: :special_form
@@ -1151,7 +1187,5 @@ defmodule Phoenix.LiveView.Engine do
 
   defp classify_taint(:&, [_]), do: :never
   defp classify_taint(:fn, _), do: :never
-  defp classify_taint(:for, _), do: :never
-
   defp classify_taint(_, _), do: :none
 end

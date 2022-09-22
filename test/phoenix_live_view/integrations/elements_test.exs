@@ -438,7 +438,7 @@ defmodule Phoenix.LiveView.ElementsTest do
     test "raises if element doesn't set phx-trigger-action on the form element",
          %{live: view, conn: conn} do
       assert_raise ArgumentError,
-                   ~r"\"#empty-form\" does not have phx-trigger-action attribute",
+                   ~r"\"#empty-form\" does not have a phx-trigger-action attribute",
                    fn -> view |> element("#empty-form") |> follow_trigger_action(conn) end
     end
 
@@ -460,6 +460,33 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert conn.method == "POST"
       assert conn.request_path == "/not_found"
       assert conn.params == %{"baz" => "bat"}
+    end
+  end
+
+  describe "submit_form" do
+    test "raises if element is not a form", %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"given element did not return a form",
+                   fn -> view |> element("#a-no-form") |> submit_form(conn) end
+    end
+
+    test "raises if element doesn't set action on the form element",
+         %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"\"#empty-form\" does not have an action attribute",
+                   fn -> view |> element("#empty-form") |> submit_form(conn) end
+    end
+
+    test "uses default method and form action", %{live: view, conn: conn} do
+      conn = view |> element("#submit-form-default") |> submit_form(conn)
+      assert conn.method == "GET"
+      assert conn.request_path == "/not_found"
+
+      conn = view |> form("#submit-form-default", %{"foo" => "bar"}) |> submit_form(conn)
+
+      assert conn.method == "GET"
+      assert conn.request_path == "/not_found"
+      assert conn.query_string == "foo=bar"
     end
   end
 
@@ -496,6 +523,9 @@ defmodule Phoenix.LiveView.ElementsTest do
       # Select
       assert form =~ ~s|"selected" => "1"|
       assert form =~ ~s|"not-selected" => "blank"|
+      assert form =~ ~s|"not-selected-treeorder" => "blank"|
+      refute form =~ ~s|"not-selected-size"|
+      assert form =~ ~s|"invalid-multiple-selected" => "3"|
 
       # Multiple Select
       assert form =~ ~s|"multiple-select" => ["2", "3"]|

@@ -85,15 +85,18 @@ let DOM = {
 
   findParentCIDs(node, cids){
     let initial = new Set(cids)
-    return cids.reduce((acc, cid) => {
-      let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`
+    let parentCids =
+      cids.reduce((acc, cid) => {
+        let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`
 
-      this.filterWithinSameLiveView(this.all(node, selector), node)
-        .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
-        .forEach(childCID => acc.delete(childCID))
+        this.filterWithinSameLiveView(this.all(node, selector), node)
+          .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
+          .forEach(childCID => acc.delete(childCID))
 
-      return acc
-    }, initial)
+        return acc
+      }, initial)
+
+    return parentCids.size === 0 ? new Set(cids) : parentCids
   },
 
   filterWithinSameLiveView(nodes, parent){
@@ -141,7 +144,7 @@ let DOM = {
     document.title = `${prefix || ""}${str}${suffix || ""}`
   },
 
-  debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, callback){
+  debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
     if(debounce === ""){ debounce = defaultDebounce }
@@ -174,12 +177,15 @@ let DOM = {
           } else {
             callback()
             this.putPrivate(el, THROTTLED, true)
-            setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER), timeout)
+            setTimeout(() => {
+              if(asyncFilter()){ this.triggerCycle(el, DEBOUNCE_TRIGGER) }
+            }, timeout)
           }
         } else {
-          setTimeout(() => this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle), timeout)
+          setTimeout(() => {
+            if(asyncFilter()){ this.triggerCycle(el, DEBOUNCE_TRIGGER, currentCycle) }
+          }, timeout)
         }
-
 
         let form = el.form
         if(form && this.once(form, "bind-debounce")){
@@ -222,7 +228,7 @@ let DOM = {
   discardError(container, el, phxFeedbackFor){
     let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
     // TODO: Remove id lookup after we update Phoenix to use input_name instead of input_id
-    let input = field && container.querySelector(`[id="${field}"], [name="${field}"]`)
+    let input = field && container.querySelector(`[id="${field}"], [name="${field}"], [name="${field}[]"]`)
     if(!input){ return }
 
     if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){

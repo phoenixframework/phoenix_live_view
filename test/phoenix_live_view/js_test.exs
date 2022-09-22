@@ -728,45 +728,152 @@ defmodule Phoenix.LiveView.JSTest do
   end
 
   describe "toggle_attribute" do
-    test "with defaults" do
-      assert JS.toggle_attribute({"open", "true"}) == %JS{
-               ops: [
-                 ["toggle_attr", %{attr: ["open", "true"], to: nil}]
-               ]
-             }
+        test "with defaults" do
+          assert JS.toggle_attribute({"open", "true"}) == %JS{
+                   ops: [
+                     ["toggle_attr", %{attr: ["open", "true"], to: nil}]
+                   ]
+                 }
 
-      assert JS.toggle_attribute({"open", "true"}, to: "#dropdown") == %JS{
-               ops: [
-                 ["toggle_attr", %{attr: ["open", "true"], to: "#dropdown"}]
-               ]
-             }
+          assert JS.toggle_attribute({"open", "true"}, to: "#dropdown") == %JS{
+                   ops: [
+                     ["toggle_attr", %{attr: ["open", "true"], to: "#dropdown"}]
+                   ]
+                 }
+        end
+
+        test "composability" do
+          js =
+            {"expanded", "true"}
+            |> JS.toggle_attribute()
+            |> JS.toggle_attribute({"open", "true"})
+            |> JS.toggle_attribute({"disabled", "true"}, to: "#dropdown")
+
+          assert js == %JS{
+                   ops: [
+                     ["toggle_attr", %{to: nil, attr: ["expanded", "true"]}],
+                     ["toggle_attr", %{to: nil, attr: ["open", "true"]}],
+                     ["toggle_attr", %{to: "#dropdown", attr: ["disabled", "true"]}]
+                   ]
+                 }
+        end
+
+        test "raises with unknown options" do
+          assert_raise ArgumentError, ~r/invalid option for toggle_attribute/, fn ->
+            JS.toggle_attribute({"disabled", "true"}, bad: :opt)
+          end
+        end
+
+        test "encoding" do
+          assert js_to_string(JS.toggle_attribute({"disabled", "true"})) ==
+                   "[[&quot;toggle_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;],&quot;to&quot;:null}]]"
+        end
+      end
+
+  describe "focus" do
+    test "with defaults" do
+      assert JS.focus() == %JS{ops: [["focus", %{to: nil}]]}
+      assert JS.focus(to: "input") == %JS{ops: [["focus", %{to: "input"}]]}
     end
 
     test "composability" do
       js =
-        {"expanded", "true"}
-        |> JS.toggle_attribute()
-        |> JS.toggle_attribute({"open", "true"})
-        |> JS.toggle_attribute({"disabled", "true"}, to: "#dropdown")
+        JS.set_attribute({"expanded", "true"})
+        |> JS.focus()
+
+      assert js == %JS{
+               ops: [["set_attr", %{attr: ["expanded", "true"], to: nil}], ["focus", %{to: nil}]]
+             }
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for focus/, fn ->
+        JS.focus(bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.focus()) == "[[&quot;focus&quot;,{&quot;to&quot;:null}]]"
+    end
+  end
+
+  describe "focus_first" do
+    test "with defaults" do
+      assert JS.focus_first() == %JS{ops: [["focus_first", %{to: nil}]]}
+      assert JS.focus_first(to: "input") == %JS{ops: [["focus_first", %{to: "input"}]]}
+    end
+
+    test "composability" do
+      js =
+        JS.set_attribute({"expanded", "true"})
+        |> JS.focus_first()
 
       assert js == %JS{
                ops: [
-                 ["toggle_attr", %{to: nil, attr: ["expanded", "true"]}],
-                 ["toggle_attr", %{to: nil, attr: ["open", "true"]}],
-                 ["toggle_attr", %{to: "#dropdown", attr: ["disabled", "true"]}]
+                 ["set_attr", %{attr: ["expanded", "true"], to: nil}],
+                 ["focus_first", %{to: nil}]
                ]
              }
     end
 
     test "raises with unknown options" do
-      assert_raise ArgumentError, ~r/invalid option for toggle_attribute/, fn ->
-        JS.toggle_attribute({"disabled", "true"}, bad: :opt)
+      assert_raise ArgumentError, ~r/invalid option for focus_first/, fn ->
+        JS.focus_first(bad: :opt)
       end
     end
 
     test "encoding" do
-      assert js_to_string(JS.toggle_attribute({"disabled", "true"})) ==
-               "[[&quot;toggle_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;],&quot;to&quot;:null}]]"
+      assert js_to_string(JS.focus_first()) == "[[&quot;focus_first&quot;,{&quot;to&quot;:null}]]"
+    end
+  end
+
+  describe "push_focus" do
+    test "with defaults" do
+      assert JS.push_focus() == %JS{ops: [["push_focus", %{to: nil}]]}
+      assert JS.push_focus(to: "input") == %JS{ops: [["push_focus", %{to: "input"}]]}
+    end
+
+    test "composability" do
+      js =
+        JS.set_attribute({"expanded", "true"})
+        |> JS.push_focus()
+
+      assert js == %JS{
+               ops: [
+                 ["set_attr", %{attr: ["expanded", "true"], to: nil}],
+                 ["push_focus", %{to: nil}]
+               ]
+             }
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for push_focus/, fn ->
+        JS.push_focus(bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.push_focus()) == "[[&quot;push_focus&quot;,{&quot;to&quot;:null}]]"
+    end
+  end
+
+  describe "pop_focus" do
+    test "with defaults" do
+      assert JS.pop_focus() == %JS{ops: [["pop_focus", %{}]]}
+    end
+
+    test "composability" do
+      js =
+        JS.set_attribute({"expanded", "true"})
+        |> JS.pop_focus()
+
+      assert js == %JS{
+               ops: [["set_attr", %{attr: ["expanded", "true"], to: nil}], ["pop_focus", %{}]]
+             }
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.pop_focus()) == "[[&quot;pop_focus&quot;,{}]]"
     end
   end
 

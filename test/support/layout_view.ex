@@ -1,7 +1,8 @@
 defmodule Phoenix.LiveViewTest.LayoutView do
   use Phoenix.View, root: ""
+  use Phoenix.Component
+
   alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
-  import Phoenix.LiveView.Helpers
 
   def render("app.html", assigns) do
     # Assert those assigns are always available
@@ -31,13 +32,13 @@ defmodule Phoenix.LiveViewTest.LayoutView do
 
   def render("with-function-component.html", assigns) do
     ~H"""
-    RENDER:<%= component(&Phoenix.LiveViewTest.FunctionComponent.render/1, value: "from component") %>
+    RENDER:<Phoenix.LiveViewTest.FunctionComponent.render value="from component" />
     """
   end
 
   def render("layout-with-function-component.html", assigns) do
     ~H"""
-    LAYOUT:<%= component(&Phoenix.LiveViewTest.FunctionComponent.render/1, value: "from layout") %>
+    LAYOUT:<Phoenix.LiveViewTest.FunctionComponent.render value="from layout" />
     <%= @inner_content %>
     """
   end

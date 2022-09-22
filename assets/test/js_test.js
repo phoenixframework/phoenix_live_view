@@ -1,22 +1,13 @@
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 import JS from "phoenix_live_view/js"
-import {simulateJoinedView, liveViewDOM} from "./test_helpers"
+import {simulateJoinedView, simulateVisibility, liveViewDOM} from "./test_helpers"
 
 let setupView = (content) => {
   let el = liveViewDOM(content)
   global.document.body.appendChild(el)
   let liveSocket = new LiveSocket("/live", Socket)
   return simulateJoinedView(el, liveSocket)
-}
-
-let simulateVisibility = el => {
-  el.getClientRects = () => {
-    let style = window.getComputedStyle(el)
-    let visible = !(style.opacity === 0 || style.display === "none")
-    return visible ? {length: 1} : {length: 0}
-  }
-  return el
 }
 
 describe("JS", () => {
@@ -593,6 +584,23 @@ describe("JS", () => {
       JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
       expect(toggle.getAttribute("open")).toEqual("true")
     })
+
+    test("with multiple selector", () => {
+      let view = setupView(`
+      <div id="modal1">modal</div>
+      <div id="modal2" open="true">modal</div>
+      <div id="toggle" phx-click='[["toggle_attr", {"to": "#modal1, #modal2", "attr": ["open", "true"]}]]'></div>
+      `);
+      let modal1 = document.querySelector("#modal1");
+      let modal2 = document.querySelector("#modal2");
+      let toggle = document.querySelector("#toggle");
+
+      expect(modal1.getAttribute("open")).toEqual(null);
+      expect(modal2.getAttribute("open")).toEqual("true");
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle);
+      expect(modal1.getAttribute("open")).toEqual("true");
+      expect(modal2.getAttribute("open")).toEqual(null);
+    });
 
     test("toggling a pre-existing attribute updates its value", () => {
       let view = setupView(`

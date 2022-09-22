@@ -20,8 +20,9 @@ callback, for example:
 | [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
 | [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
-| [DOM Patching](dom-patching.md) | `phx-update`, `phx-remove` |
+| [DOM Patching](dom-patching.md) | `phx-mounted`, `phx-update`, `phx-remove` |
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
+| [Lifecycle Events](#lifecycle-events) | `phx-mounted` | `phx-disconnected` | `phx-connected`|
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [Static tracking](`Phoenix.LiveView.static_changed?/1`) | `phx-track-static` |
 
@@ -157,7 +158,10 @@ for example:
 ## Rate limiting events with Debounce and Throttle
 
 All events can be rate-limited on the client by using the
-`phx-debounce` and `phx-throttle` bindings, with the following behavior:
+`phx-debounce` and `phx-throttle` bindings, with the exception of the `phx-blur`
+binding, which is fired immediately.
+
+Rate limited and debounced events have the following behavior:
 
   * `phx-debounce` - Accepts either an integer timeout value (in milliseconds),
     or `"blur"`. When an integer is provided, emitting the event is delayed by
@@ -290,6 +294,38 @@ Now imagine you want to customize what happens when the `"clicked"` event is pus
 ```
 
 See `Phoenix.LiveView.JS.push/3` for all supported options.
+
+## Lifecycle Events
+
+LiveView supports the `phx-mounted`, `phx-connected`, and `phx-disconnected` events to react to
+different lifecycle events with JS commands.
+
+For exmaple, to show an element when the LiveView has lost its connection, and hide it when the
+connection recovers, you can combine `phx-disconnected` and `phx-connected`
+
+```heex
+<div id="status" class="hidden" phx-disconnected={JS.show()} phx-connected={JS.hide()}>
+  Attempting to reconnect...
+</div>
+```
+
+To execute commands when an element first appears on the page, you can leverage `phx-mounted`,
+such as to animate a notice into view:
+
+```heex
+<div id="flash" class="hidden" phx-mounted={JS.show(transition: ...)}>
+  Welcome back!
+</div>
+
+### LiveView vs static view
+
+`phx-connected` and `phx-disconnected` are only executed when operating
+inside a LiveView container. For static templates, they wil have no effect.
+
+For LiveView, the `phx-mounted` binding is executed as soon as the LiveView is
+mounted with a connection. When using `phx-mounted` in static views, it is executed
+as soon as the DOM is ready.
+```
 
 ## LiveView Specific Events
 

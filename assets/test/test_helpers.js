@@ -30,6 +30,15 @@ export let simulateJoinedView = (el, liveSocket) => {
   return view
 }
 
+export let simulateVisibility = el => {
+  el.getClientRects = () => {
+    let style = window.getComputedStyle(el)
+    let visible = !(style.opacity === 0 || style.display === "none")
+    return visible ? {length: 1} : {length: 0}
+  }
+  return el
+}
+
 export let stubChannel = view => {
   let fakePush = {
     receives: [],
@@ -54,6 +63,14 @@ export function liveViewDOM(content){
       <textarea id="note" name="note">2</textarea>
       <input type="checkbox" phx-click="toggle_me" />
       <button phx-click="inc_temperature">Inc Temperature</button>
+      <div
+        id="status"
+        phx-disconnected='[["show",{"display":null,"time":200,"to":null,"transition":[[],[],[]]}]]'
+        phx-connected='[["hide",{"time":200,"to":null,"transition":[[],[],[]]}]]'
+        style="display:  none;"
+      >
+        disconnected!
+      </div>
     </form>
   `
   document.body.innerHTML = ""

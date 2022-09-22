@@ -1,6 +1,61 @@
 # Changelog
 
-## 0.17.10 (Unreleased)
+## 0.18.0 (2022-09-20)
+
+LiveView v0.18 includes a major new feature in the form of declarative assigns with new `attr`
+and `slot` APIs for specifying which attributes a function component supports, the type,
+and default values. Attributes and slots are compile-time verified and emit warnings (requires Elixir v1.14.0+).
+
+v0.18 includes a number of new function components which replace their EEx expression
+counterparts `<%= ... %>`. For example, `live_redirect`, `live_patch`, and Phoenix.HTML's
+`link` have been replaced by a unified `Phoenix.Component.link/1` function component:
+
+    <.link href="https://myapp.com">my app</.link>
+    <.link navigate={@path}>remount</.link>
+    <.link patch={@path}>patch</.link>
+
+Those new components live in the `Phoenix.Component` module. `Phoenix.LiveView.Helpers`
+itself has been soft deprecated and all relevant functionality has been migrated.
+You must `import Phoenix.Component` where you previously imported `Phoenix.LiveView.Helpers`
+when upgrading. You may also need to `import Phoenix.Component` where you also imported `Phoenix.LiveView` and some of its functions have been moved to `Phoenix.Component`.
+
+Additionally, the special `let` attribute on function components have been deprecated by
+a `:let` usage.
+
+### Deprecations
+  - `live_redirect` - deprecate in favor of new `<.link navigate={..}>` component of `Phoenix.Component`
+  - `live_patch` - deprecate in favor of new `<.link patch={..}>` component of `Phoenix.Component`
+  - `push_redirect` - deprecate in favor of new `push_navigate` function on `Phoenix.LiveView`
+
+### Enhancements
+  - [Component] Add declarative assigns with compile-time verifications and warnings via `attr`/`slot`
+  - [Component] Add new attrs `:let` and `:for`, and `:if` with HTML tag, function component, and slot support. We still support `let` but the formatter will convert it to `:let` and soon it will be deprecated.
+  - [Component] Add `dynamic_tag` function component
+  - [Component] Add `link` function component
+  - [Component] Add `focus_wrap` function component to wrap focus around content like modals and dialogs for accessibility
+  - [Logger] Add new LiveView logger with telemetry instrumentation for lifecycle events
+  - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessibility
+  - [Socket] Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
+  - Add `_live_referer` connect param for handling `push_navigate` referal URL
+  - Add new `phx-connected` and `phx-disconnected` bindings for reacting to lifecycle changes
+  - Add dead view support for JS commands
+  - Add dead view support for hooks
+
+### Bug fixes
+  - Fix external upload issue where listeners are not cleaned up when an external failure happens on the client
+  - Do not debounce `phx-blur`
+
+## 0.17.11 (2022-07-11)
+
+### Enhancements
+  - Add `replaceTransport` to LiveSocket
+
+### Bug fixes
+  - Cancel debounced events from firing after a live navigation event
+  - Fix hash anchor failing to scroll to anchor element on live navigation
+  - Do not debounce `phx-blur` events
+
+## 0.17.10 (2022-05-25)
 
 ### Bug fixes
   - [Formatter] Preserve single quote delimiter on attrs
@@ -340,7 +395,7 @@ component named `form`:
 
 ```elixir
 ~H"""
-<.form let={f} for={@changeset}>
+<.form :let={f} for={@changeset}>
   <%= input f, :foo %>
 </.form>
 """

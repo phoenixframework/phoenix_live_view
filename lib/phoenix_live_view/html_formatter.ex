@@ -158,11 +158,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
 
-  ### Special attributes
+  ### Skip formatting
 
   In case you don't want part of your HTML to be automatically formatted. you
-  can use `phx-no-format` attr so that the formatter will skip the element block.
-  Note that this attribute will not be rendered.
+  can use the special `phx-no-format` attribute so that the formatter will skip
+  the element block. Note that this attribute will not be rendered.
 
   Therefore:
 
@@ -185,6 +185,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   alias Phoenix.LiveView.HTMLAlgebra
   alias Phoenix.LiveView.HTMLTokenizer
+  alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
   # Reference for all inline elements so that we can tell the formatter to not
   # force a line break. This list has been taken from here:
@@ -212,15 +213,24 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
   # @impl Mix.Tasks.Format
   @doc false
-  def format(contents, opts) do
+  def format(source, opts) do
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
+    newlines = :binary.matches(source, ["\r\n", "\n"])
 
     formatted =
-      contents
+      source
       |> tokenize()
-      |> to_tree([], [])
-      |> HTMLAlgebra.build(opts)
-      |> Inspect.Algebra.format(line_length)
+      |> to_tree([], [], {source, newlines})
+      |> case do
+        {:ok, nodes} ->
+          nodes
+          |> HTMLAlgebra.build(opts)
+          |> Inspect.Algebra.format(line_length)
+
+        {:error, line, column, message} ->
+          file = opts[:file] || "nofile"
+          raise ParseError, line: line, column: column, file: file, description: message
+      end
 
     # If the opening delimiter is a single character, such as ~H"...",
     # do not add trailing newline.
@@ -266,10 +276,10 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       HTMLTokenizer.finalize(tokens, "nofile", cont)
     end
 
-    defp do_tokenize({:text, text, _meta}, {tokens, cont}) do
+    defp do_tokenize({:text, text, meta}, {tokens, cont}) do
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
+      |> HTMLTokenizer.tokenize("nofile", 0, [line: meta.line, column: meta.column], tokens, cont)
     end
 
     defp do_tokenize({:comment, text, meta}, {tokens, cont}) do
@@ -283,15 +293,15 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   else
     defp tokenize(contents) do
-      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 0, %{indentation: 0, trim: false})
+      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 1, %{indentation: 0, trim: false})
       {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
       HTMLTokenizer.finalize(tokens, "nofile", cont)
     end
 
-    defp do_tokenize({:text, _line, _column, text}, {tokens, cont}) do
+    defp do_tokenize({:text, line, column, text}, {tokens, cont}) do
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [], tokens, cont)
+      |> HTMLTokenizer.tokenize("nofile", 0, [line: line, column: column], tokens, cont)
     end
 
     defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
@@ -388,114 +398,145 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #    ]}
   # ]
   # ```
-  defp to_tree([], buffer, []) do
-    Enum.reverse(buffer)
+  defp to_tree([], buffer, [], _source) do
+    {:ok, Enum.reverse(buffer)}
   end
 
-  defp to_tree([{:text, text, %{context: [:comment_start]}} | tokens], buffer, stack) do
-    to_tree(tokens, [], [{:comment, text, buffer} | stack])
+  defp to_tree([], _buffer, [{name, _, %{line: line, column: column}, _} | _], _source) do
+    message = "end of template reached without closing tag for <#{name}>"
+    {:error, line, column, message}
   end
 
-  defp to_tree([{:text, text, %{context: [:comment_end]}} | tokens], buffer, [
-         {:comment, start_text, upper_buffer} | stack
-       ]) do
+  defp to_tree([{:text, text, %{context: [:comment_start]}} | tokens], buffer, stack, source) do
+    to_tree(tokens, [], [{:comment, text, buffer} | stack], source)
+  end
+
+  defp to_tree(
+         [{:text, text, %{context: [:comment_end]}} | tokens],
+         buffer,
+         [{:comment, start_text, upper_buffer} | stack],
+         source
+       ) do
     buffer = Enum.reverse([{:text, String.trim_trailing(text), %{}} | buffer])
-
     text = {:text, String.trim_leading(start_text), %{}}
-    to_tree(tokens, [{:html_comment, [text | buffer]} | upper_buffer], stack)
+    to_tree(tokens, [{:html_comment, [text | buffer]} | upper_buffer], stack, source)
   end
 
   defp to_tree(
          [{:text, text, %{context: [:comment_start, :comment_end]}} | tokens],
          buffer,
-         stack
+         stack,
+         source
        ) do
-    to_tree(tokens, [{:comment, text} | buffer], stack)
+    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), %{}}]} | buffer], stack, source)
   end
 
-  defp to_tree([{:text, text, _meta} | tokens], buffer, stack) do
-    buffer = may_set_preserve(buffer, text)
+  defp to_tree([{:text, text, _meta} | tokens], buffer, stack, source) do
+    buffer = may_set_preserve_on_block(buffer, text)
 
     if line_html_comment?(text) do
-      to_tree(tokens, [{:comment, text} | buffer], stack)
+      to_tree(tokens, [{:comment, text} | buffer], stack, source)
     else
       meta = %{newlines: count_newlines_until_text(text, 0)}
-      to_tree(tokens, [{:text, text, meta} | buffer], stack)
+      to_tree(tokens, [{:text, text, meta} | buffer], stack, source)
     end
   end
 
-  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack) do
-    to_tree(tokens, [{:eex_comment, text} | buffer], stack)
+  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [{:eex_comment, text} | buffer], stack, source)
   end
 
-  defp to_tree([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack) do
-    to_tree(tokens, [{:tag_self_close, name, attrs} | buffer], stack)
+  defp to_tree([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack, source) do
+    to_tree(tokens, [{:tag_self_close, name, attrs} | buffer], stack, source)
   end
 
   @void_tags ~w(area base br col hr img input link meta param command keygen source)
-  defp to_tree([{:tag_open, name, attrs, _meta} | tokens], buffer, stack)
+  defp to_tree([{:tag_open, name, attrs, _meta} | tokens], buffer, stack, source)
        when name in @void_tags do
-    to_tree(tokens, [{:tag_self_close, name, attrs} | buffer], stack)
+    to_tree(tokens, [{:tag_self_close, name, attrs} | buffer], stack, source)
   end
 
-  defp to_tree([{:tag_open, name, attrs, _meta} | tokens], buffer, stack) do
-    to_tree(tokens, [], [{name, attrs, buffer} | stack])
+  defp to_tree([{:tag_open, name, attrs, meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [], [{name, attrs, meta, buffer} | stack], source)
   end
 
-  defp to_tree([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
-    mode =
-      cond do
-        preserve_format?(name, upper_buffer, attrs) ->
-          :preserve
+  defp to_tree(
+         [{:tag_close, name, close_meta} | tokens],
+         buffer,
+         [{name, attrs, open_meta, upper_buffer} | stack],
+         source
+       ) do
+    {mode, block} =
+      if (name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
+        content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
+        {:preserve, [{:text, content, %{newlines: 0}}]}
+      else
+        mode =
+          cond do
+            preserve_format?(name, upper_buffer) -> :preserve
+            name in @inline_elements -> :inline
+            true -> :block
+          end
 
-        name in @inline_elements ->
-          :inline
-
-        true ->
-          :block
+        {mode,
+         buffer
+         |> Enum.reverse()
+         |> may_set_preserve_on_text(mode, name)}
       end
 
-    tag_block = {:tag_block, name, attrs, Enum.reverse(buffer), %{mode: mode}}
+    tag_block = {:tag_block, name, attrs, block, %{mode: mode}}
 
-    to_tree(tokens, [tag_block | upper_buffer], stack)
+    to_tree(tokens, [tag_block | upper_buffer], stack, source)
   end
 
   # handle eex
 
-  defp to_tree([{:eex, :start_expr, expr, _meta} | tokens], buffer, stack) do
-    to_tree(tokens, [], [{:eex_block, expr, buffer} | stack])
+  defp to_tree([{:eex, :start_expr, expr, _meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [], [{:eex_block, expr, buffer} | stack], source)
   end
 
-  defp to_tree([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
-         {:eex_block, expr, upper_buffer, middle_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:eex, :middle_expr, middle_expr, _meta} | tokens],
+         buffer,
+         [{:eex_block, expr, upper_buffer, middle_buffer} | stack],
+         source
+       ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
-    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
+    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack], source)
   end
 
-  defp to_tree([{:eex, :middle_expr, middle_expr, _meta} | tokens], buffer, [
-         {:eex_block, expr, upper_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:eex, :middle_expr, middle_expr, _meta} | tokens],
+         buffer,
+         [{:eex_block, expr, upper_buffer} | stack],
+         source
+       ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr}]
-    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack])
+    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack], source)
   end
 
-  defp to_tree([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
-         {:eex_block, expr, upper_buffer, middle_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:eex, :end_expr, end_expr, _meta} | tokens],
+         buffer,
+         [{:eex_block, expr, upper_buffer, middle_buffer} | stack],
+         source
+       ) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
-    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
+    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack, source)
   end
 
-  defp to_tree([{:eex, :end_expr, end_expr, _meta} | tokens], buffer, [
-         {:eex_block, expr, upper_buffer} | stack
-       ]) do
+  defp to_tree(
+         [{:eex, :end_expr, end_expr, _meta} | tokens],
+         buffer,
+         [{:eex_block, expr, upper_buffer} | stack],
+         source
+       ) do
     block = [{Enum.reverse(buffer), end_expr}]
-    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack)
+    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack, source)
   end
 
-  defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack) do
-    to_tree(tokens, [{:eex, expr, meta} | buffer], stack)
+  defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [{:eex, expr, meta} | buffer], stack, source)
   end
 
   # -- HELPERS
@@ -525,22 +566,19 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #
   # * In case the head is a text that doesn't end with whitespace.
   # * In case the head is eex.
-  # * In case it contains special attrs such as contenteditable or phx-no-format.
-  defp preserve_format?(name, upper_buffer, attrs) do
-    name in ["pre", "textarea"] or
-      (name in @inline_elements and head_may_not_have_whitespace?(upper_buffer)) or
-      contains_special_attrs?(attrs)
+  defp preserve_format?(name, upper_buffer) do
+    name in @inline_elements and head_may_not_have_whitespace?(upper_buffer)
   end
 
   defp head_may_not_have_whitespace?([{:text, text, _meta} | _]),
-    do: if(String.trim_leading(text) == "", do: false, else: !(:binary.last(text) in '\s\t'))
+    do: String.trim_leading(text) != "" and :binary.last(text) not in '\s\t'
 
   defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
   defp head_may_not_have_whitespace?(_), do: false
 
   # In case the given tag is inline and the there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.
-  defp may_set_preserve([{:tag_block, name, attrs, block, meta} | list], text)
+  defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do
     mode =
       if String.trim_leading(text) != "" and :binary.first(text) not in '\s\t\n\r' do
@@ -552,14 +590,76 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     [{:tag_block, name, attrs, block, %{mode: mode}} | list]
   end
 
-  defp may_set_preserve(buffer, _text), do: buffer
+  @non_ws_preserving_elements ["button"]
+
+  defp may_set_preserve_on_block(buffer, _text), do: buffer
+
+  defp may_set_preserve_on_text([{:text, text, meta}], :inline, tag_name)
+       when tag_name not in @non_ws_preserving_elements do
+    {mode, text} =
+      if meta.newlines == 0 and whitespace_around?(text) do
+        text =
+          text
+          |> cleanup_extra_spaces_leading()
+          |> cleanup_extra_spaces_trailing()
+
+        {:preserve, text}
+      else
+        {:normal, text}
+      end
+
+    [{:text, text, Map.put(meta, :mode, mode)}]
+  end
+
+  defp may_set_preserve_on_text(buffer, _mode, _tag_name), do: buffer
+
+  defp whitespace_around?(text), do: :binary.first(text) in '\s\t' or :binary.last(text) in '\s\t'
+
+  defp cleanup_extra_spaces_leading(text) do
+    if :binary.first(text) in '\s\t' do
+      " " <> String.trim_leading(text)
+    else
+      text
+    end
+  end
+
+  defp cleanup_extra_spaces_trailing(text) do
+    if :binary.last(text) in '\s\t' do
+      String.trim_trailing(text) <> " "
+    else
+      text
+    end
+  end
 
   defp contains_special_attrs?(attrs) do
     Enum.any?(attrs, fn
-      {"contenteditable", {:string, "false", _meta}} -> false
-      {"contenteditable", _v} -> true
-      {"phx-no-format", _v} -> true
+      {"contenteditable", {:string, "false", _meta}, _} -> false
+      {"contenteditable", _v, _} -> true
+      {"phx-no-format", _v, _} -> true
       _ -> false
     end)
+  end
+
+  defp content_from_source({source, newlines}, {line_start, column_start}, {line_end, column_end}) do
+    lines = Enum.slice([{0, 0} | newlines], (line_start - 1)..(line_end - 1))
+    [first_line | _] = lines
+    [last_line | _] = Enum.reverse(lines)
+
+    offset_start = line_byte_offset(source, first_line, column_start)
+    offset_end = line_byte_offset(source, last_line, column_end)
+
+    binary_part(source, offset_start, offset_end - offset_start)
+  end
+
+  defp line_byte_offset(source, {line_before, line_size}, column) do
+    line_offset = line_before + line_size
+
+    line_extra =
+      source
+      |> binary_part(line_offset, byte_size(source) - line_offset)
+      |> String.slice(0, column - 1)
+      |> byte_size()
+
+    line_offset + line_extra
   end
 end

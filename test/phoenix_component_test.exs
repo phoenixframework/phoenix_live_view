@@ -1,266 +1,230 @@
-defmodule Phoenix.ComponentTest do
+defmodule Phoenix.ComponentUnitTest do
   use ExUnit.Case, async: true
 
-  use Phoenix.Component
+  alias Phoenix.LiveView.{Socket, Utils}
+  import Phoenix.Component
 
-  defp h2s(template) do
-    template
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
-  end
+  @socket Utils.configure_socket(
+            %Socket{
+              endpoint: Endpoint,
+              router: Phoenix.LiveViewTest.Router,
+              view: Phoenix.LiveViewTest.ParamCounterLive
+            },
+            %{
+              connect_params: %{},
+              connect_info: %{},
+              root_view: Phoenix.LiveViewTest.ParamCounterLive,
+              __changed__: %{}
+            },
+            nil,
+            %{},
+            URI.parse("https://www.example.com")
+          )
 
-  describe "rendering" do
-    defp hello(assigns) do
-      assigns = assign_new(assigns, :name, fn -> "World" end)
-      ~H"""
-      Hello <%= @name %>
-      """
+  @assigns_changes %{key: "value", map: %{foo: :bar}, __changed__: %{}}
+  @assigns_nil_changes %{key: "value", map: %{foo: :bar}, __changed__: nil}
+
+  describe "assign with socket" do
+    test "tracks changes" do
+      socket = assign(@socket, existing: "foo")
+      assert changed?(socket, :existing)
+
+      socket = Utils.clear_changed(socket)
+      socket = assign(socket, existing: "foo")
+      refute changed?(socket, :existing)
     end
 
-    test "renders component" do
-      assigns = %{}
+    test "keeps whole maps in changes" do
+      socket = assign(@socket, existing: %{foo: :bar})
+      socket = Utils.clear_changed(socket)
 
-      assert h2s(~H"""
-             <%= component &hello/1, name: "WORLD" %>
-             """) == """
-             Hello WORLD\
-             """
-    end
-  end
+      socket = assign(socket, existing: %{foo: :baz})
+      assert socket.assigns.existing == %{foo: :baz}
+      assert socket.assigns.__changed__.existing == %{foo: :bar}
 
-  describe "change tracking" do
-    defp eval(%Phoenix.LiveView.Rendered{dynamic: dynamic}), do: Enum.map(dynamic.(true), &eval/1)
-    defp eval(other), do: other
+      socket = assign(socket, existing: %{foo: :bat})
+      assert socket.assigns.existing == %{foo: :bat}
+      assert socket.assigns.__changed__.existing == %{foo: :bar}
 
-    defp changed(assigns) do
-      ~H"""
-      <%= inspect(Map.get(assigns, :__changed__)) %>
-      """
-    end
-
-    test "without changed assigns on root" do
-      assigns = %{foo: 1}
-      assert eval(~H"<.changed foo={@foo} />") == [["nil"]]
-    end
-
-    test "with tainted variable" do
-      foo = 1
-      assigns = %{foo: 1}
-      assert eval(~H"<.changed foo={foo} />") == [["nil"]]
-
-      assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H"<.changed foo={foo} />") == [["%{foo: true}"]]
-    end
-
-    test "with changed assigns on root" do
-      assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H"<.changed foo={@foo} />") == [nil]
-
-      assigns = %{foo: 1, __changed__: %{bar: true}}
-      assert eval(~H"<.changed foo={@foo} />") == [nil]
-
-      assigns = %{foo: 1, __changed__: %{foo: true}}
-      assert eval(~H"<.changed foo={@foo} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: 1, __changed__: %{foo: %{bar: true}}}
-      assert eval(~H"<.changed foo={@foo} />") == [["%{foo: %{bar: true}}"]]
-    end
-
-    test "with changed assigns on map" do
-      assigns = %{foo: %{bar: :bar}, __changed__: %{}}
-      assert eval(~H"<.changed foo={@foo.bar} />") == [nil]
-
-      assigns = %{foo: %{bar: :bar}, __changed__: %{bar: true}}
-      assert eval(~H"<.changed foo={@foo.bar} />") == [nil]
-
-      assigns = %{foo: %{bar: :bar}, __changed__: %{foo: true}}
-      assert eval(~H"<.changed foo={@foo.bar} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: %{bar: :bar}, __changed__: %{foo: %{bar: :bar}}}
-      assert eval(~H"<.changed foo={@foo.bar} />") == [nil]
-
-      assigns = %{foo: %{bar: :bar}, __changed__: %{foo: %{bar: :baz}}}
-      assert eval(~H"<.changed foo={@foo.bar} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: %{bar: %{bar: :bar}}, __changed__: %{foo: %{bar: %{bar: :bat}}}}
-      assert eval(~H"<.changed foo={@foo.bar} />") == [["%{foo: %{bar: :bat}}"]]
-    end
-
-    test "with multiple changed assigns" do
-      assigns = %{foo: 1, bar: 2, __changed__: %{}}
-      assert eval(~H"<.changed foo={@foo + @bar} />") == [nil]
-
-      assigns = %{foo: 1, bar: 2, __changed__: %{bar: true}}
-      assert eval(~H"<.changed foo={@foo + @bar} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: 1, bar: 2, __changed__: %{foo: true}}
-      assert eval(~H"<.changed foo={@foo + @bar} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: 1, bar: 2, __changed__: %{baz: true}}
-      assert eval(~H"<.changed foo={@foo + @bar} />") == [nil]
-    end
-
-    test "with multiple keys" do
-      assigns = %{foo: 1, bar: 2, __changed__: %{}}
-      assert eval(~H"<.changed foo={@foo} bar={@bar} />") == [nil]
-
-      assigns = %{foo: 1, bar: 2, __changed__: %{bar: true}}
-      assert eval(~H"<.changed foo={@foo} bar={@bar} />") == [["%{bar: true}"]]
-
-      assigns = %{foo: 1, bar: 2, __changed__: %{foo: true}}
-      assert eval(~H"<.changed foo={@foo} bar={@bar} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: 1, bar: 2, __changed__: %{baz: true}}
-      assert eval(~H"<.changed foo={@foo} bar={@bar} />") == [nil]
-    end
-
-    test "with multiple keys and one is static" do
-      assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H|<.changed foo={@foo} bar="2" />|) == [nil]
-
-      assigns = %{foo: 1, __changed__: %{bar: true}}
-      assert eval(~H|<.changed foo={@foo} bar="2" />|) == [nil]
-
-      assigns = %{foo: 1, __changed__: %{foo: true}}
-      assert eval(~H|<.changed foo={@foo} bar="2" />|) == [["%{foo: true}"]]
-    end
-
-    test "with multiple keys and one is tainted" do
-      assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H|<.changed foo={@foo} bar={assigns} />|) == [["%{bar: true}"]]
-
-      assigns = %{foo: 1, __changed__: %{foo: true}}
-      assert eval(~H|<.changed foo={@foo} bar={assigns} />|) == [["%{bar: true, foo: true}"]]
-    end
-
-    test "with conflict on changed assigns" do
-      assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{}}
-      assert eval(~H"<.changed foo={@foo} {@bar} />") == [nil]
-
-      assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{bar: true}}
-      assert eval(~H"<.changed foo={@foo} {@bar} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{foo: true}}
-      assert eval(~H"<.changed foo={@foo} {@bar} />") == [["%{foo: true}"]]
-
-      assigns = %{foo: 1, bar: %{foo: 2}, baz: 3, __changed__: %{baz: true}}
-      assert eval(~H"<.changed foo={@foo} {@bar} baz={@baz} />") == [["%{baz: true}"]]
-    end
-
-    test "with dynamic assigns" do
-      assigns = %{foo: %{a: 1, b: 2}, __changed__: %{}}
-      assert eval(~H"<.changed {@foo} />") == [nil]
-
-      assigns = %{foo: %{a: 1, b: 2}, __changed__: %{foo: true}}
-      assert eval(~H"<.changed {@foo} />") == [["%{a: true, b: true}"]]
-
-      assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
-      assert eval(~H"<.changed {@foo} bar={@bar} />") == [["%{bar: true}"]]
-
-      assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
-      assert eval(~H"<.changed {%{a: 1, b: 2}} bar={@bar} />") == [["%{bar: true}"]]
-
-      assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
-
-      assert eval(~H"<.changed {%{a: assigns[:b], b: assigns[:a]}} bar={@bar} />") ==
-               [["%{a: true, b: true, bar: true}"]]
-    end
-
-    defp inner_changed(assigns) do
-      ~H"""
-      <%= inspect(Map.get(assigns, :__changed__)) %>
-      <%= render_slot(@inner_block, "var") %>
-      """
-    end
-
-    test "with @inner_block" do
-      assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) == [nil]
-      assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) == [nil]
-
-      assigns = %{foo: 1, __changed__: %{foo: true}}
-
-      assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) ==
-               [["%{foo: true}", nil]]
-
-      assert eval(
-               ~H|<.inner_changed foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
-               [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
-
-      assert eval(
-               ~H|<.inner_changed><%= @foo %></.inner_changed>|
-             ) ==
-               [["%{inner_block: true}", ["1"]]]
-
-      assigns = %{foo: 1, __changed__: %{foo: %{bar: true}}}
-
-      assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) ==
-               [["%{foo: %{bar: true}}", nil]]
-
-      assert eval(
-               ~H|<.inner_changed foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
-               [["%{foo: %{bar: true}, inner_block: true}", ["%{foo: %{bar: true}}"]]]
-
-      assert eval(
-               ~H|<.inner_changed><%= @foo %></.inner_changed>|
-             ) ==
-               [["%{inner_block: %{bar: true}}", ["1"]]]
-    end
-
-    test "with let" do
-      assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) == [nil]
-
-      assigns = %{foo: 1, __changed__: %{foo: true}}
-
-      assert eval(~H|<.inner_changed let={_foo} foo={@foo}></.inner_changed>|) ==
-               [["%{foo: true}", nil]]
-
-      assert eval(
-               ~H|<.inner_changed let={_foo} foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
-               [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
-
-      assert eval(
-               ~H|<.inner_changed let={_foo} foo={@foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
-               [["%{foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
-
-      assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={_bar} bar={foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
-             ) ==
-               [
-                 [
-                   "%{foo: true, inner_block: true}",
-                   [["%{bar: true, inner_block: true}", [nil, "%{foo: true}"]]]
-                 ]
-               ]
-
-      assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><%= foo %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
-               [["%{foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
-
-      assert eval(
-               ~H|<.inner_changed let={foo} foo={@foo}><.inner_changed let={bar} bar={foo}><%= bar %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
-             ) ==
-               [
-                 [
-                   "%{foo: true, inner_block: true}",
-                   [["%{bar: true, inner_block: true}", ["var", "%{foo: true}"]]]
-                 ]
-               ]
+      socket = assign(socket, %{existing: %{foo: :bam}})
+      assert socket.assigns.existing == %{foo: :bam}
+      assert socket.assigns.__changed__.existing == %{foo: :bar}
     end
   end
 
-  describe "testing" do
-    import Phoenix.LiveViewTest
+  describe "assign with assigns" do
+    test "tracks changes" do
+      assigns = assign(@assigns_changes, key: "value")
+      assert assigns.key == "value"
+      refute changed?(assigns, :key)
 
-    test "render_component/1" do
-      assert render_component(&hello/1) == "Hello World"
-      assert render_component(&hello/1, name: "WORLD!") == "Hello WORLD!"
+      assigns = assign(@assigns_changes, key: "changed")
+      assert assigns.key == "changed"
+      assert changed?(assigns, :key)
+
+      assigns = assign(@assigns_nil_changes, key: "changed")
+      assert assigns.key == "changed"
+      assert assigns.__changed__ == nil
+      assert changed?(assigns, :key)
     end
+
+    test "keeps whole maps in changes" do
+      assigns = assign(@assigns_changes, map: %{foo: :baz})
+      assert assigns.map == %{foo: :baz}
+      assert assigns.__changed__[:map] == %{foo: :bar}
+
+      assigns = assign(@assigns_nil_changes, map: %{foo: :baz})
+      assert assigns.map == %{foo: :baz}
+      assert assigns.__changed__ == nil
+    end
+  end
+
+  describe "assign_new with socket" do
+    test "uses socket assigns if no parent assigns are present" do
+      socket =
+        @socket
+        |> assign(existing: "existing")
+        |> assign_new(:existing, fn -> "new-existing" end)
+        |> assign_new(:notexisting, fn -> "new-notexisting" end)
+
+      assert socket.assigns == %{
+               existing: "existing",
+               notexisting: "new-notexisting",
+               live_action: nil,
+               flash: %{},
+               __changed__: %{existing: true, notexisting: true}
+             }
+    end
+
+    test "uses parent assigns when present and falls back to socket assigns" do
+      socket =
+        put_in(@socket.private[:assign_new], {%{existing: "existing-parent"}, []})
+        |> assign(existing2: "existing2")
+        |> assign_new(:existing, fn -> "new-existing" end)
+        |> assign_new(:existing2, fn -> "new-existing2" end)
+        |> assign_new(:notexisting, fn -> "new-notexisting" end)
+
+      assert socket.assigns == %{
+               existing: "existing-parent",
+               existing2: "existing2",
+               notexisting: "new-notexisting",
+               live_action: nil,
+               flash: %{},
+               __changed__: %{existing: true, notexisting: true, existing2: true}
+             }
+    end
+
+    test "has access to assigns" do
+      socket =
+        put_in(@socket.private[:assign_new], {%{existing: "existing-parent"}, []})
+        |> assign(existing2: "existing2")
+        |> assign_new(:existing, fn _ -> "new-existing" end)
+        |> assign_new(:existing2, fn _ -> "new-existing2" end)
+        |> assign_new(:notexisting, fn %{existing: existing} -> existing end)
+        |> assign_new(:notexisting2, fn %{existing2: existing2} -> existing2 end)
+        |> assign_new(:notexisting3, fn %{notexisting: notexisting} -> notexisting end)
+
+      assert socket.assigns == %{
+               existing: "existing-parent",
+               existing2: "existing2",
+               notexisting: "existing-parent",
+               notexisting2: "existing2",
+               notexisting3: "existing-parent",
+               live_action: nil,
+               flash: %{},
+               __changed__: %{
+                 existing: true,
+                 existing2: true,
+                 notexisting: true,
+                 notexisting2: true,
+                 notexisting3: true
+               }
+             }
+    end
+  end
+
+  describe "assign_new with assigns" do
+    test "tracks changes" do
+      assigns = assign_new(@assigns_changes, :key, fn -> raise "won't be invoked" end)
+      assert assigns.key == "value"
+      refute changed?(assigns, :key)
+      refute assigns.__changed__[:key]
+
+      assigns = assign_new(@assigns_changes, :another, fn -> "changed" end)
+      assert assigns.another == "changed"
+      assert changed?(assigns, :another)
+
+      assigns = assign_new(@assigns_nil_changes, :another, fn -> "changed" end)
+      assert assigns.another == "changed"
+      assert changed?(assigns, :another)
+      assert assigns.__changed__ == nil
+    end
+
+    test "has access to new assigns" do
+      assigns =
+        assign_new(@assigns_changes, :another, fn -> "changed" end)
+        |> assign_new(:and_another, fn %{another: another} -> another end)
+
+      assert assigns.and_another == "changed"
+      assert changed?(assigns, :another)
+      assert changed?(assigns, :and_another)
+    end
+  end
+
+  describe "update with socket" do
+    test "tracks changes" do
+      socket = @socket |> assign(key: "value") |> Utils.clear_changed()
+
+      socket = update(socket, :key, fn "value" -> "value" end)
+      assert socket.assigns.key == "value"
+      refute changed?(socket, :key)
+
+      socket = update(socket, :key, fn "value" -> "changed" end)
+      assert socket.assigns.key == "changed"
+      assert changed?(socket, :key)
+    end
+  end
+
+  describe "update with assigns" do
+    test "tracks changes" do
+      assigns = update(@assigns_changes, :key, fn "value" -> "value" end)
+      assert assigns.key == "value"
+      refute changed?(assigns, :key)
+
+      assigns = update(@assigns_changes, :key, fn "value" -> "changed" end)
+      assert assigns.key == "changed"
+      assert changed?(assigns, :key)
+
+      assigns = update(@assigns_nil_changes, :key, fn "value" -> "changed" end)
+      assert assigns.key == "changed"
+      assert changed?(assigns, :key)
+      assert assigns.__changed__ == nil
+    end
+  end
+
+  describe "update with arity 2 function" do
+    test "passes socket assigns to update function" do
+      socket = @socket |> assign(key: "value", key2: "another") |> Utils.clear_changed()
+
+      socket = update(socket, :key2, fn key2, %{key: key} -> key2 <> " " <> key end)
+      assert socket.assigns.key2 == "another value"
+      assert changed?(socket, :key2)
+    end
+
+    test "passes assigns to update function" do
+      assigns = update(@assigns_changes, :key, fn _, %{map: %{foo: bar}} -> bar end)
+      assert assigns.key == :bar
+      assert changed?(assigns, :key)
+    end
+  end
+
+  test "assigns_to_attributes/2" do
+    assert assigns_to_attributes(%{}) == []
+    assert assigns_to_attributes(%{}, [:non_exists]) == []
+    assert assigns_to_attributes(%{one: 1, two: 2}) == [one: 1, two: 2]
+    assert assigns_to_attributes(%{one: 1, two: 2}, [:one]) == [two: 2]
+    assert assigns_to_attributes(%{__changed__: %{}, one: 1, two: 2}, [:one]) == [two: 2]
+    assert assigns_to_attributes(%{__changed__: %{}, inner_block: fn -> :ok end, a: 1}) == [a: 1]
+    assert assigns_to_attributes(%{__slot__: :foo, inner_block: fn -> :ok end, a: 1}) == [a: 1]
   end
 end

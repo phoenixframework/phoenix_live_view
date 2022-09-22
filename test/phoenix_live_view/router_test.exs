@@ -244,5 +244,22 @@ defmodule Phoenix.LiveView.RouterTest do
         )
       end)
     end
+
+    test "with layout override", %{conn: conn} do
+      path = "/dashboard-live-session-layout"
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert route.live_session.extra == %{
+        layout: {Phoenix.LiveViewTest.LayoutView, "live-override.html"},
+        session: %{}
+      }
+
+      {:ok, _, html} = live(conn, path)
+
+      assert html =~
+        ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+    end
   end
 end

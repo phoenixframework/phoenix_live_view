@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.DiffTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView.Helpers
+  import Phoenix.Component
 
   alias Phoenix.LiveView.{Socket, Diff, Rendered, Component}
   alias Phoenix.LiveComponent.CID
@@ -475,7 +475,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~H"""
       COMPONENT
-      <.live_component module={SlotComponent} let={%{value: value}} id="WORLD">
+      <.live_component module={SlotComponent} :let={%{value: value}} id="WORLD">
         WITH VALUE <%= value %>
       </.live_component>
       """
@@ -561,7 +561,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= component &FunctionComponent.render_only/1, from: :component %>
+      <FunctionComponent.render_only from={:component} />
       """
 
       {socket, full_render, components} = render(rendered)
@@ -576,6 +576,38 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert socket.fingerprints != {rendered.fingerprint, %{}}
       assert components == Diff.new_components()
+    end
+
+    @raises_inside_rendered_line __ENV__.line + 3
+    defp raises_inside_rendered(assigns) do
+      ~H"""
+      <%= raise "oops" %>
+      """
+    end
+
+    test "stacktrace" do
+      assigns = %{socket: %Socket{}}
+      line = __ENV__.line + 3
+
+      rendered = ~H"""
+      <.raises_inside_rendered />
+      """
+
+      try do
+        render(rendered)
+      rescue
+        RuntimeError ->
+          [{__MODULE__, _anonymous_fun, _anonymous_arity, info} | rest] = __STACKTRACE__
+          assert List.to_string(info[:file]) =~ "diff_test.exs"
+          assert info[:line] == @raises_inside_rendered_line
+
+          assert Enum.any?(rest, fn {mod, fun, arity, info} ->
+                   mod == __MODULE__ and __ENV__.function == {fun, arity} and
+                     List.to_string(info[:file]) =~ "diff_test.exs" and info[:line] == line
+                 end)
+      else
+        _ -> flunk("should have raised runtime error")
+      end
     end
 
     test "@inner_block without args" do
@@ -634,7 +666,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp function_tracking(assigns) do
       ~H"""
-      <FunctionComponent.render_inner_block let={value} id={@id}>
+      <FunctionComponent.render_inner_block :let={value} id={@id}>
         WITH VALUE <%= value %> - <%= @value %>
       </FunctionComponent.render_inner_block>
       """
@@ -784,7 +816,7 @@ defmodule Phoenix.LiveView.DiffTest do
       assigns = %{socket: %Socket{}}
 
       rendered = ~H"""
-      <%= component &FunctionComponent.render_with_live_component/1 %>
+      <FunctionComponent.render_with_live_component />
       """
 
       {socket, full_render, components} = render(rendered)
@@ -1387,7 +1419,7 @@ defmodule Phoenix.LiveView.DiffTest do
       # Now let's add one level of nesting directly
       {diff, diff_components, :extra} =
         Diff.write_component(socket, 1, diff_components, fn socket, _component ->
-          {Phoenix.LiveView.assign(socket, children: [{2, []}]), :extra}
+          {Phoenix.Component.assign(socket, children: [{2, []}]), :extra}
         end)
 
       assert diff == %{
@@ -1521,7 +1553,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~H"""
-      <.live_component module={SlotComponent} let={%{value: value}} id="TRACKING">
+      <.live_component module={SlotComponent} :let={%{value: value}} id="TRACKING">
         WITH PARENT VALUE <%= @parent_value %>
         WITH VALUE <%= value %>
       </.live_component>

@@ -122,7 +122,7 @@ Next, the server can issue a highlight using the standard `push_event`:
 
 ```elixir
 def handle_info({:item_updated, item}, socket) do
-  {:noreply, push_event(socket, "highlight", %{id: item.id})}
+  {:noreply, push_event(socket, "highlight", %{id: "item-#{item.id}"})}
 end
 ```
 
@@ -181,6 +181,11 @@ or removed by the server, a hook object may be provided via `phx-hook`.
   * `disconnected` - the element's parent LiveView has disconnected from the server
   * `reconnected` - the element's parent LiveView has reconnected to the server
 
+*Note:* When using hooks outside the context of a LiveView, `mounted` is the only
+callback invoked, and only those elements on the page at DOM ready will be tracked.
+For dynamic tracking of the DOM as elements are added, removed, and updated, a LiveView
+should be used.
+
 The above life-cycle callbacks have in-scope access to the following attributes:
 
   * `el` - attribute referencing the bound DOM node
@@ -229,7 +234,7 @@ DOM management, the `LiveSocket` constructor accepts a `dom` option with an
 function just before the DOM patch operations occurs in LiveView. This allows external
 libraries to (re)initialize DOM elements or copy attributes as necessary as LiveView
 performs its own patch operations. The update operation cannot be cancelled or deferred,
-and the return value is ignored. 
+and the return value is ignored.
 
 For example, the following option could be used to add
 [Alpine.js](https://github.com/alpinejs/alpine) support to your project:
@@ -248,8 +253,8 @@ In the following example, all attributes starting with `data-js-` won't be repla
 
     onBeforeElUpdated(from, to){
       for (const attr of from.attributes){
-        if (attr.name.startsWith("data-js-")){ 
-          to.setAttribute(attr.name, attr.value); 
+        if (attr.name.startsWith("data-js-")){
+          to.setAttribute(attr.name, attr.value);
         }
       }
     }
@@ -300,30 +305,3 @@ And then on the client:
 to all active hooks on the client who are handling that event.
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
-
-## Triggering `phx-` form events with JavaScript
-
-Often it is desirable to trigger an event on a DOM element without explicit
-user interaction on the element. For example, a custom form element such as a
-date picker or custom select input which utilizes a hidden input element to
-store the selected state.
-
-In these cases, the event functions on the DOM API can be used, for example
-to trigger a `phx-change` event:
-
-```
-document.getElementById("my-select").dispatchEvent(
-  new Event("input", {bubbles: true})
-)
-```
-
-When using a client hook, `this.el` can be used to determine the element as
-outlined in the "Client hooks" documentation.
-
-It is also possible to trigger a `phx-submit` using a "submit" event:
-
-```
-document.getElementById("my-form").dispatchEvent(
-  new Event("submit", {bubbles: true, cancelable: true})
-)
-```

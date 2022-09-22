@@ -12,9 +12,7 @@ defmodule Phoenix.LiveViewTest.View do
 
   See the `Phoenix.LiveViewTest` documentation for usage.
   """
-  if Version.match?(System.version(), ">= 1.8.0") do
-    @derive {Inspect, only: [:id, :module, :pid, :endpoint]}
-  end
+  @derive {Inspect, only: [:id, :module, :pid, :endpoint]}
 
   defstruct id: nil,
             module: nil,
@@ -35,9 +33,7 @@ defmodule Phoenix.LiveViewTest.Element do
 
   See the `Phoenix.LiveViewTest` documentation for usage.
   """
-  if Version.match?(System.version(), ">= 1.8.0") do
-    @derive {Inspect, only: [:selector, :text_filter]}
-  end
+  @derive {Inspect, only: [:selector, :text_filter]}
 
   defstruct proxy: nil,
             selector: nil,
@@ -60,10 +56,7 @@ defmodule Phoenix.LiveViewTest.Upload do
   """
 
   alias Phoenix.LiveViewTest.{Upload, Element}
-
-  if Version.match?(System.version(), ">= 1.8.0") do
-    @derive {Inspect, only: [:selector, :entries]}
-  end
+  @derive {Inspect, only: [:selector, :entries]}
 
   defstruct pid: nil,
             view: nil,

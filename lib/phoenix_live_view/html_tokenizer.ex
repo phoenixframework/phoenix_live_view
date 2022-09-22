@@ -13,20 +13,9 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       location =
         exception.file
         |> Path.relative_to_cwd()
-        |> format_file_line_column(exception.line, exception.column)
+        |> Exception.format_file_line_column(exception.line, exception.column)
 
       "#{location} #{exception.description}"
-    end
-
-    # Use Exception.format_file_line_column/4 instead when support
-    # for Elixir < v1.11 is removed.
-    def format_file_line_column(file, line, column, suffix \\ "") do
-      cond do
-        is_nil(file) -> ""
-        is_nil(line) or line == 0 -> "#{file}:#{suffix}"
-        is_nil(column) or column == 0 -> "#{file}:#{line}:#{suffix}"
-        true -> "#{file}:#{line}:#{column}:#{suffix}"
-      end
     end
   end
 
@@ -114,8 +103,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     handle_text(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
-  defp handle_text(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column, []), :text)
+  defp handle_text(<<>>, line, column, buffer, acc, state) do
+    ok(text_to_acc(buffer, acc, line, column, state.context), :text)
   end
 
   ## handle_doctype
@@ -140,7 +129,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_script("</script>" <> rest, line, column, buffer, acc, state) do
     acc = [
-      {:tag_close, "script", %{line: line, column: column}}
+      {:tag_close, "script", %{line: line, column: column, inner_location: {line, column}}}
       | text_to_acc(buffer, acc, line, column, [])
     ]
 
@@ -167,7 +156,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp handle_style("</style>" <> rest, line, column, buffer, acc, state) do
     acc = [
-      {:tag_close, "style", %{line: line, column: column}}
+      {:tag_close, "style", %{line: line, column: column, inner_location: {line, column}}}
       | text_to_acc(buffer, acc, line, column, [])
     ]
 
@@ -218,8 +207,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_open(text, line, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, rest} ->
-        acc = if strip_tag?(name), do: strip_text_token_partially(acc), else: acc
-        acc = [{:tag_open, name, [], %{line: line, column: column - 1}} | acc]
+        meta = %{line: line, column: column - 1, inner_location: nil}
+        acc = [{:tag_open, name, [], meta} | acc]
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
@@ -232,8 +221,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_tag_close(text, line, column, acc, state) do
     case handle_tag_name(text, column, []) do
       {:ok, name, new_column, ">" <> rest} ->
-        acc = [{:tag_close, name, %{line: line, column: column - 2}} | acc]
-        rest = if strip_tag?(name), do: String.trim_leading(rest), else: rest
+        meta = %{line: line, column: column - 2, inner_location: {line, column - 2}}
+        acc = [{:tag_close, name, meta} | acc]
         handle_text(rest, line, new_column + 1, [], acc, state)
 
       {:ok, _, new_column, _} ->
@@ -284,12 +273,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   defp handle_maybe_tag_open_end("/>" <> rest, line, column, acc, state) do
-    acc = reverse_attrs(acc)
+    acc = reverse_attrs(acc, line, column + 2)
     handle_text(rest, line, column + 2, [], put_self_close(acc), state)
   end
 
   defp handle_maybe_tag_open_end(">" <> rest, line, column, acc, state) do
-    case reverse_attrs(acc) do
+    case reverse_attrs(acc, line, column + 1) do
       [{:tag_open, "script", _, _} | _] = acc ->
         handle_script(rest, line, column + 1, [], acc, state)
 
@@ -343,7 +332,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_attribute(text, line, column, acc, state) do
     case handle_attr_name(text, column, []) do
       {:ok, name, new_column, rest} ->
-        acc = put_attr(acc, name)
+        acc = put_attr(acc, name, %{line: line, column: column})
         handle_maybe_attr_value(rest, line, new_column, acc, state)
 
       {:error, message, column} ->
@@ -356,7 +345,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   defp handle_root_attribute(text, line, column, acc, state) do
     case handle_interpolation(text, line, column, [], state) do
       {:ok, value, new_line, new_column, rest, state} ->
-        acc = put_attr(acc, :root, {:expr, value, %{line: line, column: column}})
+        meta = %{line: line, column: column}
+        acc = put_attr(acc, :root, meta, {:expr, value, meta})
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message, line, column} ->
@@ -563,7 +553,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
     meta =
       if context = get_context(context) do
-        Map.put(meta, :context, context)
+        Map.put(meta, :context, trim_context(context))
       else
         meta
       end
@@ -571,21 +561,25 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     [{:text, buffer_to_string(buffer), meta} | acc]
   end
 
+  defp trim_context([:comment_start, :comment_end | [_ | _] = rest]), do: trim_context(rest)
+  defp trim_context(rest), do: rest
+
   defp get_context([]), do: nil
   defp get_context(context), do: Enum.reverse(context)
 
-  defp put_attr([{:tag_open, name, attrs, meta} | acc], attr, value \\ nil) do
-    attrs = [{attr, value} | attrs]
+  defp put_attr([{:tag_open, name, attrs, meta} | acc], attr, attr_meta, value \\ nil) do
+    attrs = [{attr, value, attr_meta} | attrs]
     [{:tag_open, name, attrs, meta} | acc]
   end
 
-  defp put_attr_value([{:tag_open, name, [{attr, _value} | attrs], meta} | acc], value) do
-    attrs = [{attr, value} | attrs]
+  defp put_attr_value([{:tag_open, name, [{attr, _value, attr_meta} | attrs], meta} | acc], value) do
+    attrs = [{attr, value, attr_meta} | attrs]
     [{:tag_open, name, attrs, meta} | acc]
   end
 
-  defp reverse_attrs([{:tag_open, name, attrs, meta} | acc]) do
+  defp reverse_attrs([{:tag_open, name, attrs, meta} | acc], line, column) do
     attrs = Enum.reverse(attrs)
+    meta = %{meta | inner_location: {line, column}}
     [{:tag_open, name, attrs, meta} | acc]
   end
 
@@ -602,23 +596,10 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     {pos, %{state | braces: braces}}
   end
 
-  # Strip space before slots
-  defp strip_tag?(":" <> _), do: true
-  defp strip_tag?(_), do: false
-
   defp strip_text_token_fully(tokens) do
     with [{:text, text, _} | rest] <- tokens,
          "" <- String.trim_leading(text) do
       strip_text_token_fully(rest)
-    else
-      _ -> tokens
-    end
-  end
-
-  defp strip_text_token_partially(tokens) do
-    with [{:text, text, _meta} | rest] <- tokens,
-         "" <- String.trim_leading(text) do
-      strip_text_token_partially(rest)
     else
       _ -> tokens
     end

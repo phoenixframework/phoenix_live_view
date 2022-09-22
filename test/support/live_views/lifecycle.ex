@@ -1,33 +1,31 @@
 defmodule Phoenix.LiveViewTest.InitAssigns do
-  alias Phoenix.LiveView
+  alias Phoenix.Component
 
   def on_mount(:default, _params, _session, socket) do
     {:cont,
      socket
-     |> LiveView.assign(:init_assigns_mount, true)
-     |> LiveView.assign(:last_on_mount, :init_assigns_mount)}
+     |> Component.assign(:init_assigns_mount, true)
+     |> Component.assign(:last_on_mount, :init_assigns_mount)}
   end
 
   def on_mount(:other, _params, _session, socket) do
     {:cont,
      socket
-     |> LiveView.assign(:init_assigns_other_mount, true)
-     |> LiveView.assign(:last_on_mount, :init_assigns_other_mount)}
+     |> Component.assign(:init_assigns_other_mount, true)
+     |> Component.assign(:last_on_mount, :init_assigns_other_mount)}
   end
 end
 
 defmodule Phoenix.LiveViewTest.MountArgs do
-  use Phoenix.Component
+  import Phoenix.LiveView
 
   def on_mount(:inlined, _params, _session, socket) do
     qs = URI.encode_query(%{called: true, inlined: true})
-    {:halt, push_redirect(socket, to: "/lifecycle?#{qs}")}
+    {:halt, push_navigate(socket, to: "/lifecycle?#{qs}")}
   end
 end
 
 defmodule Phoenix.LiveViewTest.OnMount do
-  use Phoenix.Component
-
   def on_mount(:default, _params, _session, socket) do
     {:cont, socket}
   end
@@ -38,8 +36,6 @@ defmodule Phoenix.LiveViewTest.OnMount do
 end
 
 defmodule Phoenix.LiveViewTest.OtherOnMount do
-  use Phoenix.Component
-
   def on_mount(:default, _params, _session, socket) do
     {:cont, socket}
   end
@@ -168,7 +164,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
   on_mount __MODULE__
 
   def on_mount(:default, _, _, %{assigns: %{live_action: action}} = socket) do
-    {action, push_redirect(socket, to: "/lifecycle")}
+    {action, push_navigate(socket, to: "/lifecycle")}
   end
 
   def render(assigns), do: ~H"<div></div>"
@@ -186,13 +182,13 @@ defmodule Phoenix.LiveViewTest.HooksLive.Noop do
 end
 
 defmodule Phoenix.LiveViewTest.HaltConnectedMount do
-  alias Phoenix.LiveView
+  alias Phoenix.{Component, LiveView}
 
   def on_mount(_arg, _params, _session, socket) do
     if LiveView.connected?(socket) do
-      {:halt, LiveView.push_redirect(socket, to: "/lifecycle")}
+      {:halt, LiveView.push_navigate(socket, to: "/lifecycle")}
     else
-      {:cont, LiveView.assign(socket, :last_on_mount, __MODULE__)}
+      {:cont, Component.assign(socket, :last_on_mount, __MODULE__)}
     end
   end
 end

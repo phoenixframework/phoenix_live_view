@@ -1,16 +1,15 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.17.9"
+  @version "0.18.0"
 
   def project do
     [
       app: :phoenix_live_view,
       version: @version,
-      elixir: "~> 1.7",
+      elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: compilers(Mix.env()),
       package: package(),
       xref: [exclude: [Floki]],
       deps: deps(),
@@ -24,22 +23,19 @@ defmodule Phoenix.LiveView.MixProject do
     ]
   end
 
-  defp compilers(:test), do: [:phoenix] ++ Mix.compilers()
-  defp compilers(_), do: Mix.compilers()
-
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
   def application do
     [
-      extra_applications: [:logger],
-      mod: {Phoenix.LiveView.Application, []}
+      mod: {Phoenix.LiveView.Application, []},
+      extra_applications: [:logger]
     ]
   end
 
   defp deps do
     [
-      {:phoenix, "~> 1.6.0"},
+      {:phoenix, "~> 1.6 or ~> 1.7"},
       {:phoenix_html, "~> 3.1"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
@@ -60,6 +56,9 @@ defmodule Phoenix.LiveView.MixProject do
       extras: extras(),
       groups_for_extras: groups_for_extras(),
       groups_for_modules: groups_for_modules(),
+      groups_for_functions: [
+        "Components": &(&1[:type] == :component)
+      ],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
   end
@@ -95,18 +94,19 @@ defmodule Phoenix.LiveView.MixProject do
   defp groups_for_modules do
     # Ungrouped Modules:
     #
+    # Phoenix.Component
+    # Phoenix.LiveComponent
     # Phoenix.LiveView
     # Phoenix.LiveView.Controller
-    # Phoenix.LiveView.Helpers
+    # Phoenix.LiveView.JS
     # Phoenix.LiveView.Router
-    # Phoenix.LiveView.Socket
     # Phoenix.LiveViewTest
 
     [
-      Components: [
-        Phoenix.Component,
-        Phoenix.LiveComponent,
-        Phoenix.LiveComponent.CID
+      "Configuration": [
+        Phoenix.LiveView.HTMLFormatter,
+        Phoenix.LiveView.Logger,
+        Phoenix.LiveView.Socket
       ],
       "Testing structures": [
         Phoenix.LiveViewTest.Element,
@@ -118,9 +118,9 @@ defmodule Phoenix.LiveView.MixProject do
         Phoenix.LiveView.UploadEntry
       ],
       "Plugin API": [
+        Phoenix.LiveComponent.CID,
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.HTMLEngine,
-        Phoenix.LiveView.HTMLFormatter,
         Phoenix.LiveView.Component,
         Phoenix.LiveView.Rendered,
         Phoenix.LiveView.Comprehension
@@ -138,7 +138,7 @@ defmodule Phoenix.LiveView.MixProject do
       },
       files:
         ~w(assets/js lib priv) ++
-          ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md)
+          ~w(CHANGELOG.md LICENSE.md mix.exs package.json README.md .formatter.exs)
     ]
   end
 

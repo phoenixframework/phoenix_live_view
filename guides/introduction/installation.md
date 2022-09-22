@@ -23,7 +23,7 @@ If installing from Hex, use the latest version from there:
 ```elixir
 def deps do
   [
-    {:phoenix_live_view, "~> 0.17.6"},
+    {:phoenix_live_view, "~> 0.18"},
     {:floki, ">= 0.30.0", only: :test}
   ]
 end
@@ -56,15 +56,15 @@ Next, add the following imports to your web file in `lib/my_app_web.ex`:
 
 def view do
   quote do
-    ...
-    import Phoenix.LiveView.Helpers
+    # ...
+    import Phoenix.Component
   end
 end
 
 def router do
   quote do
-    ...
-    import Phoenix.LiveView.Router
+    # ...
+    import Phoenix.Component
   end
 end
 ```
@@ -75,7 +75,7 @@ Then add the `Phoenix.LiveView.Router.fetch_live_flash/2` plug to your browser p
 # lib/my_app_web/router.ex
 
 pipeline :browser do
-  ...
+  # ...
   plug :fetch_session
 - plug :fetch_flash
 + plug :fetch_live_flash
@@ -135,7 +135,7 @@ Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your 
 
 and enable connecting to a LiveView socket in your `app.js` file.
 
-```
+```js
 // assets/js/app.js
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
@@ -201,22 +201,23 @@ npm install --force phoenix_live_view --prefix assets
 LiveView does not use the default app layout. Instead, you typically call `put_root_layout` in your router to specify a layout that is used by both "regular" views and live views. In your router, do:
 
 ```elixir
+# lib/my_app_web/router.ex
+
 pipeline :browser do
-  ...
+  # ...
   plug :put_root_layout, {MyAppWeb.LayoutView, :root}
-  ...
+  # ...
 end
 ```
 
-The layout given to `put_root_layout` is typically very barebones, with mostly
-`<head>` and `<body>` tags. For example:
+The layout given to `put_root_layout` is typically very barebones, with mostly `<head>` and `<body>` tags. For example:
 
 ```heex
 <!DOCTYPE html>
 <html lang="en">
   <head>
     <%= csrf_meta_tag() %>
-    <%= live_title_tag assigns[:page_title] || "MyApp" %>
+    <Phoenix.Component.live_title><%= assigns[:page_title] || "MyApp" %></Phoenix.Component.live_title>
     <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
     <script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
   </head>
@@ -226,7 +227,7 @@ The layout given to `put_root_layout` is typically very barebones, with mostly
 </html>
 ```
 
-Once you have specified a root layout, "app.html.heex" will be rendered within your root layout for all non-LiveViews. You may also optionally define a "live.html.heex" layout to be used across all LiveViews, as we will describe in the next section.
+Once you have specified a root layout, `app.html.heex` will be rendered within your root layout for all non-LiveViews. You may also optionally define a `live.html.heex` layout to be used across all LiveViews, as we will describe in the next section.
 
 Optionally, you can add a [`phx-track-static`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1) to all `script` and `link` elements in your layout that use `src` and `href`. This way you can detect when new assets have been deployed by calling `static_changed?`.
 
@@ -234,72 +235,6 @@ Optionally, you can add a [`phx-track-static`](https://hexdocs.pm/phoenix_live_v
 <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/css/app.css")} />
 <script phx-track-static defer type="text/javascript" src={Routes.static_path(@conn, "/js/app.js")}></script>
 ```
-
-## phx.gen.live support
-
-While the above instructions are enough to install LiveView in a Phoenix app, if you want to use the `phx.gen.live` generators that come as part of Phoenix v1.5, you need to do one more change, as those generators assume your application was created with `mix phx.new --live`.
-
-The change is to define the `live_view` and `live_component` functions in your `my_app_web.ex` file, while refactoring the `view` function. At the end, they will look like this:
-
-```elixir
-  def view do
-    quote do
-      use Phoenix.View,
-        root: "lib/<%= lib_web_name %>/templates",
-        namespace: <%= web_namespace %>
-
-      # Import convenience functions from controllers
-      import Phoenix.Controller,
-        only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
-
-      # Include shared imports and aliases for views
-      unquote(view_helpers())
-    end
-  end
-
-  def live_view do
-    quote do
-      use Phoenix.LiveView,
-        layout: {<%= web_namespace %>.LayoutView, "live.html"}
-
-      unquote(view_helpers())
-    end
-  end
-
-  def live_component do
-    quote do
-      use Phoenix.LiveComponent
-
-      unquote(view_helpers())
-    end
-  end
-
-  defp view_helpers do
-    quote do
-      # Use all HTML functionality (forms, tags, etc)
-      use Phoenix.HTML
-
-      # Import LiveView helpers (live_render, live_component, live_patch, etc)
-      import Phoenix.LiveView.Helpers
-
-      # Import basic rendering functionality (render, render_layout, etc)
-      import Phoenix.View
-
-      import MyAppWeb.ErrorHelpers
-      import MyAppWeb.Gettext
-      alias MyAppWeb.Router.Helpers, as: Routes
-    end
-  end
-```
-
-Note that LiveViews are automatically configured to use a "live.html.heex" layout in this line:
-
-```elixir
-use Phoenix.LiveView,
-  layout: {<%= web_namespace %>.LayoutView, "live.html"}
-```
-
-"layouts/root.html.heex" is shared by regular and live views, "app.html.heex" is rendered inside the root layout for regular views, and "live.html.heex" is rendered inside the root layout for LiveViews. "live.html.heex" typically starts out as a copy of "app.html.heex", but using the `@socket` assign instead of `@conn`. Check the [Live Layouts](live-layouts.md) guide for more information.
 
 ## Progress animation
 

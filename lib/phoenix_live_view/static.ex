@@ -2,6 +2,7 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
+  import Phoenix.Component, only: [sigil_H: 2, dynamic_tag: 1]
   alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
 
   # Token version. Should be changed whenever new data is stored.
@@ -86,7 +87,7 @@ defmodule Phoenix.LiveView.Static do
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
     endpoint = Phoenix.Controller.endpoint_module(conn)
-    flash = Map.get(conn.private, :phoenix_flash, %{})
+    flash = Map.get(conn.assigns, :flash) || Map.get(conn.private, :phoenix_flash, %{})
     request_url = Plug.Conn.request_url(conn)
     host_uri = URI.parse(request_url)
 
@@ -199,7 +200,6 @@ defmodule Phoenix.LiveView.Static do
     session_token =
       if sticky?, do: sign_nested_session(parent, socket, view, to_sign_session, sticky?)
 
-
     if redir = socket.redirected do
       throw({:phoenix, :child_redirect, redir, Utils.get_flash(socket)})
     end
@@ -236,13 +236,21 @@ defmodule Phoenix.LiveView.Static do
       | extended_attrs
     ]
 
-    Phoenix.HTML.Tag.content_tag(tag, "", attrs)
+    {:safe, dynamic_tag_to_iodata(tag, attrs, "")}
   end
 
   defp to_rendered_content_tag(socket, tag, view, attrs) do
     rendered = Utils.to_rendered(socket, view)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
-    Phoenix.HTML.Tag.content_tag(tag, {:safe, Diff.to_iodata(diff)}, attrs)
+    {:safe, dynamic_tag_to_iodata(tag, attrs, {:safe, Diff.to_iodata(diff)})}
+  end
+
+  defp dynamic_tag_to_iodata(tag, attrs, content) do
+    assigns = %{tag: tag, attrs: attrs, content: content}
+
+    Phoenix.HTML.Safe.to_iodata(
+      ~H|<.dynamic_tag name={@tag} {@attrs}><%= @content %></.dynamic_tag>|
+    )
   end
 
   defp load_live!(view_or_component, kind) do

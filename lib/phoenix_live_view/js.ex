@@ -21,7 +21,7 @@ defmodule Phoenix.LiveView.JS do
     * `remove_class` - Remove classes from elements, with optional transitions
     * `set_attribute` - Set an attribute on elements
     * `remove_attribute` - Remove an attribute from elements
-    * `toggle_attribute` - Toggles an attribute from elements
+    * `toggle_attribute` - Sets or removes element attribute based on attribute presence.
     * `show` - Show elements, with optional transitions
     * `hide` - Hide elements, with optional transitions
     * `toggle` - Shows or hides elements based on visibility, with optional transitions
@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView.JS do
 
       <div phx-click={
         JS.push("inc", loading: ".thermo", target: @myself)
-        |> JS.add_class(".warmer", to: ".thermo")
+        |> JS.add_class("warmer", to: ".thermo")
       }>+</div>
 
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
@@ -111,10 +111,15 @@ defmodule Phoenix.LiveView.JS do
   The combination of `dispatch/1` with `window.addEventListener` is
   a powerful mechanism to increase the amount of actions you can trigger
   client-side from your LiveView code.
+
+  You can also use `window.addEventListener` to listen to events pushed
+  from the server. You can learn more in our [JS interoperability guide](js-interop.md).
   '''
   alias Phoenix.LiveView.JS
 
   defstruct ops: []
+
+  @opaque t :: %__MODULE__{}
 
   @default_transition_time 200
 
@@ -246,7 +251,7 @@ defmodule Phoenix.LiveView.JS do
   end
 
   @doc """
-  Toggles elements.
+  Toggles element visibility.
 
   ## Options
 
@@ -598,13 +603,16 @@ defmodule Phoenix.LiveView.JS do
   end
 
   @doc """
-  Toggles an attribute from elements.
+  Sets or removes element attribute based on attribute presence.
 
-    * `attr` - The string attribute name to remove.
+  Accepts a tuple containing the string attribute name/value pair.
+
+  Note that the value is only used when setting the attribute and is
+  otherwise ignored when removing an attribute.
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove attributes from.
+    * `:to` - The optional DOM selector to set or remove attributes from.
       Defaults to the interacted element.
 
   ## Examples
@@ -625,6 +633,129 @@ defmodule Phoenix.LiveView.JS do
   def toggle_attribute(%JS{} = js, {attr, val}, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle_attribute, [:to])
     put_op(js, "toggle_attr", %{to: opts[:to], attr: [attr, val]})
+  end
+
+  @doc """
+  Sends focus to a selector.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to remove attributes from.
+      Defaults to the current element.
+
+  ## Examples
+
+      JS.focus(to: "main")
+  """
+  def focus(), do: focus(%JS{}, [])
+  def focus(%JS{} = js), do: focus(js, [])
+  def focus(opts) when is_list(opts), do: focus(%JS{}, opts)
+  def focus(%JS{} = js, opts) when is_list(opts) do
+    opts = validate_keys(opts, :focus, [:to])
+    put_op(js, "focus", %{to: opts[:to]})
+  end
+
+  @doc """
+  Sends focus to the first focusable child in selector.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to focus.
+      Defaults to the current element.
+
+  ## Examples
+
+      JS.focus_first(to: "#modal")
+  """
+  def focus_first(), do: focus_first(%JS{}, [])
+  def focus_first(%JS{} = js), do: focus_first(js, [])
+  def focus_first(opts) when is_list(opts), do: focus_first(%JS{}, opts)
+  def focus_first(%JS{} = js, opts) when is_list(opts) do
+    opts = validate_keys(opts, :focus_first, [:to])
+    put_op(js, "focus_first", %{to: opts[:to]})
+  end
+
+  @doc """
+  Pushes focus from the source element to be later popped.
+
+  ## Options
+
+    * `:to` - The optional DOM selector to push focus to.
+      Defaults to the current element.
+
+  ## Examples
+
+      JS.push_focus()
+      JS.push_focus(to: "#my-button")
+  """
+  def push_focus(), do: push_focus(%JS{}, [])
+  def push_focus(%JS{} = js), do: push_focus(js, [])
+  def push_focus(opts) when is_list(opts), do: push_focus(%JS{}, opts)
+  def push_focus(%JS{} = js, opts) when is_list(opts) do
+    opts = validate_keys(opts, :push_focus, [:to])
+    put_op(js, "push_focus", %{to: opts[:to]})
+  end
+
+  @doc """
+  Focuses the last pushed element.
+
+  ## Examples
+
+      JS.pop_focus()
+  """
+  def pop_focus(), do: pop_focus(%JS{})
+  def pop_focus(%JS{} = js) do
+    put_op(js, "pop_focus", %{})
+  end
+
+  @doc """
+  Sends a navigation event to the server and updates the browser's pushState history.
+
+  ## Options
+
+    * `:replace` - Whether to replace the browser's pushState history. Defaults false.
+
+  ## Examples
+
+      JS.navigate("/my-path")
+  """
+  def navigate(href) when is_binary(href) do
+    navigate(%JS{}, href, [])
+  end
+  def navigate(href, opts) when is_binary(href) and is_list(opts) do
+    navigate(%JS{}, href, opts)
+  end
+  def navigate(%JS{} = js, href) when is_binary(href) do
+    navigate(js, href, [])
+  end
+  def navigate(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    opts = validate_keys(opts, :navigate, [:replace])
+    put_op(js, "navigate", %{href: href, replace: !!opts[:replace]})
+  end
+
+  @doc """
+  Sends a patch event to the server and updates the browser's pushState history.
+
+  ## Options
+
+    * `:replace` - Whether to replace the browser's pushState history. Defaults false.
+
+  ## Examples
+
+      JS.patch("/my-path")
+  """
+  def patch(href) when is_binary(href) do
+    patch(%JS{}, href, [])
+  end
+  def patch(href, opts) when is_binary(href) and is_list(opts) do
+    patch(%JS{}, href, opts)
+  end
+  def patch(%JS{} = js, href) when is_binary(href) do
+    patch(js, href, [])
+  end
+  def patch(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
+    opts = validate_keys(opts, :patch, [:replace])
+    put_op(js, "patch", %{href: href, replace: !!opts[:replace]})
   end
 
   defp put_op(%JS{ops: ops} = js, kind, %{} = args) do

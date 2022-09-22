@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.LiveView.Helpers,
+  import Phoenix.Component,
     only: [sigil_H: 2, render_slot: 1, render_slot: 2, assigns_to_attributes: 2]
 
   alias Phoenix.LiveView.HTMLEngine
@@ -12,7 +12,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       Keyword.merge(opts,
         file: __ENV__.file,
         engine: HTMLEngine,
-        subengine: Phoenix.LiveView.Engine
+        subengine: Phoenix.LiveView.Engine,
+        caller: __ENV__
       )
 
     EEx.eval_string(string, [assigns: assigns], opts)
@@ -27,7 +28,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   defmacrop compile(string) do
     quote do
-      unquote(EEx.compile_string(string, file: __ENV__.file, engine: HTMLEngine))
+      unquote(
+        EEx.compile_string(string,
+          file: __ENV__.file,
+          engine: HTMLEngine,
+          module: __MODULE__,
+          caller: __CALLER__
+        )
+      )
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
     end
@@ -38,7 +46,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def textarea(assigns) do
-    assigns = Phoenix.LiveView.assign(assigns, :extra_assigns, assigns_to_attributes(assigns, []))
+    assigns =
+      Phoenix.Component.assign(assigns, :extra_assigns, assigns_to_attributes(assigns, []))
+
     ~H"<textarea {@extra_assigns}><%= render_slot(@inner_block) %></textarea>"
   end
 
@@ -185,6 +195,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert %Phoenix.LiveView.Rendered{static: ["<div id=\"pre-", "-pos\"></div>"]} =
              eval(template, assigns)
 
+    # binaries in lists for classes are extracted out
+    template = ~S(<div class={["<bar>", "<foo>"]} />)
+    assert render(template, assigns) == ~S(<div class="&lt;bar&gt; &lt;foo&gt;"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div class=\"&lt;bar&gt; &lt;foo&gt;\"></div>"]} =
+             eval(template, assigns)
+
+    # binaries in lists for classes are extracted out even with dynamic bits
+    template = ~S(<div class={["<bar>", @unsafe]} />)
+    assert render(template, assigns) == ~S(<div class="&lt;bar&gt; &lt;foo&gt;"></div>)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div class=\"&lt;bar&gt; ", "\"></div>"]} =
+             eval(template, assigns)
+
     # raises if not a binary
     assert_raise ArgumentError, "expected a binary in <>, got: {:safe, \"<foo>\"}", fn ->
       render(~S(<div id={"pre-" <> @safe} />), assigns)
@@ -225,7 +249,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       false_assign: false,
       unsafe: "<foo>",
       safe: {:safe, "<foo>"},
-      list: ["safe", false, nil, "<unsafe>"]
+      list: ["safe", false, nil, "<unsafe>"],
+      recursive_list: ["safe", false, [nil, "<unsafe>"]]
     }
 
     assert %Phoenix.LiveView.Rendered{static: ["<div class=\"", "\"></div>"]} =
@@ -247,6 +272,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render(template, assigns) == ~S(<div class="<foo>"></div>)
 
     template = ~S(<div class={@list} />)
+    assert render(template, assigns) == ~S(<div class="safe &lt;unsafe&gt;"></div>)
+
+    template = ~S(<div class={@recursive_list} />)
     assert render(template, assigns) == ~S(<div class="safe &lt;unsafe&gt;"></div>)
   end
 
@@ -333,6 +361,27 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
+    test "remote call with :let" do
+      expected = """
+      LOCAL COMPONENT WITH ARGS: Value: aBcD
+
+        Upcase: ABCD
+        Downcase: abcd
+      """
+
+      assigns = %{}
+
+      assert compile("""
+             <.local_function_component_with_inner_block_args
+               value="aBcD"
+               :let={%{upcase: upcase, downcase: downcase}}
+             >
+               Upcase: <%= upcase %>
+               Downcase: <%= downcase %>
+             </.local_function_component_with_inner_block_args>
+             """) =~ expected
+    end
+
     test "remote call with inner content with args" do
       expected = """
       REMOTE COMPONENT WITH ARGS: Value: aBcD
@@ -346,7 +395,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
                value="aBcD"
-               let={%{upcase: upcase, downcase: downcase}}
+               :let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
@@ -356,9 +405,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on remote call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_slot/2` against the pattern in `let`.
+      cannot match arguments sent from render_slot/2 against the pattern in :let.
 
-      Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
+      Expected a value matching `%{wrong: _}`, got: %{downcase: "abcd", upcase: "ABCD"}\
       """
 
       assigns = %{}
@@ -367,7 +416,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         compile("""
         <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
           {[value: "aBcD"]}
-          let={%{wrong: _}}
+          :let={%{wrong: _}}
         >
           ...
         </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
@@ -376,12 +425,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on remote call passing args to self close components" do
-      message = ~r".exs:2: cannot use `let` on a component without inner content"
+      message = ~r".exs:2: cannot use :let on a component without inner content"
 
       assert_raise(CompileError, message, fn ->
         eval("""
         <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' let={var}/>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let={var}/>
         """)
       end)
     end
@@ -416,7 +465,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              <.local_function_component_with_inner_block_args
                value="aBcD"
-               let={%{upcase: upcase, downcase: downcase}}
+               :let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
@@ -426,7 +475,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              <.local_function_component_with_inner_block_args
                {[value: "aBcD"]}
-               let={%{upcase: upcase, downcase: downcase}}
+               :let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
@@ -436,9 +485,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on local call with inner content passing non-matching args" do
       message = ~r"""
-      cannot match arguments sent from `render_slot/2` against the pattern in `let`.
+      cannot match arguments sent from render_slot/2 against the pattern in :let.
 
-      Expected a value matching `%{wrong: _}`, got: `%{downcase: "abcd", upcase: "ABCD"}`.
+      Expected a value matching `%{wrong: _}`, got: %{downcase: "abcd", upcase: "ABCD"}\
       """
 
       assigns = %{}
@@ -447,7 +496,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         compile("""
         <.local_function_component_with_inner_block_args
           {[value: "aBcD"]}
-          let={%{wrong: _}}
+          :let={%{wrong: _}}
         >
           ...
         </.local_function_component_with_inner_block_args>
@@ -456,19 +505,77 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on local call passing args to self close components" do
-      message = ~r".exs:2: cannot use `let` on a component without inner content"
+      message = ~r".exs:2: cannot use :let on a component without inner content"
 
       assert_raise(CompileError, message, fn ->
         eval("""
         <br>
-        <.local_function_component value='1' let={var}/>
+        <.local_function_component value='1' :let={var}/>
         """)
       end)
     end
 
-    test "raise on duplicated `let`" do
+    test "raise on duplicated :let" do
       message =
-        ~r".exs:4:(8:)? cannot define multiple `let` attributes. Another `let` has already been defined at line 3"
+        ~r".exs:4:(9:)? cannot define multiple :let attributes. Another :let has already been defined at line 3"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
+          :let={var1}
+          :let={var2}
+        />
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1'
+          :let={var1}
+          :let={var2}
+        />
+        """)
+      end)
+    end
+
+    test "invalid :let expr" do
+      message = ~r"let must be a pattern between {...}"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let="1"
+        />
+        """)
+      end)
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1' :let="1"
+        />
+        """)
+      end)
+    end
+
+    test "raise with invalid special attr" do
+      message = ~r"unsupported attribute \":bar\" in component"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1' :bar="1"}
+        />
+        """)
+      end)
+    end
+
+    # TODO: remove me once "let" is not supported anymore.
+    test "raise on duplicated old let" do
+      message =
+        ~r".exs:4:(8:)? cannot define multiple :let attributes. Another :let has already been defined at line 3"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -489,23 +596,45 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         />
         """)
       end)
-    end
-
-    test "raise on unclosed local call" do
-      message = ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
 
       assert_raise(ParseError, message, fn ->
         eval("""
-        <.local_function_component value='1' let={var}>
+        <br>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
+          :let={var1}
+          let={var2}
+        />
         """)
       end)
 
-      message = ~r".exs:2:(3:)? end of do-block reached without closing tag for <.local_function_component>"
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <br>
+        <.local_function_component value='1'
+          :let={var1}
+          let={var2}
+        />
+        """)
+      end)
+    end
+
+    test "raise on unclosed local call" do
+      message =
+        ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.local_function_component value='1' :let={var}>
+        """)
+      end)
+
+      message =
+        ~r".exs:2:(3:)? end of do-block reached without closing tag for <.local_function_component>"
 
       assert_raise(ParseError, message, fn ->
         eval("""
         <%= if true do %>
-          <.local_function_component value='1' let={var}>
+          <.local_function_component value='1' :let={var}>
         <% end %>
         """)
       end)
@@ -863,7 +992,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              COMPONENT WITH SLOTS:
              <.function_component_with_slots_and_args>
-               <:sample let={arg}>
+               <:sample :let={arg}>
                  The sample slot
                  Arg: <%= arg %>
                </:sample>
@@ -873,7 +1002,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert compile("""
              COMPONENT WITH SLOTS:
              <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
-               <:sample let={arg}>
+               <:sample :let={arg}>
                  The sample slot
                  Arg: <%= arg %>
                </:sample>
@@ -952,13 +1081,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == expected
     end
 
-    test "raise if self close slot uses let" do
-      message = ~r".exs:2:(24:)? cannot use `let` on a slot without inner content"
+    test "raise if self close slot uses :let" do
+      message = ~r".exs:2:(25:)? cannot use :let on a slot without inner content"
 
       assert_raise(ParseError, message, fn ->
         eval("""
         <.function_component_with_self_close_slots>
-          <:sample id="1" let={var}/>
+          <:sample id="1" :let={var}/>
         </.function_component_with_self_close_slots>
         """)
       end)
@@ -994,7 +1123,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise if the slot entry is not a direct child of a component" do
-      message = ~r".exs:2:(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:2:(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1006,7 +1136,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:(2|3):(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:(2|3):(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1020,7 +1151,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component"
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1034,7 +1166,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message =
+        ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+
       assert_raise(ParseError, message, fn ->
         eval("""
         <:sample>
@@ -1074,6 +1208,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert eval("<.to_string></.to_string>").root == false
       assert eval("<Kernel.to_string />").root == false
       assert eval("<Kernel.to_string></Kernel.to_string>").root == false
+      assert eval("<div :for={item <- @items}><%= item %></div>").root == false
     end
   end
 
@@ -1255,7 +1390,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "validates phx-update values" do
       message =
-        ~r/.exs:1:(1:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
+        ~r/.exs:1:(14:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1293,12 +1428,32 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              <div phx-update="ignore" {@some_var}>Content</div>
              """)
     end
+
+    test "raise on unsupported special attrs" do
+      message = ~r/.exs:1:(6:)? unsupported attribute \":let\" in tags/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :let={@user}>Content</div>
+        """)
+      end)
+
+      message = ~r/.exs:1:(6:)? unsupported attribute \":foo\" in tags/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :foo="something" />
+        """)
+      end)
+    end
   end
 
   describe "handle errors in expressions" do
-    if Version.match?(System.version(), ">= 1.12.0") do
-      test "inside attribute values" do
-        assert_raise(SyntaxError, ~r"test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','", fn ->
+    test "inside attribute values" do
+      assert_raise(
+        SyntaxError,
+        ~r"test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','",
+        fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1310,11 +1465,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             [],
             opts
           )
-        end)
-      end
+        end
+      )
+    end
 
-      test "inside root attribute value" do
-        assert_raise(SyntaxError, ~r"test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','", fn ->
+    test "inside root attribute value" do
+      assert_raise(
+        SyntaxError,
+        ~r"test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','",
+        fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1326,24 +1485,287 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             [],
             opts
           )
-        end)
-      end
-    else
-      test "older versions cannot provide correct line on errors" do
-        assert_raise(SyntaxError, ~r"test/phoenix_live_view/html_engine_test.exs:2", fn ->
-          opts = [line: 10, indentation: 8]
+        end
+      )
+    end
+  end
 
-          eval(
-            """
-            text
-            <%= "interpolation" %>
-            <div class={[,]}/>
-            """,
-            [],
-            opts
-          )
-        end)
-      end
+  describe ":for attr" do
+    test "handle :for attr on HTML element" do
+      expected = "<div>foo</div><div>bar</div><div>baz</div>"
+
+      assigns = %{items: ["foo", "bar", "baz"]}
+
+      assert compile("""
+               <div :for={item <- @items}><%= item %></div>
+             """) =~ expected
+    end
+
+    test "handle :for attr on self closed HTML element" do
+      expected = ~s(<div class="foo"></div><div class="foo"></div><div class="foo"></div>)
+
+      assigns = %{items: ["foo", "bar", "baz"]}
+
+      assert compile("""
+               <div class="foo" :for={_item <- @items} />
+             """) =~ expected
+    end
+
+    test "raise on invalid :for expr" do
+      message = ~r/for comprehensions must start with a generator/
+
+      assert_raise(CompileError, message, fn ->
+        eval("""
+        <div :for={@user}>Content</div>
+        """)
+      end)
+
+      message = ~r/:for must be a generator expression between {...}/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :for="1">Content</div>
+        """)
+      end)
+    end
+
+    test ":if components change tracking" do
+      assert %Phoenix.LiveView.Rendered{static: ["", ""], dynamic: dynamic} =
+               eval(
+                 """
+                 <Phoenix.LiveView.HTMLEngineTest.remote_function_component value={@val} :if={@val == 1} />
+                 """,
+                 %{__changed__: %{val: true}, val: 1}
+               )
+
+      assert [%Phoenix.LiveView.Rendered{static: ["", ""]}] = dynamic.(true)
+    end
+
+    test ":for components change tracking" do
+      %Phoenix.LiveView.Rendered{static: ["", ""], dynamic: dynamic} =
+        eval(
+          """
+          <Phoenix.LiveView.HTMLEngineTest.remote_function_component :for={val <- @items} value={val} />
+          """,
+          %{__changed__: %{items: true}, items: [1, 2]}
+        )
+
+      assert [%Phoenix.LiveView.Comprehension{static: ["", ""]}] = dynamic.(true)
+    end
+
+    test ":for in components" do
+      assigns = %{items: [1, 2]}
+
+      assert compile("""
+             <.local_function_component :for={val <- @items} value={val} />
+             """) == "LOCAL COMPONENT: Value: 1LOCAL COMPONENT: Value: 2"
+
+      assert compile("""
+             <br>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component :for={val <- @items} value={val} />
+             """) == "<br>\nREMOTE COMPONENT: Value: 1REMOTE COMPONENT: Value: 2"
+
+      assert compile("""
+             <br>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block :for={val <- @items} value={val}>inner<%= val %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
+             """) ==
+               "<br>\nREMOTE COMPONENT: Value: 1, Content: inner1REMOTE COMPONENT: Value: 2, Content: inner2"
+
+      assert compile("""
+             <.local_function_component_with_inner_block :for={val <- @items} value={val}>inner<%= val %></.local_function_component_with_inner_block>
+             """) ==
+               "LOCAL COMPONENT: Value: 1, Content: inner1LOCAL COMPONENT: Value: 2, Content: inner2"
+    end
+
+    test "raise on duplicated :for" do
+      message =
+        ~r/cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
+        """)
+      end)
+    end
+
+    test ":for in slots" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :for={i <- @items}>slot<%= i %></:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot1slot2slot3slot4</div>"
+    end
+
+    test ":for and :if in slots" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :for={i <- @items} :if={rem(i, 2) == 0}>slot<%= i %></:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot2slot4</div>"
+    end
+
+    test ":for and :if and :let in slots" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :for={i <- @items} :if={rem(i, 2) == 0} :let={val}>slot<%= i %>(<%= val %>)</:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot2(0)slot4(0)</div>"
+    end
+  end
+
+  describe ":if attr" do
+    test "handle :if attr on HTML element" do
+      assigns = %{flag: true}
+
+      assert compile("""
+               <div :if={@flag} id="test">yes</div>
+             """) =~ "<div id=\"test\">yes</div>"
+
+      assert compile("""
+               <div :if={!@flag} id="test">yes</div>
+             """) == ""
+    end
+
+    test "handle :if attr on self closed HTML element" do
+      assigns = %{flag: true}
+
+      assert compile("""
+               <div :if={@flag} id="test" />
+             """) =~ "<div id=\"test\"></div>"
+
+      assert compile("""
+               <div :if={!@flag} id="test" />
+             """) == ""
+    end
+
+    test "raise on invalid :if expr" do
+      message = ~r/:if must be an expression between {...}/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :if="1">test</div>
+        """)
+      end)
+    end
+
+    test ":if in components" do
+      assigns = %{flag: true}
+
+      assert compile("""
+             <.local_function_component value="123" :if={@flag} />
+             """) == "LOCAL COMPONENT: Value: 123"
+
+      assert compile("""
+             <.local_function_component value="123" :if={!@flag}>test</.local_function_component>
+             """) == ""
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={@flag} />
+             """) == "REMOTE COMPONENT: Value: 123"
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={!@flag}>test</Phoenix.LiveView.HTMLEngineTest.remote_function_component>
+             """) == ""
+    end
+
+    test "raise on duplicated :if" do
+      message =
+        ~r/cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1/
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :if={true} :if={false}>test</div>
+        """)
+      end)
+    end
+
+    def slot_if(assigns) do
+      ~H"""
+      <div><%= @value %>-<%= render_slot(@slot, @value) %></div>
+      """
+    end
+
+    def slot_if_self_close(assigns) do
+      ~H"""
+      <div><%= @value %>-<%= for slot <- @slot do %><%= slot.val %>-<% end %></div>
+      """
+    end
+
+    test ":if in slots" do
+      assigns = %{flag: true}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :if={@flag}>slot1</:slot>
+               <:slot :if={!@flag}>slot2</:slot>
+               <:slot :if={@flag}>slot3</:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot1slot3</div>"
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if_self_close value={0}>
+               <:slot :if={@flag} val={1} />
+               <:slot :if={!@flag} val={2} />
+               <:slot :if={@flag} val={3} />
+             </Phoenix.LiveView.HTMLEngineTest.slot_if_self_close>
+             """) == "<div>0-1-3-</div>"
+    end
+  end
+
+  describe ":for and :if attr together" do
+    test "handle attrs on HTML element" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+               <div :for={i <- @items} :if={rem(i, 2) == 0}><%= i %></div>
+             """) =~ "<div>2</div><div>4</div>"
+
+      assert compile("""
+               <div :for={i <- @items} :if={rem = rem(i, 2)}><%= i %>,<%= rem %></div>
+             """) =~ "<div>1,1</div><div>2,0</div><div>3,1</div><div>4,0</div>"
+
+      assert compile("""
+               <div :for={i <- @items} :if={false}><%= i %></div>
+             """) == ""
+    end
+
+    test "handle attrs on self closed HTML element" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+               <div :for={i <- @items} :if={rem(i, 2) == 0} id={"post-" <> to_string(i)} />
+             """) =~ "<div id=\"post-2\"></div><div id=\"post-4\"></div>"
+
+      assert compile("""
+               <div :for={i <- @items} :if={false}><%= i %></div>
+             """) == ""
+    end
+
+    test "handle attrs on components" do
+      assigns = %{items: [1, 2, 3, 4]}
+
+      assert compile("""
+               <.local_function_component  :for={i <- @items} :if={rem(i, 2) == 0} value={i}/>
+             """) == "LOCAL COMPONENT: Value: 2LOCAL COMPONENT: Value: 4"
+
+      assert compile("""
+               <Phoenix.LiveView.HTMLEngineTest.remote_function_component  :for={i <- @items} :if={rem(i, 2) == 0} value={i}/>
+             """) == "REMOTE COMPONENT: Value: 2REMOTE COMPONENT: Value: 4"
+
+      assert compile("""
+               <.local_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></.local_function_component_with_inner_block>
+             """) == "LOCAL COMPONENT: Value: 2, Content: 2LOCAL COMPONENT: Value: 4, Content: 4"
+
+      assert compile("""
+               <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
+             """) ==
+               "REMOTE COMPONENT: Value: 2, Content: 2REMOTE COMPONENT: Value: 4, Content: 4"
     end
   end
 end

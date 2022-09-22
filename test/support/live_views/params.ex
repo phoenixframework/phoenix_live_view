@@ -39,15 +39,15 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_info({:push_redirect, to}, socket) do
-    {:noreply, push_redirect(socket, to: to)}
+  def handle_info({:push_navigate, to}, socket) do
+    {:noreply, push_navigate(socket, to: to)}
   end
 
   def handle_call({:push_patch, func}, _from, socket) do
     func.(socket)
   end
 
-  def handle_call({:push_redirect, func}, _from, socket) do
+  def handle_call({:push_navigate, func}, _from, socket) do
     func.(socket)
   end
 
@@ -55,16 +55,16 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_cast({:push_redirect, to}, socket) do
-    {:noreply, push_redirect(socket, to: to)}
+  def handle_cast({:push_navigate, to}, socket) do
+    {:noreply, push_navigate(socket, to: to)}
   end
 
   def handle_event("push_patch", %{"to" => to}, socket) do
     {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_event("push_redirect", %{"to" => to}, socket) do
-    {:noreply, push_redirect(socket, to: to)}
+  def handle_event("push_navigate", %{"to" => to}, socket) do
+    {:noreply, push_navigate(socket, to: to)}
   end
 end
 

@@ -13,30 +13,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.7.4
-            otp: 21.3.8.16
-
-          - elixir: 1.8.2
-            otp: 21.3.8.16
-
-          - elixir: 1.9.4
-            otp: 21.3.8.16
-
-          - elixir: 1.10.4
-            otp: 21.3.8.16
-
-          - elixir: 1.11.4
-            otp: 21.3.8.16
-
-          - elixir: 1.11.4
-            otp: 23.3
-            lint: lint
-
           - elixir: 1.12.0
-            otp: 23.3
+            otp: 22.3
 
           - elixir: 1.13.2
             otp: 24.2
+            lint: lint
 
     runs-on: ubuntu-latest
 
@@ -45,7 +27,7 @@ jobs:
       uses: actions/checkout@v2
 
     - name: Set up Elixir
-      uses: erlef/setup-elixir@v1
+      uses: erlef/setup-beam@v1
       with:
         elixir-version: ${{ matrix.elixir }}
         otp-version: ${{ matrix.otp }}
@@ -93,7 +75,7 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Set up Elixir
-        uses: erlef/setup-elixir@v1
+        uses: erlef/setup-beam@v1
         with:
           elixir-version: 1.11.4
           otp-version: 23.3.1

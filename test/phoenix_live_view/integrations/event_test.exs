@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.EventTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveView
+  alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.{Endpoint}
 
   @endpoint Endpoint
@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.EventTest do
          fn socket ->
            new_socket =
              socket
-             |> LiveView.assign(count: 123)
+             |> Component.assign(count: 123)
              |> LiveView.push_event("my-event", %{one: 1})
 
            {:reply, :ok, new_socket}

@@ -19,7 +19,10 @@ assignees: ''
 ### Actual behavior
 
 <!--
-Describe the actual behaviour. If you are seeing an error, include the full message and stacktrace. If you can provide a link to sample app that reproduces the behaviour, even better!
+Describe the actual behaviour. If you are seeing an error, include the full message and stacktrace. 
+
+Also please consider providing a single file app that reproduces the behaviour, you can start here:
+https://github.com/wojtekmach/mix_install_examples/blob/main/phoenix_live_view.exs
 -->
 
 ### Expected behavior

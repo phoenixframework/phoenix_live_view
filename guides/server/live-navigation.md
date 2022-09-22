@@ -159,7 +159,7 @@ This can be done by passing the `replace: true` option to any of the navigation 
 ## Multiple LiveViews in the same page
 
 LiveView allows you to have multiple LiveViews in the same page by calling
-`Phoenix.LiveView.Helpers.live_render/3` in your templates. However, only
+`Phoenix.Component.live_render/3` in your templates. However, only
 the LiveViews defined directly in your router can use the "Live Navigation"
 functionality described here. This is important because LiveViews work
 closely with your router, guaranteeing you can only navigate to known

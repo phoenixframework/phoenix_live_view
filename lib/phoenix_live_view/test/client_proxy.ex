@@ -932,12 +932,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp maybe_event(:click, {"a", _, _} = node, element) do
+    live_nav = DOM.attribute(node, "data-phx-link")
     cond do
-      event = DOM.attribute(node, "phx-click") ->
+      event = is_nil(live_nav) && DOM.attribute(node, "phx-click") ->
         {:ok, event}
 
       to = DOM.attribute(node, "href") ->
-        case DOM.attribute(node, "data-phx-link") do
+        case live_nav do
           "patch" ->
             {:patch, proxy_topic(element), to}
 
@@ -1079,14 +1080,25 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  # Selectedness algorithm as outlined in
+  # https://html.spec.whatwg.org/multipage/form-elements.html#the-select-element
   defp form_defaults({"select", _, _} = node, name, acc) do
     options = DOM.filter(node, &(DOM.tag(&1) == "option"))
 
+    multiple_display_size =
+      case valid_display_size(node) do
+        int when is_integer(int) and int > 1 -> true
+        _ -> false
+      end
+
     all_selected =
-      if DOM.attribute(node, "multiple") do
+      if DOM.attribute(node, "multiple") || multiple_display_size do
         Enum.filter(options, &DOM.attribute(&1, "selected"))
       else
-        List.wrap(Enum.find(options, &DOM.attribute(&1, "selected")) || List.first(options))
+        List.wrap(
+          Enum.find(Enum.reverse(options), &DOM.attribute(&1, "selected")) ||
+            Enum.find(options, &(!DOM.attribute(&1, "disabled")))
+        )
       end
 
     all_selected
@@ -1117,6 +1129,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
       true ->
         Plug.Conn.Query.decode_pair({name, value}, acc)
+    end
+  end
+
+  defp valid_display_size(node) do
+    with size when not is_nil(size) <- DOM.attribute(node, "size"),
+         {int, ""} when int > 0 <- Integer.parse(size) do
+      int
+    else
+      _ -> nil
     end
   end
 

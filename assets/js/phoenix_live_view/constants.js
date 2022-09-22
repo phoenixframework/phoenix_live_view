@@ -1,8 +1,7 @@
-
 export const CONSECUTIVE_RELOADS = "consecutive-reloads"
 export const MAX_RELOADS = 10
-export const RELOAD_JITTER_MIN = 1000
-export const RELOAD_JITTER_MAX = 3000
+export const RELOAD_JITTER_MIN = 5000
+export const RELOAD_JITTER_MAX = 10000
 export const FAILSAFE_JITTER = 30000
 export const PHX_EVENT_CLASSES = [
   "phx-click-loading", "phx-change-loading", "phx-submit-loading",
@@ -56,6 +55,7 @@ export const PHX_LV_DEBUG = "phx:live-socket:debug"
 export const PHX_LV_PROFILE = "phx:live-socket:profiling"
 export const PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim"
 export const PHX_PROGRESS = "progress"
+export const PHX_MOUNTED = "mounted"
 export const LOADER_TIMEOUT = 1
 export const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 export const BINDING_PREFIX = "phx-"

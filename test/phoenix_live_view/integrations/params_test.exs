@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.ParamsTest do
   import Phoenix.LiveViewTest
   import Phoenix.LiveView.TelemetryTestHelpers
 
-  alias Phoenix.LiveView
+  alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
 
   @endpoint Endpoint
@@ -105,6 +105,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?from=handle_params")
 
       assert redirected_to(conn) == "/"
+      # TODO use Phoenix.Flash.get when 1.7 is released
       assert get_flash(conn, :info) == "msg"
     end
 
@@ -117,10 +118,10 @@ defmodule Phoenix.LiveView.ParamsTest do
              |> redirected_to() == "/counter/123?from=rehandled_params"
     end
 
-    test "push_redirect", %{conn: conn} do
+    test "push_navigate", %{conn: conn} do
       assert conn
              |> put_serialized_session(:on_handle_params, fn socket ->
-               {:noreply, LiveView.push_redirect(socket, to: "/thermo/456")}
+               {:noreply, LiveView.push_navigate(socket, to: "/thermo/456")}
              end)
              |> get("/counter/123?from=handle_params")
              |> redirected_to() == "/thermo/456"
@@ -219,12 +220,12 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert response =~ rendered_to_string(~s|mount: %{"from" => "handle_params", "id" => "123"}|)
     end
 
-    test "push_redirect", %{conn: conn} do
+    test "push_navigate", %{conn: conn} do
       {:error, {:live_redirect, %{to: "/thermo/456"}}} =
         conn
         |> put_serialized_session(:on_handle_params, fn socket ->
           if LiveView.connected?(socket) do
-            {:noreply, LiveView.push_redirect(socket, to: "/thermo/456")}
+            {:noreply, LiveView.push_navigate(socket, to: "/thermo/456")}
           else
             {:noreply, socket}
           end
@@ -319,7 +320,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         send(self(), {:set, :val, 1000})
 
         new_socket =
-          LiveView.assign(socket, :on_handle_params, fn socket ->
+          Component.assign(socket, :on_handle_params, fn socket ->
             {:noreply, LiveView.push_patch(socket, to: "/counter/123?from=rehandled_params")}
           end)
 
@@ -337,12 +338,12 @@ defmodule Phoenix.LiveView.ParamsTest do
     end
   end
 
-  describe "push_redirect" do
+  describe "push_navigate" do
     test "from event callback", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       assert {:error, {:live_redirect, %{to: "/thermo/123"}}} =
-               render_click(counter_live, :push_redirect, %{to: "/thermo/123"})
+               render_click(counter_live, :push_navigate, %{to: "/thermo/123"})
 
       assert_redirect(counter_live, "/thermo/123")
     end
@@ -352,8 +353,8 @@ defmodule Phoenix.LiveView.ParamsTest do
 
       next = fn socket ->
         new_socket =
-          LiveView.assign(socket, :on_handle_params, fn socket ->
-            {:noreply, LiveView.push_redirect(socket, to: "/thermo/123")}
+          Component.assign(socket, :on_handle_params, fn socket ->
+            {:noreply, LiveView.push_navigate(socket, to: "/thermo/123")}
           end)
 
         {:reply, :ok, LiveView.push_patch(new_socket, to: "/counter/123?from=handle_params")}
@@ -365,15 +366,15 @@ defmodule Phoenix.LiveView.ParamsTest do
                       %{val: 1}, %{"from" => "handle_params", "id" => "123"}}
     end
 
-    test "shuts down with push_redirect", %{conn: conn} do
+    test "shuts down with push_navigate", %{conn: conn} do
       {:ok, counter_live, _html} = live(conn, "/counter/123")
 
       next = fn socket ->
-        {:noreply, LiveView.push_redirect(socket, to: "/thermo/123")}
+        {:noreply, LiveView.push_navigate(socket, to: "/thermo/123")}
       end
 
       assert {{:shutdown, {:live_redirect, %{to: "/thermo/123"}}}, _} =
-               catch_exit(GenServer.call(counter_live.pid, {:push_redirect, next}))
+               catch_exit(GenServer.call(counter_live.pid, {:push_navigate, next}))
     end
   end
 

@@ -318,7 +318,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert ExUnit.CaptureLog.capture_log(fn ->
                send(view.pid, {:send_update, [{StatefulComponent, id: "nemo", name: "NEW-nemo"}]})
                render(view)
-               refute_received {:updated, _}
+               refute_receive {:updated, _}
              end) =~
                "send_update failed because component Phoenix.LiveViewTest.StatefulComponent with ID \"nemo\" does not exist or it has been removed"
     end
@@ -341,12 +341,12 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
   end
 
   describe "redirects" do
-    test "push_redirect", %{conn: conn} do
+    test "push_navigate", %{conn: conn} do
       {:ok, view, html} = live(conn, "/components")
       assert html =~ "Redirect: none"
 
       assert {:error, {:live_redirect, %{to: "/components?redirect=push"}}} =
-               view |> element("#chris") |> render_click(%{"op" => "push_redirect"})
+               view |> element("#chris") |> render_click(%{"op" => "push_navigate"})
 
       assert_redirect(view, "/components?redirect=push")
     end

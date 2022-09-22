@@ -52,7 +52,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
   def preflight(%LiveView.UploadEntry{} = entry, socket) do
     new_socket =
-      Phoenix.LiveView.update(socket, :preflights, fn preflights ->
+      Phoenix.Component.update(socket, :preflights, fn preflights ->
         [entry.client_name | preflights]
       end)
 

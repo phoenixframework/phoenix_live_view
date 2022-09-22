@@ -269,7 +269,7 @@ defmodule Phoenix.LiveViewTest.RedirLive do
     end
   end
 
-  defp do_redirect(socket, "push_redirect", opts), do: push_redirect(socket, opts)
+  defp do_redirect(socket, "push_navigate", opts), do: push_navigate(socket, opts)
   defp do_redirect(socket, "redirect", opts), do: redirect(socket, opts)
   defp do_redirect(socket, "external", to: url), do: redirect(socket, external: url)
   defp do_redirect(socket, "push_patch", opts), do: push_patch(socket, opts)

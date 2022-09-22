@@ -144,7 +144,7 @@ export default class DOMPatch {
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
           if(DOM.isPhxSticky(fromEl)){ return false }
-          if(DOM.isIgnored(fromEl, phxUpdate)){
+          if(DOM.isIgnored(fromEl, phxUpdate) || (fromEl.form && fromEl.form.isSameNode(externalFormTriggered))){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
             updates.push(fromEl)

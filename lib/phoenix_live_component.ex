@@ -1,10 +1,10 @@
 defmodule Phoenix.LiveComponent do
-  @moduledoc """
+  @moduledoc ~S'''
   LiveComponents are a mechanism to compartmentalize state, markup, and
   events in LiveView.
 
   LiveComponents are defined by using `Phoenix.LiveComponent` and are used
-  by calling `Phoenix.LiveView.Helpers.live_component/1` in a parent LiveView.
+  by calling `Phoenix.Component.live_component/1` in a parent LiveView.
   They run inside the LiveView process but have their own state and
   life-cycle. For this reason, they are also often called "stateful components".
   This is a contrast to `Phoenix.Component`, also known as "function components",
@@ -18,9 +18,9 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~H"\""
+          ~H"""
           <div class="hero"><%= @content %></div>
-          "\""
+          """
         end
       end
 
@@ -41,10 +41,10 @@ defmodule Phoenix.LiveComponent do
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
-  When [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`) is called,
+  When [`live_component/1`](`Phoenix.Component.live_component/1`) is called,
   `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
   receives the `socket` as argument. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`).
+  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`).
   If `c:update/2` is not defined all assigns are simply merged into the socket.
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -62,11 +62,11 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~H"\""
+          ~H"""
           <div id={"user-\#{@id}"} class="user">
             <%= @user.name %>
           </div>
-          "\""
+          """
         end
       end
 
@@ -178,7 +178,7 @@ defmodule Phoenix.LiveComponent do
   If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
   includes the `:inner_block` assign it received.
 
-  See the docs for `Phoenix.Component` for more information.
+  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
 
   ## Live patches and live redirects
 
@@ -224,7 +224,7 @@ defmodule Phoenix.LiveComponent do
 
   If the board LiveView is the source of truth, it will be responsible
   for fetching all of the cards in a board. Then it will call
-  [`live_component/1`](`Phoenix.LiveView.Helpers.live_component/1`)
+  [`live_component/1`](`Phoenix.Component.live_component/1`)
   for each card, passing the card struct as argument to `CardComponent`:
 
       <%= for card <- @cards do %>
@@ -412,7 +412,7 @@ defmodule Phoenix.LiveComponent do
   `<svg>` tags to be nested, you can wrap the component content into an
   `<svg>` tag. This will ensure that it is correctly interpreted by the
   browser.
-  """
+  '''
 
   defmodule CID do
     @moduledoc """
@@ -437,11 +437,12 @@ defmodule Phoenix.LiveComponent do
 
   defmacro __using__(_) do
     quote do
+      import Phoenix.LiveView
       @behaviour Phoenix.LiveComponent
-      use Phoenix.Component
-
-      require Phoenix.LiveView.Renderer
       @before_compile Phoenix.LiveView.Renderer
+
+      # Phoenix.Component must come last so its @before_compile runs last
+      use Phoenix.Component
 
       @doc false
       def __live__, do: %{kind: :component, module: __MODULE__}

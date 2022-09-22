@@ -401,6 +401,13 @@ defmodule Phoenix.LiveView.Channel do
       {:cont, %Socket{} = socket} when exported? ->
         view.handle_info(msg, socket)
 
+      {:cont, %Socket{} = socket} when not exported? ->
+        Logger.debug(
+          "warning: undefined handle_info in #{inspect(view)}. Unhandled message: #{inspect(msg)}"
+        )
+
+        {:noreply, socket}
+
       {_, %Socket{} = socket} ->
         {:noreply, socket}
     end
@@ -1138,7 +1145,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp assign_action(socket, action) do
-    Phoenix.LiveView.assign(socket, :live_action, action)
+    Phoenix.Component.assign(socket, :live_action, action)
   end
 
   defp maybe_update_uploads(%Socket{} = socket, %{"uploads" => uploads} = payload) do
