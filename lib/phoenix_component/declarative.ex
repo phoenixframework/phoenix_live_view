@@ -81,6 +81,7 @@ defmodule Phoenix.Component.Declarative do
     onvolumechange
     onwaiting
     accesskey
+    alt
     autocapitalize
     autocomplete
     autofocus
@@ -92,6 +93,7 @@ defmodule Phoenix.Component.Declarative do
     draggable
     enterkeyhint
     exportparts
+    height
     hidden
     id
     inputmode
@@ -120,6 +122,7 @@ defmodule Phoenix.Component.Declarative do
     action
     placeholder
     pattern
+    width
   )
 
   @doc false
