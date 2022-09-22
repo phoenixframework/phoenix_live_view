@@ -107,7 +107,7 @@ defmodule Phoenix.Component do
         <p>
           Happy birthday <%= @name %>!
           You are <%= @age %> years old.
-        <p>
+        </p>
         """
       end
 
@@ -1526,7 +1526,7 @@ defmodule Phoenix.Component do
         <p>
           Happy birthday <%= @name %>!
           You are <%= @age %> years old.
-        <p>
+        </p>
         """
       end
   '''
