@@ -113,6 +113,7 @@ defmodule Phoenix.Component.Declarative do
     target
     title
     translate
+    type
     method
     required
     for
