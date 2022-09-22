@@ -118,6 +118,7 @@ defmodule Phoenix.Component.Declarative do
     for
     action
     placeholder
+    pattern
   )
 
   @doc false
