@@ -300,7 +300,7 @@ See `Phoenix.LiveView.JS.push/3` for all supported options.
 LiveView supports the `phx-mounted`, `phx-connected`, and `phx-disconnected` events to react to
 different lifecycle events with JS commands.
 
-For exmaple, to show an element when the LiveView has lost its connection, and hide it when the
+For example, to show an element when the LiveView has lost its connection, and hide it when the
 connection recovers, you can combine `phx-disconnected` and `phx-connected`
 
 ```heex
@@ -320,7 +320,7 @@ such as to animate a notice into view:
 ### LiveView vs static view
 
 `phx-connected` and `phx-disconnected` are only executed when operating
-inside a LiveView container. For static templates, they wil have no effect.
+inside a LiveView container. For static templates, they will have no effect.
 
 For LiveView, the `phx-mounted` binding is executed as soon as the LiveView is
 mounted with a connection. When using `phx-mounted` in static views, it is executed
