@@ -201,11 +201,11 @@ attribute:
 ```heex
 <div class="container" phx-drop-target={@uploads.avatar.ref}>
     ...
-    <%= live_file_input @uploads.avatar %>
+    <.live_file_input upload={@uploads.avatar} />
 </div>
 ```
 
-See `Phoenix.LiveView.Helpers.live_file_input/2` for more.
+See `Phoenix.Component.live_file_input/1` for more.
 
 ## Submitting the form action over HTTP
 

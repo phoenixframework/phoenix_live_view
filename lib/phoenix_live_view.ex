@@ -392,7 +392,7 @@ defmodule Phoenix.LiveView do
   It receives the current `params`, including parameters from
   the router, the current `uri` from the client and the `socket`.
   It is invoked after mount or whenever there is a live navigation
-  event caused by `push_patch/2` or `Phoenix.LiveView.Helpers.live_patch/2`.
+  event caused by `push_patch/2` or `<.link patch={...}>`.
 
   It must always return `{:noreply, socket}`, where `:noreply`
   means no additional information is sent to the client.

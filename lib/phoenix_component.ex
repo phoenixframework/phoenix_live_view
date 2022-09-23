@@ -898,6 +898,7 @@ defmodule Phoenix.Component do
   <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
   ```
   """
+  @doc deprecated: "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
   def live_flash(%_struct{} = other, _key) do
     raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
   end
@@ -1586,6 +1587,8 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
+  def live_component(assigns)
+
   # TODO: add declarative attrs once we support non-global dynamic attrs
   def live_component(assigns) when is_map(assigns) do
     id = assigns[:id]
@@ -2193,6 +2196,7 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
+  def live_file_input(assigns)
 
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
     IO.warn(
@@ -2257,6 +2261,7 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
+  def live_img_preview(assigns)
 
   def live_img_preview(%Phoenix.LiveView.UploadEntry{} = entry) do
     IO.warn("""
