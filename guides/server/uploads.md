@@ -17,7 +17,7 @@ both direct to server uploads as well as direct-to-cloud
     respond to progress, errors, cancellation, etc.
 
   * Drag and drop - Use the `phx-drop-target` attribute to
-    enable. See `Phoenix.LiveView.Helpers.live_file_input/2`.
+    enable. See `Phoenix.Component.live_file_input/1`.
 
 ## Allow uploads
 
@@ -40,21 +40,21 @@ template.
 
 ## Render reactive elements
 
-Use the `Phoenix.LiveView.Helpers.live_file_input/2` file
-input generator to render a file input for the upload:
+Use the `Phoenix.Component.live_file_input/1` component
+to render a file input for the upload:
 
 ```heex
 <%# lib/my_app_web/live/upload_live.html.heex %>
 
 <form id="upload-form" phx-submit="save" phx-change="validate">
-  <%= live_file_input @uploads.avatar %>
+  <.live_file_input upload={@uploads.avatar} />
   <button type="submit">Upload</button>
 </form>
 ```
 
 > **Important:** You must bind `phx-submit` and `phx-change` on the form.
 
-Note that while [`live_file_input/2`]
+Note that while [`live_file_input/1`]
 allows you to set additional attributes on the file input,
 many attributes such as `id`, `accept`, and `multiple` will
 be set automatically based on the [`allow_upload/3`] spec.
@@ -167,7 +167,7 @@ end
 
 ## Consume uploaded entries
 
-When the end-user submits a form containing a [`live_file_input/2`],
+When the end-user submits a form containing a [`live_file_input/1`],
 the JavaScript client first uploads the file(s) before
 invoking the callback for the form's `phx-submit` event.
 
@@ -244,4 +244,4 @@ end
 ```
 
 [`allow_upload/3`]: `Phoenix.LiveView.allow_upload/3`
-[`live_file_input/2`]: `Phoenix.LiveView.Helpers.live_file_input/2`
+[`live_file_input/1`]: `Phoenix.Component.live_file_input/1`
