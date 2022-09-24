@@ -106,20 +106,6 @@ defmodule Phoenix.LiveView.HEExExtensionTest do
               |> expand_rendered(true)
   end
 
-  test "renders inside render_layout/4" do
-    import Phoenix.View
-    assigns = @assigns
-
-    assert %Rendered{} =
-              compile("""
-              <%= render_layout(View, "inner_live.html", %{}) do %>
-                WITH COMPONENT:
-                <%= %Component{assigns: %{}, component: SampleComponent} %>
-              <% end %>
-              """)
-              |> expand_rendered(true)
-  end
-
   defp expand_dynamic(dynamic, track_changes?) do
     Enum.map(dynamic.(track_changes?), &expand_rendered(&1, track_changes?))
   end

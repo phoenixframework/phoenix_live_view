@@ -192,17 +192,6 @@ defmodule Phoenix.LiveView do
   `c:render/1` definition above and instead put the template code at
   `lib/my_app_web/live/thermostat_live.html.heex`.
 
-  Alternatively, you can keep the `c:render/1` callback but delegate to an
-  existing `Phoenix.View` module in your application. For example:
-
-      defmodule MyAppWeb.ThermostatLive do
-        use Phoenix.LiveView
-
-        def render(assigns) do
-          Phoenix.View.render(MyAppWeb.PageView, "page.html", assigns)
-        end
-      end
-
   In all cases, each assign in the template will be accessible as `@assign`.
   You can learn more about [assigns and HEEx templates in their own guide](assigns-eex.md).
 
