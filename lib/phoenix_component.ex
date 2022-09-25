@@ -56,8 +56,8 @@ defmodule Phoenix.Component do
 
   ## Attributes
 
-  `Phoenix.Component` provides the `attr/3` macro to declare what attributes a function component
-  expects to receive when invoked:
+  `Phoenix.Component` provides the `attr/3` macro to declare what attributes the proceeding function
+  component expects to receive when invoked:
 
       attr :name, :string, required: true
 
@@ -125,6 +125,30 @@ defmodule Phoenix.Component do
     You are 34 years old.
   </p>
   ```
+
+  Multiple function components can be defined in the same module, with different attributes. In the
+  following example, `<Components.greet/>` requires a `name`, but *does not* require a `title`, and
+  `<Component.heading>` requires a `title`, but *does not* require a `name`.
+
+      defmodule Components do
+        use Phoenix.Component
+
+        attr :title, :string, required: true
+
+        def heading(assigns) do
+          ~H"""
+          <h1><%= @title %></h1>
+          """
+        end
+
+        attr :name, :string, required: true
+
+        def greet(assigns) do
+          ~H"""
+          <p>Hello <%= @name %></p>
+          """
+        end
+      end
 
   With the `attr/3` macro you have the core ingredients to create reusable function components.
   But what if you need your function components to support dynamic attributes, such as common HTML
