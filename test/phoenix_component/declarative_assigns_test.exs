@@ -920,6 +920,20 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "does not override signature of Elixir functions" do
+    {:docs_v1, _, :elixir, "text/markdown", _, _, docs} =
+      Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+
+    assert {{:function, :identity, 1}, _, ["identity(var)"], _, %{}} =
+             List.keyfind(docs, {:function, :identity, 1}, 0)
+
+    assert {{:function, :map_identity, 1}, _, ["map_identity(map)"], _, %{}} =
+             List.keyfind(docs, {:function, :map_identity, 1}, 0)
+
+    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(:not_a_map) == :not_a_map
+    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(%{}) == %{}
+  end
+
   test "raise if attr :doc is not a string" do
     msg = ~r"doc must be a string or false, got: :foo"
 
@@ -1363,23 +1377,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "does not raise if multiple slots with different names share the same attr names" do
-    mod = fn ->
-      defmodule MultipleSlotAttrs do
-        use Phoenix.Component
+    defmodule MultipleSlotAttrs do
+      use Phoenix.Component
 
-        slot :foo do
-          attr :attr, :any
-        end
-
-        slot :bar do
-          attr :attr, :any
-        end
-
-        def func(assigns), do: ~H[]
+      slot :foo do
+        attr :attr, :any
       end
-    end
 
-    assert mod.()
+      slot :bar do
+        attr :attr, :any
+      end
+
+      def func(assigns), do: ~H[]
+    end
   end
 
   test "raise if slot with name :inner_block has slot attrs" do

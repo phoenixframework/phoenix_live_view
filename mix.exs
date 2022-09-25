@@ -10,6 +10,7 @@ defmodule Phoenix.LiveView.MixProject do
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
+      test_options: [docs: true],
       package: package(),
       xref: [exclude: [Floki]],
       deps: deps(),

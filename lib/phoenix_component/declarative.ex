@@ -164,14 +164,30 @@ defmodule Phoenix.Component.Declarative do
     end
   end
 
-  defp annotate_call(_kind, {name, meta, [{:\\, _, _} = arg]}),
-    do: {name, meta, [arg]}
+  defp annotate_call(kind, {name, meta, [{:\\, default_meta, [left, right]}]}),
+    do: {name, meta, [{:\\, default_meta, [annotate_arg(kind, left), right]}]}
 
   defp annotate_call(kind, {name, meta, [arg]}),
-    do: {name, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
+    do: {name, meta, [annotate_arg(kind, arg)]}
 
   defp annotate_call(_kind, left),
     do: left
+
+  defp annotate_arg(kind, {:=, meta, [{name, _, ctx} = var, arg]}) when is_atom(name) and is_atom(ctx) do
+    {:=, meta, [var, quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
+  end
+
+  defp annotate_arg(kind, {:=, meta, [arg, {name, _, ctx} = var]}) when is_atom(name) and is_atom(ctx) do
+    {:=, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg))), var]}
+  end
+
+  defp annotate_arg(kind, {name, meta, ctx} = var) when is_atom(name) and is_atom(ctx) do
+    {:=, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), _)), var]}
+  end
+
+  defp annotate_arg(kind, arg) do
+    quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))
+  end
 
   ## Attrs/slots
 

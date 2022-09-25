@@ -21,6 +21,9 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
     defstruct []
   end
 
+  def identity(var), do: var
+  def map_identity(%{} = map), do: map
+
   attr :attr, :any
   def fun_attr_any(assigns), do: ~H[]
 
@@ -196,7 +199,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
     ~H"""
     <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
       <%= @name %> says hi
-      <%= if @dup_name, do: live_component __MODULE__, id: @dup_name, name: @dup_name %>
+      <%= if @dup_name, do: live_component(__MODULE__, id: @dup_name, name: @dup_name) %>
     </div>
     """
   end
