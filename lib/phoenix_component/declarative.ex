@@ -17,7 +17,6 @@ defmodule Phoenix.Component.Declarative do
   )
   @globals ~w(
     accesskey
-    action
     alt
     autocapitalize
     autofocus
@@ -28,7 +27,6 @@ defmodule Phoenix.Component.Declarative do
     draggable
     enterkeyhint
     exportparts
-    for
     height
     hidden
     id
@@ -40,7 +38,6 @@ defmodule Phoenix.Component.Declarative do
     itemscope
     itemtype
     lang
-    method
     nonce
     onabort
     onautocomplete
@@ -105,10 +102,8 @@ defmodule Phoenix.Component.Declarative do
     onvolumechange
     onwaiting
     part
-    pattern
     placeholder
     rel
-    required
     role
     slot
     spellcheck
