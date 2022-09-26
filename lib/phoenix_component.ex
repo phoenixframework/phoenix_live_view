@@ -208,6 +208,27 @@ defmodule Phoenix.Component do
   <span class="bg-blue-200" phx-click="close">You've got mail!</span>
   ```
 
+  You may also specificy which attributes are included in additional to the known globals
+  with the `:include` option. For example to support the `form` attribute on a button
+  component:
+
+  ```elixir
+  # <.button form="my-form"/>
+  attr :rest, :global, include: ~w(form)
+  slot :inner_block
+  def button(assigns) do
+    ~H"""
+    <button {@rest}><%= render_slot(@inner_block) %>
+    """
+  end
+  ```
+
+  The `:include` option is useful to apply global additions on a case-by-case basis, but
+  sometimes you want attributes to be available to all global attributes you provide, such
+  as when using frameworks that use attribute prefixes, such as Alpine.js's `x-on:click`.
+  For these cases, custom global attribute prefixes can be provided, which we'll outline
+  next.
+
   ### Custom Global Attribute Prefixes
 
   You can extend the set of global attributes by providing a list of attribute prefixes to
@@ -1789,6 +1810,8 @@ defmodule Phoenix.Component do
     """
   )
 
+  attr.(:autocomplete, :boolean, default: false)
+
   attr.(:method, :string,
     default: nil,
     doc: """
@@ -1837,6 +1860,7 @@ defmodule Phoenix.Component do
       if action do
         {method, opts} = Keyword.pop!(opts, :method)
         {method, hidden_method} = form_method(method)
+        {autocomplete, opts} = Keyword.pop!(opts, :autocomplete)
 
         {csrf_token, opts} =
           Keyword.pop_lazy(opts, :csrf_token, fn ->
@@ -1845,7 +1869,8 @@ defmodule Phoenix.Component do
             end
           end)
 
-        {[action: action, method: method] ++ opts, hidden_method, csrf_token}
+        defaults = [action: action, method: method, autocomplete: autocomplete]
+        {defaults ++ opts, hidden_method, csrf_token}
       else
         {opts, nil, nil}
       end

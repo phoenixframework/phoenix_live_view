@@ -119,12 +119,18 @@ defmodule Phoenix.Component.Declarative do
   )
 
   @doc false
-  def __global__?(module, name) when is_atom(module) and is_binary(name) do
+  def __global__?(module, name, attrs_defs) when is_atom(module) and is_binary(name) do
     if function_exported?(module, :__global__?, 1) do
-      module.__global__?(name) or __global__?(name)
+      module.__global__?(name) or __global__?(name) or include_global?(name, attrs_defs)
     else
-      __global__?(name)
+      __global__?(name) or include_global?(name, attrs_defs)
     end
+  end
+
+  defp include_global?(name, attrs_defs) do
+    !!Enum.find(attrs_defs, fn attr ->
+      attr.type == :global and name in Keyword.get(attr.opts, :include, [])
+    end)
   end
 
   for prefix <- @global_prefixes do
@@ -169,11 +175,13 @@ defmodule Phoenix.Component.Declarative do
   defp annotate_call(_kind, left),
     do: left
 
-  defp annotate_arg(kind, {:=, meta, [{name, _, ctx} = var, arg]}) when is_atom(name) and is_atom(ctx) do
+  defp annotate_arg(kind, {:=, meta, [{name, _, ctx} = var, arg]})
+       when is_atom(name) and is_atom(ctx) do
     {:=, meta, [var, quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
   end
 
-  defp annotate_arg(kind, {:=, meta, [arg, {name, _, ctx} = var]}) when is_atom(name) and is_atom(ctx) do
+  defp annotate_arg(kind, {:=, meta, [arg, {name, _, ctx} = var]})
+       when is_atom(name) and is_atom(ctx) do
     {:=, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg))), var]}
   end
 
@@ -303,6 +311,10 @@ defmodule Phoenix.Component.Declarative do
 
     if type == :global and Keyword.has_key?(opts, :examples) do
       compile_error!(line, file, "global attributes do not support the :examples option")
+    end
+
+    if type != :global and Keyword.has_key?(opts, :include) do
+      compile_error!(line, file, ":include is only supported for :global attributes")
     end
 
     {doc, opts} = Keyword.pop(opts, :doc, nil)
@@ -481,6 +493,11 @@ defmodule Phoenix.Component.Declarative do
       """)
     end
   end
+
+  defp invalid_attr_message(:include, inc) when is_list(inc) or is_nil(inc), do: nil
+
+  defp invalid_attr_message(:include, other),
+    do: "include only supports a list of attributes, got: #{inspect(other)}"
 
   defp invalid_attr_message(:default, nil), do: nil
 
@@ -1040,7 +1057,7 @@ defmodule Phoenix.Component.Declarative do
       end)
 
     for {name, {line, _column, _type_value}} <- attrs,
-        not (has_global? and __global__?(caller_module, Atom.to_string(name))) do
+        not (has_global? and __global__?(caller_module, Atom.to_string(name), attrs_defs)) do
       message = "undefined attribute \"#{name}\" for component #{component_fa(call)}"
       warn(message, call.file, line)
     end
@@ -1115,7 +1132,7 @@ defmodule Phoenix.Component.Declarative do
                 # undefined slot attr
                 %{} ->
                   if attr_name == :inner_block or
-                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
+                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name), [])) do
                     :ok
                   else
                     message =

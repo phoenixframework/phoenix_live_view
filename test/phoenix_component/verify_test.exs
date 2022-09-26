@@ -964,6 +964,22 @@ defmodule Phoenix.ComponentVerifyTest do
            """
   end
 
+  test "global includes" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule GlobalIncludes do
+          use Phoenix.Component
+
+          attr :id, :any, required: true
+          attr :rest, :global, include: ~w(form)
+          def button(assigns), do: ~H|<button id={@id} {@rest}>button</button>|
+          def any_render(assigns), do: ~H|<.button id="123" form="my-form" />|
+        end
+     end)
+
+    assert warnings == ""
+  end
+
   defp get_line(module, fun \\ :line) do
     apply(module, fun, [])
   end
