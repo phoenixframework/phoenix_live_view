@@ -1807,7 +1807,7 @@ defmodule Phoenix.Component do
   )
 
   attr.(:errors, :list,
-    default: nil,
+    default: [],
     doc: """
     Use this to manually pass a keyword list of errors to the form,
     e.g. `conn.assigns[:errors]`. This option is only used when a connection is used as the form
