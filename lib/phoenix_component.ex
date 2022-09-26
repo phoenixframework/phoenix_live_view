@@ -158,7 +158,8 @@ defmodule Phoenix.Component do
 
   Global attributes are a set of attributes that a function component can accept when it
   declares an attribute of type `:global`. By default, the set of attributes accepted are those
-  [common to all HTML elements](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes).
+  attributes common to standard HTML tags.
+
   Once a global attribute is declared, any number of attributes in the set can be passed by
   the caller without having to modify the function component itself.
 
@@ -1477,7 +1478,7 @@ defmodule Phoenix.Component do
   * `:default` - the default value for the attribute if not provided. If this option is
     not set and the attribute is not given, accessing the attribute will fail unless a
     value is explicitly set with `assign_new/3`.
-    
+
   * `:examples` - a non-exhaustive list of values accepted by the attribute, used for documentation
     purposes.
 

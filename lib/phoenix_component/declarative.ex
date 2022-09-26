@@ -18,6 +18,7 @@ defmodule Phoenix.Component.Declarative do
   @globals ~w(
     accesskey
     action
+    alt
     autocapitalize
     autocomplete
     autofocus
@@ -30,6 +31,7 @@ defmodule Phoenix.Component.Declarative do
     enterkeyhint
     exportparts
     for
+    height
     hidden
     id
     inputmode
@@ -118,6 +120,7 @@ defmodule Phoenix.Component.Declarative do
     title
     translate
     type
+    width
     xml:base
     xml:lang
   )
