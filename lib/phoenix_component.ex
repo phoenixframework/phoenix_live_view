@@ -224,8 +224,8 @@ defmodule Phoenix.Component do
   ```
 
   The `:include` option is useful to apply global additions on a case-by-case basis, but
-  sometimes you want attributes to be available to all global attributes you provide, such
-  as when using frameworks that use attribute prefixes, such as Alpine.js's `x-on:click`.
+  sometimes you want attributes to be available to all globals you provide, such
+  as when using frameworks that use attribute prefixes, like Alpine.js's `x-on:click`.
   For these cases, custom global attribute prefixes can be provided, which we'll outline
   next.
 
