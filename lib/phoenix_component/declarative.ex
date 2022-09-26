@@ -16,8 +16,32 @@ defmodule Phoenix.Component.Declarative do
     data-
   )
   @globals ~w(
-    xml:lang
-    xml:base
+    accesskey
+    action
+    autocapitalize
+    autocomplete
+    autofocus
+    class
+    contenteditable
+    contextmenu
+    dir
+    download
+    draggable
+    enterkeyhint
+    exportparts
+    for
+    hidden
+    id
+    inputmode
+    is
+    itemid
+    itemprop
+    itemref
+    itemscope
+    itemtype
+    lang
+    method
+    nonce
     onabort
     onautocomplete
     onautocompleteerror
@@ -80,31 +104,11 @@ defmodule Phoenix.Component.Declarative do
     ontoggle
     onvolumechange
     onwaiting
-    accesskey
-    autocapitalize
-    autocomplete
-    autofocus
-    class
-    contenteditable
-    contextmenu
-    dir
-    download
-    draggable
-    enterkeyhint
-    exportparts
-    hidden
-    id
-    inputmode
-    is
-    itemid
-    itemprop
-    itemref
-    itemscope
-    itemtype
-    lang
-    nonce
     part
+    pattern
+    placeholder
     rel
+    required
     role
     slot
     spellcheck
@@ -114,12 +118,8 @@ defmodule Phoenix.Component.Declarative do
     title
     translate
     type
-    method
-    required
-    for
-    action
-    placeholder
-    pattern
+    xml:base
+    xml:lang
   )
 
   @doc false
