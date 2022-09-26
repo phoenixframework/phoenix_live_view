@@ -20,13 +20,11 @@ defmodule Phoenix.Component.Declarative do
     action
     alt
     autocapitalize
-    autocomplete
     autofocus
     class
     contenteditable
     contextmenu
     dir
-    download
     draggable
     enterkeyhint
     exportparts

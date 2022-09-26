@@ -158,7 +158,9 @@ defmodule Phoenix.Component do
 
   Global attributes are a set of attributes that a function component can accept when it
   declares an attribute of type `:global`. By default, the set of attributes accepted are those
-  attributes common to standard HTML tags.
+  attributes common to all standard HTML tags.
+  See [Global attributes](https://developer.mozilla.org/en-US/docs/Web/HTML/Global_attributes)
+  for a complete list of attributes.
 
   Once a global attribute is declared, any number of attributes in the set can be passed by
   the caller without having to modify the function component itself.
@@ -2021,6 +2023,13 @@ defmodule Phoenix.Component do
     """
   )
 
+  attr.(:download, :boolean, default: nil)
+  attr.(:hreflang, :string, default: nil)
+  attr.(:referrerpolicy, :string, default: nil)
+  attr.(:rel, :string, default: nil)
+  attr.(:target, :string, default: nil)
+  attr.(:type, :string, default: nil)
+
   attr.(:rest, :global,
     doc: """
     Additional HTML attributes added to the `a` tag.
@@ -2038,6 +2047,12 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={@navigate}
+      download={@download}
+      hreflang={@hreflang}
+      referrerpolicy={@referrerpolicy}
+      rel={@rel}
+      target={@target}
+      type={@type}
       data-phx-link="redirect"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       {@rest}
@@ -2049,6 +2064,12 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={@patch}
+      download={@download}
+      hreflang={@hreflang}
+      referrerpolicy={@referrerpolicy}
+      rel={@rel}
+      target={@target}
+      type={@type}
       data-phx-link="patch"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       {@rest}
@@ -2074,6 +2095,12 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={if @method == "get", do: @href, else: "#"}
+      download={@download}
+      hreflang={@hreflang}
+      referrerpolicy={@referrerpolicy}
+      rel={@rel}
+      target={@target}
+      type={@type}
       data-method={if @method != "get", do: @method}
       data-csrf={if @method != "get", do: @csrf_token}
       data-to={if @method != "get", do: @href}
