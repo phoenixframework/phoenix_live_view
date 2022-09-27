@@ -208,7 +208,7 @@ defmodule Phoenix.Component do
   <span class="bg-blue-200" phx-click="close">You've got mail!</span>
   ```
 
-  You may also specificy which attributes are included in addition to the known globals
+  You may also specify which attributes are included in addition to the known globals
   with the `:include` option. For example to support the `form` attribute on a button
   component:
 
