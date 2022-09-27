@@ -867,20 +867,32 @@ defmodule Phoenix.Component.Declarative do
     []
   end
 
-  defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}, _indent) do
-    ["Defaults to `", inspect(default), "`."]
+  defp build_attr_doc_and_default(%{doc: doc, type: :global, opts: opts}, indent) do
+    case Keyword.fetch(opts, :include) do
+      {:ok, [_ | _] = inc} ->
+        if doc do
+          [build_doc(doc, indent, true), "Supports all globals plus: `", inspect(inc), "`."]
+        else
+          ["Supports all globals plus: `", inspect(inc), "`."]
+        end
+
+      _ ->
+        if doc, do: [build_doc(doc, indent, false)], else: []
+    end
   end
 
-  defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}, indent) do
-    [build_doc(doc, indent, true), "Defaults to `", inspect(default), "`."]
-  end
+  defp build_attr_doc_and_default(%{doc: doc, opts: opts}, indent) do
+    case Keyword.fetch(opts, :default) do
+      {:ok, default} ->
+        if doc do
+          [build_doc(doc, indent, true), "Defaults to `", inspect(default), "`."]
+        else
+          ["Defaults to `", inspect(default), "`."]
+        end
 
-  defp build_attr_doc_and_default(%{doc: nil}, _indent) do
-    []
-  end
-
-  defp build_attr_doc_and_default(%{doc: doc}, indent) do
-    [build_doc(doc, indent, false)]
+      :error ->
+        if doc, do: [build_doc(doc, indent, false)], else: []
+    end
   end
 
   defp build_doc(doc, indent, text_after?) do
