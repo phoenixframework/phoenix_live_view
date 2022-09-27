@@ -2299,8 +2299,6 @@ var View = class {
         flash: this.flash
       };
     });
-    this.showLoader(this.liveSocket.loaderTimeout);
-    this.bindChannel();
   }
   setHref(href) {
     this.href = href;
@@ -2763,6 +2761,8 @@ var View = class {
     this.isDead = true;
   }
   join(callback) {
+    this.showLoader(this.liveSocket.loaderTimeout);
+    this.bindChannel();
     if (this.isMain()) {
       this.stopCallback = this.liveSocket.withPageLoading({ to: this.href, kind: "initial" });
     }

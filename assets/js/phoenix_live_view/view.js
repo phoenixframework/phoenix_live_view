@@ -110,8 +110,6 @@ export default class View {
         flash: this.flash,
       }
     })
-    this.showLoader(this.liveSocket.loaderTimeout)
-    this.bindChannel()
   }
 
   setHref(href){ this.href = href }
@@ -611,6 +609,8 @@ export default class View {
   joinDead(){ this.isDead = true }
 
   join(callback){
+    this.showLoader(this.liveSocket.loaderTimeout)
+    this.bindChannel()
     if(this.isMain()){
       this.stopCallback = this.liveSocket.withPageLoading({to: this.href, kind: "initial"})
     }
