@@ -1,5 +1,5 @@
 defmodule Phoenix.ComponentVerifyTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   @moduletag :after_verify
   import ExUnit.CaptureIO
@@ -965,6 +965,8 @@ defmodule Phoenix.ComponentVerifyTest do
   end
 
   test "global includes" do
+    import Phoenix.LiveViewTest
+
     warnings =
       capture_io(:stderr, fn ->
         defmodule GlobalIncludes do
@@ -975,7 +977,12 @@ defmodule Phoenix.ComponentVerifyTest do
           def button(assigns), do: ~H|<button id={@id} {@rest}>button</button>|
           def any_render(assigns), do: ~H|<.button id="123" form="my-form" />|
         end
-     end)
+
+        assigns = %{id: "abc", form: "my-form"}
+
+        assert render_component(&GlobalIncludes.button/1, assigns) ==
+                 "<button id=\"abc\" form=\"my-form\">button</button>"
+      end)
 
     assert warnings == ""
   end

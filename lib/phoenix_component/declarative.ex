@@ -119,18 +119,14 @@ defmodule Phoenix.Component.Declarative do
   )
 
   @doc false
-  def __global__?(module, name, attrs_defs) when is_atom(module) and is_binary(name) do
-    if function_exported?(module, :__global__?, 1) do
-      module.__global__?(name) or __global__?(name) or include_global?(name, attrs_defs)
-    else
-      __global__?(name) or include_global?(name, attrs_defs)
-    end
-  end
+  def __global__?(module, name, global_attr \\ nil) when is_atom(module) and is_binary(name) do
+    includes = global_attr && Keyword.get(global_attr.opts, :include, [])
 
-  defp include_global?(name, attrs_defs) do
-    !!Enum.find(attrs_defs, fn attr ->
-      attr.type == :global and name in Keyword.get(attr.opts, :include, [])
-    end)
+    if function_exported?(module, :__global__?, 1) do
+      module.__global__?(name) or __global__?(name) or name in includes
+    else
+      __global__?(name) or name in includes
+    end
   end
 
   for prefix <- @global_prefixes do
@@ -1010,8 +1006,8 @@ defmodule Phoenix.Component.Declarative do
          %{slots: slots, attrs: attrs, root: root} = call,
          %{slots: slots_defs, attrs: attrs_defs} = _component
        ) do
-    {attrs, has_global?} =
-      Enum.reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
+    {attrs, global_attr} =
+      Enum.reduce(attrs_defs, {attrs, nil}, fn attr_def, {attrs, global_attr} ->
         %{name: name, required: required, type: type, opts: opts} = attr_def
         attr_values = Keyword.get(opts, :values, nil)
         {value, attrs} = Map.pop(attrs, name)
@@ -1053,11 +1049,11 @@ defmodule Phoenix.Component.Declarative do
             end
         end
 
-        {attrs, has_global? || type == :global}
+        {attrs, global_attr || (type == :global and attr_def)}
       end)
 
     for {name, {line, _column, _type_value}} <- attrs,
-        not (has_global? and __global__?(caller_module, Atom.to_string(name), attrs_defs)) do
+        not (global_attr && __global__?(caller_module, Atom.to_string(name), global_attr)) do
       message = "undefined attribute \"#{name}\" for component #{component_fa(call)}"
       warn(message, call.file, line)
     end
@@ -1132,7 +1128,7 @@ defmodule Phoenix.Component.Declarative do
                 # undefined slot attr
                 %{} ->
                   if attr_name == :inner_block or
-                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name), [])) do
+                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
                     :ok
                   else
                     message =

@@ -1810,8 +1810,6 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:autocomplete, :boolean, default: false)
-
   attr.(:method, :string,
     default: nil,
     doc: """
@@ -1838,7 +1836,11 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:rest, :global, doc: "Additional HTML attributes to add to the form tag.")
+  attr.(:rest, :global,
+    include: ~w(autocomplete),
+    doc: "Additional HTML attributes to add to the form tag."
+  )
+
   slot.(:inner_block, required: true, doc: "The content rendered inside of the form tag.")
 
   def form(assigns) do
@@ -1860,7 +1862,6 @@ defmodule Phoenix.Component do
       if action do
         {method, opts} = Keyword.pop!(opts, :method)
         {method, hidden_method} = form_method(method)
-        {autocomplete, opts} = Keyword.pop!(opts, :autocomplete)
 
         {csrf_token, opts} =
           Keyword.pop_lazy(opts, :csrf_token, fn ->
@@ -1869,8 +1870,7 @@ defmodule Phoenix.Component do
             end
           end)
 
-        defaults = [action: action, method: method, autocomplete: autocomplete]
-        {defaults ++ opts, hidden_method, csrf_token}
+        {[action: action, method: method] ++ opts, hidden_method, csrf_token}
       else
         {opts, nil, nil}
       end
@@ -2048,14 +2048,8 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:download, :boolean, default: nil)
-  attr.(:hreflang, :string, default: nil)
-  attr.(:referrerpolicy, :string, default: nil)
-  attr.(:rel, :string, default: nil)
-  attr.(:target, :string, default: nil)
-  attr.(:type, :string, default: nil)
-
   attr.(:rest, :global,
+    include: ~w(download hreflang referrerpolicy rel target type),
     doc: """
     Additional HTML attributes added to the `a` tag.
     """
@@ -2072,12 +2066,6 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={@navigate}
-      download={@download}
-      hreflang={@hreflang}
-      referrerpolicy={@referrerpolicy}
-      rel={@rel}
-      target={@target}
-      type={@type}
       data-phx-link="redirect"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       {@rest}
@@ -2089,12 +2077,6 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={@patch}
-      download={@download}
-      hreflang={@hreflang}
-      referrerpolicy={@referrerpolicy}
-      rel={@rel}
-      target={@target}
-      type={@type}
       data-phx-link="patch"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       {@rest}
@@ -2120,12 +2102,6 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={if @method == "get", do: @href, else: "#"}
-      download={@download}
-      hreflang={@hreflang}
-      referrerpolicy={@referrerpolicy}
-      rel={@rel}
-      target={@target}
-      type={@type}
       data-method={if @method != "get", do: @method}
       data-csrf={if @method != "get", do: @csrf_token}
       data-to={if @method != "get", do: @href}
