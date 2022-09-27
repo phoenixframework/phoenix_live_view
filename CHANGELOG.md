@@ -2,6 +2,9 @@
 
 ## 0.18.1
 
+## Bug Fixes
+  * Fix phx-loading class being applied to dead views
+
 ## Enhancements
   * Support `:include` option to extend global attributes on a case-by-case basis
 
