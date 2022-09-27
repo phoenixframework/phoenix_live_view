@@ -434,14 +434,14 @@ defmodule Phoenix.LiveComponent do
 
   alias Phoenix.LiveView.Socket
 
-  defmacro __using__(_) do
+  defmacro __using__(opts \\ []) do
     quote do
       import Phoenix.LiveView
       @behaviour Phoenix.LiveComponent
       @before_compile Phoenix.LiveView.Renderer
 
       # Phoenix.Component must come last so its @before_compile runs last
-      use Phoenix.Component
+      use Phoenix.Component, Keyword.take(unquote(opts), [:global_prefixes])
 
       @doc false
       def __live__, do: %{kind: :component, module: __MODULE__}
