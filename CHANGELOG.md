@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.1
+
+## Enhancements
+  * Support `:include` option to extend global attributes on a case-by-case basis
+
 ## 0.18.0 (2022-09-20)
 
 LiveView v0.18 includes a major new feature in the form of declarative assigns with new `attr`

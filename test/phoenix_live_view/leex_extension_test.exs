@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.LEEXTest do
   use ExUnit.Case, async: true
 
-  alias Phoenix.LiveView.{Engine, Rendered, Component}
+  alias Phoenix.LiveView.Rendered
 
   defmodule View do
     use Phoenix.View, root: "test/support/templates/leex", path: ""
@@ -10,10 +10,6 @@ defmodule Phoenix.LiveView.LEEXTest do
   defmodule SampleComponent do
     use Phoenix.LiveComponent
     def render(assigns), do: ~L"FROM COMPONENT"
-  end
-
-  defmacrop compile(string) do
-    EEx.compile_string(string, engine: Engine, file: __CALLER__.file, line: __CALLER__.line + 1)
   end
 
   @assigns %{

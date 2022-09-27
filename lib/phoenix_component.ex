@@ -208,6 +208,27 @@ defmodule Phoenix.Component do
   <span class="bg-blue-200" phx-click="close">You've got mail!</span>
   ```
 
+  You may also specify which attributes are included in addition to the known globals
+  with the `:include` option. For example to support the `form` attribute on a button
+  component:
+
+  ```elixir
+  # <.button form="my-form"/>
+  attr :rest, :global, include: ~w(form)
+  slot :inner_block
+  def button(assigns) do
+    ~H"""
+    <button {@rest}><%= render_slot(@inner_block) %>
+    """
+  end
+  ```
+
+  The `:include` option is useful to apply global additions on a case-by-case basis, but
+  sometimes you want attributes to be available to all globals you provide, such
+  as when using frameworks that use attribute prefixes, like Alpine.js's `x-on:click`.
+  For these cases, custom global attribute prefixes can be provided, which we'll outline
+  next.
+
   ### Custom Global Attribute Prefixes
 
   You can extend the set of global attributes by providing a list of attribute prefixes to
@@ -1815,7 +1836,11 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:rest, :global, doc: "Additional HTML attributes to add to the form tag.")
+  attr.(:rest, :global,
+    include: ~w(autocomplete),
+    doc: "Additional HTML attributes to add to the form tag."
+  )
+
   slot.(:inner_block, required: true, doc: "The content rendered inside of the form tag.")
 
   def form(assigns) do
@@ -2023,14 +2048,8 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:download, :boolean, default: nil)
-  attr.(:hreflang, :string, default: nil)
-  attr.(:referrerpolicy, :string, default: nil)
-  attr.(:rel, :string, default: nil)
-  attr.(:target, :string, default: nil)
-  attr.(:type, :string, default: nil)
-
   attr.(:rest, :global,
+    include: ~w(download hreflang referrerpolicy rel target type),
     doc: """
     Additional HTML attributes added to the `a` tag.
     """
@@ -2047,12 +2066,6 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={@navigate}
-      download={@download}
-      hreflang={@hreflang}
-      referrerpolicy={@referrerpolicy}
-      rel={@rel}
-      target={@target}
-      type={@type}
       data-phx-link="redirect"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       {@rest}
@@ -2064,12 +2077,6 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={@patch}
-      download={@download}
-      hreflang={@hreflang}
-      referrerpolicy={@referrerpolicy}
-      rel={@rel}
-      target={@target}
-      type={@type}
       data-phx-link="patch"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       {@rest}
@@ -2095,12 +2102,6 @@ defmodule Phoenix.Component do
     ~H"""
     <a
       href={if @method == "get", do: @href, else: "#"}
-      download={@download}
-      hreflang={@hreflang}
-      referrerpolicy={@referrerpolicy}
-      rel={@rel}
-      target={@target}
-      type={@type}
       data-method={if @method != "get", do: @method}
       data-csrf={if @method != "get", do: @csrf_token}
       data-to={if @method != "get", do: @href}
