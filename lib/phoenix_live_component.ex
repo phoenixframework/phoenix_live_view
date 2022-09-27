@@ -441,7 +441,7 @@ defmodule Phoenix.LiveComponent do
       @before_compile Phoenix.LiveView.Renderer
 
       # Phoenix.Component must come last so its @before_compile runs last
-      use Phoenix.Component, opts
+      use Phoenix.Component, Keyword.take(unquote(opts), [:global_prefixes])
 
       @doc false
       def __live__, do: %{kind: :component, module: __MODULE__}
