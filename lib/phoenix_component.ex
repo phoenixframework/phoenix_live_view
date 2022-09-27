@@ -916,10 +916,10 @@ defmodule Phoenix.Component do
   end
 
   def __render_slot__(changed, entries, argument) when is_list(entries) do
-    assigns = %{}
+    assigns = %{entries: entries, changed: changed, argument: argument}
 
     ~H"""
-    <%= for entry <- entries do %><%= call_inner_block!(entry, changed, argument) %><% end %>
+    <%= for entry <- @entries do %><%= call_inner_block!(entry, @changed, @argument) %><% end %>
     """
   end
 

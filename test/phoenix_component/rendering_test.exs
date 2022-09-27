@@ -1,5 +1,7 @@
 defmodule Phoenix.ComponentRenderingTest do
   use ExUnit.Case, async: true
+  import ExUnit.CaptureIO
+
   use Phoenix.Component
 
   defp h2s(template) do
@@ -41,7 +43,7 @@ defmodule Phoenix.ComponentRenderingTest do
     defp eval(%Phoenix.LiveView.Rendered{dynamic: dynamic}), do: Enum.map(dynamic.(true), &eval/1)
     defp eval(other), do: other
 
-    defp changed(assigns) do
+    def changed(assigns) do
       ~H"""
       <%= inspect(Map.get(assigns, :__changed__)) %>
       """
@@ -52,13 +54,20 @@ defmodule Phoenix.ComponentRenderingTest do
       assert eval(~H"<.changed foo={@foo} />") == [["nil"]]
     end
 
-    test "with tainted variable" do
-      foo = 1
-      assigns = %{foo: 1}
-      assert eval(~H"<.changed foo={foo} />") == [["nil"]]
+    @compile {:no_warn_undefined, __MODULE__.Tainted}
 
-      assigns = %{foo: 1, __changed__: %{}}
-      assert eval(~H"<.changed foo={foo} />") == [["%{foo: true}"]]
+    test "with tainted variable" do
+      assert capture_io(:stderr, fn ->
+               defmodule Tainted do
+                 def run(assigns) do
+                   foo = 1
+                   ~H"<Phoenix.ComponentRenderingTest.changed foo={foo} />"
+                 end
+               end
+             end) =~ "you are accessing the variable \"foo\" inside a LiveView template"
+
+      assert eval(__MODULE__.Tainted.run(%{foo: 1})) == [["nil"]]
+      assert eval(__MODULE__.Tainted.run(%{foo: 1, __changed__: %{}})) == [["%{foo: true}"]]
     end
 
     test "with changed assigns on root" do
