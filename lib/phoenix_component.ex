@@ -1837,7 +1837,7 @@ defmodule Phoenix.Component do
   )
 
   attr.(:rest, :global,
-    include: ~w(autocomplete),
+    include: ~w(autocomplete name rel enctype novalidate target),
     doc: "Additional HTML attributes to add to the form tag."
   )
 
