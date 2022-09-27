@@ -964,6 +964,24 @@ defmodule Phoenix.ComponentVerifyTest do
            """
   end
 
+  test "global includes" do
+    import Phoenix.LiveViewTest
+
+    defmodule GlobalIncludes do
+      use Phoenix.Component
+
+      attr :id, :any, required: true
+      attr :rest, :global, include: ~w(form)
+      def button(assigns), do: ~H|<button id={@id} {@rest}>button</button>|
+      def any_render(assigns), do: ~H|<.button id="123" form="my-form" />|
+    end
+
+    assigns = %{id: "abc", form: "my-form"}
+
+    assert render_component(&GlobalIncludes.button/1, assigns) ==
+             "<button id=\"abc\" form=\"my-form\">button</button>"
+  end
+
   defp get_line(module, fun \\ :line) do
     apply(module, fun, [])
   end

@@ -119,11 +119,13 @@ defmodule Phoenix.Component.Declarative do
   )
 
   @doc false
-  def __global__?(module, name) when is_atom(module) and is_binary(name) do
+  def __global__?(module, name, global_attr \\ nil) when is_atom(module) and is_binary(name) do
+    includes = global_attr && Keyword.get(global_attr.opts, :include, [])
+
     if function_exported?(module, :__global__?, 1) do
-      module.__global__?(name) or __global__?(name)
+      module.__global__?(name) or __global__?(name) or name in includes
     else
-      __global__?(name)
+      __global__?(name) or name in includes
     end
   end
 
@@ -169,11 +171,13 @@ defmodule Phoenix.Component.Declarative do
   defp annotate_call(_kind, left),
     do: left
 
-  defp annotate_arg(kind, {:=, meta, [{name, _, ctx} = var, arg]}) when is_atom(name) and is_atom(ctx) do
+  defp annotate_arg(kind, {:=, meta, [{name, _, ctx} = var, arg]})
+       when is_atom(name) and is_atom(ctx) do
     {:=, meta, [var, quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg)))]}
   end
 
-  defp annotate_arg(kind, {:=, meta, [arg, {name, _, ctx} = var]}) when is_atom(name) and is_atom(ctx) do
+  defp annotate_arg(kind, {:=, meta, [arg, {name, _, ctx} = var]})
+       when is_atom(name) and is_atom(ctx) do
     {:=, meta, [quote(do: unquote(__MODULE__).__pattern__!(unquote(kind), unquote(arg))), var]}
   end
 
@@ -303,6 +307,10 @@ defmodule Phoenix.Component.Declarative do
 
     if type == :global and Keyword.has_key?(opts, :examples) do
       compile_error!(line, file, "global attributes do not support the :examples option")
+    end
+
+    if type != :global and Keyword.has_key?(opts, :include) do
+      compile_error!(line, file, ":include is only supported for :global attributes")
     end
 
     {doc, opts} = Keyword.pop(opts, :doc, nil)
@@ -481,6 +489,11 @@ defmodule Phoenix.Component.Declarative do
       """)
     end
   end
+
+  defp invalid_attr_message(:include, inc) when is_list(inc) or is_nil(inc), do: nil
+
+  defp invalid_attr_message(:include, other),
+    do: "include only supports a list of attributes, got: #{inspect(other)}"
 
   defp invalid_attr_message(:default, nil), do: nil
 
@@ -854,20 +867,32 @@ defmodule Phoenix.Component.Declarative do
     []
   end
 
-  defp build_attr_doc_and_default(%{doc: nil, opts: [default: default]}, _indent) do
-    ["Defaults to `", inspect(default), "`."]
+  defp build_attr_doc_and_default(%{doc: doc, type: :global, opts: opts}, indent) do
+    case Keyword.fetch(opts, :include) do
+      {:ok, [_ | _] = inc} ->
+        if doc do
+          [build_doc(doc, indent, true), "Supports all globals plus: `", inspect(inc), "`."]
+        else
+          ["Supports all globals plus: `", inspect(inc), "`."]
+        end
+
+      _ ->
+        if doc, do: [build_doc(doc, indent, false)], else: []
+    end
   end
 
-  defp build_attr_doc_and_default(%{doc: doc, opts: [default: default]}, indent) do
-    [build_doc(doc, indent, true), "Defaults to `", inspect(default), "`."]
-  end
+  defp build_attr_doc_and_default(%{doc: doc, opts: opts}, indent) do
+    case Keyword.fetch(opts, :default) do
+      {:ok, default} ->
+        if doc do
+          [build_doc(doc, indent, true), "Defaults to `", inspect(default), "`."]
+        else
+          ["Defaults to `", inspect(default), "`."]
+        end
 
-  defp build_attr_doc_and_default(%{doc: nil}, _indent) do
-    []
-  end
-
-  defp build_attr_doc_and_default(%{doc: doc}, indent) do
-    [build_doc(doc, indent, false)]
+      :error ->
+        if doc, do: [build_doc(doc, indent, false)], else: []
+    end
   end
 
   defp build_doc(doc, indent, text_after?) do
@@ -993,8 +1018,8 @@ defmodule Phoenix.Component.Declarative do
          %{slots: slots, attrs: attrs, root: root} = call,
          %{slots: slots_defs, attrs: attrs_defs} = _component
        ) do
-    {attrs, has_global?} =
-      Enum.reduce(attrs_defs, {attrs, false}, fn attr_def, {attrs, has_global?} ->
+    {attrs, global_attr} =
+      Enum.reduce(attrs_defs, {attrs, nil}, fn attr_def, {attrs, global_attr} ->
         %{name: name, required: required, type: type, opts: opts} = attr_def
         attr_values = Keyword.get(opts, :values, nil)
         {value, attrs} = Map.pop(attrs, name)
@@ -1036,11 +1061,11 @@ defmodule Phoenix.Component.Declarative do
             end
         end
 
-        {attrs, has_global? || type == :global}
+        {attrs, global_attr || (type == :global and attr_def)}
       end)
 
     for {name, {line, _column, _type_value}} <- attrs,
-        not (has_global? and __global__?(caller_module, Atom.to_string(name))) do
+        not (global_attr && __global__?(caller_module, Atom.to_string(name), global_attr)) do
       message = "undefined attribute \"#{name}\" for component #{component_fa(call)}"
       warn(message, call.file, line)
     end
