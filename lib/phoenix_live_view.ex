@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView do
       @before_compile Phoenix.LiveView
 
       # Phoenix.Component must come last so its @before_compile runs last
-      use Phoenix.Component, Keyword.take(unquote(opts), [:global_prefixes])
+      use Phoenix.Component, Keyword.take(opts, [:global_prefixes])
     end
   end
 
