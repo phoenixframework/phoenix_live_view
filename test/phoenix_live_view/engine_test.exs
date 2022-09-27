@@ -160,6 +160,20 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
     end
 
+    test "does not render dynamic if it is unchanged via assigns dot" do
+      template = "<%= assigns.foo %>"
+      assert changed(template, %{foo: 123}, nil) == ["123"]
+      assert changed(template, %{foo: 123}, %{}) == [nil]
+      assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
+    end
+
+    test "does not render dynamic if it is unchanged via assigns access" do
+      template = "<%= assigns[:foo] %>"
+      assert changed(template, %{foo: 123}, nil) == ["123"]
+      assert changed(template, %{foo: 123}, %{}) == [nil]
+      assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
+    end
+
     test "renders dynamic if any of the assigns change" do
       template = "<%= @foo + @bar %>"
       assert changed(template, %{foo: 123, bar: 456}, nil) == ["579"]

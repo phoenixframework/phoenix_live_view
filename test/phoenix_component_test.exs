@@ -68,6 +68,16 @@ defmodule Phoenix.ComponentUnitTest do
       assert changed?(assigns, :key)
     end
 
+    test "track changes on unknown vars" do
+      assigns = assign(@assigns_changes, unknown: nil)
+      assert assigns.unknown == nil
+      assert changed?(assigns, :unknown)
+
+      assigns = assign(@assigns_changes, unknown: "changed")
+      assert assigns.unknown == "changed"
+      assert changed?(assigns, :unknown)
+    end
+
     test "keeps whole maps in changes" do
       assigns = assign(@assigns_changes, map: %{foo: :baz})
       assert assigns.map == %{foo: :baz}

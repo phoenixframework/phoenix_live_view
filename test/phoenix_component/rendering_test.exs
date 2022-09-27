@@ -169,7 +169,12 @@ defmodule Phoenix.ComponentRenderingTest do
       assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
       assert eval(~H"<.changed {%{a: 1, b: 2}} bar={@bar} />") == [["%{bar: true}"]]
 
-      assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
+      assigns = %{bar: 3, __changed__: %{bar: true}}
+
+      assert eval(~H"<.changed {%{a: assigns[:b], b: assigns[:a]}} bar={@bar} />") ==
+               [["%{bar: true}"]]
+
+      assigns = %{a: 1, b: 2, bar: 3, __changed__: %{a: true, b: true, bar: true}}
 
       assert eval(~H"<.changed {%{a: assigns[:b], b: assigns[:a]}} bar={@bar} />") ==
                [["%{a: true, b: true, bar: true}"]]

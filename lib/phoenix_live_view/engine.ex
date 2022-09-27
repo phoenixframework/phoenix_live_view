@@ -820,6 +820,17 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
+  # assigns[:name]
+  defp analyze_assign(
+         {{:., _, [Access, :get]}, _, [{:assigns, _, nil}, name]} = expr,
+         vars,
+         assigns,
+         nest
+       )
+       when is_atom(name) do
+    {expr, vars, Map.put(assigns, [name | nest], true)}
+  end
+
   # Maybe: assigns.foo[:bar]
   defp analyze_assign({{:., dot_meta, [Access, :get]}, meta, [left, right]}, vars, assigns, nest) do
     {args, vars, assigns} =
