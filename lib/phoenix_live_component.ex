@@ -434,6 +434,16 @@ defmodule Phoenix.LiveComponent do
 
   alias Phoenix.LiveView.Socket
 
+  @doc """
+  Uses LiveComponent in the current module.
+
+      use Phoenix.LiveComponent
+
+  ## Options
+
+    * `:global_prefixes` - the global prefixes to use for components. See
+      `Global Attributes` in `Phoenix.Component` for more information.
+  """
   defmacro __using__(opts \\ []) do
     quote do
       import Phoenix.LiveView

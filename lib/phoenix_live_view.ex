@@ -457,6 +457,8 @@ defmodule Phoenix.LiveView do
     * `:container` - configures the container the `LiveView` will be wrapped in
     * `:layout` - configures the layout the `LiveView` will be rendered in
     * `:log` - configures the log level for the `LiveView`
+    * `:global_prefixes` - the global prefixes to use for components. See
+      `Global Attributes` in `Phoenix.Component` for more information.
   """
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
