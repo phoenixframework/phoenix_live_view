@@ -159,7 +159,7 @@ var clone = (obj) => {
 };
 var closestPhxBinding = (el, binding, borderEl) => {
   do {
-    if (el.matches(`[${binding}]`)) {
+    if (el.matches(`[${binding}]`) && !el.disabled) {
       return el;
     }
     el = el.parentElement || el.parentNode;

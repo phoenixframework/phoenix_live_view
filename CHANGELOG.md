@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.18.1
+## 0.18.1 (2022-09-28)
 
 ## Bug Fixes
   * Fix phx-loading class being applied to dead views
