@@ -148,7 +148,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       cont: :text,
       tokens: [],
       subengine: subengine,
-      substate: subengine.init([]),
+      substate: subengine.init(opts),
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0),
       caller: Keyword.get(opts, :caller),
