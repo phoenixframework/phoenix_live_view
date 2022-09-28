@@ -5,6 +5,7 @@
 ## Bug Fixes
   * Fix phx-loading class being applied to dead views
   * Fix `<.live_upload_preview />` causing invalid attribute errors on uploads
+  * Do not fire phx events when element is disabled
 
 ## Enhancements
   * Support `:include` option to extend global attributes on a case-by-case basis
