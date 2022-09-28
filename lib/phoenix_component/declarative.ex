@@ -411,18 +411,20 @@ defmodule Phoenix.Component.Declarative do
   defp attr_slot(name, nil), do: "#{inspect(name)}"
   defp attr_slot(name, slot), do: "#{inspect(name)} in slot #{inspect(slot)}"
 
-  defp validate_attr_default!(slot, name, _type, [default: default, values: values], line, file) do
-    unless default in values do
-      compile_error!(line, file, """
-      expected the default value for attr #{attr_slot(name, slot)} to be one of #{inspect(values)}, \
-      got: #{inspect(default)}
-      """)
-    end
-  end
+  defp validate_attr_default!(slot, name, type, opts, line, file) do
+    case {opts[:default], opts[:values]} do
+      {default, nil} ->
+        unless valid_value?(type, default) do
+          bad_default!(slot, name, type, default, line, file)
+        end
 
-  defp validate_attr_default!(slot, name, type, [default: default], line, file) do
-    unless valid_value?(type, default) do
-      bad_default!(slot, name, type, default, line, file)
+      {default, values} ->
+        unless default in values do
+          compile_error!(line, file, """
+          expected the default value for attr #{attr_slot(name, slot)} to be one of #{inspect(values)}, \
+          got: #{inspect(default)}
+          """)
+        end
     end
   end
 
