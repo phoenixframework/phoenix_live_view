@@ -2279,10 +2279,14 @@ defmodule Phoenix.Component do
         rest
       end
 
-    preflighted_entries = for entry <- conf.entries, entry.preflighted?, do: entry
-    done_entries = for entry <- conf.entries, entry.done?, do: entry
-    valid? = Enum.any?(conf.entries) && Enum.empty?(conf.errors)
-    assigns = assign(assigns, :rest, rest)
+    assigns =
+      assign(assigns,
+        conf: conf,
+        rest: rest,
+        valid?: Enum.any?(conf.entries) && Enum.empty?(conf.errors),
+        done_entries: for(entry <- conf.entries, entry.done?, do: entry),
+        preflighted_entries: for(entry <- conf.entries, entry.preflighted?, do: entry)
+      )
 
     ~H"""
     <input
@@ -2292,11 +2296,11 @@ defmodule Phoenix.Component do
       accept={@upload.accept != :any && @upload.accept}
       data-phx-hook="Phoenix.LiveFileUpload"
       data-phx-update="ignore"
-      data-phx-upload-ref={conf.ref}
-      data-phx-active-refs={Enum.map_join(conf.entries, ",", & &1.ref)}
-      data-phx-done-refs={Enum.map_join(done_entries, ",", & &1.ref)}
-      data-phx-preflighted-refs={Enum.map_join(preflighted_entries, ",", & &1.ref)}
-      data-phx-auto-upload={valid? && conf.auto_upload?}
+      data-phx-upload-ref={@conf.ref}
+      data-phx-active-refs={Enum.map_join(@conf.entries, ",", & &1.ref)}
+      data-phx-done-refs={Enum.map_join(@done_entries, ",", & &1.ref)}
+      data-phx-preflighted-refs={Enum.map_join(@preflighted_entries, ",", & &1.ref)}
+      data-phx-auto-upload={@valid? && @conf.auto_upload?}
       {@rest}
     />
     """
@@ -2333,12 +2337,12 @@ defmodule Phoenix.Component do
       |> assigns_to_attributes([:entry])
       |> Keyword.put_new_lazy(:id, fn -> "phx-preview-#{ref}" end)
 
-    assigns = assign(assigns, :rest, rest)
+    assigns = assign(assigns, entry: entry, ref: ref, rest: rest)
 
     ~H"""
     <img
-      data-phx-upload-ref={entry.upload_ref}
-      data-phx-entry-ref={ref}
+      data-phx-upload-ref={@entry.upload_ref}
+      data-phx-entry-ref={@ref}
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
       {@rest} />
