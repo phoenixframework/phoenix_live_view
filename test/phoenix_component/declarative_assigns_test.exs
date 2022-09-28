@@ -67,6 +67,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     attr :text, :string, values: ["Save", "Cancel"]
     def button_with_values(assigns), do: ~H[<button><%= @text %></button>]
 
+    def button_with_values_and_default_1_line, do: __ENV__.line
+    attr :text, :string, values: ["Save", "Cancel"], default: "Save"
+    def button_with_values_and_default_1(assigns), do: ~H[<button><%= @text %></button>]
+
+    def button_with_values_and_default_2_line, do: __ENV__.line
+    attr :text, :string, default: "Save", values: ["Save", "Cancel"]
+    def button_with_values_and_default_2(assigns), do: ~H[<button><%= @text %></button>]
+
     def button_with_examples_line, do: __ENV__.line
     attr :text, :string, examples: ["Save", "Cancel"]
     def button_with_examples(assigns), do: ~H[<button><%= @text %></button>]
@@ -116,6 +124,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
     button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
+    button_with_values_and_default_1_line = FunctionComponentWithAttrs.button_with_values_and_default_1_line()
+    button_with_values_and_default_2_line = FunctionComponentWithAttrs.button_with_values_and_default_2_line()
     button_with_examples_line = FunctionComponentWithAttrs.button_with_examples_line()
 
     assert FunctionComponentWithAttrs.__components__() == %{
@@ -245,6 +255,36 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                ],
                slots: []
              },
+             button_with_values_and_default_1: %{
+              kind: :def,
+              attrs: [
+                %{
+                  line: button_with_values_and_default_1_line + 1,
+                  name: :text,
+                  opts: [values: ["Save", "Cancel"], default: "Save"],
+                  required: false,
+                  doc: nil,
+                  slot: nil,
+                  type: :string
+                }
+              ],
+              slots: []
+            },
+            button_with_values_and_default_2: %{
+              kind: :def,
+              attrs: [
+                %{
+                  line: button_with_values_and_default_2_line + 1,
+                  name: :text,
+                  opts: [default: "Save", values: ["Save", "Cancel"]],
+                  required: false,
+                  doc: nil,
+                  slot: nil,
+                  type: :string
+                }
+              ],
+              slots: []
+            },
              button_with_examples: %{
                kind: :def,
                attrs: [
