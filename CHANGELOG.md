@@ -4,9 +4,11 @@
 
 ## Bug Fixes
   * Fix phx-loading class being applied to dead views
+  * Fix `<.live_upload_preview />` causing invalid attribute errors on uploads
 
 ## Enhancements
   * Support `:include` option to extend global attributes on a case-by-case basis
+  * Warn when accessing a variable binding defined outside of `~H`
 
 ## 0.18.0 (2022-09-20)
 
