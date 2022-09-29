@@ -2101,7 +2101,7 @@ defmodule Phoenix.Component do
 
     ~H"""
     <a
-      href={if @method == "get", do: @href, else: "#"}
+      href={@href}
       data-method={if @method != "get", do: @method}
       data-csrf={if @method != "get", do: @csrf_token}
       data-to={if @method != "get", do: @href}
