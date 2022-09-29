@@ -5,6 +5,9 @@
 ## Bug Fixes
   * Fix match error when defining `:values` before `:default`
 
+## Enhancements
+  * Add `intersperse` component for rendering a separator between an enumerable
+
 ## 0.18.1 (2022-09-28)
 
 ## Bug Fixes
