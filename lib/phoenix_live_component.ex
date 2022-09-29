@@ -205,12 +205,12 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~H"\""
+          ~H"""
           <form phx-submit="..." phx-target={@myself}>
             <input name="title"><%= @card.title %></input>
             ...
           </form>
-          "\""
+          """
         end
 
         ...
@@ -357,11 +357,11 @@ defmodule Phoenix.LiveComponent do
         use Phoenix.LiveComponent
 
         def render(assigns) do
-          ~H"\""
+          ~H"""
           <button class="css-framework-class" phx-click="click">
             <%= @text %>
           </button>
-          "\""
+          """
         end
 
         def handle_event("click", _, socket) do
@@ -373,11 +373,11 @@ defmodule Phoenix.LiveComponent do
   Instead, it is much simpler to create a function component:
 
       def my_button(%{text: _, click: _} = assigns) do
-        ~H"\""
+        ~H"""
         <button class="css-framework-class" phx-click={@click}>
           <%= @text %>
         </button>
-        "\""
+        """
       end
 
   If you keep components mostly as an application concern with
