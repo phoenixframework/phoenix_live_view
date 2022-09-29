@@ -2352,4 +2352,42 @@ defmodule Phoenix.Component do
   def live_img_preview(_assigns) do
     raise ArgumentError, "missing required :entry attribute to <.live_img_preview/>"
   end
+
+  @doc """
+  Intersperses separator slot between an enumerable.
+
+  Useful when you need to add a separator between items such as when
+  rendering breadcrumbs for navigation. Provides each item to the
+  inner block.
+
+  ## Examples
+
+  ```heex
+  <.intersperse :let={item} enum={["home", "profile", "settings"]}>
+    <:separator>
+      <span class="sep">|</span>
+    </:separator>
+    <%= item.name %>
+  </.intersperse>
+  ```
+
+  Renders the following markup:
+
+      home <span class="sep">|</span> profile <span class="sep">|</span> settings
+  """
+  attr.(:enum, :any, required: true, doc: "the enumerable to intersperse with separators")
+  slot.(:inner_block, required: true, doc: "the inner_block to render for each item")
+  slot.(:separator, required: true, doc: "the slot for the separator")
+
+  def intersperse(assigns) do
+    ~H"""
+    <%= for item <- Enum.intersperse(@enum, :separator) do %>
+      <%= if item == :separator do %>
+        <%= render_slot(@separator) %>
+      <% else %>
+        <%= render_slot(@inner_block, item) %>
+      <% end %>
+    <% end %>
+    """
+  end
 end
