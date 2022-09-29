@@ -1048,7 +1048,9 @@ defmodule Phoenix.LiveView.Engine do
 
       Using variables in HEEx templates are discouraged as they disable change tracking. \
       You are only allowed to access variables defined by Elixir control-flow structures, \
-      such as if/case/for, or those defined by the special attributes :let/:if/:for.
+      such as if/case/for, or those defined by the special attributes :let/:if/:for. \
+      If you are shadowing a variable defined outside of the template using a control-flow \
+      structure, you must choose a unique variable name within the template.
 
       Instead of:
 
