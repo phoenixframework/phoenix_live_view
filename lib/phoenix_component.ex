@@ -248,7 +248,7 @@ defmodule Phoenix.Component do
 
   ## Slots
 
-  In addition to attributes, function components can accept blocks of HEEx content, referred to as
+  In addition to attributes, function components can accept blocks of HEEx content, referred to
   as slots. Slots enable further customization of the rendered HTML, as the caller can pass the
   function component HEEx content they want the component to render. `Phoenix.Component` provides
   the `slot/3` macro used to declare slots for function components:
