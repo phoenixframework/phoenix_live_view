@@ -14,13 +14,13 @@ You can trigger live navigation in two ways:
 For example, instead of writing the following in a template:
 
 ```heex
-<.live href={~p"/pages/#{@page + 1}"}>Next</.live>
+<.link href={~p"/pages/#{@page + 1}"}>Next</.link>
 ```
 
 You would write:
 
 ```heex
-<.live patch={~p"/pages/#{@page + 1}"}>Next</.live>
+<.link patch={~p"/pages/#{@page + 1}"}>Next</.link>
 ```
 
 Or in a LiveView:
@@ -76,7 +76,7 @@ the system and you define it in the router as:
 Now to add live sorting, you could do:
 
 ```heex
-<.live patch={path(~p"/users", sort_by: "name")}>Sort by name</.link>
+<.link patch={path(~p"/users", sort_by: "name")}>Sort by name</.link>
 ```
 
 When clicked, since we are navigating to the current LiveView,
