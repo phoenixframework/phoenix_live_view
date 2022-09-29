@@ -425,7 +425,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-      <.intersperse :let={item} items={[1, 2, 3]}>
+      <.intersperse :let={item} enum={[1, 2, 3]}>
         <:separator><span class="sep">|</span></:separator>
         Item<%= item %>
       </.intersperse>
@@ -435,7 +435,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                "\n  \n    \n  Item1\n\n  \n\n  \n    <span class=\"sep\">|</span>\n  \n\n  \n    \n  Item2\n\n  \n\n  \n    <span class=\"sep\">|</span>\n  \n\n  \n    \n  Item3\n\n  \n"
 
       template = ~H"""
-      <.intersperse :let={item} items={[1]}>
+      <.intersperse :let={item} enum={[1]}>
         <:separator><span class="sep">|</span></:separator>
         Item<%= item %>
       </.intersperse>

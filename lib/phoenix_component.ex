@@ -2354,7 +2354,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Intersperses separator slot between a collection of items.
+  Intersperses separator slot between an enumerable.
 
   Useful when you need to add a separator between items such as when
   rendering breadcrumbs for navigation. Provides each item to the
@@ -2362,24 +2362,26 @@ defmodule Phoenix.Component do
 
   ## Examples
 
-      <.intersperse :let={item} items={["home", "profile", "settings"]}>
-        <:separator>
-          <span class="sep">|</span>
-        </:separator>
-        <%= item.name %>
-      </.intersperse>
+  ```heex
+  <.intersperse :let={item} enum={["home", "profile", "settings"]}>
+    <:separator>
+      <span class="sep">|</span>
+    </:separator>
+    <%= item.name %>
+  </.intersperse>
+  ```
 
   Renders the following markup:
 
       home <span class="sep">|</span> profile <span class="sep">|</span> settings
   """
-  attr.(:items, :list, required: true)
-  slot.(:inner_block, required: true)
-  slot.(:separator, required: true)
+  attr.(:enum, :any, required: true, doc: "the enumerable to intersperse with separators")
+  slot.(:inner_block, required: true, doc: "the inner_block to render for each item")
+  slot.(:separator, required: true, doc: "the slot for the separator")
 
   def intersperse(assigns) do
     ~H"""
-    <%= for item <- Enum.intersperse(@items, :separator) do %>
+    <%= for item <- Enum.intersperse(@enum, :separator) do %>
       <%= if item == :separator do %>
         <%= render_slot(@separator) %>
       <% else %>
