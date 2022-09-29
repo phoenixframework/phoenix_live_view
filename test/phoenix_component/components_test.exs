@@ -74,7 +74,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       assert render(~H|<.link href="/" class="foo">text</.link>|) ==
-               ~s|<a href="/" class=\"foo\">text</a>|
+               ~s|<a href="/" class="foo">text</a>|
     end
 
     test "with no href" do
@@ -113,17 +113,17 @@ defmodule Phoenix.LiveView.ComponentsTest do
       csrf = Phoenix.HTML.Tag.csrf_token_value("/users")
 
       assert render(~H|<.link href="/users" method={:delete}>delete</.link>|) ==
-               "<a href=\"#\" data-method=\"delete\" data-csrf=\"#{csrf}\" data-to=\"/users\">delete</a>"
+               ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
 
       assert render(~H|<.link href="/users" method="delete">delete</.link>|) ==
-               "<a href=\"#\" data-method=\"delete\" data-csrf=\"#{csrf}\" data-to=\"/users\">delete</a>"
+               ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
     end
 
     test "csrf with custom token" do
       assigns = %{}
 
       assert render(~H|<.link href="/users" method={:post} csrf_token="123">delete</.link>|) ==
-               "<a href=\"#\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\">delete</a>"
+               ~s|<a href="/users" data-method="post" data-csrf="123" data-to="/users">delete</a>|
     end
 
     test "csrf with confirm" do
@@ -132,7 +132,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert render(
                ~H|<.link href="/users" method={:post} csrf_token="123" data-confirm="are you sure?">delete</.link>|
              ) ==
-               "<a href=\"#\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\" data-confirm=\"are you sure?\">delete</a>"
+               "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\" data-confirm=\"are you sure?\">delete</a>"
     end
 
     test "invalid schemes" do
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       assert_raise ArgumentError, ~r/unsupported scheme given to <.link>/, fn ->
         render(~H|<.link href="javascript:alert('bad')">bad</.link>|) ==
-          "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\">delete</a>"
+          ~s|<a href="/users" data-method="post" data-csrf="123">delete</a>|
       end
     end
 
@@ -148,7 +148,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       assert render(~H|<.link href={{:javascript, "alert('bad')"}}>js</.link>|) ==
-               "<a href=\"javascript:alert(&#39;bad&#39;)\">js</a>"
+               ~s|<a href="javascript:alert(&#39;bad&#39;)">js</a>|
     end
   end
 
@@ -165,7 +165,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       dom = render(template)
 
       assert dom ==
-               "<div id=\"wrap\" phx-hook=\"Phoenix.FocusWrap\" class=\"foo\">\n  <span id=\"wrap-start\" tabindex=\"0\" aria-hidden=\"true\"></span>\n  \n  <div>content</div>\n\n  <span id=\"wrap-end\" tabindex=\"0\" aria-hidden=\"true\"></span>\n</div>"
+               ~s|<div id="wrap" phx-hook="Phoenix.FocusWrap" class="foo">\n  <span id="wrap-start" tabindex="0" aria-hidden="true"></span>\n  \n  <div>content</div>\n\n  <span id="wrap-end" tabindex="0" aria-hidden="true"></span>\n</div>|
     end
   end
 
@@ -228,7 +228,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       assert render(
                ~H|<.dynamic_tag name="p" {%{"<script>alert('nice try');</script>" => ""}}></.dynamic_tag>|
-             ) == ~s|<p &lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;=\"\"></p>|
+             ) == ~s|<p &lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;=""></p>|
     end
 
     test "with empty inner block" do
