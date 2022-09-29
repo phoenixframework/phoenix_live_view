@@ -2253,7 +2253,7 @@ defmodule Phoenix.Component do
 
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
     IO.warn(
-      "live_file_input(upload) is deprecatead, please use <.live_file_input upload={upload} /> instead"
+      "live_file_input(upload) is deprecated, please use <.live_file_input upload={upload} /> instead"
     )
 
     Phoenix.LiveView.Helpers.live_file_input(conf, [])
@@ -2322,7 +2322,7 @@ defmodule Phoenix.Component do
 
   def live_img_preview(%Phoenix.LiveView.UploadEntry{} = entry) do
     IO.warn("""
-    live_img_preview(entry) is deprecatead, please use <.live_img_preview entry={entry} /> instead
+    live_img_preview(entry) is deprecated, please use <.live_img_preview entry={entry} /> instead
     """)
 
     live_img_preview(%{entry: entry})
