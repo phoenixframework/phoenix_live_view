@@ -1811,7 +1811,6 @@ defmodule Phoenix.Component do
   )
 
   attr.(:method, :string,
-    default: nil,
     doc: """
     The HTTP method.
     It is only used if an `:action` is given. If the method is not `get` nor `post`,
@@ -1847,15 +1846,7 @@ defmodule Phoenix.Component do
     # Extract options and then to the same call as form_for
     action = assigns[:action]
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
-
-    exclude =
-      if assigns.method do
-        [:action, :for, :rest]
-      else
-        [:action, :for, :rest, :method]
-      end
-
-    form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), exclude)
+    form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), [:action, :for, :rest])
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} =
