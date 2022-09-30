@@ -3795,7 +3795,7 @@ within:
       }
     }
     bindClicks() {
-      window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
+      window.addEventListener("click", (e) => this.clickStartedAtTarget = e.target);
       this.bindClick("click", "click", false);
       this.bindClick("mousedown", "capture-click", true);
     }
