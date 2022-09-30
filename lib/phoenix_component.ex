@@ -1847,7 +1847,15 @@ defmodule Phoenix.Component do
     # Extract options and then to the same call as form_for
     action = assigns[:action]
     form_for = assigns[:for] || raise ArgumentError, "missing :for assign to form"
-    form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), [:action, :for, :rest])
+
+    exclude =
+      if assigns.method do
+        [:action, :for, :rest]
+      else
+        [:action, :for, :rest, :method]
+      end
+
+    form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), exclude)
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} =
@@ -1860,7 +1868,7 @@ defmodule Phoenix.Component do
     # unless the action is given.
     {attrs, hidden_method, csrf_token} =
       if action do
-        {method, opts} = Keyword.pop!(opts, :method)
+        {method, opts} = Keyword.pop(opts, :method)
         {method, hidden_method} = form_method(method)
 
         {csrf_token, opts} =
