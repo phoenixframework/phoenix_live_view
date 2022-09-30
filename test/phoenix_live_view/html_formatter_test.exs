@@ -1959,6 +1959,26 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
+    test "doesn't break line when tag/component is right after the text" do
+      assert_formatter_doesnt_change("""
+      <p>
+        (<span label="application programming interface">API</span>).
+      </p>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <p>
+        (<div label="application programming interface">API</div>).
+      </p>
+      """)
+
+      assert_formatter_doesnt_change("""
+      <p>
+        (<.abbr label="application programming interface">API</.abbr>).
+      </p>
+      """)
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do
