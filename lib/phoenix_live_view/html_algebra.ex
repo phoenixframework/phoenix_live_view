@@ -85,7 +85,26 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
             end
 
           true ->
-            concat([prev_doc, break(""), next_doc])
+            # For most cases, we do want to `break("")` here because they are
+            # block tags (div, p, etc..). But, in case the previous or next token
+            # is a text without whitespace, such as:
+            #
+            #   (<div label="application programming interface">API</div>).
+            #
+            # We don't want to break("") otherwise it would format it like this:
+            #
+            #   (
+            #     <div label="application programming interface">API</div>
+            #   ).
+            #
+            # Therefore, this check if the previous or next token is not a text
+            # and, if it is a text, check if that contains whitespace.
+            if (not text?(prev_node) and not text?(next_node)) or
+                 (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) do
+              concat([prev_doc, break(""), next_doc])
+            else
+              concat([prev_doc, next_doc])
+            end
         end
 
       {next_node, next_type, doc}
@@ -121,6 +140,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp tag_block?({:tag_block, _, _, _, _}), do: true
   defp tag_block?(_node), do: false
+
+  defp text?({:text, _text, _meta}), do: true
+  defp text?(_node), do: false
 
   @codepoints '\s\n\r\t'
 
