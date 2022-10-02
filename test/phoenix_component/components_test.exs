@@ -115,10 +115,10 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert render(~H|<.link href="/users" method={:delete}>delete</.link>|) ==
                ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
 
-      assert render(~H|<.link href="/users" method="delete">delete</.link>|) ==
+      assert render(~H|<.link href="/users" method="delete" csrf_token={true}>delete</.link>|) ==
                ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
 
-      assert render(~H|<.link href="/users" method="delete" csrf_token=false>delete</.link>|) ==
+      assert render(~H|<.link href="/users" method="delete" csrf_token={false}>delete</.link>|) ==
                ~s|<a href="/users" data-method="delete" data-to="/users">delete</a>|
     end
 
