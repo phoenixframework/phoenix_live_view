@@ -929,7 +929,8 @@ defmodule Phoenix.LiveView do
   ## Options
 
     * `:to` - the path to redirect to. It must always be a local path
-    * `:external` - an external path to redirect to
+    * `:external` - an external path to redirect to. Either a string
+      or `{scheme, url}` to redirect to a custom scheme
   """
   def redirect(socket, opts \\ [])
 
@@ -940,6 +941,9 @@ defmodule Phoenix.LiveView do
 
   def redirect(%Socket{} = socket, external: url) do
     case url do
+      {scheme, rest} ->
+        put_redirect(socket, {:redirect, %{external: "#{scheme}:#{rest}"}})
+
       url when is_binary(url) ->
         external_url = Phoenix.LiveView.Utils.valid_string_destination!(url, "redirect/2")
         put_redirect(socket, {:redirect, %{external: external_url}})

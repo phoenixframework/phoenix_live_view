@@ -215,16 +215,12 @@ defmodule Phoenix.LiveViewUnitTest do
     test "allows external paths" do
       assert redirect(@socket, external: "http://foo.com/bar").redirected ==
                {:redirect, %{external: "http://foo.com/bar"}}
+
+      assert redirect(@socket, external: {:javascript, "alert"}).redirected ==
+               {:redirect, %{external: "javascript:alert"}}
     end
 
     test "disallows insecure external paths" do
-      msg =
-        ~r/expected :external option in redirect\/2 to be valid URL, got: {:javascript, "alert\('xss'\)"}/
-
-      assert_raise ArgumentError, msg, fn ->
-        redirect(@socket, external: {:javascript, "alert('xss')"})
-      end
-
       assert_raise ArgumentError, ~r/unsupported scheme given to redirect\/2/, fn ->
         redirect(@socket, external: "javascript:alert('xss');")
       end
