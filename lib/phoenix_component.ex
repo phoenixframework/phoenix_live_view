@@ -2040,10 +2040,10 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:csrf_token, :string,
-    default: nil,
+  attr.(:csrf_token, :any,
+    default: true,
     doc: """
-    A custom token to use for links with an HTTP method other than `get`.
+    A boolean or custom token to use for links with an HTTP method other than `get`.
     """
   )
 
@@ -2084,25 +2084,14 @@ defmodule Phoenix.Component do
   end
 
   def link(%{href: href} = assigns) when href != "#" and not is_nil(href) do
-    assigns =
-      case Phoenix.LiveView.Utils.valid_destination!(href, "<.link>") do
-        href when is_binary(href) ->
-          assigns
-          |> assign(:href, href)
-          |> update(:csrf_token, fn
-            nil -> Phoenix.HTML.Tag.csrf_token_value(href)
-            csrf_token -> csrf_token
-          end)
-
-        href ->
-          assign(assigns, :href, href)
-      end
+    href = Phoenix.LiveView.Utils.valid_destination!(href, "<.link>")
+    assigns = assign(assigns, :href, href)
 
     ~H"""
     <a
       href={@href}
       data-method={if @method != "get", do: @method}
-      data-csrf={if @method != "get", do: @csrf_token}
+      data-csrf={if @method != "get", do: csrf_token(@csrf_token, @href)}
       data-to={if @method != "get", do: @href}
       {@rest}
     ><%= render_slot(@inner_block) %></a>
@@ -2114,6 +2103,10 @@ defmodule Phoenix.Component do
     <a href="#" {@rest}><%= render_slot(@inner_block) %></a>
     """
   end
+
+  defp csrf_token(true, href), do: Phoenix.HTML.Tag.csrf_token_value(href)
+  defp csrf_token(false, _href), do: nil
+  defp csrf_token(csrf, _href) when is_binary(csrf), do: csrf
 
   @doc """
   Wraps tab focus around a container for accessibility.

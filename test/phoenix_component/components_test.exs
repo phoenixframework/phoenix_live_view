@@ -117,6 +117,9 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       assert render(~H|<.link href="/users" method="delete">delete</.link>|) ==
                ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
+
+      assert render(~H|<.link href="/users" method="delete" csrf_token=false>delete</.link>|) ==
+               ~s|<a href="/users" data-method="delete" data-to="/users">delete</a>|
     end
 
     test "csrf with custom token" do
@@ -135,6 +138,13 @@ defmodule Phoenix.LiveView.ComponentsTest do
                "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\" data-confirm=\"are you sure?\">delete</a>"
     end
 
+    test "js schemes" do
+      assigns = %{}
+
+      assert render(~H|<.link href={{:javascript, "alert('bad')"}}>js</.link>|) ==
+               ~s|<a href="javascript:alert(&#39;bad&#39;)">js</a>|
+    end
+
     test "invalid schemes" do
       assigns = %{}
 
@@ -142,13 +152,6 @@ defmodule Phoenix.LiveView.ComponentsTest do
         render(~H|<.link href="javascript:alert('bad')">bad</.link>|) ==
           ~s|<a href="/users" data-method="post" data-csrf="123">delete</a>|
       end
-    end
-
-    test "js schemes" do
-      assigns = %{}
-
-      assert render(~H|<.link href={{:javascript, "alert('bad')"}}>js</.link>|) ==
-               ~s|<a href="javascript:alert(&#39;bad&#39;)">js</a>|
     end
   end
 
