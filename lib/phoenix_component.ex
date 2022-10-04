@@ -2367,6 +2367,7 @@ defmodule Phoenix.Component do
 
       home <span class="sep">|</span> profile <span class="sep">|</span> settings
   """
+  @doc type: :component
   attr.(:enum, :any, required: true, doc: "the enumerable to intersperse with separators")
   slot.(:inner_block, required: true, doc: "the inner_block to render for each item")
   slot.(:separator, required: true, doc: "the slot for the separator")
