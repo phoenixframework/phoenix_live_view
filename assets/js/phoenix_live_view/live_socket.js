@@ -663,15 +663,13 @@ export default class LiveSocket {
 
       this.requestDOMUpdate(() => {
         if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
-          this.main.pushLinkPatch(href, null)
+          this.main.pushLinkPatch(href, null, () => {
+            this.maybeScroll(scroll)
+          })
         } else {
           this.replaceMain(href, null, () => {
             if(root){ this.replaceRootHistory() }
-            if(typeof(scroll) === "number"){
-              setTimeout(() => {
-                window.scrollTo(0, scroll)
-              }, 0) // the body needs to render before we scroll.
-            }
+            this.maybeScroll(scroll)
           })
         }
       })
@@ -702,6 +700,14 @@ export default class LiveSocket {
         }
       })
     }, false)
+  }
+
+  maybeScroll(scroll) {
+    if(typeof(scroll) === "number"){
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scroll)
+      }) // the body needs to render before we scroll.
+    }
   }
 
   dispatchEvent(event, payload = {}){
