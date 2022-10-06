@@ -22,7 +22,7 @@ callback, for example:
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
 | [DOM Patching](dom-patching.md) | `phx-mounted`, `phx-update`, `phx-remove` |
 | [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
-| [Lifecycle Events](#lifecycle-events) | `phx-mounted` | `phx-disconnected` | `phx-connected`|
+| [Lifecycle Events](#lifecycle-events) | `phx-mounted`, `phx-disconnected`, `phx-connected` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [Static tracking](`Phoenix.LiveView.static_changed?/1`) | `phx-track-static` |
 
