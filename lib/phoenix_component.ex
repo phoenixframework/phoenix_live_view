@@ -1522,7 +1522,7 @@ defmodule Phoenix.Component do
 
   * You specify a literal attribute (such as `value="string"` or `value`, but not `value={expr}`)
   and the type does not match. The following types currently support literal validation:
-  `:string`, `:atom`, `:boolean`, `:integer`, `:float`, and `:list`.
+  `:string`, `:atom`, `:boolean`, `:integer`, `:float`, `:map` and `:list`.
 
   * You specify a literal attribute and it is not a member of the `:values` list.
 
