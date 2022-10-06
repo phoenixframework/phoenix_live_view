@@ -1236,6 +1236,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp attr_type({:<<>>, _, _} = value), do: {:string, value}
   defp attr_type(value) when is_list(value), do: {:list, value}
+  defp attr_type(value = {:%{}, _, _}), do: {:map, value}
   defp attr_type(value) when is_binary(value), do: {:string, value}
   defp attr_type(value) when is_integer(value), do: {:integer, value}
   defp attr_type(value) when is_float(value), do: {:float, value}

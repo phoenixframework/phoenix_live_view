@@ -124,8 +124,13 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
     button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
-    button_with_values_and_default_1_line = FunctionComponentWithAttrs.button_with_values_and_default_1_line()
-    button_with_values_and_default_2_line = FunctionComponentWithAttrs.button_with_values_and_default_2_line()
+
+    button_with_values_and_default_1_line =
+      FunctionComponentWithAttrs.button_with_values_and_default_1_line()
+
+    button_with_values_and_default_2_line =
+      FunctionComponentWithAttrs.button_with_values_and_default_2_line()
+
     button_with_examples_line = FunctionComponentWithAttrs.button_with_examples_line()
 
     assert FunctionComponentWithAttrs.__components__() == %{
@@ -256,35 +261,35 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                slots: []
              },
              button_with_values_and_default_1: %{
-              kind: :def,
-              attrs: [
-                %{
-                  line: button_with_values_and_default_1_line + 1,
-                  name: :text,
-                  opts: [values: ["Save", "Cancel"], default: "Save"],
-                  required: false,
-                  doc: nil,
-                  slot: nil,
-                  type: :string
-                }
-              ],
-              slots: []
-            },
-            button_with_values_and_default_2: %{
-              kind: :def,
-              attrs: [
-                %{
-                  line: button_with_values_and_default_2_line + 1,
-                  name: :text,
-                  opts: [default: "Save", values: ["Save", "Cancel"]],
-                  required: false,
-                  doc: nil,
-                  slot: nil,
-                  type: :string
-                }
-              ],
-              slots: []
-            },
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_values_and_default_1_line + 1,
+                   name: :text,
+                   opts: [values: ["Save", "Cancel"], default: "Save"],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
+                 }
+               ],
+               slots: []
+             },
+             button_with_values_and_default_2: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_values_and_default_2_line + 1,
+                   name: :text,
+                   opts: [default: "Save", values: ["Save", "Cancel"]],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
+                 }
+               ],
+               slots: []
+             },
              button_with_examples: %{
                kind: :def,
                attrs: [
@@ -814,6 +819,11 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       ## Attributes
 
       * `attr` (`:float`)
+      """,
+      fun_attr_map: """
+      ## Attributes
+
+      * `attr` (`:map`)
       """,
       fun_attr_list: """
       ## Attributes

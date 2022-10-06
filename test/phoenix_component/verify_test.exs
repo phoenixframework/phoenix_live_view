@@ -131,6 +131,7 @@ defmodule Phoenix.ComponentVerifyTest do
           attr :boolean, :boolean
           attr :integer, :integer
           attr :float, :float
+          attr :map, :map
           attr :list, :list
           attr :global, :global
 
@@ -154,6 +155,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func any={true} />
             <.func any={1} />
             <.func any={1.0} />
+            <.func any={%{}} />
             <.func any={[]} />
             <.func any={nil} />
             """
@@ -168,6 +170,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func string={true} />
             <.func string={1} />
             <.func string={1.0} />
+            <.func string={%{}} />
             <.func string={[]} />
             <.func string={nil} />
             """
@@ -182,6 +185,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func atom={true} />
             <.func atom={1} />
             <.func atom={1.0} />
+            <.func atom={%{}} />
             <.func atom={[]} />
             <.func atom={nil} />
             """
@@ -196,6 +200,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func boolean={true} />
             <.func boolean={1} />
             <.func boolean={1.0} />
+            <.func boolean={%{}} />
             <.func boolean={[]} />
             <.func boolean={nil} />
             """
@@ -210,6 +215,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func integer={true} />
             <.func integer={1} />
             <.func integer={1.0} />
+            <.func integer={%{}} />
             <.func integer={[]} />
             <.func integer={nil} />
             """
@@ -224,8 +230,24 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func float={true} />
             <.func float={1} />
             <.func float={1.0} />
+            <.func float={%{}} />
             <.func float={[]} />
             <.func float={nil} />
+            """
+          end
+
+          def render_map_line, do: __ENV__.line + 4
+
+          def map_render(assigns) do
+            ~H"""
+            <.func map="map" />
+            <.func map={:map} />
+            <.func map={true} />
+            <.func map={1} />
+            <.func map={1.0} />
+            <.func map={%{}} />
+            <.func map={[]} />
+            <.func map={nil} />
             """
           end
 
@@ -238,6 +260,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func list={true} />
             <.func list={1} />
             <.func list={1.0} />
+            <.func list={%{}} />
             <.func list={[]} />
             <.func list={nil} />
             """
@@ -261,8 +284,9 @@ defmodule Phoenix.ComponentVerifyTest do
           {true, 2},
           {1, 3},
           {1.0, 4},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "string" in component \
@@ -278,7 +302,8 @@ defmodule Phoenix.ComponentVerifyTest do
           {"atom", 0},
           {1, 3},
           {1.0, 4},
-          {[], 5}
+          {%{}, 5},
+          {[], 6}
         ] do
       assert warnings =~ """
              attribute "atom" in component \
@@ -295,8 +320,9 @@ defmodule Phoenix.ComponentVerifyTest do
           {:boolean, 1},
           {1, 3},
           {1.0, 4},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "boolean" in component \
@@ -313,8 +339,9 @@ defmodule Phoenix.ComponentVerifyTest do
           {:integer, 1},
           {true, 2},
           {1.0, 4},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "integer" in component \
@@ -331,13 +358,33 @@ defmodule Phoenix.ComponentVerifyTest do
           {:float, 1},
           {true, 2},
           {1, 3},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "float" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :float, got: #{inspect(value)}
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
+             """
+    end
+
+    line = get_line(__MODULE__.TypeAttrs, :render_map_line)
+
+    for {value, offset} <- [
+          {"map", 0},
+          {:map, 1},
+          {true, 2},
+          {1, 3},
+          {1.0, 4},
+          {[], 6},
+          {nil, 7}
+        ] do
+      assert warnings =~ """
+             attribute "map" in component \
+             Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
+             must be a :map, got: #{inspect(value)}
                test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
@@ -350,7 +397,8 @@ defmodule Phoenix.ComponentVerifyTest do
           {true, 2},
           {1, 3},
           {1.0, 4},
-          {nil, 6}
+          {%{}, 5},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "list" in component \
