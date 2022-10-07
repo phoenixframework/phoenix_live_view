@@ -1,14 +1,56 @@
 defmodule Phoenix.LiveViewTest do
   @moduledoc ~S'''
-  Conveniences for testing Phoenix LiveViews.
+  Conveniences for testing function components as well as
+  LiveViews and LiveComponents.
 
-  In LiveView tests, we interact with views via process
-  communication in substitution of a browser. Like a browser,
-  our test process receives messages about the rendered updates
-  from the view which can be asserted against to test the
-  life-cycle and behavior of LiveViews and their children.
+  ## Testing function components
 
-  ## LiveView Testing
+  There are two mechanisms for testing function components. Imagine the
+  following component:
+
+      def greet(assigns) do
+        ~H"""
+        <div>Hello, <%= @name %>!</div>
+        """
+      end
+
+  You can test it by using `render_component/3`, passing the function
+  reference to the component as first argument:
+
+      import Phoenix.LiveViewTest
+
+      test "greets" do
+        assert render_component(&MyComponents.greet/1, name: "Mary") ==
+                 "<div>Hello, Mary!</div>"
+      end
+
+  However, for complex components, often the simplest way to test them
+  is by using the `~H` sigil itself:
+
+      import Phoenix.Component
+      import Phoenix.LiveViewTest
+
+      test "greets" do
+        assigns = %{}
+        assert rendered_to_string(~H"""
+               <MyComponents.greet name="Mary" />
+               """) ==
+                 "<div>Hello, Mary!</div>"
+      end
+
+  The difference is that we use `rendered_to_string/1` to convert the rendered
+  template to a string for testing.
+
+  ## Testing LiveViews and LiveComponents
+
+  In LiveComponents and LiveView tests, we interact with views
+  via process communication in substitution of a browser.
+  Like a browser, our test process receives messages about the
+  rendered updates from the view which can be asserted against
+  to test the life-cycle and behavior of LiveViews and their
+  children.
+
+  ### Testing LiveViews
 
   The life-cycle of a LiveView as outlined in the `Phoenix.LiveView`
   docs details how a view starts as a stateless HTML render in a disconnected
@@ -110,49 +152,11 @@ defmodule Phoenix.LiveViewTest do
       send(view.pid, {:set_temp, 50})
       assert render(view) =~ "The temperature is: 50℉"
 
-  ## Testing function components
+  ### Testing LiveComponents
 
-  There are two mechanisms for testing function components. Imagine the
-  following component:
-
-      def greet(assigns) do
-        ~H"""
-        <div>Hello, <%= @name %>!</div>
-        """
-      end
-
-  You can test it by using `render_component/3`, passing the function
-  reference to the component as first argument:
-
-      import Phoenix.LiveViewTest
-
-      test "greets" do
-        assert render_component(&MyComponents.greet/1, name: "Mary") ==
-                 "<div>Hello, Mary!</div>"
-      end
-
-  However, for complex components, often the simplest way to test them
-  is by using the `~H` sigil itself:
-
-      import Phoenix.Component
-      import Phoenix.LiveViewTest
-
-      test "greets" do
-        assigns = %{}
-        assert rendered_to_string(~H"""
-               <MyComponents.greet name="Mary" />
-               """) ==
-                 "<div>Hello, Mary!</div>"
-      end
-
-  The difference is that we use `rendered_to_string/1` to convert the rendered
-  template to a string for testing.
-
-  ## Testing stateful components
-
-  There are two main mechanisms for testing stateful components. You can
-  use `render_component/2` to test how a component is mounted and rendered
-  once:
+  LiveComponents can be tested in two ways. One way is to use the same
+  `render_component/2` function as function components. This will mount
+  the LiveComponent and render it once, without testing any of its events:
 
       assert render_component(MyComponent, id: 123, user: %User{}) =~
                "some markup in component"
