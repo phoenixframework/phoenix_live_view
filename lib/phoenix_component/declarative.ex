@@ -120,7 +120,12 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   def __global__?(module, name, global_attr \\ nil) when is_atom(module) and is_binary(name) do
-    includes = global_attr && Keyword.get(global_attr.opts, :include, [])
+    includes =
+      if global_attr do
+        Keyword.get(global_attr.opts, :include, [])
+      else
+        []
+      end
 
     if function_exported?(module, :__global__?, 1) do
       module.__global__?(name) or __global__?(name) or name in includes

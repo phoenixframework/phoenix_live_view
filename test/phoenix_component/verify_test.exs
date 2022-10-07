@@ -903,7 +903,9 @@ defmodule Phoenix.ComponentVerifyTest do
 
           def func(assigns), do: ~H[]
 
-          slot :named
+          slot :named do
+            attr :rest, :global
+          end
 
           def func_undefined_slot_attrs(assigns), do: ~H[]
 
