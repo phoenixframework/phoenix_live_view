@@ -377,3 +377,6 @@ container:
   - `"phx-error"` - applied when an error occurs on the server. Note, this
     class will be applied in conjunction with `"phx-loading"` if connection
     to the server is lost.
+
+For navigation related loading states (both automatic and manual), see `phx-page-loading` as described in
+[JavaScript interoperability: Live navigation events](js-interop.html#live-navigation-events).
