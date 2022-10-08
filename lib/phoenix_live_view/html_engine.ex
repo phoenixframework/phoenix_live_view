@@ -297,7 +297,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       Enum.reduce(slots, {%{}, %{}, %{}}, fn {key, assigns, special, info},
                                              {acc_assigns, acc_info, specials} ->
         special? = Map.has_key?(special, ":if") || Map.has_key?(special, ":for")
-        specials = Map.put(specials, key, special?)
+        specials = Map.update(specials, key, special?, &(&1 || special?))
 
         case acc_assigns do
           %{^key => existing_assigns} ->
