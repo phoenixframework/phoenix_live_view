@@ -13,7 +13,7 @@ defmodule Phoenix.LiveViewTest.ParentLayoutLive do
 end
 
 defmodule Phoenix.LiveViewTest.LayoutLive do
-  use Phoenix.LiveView, layout: {Phoenix.LiveViewTest.LayoutView, "live.html"}
+  use Phoenix.LiveView, layout: {Phoenix.LiveViewTest.LayoutView, :live}
 
   def render(assigns), do: ~H|The value is: <%= @val %>|
 

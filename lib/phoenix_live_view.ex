@@ -448,7 +448,7 @@ defmodule Phoenix.LiveView do
       use Phoenix.LiveView,
         namespace: MyAppWeb,
         container: {:tr, class: "colorized"},
-        layout: {MyAppWeb.LayoutView, "live.html"},
+        layout: {MyAppWeb.LayoutView, :app},
         log: :info
 
   ## Options
@@ -491,7 +491,12 @@ defmodule Phoenix.LiveView do
     layout =
       case opts[:layout] do
         {mod, template} when is_atom(mod) and is_binary(template) ->
-          {mod, template}
+          root_template = Phoenix.LiveView.Utils.normalize_layout(template, "use options")
+          {mod, root_template}
+
+        {mod, template} when is_atom(mod) and is_atom(template) ->
+          template = Phoenix.LiveView.Utils.normalize_layout(template, "use options")
+          {mod, to_string(template)}
 
         nil ->
           nil
@@ -499,7 +504,7 @@ defmodule Phoenix.LiveView do
         other ->
           raise ArgumentError,
                 ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
-                  "got: #{inspect(other)}"
+                  "or {MyLayoutView, :my_template}, got: #{inspect(other)}"
       end
 
     log =

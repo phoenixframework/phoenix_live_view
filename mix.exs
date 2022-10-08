@@ -37,6 +37,10 @@ defmodule Phoenix.LiveView.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.6 or ~> 1.7"},
+      # TODO bump to release and remove long term
+      {:phoenix_view, github: "phoenixframework/phoenix_view", optional: true, override: true},
+      # TODO bump to release
+      {:phoenix_template, github: "phoenixframework/phoenix_template"},
       {:phoenix_html, "~> 3.1"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},

@@ -461,6 +461,7 @@ defmodule Phoenix.Component do
 
   alias Phoenix.LiveView.{Static, Socket}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
+  @phoenix_embeds :phoenix_embeds
 
   @doc ~S'''
   The `~H` sigil for writing HEEx templates inside source files.
@@ -1310,10 +1311,16 @@ defmodule Phoenix.Component do
     raise_bad_socket_or_assign!("changed?/2", assigns)
   end
 
+  defmacro embed_templates(root_dir \\ nil, pattern) do
+    root_dir = root_dir || Path.dirname(__CALLER__.file)
+    Module.put_attribute(__CALLER__.module, @phoenix_embeds, {root_dir, pattern})
+  end
+
   ## Declarative assigns API
 
   @doc false
   defmacro __using__(opts \\ []) do
+    Module.register_attribute(__CALLER__.module, @phoenix_embeds, accumulate: true)
     conditional =
       if __CALLER__.module != Phoenix.LiveView.Helpers do
         quote do: import(Phoenix.LiveView.Helpers)
@@ -1324,6 +1331,8 @@ defmodule Phoenix.Component do
         import Kernel, except: [def: 2, defp: 2]
         import Phoenix.Component
         import Phoenix.Component.Declarative
+        @before_compile Phoenix.Component
+        use Phoenix.Template
 
         for {prefix_match, value} <- Phoenix.Component.Declarative.__setup__(__MODULE__, opts) do
           @doc false
@@ -1332,6 +1341,19 @@ defmodule Phoenix.Component do
       end
 
     [conditional, imports]
+  end
+
+  defmacro __before_compile__(_env) do
+    quote do
+      templates =
+        for {root, pattern} <- @phoenix_embeds do
+          converter = &(&1 |> Path.basename() |> Path.rootname(".html.heex"))
+          Phoenix.Template.compile_all(converter, root, pattern)
+        end
+
+      @phoenix_component_embedded templates
+      def __templates__, do: @phoenix_component_embedded
+    end
   end
 
   @doc ~S'''

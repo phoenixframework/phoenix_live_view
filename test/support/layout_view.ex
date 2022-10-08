@@ -18,7 +18,7 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     """
   end
 
-  def render("live-override.html", assigns) do
+  def render("live_override.html", assigns) do
     ~H"""
     LIVEOVERRIDESTART-<%= @val %>-<%= @inner_content %>-LIVEOVERRIDEEND
     """

@@ -66,7 +66,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
 
     # integration layout
-    live_session :styled_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, "styled.html"} do
+    live_session :styled_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, :styled} do
       live "/styled-elements", ElementsLive
     end
 
@@ -165,7 +165,7 @@ defmodule Phoenix.LiveViewTest.Router do
       live "/lifecycle/mount-mods-args", HooksLive.Noop
     end
 
-    live_session :layout, layout: {Phoenix.LiveViewTest.LayoutView, "live-override.html"} do
+    live_session :layout, layout: {Phoenix.LiveViewTest.LayoutView, :live_override} do
       live "/dashboard-live-session-layout", LayoutLive
     end
   end

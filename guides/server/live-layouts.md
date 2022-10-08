@@ -64,7 +64,7 @@ of the actual template will be placed at:
 To use the live layout, update your LiveView to pass the `:layout`
 option to `use Phoenix.LiveView`:
 
-    use Phoenix.LiveView, layout: {MyAppWeb.LayoutView, "live.html"}
+    use Phoenix.LiveView, layout: {MyAppWeb.LayoutView, :live}
 
 If you are using Phoenix v1.5, the layout is automatically set
 when generating apps with the `mix phx.new --live` flag.
@@ -75,7 +75,7 @@ opt-in to a layout, use `:layout` as an option in mount:
 
       def mount(_params, _session, socket) do
         socket = assign(socket, new_message_count: 0)
-        {:ok, socket, layout: {MyAppWeb.LayoutView, "live.html"}}
+        {:ok, socket, layout: {MyAppWeb.LayoutView, :live}}
       end
 
 *Note*: The live layout is always wrapped by the LiveView's `:container` tag.
