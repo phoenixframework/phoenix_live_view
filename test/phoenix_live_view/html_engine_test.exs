@@ -1617,6 +1617,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot2(0)slot4(0)</div>"
     end
+
+    test "multiple slot definitions with mixed regular/if/for" do
+      assigns = %{items: [2, 3]}
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :if={false}>slot0</:slot>
+               <:slot>slot1</:slot>
+               <:slot :for={i <- @items}>slot<%= i %></:slot>
+               <:slot>slot4</:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slot1slot2slot3slot4</div>"
+    end
   end
 
   describe ":if attr" do

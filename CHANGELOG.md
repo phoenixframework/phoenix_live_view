@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.3
+
+## Bug Fixes
+  * Fix bug on slots when passing multiple slot entries with mix if/for syntax
+
 ## 0.18.2 (2022-10-04)
 
 ## Bug Fixes
