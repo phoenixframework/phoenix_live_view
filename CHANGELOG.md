@@ -2,28 +2,28 @@
 
 ## 0.18.3
 
-## Bug Fixes
+### Bug Fixes
   * Fix bug on slots when passing multiple slot entries with mix if/for syntax
 
 ## 0.18.2 (2022-10-04)
 
-## Bug Fixes
+### Bug Fixes
   * Fix match error when defining `:values` before `:default`
   * Allow tuples in external redirects
   * Fix race condition on dispatching click away when enter is pressed
   * Fix formatter breaking inline blocks when surrounded by text without whitespace
 
-## Enhancements
+### Enhancements
   * Add `intersperse` component for rendering a separator between an enumerable
 
 ## 0.18.1 (2022-09-28)
 
-## Bug Fixes
+### Bug Fixes
   * Fix phx-loading class being applied to dead views
   * Fix `<.live_img_preview />` causing invalid attribute errors on uploads
   * Do not fire phx events when element is disabled
 
-## Enhancements
+### Enhancements
   * Support `:include` option to extend global attributes on a case-by-case basis
   * Warn when accessing a variable binding defined outside of `~H`
 
