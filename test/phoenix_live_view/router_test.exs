@@ -256,9 +256,12 @@ defmodule Phoenix.LiveView.RouterTest do
         session: %{}
       }
 
-      {:ok, _, html} = live(conn, path)
+      {:ok, view, html} = live(conn, path)
 
       assert html =~
+        ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+
+      assert render(view) =~
         ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
     end
   end

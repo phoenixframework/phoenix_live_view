@@ -477,11 +477,11 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp do_mount_opt(socket, :layout, {mod, template}) when is_atom(mod) and is_binary(template) do
-    %Socket{socket | private: Map.put(socket.private, :phoenix_live_layout, {mod, template})}
+    put_in(socket.private[:phoenix_live_layout], {mod, template})
   end
 
   defp do_mount_opt(socket, :layout, false) do
-    %Socket{socket | private: Map.put(socket.private, :phoenix_live_layout, false)}
+    put_in(socket.private[:phoenix_live_layout], false)
   end
 
   defp do_mount_opt(_socket, :layout, bad_layout) do
@@ -516,7 +516,6 @@ defmodule Phoenix.LiveView.Utils do
   defp layout(socket, view) do
     case socket.private do
       %{phoenix_live_layout: layout} -> layout
-      %{connect_info: %{private: %{phoenix_live_layout: layout}}} -> layout
       %{} -> view.__live__()[:layout] || false
     end
   end
