@@ -699,7 +699,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       """
     end
 
-    def function_component_with_slot_props(assigns) do
+    def function_component_with_slot_attrs(assigns) do
       ~H"""
       <%= for entry <- @sample do %>
       <%= entry.a %>
@@ -854,20 +854,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == expected
     end
 
-    test "slot props" do
+    test "slot attrs" do
       assigns = %{a: "A"}
       expected = "\nA\n and \nB\n"
 
       assert compile("""
-             <.function_component_with_slot_props>
+             <.function_component_with_slot_attrs>
                <:sample a={@a} b="B"> and </:sample>
-             </.function_component_with_slot_props>
+             </.function_component_with_slot_attrs>
              """) == expected
 
       assert compile("""
-             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_props>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_attrs>
                <:sample a={@a} b="B"> and </:sample>
-             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_props>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_attrs>
              """) == expected
     end
 
@@ -1156,13 +1156,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_raise(ParseError, message, fn ->
         eval("""
-        <div>
+        <.mydiv>
           <:sample>
             <:footer>
               Content
             </:footer>
           </:sample>
-        </div>
+        </.mydiv>
         """)
       end)
 
@@ -1173,6 +1173,17 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         eval("""
         <:sample>
           Content
+        </:sample>
+        """)
+      end)
+
+      message =
+        ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <:sample>
+          <p>Content</p>
         </:sample>
         """)
       end)

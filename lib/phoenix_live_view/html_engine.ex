@@ -263,28 +263,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {roots?, [{:inner_block, ast} | attrs], [line_column(tag_meta) | locs]}
   end
 
-  defp add_slot!(
-         %{slots: [slots | other_slots], tags: [{:tag_open, <<first, _::binary>>, _, _} | _]} =
-           state,
-         slot_name,
-         slot_assigns,
-         slot_info,
-         tag_meta,
-         special_attrs
-       )
-       when first in ?A..?Z or first == ?. do
+  defp add_slot(state, slot_name, slot_assigns, slot_info, tag_meta, special_attrs) do
+    %{slots: [slots | other_slots]} = state
     slot = {slot_name, slot_assigns, special_attrs, {tag_meta, slot_info}}
     %{state | slots: [[slot | slots] | other_slots], previous_token_slot?: true}
   end
 
-  defp add_slot!(
-         %{file: file} = _state,
-         slot_name,
-         _slot_assigns,
-         _slot_info,
-         %{line: line, column: column} = _tag_meta,
-         _special_attrs
-       ) do
+  defp validate_slot!(%{tags: [{:tag_open, <<first, _::binary>>, _, _} | _]}, _name, _tag_meta)
+       when first in ?A..?Z or first == ?. do
+    :ok
+  end
+
+  defp validate_slot!(%{file: file} = _state, slot_name, %{line: line, column: column}) do
     message =
       "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component"
 
@@ -541,6 +531,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
          {:tag_open, ":" <> slot_name = tag_name, attrs, %{self_close: true} = tag_meta},
          state
        ) do
+    validate_slot!(state, slot_name, tag_meta)
     attrs = remove_phx_no_break(attrs)
     %{line: line} = tag_meta
     slot_name = String.to_atom(slot_name)
@@ -557,12 +548,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
     assigns = wrap_special_slot(special, merge_component_attrs(roots, attrs, line))
-    add_slot!(state, slot_name, assigns, attr_info, tag_meta, special)
+    add_slot(state, slot_name, assigns, attr_info, tag_meta, special)
   end
 
   # Slot (with inner content)
 
-  defp handle_token({:tag_open, ":" <> _, _attrs, _tag_meta} = token, state) do
+  defp handle_token({:tag_open, ":" <> slot_name, _attrs, tag_meta} = token, state) do
+    validate_slot!(state, slot_name, tag_meta)
+
     state
     |> push_tag(token)
     |> push_substate_to_stack()
@@ -587,7 +580,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     inner = add_inner_block(attr_info, ast, tag_meta)
 
     state
-    |> add_slot!(slot_name, assigns, inner, tag_meta, special)
+    |> add_slot(slot_name, assigns, inner, tag_meta, special)
     |> pop_substate_from_stack()
   end
 
