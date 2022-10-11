@@ -1310,6 +1310,28 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "does not raise if attr :values is not a list, but still an enum" do
+    defmodule Phoenix.ComponentTest.AttrValueTypeMismatch do
+      use Elixir.Phoenix.Component
+
+      attr :foo, :integer, values: 1..10
+      def func(assigns), do: ~H[]
+    end
+  end
+
+  test "raise if attr :default is not in range" do
+    msg = ~r'expected the default value for attr :foo to be one of 1\.\.10, got: 11'
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrDefaultValuesMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :integer, default: 11, values: 1..10
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
   test "raise if slot attr has :default" do
     msg = ~r" invalid option :default for attr :foo in slot :named"
 
