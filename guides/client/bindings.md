@@ -300,15 +300,6 @@ See `Phoenix.LiveView.JS.push/3` for all supported options.
 LiveView supports the `phx-mounted`, `phx-connected`, and `phx-disconnected` events to react to
 different lifecycle events with JS commands.
 
-For example, to show an element when the LiveView has lost its connection, and hide it when the
-connection recovers, you can combine `phx-disconnected` and `phx-connected`
-
-```heex
-<div id="status" class="hidden" phx-disconnected={JS.show()} phx-connected={JS.hide()}>
-  Attempting to reconnect...
-</div>
-```
-
 To execute commands when an element first appears on the page, you can leverage `phx-mounted`,
 such as to animate a notice into view:
 
@@ -316,6 +307,17 @@ such as to animate a notice into view:
 <div id="flash" class="hidden" phx-mounted={JS.show(transition: ...)}>
   Welcome back!
 </div>
+```
+
+If `phx-mounted` is used on the initial page render, it will be invoked only after the initial WebSocket connection is established.
+
+To manage the connection lifecycle, you can combine `phx-disconnected` and `phx-connected` to show an element when the LiveView has lost its connection, and hide it when the connection recovers:
+
+```heex
+<div id="status" class="hidden" phx-disconnected={JS.show()} phx-connected={JS.hide()}>
+  Attempting to reconnect...
+</div>
+```
 
 ### LiveView vs static view
 
