@@ -421,20 +421,30 @@ defmodule Phoenix.ComponentVerifyTest do
           attr :attr, :atom, values: [:foo, :bar, :baz]
           def func_atom(assigns), do: ~H[]
 
+          attr :attr, :integer, values: 1..10
+          def func_integer(assigns), do: ~H[]
+
           def line, do: __ENV__.line + 2
 
           def render(assigns) do
             ~H"""
             <.func_string attr="boom" />
             <.func_atom attr={:boom} />
+            <.func_integer attr={11} />
+            <.func_string attr={"bar"} />
             <.func_string attr={@string} />
+            <.func_atom attr={:bar} />
             <.func_atom attr={@atom} />
+            <.func_integer attr={5} />
+            <.func_integer attr={@integer} />
             """
           end
         end
       end)
 
     line = get_line(__MODULE__.AttrValues, :line)
+
+    assert Regex.scan(~r/attribute "attr" in component/, warnings) |> length() == 3
 
     assert warnings =~ """
            attribute "attr" in component \
@@ -449,6 +459,13 @@ defmodule Phoenix.ComponentVerifyTest do
            must be one of [:foo, :bar, :baz], got: :boom
              test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ """
+           attribute "attr" in component \
+           Phoenix.ComponentVerifyTest.AttrValues.func_integer/1 \
+           must be one of 1..10, got: 11
+             test/phoenix_component/verify_test.exs:#{line + 4}: (file)
+           """
   end
 
   test "validates slot attr values" do
@@ -460,6 +477,7 @@ defmodule Phoenix.ComponentVerifyTest do
           slot :named do
             attr :string, :string, values: ["foo", "bar", "baz"]
             attr :atom, :atom, values: [:foo, :bar, :baz]
+            attr :integer, :integer, values: 1..10
           end
 
           def func(assigns), do: ~H[]
@@ -469,8 +487,9 @@ defmodule Phoenix.ComponentVerifyTest do
           def render(assigns) do
             ~H"""
             <.func>
-              <:named string="boom" atom={:boom} />
-              <:named string={@string} atom={@atom} />
+              <:named string="boom" atom={:boom} integer={11}/>
+              <:named string={@string} atom={@atom} integer={@integer}/>
+              <:named string="bar" atom={:bar} integer={5}/>
             </.func>
             """
           end
@@ -478,6 +497,8 @@ defmodule Phoenix.ComponentVerifyTest do
       end)
 
     line = get_line(__MODULE__.SlotAttrValues, :line)
+
+    assert Regex.scan(~r/attribute "\w+" in slot "named"/, warnings) |> length() == 3
 
     assert warnings =~ """
            attribute "string" in slot "named" for component \
@@ -490,6 +511,13 @@ defmodule Phoenix.ComponentVerifyTest do
            attribute "atom" in slot "named" for component \
            Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
            must be one of [:foo, :bar, :baz], got: :boom
+             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
+           """
+
+    assert warnings =~ """
+           attribute "integer" in slot "named" for component \
+           Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
+           must be one of 1..10, got: 11
              test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
   end

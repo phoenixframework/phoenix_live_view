@@ -1048,7 +1048,7 @@ defmodule Phoenix.Component.Declarative do
             warn(message, call.file, line)
 
           # attrs must be one of values
-          {_type, {line, _column, {_, type_value}}} when is_list(attr_values) ->
+          {_type, {line, _column, {_, type_value}}} when not is_nil(attr_values) ->
             unless type_value in attr_values do
               message =
                 "attribute \"#{name}\" in component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: #{inspect(type_value)}"
