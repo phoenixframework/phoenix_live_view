@@ -438,7 +438,7 @@ defmodule Phoenix.Component.Declarative do
   defp validate_attr_values!(slot, name, type, values, line, file) do
     unless is_enumerable(values) and not Enum.empty?(values) do
       compile_error!(line, file, """
-      :values must be a non-empty list, got: #{inspect(values)}
+      :values must be a non-empty enumerable, got: #{inspect(values)}
       """)
     end
 
@@ -448,7 +448,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp is_enumerable(values) do
-    !is_nil(Enumerable.impl_for(values))
+    Enumerable.impl_for(values) != nil
   end
 
   defp bad_value!(slot, name, type, value, line, file) do
