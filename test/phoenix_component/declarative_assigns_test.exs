@@ -1211,7 +1211,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr :values is not a list" do
+  test "raise if attr :values is not a enum" do
     msg = ~r":values must be a non-empty enumerable, got: :ok"
 
     assert_raise CompileError, msg, fn ->
@@ -1239,7 +1239,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr :values is an empty list" do
+  test "raise if attr :values is an empty enum" do
     msg = ~r":values must be a non-empty enumerable, got: \[\]"
 
     assert_raise CompileError, msg, fn ->
