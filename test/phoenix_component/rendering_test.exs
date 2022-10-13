@@ -6,6 +6,7 @@ defmodule Phoenix.ComponentRenderingTest do
   import Phoenix.LiveViewTest
 
   embed_templates "pages/*"
+  embed_templates "another_root/*", root: "pages"
 
   defp h2s(template) do
     template
@@ -40,6 +41,9 @@ defmodule Phoenix.ComponentRenderingTest do
     test "embed from directory pattern" do
       # generic template
       assert render_component(&about_page/1) == "About us"
+
+      # root
+      assert render_component(&root/1) == "root!"
 
       # attr'd bodyless definition
       assert render_component(&welcome_page/1) == "Welcome chris"

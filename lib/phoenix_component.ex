@@ -464,40 +464,34 @@ defmodule Phoenix.Component do
   files within a directory tree. For example, imagine a directory listing:
 
       ├── components.ex
-      ├── pages
-      │   ├── about_page.html.heex
-      │   └── welcome_page.html.heex
+      ├── cards
+      │   ├── pricing_card.html.heex
+      │   └── features_card.html.heex
 
-  Then to embed the page templates in your `components.ex` moddule:
-
-      defmodule MyAppWeb.Components do
-        use Phoenix.Component
-
-        embed_templates "page/*"
-      end
-
-  Now, your module will have an `about_page/1` and `welcome_page/1` function
-  component defined. Embedded templates also support declarative assigns
-  via bodyless function definitions, for example:
+  Then you can embed the page templates in your `components.ex` modulue
+  and call them like any other function component:
 
       defmodule MyAppWeb.Components do
         use Phoenix.Component
 
-        embed_templates "page/*"
+        embed_templates "cards/*"
 
-        attr :name, :string, required: true
-        def welcome_page(assigns)
-
-        slot :header
-        def about_page(assigns)
+        def landing_hero(assigns) do
+          ~H"""
+          <.pricing_card />
+          <.features_card />
+          """
+        end
       end
+
+  See `embed_templates/1` for more information, including declarative
+  assigns support for embedded templateas.
   '''
 
   ## Functions
 
   alias Phoenix.LiveView.{Static, Socket}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
-  @phoenix_embeds :phoenix_embeds
 
   @doc ~S'''
   The `~H` sigil for writing HEEx templates inside source files.
@@ -1347,22 +1341,62 @@ defmodule Phoenix.Component do
     raise_bad_socket_or_assign!("changed?/2", assigns)
   end
 
+  @doc """
+  Embeds external template files into the module as function components.
+
+  ## Options
+
+    * `:root` - The root directory to embed files. Defaults to the current
+      module's direcotry (`__DIR__`)
+
+  A wildcard pattern may be used to select all files within a directory tree.
+  For example, imagine a directory listing:
+
+      ├── components.ex
+      ├── pages
+      │   ├── about_page.html.heex
+      │   └── welcome_page.html.heex
+
+  Then to embed the page templates in your `components.ex` module:
+
+      defmodule MyAppWeb.Components do
+        use Phoenix.Component
+
+        embed_templates "page/*"
+      end
+
+  Now, your module will have an `about_page/1` and `welcome_page/1` function
+  component defined. Embedded templates also support declarative assigns
+  via bodyless function definitions, for example:
+
+      defmodule MyAppWeb.Components do
+        use Phoenix.Component
+
+        embed_templates "page/*"
+
+        attr :name, :string, required: true
+        def welcome_page(assigns)
+
+        slot :header
+        def about_page(assigns)
+      end
+
+  Multiple invocations of `embed_templates` is also supported.
+  """
   defmacro embed_templates(pattern, opts \\ []) do
     quote do
-        Phoenix.Template.compile_all(
-          &Phoenix.Component.__embed__/1,
-          unquote(opts)[:root] || __DIR__,
-          unquote(pattern)
-        )
+      Phoenix.Template.compile_all(
+        &Phoenix.Component.__embed__/1,
+        Path.expand(unquote(opts)[:root] || __DIR__, __DIR__),
+        unquote(pattern)
+      )
     end
-  end
   end
 
   ## Declarative assigns API
 
   @doc false
   defmacro __using__(opts \\ []) do
-    Module.register_attribute(__CALLER__.module, @phoenix_embeds, accumulate: true)
     conditional =
       if __CALLER__.module != Phoenix.LiveView.Helpers do
         quote do: import(Phoenix.LiveView.Helpers)
@@ -1373,7 +1407,6 @@ defmodule Phoenix.Component do
         import Kernel, except: [def: 2, defp: 2]
         import Phoenix.Component
         import Phoenix.Component.Declarative
-        @before_compile Phoenix.Component
         use Phoenix.Template
 
         for {prefix_match, value} <- Phoenix.Component.Declarative.__setup__(__MODULE__, opts) do
@@ -1385,18 +1418,7 @@ defmodule Phoenix.Component do
     [conditional, imports]
   end
 
-  defmacro __before_compile__(_env) do
-    quote do
-      templates =
-        for {root, pattern} <- @phoenix_embeds do
-          converter = &(&1 |> Path.basename() |> Path.rootname(".html.heex"))
-          Phoenix.Template.compile_all(converter, root, pattern)
-        end
-
-      @phoenix_component_embedded templates
-      def __templates__, do: @phoenix_component_embedded
-    end
-  end
+  def __embed__(path), do: path |> Path.basename() |> Path.rootname(".html.heex")
 
   @doc ~S'''
   Declares a function component slot.
