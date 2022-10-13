@@ -251,7 +251,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defp done_tag_name(_text, _column, []) do
     {:error,
-     "expected tag name after <. If you meant to use < as part of the text, use &lt; instead"}
+     "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"}
   end
 
   defp done_tag_name(text, column, buffer) do
