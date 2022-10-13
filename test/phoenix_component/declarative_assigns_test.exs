@@ -1312,15 +1312,6 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "does not raise if attr :values is not a list, but still an enum" do
-    defmodule Phoenix.ComponentTest.AttrValueTypeMismatch do
-      use Elixir.Phoenix.Component
-
-      attr :foo, :integer, values: 1..10
-      def func(assigns), do: ~H[]
-    end
-  end
-
   test "raise if attr :default is not in range" do
     msg = ~r'expected the default value for attr :foo to be one of 1\.\.10, got: 11'
 
