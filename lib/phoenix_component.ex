@@ -1347,9 +1347,15 @@ defmodule Phoenix.Component do
     raise_bad_socket_or_assign!("changed?/2", assigns)
   end
 
-  defmacro embed_templates(root_dir \\ nil, pattern) do
-    root_dir = root_dir || Path.dirname(__CALLER__.file)
-    Module.put_attribute(__CALLER__.module, @phoenix_embeds, {root_dir, pattern})
+  defmacro embed_templates(pattern, opts \\ []) do
+    quote do
+        Phoenix.Template.compile_all(
+          &Phoenix.Component.__embed__/1,
+          unquote(opts)[:root] || __DIR__,
+          unquote(pattern)
+        )
+    end
+  end
   end
 
   ## Declarative assigns API
