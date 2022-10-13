@@ -198,14 +198,17 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on missing/incomplete tag name" do
-      assert_raise ParseError, "nofile:2:4: expected tag name", fn ->
+      message =
+        "expected tag name after <. If you meant to use < as part of the text, use &lt; instead"
+
+      assert_raise ParseError, "nofile:2:4: " <> message, fn ->
         tokenize("""
         <div>
           <>\
         """)
       end
 
-      assert_raise ParseError, "nofile:1:2: expected tag name", fn ->
+      assert_raise ParseError, "nofile:1:2: " <> message, fn ->
         tokenize("<")
       end
 
