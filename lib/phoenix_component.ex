@@ -455,6 +455,42 @@ defmodule Phoenix.Component do
   ```
 
   You can learn more about slots and the `slot/3` macro [in its documentation](`slot/3`).
+
+  ### Embedding external template files
+
+  The `embed_templates/1` macro can be used to embed `.html.heex` files
+  as function components. The directory path is based on the current
+  module (`__DIR__`), and a wildcard pattern may be used to select all
+  files within a directory tree. For example, imagine a directory listing:
+
+      ├── components.ex
+      ├── pages
+      │   ├── about_page.html.heex
+      │   └── welcome_page.html.heex
+
+  Then to embed the page templates in your `components.ex` moddule:
+
+      defmodule MyAppWeb.Components do
+        use Phoenix.Component
+
+        embed_templates "page/*"
+      end
+
+  Now, your module will have an `about_page/1` and `welcome_page/1` function
+  component defined. Embedded templates also support declarative assigns
+  via bodyless function definitions, for example:
+
+      defmodule MyAppWeb.Components do
+        use Phoenix.Component
+
+        embed_templates "page/*"
+
+        attr :name, :string, required: true
+        def welcome_page(assigns)
+
+        slot :header
+        def about_page(assigns)
+      end
   '''
 
   ## Functions

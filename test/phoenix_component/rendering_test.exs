@@ -1,8 +1,11 @@
 defmodule Phoenix.ComponentRenderingTest do
   use ExUnit.Case, async: true
-  import ExUnit.CaptureIO
-
   use Phoenix.Component
+
+  import ExUnit.CaptureIO
+  import Phoenix.LiveViewTest
+
+  embed_templates "pages/*"
 
   defp h2s(template) do
     template
@@ -30,9 +33,20 @@ defmodule Phoenix.ComponentRenderingTest do
     end
   end
 
-  describe "testing" do
-    import Phoenix.LiveViewTest
+  describe "embed_templates" do
+    attr :name, :string, default: "chris"
+    def welcome_page(assigns)
 
+    test "embed from directory pattern" do
+      # generic template
+      assert render_component(&about_page/1) == "About us"
+
+      # attr'd bodyless definition
+      assert render_component(&welcome_page/1) == "Welcome chris"
+    end
+  end
+
+  describe "testing" do
     test "render_component/1" do
       assert render_component(&hello/1) == "Hello World"
       assert render_component(&hello/1, name: "WORLD!") == "Hello WORLD!"
