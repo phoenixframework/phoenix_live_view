@@ -726,14 +726,14 @@ defmodule Phoenix.Component do
   would like to add to the element, such as class, data attributes, etc:
 
   ```heex
-  <.my_link href="/" id={@id} new_window={true} class="my-class">Home</.my_link>
+  <.my_link to="/" id={@id} new_window={true} class="my-class">Home</.my_link>
   ```
 
   We could support the dynamic attributes with the following component:
 
       def my_link(assigns) do
         target = if assigns[:new_window], do: "_blank", else: false
-        extra = assigns_to_attributes(assigns, [:new_window])
+        extra = assigns_to_attributes(assigns, [:new_window, :to])
 
         assigns =
           assigns
@@ -741,7 +741,7 @@ defmodule Phoenix.Component do
           |> assign(:extra, extra)
 
         ~H"""
-        <a href={@href} target={@target} {@extra}>
+        <a href={@to} target={@target} {@extra}>
           <%= render_slot(@inner_block) %>
         </a>
         """
