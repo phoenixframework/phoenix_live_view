@@ -468,7 +468,7 @@ defmodule Phoenix.Component do
       │   ├── pricing_card.html.heex
       │   └── features_card.html.heex
 
-  Then you can embed the page templates in your `components.ex` modulue
+  Then you can embed the page templates in your `components.ex` module
   and call them like any other function component:
 
       defmodule MyAppWeb.Components do
