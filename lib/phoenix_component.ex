@@ -1418,6 +1418,7 @@ defmodule Phoenix.Component do
     [conditional, imports]
   end
 
+  @doc false
   def __embed__(path), do: path |> Path.basename() |> Path.rootname(".html.heex")
 
   @doc ~S'''
