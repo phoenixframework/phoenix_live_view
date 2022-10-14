@@ -1407,6 +1407,7 @@ defmodule Phoenix.Component do
         import Kernel, except: [def: 2, defp: 2]
         import Phoenix.Component
         import Phoenix.Component.Declarative
+        require Phoenix.Template
 
         for {prefix_match, value} <- Phoenix.Component.Declarative.__setup__(__MODULE__, opts) do
           @doc false
