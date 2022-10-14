@@ -436,15 +436,19 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp validate_attr_values!(slot, name, type, values, line, file) do
-    unless is_list(values) and not Enum.empty?(values) do
+    unless is_enumerable(values) and not Enum.empty?(values) do
       compile_error!(line, file, """
-      :values must be a non-empty list, got: #{inspect(values)}
+      :values must be a non-empty enumerable, got: #{inspect(values)}
       """)
     end
 
     for value <- values,
         not valid_value?(type, value),
         do: bad_value!(slot, name, type, value, line, file)
+  end
+
+  defp is_enumerable(values) do
+    Enumerable.impl_for(values) != nil
   end
 
   defp bad_value!(slot, name, type, value, line, file) do
@@ -878,9 +882,9 @@ defmodule Phoenix.Component.Declarative do
     case Keyword.fetch(opts, :include) do
       {:ok, [_ | _] = inc} ->
         if doc do
-          [build_doc(doc, indent, true), "Supports all globals plus: `", inspect(inc), "`."]
+          [build_doc(doc, indent, true), "Supports all globals plus: ", build_literal(inc), "."]
         else
-          ["Supports all globals plus: `", inspect(inc), "`."]
+          ["Supports all globals plus: ", build_literal(inc), "."]
         end
 
       _ ->
@@ -892,9 +896,9 @@ defmodule Phoenix.Component.Declarative do
     case Keyword.fetch(opts, :default) do
       {:ok, default} ->
         if doc do
-          [build_doc(doc, indent, true), "Defaults to `", inspect(default), "`."]
+          [build_doc(doc, indent, true), "Defaults to ", build_literal(default), "."]
         else
-          ["Defaults to `", inspect(default), "`."]
+          ["Defaults to ", build_literal(default), "."]
         end
 
       :error ->
@@ -942,10 +946,18 @@ defmodule Phoenix.Component.Declarative do
     []
   end
 
+  defp build_literals_list([literal], _condition) do
+    [build_literal(literal)]
+  end
+
   defp build_literals_list(literals, condition) do
     literals
-    |> Enum.map_intersperse(", ", &[?`, inspect(&1), ?`])
+    |> Enum.map_intersperse(", ", &build_literal/1)
     |> List.insert_at(-2, [condition, " "])
+  end
+
+  defp build_literal(literal) do
+    [?`, inspect(literal, charlists: :as_list), ?`]
   end
 
   defp build_hyphen(%{doc: doc}) when is_binary(doc) do
@@ -1049,7 +1061,7 @@ defmodule Phoenix.Component.Declarative do
             warn(message, call.file, line)
 
           # attrs must be one of values
-          {_type, {line, _column, {_, type_value}}} when is_list(attr_values) ->
+          {_type, {line, _column, {_, type_value}}} when not is_nil(attr_values) ->
             unless type_value in attr_values do
               message =
                 "attribute \"#{name}\" in component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: #{inspect(type_value)}"

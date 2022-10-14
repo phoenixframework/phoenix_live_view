@@ -131,6 +131,7 @@ defmodule Phoenix.ComponentVerifyTest do
           attr :boolean, :boolean
           attr :integer, :integer
           attr :float, :float
+          attr :map, :map
           attr :list, :list
           attr :global, :global
 
@@ -154,6 +155,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func any={true} />
             <.func any={1} />
             <.func any={1.0} />
+            <.func any={%{}} />
             <.func any={[]} />
             <.func any={nil} />
             """
@@ -168,6 +170,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func string={true} />
             <.func string={1} />
             <.func string={1.0} />
+            <.func string={%{}} />
             <.func string={[]} />
             <.func string={nil} />
             """
@@ -182,6 +185,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func atom={true} />
             <.func atom={1} />
             <.func atom={1.0} />
+            <.func atom={%{}} />
             <.func atom={[]} />
             <.func atom={nil} />
             """
@@ -196,6 +200,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func boolean={true} />
             <.func boolean={1} />
             <.func boolean={1.0} />
+            <.func boolean={%{}} />
             <.func boolean={[]} />
             <.func boolean={nil} />
             """
@@ -210,6 +215,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func integer={true} />
             <.func integer={1} />
             <.func integer={1.0} />
+            <.func integer={%{}} />
             <.func integer={[]} />
             <.func integer={nil} />
             """
@@ -224,8 +230,24 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func float={true} />
             <.func float={1} />
             <.func float={1.0} />
+            <.func float={%{}} />
             <.func float={[]} />
             <.func float={nil} />
+            """
+          end
+
+          def render_map_line, do: __ENV__.line + 4
+
+          def map_render(assigns) do
+            ~H"""
+            <.func map="map" />
+            <.func map={:map} />
+            <.func map={true} />
+            <.func map={1} />
+            <.func map={1.0} />
+            <.func map={%{}} />
+            <.func map={[]} />
+            <.func map={nil} />
             """
           end
 
@@ -238,6 +260,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func list={true} />
             <.func list={1} />
             <.func list={1.0} />
+            <.func list={%{}} />
             <.func list={[]} />
             <.func list={nil} />
             """
@@ -261,8 +284,9 @@ defmodule Phoenix.ComponentVerifyTest do
           {true, 2},
           {1, 3},
           {1.0, 4},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "string" in component \
@@ -278,7 +302,8 @@ defmodule Phoenix.ComponentVerifyTest do
           {"atom", 0},
           {1, 3},
           {1.0, 4},
-          {[], 5}
+          {%{}, 5},
+          {[], 6}
         ] do
       assert warnings =~ """
              attribute "atom" in component \
@@ -295,8 +320,9 @@ defmodule Phoenix.ComponentVerifyTest do
           {:boolean, 1},
           {1, 3},
           {1.0, 4},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "boolean" in component \
@@ -313,8 +339,9 @@ defmodule Phoenix.ComponentVerifyTest do
           {:integer, 1},
           {true, 2},
           {1.0, 4},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "integer" in component \
@@ -331,13 +358,33 @@ defmodule Phoenix.ComponentVerifyTest do
           {:float, 1},
           {true, 2},
           {1, 3},
-          {[], 5},
-          {nil, 6}
+          {%{}, 5},
+          {[], 6},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "float" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :float, got: #{inspect(value)}
+               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
+             """
+    end
+
+    line = get_line(__MODULE__.TypeAttrs, :render_map_line)
+
+    for {value, offset} <- [
+          {"map", 0},
+          {:map, 1},
+          {true, 2},
+          {1, 3},
+          {1.0, 4},
+          {[], 6},
+          {nil, 7}
+        ] do
+      assert warnings =~ """
+             attribute "map" in component \
+             Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
+             must be a :map, got: #{inspect(value)}
                test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
     end
@@ -350,7 +397,8 @@ defmodule Phoenix.ComponentVerifyTest do
           {true, 2},
           {1, 3},
           {1.0, 4},
-          {nil, 6}
+          {%{}, 5},
+          {nil, 7}
         ] do
       assert warnings =~ """
              attribute "list" in component \
@@ -373,20 +421,30 @@ defmodule Phoenix.ComponentVerifyTest do
           attr :attr, :atom, values: [:foo, :bar, :baz]
           def func_atom(assigns), do: ~H[]
 
+          attr :attr, :integer, values: 1..10
+          def func_integer(assigns), do: ~H[]
+
           def line, do: __ENV__.line + 2
 
           def render(assigns) do
             ~H"""
             <.func_string attr="boom" />
             <.func_atom attr={:boom} />
+            <.func_integer attr={11} />
+            <.func_string attr={"bar"} />
             <.func_string attr={@string} />
+            <.func_atom attr={:bar} />
             <.func_atom attr={@atom} />
+            <.func_integer attr={5} />
+            <.func_integer attr={@integer} />
             """
           end
         end
       end)
 
     line = get_line(__MODULE__.AttrValues, :line)
+
+    assert Regex.scan(~r/attribute "attr" in component/, warnings) |> length() == 3
 
     assert warnings =~ """
            attribute "attr" in component \
@@ -401,6 +459,13 @@ defmodule Phoenix.ComponentVerifyTest do
            must be one of [:foo, :bar, :baz], got: :boom
              test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ """
+           attribute "attr" in component \
+           Phoenix.ComponentVerifyTest.AttrValues.func_integer/1 \
+           must be one of 1..10, got: 11
+             test/phoenix_component/verify_test.exs:#{line + 4}: (file)
+           """
   end
 
   test "validates slot attr values" do
@@ -412,6 +477,7 @@ defmodule Phoenix.ComponentVerifyTest do
           slot :named do
             attr :string, :string, values: ["foo", "bar", "baz"]
             attr :atom, :atom, values: [:foo, :bar, :baz]
+            attr :integer, :integer, values: 1..10
           end
 
           def func(assigns), do: ~H[]
@@ -421,8 +487,9 @@ defmodule Phoenix.ComponentVerifyTest do
           def render(assigns) do
             ~H"""
             <.func>
-              <:named string="boom" atom={:boom} />
-              <:named string={@string} atom={@atom} />
+              <:named string="boom" atom={:boom} integer={11}/>
+              <:named string={@string} atom={@atom} integer={@integer}/>
+              <:named string="bar" atom={:bar} integer={5}/>
             </.func>
             """
           end
@@ -430,6 +497,8 @@ defmodule Phoenix.ComponentVerifyTest do
       end)
 
     line = get_line(__MODULE__.SlotAttrValues, :line)
+
+    assert Regex.scan(~r/attribute "\w+" in slot "named"/, warnings) |> length() == 3
 
     assert warnings =~ """
            attribute "string" in slot "named" for component \
@@ -442,6 +511,13 @@ defmodule Phoenix.ComponentVerifyTest do
            attribute "atom" in slot "named" for component \
            Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
            must be one of [:foo, :bar, :baz], got: :boom
+             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
+           """
+
+    assert warnings =~ """
+           attribute "integer" in slot "named" for component \
+           Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
+           must be one of 1..10, got: 11
              test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
   end

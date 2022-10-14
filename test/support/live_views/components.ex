@@ -42,6 +42,9 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr, :float
   def fun_attr_float(assigns), do: ~H[]
 
+  attr :attr, :map
+  def fun_attr_map(assigns), do: ~H[]
+
   attr :attr, :list
   def fun_attr_list(assigns), do: ~H[]
 
@@ -160,6 +163,8 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
 
   attr :attr1, :atom, values: [:foo, :bar, :baz]
   attr :attr2, :atom, examples: [:foo, :bar, :baz]
+  attr :attr3, :list, values: [[60, 40]]
+  attr :attr4, :list, examples: [[60, 40]]
 
   def fun_attr_values_examples(assigns), do: ~H[]
 end

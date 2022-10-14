@@ -30,6 +30,9 @@ can be used. For example, to animate an element on mount:
 
     <div phx-mounted={JS.transition("animate-ping", time: 500)}>
 
+If `phx-mounted` is used on the initial page render, it will be invoked only
+after the initial WebSocket connection is established.
+
 To react to elements being removed from the DOM, the `phx-remove` binding
 may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
 

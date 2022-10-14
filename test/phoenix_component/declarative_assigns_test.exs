@@ -124,8 +124,13 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
     button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
-    button_with_values_and_default_1_line = FunctionComponentWithAttrs.button_with_values_and_default_1_line()
-    button_with_values_and_default_2_line = FunctionComponentWithAttrs.button_with_values_and_default_2_line()
+
+    button_with_values_and_default_1_line =
+      FunctionComponentWithAttrs.button_with_values_and_default_1_line()
+
+    button_with_values_and_default_2_line =
+      FunctionComponentWithAttrs.button_with_values_and_default_2_line()
+
     button_with_examples_line = FunctionComponentWithAttrs.button_with_examples_line()
 
     assert FunctionComponentWithAttrs.__components__() == %{
@@ -256,35 +261,35 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                slots: []
              },
              button_with_values_and_default_1: %{
-              kind: :def,
-              attrs: [
-                %{
-                  line: button_with_values_and_default_1_line + 1,
-                  name: :text,
-                  opts: [values: ["Save", "Cancel"], default: "Save"],
-                  required: false,
-                  doc: nil,
-                  slot: nil,
-                  type: :string
-                }
-              ],
-              slots: []
-            },
-            button_with_values_and_default_2: %{
-              kind: :def,
-              attrs: [
-                %{
-                  line: button_with_values_and_default_2_line + 1,
-                  name: :text,
-                  opts: [default: "Save", values: ["Save", "Cancel"]],
-                  required: false,
-                  doc: nil,
-                  slot: nil,
-                  type: :string
-                }
-              ],
-              slots: []
-            },
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_values_and_default_1_line + 1,
+                   name: :text,
+                   opts: [values: ["Save", "Cancel"], default: "Save"],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
+                 }
+               ],
+               slots: []
+             },
+             button_with_values_and_default_2: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   line: button_with_values_and_default_2_line + 1,
+                   name: :text,
+                   opts: [default: "Save", values: ["Save", "Cancel"]],
+                   required: false,
+                   doc: nil,
+                   slot: nil,
+                   type: :string
+                 }
+               ],
+               slots: []
+             },
              button_with_examples: %{
                kind: :def,
                attrs: [
@@ -815,6 +820,11 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       * `attr` (`:float`)
       """,
+      fun_attr_map: """
+      ## Attributes
+
+      * `attr` (`:map`)
+      """,
       fun_attr_list: """
       ## Attributes
 
@@ -952,6 +962,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       * `attr1` (`:atom`) - Must be one of `:foo`, `:bar`, or `:baz`.
       * `attr2` (`:atom`) - Examples include `:foo`, `:bar`, and `:baz`.
+      * `attr3` (`:list`) - Must be one of `[60, 40]`.
+      * `attr4` (`:list`) - Examples include `[60, 40]`.
       """
     }
 
@@ -1201,8 +1213,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr :values is not a list" do
-    msg = ~r":values must be a non-empty list, got: :ok"
+  test "raise if attr :values is not a enum" do
+    msg = ~r":values must be a non-empty enumerable, got: :ok"
 
     assert_raise CompileError, msg, fn ->
       defmodule Phoenix.ComponentTest.AttrsValuesNotAList do
@@ -1229,8 +1241,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if attr :values is an empty list" do
-    msg = ~r":values must be a non-empty list, got: \[\]"
+  test "raise if attr :values is an empty enum" do
+    msg = ~r":values must be a non-empty enumerable, got: \[\]"
 
     assert_raise CompileError, msg, fn ->
       defmodule Phoenix.ComponentTest.AttrsValuesEmptyList do
@@ -1295,6 +1307,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         attr :foo, :string, default: "boom", values: ["foo", "bar", "baz"]
 
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr :default is not in range" do
+    msg = ~r'expected the default value for attr :foo to be one of 1\.\.10, got: 11'
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrDefaultValuesMismatch do
+        use Elixir.Phoenix.Component
+
+        attr :foo, :integer, default: 11, values: 1..10
         def func(assigns), do: ~H[]
       end
     end
