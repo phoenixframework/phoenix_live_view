@@ -485,7 +485,7 @@ defmodule Phoenix.Component do
       end
 
   See `embed_templates/1` for more information, including declarative
-  assigns support for embedded templateas.
+  assigns support for embedded templates.
   '''
 
   ## Functions
