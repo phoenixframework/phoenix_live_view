@@ -1,8 +1,7 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.Component,
-    only: [sigil_H: 2, render_slot: 1, render_slot: 2, assigns_to_attributes: 2]
+  import Phoenix.Component
 
   alias Phoenix.LiveView.HTMLEngine
   alias Phoenix.LiveView.HTMLTokenizer.ParseError

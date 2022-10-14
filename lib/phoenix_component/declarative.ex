@@ -540,11 +540,13 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   def __on_definition__(env, kind, name, args, _guards, body) do
-    case args do
-      [_] when body == nil ->
+    check? = not String.starts_with?(to_string(name), "__")
+
+    cond do
+      check? and length(args) == 1 and body == nil ->
         register_component!(kind, env, name, false)
 
-      _ ->
+      check? ->
         attrs = pop_attrs(env)
 
         validate_misplaced_attrs!(attrs, env.file, fn ->
@@ -570,6 +572,9 @@ defmodule Phoenix.Component.Declarative do
               "cannot declare slots for function #{name}/#{arity}. Components must be functions with arity 1"
           end
         end)
+
+      true ->
+        :ok
     end
   end
 
