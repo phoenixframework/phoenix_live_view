@@ -1362,7 +1362,7 @@ defmodule Phoenix.Component do
       defmodule MyAppWeb.Components do
         use Phoenix.Component
 
-        embed_templates "page/*"
+        embed_templates "pages/*"
       end
 
   Now, your module will have an `about_page/1` and `welcome_page/1` function
@@ -1372,7 +1372,7 @@ defmodule Phoenix.Component do
       defmodule MyAppWeb.Components do
         use Phoenix.Component
 
-        embed_templates "page/*"
+        embed_templates "pages/*"
 
         attr :name, :string, required: true
         def welcome_page(assigns)
