@@ -528,7 +528,7 @@ defmodule Phoenix.LiveViewTest do
   entries in the element are sent as values. Extra values can be given
   with the `value` argument.
 
-  If the element is does not have a `phx-click` attribute but it is
+  If the element does not have a `phx-click` attribute but it is
   a link (the `<a>` tag), the link will be followed accordingly:
 
     * if the link is a `live_patch`, the current view will be patched
