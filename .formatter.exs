@@ -1,6 +1,8 @@
 locals_without_parens = [
   attr: 2,
   attr: 3,
+  embed_templates: 1,
+  embed_templates: 2,
   slot: 1,
   slot: 2,
   slot: 3
