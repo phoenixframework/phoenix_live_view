@@ -1619,10 +1619,7 @@ defmodule Phoenix.Component do
   On the side of the LiveView component itself, defining attributes provides the following quality
   of life improvements:
 
-  * The default value of all attributes will be added to the `assigns` map upfront. Note that
-  unless an attribute is marked as required or has a default defined, omitting a value for an
-  attribute will result in `nil` being passed as the default value to the `assigns` map,
-  regardless of the type defined for the attribute.
+  * The default value of all attributes will be added to the `assigns` map upfront.
 
   * Attribute documentation is generated for the component.
 
