@@ -1053,6 +1053,36 @@ describe("View + Component", function(){
     expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeFalsy()
   })
 
+  test("pushInput sends all form fields values on form recovery (even when first has phx-change attribute set)", () => {
+    let html =
+      `<form id="form" phx-change="validate">
+      <input id="login" value="" name="login" phx-change="validate_login" />
+      <input id="first_name" value="" name="first_name" />
+    </form>`
+
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM(html)
+    let view = simulateJoinedView(el, liveSocket, html)
+
+    let channelStub = {
+      push(_evt, payload, _timeout) {
+        expect(payload.type).toBe("form")
+        expect(payload.event).toBeDefined()
+        expect(payload.value).toBe("login=&first_name=&_target=login")
+
+        return {
+          receive() { return this }
+        }
+      }
+    }
+
+    view.channel = channelStub
+
+
+    let loginInput = view.el.querySelector("#login")
+    view.pushInput(loginInput, el, null, "validate", {_target: loginInput.name, _formRecovery: true})
+  })
+
   test("adds auto ID to prevent teardown/re-add", () => {
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
