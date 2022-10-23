@@ -297,6 +297,10 @@ defmodule Phoenix.Component.Declarative do
       )
     end
 
+    if type == :global && slot do
+      compile_error!(line, file, "cannot define :global slot attributes")
+    end
+
     if type == :global and Keyword.has_key?(opts, :required) do
       compile_error!(line, file, "global attributes do not support the :required option")
     end

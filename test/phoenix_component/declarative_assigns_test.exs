@@ -1171,6 +1171,22 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "raise if slot attr type is :global" do
+    msg = ~r"cannot define :global slot attributes"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.SlotAttrGlobalNotSupported do
+        use Elixir.Phoenix.Component
+
+        slot :named do
+          attr :foo, :global
+        end
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
   test "reraise exceptions in slot/3 blocks" do
     assert_raise RuntimeError, "boom!", fn ->
       defmodule Phoenix.ComponentTest.SlotExceptionRaised do
@@ -1495,24 +1511,6 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         attr :rest, :global
         attr :rest2, :global
-        def func(assigns), do: ~H[]
-      end
-    end
-  end
-
-  test "raise on more than one :global slot attr" do
-    msg =
-      ~r"cannot define :global attribute :rest2 because one is already defined as :rest in slot :named"
-
-    assert_raise CompileError, msg, fn ->
-      defmodule Phoenix.ComponentTest.MultiSlotGlobal do
-        use Elixir.Phoenix.Component
-
-        slot :named do
-          attr :rest, :global
-          attr :rest2, :global
-        end
-
         def func(assigns), do: ~H[]
       end
     end
