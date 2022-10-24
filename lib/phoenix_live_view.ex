@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView do
   to the server where stateful views are spawned to push rendered updates
   to the browser, and receive client events via `phx-` bindings. Just like
   the first rendering, `c:mount/3`, is invoked  with params, session,
-  and socket state, However in the connected client case, a LiveView process
+  and socket state. However in the connected client case, a LiveView process
   is spawned on the server, runs `c:handle_params/3` again and then pushes
   the result of `c:render/1` to the client and continues on for the duration
   of the connection. If at any point during the stateful life-cycle a crash
@@ -70,8 +70,9 @@ defmodule Phoenix.LiveView do
   is properly installed. If you are just getting started, this can
   be easily done by running `mix phx.new my_app --live`. The `phx.new`
   command with the `--live` flag will create a new project with
-  LiveView installed and configured. Otherwise, please follow the steps
-  in the [installation guide](installation.md) before continuing.
+  LiveView installed and configured. The `--live` flag has become the
+  default on Phoenix v1.6. For existing projects, please follow the
+  steps in the [installation guide](installation.md) before continuing.
 
   A LiveView is a simple module that requires two callbacks: `c:mount/3`
   and `c:render/1`:

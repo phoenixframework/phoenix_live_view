@@ -2040,7 +2040,7 @@ defmodule Phoenix.Component do
   ### Overriding the default confirm behaviour
 
   `phoenix_html.js` does trigger a custom event `phoenix.link.click` on the clicked DOM element
-  when a click happened. This allows you to intercept the event on it's way bubbling up
+  when a click happened. This allows you to intercept the event on its way bubbling up
   to `window` and do your own custom logic to enhance or replace how the `data-confirm`
   attribute is handled. You could for example replace the browsers `confirm()` behavior with
   a custom javascript implementation:
