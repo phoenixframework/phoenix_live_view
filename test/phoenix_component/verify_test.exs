@@ -607,21 +607,9 @@ defmodule Phoenix.ComponentVerifyTest do
             attr :integer, :integer
             attr :float, :float
             attr :list, :list
-            attr :global, :global
           end
 
           def func(assigns), do: ~H[]
-
-          def render_global_line, do: __ENV__.line + 5
-
-          def render_global(assigns) do
-            ~H"""
-            <.func>
-              <:slot global="global" />
-              <:slot phx-click="click" id="id" />
-            </.func>
-            """
-          end
 
           def render_any_line, do: __ENV__.line + 5
 
@@ -736,16 +724,6 @@ defmodule Phoenix.ComponentVerifyTest do
           end
         end
       end)
-
-    line = get_line(__MODULE__.SlotAttrs, :render_global_line)
-
-    assert warnings =~ """
-           global attribute "global" \
-           in slot \"slot\" \
-           for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
-           may not be provided directly
-             test/phoenix_component/verify_test.exs:#{line}: (file)
-           """
 
     line = get_line(__MODULE__.SlotAttrs, :render_string_line)
 
