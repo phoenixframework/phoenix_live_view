@@ -606,7 +606,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove attributes from.
+    * `:to` - The optional DOM selector to send focus to.
       Defaults to the current element.
 
   ## Examples
