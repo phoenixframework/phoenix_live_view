@@ -316,6 +316,7 @@ such as to animate a notice into view:
 <div id="flash" class="hidden" phx-mounted={JS.show(transition: ...)}>
   Welcome back!
 </div>
+```
 
 ### LiveView vs static view
 
@@ -325,7 +326,6 @@ inside a LiveView container. For static templates, they will have no effect.
 For LiveView, the `phx-mounted` binding is executed as soon as the LiveView is
 mounted with a connection. When using `phx-mounted` in static views, it is executed
 as soon as the DOM is ready.
-```
 
 ## LiveView Specific Events
 
