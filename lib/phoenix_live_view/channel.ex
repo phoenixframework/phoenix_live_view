@@ -316,17 +316,17 @@ defmodule Phoenix.LiveView.Channel do
 
     [
       data: [
-        {'LiveView', view},
-        {'Parent pid', parent_pid},
-        {'Transport pid', transport_pid},
-        {'Topic', topic},
-        {'Components count', map_size(cid_to_component)}
+        {~c"LiveView", view},
+        {~c"Parent pid", parent_pid},
+        {~c"Transport pid", transport_pid},
+        {~c"Topic", topic},
+        {~c"Components count", map_size(cid_to_component)}
       ]
     ]
   end
 
   def format_status(_, [_pdict, state]) do
-    [data: [{'State', state}]]
+    [data: [{~c"State", state}]]
   end
 
   @impl true
@@ -954,9 +954,6 @@ defmodule Phoenix.LiveView.Channel do
       router: router
     } = verified
 
-    live_session_on_mount = load_live_session_on_mount(route)
-    lifecycle = lifecycle(config, live_session_on_mount)
-
     %Phoenix.Socket{
       endpoint: endpoint,
       transport_pid: transport_pid
@@ -999,12 +996,14 @@ defmodule Phoenix.LiveView.Channel do
       end
 
     merged_session = Map.merge(socket_session, verified_user_session)
+    lifecycle = load_lifecycle(config, route)
 
     case mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
         socket
+        |> load_layout(route)
         |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
         |> build_state(phx_socket)
         |> maybe_call_mount_handle_params(router, url, params)
@@ -1040,13 +1039,23 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp load_live_session_on_mount(%Route{live_session: %{extra: %{on_mount: hooks}}}), do: hooks
-  defp load_live_session_on_mount(_), do: []
+  defp load_lifecycle(
+         %{lifecycle: lifecycle},
+         %Route{live_session: %{extra: %{on_mount: on_mount}}}
+       ) do
+    update_in(lifecycle.mount, &(on_mount ++ &1))
+  end
 
-  defp lifecycle(%{lifecycle: lifecycle}, []), do: lifecycle
+  defp load_lifecycle(%{lifecycle: lifecycle}, _) do
+    lifecycle
+  end
 
-  defp lifecycle(%{lifecycle: lifecycle}, on_mount) do
-    %{lifecycle | mount: on_mount ++ lifecycle.mount}
+  defp load_layout(socket, %Route{live_session: %{extra: %{layout: layout}}}) do
+    put_in(socket.private[:phoenix_live_layout], layout)
+  end
+
+  defp load_layout(socket, _route) do
+    socket
   end
 
   defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle) do

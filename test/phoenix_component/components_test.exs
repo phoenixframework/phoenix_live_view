@@ -112,7 +112,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
       csrf = Phoenix.HTML.Tag.csrf_token_value("/users")
 
-      assert render(~H|<.link href="/users" method={:delete}>delete</.link>|) ==
+      assert render(~H|<.link href="/users" method="delete">delete</.link>|) ==
                ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
 
       assert render(~H|<.link href="/users" method="delete" csrf_token={true}>delete</.link>|) ==
@@ -125,7 +125,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
     test "csrf with custom token" do
       assigns = %{}
 
-      assert render(~H|<.link href="/users" method={:post} csrf_token="123">delete</.link>|) ==
+      assert render(~H|<.link href="/users" method="post" csrf_token="123">delete</.link>|) ==
                ~s|<a href="/users" data-method="post" data-csrf="123" data-to="/users">delete</a>|
     end
 
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       assert render(
-               ~H|<.link href="/users" method={:post} csrf_token="123" data-confirm="are you sure?">delete</.link>|
+               ~H|<.link href="/users" method="post" csrf_token="123" data-confirm="are you sure?">delete</.link>|
              ) ==
                "<a href=\"/users\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\" data-confirm=\"are you sure?\">delete</a>"
     end
@@ -373,7 +373,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
         method="put"
         multipart
         csrf_token="123"
-        as="user"
+        as={:user}
         errors={[name: "can't be blank"]}
         data-foo="bar"
         class="pretty"

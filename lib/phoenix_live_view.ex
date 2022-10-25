@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView do
   to the server where stateful views are spawned to push rendered updates
   to the browser, and receive client events via `phx-` bindings. Just like
   the first rendering, `c:mount/3`, is invoked  with params, session,
-  and socket state, However in the connected client case, a LiveView process
+  and socket state. However in the connected client case, a LiveView process
   is spawned on the server, runs `c:handle_params/3` again and then pushes
   the result of `c:render/1` to the client and continues on for the duration
   of the connection. If at any point during the stateful life-cycle a crash
@@ -67,11 +67,10 @@ defmodule Phoenix.LiveView do
   ## Example
 
   Before writing your first example, make sure that Phoenix LiveView
-  is properly installed. If you are just getting started, this can
-  be easily done by running `mix phx.new my_app --live`. The `phx.new`
-  command with the `--live` flag will create a new project with
-  LiveView installed and configured. Otherwise, please follow the steps
-  in the [installation guide](installation.md) before continuing.
+  is properly installed. All applications generated with Phoenix v1.6
+  and later come with LiveView installed and configured. For previously
+  existing projects, please follow the steps in the
+  [installation guide](installation.md) before continuing.
 
   A LiveView is a simple module that requires two callbacks: `c:mount/3`
   and `c:render/1`:
@@ -448,7 +447,7 @@ defmodule Phoenix.LiveView do
       use Phoenix.LiveView,
         namespace: MyAppWeb,
         container: {:tr, class: "colorized"},
-        layout: {MyAppWeb.LayoutView, "live.html"},
+        layout: {MyAppWeb.LayoutView, :app},
         log: :info
 
   ## Options
@@ -491,7 +490,12 @@ defmodule Phoenix.LiveView do
     layout =
       case opts[:layout] do
         {mod, template} when is_atom(mod) and is_binary(template) ->
-          {mod, template}
+          root_template = Phoenix.LiveView.Utils.normalize_layout(template, "use options")
+          {mod, root_template}
+
+        {mod, template} when is_atom(mod) and is_atom(template) ->
+          template = Phoenix.LiveView.Utils.normalize_layout(template, "use options")
+          {mod, to_string(template)}
 
         nil ->
           nil
@@ -499,7 +503,7 @@ defmodule Phoenix.LiveView do
         other ->
           raise ArgumentError,
                 ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
-                  "got: #{inspect(other)}"
+                  "or {MyLayoutView, :my_template}, got: #{inspect(other)}"
       end
 
     log =

@@ -455,6 +455,37 @@ defmodule Phoenix.Component do
   ```
 
   You can learn more about slots and the `slot/3` macro [in its documentation](`slot/3`).
+
+  ### Embedding external template files
+
+  The `embed_templates/1` macro can be used to embed `.html.heex` files
+  as function components. The directory path is based on the current
+  module (`__DIR__`), and a wildcard pattern may be used to select all
+  files within a directory tree. For example, imagine a directory listing:
+
+      ├── components.ex
+      ├── cards
+      │   ├── pricing_card.html.heex
+      │   └── features_card.html.heex
+
+  Then you can embed the page templates in your `components.ex` module
+  and call them like any other function component:
+
+      defmodule MyAppWeb.Components do
+        use Phoenix.Component
+
+        embed_templates "cards/*"
+
+        def landing_hero(assigns) do
+          ~H"""
+          <.pricing_card />
+          <.features_card />
+          """
+        end
+      end
+
+  See `embed_templates/1` for more information, including declarative
+  assigns support for embedded templates.
   '''
 
   ## Functions
@@ -726,14 +757,14 @@ defmodule Phoenix.Component do
   would like to add to the element, such as class, data attributes, etc:
 
   ```heex
-  <.my_link href="/" id={@id} new_window={true} class="my-class">Home</.my_link>
+  <.my_link to="/" id={@id} new_window={true} class="my-class">Home</.my_link>
   ```
 
   We could support the dynamic attributes with the following component:
 
       def my_link(assigns) do
         target = if assigns[:new_window], do: "_blank", else: false
-        extra = assigns_to_attributes(assigns, [:new_window])
+        extra = assigns_to_attributes(assigns, [:new_window, :to])
 
         assigns =
           assigns
@@ -741,7 +772,7 @@ defmodule Phoenix.Component do
           |> assign(:extra, extra)
 
         ~H"""
-        <a href={@href} target={@target} {@extra}>
+        <a href={@to} target={@target} {@extra}>
           <%= render_slot(@inner_block) %>
         </a>
         """
@@ -1310,6 +1341,58 @@ defmodule Phoenix.Component do
     raise_bad_socket_or_assign!("changed?/2", assigns)
   end
 
+  @doc """
+  Embeds external template files into the module as function components.
+
+  ## Options
+
+    * `:root` - The root directory to embed files. Defaults to the current
+      module's direcotry (`__DIR__`)
+
+  A wildcard pattern may be used to select all files within a directory tree.
+  For example, imagine a directory listing:
+
+      ├── components.ex
+      ├── pages
+      │   ├── about_page.html.heex
+      │   └── welcome_page.html.heex
+
+  Then to embed the page templates in your `components.ex` module:
+
+      defmodule MyAppWeb.Components do
+        use Phoenix.Component
+
+        embed_templates "pages/*"
+      end
+
+  Now, your module will have an `about_page/1` and `welcome_page/1` function
+  component defined. Embedded templates also support declarative assigns
+  via bodyless function definitions, for example:
+
+      defmodule MyAppWeb.Components do
+        use Phoenix.Component
+
+        embed_templates "pages/*"
+
+        attr :name, :string, required: true
+        def welcome_page(assigns)
+
+        slot :header
+        def about_page(assigns)
+      end
+
+  Multiple invocations of `embed_templates` is also supported.
+  """
+  defmacro embed_templates(pattern, opts \\ []) do
+    quote do
+      Phoenix.Template.compile_all(
+        &Phoenix.Component.__embed__/1,
+        Path.expand(unquote(opts)[:root] || __DIR__, __DIR__),
+        unquote(pattern)
+      )
+    end
+  end
+
   ## Declarative assigns API
 
   @doc false
@@ -1324,6 +1407,7 @@ defmodule Phoenix.Component do
         import Kernel, except: [def: 2, defp: 2]
         import Phoenix.Component
         import Phoenix.Component.Declarative
+        require Phoenix.Template
 
         for {prefix_match, value} <- Phoenix.Component.Declarative.__setup__(__MODULE__, opts) do
           @doc false
@@ -1333,6 +1417,9 @@ defmodule Phoenix.Component do
 
     [conditional, imports]
   end
+
+  @doc false
+  def __embed__(path), do: path |> Path.basename() |> Path.rootname(".html.heex")
 
   @doc ~S'''
   Declares a function component slot.
@@ -1490,6 +1577,7 @@ defmodule Phoenix.Component do
   | `:integer`      | any integer                                                          |
   | `:float`        | any float                                                            |
   | `:list`         | any list of any arbitrary types                                      |
+  | `:map`          | any map of any arbitrary types                                       |
   | `:global`       | any common HTML attributes, plus those defined by `:global_prefixes` |
   | A struct module | any module that defines a struct with `defstruct/1`                  |
 
@@ -1521,7 +1609,7 @@ defmodule Phoenix.Component do
 
   * You specify a literal attribute (such as `value="string"` or `value`, but not `value={expr}`)
   and the type does not match. The following types currently support literal validation:
-  `:string`, `:atom`, `:boolean`, `:integer`, `:float`, and `:list`.
+  `:string`, `:atom`, `:boolean`, `:integer`, `:float`, `:map` and `:list`.
 
   * You specify a literal attribute and it is not a member of the `:values` list.
 
@@ -1531,10 +1619,7 @@ defmodule Phoenix.Component do
   On the side of the LiveView component itself, defining attributes provides the following quality
   of life improvements:
 
-  * The default value of all attributes will be added to the `assigns` map upfront. Note that
-  unless an attribute is marked as required or has a default defined, omitting a value for an
-  attribute will result in `nil` being passed as the default value to the `assigns` map,
-  regardless of the type defined for the attribute.
+  * The default value of all attributes will be added to the `assigns` map upfront.
 
   * Attribute documentation is generated for the component.
 
@@ -1955,7 +2040,7 @@ defmodule Phoenix.Component do
   ### Overriding the default confirm behaviour
 
   `phoenix_html.js` does trigger a custom event `phoenix.link.click` on the clicked DOM element
-  when a click happened. This allows you to intercept the event on it's way bubbling up
+  when a click happened. This allows you to intercept the event on its way bubbling up
   to `window` and do your own custom logic to enhance or replace how the `data-confirm`
   attribute is handled. You could for example replace the browsers `confirm()` behavior with
   a custom javascript implementation:
@@ -2367,6 +2452,7 @@ defmodule Phoenix.Component do
 
       home <span class="sep">|</span> profile <span class="sep">|</span> settings
   """
+  @doc type: :component
   attr.(:enum, :any, required: true, doc: "the enumerable to intersperse with separators")
   slot.(:inner_block, required: true, doc: "the inner_block to render for each item")
   slot.(:separator, required: true, doc: "the slot for the separator")

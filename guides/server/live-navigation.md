@@ -51,11 +51,11 @@ Here is a quick breakdown:
   * `<.link href={...}>` and [`redirect/2`](`Phoenix.Controller.redirect/2`)
     are HTTP-based, work everywhere, and perform full page reloads
 
-  * `<.link navigate={...}>` and [`push_redirect/2`](`Phoenix.LiveView.push_redirect/2`)
+  * `<.link navigate={...}>` and [`push_navigate/2`](`Phoenix.LiveView.push_navigate/2`)
     work across LiveViews in the same session. They mount a new LiveView
     while keeping the current layout
 
-  * `<.link patch={...}>` and [`live_patch/2`](`Phoenix.LiveView.push_patch/2`)
+  * `<.link patch={...}>` and [`push_patch/2`](`Phoenix.LiveView.push_patch/2`)
     updates the current LiveView and sends only the minimal diff while also
     maintaining the scroll position
 
