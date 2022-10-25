@@ -327,7 +327,6 @@ inside a LiveView container. For static templates, they will have no effect.
 For LiveView, the `phx-mounted` binding is executed as soon as the LiveView is
 mounted with a connection. When using `phx-mounted` in static views, it is executed
 as soon as the DOM is ready.
-```
 
 ## LiveView Specific Events
 
