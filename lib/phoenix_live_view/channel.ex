@@ -255,6 +255,19 @@ defmodule Phoenix.LiveView.Channel do
     handle_redirect(state, command, flash, nil)
   end
 
+  def handle_info({:phoenix_live_reload, _topic, _changed_file}, %{socket: socket} = state) do
+    Phoenix.CodeReloader.reload(socket.endpoint)
+
+    new_socket =
+      Enum.reduce(socket.assigns, socket, fn {key, val}, socket ->
+        Utils.force_assign(socket, key, val)
+      end)
+
+    handle_changed(state, new_socket, nil)
+
+    {:noreply, state}
+  end
+
   def handle_info(msg, %{socket: socket} = state) do
     msg
     |> view_handle_info(socket)
@@ -1008,6 +1021,7 @@ defmodule Phoenix.LiveView.Channel do
         |> build_state(phx_socket)
         |> maybe_call_mount_handle_params(router, url, params)
         |> reply_mount(from, verified, route)
+        |> maybe_subscribe_to_live_reload()
 
       {:error, :noproc} ->
         GenServer.reply(from, {:error, %{reason: "stale"}})
@@ -1308,4 +1322,16 @@ defmodule Phoenix.LiveView.Channel do
       _ -> nil
     end
   end
+
+  defp maybe_subscribe_to_live_reload({:noreply, %{socket: socket} = state}) do
+    live_reload_config = socket.endpoint.config(:live_view)
+
+    if topic = live_reload_config[:live_reload_topic] do
+      socket.endpoint.subscribe(topic)
+    end
+
+    {:noreply, state}
+  end
+
+  defp maybe_subscribe_to_live_reload(response), do: response
 end
