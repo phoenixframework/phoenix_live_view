@@ -36,7 +36,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      {:phoenix, "~> 1.6 or ~> 1.7"},
+      {:phoenix, "~> 1.6.15 or ~> 1.7.0"},
       {:phoenix_view, "~> 2.0", optional: true},
       {:phoenix_template, "~> 1.0"},
       {:phoenix_html, "~> 3.1"},
