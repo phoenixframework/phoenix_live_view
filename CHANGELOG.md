@@ -1,6 +1,10 @@
 # Changelog
 
-## 0.18.3
+## 0.18.3 (2022-10-26)
+
+### Enhancements
+  * Add `embed_templates` to `Phoenix.Component` for embedding template files as function components
+  * Raise on global slot attributes
 
 ### Bug Fixes
   * Fix bug on slots when passing multiple slot entries with mix if/for syntax
