@@ -660,7 +660,7 @@ defmodule Phoenix.Component do
 
   ### HEEx extension: special attributes
 
-  Apart from normal HTML attributes, HEEx also support some special attributes
+  Apart from normal HTML attributes, HEEx also supports some special attributes
   such as `:let` and `:for`.
 
   #### :let
