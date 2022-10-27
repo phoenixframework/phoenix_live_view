@@ -64,6 +64,7 @@ which allows you to encapsulate this logic and execute it on every mount,
 as you would with plug:
 
     defmodule MyAppWeb.UserLiveAuth do
+      import Phoenix.Component
       import Phoenix.LiveView
 
       def on_mount(:default, _params, %{"user_id" => user_id} = _session, socket) do
