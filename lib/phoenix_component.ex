@@ -1679,8 +1679,6 @@ defmodule Phoenix.Component do
 
   ## Components
 
-  # TODO: Insert docs for components
-
   import Kernel, except: [def: 2, defp: 2]
   import Phoenix.Component.Declarative
   alias Phoenix.Component.Declarative
@@ -1722,7 +1720,6 @@ defmodule Phoenix.Component do
   @doc type: :component
   def live_component(assigns)
 
-  # TODO: add declarative attrs once we support non-global dynamic attrs
   def live_component(assigns) when is_map(assigns) do
     id = assigns[:id]
 

@@ -1030,7 +1030,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {special, [quoted_value | r], a, locs}
   end
 
-  # TODO: deprecate "let" in favor of `:let` on LV v0.19.
+  # TODO: Remove deprecation and no longer handle let especially
   @special_attrs ~w(let :let :if :for)
   defp split_component_attr(
          {attr, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
@@ -1039,7 +1039,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _component_or_slot
        )
        when attr in @special_attrs do
-    attr = if String.starts_with?(attr, ":"), do: attr, else: ":#{attr}"
+    attr =
+      if String.starts_with?(attr, ":") do
+        attr
+      else
+        IO.warn(
+          "let is deprecated, please use :let instead",
+          %{__ENV__ | file: file, line: line, module: nil, function: nil}
+        )
+
+        ":#{attr}"
+      end
 
     case special do
       %{^attr => {_, attr_meta}} ->

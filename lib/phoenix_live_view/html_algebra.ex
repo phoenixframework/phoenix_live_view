@@ -391,7 +391,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> group()
   end
 
+  # TODO: Remove let from this list
   @attrs_order %{
+    "let" => 1,
     ":let" => 1,
     ":for" => 2,
     ":if" => 3

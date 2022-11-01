@@ -571,52 +571,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    # TODO: remove me once "let" is not supported anymore.
-    test "raise on duplicated old let" do
-      message =
-        ~r".exs:4:(8:)? cannot define multiple :let attributes. Another :let has already been defined at line 3"
-
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
-          let={var1}
-          let={var2}
-        />
-        """)
-      end)
-
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <.local_function_component value='1'
-          let={var1}
-          let={var2}
-        />
-        """)
-      end)
-
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
-          :let={var1}
-          let={var2}
-        />
-        """)
-      end)
-
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-        <.local_function_component value='1'
-          :let={var1}
-          let={var2}
-        />
-        """)
-      end)
-    end
-
     test "raise on unclosed local call" do
       message =
         ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
