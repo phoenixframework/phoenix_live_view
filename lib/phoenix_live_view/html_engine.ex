@@ -151,7 +151,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       substate: subengine.init(opts),
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0),
-      caller: Keyword.get(opts, :caller),
+      caller: Keyword.fetch!(opts, :caller),
       previous_token_slot?: false
     }
   end
