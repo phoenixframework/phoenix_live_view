@@ -1347,7 +1347,7 @@ defmodule Phoenix.Component do
   ## Options
 
     * `:root` - The root directory to embed files. Defaults to the current
-      module's direcotry (`__DIR__`)
+      module's directory (`__DIR__`)
 
   A wildcard pattern may be used to select all files within a directory tree.
   For example, imagine a directory listing:
