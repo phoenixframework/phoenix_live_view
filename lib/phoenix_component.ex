@@ -1073,15 +1073,22 @@ defmodule Phoenix.Component do
         """
       end
 
-  ## Referencing parent assigns
+  ## Connected and disconnected state
 
   When a user first accesses an application using LiveView, the LiveView is first rendered in its
-  disconnected state, as part of a regular HTML response. In some cases, there may be data that is
-  shared by your Plug pipelines and your LiveView, such as the `:current_user` assign.
+  disconnected state, as part of a regular HTML response. In this disconnected state, data is
+  shared by your Plug pipelines and your LiveView, such as the `:current_user` assign, if present.
 
-  By using `assign_new` in the mount callback of your LiveView, you can instruct LiveView to
-  re-use any assigns set in your Plug pipelines as part of `Plug.Conn`, avoiding sending additional
-  queries to the database. Imagine you have a Plug that does:
+  By using `assign_new` in the mount callback of your LiveView, you can
+  instruct LiveView to re-use any assigns already set in conn during disconnected state.
+
+  You can also use `assign_new` to re-use any assign already set in socket during connected state.
+  There is no porosity between conn and socket, though:
+  àssign_new` reuses what is assigned in conn during disconnected state, and
+  what is assigned in socket during connected state, but does not re-use for socket what was
+  assigned in conn.
+
+  Imagine you have a Plug that does:
 
       # A plug
       def authenticate(conn, _opts) do
@@ -1101,6 +1108,8 @@ defmodule Phoenix.Component do
   In such case `conn.assigns.current_user` will be used if present. If there is no such
   `:current_user` assign or the LiveView was mounted as part of the live navigation, where no Plug
   pipelines are invoked, then the anonymous function is invoked to execute the query instead.
+
+  ## Referencing parent assigns
 
   LiveView is also able to share assigns via `assign_new` within nested LiveView. If the parent
   LiveView defines a `:current_user` assign and the child LiveView also uses `assign_new/3` to
