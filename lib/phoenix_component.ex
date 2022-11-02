@@ -1388,7 +1388,7 @@ defmodule Phoenix.Component do
       Phoenix.Template.compile_all(
         &Phoenix.Component.__embed__/1,
         Path.expand(unquote(opts)[:root] || __DIR__, __DIR__),
-        unquote(pattern)
+        unquote(pattern) <> ".html"
       )
     end
   end
@@ -1419,7 +1419,7 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __embed__(path), do: path |> Path.basename() |> Path.rootname(".html.heex")
+  def __embed__(path), do: path |> Path.basename() |> Path.rootname() |> Path.rootname()
 
   @doc ~S'''
   Declares a function component slot.
