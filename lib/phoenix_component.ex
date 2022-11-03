@@ -1073,7 +1073,7 @@ defmodule Phoenix.Component do
         """
       end
 
-  ## Connected and disconnected state
+  ## Sharing assigns
 
   When a user first accesses an application using LiveView, the LiveView is first rendered in its
   disconnected state, as part of a regular HTML response. In this disconnected state, data is
