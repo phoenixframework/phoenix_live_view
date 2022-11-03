@@ -14,12 +14,10 @@ defmodule Phoenix.LiveView do
   work of tracking changes and sending the relevant diffs to
   the browser.
 
-  At the end of the day, a LiveView is nothing more than a
-  process that receives events as messages and updates its
-  state. The state itself is nothing more than functional
-  and immutable Elixir data structures. The events are either
-  internal application messages (usually emitted by `Phoenix.PubSub`)
-  or sent by the client/browser.
+  A LiveView is just a process that receives events as messages and updates
+  its state. The state itself is nothing more than functional and immutable
+  Elixir data structures. The events are either internal application messages
+  (usually emitted by `Phoenix.PubSub`) or sent by the client/browser.
 
   LiveView is first rendered statically as part of regular
   HTTP requests, which provides quick times for "First Meaningful
