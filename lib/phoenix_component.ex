@@ -1042,7 +1042,7 @@ defmodule Phoenix.Component do
 
   The first argument is either a LiveView `socket` or an `assigns` map from function components.
 
-  This function is useful for lazily assigning values and referencing parent assigns.
+  This function is useful for lazily assigning values and sharing assigns.
   We will cover both use cases next.
 
   ## Lazy assigns
@@ -1075,18 +1075,15 @@ defmodule Phoenix.Component do
 
   ## Sharing assigns
 
+  It is possible to share assigns between the Plug pipeline and LiveView on disconnected render
+  and between LiveViews when connected.
+
+  ### When disconnected
+
   When a user first accesses an application using LiveView, the LiveView is first rendered in its
-  disconnected state, as part of a regular HTML response. In this disconnected state, data is
-  shared by your Plug pipelines and your LiveView, such as the `:current_user` assign, if present.
-
-  By using `assign_new` in the mount callback of your LiveView, you can
-  instruct LiveView to re-use any assigns already set in conn during disconnected state.
-
-  You can also use `assign_new` to re-use any assign already set in socket during connected state.
-  There is no porosity between conn and socket, though:
-  àssign_new` reuses what is assigned in conn during disconnected state, and
-  what is assigned in socket during connected state, but does not re-use for socket what was
-  assigned in conn.
+  disconnected state, as part of a regular HTML response. By using `assign_new` in the mount
+  callback of your LiveView, you can instruct LiveView to re-use any assigns already set in `conn`
+  during disconnected state.
 
   Imagine you have a Plug that does:
 
@@ -1109,7 +1106,7 @@ defmodule Phoenix.Component do
   `:current_user` assign or the LiveView was mounted as part of the live navigation, where no Plug
   pipelines are invoked, then the anonymous function is invoked to execute the query instead.
 
-  ## Referencing parent assigns
+  ### When connected
 
   LiveView is also able to share assigns via `assign_new` within nested LiveView. If the parent
   LiveView defines a `:current_user` assign and the child LiveView also uses `assign_new/3` to
