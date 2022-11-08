@@ -1088,7 +1088,7 @@ defmodule Phoenix.Component.Declarative do
       end)
 
     for {name, {line, _column, _type_value}} <- attrs,
-        not (global_attr && __global__?(caller_module, Atom.to_string(name), global_attr)) do
+        !(global_attr && __global__?(caller_module, Atom.to_string(name), global_attr)) do
       message = "undefined attribute \"#{name}\" for component #{component_fa(call)}"
       warn(message, call.file, line)
     end
