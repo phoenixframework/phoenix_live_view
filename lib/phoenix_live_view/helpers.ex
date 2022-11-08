@@ -1,40 +1,38 @@
 defmodule Phoenix.LiveView.Helpers do
-  @moduledoc """
-  A collection of helpers to be imported into your views.
+  @moduledoc false
+  import Phoenix.Component
+
+  alias Phoenix.LiveView.{Component, Socket}
+
+  @doc """
+  Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
+
+      iex> ~L"\""
+      ...> Hello <%= "world" %>
+      ...> "\""
+      {:safe, ["Hello ", "world", "\\n"]}
+
   """
+  @doc deprecated: "Use ~H instead"
+  defmacro sigil_L({:<<>>, meta, [expr]}, []) do
+    options = [
+      engine: Phoenix.LiveView.Engine,
+      file: __CALLER__.file,
+      line: __CALLER__.line + 1,
+      indentation: meta[:indentation] || 0
+    ]
 
-  alias Phoenix.LiveView.{Component, Socket, Static}
+    EEx.compile_string(expr, options)
+  end
 
-  @doc false
+  @doc deprecated: "Use link/1 instead"
   def live_patch(opts) when is_list(opts) do
     live_link("patch", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
 
-  @doc """
-  Generates a link that will patch the current LiveView.
+  @doc deprecated: "Use <.link> instead"
+  def live_patch(text, opts)
 
-  When navigating to the current LiveView, `c:handle_params/3` is
-  immediately invoked to handle the change of params and URL state.
-  Then the new state is pushed to the client, without reloading the
-  whole page. For live redirects to another LiveView, use
-  `live_redirect/2`.
-
-  ## Options
-
-    * `:to` - the required path to link to.
-    * `:replace` - the flag to replace the current history or push a new state.
-      Defaults `false`.
-
-  All other options are forwarded to the anchor tag.
-
-  ## Examples
-
-      <%= live_patch "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
-      <%= live_patch to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
-        Sort By Price
-      <% end %>
-
-  """
   def live_patch(%Socket{}, _) do
     raise """
     you are invoking live_patch/2 with a socket but a socket is not expected.
@@ -52,36 +50,14 @@ defmodule Phoenix.LiveView.Helpers do
     live_link("patch", text, opts)
   end
 
-  @doc false
+  @doc deprecated: "Use <.link> instead"
   def live_redirect(opts) when is_list(opts) do
     live_link("redirect", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
 
-  @doc """
-  Generates a link that will redirect to a new LiveView.
+  @doc deprecated: "Use <.link> instead"
+  def live_redirect(text, opts)
 
-  The current LiveView will be shut down and a new one will be mounted
-  in its place, without reloading the whole page. This can
-  also be used to remount the same LiveView, in case you want to start
-  fresh. If you want to navigate to the same LiveView without remounting
-  it, use `live_patch/2` instead.
-
-  ## Options
-
-    * `:to` - the required path to link to.
-    * `:replace` - the flag to replace the current history or push a new state.
-      Defaults `false`.
-
-  All other options are forwarded to the anchor tag.
-
-  ## Examples
-
-      <%= live_redirect "next", to: Routes.live_path(@socket, MyLive, @page + 1) %>
-      <%= live_redirect to: Routes.live_path(@socket, MyLive, dir: :asc), replace: false do %>
-        Sort By Price
-      <% end %>
-
-  """
   def live_redirect(%Socket{}, _) do
     raise """
     you are invoking live_redirect/2 with a socket but a socket is not expected.
@@ -110,175 +86,100 @@ defmodule Phoenix.LiveView.Helpers do
       opts
       |> Keyword.update(:data, data, &Keyword.merge(&1, data))
       |> Keyword.put(:href, uri)
+      |> Keyword.delete(:to)
 
-    Phoenix.HTML.Tag.content_tag(:a, Keyword.delete(opts, :to), do: block_or_text)
+    assigns = %{opts: opts, content: block_or_text}
+
+    ~H|<a {@opts}><%= @content %></a>|
   end
 
   @doc """
-  Renders a LiveView within an originating plug request or
-  within a parent LiveView.
+  Deprecated API for rendering `LiveComponent`.
 
-  ## Options
+  ## Upgrading
 
-    * `:session` - the map of extra session data to be serialized
-      and sent to the client. Note all session data currently in
-      the connection is automatically available in LiveViews. You
-      can use this option to provide extra data. Also note the keys
-      in the session are strings keys, as a reminder that data has
-      to be serialized first.
-    * `:container` - the optional tuple for the HTML tag and DOM
-      attributes to be used for the LiveView container. For example:
-      `{:li, style: "color: blue;"}`. By default it uses the module
-      definition container. See the "Containers" section for more
-      information.
-    * `:id` - both the DOM ID and the ID to uniquely identify a LiveView.
-      One `:id` is automatically generated when rendering root LiveViews
-      but it is a required option when rendering a child LiveView.
-    * `:router` - an optional router that enables this LiveView to
-      perform live navigation. Only a single LiveView in a page may
-      have the `:router` set. LiveViews defined at the router with
-      the `live` macro automatically have the `:router` option set.
+  In order to migrate from `<%= live_component ... %>` to `<.live_component>`,
+  you must first:
 
-  ## Examples
+    1. Migrate from `~L` sigil and `.leex` templates to
+      `~H` sigil and `.heex` templates
 
-      # within eex template
-      <%= live_render(@conn, MyApp.ThermostatLive) %>
+    2. Then instead of:
 
-      # within leex template
-      <%= live_render(@socket, MyApp.ThermostatLive, id: "thermostat") %>
+       ```
+       <%= live_component MyModule, id: "hello" do %>
+       ...
+       <% end %>
+       ```
 
-  ## Containers
+       You should do:
 
-  When a `LiveView` is rendered, its contents are wrapped in a container.
-  By default, said container is a `div` tag with a handful of `LiveView`
-  specific attributes.
+       ```
+       <.live_component module={MyModule} id="hello">
+       ...
+       </.live_component>
+       ```
 
-  The container can be customized in different ways:
-
-    * You can change the default `container` on `use Phoenix.LiveView`:
-
-          use Phoenix.LiveView, container: {:tr, id: "foo-bar"}
-
-    * You can override the container tag and pass extra attributes when
-      calling `live_render` (as well as on your `live` call in your router):
-
-          live_render socket, MyLiveView, container: {:tr, class: "highlight"}
+    3. If your component is using `render_block/2`, replace
+       it by `render_slot/2`
 
   """
-  def live_render(conn_or_socket, view, opts \\ [])
-
-  def live_render(%Plug.Conn{} = conn, view, opts) do
-    case Static.render(conn, view, opts) do
-      {:ok, content, _assigns} ->
-        content
-
-      {:stop, _} ->
-        raise RuntimeError, "cannot redirect from a child LiveView"
-    end
-  end
-
-  def live_render(%Socket{} = parent, view, opts) do
-    Static.nested_render(parent, view, opts)
-  end
-
-  @doc """
-  Renders a `Phoenix.LiveComponent` within a parent LiveView.
-
-  While `LiveView`s can be nested, each LiveView starts its
-  own process. A LiveComponent provides similar functionality
-  to LiveView, except they run in the same process as the
-  `LiveView`, with its own encapsulated state.
-
-  LiveComponent comes in two shapes, stateful and stateless.
-  See `Phoenix.LiveComponent` for more information.
-
-  ## Examples
-
-  All of the `assigns` given are forwarded directly to the
-  `live_component`:
-
-      <%= live_component(@socket, MyApp.WeatherComponent, id: "thermostat", city: "Kraków") %>
-
-  Note the `:id` won't necessarily be used as the DOM ID.
-  That's up to the component. However, note the `:id` has
-  a special meaning: whenever an `:id` is given, the component
-  becomes stateful. Otherwise, `:id` is always set to `nil`.
-  """
-  defmacro live_component(socket, component, assigns \\ [], do_block \\ []) do
-    {do_block, assigns} =
-      case {do_block, assigns} do
-        {[do: do_block], _} -> {do_block, assigns}
-        {_, [do: do_block]} -> {do_block, []}
-        {_, _} -> {nil, assigns}
-      end
-
-    assigns = rewrite_do(do_block, assigns, __CALLER__)
-
-    quote do
-      Phoenix.LiveView.Helpers.__live_component__(
-        unquote(socket),
-        unquote(component).__live__(),
-        unquote(assigns)
+  @doc deprecated: "Use .live_component (live_component/1) instead"
+  defmacro live_component(component, assigns, do_block \\ []) do
+    if is_assign?(:socket, component) do
+      IO.warn(
+        "passing the @socket to live_component is no longer necessary, " <>
+          "please remove the socket argument",
+        Macro.Env.stacktrace(__CALLER__)
       )
     end
-  end
 
-  defp rewrite_do(nil, opts, _caller), do: opts
+    {inner_block, do_block, assigns} =
+      case {do_block, assigns} do
+        {[do: do_block], _} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], assigns}
+        {_, [do: do_block]} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], []}
+        {_, _} -> {nil, do_block, assigns}
+      end
 
-  defp rewrite_do(do_block, opts, caller) do
-    do_fun = rewrite_do(do_block, caller)
-
-    if Keyword.keyword?(opts) do
-      Keyword.put(opts, :inner_content, do_fun)
+    if match?({:__aliases__, _, _}, component) or is_atom(component) or is_list(assigns) or
+         is_map(assigns) do
+      quote do
+        Phoenix.LiveView.Helpers.__live_component__(
+          unquote(component).__live__(),
+          unquote(assigns),
+          unquote(inner_block)
+        )
+      end
     else
       quote do
-        Keyword.put(unquote(opts), :inner_content, unquote(do_fun))
+        case unquote(component) do
+          %Phoenix.LiveView.Socket{} ->
+            Phoenix.LiveView.Helpers.__live_component__(
+              unquote(assigns).__live__(),
+              unquote(do_block),
+              unquote(inner_block)
+            )
+
+          component ->
+            Phoenix.LiveView.Helpers.__live_component__(
+              component.__live__(),
+              unquote(assigns),
+              unquote(inner_block)
+            )
+        end
       end
     end
   end
 
-  defp rewrite_do([{:->, meta, _} | _] = do_block, _caller) do
-    {:fn, meta, do_block}
-  end
-
-  defp rewrite_do(do_block, caller) do
-    unless Macro.Env.has_var?(caller, {:assigns, nil}) and
-             Macro.Env.has_var?(caller, {:changed, Phoenix.LiveView.Engine}) do
-      raise ArgumentError,
-            "cannot use live_compoment do/end blocks because we could not find existing assigns. " <>
-              "Please pass a clause to do/end instead"
-    end
-
-    quote do
-      fn extra_assigns ->
-        var!(assigns) =
-          case extra_assigns do
-            [] ->
-              var!(assigns)
-
-            _ ->
-              assigns = Enum.into(extra_assigns, var!(assigns))
-
-              if var = var!(changed, Phoenix.LiveView.Engine) do
-                changed =
-                  for {key, _} <- extra_assigns, key != :socket, into: var, do: {key, true}
-
-                put_in(assigns.socket.changed, changed)
-              else
-                assigns
-              end
-          end
-
-        unquote(do_block)
-      end
-    end
-  end
-
-  def __live_component__(%Socket{}, %{kind: :component, module: component}, assigns)
+  @doc false
+  def __live_component__(%{kind: :component, module: component}, assigns, inner)
       when is_list(assigns) or is_map(assigns) do
     assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
+    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
     id = assigns[:id]
 
+    # TODO: Remove logic from Diff once stateless components are removed.
+    # TODO: Remove live_component arity checks from Engine
     if is_nil(id) and
          (function_exported?(component, :handle_event, 3) or
             function_exported?(component, :preload, 1)) do
@@ -289,42 +190,53 @@ defmodule Phoenix.LiveView.Helpers do
     %Component{id: id, assigns: assigns, component: component}
   end
 
-  def __live_component__(%Socket{}, %{kind: kind, module: module}, assigns)
+  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
       when is_list(assigns) or is_map(assigns) do
     raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
   end
 
-  @doc """
-  Returns the flash message from the LiveView flash assign.
-
-  ## Examples
-
-      <p class="alert alert-info"><%= live_flash(@flash, :info) %></p>
-      <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
-  """
-  def live_flash(%_struct{} = other, _key) do
-    raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
+  defp rewrite_do!(do_block, key, caller) do
+    if Macro.Env.has_var?(caller, {:assigns, nil}) do
+      # TODO: make __inner_block__ private once this is removed.
+      Phoenix.LiveView.HTMLEngine.__inner_block__(do_block, key)
+    else
+      raise ArgumentError,
+            "cannot use live_component because the assigns var is unbound/unset"
+    end
   end
 
-  def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
-
   @doc """
-  Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
+  Renders the `@inner_block` assign of a component with the given `argument`.
 
-      iex> ~L"\""
-      ...> Hello <%= "world" %>
-      ...> "\""
-      {:safe, ["Hello ", "world", "\\n"]}
+      <%= render_block(@inner_block, value: @value)
 
+  This function is deprecated for function components. Use `render_slot/2`
+  instead.
   """
-  defmacro sigil_L({:<<>>, meta, [expr]}, []) do
-    options = [
-      engine: Phoenix.LiveView.Engine,
-      line: __CALLER__.line + 1,
-      indentation: meta[:indentation] || 0
-    ]
+  @doc deprecated: "Use render_slot/2 instead"
+  defmacro render_block(inner_block, argument \\ []) do
+    quote do
+      unquote(__MODULE__).__render_block__(unquote(inner_block)).(
+        var!(changed, Phoenix.LiveView.Engine),
+        unquote(argument)
+      )
+    end
+  end
 
-    EEx.compile_string(expr, options)
+  @doc false
+  def __render_block__([%{inner_block: fun}]), do: fun
+  def __render_block__(fun), do: fun
+
+  @doc deprecated: "Use <.live_img_preview /> instead"
+  def live_img_preview(entry, opts) do
+    live_img_preview(Enum.into(opts, %{entry: entry}))
+  end 
+
+  @doc deprecated: "Use <.live_file_input /> instead"
+  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts) when is_list(opts) do
+    require Phoenix.LiveViewTest
+    assigns = Enum.into(opts, %{upload: conf})
+    {:safe, Phoenix.LiveViewTest.render_component(&live_file_input/1, assigns)}
   end
 
   @doc """
@@ -332,32 +244,22 @@ defmodule Phoenix.LiveView.Helpers do
 
   ## Examples
 
-      <%= live_title_tag @page_title, prefix: "MyApp – " %>
+      <%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
 
-      <%= live_title_tag @page_title, suffix: " – MyApp" %>
+      <%= live_title_tag assigns[:page_title] || "Welcome", suffix: " – MyApp" %>
   """
+  @doc deprecated: "Use <.live_title> instead"
   def live_title_tag(title, opts \\ []) do
-    title_tag(title, opts[:prefix], opts[:suffix], opts)
+    assigns = %{title: title, prefix: opts[:prefix], suffix: opts[:suffix]}
+
+    ~H"""
+    <Phoenix.Component.live_title prefix={@prefix} suffix={@suffix}><%= @title %></Phoenix.Component.live_title>
+    """
   end
 
-  defp title_tag(title, nil = _prefix, "" <> suffix, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, title <> suffix, data: [suffix: suffix])
-  end
-
-  defp title_tag(title, "" <> prefix, nil = _suffix, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, prefix <> title, data: [prefix: prefix])
-  end
-
-  defp title_tag(title, "" <> pre, "" <> post, _opts) do
-    Phoenix.HTML.Tag.content_tag(:title, pre <> title <> post, data: [prefix: pre, suffix: post])
-  end
-
-  defp title_tag(title, _prefix = nil, _postfix = nil, []) do
-    Phoenix.HTML.Tag.content_tag(:title, title)
-  end
-
-  defp title_tag(_title, _prefix = nil, _suffix = nil, opts) do
-    raise ArgumentError,
-          "live_title_tag/2 expects a :prefix and/or :suffix option, got: #{inspect(opts)}"
+  defp is_assign?(assign_name, expression) do
+    match?({:@, _, [{^assign_name, _, _}]}, expression) or
+      match?({^assign_name, _, _}, expression) or
+      match?({{:., _, [{:assigns, _, nil}, ^assign_name]}, _, []}, expression)
   end
 end

@@ -2,10 +2,8 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     The value is: <%= @val %>
-    connect: <%= inspect(@connect_params) %>
-    info: <%= inspect(@connect_info) %>
     mount: <%= inspect(@mount_params) %>
     params: <%= inspect(@params) %>
     """
@@ -19,8 +17,6 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
        socket,
        val: 1,
        mount_params: params,
-       connect_params: get_connect_params(socket) || %{},
-       connect_info: get_connect_info(socket) || %{},
        test_pid: session["test_pid"],
        connected?: connected?(socket),
        on_handle_params: on_handle_params && :erlang.binary_to_term(on_handle_params)
@@ -43,15 +39,15 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_info({:push_redirect, to}, socket) do
-    {:noreply, push_redirect(socket, to: to)}
+  def handle_info({:push_navigate, to}, socket) do
+    {:noreply, push_navigate(socket, to: to)}
   end
 
   def handle_call({:push_patch, func}, _from, socket) do
     func.(socket)
   end
 
-  def handle_call({:push_redirect, func}, _from, socket) do
+  def handle_call({:push_navigate, func}, _from, socket) do
     func.(socket)
   end
 
@@ -59,16 +55,16 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
     {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_cast({:push_redirect, to}, socket) do
-    {:noreply, push_redirect(socket, to: to)}
+  def handle_cast({:push_navigate, to}, socket) do
+    {:noreply, push_navigate(socket, to: to)}
   end
 
   def handle_event("push_patch", %{"to" => to}, socket) do
     {:noreply, push_patch(socket, to: to)}
   end
 
-  def handle_event("push_redirect", %{"to" => to}, socket) do
-    {:noreply, push_redirect(socket, to: to)}
+  def handle_event("push_navigate", %{"to" => to}, socket) do
+    {:noreply, push_navigate(socket, to: to)}
   end
 end
 
@@ -76,9 +72,8 @@ defmodule Phoenix.LiveViewTest.ActionLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
-    LiveView module: <%= inspect @live_module %>
-    LiveView action: <%= inspect @live_action %>
+    ~H"""
+    Live action: <%= inspect @live_action %>
     Mount action: <%= inspect @mount_action %>
     Params: <%= inspect @params %>
     """
@@ -95,4 +90,12 @@ defmodule Phoenix.LiveViewTest.ActionLive do
   def handle_event("push_patch", to, socket) do
     {:noreply, push_patch(socket, to: to)}
   end
+end
+
+defmodule Phoenix.LiveViewTest.ErrorInHandleParamsLive do
+  use Phoenix.LiveView
+
+  def render(assigns), do: ~H|<div>I crash in handle_params</div>|
+  def mount(_params, _session, socket), do: {:ok, socket}
+  def handle_params(_params, _uri, _socket), do: raise("boom")
 end

@@ -1,9 +1,16 @@
 {
   "name": "phoenix_live_view",
-  "version": "0.12.1",
+  "version": "0.18.3",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
-  "main": "./priv/static/phoenix_live_view.js",
+  "module": "./priv/static/phoenix_live_view.esm.js",
+  "main": "./priv/static/phoenix_live_view.cjs.js",
+  "unpkg": "./priv/static/phoenix_live_view.min.js",
+  "jsdelivr": "./priv/static/phoenix_live_view.min.js",
+  "exports": {
+    "import": "./priv/static/phoenix_live_view.esm.js",
+    "require": "./priv/static/phoenix_live_view.cjs.js"
+  },
   "author": "Chris McCord <chris@chrismccord.com> (http://www.phoenixframework.org)",
   "repository": {
     "type": "git",
@@ -13,7 +20,7 @@
     "README.md",
     "LICENSE.md",
     "package.json",
-    "priv/static/phoenix_live_view.js",
-    "assets/js/phoenix_live_view.js"
+    "priv/static/*",
+    "assets/js/phoenix_live_view/*"
   ]
 }

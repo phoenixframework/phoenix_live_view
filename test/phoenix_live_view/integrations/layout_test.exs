@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.LayoutTest do
   use ExUnit.Case, async: true
-  use Phoenix.ConnTest
+  import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint, LayoutView}
@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.LayoutTest do
              "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
   end
 
-  @tag session: %{live_layout: {LayoutView, "live-override.html"}}
+  @tag session: %{live_layout: {LayoutView, :live_override}}
   test "is picked from config on mount when given a layout", %{conn: conn} do
     {:ok, view, html} = live(conn, "/layout")
 
@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView.LayoutTest do
     assert html =~ "The value is: 123</div>"
   end
 
-  @tag session: %{live_layout: {LayoutView, "live-override.html"}}
+  @tag session: %{live_layout: {LayoutView, :live_override}}
   test "is picked from config on mount even on child live views", %{conn: conn} do
     assert get(conn, "/parent_layout") |> html_response(200) =~
              ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
@@ -63,5 +63,13 @@ defmodule Phoenix.LiveView.LayoutTest do
 
     assert html =~
              ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+  end
+
+  test "uses root page title on first render", %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/styled-elements")
+    assert page_title(view) == "Styled"
+
+    {:ok, no_title_tag_view, _html} = live(conn, "/parent_layout")
+    assert page_title(no_title_tag_view) == nil
   end
 end

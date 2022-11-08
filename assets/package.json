@@ -1,37 +1,24 @@
 {
   "name": "phoenix_live_view",
-  "version": "0.12.1",
+  "version": "0.18.3",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
-  "main": "./priv/static/_live_view.js",
   "repository": {},
   "scripts": {
-    "build": "webpack --mode production",
-    "watch": "webpack --mode development --watch",
     "test": "jest",
     "test.coverage": "jest --coverage",
     "test.watch": "jest --watch"
   },
   "dependencies": {
-    "morphdom": "2.6.1",
-    "phoenix_html": "file:../deps/phoenix_html"
+    "morphdom": "2.6.1"
   },
   "devDependencies": {
-    "@babel/core": "^7.3.4",
-    "@babel/preset-env": "^7.4.1",
-    "babel-loader": "^8.0.5",
-    "copy-webpack-plugin": "^4.5.0",
-    "css-loader": "^0.28.10",
-    "expose-loader": "^0.7.5",
-    "extract-text-webpack-plugin": "^4.0.0-beta.0",
-    "jest": "^24.5.0",
-    "phoenix": "file:../deps/phoenix",
-    "style-loader": "^0.20.2",
-    "wait-for-expect": "^1.1.0",
-    "webpack": "4.0.0",
-    "webpack-cli": "^2.0.10"
-  },
-  "jest": {
-    "testRegex": "/test/.*_test\\.js$"
+    "@babel/cli": "7.14.3",
+    "@babel/core": "7.14.3",
+    "@babel/preset-env": "7.14.2",
+    "eslint": "7.27.0",
+    "eslint-plugin-jest": "24.3.6",
+    "jest": "^27.0.1",
+    "phoenix": "1.5.9"
   }
 }

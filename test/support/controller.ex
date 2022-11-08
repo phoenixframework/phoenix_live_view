@@ -24,6 +24,19 @@ defmodule Phoenix.LiveViewTest.Controller do
     |> live_render(Phoenix.LiveViewTest.DashboardLive)
   end
 
+  def incoming(conn, %{"type" => "render-with-function-component"}) do
+    conn
+    |> put_view(Phoenix.LiveViewTest.LayoutView)
+    |> render("with-function-component.html")
+  end
+
+  def incoming(conn, %{"type" => "render-layout-with-function-component"}) do
+    conn
+    |> put_view(Phoenix.LiveViewTest.LayoutView)
+    |> put_root_layout({Phoenix.LiveViewTest.LayoutView, "layout-with-function-component.html"})
+    |> render("hello.html")
+  end
+
   def not_found(conn, _) do
     conn
     |> put_status(:not_found)

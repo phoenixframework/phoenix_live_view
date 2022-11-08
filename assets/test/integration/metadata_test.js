@@ -1,16 +1,15 @@
 import {Socket} from "phoenix"
-import LiveSocket, {View} from '../../js/phoenix_live_view'
+import LiveSocket from "phoenix_live_view/live_socket"
 
 let stubViewPushEvent = (view, callback) => {
-  view.pushEvent = (type, target, targetCtx, phxEvent, meta) => {
-    return callback(type, target, targetCtx, phxEvent, meta)
+  view.pushEvent = (type, el, targetCtx, phxEvent, meta, opts = {}) => {
+    return callback(type, el, targetCtx, phxEvent, meta, opts)
   }
 }
 
 let prepareLiveViewDOM = (document, rootId) => {
   document.body.innerHTML = `
-    <div data-phx-view="View"
-         data-phx-session="abc123"
+    <div data-phx-session="abc123"
          data-phx-root-id="${rootId}"
          id="${rootId}">
       <label for="plus">Plus</label>
@@ -26,12 +25,12 @@ describe("metadata", () => {
   })
 
   test("is empty by default", () => {
-    let liveSocket = new LiveSocket('/live', Socket)
+    let liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
     let view = liveSocket.getViewByEl(document.getElementById("root"))
-    let btn = view.el.querySelector('button')
+    let btn = view.el.querySelector("button")
     let meta = {}
-    stubViewPushEvent(view, (type, target, targetCtx, phxEvent, metadata) => {
+    stubViewPushEvent(view, (type, el, target, targetCtx, phxEvent, metadata) => {
       meta = metadata
     })
     btn.dispatchEvent(new Event("click", {bubbles: true}))
@@ -40,7 +39,7 @@ describe("metadata", () => {
   })
 
   test("can be user defined", () => {
-    let liveSocket = new LiveSocket('/live', Socket, {
+    let liveSocket = new LiveSocket("/live", Socket, {
       metadata: {
         click: (e, el) => {
           return {
@@ -51,10 +50,12 @@ describe("metadata", () => {
       }
     })
     liveSocket.connect()
+    liveSocket.isConnected = () => true
     let view = liveSocket.getViewByEl(document.getElementById("root"))
-    let btn = view.el.querySelector('button')
+    view.isConnected = () => true
+    let btn = view.el.querySelector("button")
     let meta = {}
-    stubViewPushEvent(view, (type, target, targetCtx, phxEvent, metadata) => {
+    stubViewPushEvent(view, (type, el, target, phxEvent, metadata, opts) => {
       meta = metadata
     })
     btn.dispatchEvent(new Event("click", {bubbles: true}))

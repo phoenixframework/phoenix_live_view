@@ -77,10 +77,8 @@ defmodule Phoenix.LiveView.EngineTest do
                "prea\n\nposta\n&lt;hello&gt;\npreb\n\nmiddleb\n\npostb\n"
     end
 
-    test "raises ArgumentError for missing assigns" do
-      assert_raise ArgumentError,
-                   ~r/assign @foo not available in eex template.*Available assigns: \[:bar\]/s,
-                   fn -> render("<%= @foo %>", %{bar: true}) end
+    test "raises KeyError for missing assigns" do
+      assert_raise KeyError, fn -> render("<%= @foo %>", %{bar: true}) end
     end
   end
 
@@ -162,6 +160,20 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
     end
 
+    test "does not render dynamic if it is unchanged via assigns dot" do
+      template = "<%= assigns.foo %>"
+      assert changed(template, %{foo: 123}, nil) == ["123"]
+      assert changed(template, %{foo: 123}, %{}) == [nil]
+      assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
+    end
+
+    test "does not render dynamic if it is unchanged via assigns access" do
+      template = "<%= assigns[:foo] %>"
+      assert changed(template, %{foo: 123}, nil) == ["123"]
+      assert changed(template, %{foo: 123}, %{}) == [nil]
+      assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
+    end
+
     test "renders dynamic if any of the assigns change" do
       template = "<%= @foo + @bar %>"
       assert changed(template, %{foo: 123, bar: 456}, nil) == ["579"]
@@ -188,8 +200,57 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed("<%= 1 + 2 %>", %{foo: 123}, %{}, false) == ["3"]
     end
 
-    test "renders dynamic with nested assigns tracking" do
+    test "renders dynamic does not change track underscore" do
+      assert changed("<%= _ = 123 %>", %{}, nil) == ["123"]
+      assert changed("<%= _ = 123 %>", %{}, %{}) == [nil]
+    end
+
+    test "renders dynamic with dot tracking" do
       template = "<%= @map.foo + @map.bar %>"
+      old = %{map: %{foo: 123, bar: 456}}
+      new_augmented = %{map: %{foo: 123, bar: 456, baz: 789}}
+      new_changed_foo = %{map: %{foo: 321, bar: 456}}
+      new_changed_bar = %{map: %{foo: 123, bar: 654}}
+      assert changed(template, old, nil) == ["579"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{map: true}) == ["579"]
+      assert changed(template, old, old) == [nil]
+      assert changed(template, new_augmented, old) == [nil]
+      assert changed(template, new_changed_foo, old) == ["777"]
+      assert changed(template, new_changed_bar, old) == ["777"]
+    end
+
+    test "renders dynamic with dot tracking 3-levels deeps" do
+      template = "<%= @root.map.foo + @root.map.bar %>"
+      old = %{root: %{map: %{foo: 123, bar: 456}}}
+      new_augmented = %{root: %{map: %{foo: 123, bar: 456, baz: 789}}}
+      new_changed_foo = %{root: %{map: %{foo: 321, bar: 456}}}
+      new_changed_bar = %{root: %{map: %{foo: 123, bar: 654}}}
+      assert changed(template, old, nil) == ["579"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{root: true}) == ["579"]
+      assert changed(template, old, %{root: %{map: true}}) == ["579"]
+      assert changed(template, old, old) == [nil]
+      assert changed(template, new_augmented, old) == [nil]
+      assert changed(template, new_changed_foo, old) == ["777"]
+      assert changed(template, new_changed_bar, old) == ["777"]
+    end
+
+    test "renders dynamic with access tracking" do
+      template = "<%= @not_map[:foo] + @not_map[:bar] %>"
+      old = %{not_map: [foo: 123, bar: 456]}
+      new_augmented = %{not_map: [foo: 123, bar: 456, baz: 789]}
+      new_changed_foo = %{not_map: [foo: 321, bar: 456]}
+      new_changed_bar = %{not_map: [foo: 123, bar: 654]}
+      assert changed(template, old, nil) == ["579"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{not_map: true}) == ["579"]
+      assert changed(template, old, old) == ["579"]
+      assert changed(template, new_augmented, old) == ["579"]
+      assert changed(template, new_changed_foo, old) == ["777"]
+      assert changed(template, new_changed_bar, old) == ["777"]
+
+      template = "<%= @map[:foo] + @map[:bar] %>"
       old = %{map: %{foo: 123, bar: 456}}
       new_augmented = %{map: %{foo: 123, bar: 456, baz: 789}}
       new_changed_foo = %{map: %{foo: 321, bar: 456}}
@@ -202,32 +263,30 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, new_changed_bar, old) == ["777"]
     end
 
-    test "renders dynamic with nested assigns tracking 3-levels deeps" do
-      template = "<%= @root.map.foo + @root.map.bar %>"
-      old = %{root: %{map: %{foo: 123, bar: 456}}}
-      new_augmented = %{root: %{map: %{foo: 123, bar: 456, baz: 789}}}
-      new_changed_foo = %{root: %{map: %{foo: 321, bar: 456}}}
-      new_changed_bar = %{root: %{map: %{foo: 123, bar: 654}}}
-      assert changed(template, old, nil) == ["579"]
-      assert changed(template, old, %{}) == [nil]
-      assert changed(template, old, %{root: true}) == ["579"]
-      assert changed(template, old, %{root: %{map: true}}) == ["579"]
-      assert changed(template, new_augmented, old) == [nil]
-      assert changed(template, new_changed_foo, old) == ["777"]
-      assert changed(template, new_changed_bar, old) == ["777"]
-    end
+    test "renders dynamic with access tracking inside comprehension" do
+      template = """
+      <%= for x <- [:a, :b, :c] do %>
+        <%= @map[x] %>
+      <% end %>
+      """
 
-    test "renders dynamic if it has a lexical form" do
-      template = "<%= import List %><%= flatten(@foo) %>"
-      assert changed(template, %{foo: '123'}, nil) == ["Elixir.List", '123']
-      assert changed(template, %{foo: '123'}, %{}) == ["Elixir.List", nil]
-      assert changed(template, %{foo: '123'}, %{foo: true}) == ["Elixir.List", '123']
+      old = %{map: [a: 1, b: 2, c: 3]}
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, nil)
+      assert [nil] = changed(template, old, %{})
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, %{map: true})
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, old)
     end
 
     test "renders dynamic if it has variables" do
       template = "<%= foo = 1 + 2 %><%= foo %>"
       assert changed(template, %{}, nil) == ["3", "3"]
       assert changed(template, %{}, %{}) == ["3", "3"]
+    end
+
+    test "does not render dynamic for special variables" do
+      template = "<%= __MODULE__ %>"
+      assert changed(template, %{}, nil) == [""]
+      assert changed(template, %{}, %{}) == [nil]
     end
 
     test "renders dynamic if it has variables from assigns" do
@@ -256,6 +315,16 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: [1, 2, 3]}, nil) == [[1, 2, 3]]
       assert changed(template, %{foo: [1, 2, 3]}, %{}) == [nil]
       assert changed(template, %{foo: [1, 2, 3]}, %{foo: true}) == [[1, 2, 3]]
+    end
+
+    test "does not render dynamic if it has variables as comprehension generators" do
+      template = "<%= for x <- foo do %><%= x %><% end %>"
+
+      rendered = eval(template, %{__changed__: nil}, [foo: [1, 2, 3]])
+      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
+
+      rendered = eval(template, %{__changed__: %{}}, [foo: [1, 2, 3]])
+      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
     end
 
     test "does not render dynamic if it has variables inside optimized comprehension" do
@@ -323,7 +392,7 @@ defmodule Phoenix.LiveView.EngineTest do
     end
 
     test "renders dynamic if it uses assigns directly" do
-      template = "<%= for _ <- [1, 2, 3], do: assigns.foo %>"
+      template = "<%= for _ <- [1, 2, 3], do: Map.get(assigns, :foo) %>"
       assert changed(template, %{foo: "a"}, nil) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{}) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{foo: true}) == [["a", "a", "a"]]
@@ -371,6 +440,29 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert changed(template, %{foo: 123, bar: false}, %{bar: true}) ==
                [""]
+    end
+
+    test "converts if-do with var assignments into rendered" do
+      template = "<%= if var = @foo do %>one<%= var %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["true"], static: ["one", "two"]}] =
+               changed(template, %{foo: true}, nil)
+
+      assert changed(template, %{foo: true}, %{}) == [nil]
+      assert changed(template, %{foo: false}, %{foo: true}) == [""]
+    end
+
+    test "converts if-do with external var assignments into rendered but tainted" do
+      template = "<%= var = @foo %><%= if var do %>one<%= var %>two<% end %>"
+
+      assert ["true", %Rendered{dynamic: ["true"], static: ["one", "two"]}] =
+               changed(template, %{foo: true}, nil)
+
+      assert ["true", %Rendered{dynamic: ["true"], static: ["one", "two"]}] =
+               changed(template, %{foo: true}, %{})
+
+      assert ["false", ""] =
+               changed(template, %{foo: false}, %{foo: true})
     end
 
     test "converts if-do-else into rendered with dynamic condition" do
@@ -436,6 +528,27 @@ defmodule Phoenix.LiveView.EngineTest do
              ] = changed(template, %{foo: 123}, %{foo: true})
     end
 
+    test "converts if-do if-do with var assignment into rendered" do
+      template = "<%= if var = @foo do %>one<%= if var do %>uno<%= var %>dos<% end %>two<% end %>"
+
+      assert [
+               %Rendered{
+                 dynamic: [%Rendered{dynamic: ["123"], static: ["uno", "dos"]}],
+                 static: ["one", "two"]
+               }
+             ] = changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [
+               %Rendered{
+                 dynamic: [%Rendered{dynamic: ["123"], static: ["uno", "dos"]}],
+                 static: ["one", "two"]
+               }
+             ] = changed(template, %{foo: 123}, %{foo: true})
+    end
+
     test "does not convert if-do-else in the wrong format" do
       template = "<%= if @bar do @foo else @baz end %>"
 
@@ -478,6 +591,57 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
                changed(template, %{foo: 123}, %{foo: true})
+    end
+
+    test "converts case into rendered with vars in head" do
+      template = "<%= case true do %><% x when x == true -> %>one<%= @foo %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+
+      template = "<%= case @foo do %><% x -> %>one<%= x %>two<% end %>"
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123"], static: ["one", "two"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+    end
+
+    test "converts case into rendered with vars in head and body" do
+      template = "<%= case 456 do %><% x -> %>one<%= @foo %>two<%= x %>three<% end %>"
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123}, nil)
+
+      assert changed(template, %{foo: 123}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123}, %{foo: true})
+
+      template = "<%= case @bar do %><% x -> %>one<%= @foo %>two<%= x %>three<% end %>"
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123, bar: 456}, nil)
+
+      assert changed(template, %{foo: 123, bar: 456}, %{}) ==
+               [nil]
+
+      assert [%Rendered{dynamic: ["123", "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123, bar: 456}, %{foo: true})
+
+      assert [%Rendered{dynamic: [nil, "456"], static: ["one", "two", "three"]}] =
+               changed(template, %{foo: 123, bar: 456}, %{bar: true})
     end
 
     test "converts multiple case into rendered with dynamic condition" do
@@ -545,6 +709,37 @@ defmodule Phoenix.LiveView.EngineTest do
              ] = changed(template, %{foo: 123}, %{foo: true})
     end
 
+    test "converts case with for into rendered" do
+      template = "<%= case @foo do %><% val -> %><%= for i <- val do %><%= i %><% end %><% end %>"
+
+      assert [
+               %Phoenix.LiveView.Rendered{
+                 dynamic: [
+                   %Phoenix.LiveView.Comprehension{
+                     static: ["", ""],
+                     dynamics: [["1"], ["2"], ["3"]]
+                   }
+                 ],
+                 static: ["", ""]
+               }
+             ] = changed(template, %{foo: 1..3}, nil)
+
+      assert changed(template, %{foo: 1..3}, %{}) ==
+               [nil]
+
+      assert [
+               %Phoenix.LiveView.Rendered{
+                 dynamic: [
+                   %Phoenix.LiveView.Comprehension{
+                     static: ["", ""],
+                     dynamics: [["1"], ["2"], ["3"]]
+                   }
+                 ],
+                 static: ["", ""]
+               }
+             ] = changed(template, %{foo: 1..3}, %{foo: true})
+    end
+
     test "does not convert cases in the wrong format" do
       template = "<%= case @bar do true -> @foo; false -> @baz end %>"
 
@@ -604,13 +799,13 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert [nil] = changed(template, %{foo: 123, bar: false, baz: 456}, %{})
 
-      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
                changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true, bar: true})
 
       assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
                changed(template, %{foo: 123, bar: false, baz: 456}, %{foo: true})
 
-      assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
+      assert [%Rendered{dynamic: [nil], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
                changed(template, %{foo: 123, bar: false, baz: 456}, %{bar: true})
 
       assert [%Rendered{dynamic: ["456"], static: ["uno", "dos"], fingerprint: ^fpfalse}] =
@@ -671,72 +866,12 @@ defmodule Phoenix.LiveView.EngineTest do
     end
   end
 
-  describe "integration" do
-    defmodule View do
-      use Phoenix.View, root: "test/fixtures/templates", path: ""
-    end
-
-    @assigns %{pre: "pre", inner: "inner", post: "post"}
-
-    test "renders live engine to string" do
-      assert Phoenix.View.render_to_string(View, "inner_live.html", @assigns) == "live: inner"
-    end
-
-    test "renders live engine with live engine to string" do
-      assert Phoenix.View.render_to_string(View, "live_with_live.html", @assigns) ==
-               "pre: pre\nlive: inner\npost: post"
-    end
-
-    test "renders live engine with comprehension to string" do
-      assigns = Map.put(@assigns, :points, [])
-
-      assert Phoenix.View.render_to_string(View, "live_with_comprehension.html", assigns) ==
-               "pre: pre\n\npost: post"
-
-      assigns = Map.put(@assigns, :points, [%{x: 1, y: 2}, %{x: 3, y: 4}])
-
-      assert Phoenix.View.render_to_string(View, "live_with_comprehension.html", assigns) ==
-               "pre: pre\n\n  x: 1\n  live: inner\n  y: 2\n\n  x: 3\n  live: inner\n  y: 4\n\npost: post"
-    end
-
-    test "renders live engine as is" do
-      assert %Rendered{static: ["live: ", ""], dynamic: ["inner"]} =
-               Phoenix.View.render(View, "inner_live.html", @assigns) |> expand_rendered(true)
-    end
-
-    test "renders live engine with nested live view" do
-      assert %Rendered{
-               static: ["pre: ", "\n", "\npost: ", ""],
-               dynamic: [
-                 "pre",
-                 %Rendered{dynamic: ["inner"], static: ["live: ", ""]},
-                 "post"
-               ]
-             } =
-               Phoenix.View.render(View, "live_with_live.html", @assigns) |> expand_rendered(true)
-    end
-
-    test "renders live engine with nested dead view" do
-      assert %Rendered{
-               static: ["pre: ", "\n", "\npost: ", ""],
-               dynamic: ["pre", ["dead: ", "inner"], "post"]
-             } =
-               Phoenix.View.render(View, "live_with_dead.html", @assigns) |> expand_rendered(true)
-    end
-
-    test "renders dead engine with nested live view" do
-      assert Phoenix.View.render(View, "dead_with_live.html", @assigns) ==
-               {:safe, ["pre: ", "pre", "\n", ["live: ", "inner", ""], "\npost: ", "post"]}
-    end
-  end
-
-  defp eval(string, assigns \\ %{}) do
-    EEx.eval_string(string, [assigns: assigns], file: __ENV__.file, engine: Engine)
+  defp eval(string, assigns \\ %{}, binding \\ []) do
+    EEx.eval_string(string, [assigns: assigns] ++ binding, file: __ENV__.file, engine: Engine)
   end
 
   defp changed(string, assigns, changed, track_changes? \\ true) do
-    socket = %{changed: changed}
-    %{dynamic: dynamic} = eval(string, Map.put(assigns, :socket, socket))
+    %{dynamic: dynamic} = eval(string, Map.put(assigns, :__changed__, changed))
     expand_dynamic(dynamic, track_changes?)
   end
 

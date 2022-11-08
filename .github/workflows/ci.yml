@@ -1,53 +1,113 @@
 name: CI
 
 on:
-  pull_request:
   push:
-      branches:
+  pull_request:
+    branches:
       - master
 
 jobs:
   mix_test:
     name: mix test (OTP ${{matrix.otp}} | Elixir ${{matrix.elixir}})
+
     strategy:
       matrix:
-        otp: [21.x, 22.x]
-        elixir: [1.8.x, 1.9.x]
+        include:
+          - elixir: 1.12.0
+            otp: 22.3
+
+          - elixir: 1.13.2
+            otp: 24.2
+            lint: lint
+
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v1
-    - uses: actions/setup-elixir@v1.0.0
+    - name: Checkout
+      uses: actions/checkout@v2
+
+    - name: Set up Elixir
+      uses: erlef/setup-beam@v1
       with:
-        otp-version: ${{matrix.otp}}
-        elixir-version: ${{matrix.elixir}}
-    - name: Install Dependencies
-      run: |
-        mix local.rebar --force
-        mix local.hex --force
-        mix deps.get
-    - name: Run Tests
+        elixir-version: ${{ matrix.elixir }}
+        otp-version: ${{ matrix.otp }}
+
+    - name: Restore deps and _build cache
+      uses: actions/cache@v2
+      with:
+        path: |
+          deps
+          _build
+        key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+        restore-keys: |
+          deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
+
+    - name: Install dependencies
+      run: mix deps.get --only test
+
+    #- name: Check source code format
+    #  run: mix format --check-formatted
+    #  if: ${{ matrix.lint }}
+
+    - name: Remove compiled application files
+      run: mix clean
+
+    - name: Compile dependencies
+      run: mix compile
+      if: ${{ !matrix.lint }}
+      env:
+        MIX_ENV: test
+
+    - name: Compile & lint dependencies
+      run: mix compile --warnings-as-errors
+      if: ${{ matrix.lint }}
+      env:
+        MIX_ENV: test
+
+    - name: Run tests
       run: mix test
 
   npm_test:
     name: npm test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v1
-      - uses: actions/setup-elixir@v1.0.0
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
         with:
-          otp-version: 22.x
-          elixir-version: 1.9.x
-      - name: Install Dependencies
-        run: |
-          mix local.rebar --force
-          mix local.hex --force
-          mix deps.get
-      - name: Setup Node.js 12.x
+          elixir-version: 1.11.4
+          otp-version: 23.3.1
+
+      - name: Restore deps and _build cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
+
+      - name: Install dependencies
+        run: mix deps.get --only test
+
+      - name: Set up Node.js 12.x
         uses: actions/setup-node@v1
         with:
           node-version: 12.x
+
+      - name: Restore npm cache
+        uses: actions/cache@v2
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
       - name: npm install and test
         run: |
           cd assets
           npm install
-          npm test      
+          npm test

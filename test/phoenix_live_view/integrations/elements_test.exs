@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.ElementsTest do
   use ExUnit.Case, async: true
-  use Phoenix.ConnTest
+  import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint}
@@ -11,9 +11,14 @@ defmodule Phoenix.LiveView.ElementsTest do
     view |> element("#last-event") |> render() |> HtmlEntities.decode()
   end
 
+  defp last_component_event(view) do
+    view |> element("#component-last-event") |> render() |> HtmlEntities.decode()
+  end
+
   setup do
-    {:ok, live, _} = live(Phoenix.ConnTest.build_conn(), "/elements")
-    %{live: live}
+    conn = Phoenix.ConnTest.build_conn()
+    {:ok, live, _} = live(conn, "/elements")
+    %{live: live, conn: conn}
   end
 
   describe "has_element?/1" do
@@ -59,7 +64,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "raises on bad selector", %{live: view} do
       assert_raise ArgumentError,
-                   ~r/expected selector "div" to return a single element, but got 3/,
+                   ~r/expected selector "div" to return a single element, but got 6/,
                    fn -> view |> element("div") |> render() end
 
       assert_raise ArgumentError,
@@ -73,12 +78,23 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn -> view |> element("#scoped-render", "This is not a div") |> render() end
 
       assert_raise ArgumentError,
-                   ~r/selector "div" returned 3 elements but none matched the text filter "This is not a div"/,
+                   ~r/selector "div" returned 6 elements but none matched the text filter "This is not a div"/,
                    fn -> view |> element("div", "This is not a div") |> render() end
 
       assert_raise ArgumentError,
-                   ~r/selector "div" returned 3 elements and 2 of them matched the text filter "This"/,
+                   ~r/selector "div" returned 6 elements and 2 of them matched the text filter "This"/,
                    fn -> view |> element("div", "This") |> render() end
+    end
+
+    test "renders a given element via target", %{live: view} do
+      assert view |> with_target("#scoped-render") |> render() ==
+               ~s|<div id="scoped-render"><span>This</span> is a div</div>|
+    end
+
+    test "raises on bad selector via target", %{live: view} do
+      assert_raise ArgumentError,
+                   ~r/expected selector "div" to return a single element, but got 6/,
+                   fn -> view |> with_target("div") |> render() end
     end
   end
 
@@ -180,14 +196,6 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert_raise ArgumentError,
                    "element selected by \"span#span-no-attr\" does not have phx-hook attribute",
                    fn -> view |> element("span#span-no-attr") |> render_hook("custom-event") end
-    end
-
-    test "raises if element does not have id", %{live: view} do
-      assert_raise ArgumentError,
-                   "element selected by \"section.idless-hook\" for phx-hook does not have an ID",
-                   fn ->
-                     view |> element("section.idless-hook") |> render_hook("custom-event")
-                   end
     end
   end
 
@@ -374,12 +382,6 @@ defmodule Phoenix.LiveView.ElementsTest do
   end
 
   describe "render_change" do
-    test "raises if element is not a form", %{live: view} do
-      assert_raise ArgumentError, "phx-change is only allowed in forms, got \"a\"", fn ->
-        view |> element("#a-no-form") |> render_change()
-      end
-    end
-
     test "changes the given element", %{live: view} do
       assert view |> element("#empty-form") |> render_change()
       assert last_event(view) =~ ~s|form-change: %{}|
@@ -389,6 +391,21 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       assert view |> element("#empty-form") |> render_change(%{"foo" => "bar"})
       assert last_event(view) =~ ~s|form-change: %{"foo" => "bar"}|
+    end
+
+    test "phx-change on individual input", %{live: view} do
+      assert view
+             |> element("input[name='hello[individual]'")
+             |> render_change(hello: [individual: "123"], _target: "hello[individual]")
+
+      assert last_event(view) ==
+               "<div id=\"last-event\">individual-changed: %{\"_target\" => [\"hello\", \"individual\"], \"hello\" => %{\"individual\" => \"123\"}}</div>"
+
+      assert view
+             |> form("#form", hello: [latest: "i win"])
+             |> render_change(hello: [latest: "i truly win"])
+
+      assert last_event(view) =~ ~s|"latest" => "i truly win"|
     end
   end
 
@@ -408,6 +425,68 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       assert view |> element("#empty-form") |> render_submit(%{"foo" => "bar"})
       assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar"}|
+    end
+  end
+
+  describe "follow_trigger_action" do
+    test "raises if element is not a form", %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"given element did not return a form",
+                   fn -> view |> element("#a-no-form") |> follow_trigger_action(conn) end
+    end
+
+    test "raises if element doesn't set phx-trigger-action on the form element",
+         %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"\"#empty-form\" does not have a phx-trigger-action attribute",
+                   fn -> view |> element("#empty-form") |> follow_trigger_action(conn) end
+    end
+
+    test "uses default method and request path", %{live: view, conn: conn} do
+      view |> element("#trigger-form-default") |> render_submit()
+
+      conn = view |> element("#trigger-form-default") |> follow_trigger_action(conn)
+      assert conn.method == "GET"
+      assert conn.request_path == "/elements"
+
+      conn =
+        view |> form("#trigger-form-default", %{"foo" => "bar"}) |> follow_trigger_action(conn)
+
+      assert conn.method == "GET"
+      assert conn.request_path == "/elements"
+      assert conn.query_string == "foo=bar"
+
+      conn = view |> form("#trigger-form-value", %{"baz" => "bat"}) |> follow_trigger_action(conn)
+      assert conn.method == "POST"
+      assert conn.request_path == "/not_found"
+      assert conn.params == %{"baz" => "bat"}
+    end
+  end
+
+  describe "submit_form" do
+    test "raises if element is not a form", %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"given element did not return a form",
+                   fn -> view |> element("#a-no-form") |> submit_form(conn) end
+    end
+
+    test "raises if element doesn't set action on the form element",
+         %{live: view, conn: conn} do
+      assert_raise ArgumentError,
+                   ~r"\"#empty-form\" does not have an action attribute",
+                   fn -> view |> element("#empty-form") |> submit_form(conn) end
+    end
+
+    test "uses default method and form action", %{live: view, conn: conn} do
+      conn = view |> element("#submit-form-default") |> submit_form(conn)
+      assert conn.method == "GET"
+      assert conn.request_path == "/not_found"
+
+      conn = view |> form("#submit-form-default", %{"foo" => "bar"}) |> submit_form(conn)
+
+      assert conn.method == "GET"
+      assert conn.request_path == "/not_found"
+      assert conn.query_string == "foo=bar"
     end
   end
 
@@ -444,18 +523,29 @@ defmodule Phoenix.LiveView.ElementsTest do
       # Select
       assert form =~ ~s|"selected" => "1"|
       assert form =~ ~s|"not-selected" => "blank"|
+      assert form =~ ~s|"not-selected-treeorder" => "blank"|
+      refute form =~ ~s|"not-selected-size"|
+      assert form =~ ~s|"invalid-multiple-selected" => "3"|
 
       # Multiple Select
       assert form =~ ~s|"multiple-select" => ["2", "3"]|
 
       # Text area
       assert form =~ ~s|"textarea" => "Text"|
+      assert form =~ ~s|"textarea_nl" => "Text"|
 
       # Ignore everything with no name, disabled, or submits
       refute form =~ "no-name"
       refute form =~ "disabled"
       refute form =~ "ignore-submit"
       refute form =~ "ignore-image"
+    end
+
+    test "fill in target", %{live: view} do
+      view |> form("#form") |> render_change(%{"_target" => "order_item[addons][][name]"})
+      form = last_event(view)
+      assert form =~ ~s|"hello" => %{|
+      assert form =~ ~s|%{"_target" => ["order_item", "addons", "name"]|
     end
 
     test "fill in missing", %{live: view} do
@@ -532,7 +622,7 @@ defmodule Phoenix.LiveView.ElementsTest do
                    end
     end
 
-    test "fill in multile checkbox", %{live: view} do
+    test "fill in multiple checkbox", %{live: view} do
       assert_raise ArgumentError,
                    "value for checkbox \"hello[multiple-checkbox][]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
                    fn ->
@@ -562,7 +652,7 @@ defmodule Phoenix.LiveView.ElementsTest do
                    end
     end
 
-    test "fill in multile select", %{live: view} do
+    test "fill in multiple select", %{live: view} do
       assert_raise ArgumentError,
                    "value for multiple select \"hello[multiple-select][]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",
                    fn ->
@@ -651,6 +741,59 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       assert last_event(view) =~
                ~s|"utc_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "second" => "16", "year" => "2020"}|
+    end
+  end
+
+  describe "open_browser" do
+    setup do
+      open_fun = fn path ->
+        assert content = File.read!(path)
+
+        assert content =~
+                 ~r[<link rel="stylesheet" href="file:.*phoenix_live_view\/priv\/css\/custom\.css"\/>]
+
+        assert content =~
+                 ~r[<link rel="stylesheet" href="file:.*phoenix_live_view\/priv\/static\/css\/app\.css"\/>]
+
+        assert content =~ "<link rel=\"stylesheet\" href=\"//example.com/a.css\"/>"
+        assert content =~ "<link rel=\"stylesheet\" href=\"https://example.com/b.css\"/>"
+        assert content =~ "body { background-color: #eee; }"
+        refute content =~ "<script>"
+        path
+      end
+
+      {:ok, live, _} = live(Phoenix.ConnTest.build_conn(), "/styled-elements")
+      %{live: live, open_fun: open_fun}
+    end
+
+    test "render view", %{live: view, open_fun: open_fun} do
+      assert view |> open_browser(open_fun) == view
+    end
+
+    test "render element", %{live: view, open_fun: open_fun} do
+      element = element(view, "#scoped-render")
+      assert element |> open_browser(open_fun) == element
+    end
+  end
+
+  describe "JS commands" do
+    test "push", %{live: view} do
+      assert view |> element("#button-js-click") |> render_click()
+      assert last_event(view) == "<div id=\"last-event\">button-click: %{}</div>"
+
+      assert view |> element("#button-js-click-value") |> render_click()
+      assert last_event(view) == "<div id=\"last-event\">button-click: %{\"one\" => 1}</div>"
+    end
+  end
+
+  describe "child component / JS commands" do
+    test "push", %{live: view} do
+      assert view |> element("#component-button-js-click-target") |> render_click()
+
+      assert last_component_event(view) ==
+               "<div id=\"component-last-event\">button-click: %{}</div>"
+
+      refute last_event(view) == "<div id=\"last-event\">button-click: %{}</div>"
     end
   end
 end

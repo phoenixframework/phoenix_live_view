@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.AssignsTest do
   use ExUnit.Case, async: true
-  use Phoenix.ConnTest
+  import Plug.Conn
+  import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.Endpoint
@@ -11,7 +12,7 @@ defmodule Phoenix.LiveView.AssignsTest do
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
   end
 
-  describe "assign_new from root" do
+  describe "assign_new" do
     test "uses conn.assigns on static render then fetches on connected mount", %{conn: conn} do
       user = %{name: "user-from-conn", id: 123}
 
@@ -22,16 +23,14 @@ defmodule Phoenix.LiveView.AssignsTest do
         |> get("/root")
 
       assert html_response(conn, 200) =~ "root name: user-from-conn"
+      assert html_response(conn, 200) =~ "child static name: user-from-conn"
 
-      {:ok, view, connected_html} = live(conn)
-
+      {:ok, _, connected_html} = live(conn)
       assert connected_html =~ "root name: user-from-root"
-      assert render(view) =~ "child static name: user-from-root"
+      assert connected_html =~ "child static name: user-from-root"
     end
-  end
 
-  describe "assign_new from dynamically rendered child" do
-    test "invokes own assign_new", %{conn: conn} do
+    test "uses assign_new from parent on dynamically added child", %{conn: conn} do
       user = %{name: "user-from-conn", id: 123}
 
       {:ok, view, _html} =

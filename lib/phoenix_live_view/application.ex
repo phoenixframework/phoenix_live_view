@@ -3,13 +3,9 @@ defmodule Phoenix.LiveView.Application do
 
   use Application
 
+  @impl true
   def start(_type, _args) do
-    Supervisor.start_link(
-      [
-        {DynamicSupervisor, strategy: :one_for_one, name: Phoenix.LiveView.DynamicSupervisor}
-      ],
-      strategy: :one_for_one,
-      name: Phoenix.LiveView.Supervisor
-    )
+    Phoenix.LiveView.Logger.install()
+    Supervisor.start_link([], strategy: :one_for_one, name: Phoenix.LiveView.Supervisor)
   end
 end
