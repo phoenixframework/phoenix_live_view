@@ -2,7 +2,6 @@ defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
 
-  import Phoenix.Component, only: [sigil_H: 2, dynamic_tag: 1]
   alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
 
   # Token version. Should be changed whenever new data is stored.
@@ -236,21 +235,13 @@ defmodule Phoenix.LiveView.Static do
       | extended_attrs
     ]
 
-    {:safe, dynamic_tag_to_iodata(tag, attrs, "")}
+    Phoenix.HTML.Tag.content_tag(tag, "", attrs)
   end
 
   defp to_rendered_content_tag(socket, tag, view, attrs) do
     rendered = Utils.to_rendered(socket, view)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
-    {:safe, dynamic_tag_to_iodata(tag, attrs, {:safe, Diff.to_iodata(diff)})}
-  end
-
-  defp dynamic_tag_to_iodata(tag, attrs, content) do
-    assigns = %{tag: tag, attrs: attrs, content: content}
-
-    Phoenix.HTML.Safe.to_iodata(
-      ~H|<.dynamic_tag name={@tag} {@attrs}><%= @content %></.dynamic_tag>|
-    )
+    Phoenix.HTML.Tag.content_tag(tag, {:safe, Diff.to_iodata(diff)}, attrs)
   end
 
   defp load_live!(view_or_component, kind) do

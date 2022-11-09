@@ -110,7 +110,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
     test "csrf with non-get method" do
       assigns = %{}
-      csrf = Phoenix.HTML.Tag.csrf_token_value("/users")
+      csrf = Plug.CSRFProtection.get_csrf_token_for("/users")
 
       assert render(~H|<.link href="/users" method="delete">delete</.link>|) ==
                ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|

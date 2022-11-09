@@ -2192,7 +2192,7 @@ defmodule Phoenix.Component do
     """
   end
 
-  defp csrf_token(true, href), do: Phoenix.HTML.Tag.csrf_token_value(href)
+  defp csrf_token(true, href), do: Plug.CSRFProtection.get_csrf_token_for(href)
   defp csrf_token(false, _href), do: nil
   defp csrf_token(csrf, _href) when is_binary(csrf), do: csrf
 

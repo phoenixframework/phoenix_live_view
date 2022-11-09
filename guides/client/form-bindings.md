@@ -112,14 +112,13 @@ fields further down on the page).
 For example, your `MyAppWeb.ErrorHelpers` may use this function:
 
     def error_tag(form, field) do
-      form.errors
-      |> Keyword.get_values(field)
-      |> Enum.map(fn error ->
-        content_tag(:span, translate_error(error),
-          class: "invalid-feedback",
-          phx_feedback_for: input_name(form, field)
-        )
-      end)
+      ~H"""
+      <div phx-feedback-for={Phoenix.HTML.input_name(form, field)}>
+        <%= for error <- Keyword.get_values(form.errors, field) do %>
+          <span class="invalid-feedback"><%= error %></span>
+        <% end %>
+      </div>
+      """
     end
 
 Now, any DOM container with the `phx-feedback-for` attribute will receive a
