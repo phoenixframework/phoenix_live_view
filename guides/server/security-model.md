@@ -37,8 +37,12 @@ sessions on the `mount` callback. Authorization rules generally happen on
 
 ## Mounting considerations
 
-If you perform user authentication and confirmation on every HTTP request
-via Plugs, such as this:
+The [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
+the initial HTTP mount and when LiveView is connected. Therefore, any
+authentication performed during mount will cover all scenarios.
+
+If you perform user authentication and confirmation exclusively on HTTP
+requests via Plugs, such as this:
 
     plug :ensure_user_authenticated
     plug :ensure_user_confirmed
@@ -80,7 +84,6 @@ as you would with plug:
       end
     end
 
-
 We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
 convenience to avoid fetching the `current_user` multiple times across
 LiveViews.
@@ -103,7 +106,7 @@ to run it on all LiveViews by default:
           layout: {MyAppWeb.LayoutView, :live}
 
         on_mount MyAppWeb.UserLiveAuth
-        unquote(view_helpers())
+        unquote(html_helpers())
       end
     end
 
