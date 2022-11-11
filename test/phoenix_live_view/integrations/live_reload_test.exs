@@ -29,7 +29,7 @@ defmodule Phoenix.LiveView.LiveReloadTest do
   end
 
   test "LiveView renders again when the phoenix_live_reload is received", %{conn: conn, socket: socket} do
-    Phoenix.PubSub.subscribe(@pubsub, "liveview")
+    Phoenix.PubSub.subscribe(@pubsub, "live_view")
 
     Application.put_env(:phoenix_live_view, :vsn, 1)
     {:ok, lv, _html} = live(conn, "/live-reload")
@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.LiveReloadTest do
     send(socket.channel_pid, {:file_event, self(), {"lib/test_auth_web/live/user_live.ex", :created}})
     Application.put_env(:phoenix_live_view, :vsn, 2)
 
-    assert_receive {:phoenix_live_reload, :liveview, "lib/test_auth_web/live/user_live.ex"}
+    assert_receive {:phoenix_live_reload, :live_view, "lib/test_auth_web/live/user_live.ex"}
     assert render(lv) =~ "<div>Version 2</div>"
   end
 

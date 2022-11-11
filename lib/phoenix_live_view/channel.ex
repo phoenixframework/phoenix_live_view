@@ -264,8 +264,6 @@ defmodule Phoenix.LiveView.Channel do
       end)
 
     handle_changed(state, new_socket, nil)
-
-    {:noreply, state}
   end
 
   def handle_info(msg, %{socket: socket} = state) do
@@ -1326,10 +1324,8 @@ defmodule Phoenix.LiveView.Channel do
   defp maybe_subscribe_to_live_reload({:noreply, state}) do
     live_reload_config = state.socket.endpoint.config(:live_reload)
 
-    for {topic, _patterns} <- live_reload_config[:notify] || [] do
-      topic
-      |> to_string()
-      |> state.socket.endpoint.subscribe()
+    if live_reload_config[:notify][:live_view] do
+      state.socket.endpoint.subscribe("live_view")
     end
 
     {:noreply, state}

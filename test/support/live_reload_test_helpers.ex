@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.LiveReloadTestHelpers.Endpoint do
         ~r"lib/test_auth_web/templates/.*(eex)$"
       ],
       notify: [
-        liveview: [
+        live_view: [
           ~r"lib/test_auth_web/components.ex$",
           ~r"lib/test_auth_web/live/.*(ex)$"
         ]
