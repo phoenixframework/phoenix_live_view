@@ -44,6 +44,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/log-override", WithLogOverride
     live "/log-disabled", WithLogDisabled
     live "/errors", ErrorsLive
+    live "/live-reload", ReloadLive
 
     # controller test
     get "/controller/:type", Controller, :incoming

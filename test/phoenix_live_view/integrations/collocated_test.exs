@@ -1,11 +1,17 @@
 defmodule Phoenix.LiveView.CollocatedTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint, CollocatedLive, CollocatedComponent}
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
+
+  setup_all do
+    Helpers.start_endpoint(@endpoint)
+    :ok
+  end
 
   test "supports collocated views" do
     {:ok, view, html} = live_isolated(build_conn(), CollocatedLive)

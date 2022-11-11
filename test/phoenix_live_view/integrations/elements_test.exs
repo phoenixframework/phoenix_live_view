@@ -1,9 +1,10 @@
 defmodule Phoenix.LiveView.ElementsTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint}
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
 
@@ -13,6 +14,11 @@ defmodule Phoenix.LiveView.ElementsTest do
 
   defp last_component_event(view) do
     view |> element("#component-last-event") |> render() |> HtmlEntities.decode()
+  end
+
+  setup_all do
+    Helpers.start_endpoint(@endpoint)
+    :ok
   end
 
   setup do

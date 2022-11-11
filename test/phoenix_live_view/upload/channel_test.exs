@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.UploadChannelTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   require Phoenix.ChannelTest
 
   import Phoenix.LiveViewTest
@@ -80,8 +80,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   setup_all do
     ExUnit.CaptureLog.capture_log(fn ->
-      {:ok, _} = @endpoint.start_link()
-
+      start_supervised!(@endpoint)
       {:ok, _} =
         Supervisor.start_link([Phoenix.PubSub.child_spec(name: Phoenix.LiveView.PubSub)],
           strategy: :one_for_one

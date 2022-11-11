@@ -10,9 +10,15 @@ defmodule Phoenix.LiveView.TelemtryTest do
 
   alias Phoenix.LiveView.Socket
   alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
   @moduletag session: %{names: ["chris", "jose"], from: nil}
+
+  setup_all do
+    Helpers.start_endpoint(@endpoint)
+    :ok
+  end
 
   setup config do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}

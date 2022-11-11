@@ -1,10 +1,12 @@
 defmodule Phoenix.LiveView.NavigationTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
+
   @endpoint Endpoint
 
   setup do
@@ -12,7 +14,7 @@ defmodule Phoenix.LiveView.NavigationTest do
   end
 
   setup_all do
-    Endpoint.start_link()
+    Helpers.start_endpoint(@endpoint)
     :ok
   end
 
