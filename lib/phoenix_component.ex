@@ -218,7 +218,7 @@ defmodule Phoenix.Component do
   slot :inner_block
   def button(assigns) do
     ~H"""
-    <button {@rest}><%= render_slot(@inner_block) %>
+    <button {@rest}><%= render_slot(@inner_block) %></button>
     """
   end
   ```
