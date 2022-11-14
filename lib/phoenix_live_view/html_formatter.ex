@@ -8,8 +8,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   ## Setup
 
-  Add it as plugin to your `.formatter.exs` file and make sure to put the`heex` extension in
-  the `inputs` option.
+  Add it as plugin to your `.formatter.exs` file and make sure to put
+  the`heex` extension in the `inputs` option.
 
   ```elixir
   [
@@ -24,22 +24,31 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   > In umbrella projects you must also change two files at the umbrella root,
   > add `:phoenix_live_view` to your `deps` in the `mix.exs` file
   > and add `plugins: [Phoenix.LiveView.HTMLFormatter]` in the `.formatter.exs` file.
-  > This is because the formatter does not attempt to load the dependencies of all children applications.
+  > This is because the formatter does not attempt to load the dependencies of
+  > all children applications.
+
+  ### Editor support
+
+  Most editors that support `mix format` integration should automatically format
+  `.heex` and `~H` templates. Other editors may require custom integration or
+  even provide additional functionality. Here are some reference posts:
+
+    * [Formatting HEEx templates in VS Code](https://pragmaticstudio.com/tutorials/formatting-heex-templates-in-vscode)
 
   ## Options
 
-  * `:line_length` - The Elixir formatter defaults to a maximum line length
-    of 98 characters, which can be overwritten with the `:line_length` option
-    in your `.formatter.exs` file.
+    * `:line_length` - The Elixir formatter defaults to a maximum line length
+      of 98 characters, which can be overwritten with the `:line_length` option
+      in your `.formatter.exs` file.
 
-  * `:heex_line_length` - change the line length only for the HEEx formatter.
+    * `:heex_line_length` - change the line length only for the HEEx formatter.
 
-    ```elixir
-    [
-      # ...omitted
-      heex_line_length: 300
-    ]
-    ```
+      ```elixir
+      [
+        # ...omitted
+        heex_line_length: 300
+      ]
+      ```
 
   ## Formatting
 
@@ -158,11 +167,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
 
-  ### Skip formatting
+  ## Skip formatting
 
-  In case you don't want part of your HTML to be automatically formatted. you
-  can use the special `phx-no-format` attribute so that the formatter will skip
-  the element block. Note that this attribute will not be rendered.
+  In case you don't want part of your HTML to be automatically formatted.
+  You can use the special `phx-no-format` attribute so that the formatter will
+  skip the element block. Note that this attribute will not be rendered.
 
   Therefore:
 
@@ -176,11 +185,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   <textarea>My content</textarea>
   ```
 
-  ### Inline comments <%# comment %>
+  ## Comments
 
-  Inline comments `<%# comment %>` are deprecated and the formatter will discard them silently
-  from templates. You must change them to the multi-line comment `<%!-- comment --%>` on
-  Elixir v1.14+ or the regular line comment `<%= # comment %>`.
+  Inline comments `<%# comment %>` are deprecated and the formatter will discard them
+  silently from templates. You must change them to the multi-line comment
+  `<%!-- comment --%>` on Elixir v1.14+ or introduce a space between `<%` and `#`,
+  such as `<% # comment %>`.
   """
 
   alias Phoenix.LiveView.HTMLAlgebra
