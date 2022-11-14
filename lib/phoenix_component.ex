@@ -208,6 +208,15 @@ defmodule Phoenix.Component do
   <span class="bg-blue-200" phx-click="close">You've got mail!</span>
   ```
 
+  Note that the global attribute cannot be provided directly and doing so will emit
+  a warning. In other words, this is invalid:
+
+  ```heex
+  <.notification message="You've got mail!" rest={%{"phx-click" => "close"}} />
+  ```
+
+  ### Included globals
+
   You may also specify which attributes are included in addition to the known globals
   with the `:include` option. For example to support the `form` attribute on a button
   component:

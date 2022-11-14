@@ -833,7 +833,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       fun_attr_global: """
       ## Attributes
 
-      * `attr` (`:global`)
+      Global attributes are accepted.
       """,
       fun_attr_struct: """
       ## Attributes
