@@ -1182,17 +1182,6 @@ defmodule Phoenix.Component.Declarative do
 
                       warn(message, call.file, line)
                   end
-
-                  if attr_name == :inner_block or
-                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
-                    :ok
-                  else
-                    message =
-                      "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
-                        "for component #{component_fa(call)}"
-
-                    warn(message, call.file, line)
-                  end
               end
             end
         end
