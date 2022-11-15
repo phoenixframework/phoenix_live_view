@@ -812,7 +812,7 @@ defmodule Phoenix.Component.Declarative do
           build_attr_values_or_examples(attr)
         ]
       end,
-      if Enum.any?(attrs, & &1.type == :global) do
+      if Enum.any?(attrs, &(&1.type == :global)) do
         "\nGlobal attributes are accepted."
       else
         ""
@@ -1167,6 +1167,22 @@ defmodule Phoenix.Component.Declarative do
 
                 # undefined slot attr
                 %{} ->
+                  cond do
+                    attr_name == :inner_block or
+                        (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) ->
+                      :ok
+
+                    attrs == [] ->
+                      :ok
+
+                    true ->
+                      message =
+                        "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                          "for component #{component_fa(call)}"
+
+                      warn(message, call.file, line)
+                  end
+
                   if attr_name == :inner_block or
                        (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
                     :ok

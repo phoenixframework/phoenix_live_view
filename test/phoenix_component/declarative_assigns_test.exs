@@ -1155,6 +1155,30 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "does not raise for basic slot (no do-block) when slot attr type is not supported" do
+    defmodule BasicSlotAttrTypeNotSupported do
+      use Phoenix.Component
+
+      slot :item
+
+      def list(assigns) do
+        ~H"""
+        <div>
+          <%= render_slot(@item) %>
+        </div>
+        """
+      end
+
+      def use_list(assigns) do
+        ~H"""
+          <.list>
+            <:item class="test"></:item>
+          </.list>
+        """
+      end
+    end
+  end
+
   test "raise if slot attr type is not supported" do
     msg = ~r"invalid type :not_a_type for attr :foo in slot :named"
 
