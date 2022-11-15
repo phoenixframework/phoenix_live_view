@@ -468,6 +468,35 @@ defmodule Phoenix.ComponentVerifyTest do
            """
   end
 
+  test "does not warn for unknown attribute in slot without do-block" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule SlotWithoutDoBlock do
+          use Phoenix.Component
+
+          slot :item
+
+          def func_slot_wo_do_block(assigns) do
+            ~H"""
+            <div>
+              <%= render_slot(@item) %>
+            </div>
+            """
+          end
+
+          def render(assigns) do
+            ~H"""
+            <.func_slot_wo_do_block>
+              <:item class="test"></:item>
+            </.func_slot_wo_do_block>
+            """
+          end
+        end
+      end)
+
+    assert warnings == ""
+  end
+
   test "validates slot attr values" do
     warnings =
       capture_io(:stderr, fn ->
@@ -909,7 +938,9 @@ defmodule Phoenix.ComponentVerifyTest do
 
           def func(assigns), do: ~H[]
 
-          slot :named
+          slot :named do
+            attr :attr, :string
+          end
 
           def func_undefined_slot_attrs(assigns), do: ~H[]
 
