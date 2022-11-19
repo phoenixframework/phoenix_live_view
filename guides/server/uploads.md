@@ -4,7 +4,7 @@ LiveView supports interactive file uploads with progress for
 both direct to server uploads as well as direct-to-cloud
 [external uploads](uploads-external.html) on the client.
 
-### Built-in Features
+## Built-in Features
 
   * Accept specification - Define accepted file types, max
     number of entries, max file size, etc. When the client
