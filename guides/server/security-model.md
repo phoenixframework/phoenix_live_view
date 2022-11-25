@@ -70,7 +70,7 @@ as you would with plug:
     defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.Component
       import Phoenix.LiveView
-      alias MyAppWeb.Accounts # from `mix gen.phx.auth`
+      alias MyAppWeb.Accounts # from `mix phx.gen.auth`
 
       def on_mount(:default, _params, %{"user_token" => user_token} = _session, socket) do
         socket =
