@@ -12,7 +12,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         file: __ENV__.file,
         engine: HTMLEngine,
         subengine: Phoenix.LiveView.Engine,
-        caller: __ENV__
+        caller: __ENV__,
+        source: string
       )
 
     EEx.eval_string(string, [assigns: assigns], opts)
@@ -32,7 +33,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           file: __ENV__.file,
           engine: HTMLEngine,
           module: __MODULE__,
-          caller: __CALLER__
+          caller: __CALLER__,
+          source: string
         )
       )
       |> Phoenix.HTML.Safe.to_iodata()
@@ -589,6 +591,24 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <%= if true do %>
           <.local_function_component value='1' :let={var}>
         <% end %>
+        """)
+      end)
+    end
+
+    test "when tag is unclosed" do
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:1: end of template reached without closing tag for <div>
+        |
+      1 | <div>Foo</div>
+      2 | <div>
+        |    ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div>Foo</div>
+        <div>
+        <div>Bar</div>
         """)
       end)
     end

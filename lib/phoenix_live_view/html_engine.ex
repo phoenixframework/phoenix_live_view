@@ -131,7 +131,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   defmacro compile(path) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
-    EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim, caller: __CALLER__)
+    source = File.read!(path)
+
+    EEx.compile_file(path,
+      engine: __MODULE__,
+      line: 1,
+      trim: trim,
+      caller: __CALLER__,
+      source: source
+    )
   end
 
   @behaviour EEx.Engine
@@ -152,7 +160,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0),
       caller: Keyword.fetch!(opts, :caller),
-      previous_token_slot?: false
+      previous_token_slot?: false,
+      source: Keyword.fetch!(opts, :source)
     }
   end
 
@@ -182,10 +191,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp validate_unclosed_tags!(%{tags: [tag | _]} = state, context) do
-    {:tag_open, name, _attrs, %{line: line, column: column}} = tag
+    {:tag_open, name, _attrs, %{line: line, column: column} = meta} = tag
     file = state.file
     message = "end of #{context} reached without closing tag for <#{name}>"
-    raise ParseError, line: line, column: column, file: file, description: message
+
+    raise ParseError,
+      line: line,
+      column: column,
+      file: file,
+      description: message <> code_snippet(state.source, meta, 0)
   end
 
   @impl true
@@ -198,12 +212,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp token_state(
-         %{subengine: subengine, substate: substate, file: file, caller: caller},
+         %{subengine: subengine, substate: substate, file: file, caller: caller, source: source},
          root
        ) do
     %{
       subengine: subengine,
       substate: substate,
+      source: source,
       file: file,
       stack: [],
       tags: [],
@@ -229,7 +244,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont} = state
     {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont)
-    %{state | tokens: tokens, cont: cont}
+    %{state | tokens: tokens, cont: cont, source: state.source}
   end
 
   @impl true
@@ -1386,6 +1401,33 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
       %{} ->
         ast
+    end
+  end
+
+  defp code_snippet(source, meta, arrow_padding) do
+    line_start = max(meta.line - 3, 1)
+    line_end = meta.line
+    digits = line_end |> Integer.digits() |> length()
+    number_padding = String.duplicate(" ", digits)
+
+    source
+    |> String.split(["\r\n", "\n"])
+    |> Enum.slice((line_start - 1)..(line_end - 1))
+    |> Enum.map_reduce(line_start, fn
+      expr, line_number when line_number == line_end ->
+        arrow = String.duplicate(" ", meta.column + 2 + arrow_padding) <> "^"
+        {"#{line_number} | #{expr}\n #{number_padding}| #{arrow}", line_number + 1}
+
+      expr, line_number ->
+        line_number_padding = String.pad_leading("#{line_number}", digits)
+        {"#{line_number_padding} | #{expr}", line_number + 1}
+    end)
+    |> case do
+      {[], _} ->
+        ""
+
+      {snippet, _} ->
+        Enum.join(["\n #{number_padding}|" | snippet], "\n")
     end
   end
 end

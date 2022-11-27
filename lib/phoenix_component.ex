@@ -752,7 +752,8 @@ defmodule Phoenix.Component do
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
       caller: __CALLER__,
-      indentation: meta[:indentation] || 0
+      indentation: meta[:indentation] || 0,
+      source: expr
     ]
 
     EEx.compile_string(expr, options)
