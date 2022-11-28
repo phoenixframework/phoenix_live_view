@@ -742,7 +742,7 @@ export default class LiveSocket {
   historyRedirect(href, linkState, flash){
     // convert to full href if only path prefix
     if(!this.isConnected()){ return Browser.redirect(href, flash) }
-    if(/^\/[^\/]+.*$/.test(href)){
+    if(/^\/$|^\/[^\/]+.*$/.test(href)){
       let {protocol, host} = window.location
       href = `${protocol}//${host}${href}`
     }
