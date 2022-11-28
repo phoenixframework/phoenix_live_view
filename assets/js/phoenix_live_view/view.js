@@ -1115,8 +1115,10 @@ export default class View {
   }
 
   ownsElement(el){
-    return this.isDead || el.getAttribute(PHX_PARENT_ID) === this.id ||
-      maybe(el.closest(PHX_VIEW_SELECTOR), node => node.id) === this.id
+    let parentViewEl = el.closest(PHX_VIEW_SELECTOR)
+    return el.getAttribute(PHX_PARENT_ID) === this.id ||
+      (parentViewEl && parentViewEl.id === this.id) ||
+      (!parentViewEl && this.isDead)
   }
 
   submitForm(form, targetCtx, phxEvent, opts = {}){

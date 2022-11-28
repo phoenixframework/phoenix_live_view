@@ -210,8 +210,9 @@ export default class LiveSocket {
       } else if(this.main){
         this.socket.connect()
       } else {
-        this.joinDeadView()
+        this.bindTopLevelEvents({dead: true})
       }
+      this.joinDeadView()
     }
     if(["complete", "loaded", "interactive"].indexOf(document.readyState) >= 0){
       doConnect()
@@ -345,12 +346,14 @@ export default class LiveSocket {
   channel(topic, params){ return this.socket.channel(topic, params) }
 
   joinDeadView(){
-    this.bindTopLevelEvents({dead: true})
-    let view = this.newRootView(document.body)
-    view.setHref(this.getHref())
-    view.joinDead()
-    this.main = view
-    window.requestAnimationFrame(() => view.execNewMounted())
+    let body = document.body
+    if(body && !this.isPhxView(body) && !this.isPhxView(document.firstElementChild)){
+      let view = this.newRootView(body)
+      view.setHref(this.getHref())
+      view.joinDead()
+      if(!this.main){ this.main = view }
+      window.requestAnimationFrame(() => view.execNewMounted())
+    }
   }
 
   joinRootViews(){
