@@ -94,8 +94,8 @@ defmodule Phoenix.LiveView do
   template, which stands for HTML+EEx. They are an extension of Elixir's
   builtin EEx templates, with support for HTML validation, syntax-based
   components, smart change tracking, and more. You can learn more about
-  the template syntax in `Phoenix.Component.sigil_H/2` (note all
-  `Phoenix.Component` is imported when you use `Phoenix.LiveView`).
+  the template syntax in `Phoenix.Component.sigil_H/2` (note 
+  `Phoenix.Component` is automatically imported when you use `Phoenix.LiveView`).
 
   Next, decide where you want to use your LiveView.
 

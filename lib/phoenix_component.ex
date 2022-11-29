@@ -2,8 +2,9 @@ defmodule Phoenix.Component do
   @moduledoc ~S'''
   Define reusable function components with HEEx templates.
 
-  A function component is any function that receives an assigns map as an argument and returns
-  a rendered struct built with [the `~H` sigil](`sigil_H/2`):
+  A function component is any function that receives an assigns
+  map as an argument and returns a rendered struct built with
+  [the `~H` sigil](`sigil_H/2`):
 
       defmodule MyComponent do
         use Phoenix.Component
@@ -27,8 +28,8 @@ defmodule Phoenix.Component do
   <p>Hello, Jane!</p>
   ```
 
-  If the function component is defined locally, or its module is imported, then the caller can
-  invoke the function directly without specifying the module:
+  If the function component is defined locally, or its module is imported,
+  then the caller can invoke the function directly without specifying the module:
 
   ```heex
   <.greet name="Jane" />
@@ -48,11 +49,9 @@ defmodule Phoenix.Component do
   </.card>
   ```
 
-  Like `Phoenix.LiveView` and `Phoenix.LiveComponent`, function components are implemented using
-  a map of assigns, and follow [the same rules and best practices](../guides/server/assigns-eex.md).
-  However, we typically do not implement function components by manipulating the assigns map
-  directly, as `Phoenix.Component` provides two higher-level abstractions for us:
-  attributes and slots.
+  Note how the `name` attribute automatically becomes the `@name` assign inside
+  function components. This can be further leveraged by using two higher-level
+  abstractions for us: attributes and slots.
 
   ## Attributes
 
