@@ -1,16 +1,17 @@
 defmodule Phoenix.LiveView.EventTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.{Endpoint}
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
 
   setup_all do
-    ExUnit.CaptureLog.capture_log(fn -> Endpoint.start_link() end)
+    Helpers.start_endpoint(@endpoint)
     :ok
   end
 

@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.NestedTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import Plug.Conn
   import Phoenix.ConnTest
@@ -7,8 +7,14 @@ defmodule Phoenix.LiveView.NestedTest do
 
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LiveInComponent}
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
+
+  setup_all do
+    Helpers.start_endpoint(@endpoint)
+    :ok
+  end
 
   setup config do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}

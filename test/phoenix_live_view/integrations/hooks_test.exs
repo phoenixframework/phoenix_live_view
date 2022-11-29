@@ -1,13 +1,19 @@
 defmodule Phoenix.LiveView.HooksTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: false
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.Component
   alias Phoenix.LiveViewTest.{Endpoint, HooksLive}
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
+
+  setup_all do
+    Helpers.start_endpoint(@endpoint)
+    :ok
+  end
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), %{})}

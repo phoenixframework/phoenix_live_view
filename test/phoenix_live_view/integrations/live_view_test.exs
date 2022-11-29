@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.LiveViewTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
@@ -7,8 +7,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
   alias Phoenix.HTML
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
+
+  setup_all do
+    Helpers.start_endpoint(@endpoint)
+    :ok
+  end
 
   setup config do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
