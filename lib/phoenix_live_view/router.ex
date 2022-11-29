@@ -230,30 +230,22 @@ defmodule Phoenix.LiveView.Router do
       """
     end
 
-    live_sessions = Module.get_attribute(module, :phoenix_live_sessions)
-    existing = Enum.find(live_sessions, fn %{name: existing_name} -> name == existing_name end)
-
-    if existing do
+    if name in Module.get_attribute(module, :phoenix_live_sessions) do
       raise """
       attempting to redefine live_session #{inspect(name)}.
       live_session routes must be declared in a single named block.
       """
     end
 
-    Module.put_attribute(module, :phoenix_live_session_current, %{
-      name: name,
-      extra: extra,
-      vsn: vsn
-    })
+    current = %{name: name, extra: extra, vsn: vsn}
+    Module.put_attribute(module, :phoenix_live_session_current, current)
 
-    Module.put_attribute(module, :phoenix_live_sessions, %{name: name, extra: extra, vsn: vsn})
+    Module.put_attribute(module, :phoenix_live_sessions, name)
   end
 
   @live_session_opts [:layout, :on_mount, :root_layout, :session]
   defp validate_live_session_opts(opts, module, _name) when is_list(opts) do
-    opts
-    |> Keyword.put_new(:session, %{})
-    |> Enum.reduce(%{}, fn
+    Enum.reduce(opts, %{}, fn
       {:session, val}, acc when is_map(val) or (is_tuple(val) and tuple_size(val) == 3) ->
         Map.put(acc, :session, val)
 
@@ -359,7 +351,7 @@ defmodule Phoenix.LiveView.Router do
       when is_atom(action) and is_list(opts) do
     live_session =
       Module.get_attribute(router, :phoenix_live_session_current) ||
-        %{name: :default, extra: %{session: %{}}, vsn: session_vsn(router)}
+        %{name: :default, extra: %{}, vsn: session_vsn(router)}
 
     live_view = Phoenix.Router.scoped_alias(router, live_view)
     {private, metadata, warn_on_verify, opts} = validate_live_opts!(opts)

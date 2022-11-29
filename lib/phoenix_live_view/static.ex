@@ -300,13 +300,13 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp sign_root_session(%Socket{} = socket, router, view, session, live_session) do
-    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
     live_session_pair =
       case live_session do
         %{name: name, vsn: vsn} -> {name, vsn}
         nil -> nil
       end
 
+    # IMPORTANT: If you change the second argument, @token_vsn has to be bumped.
     sign_token(socket.endpoint, %{
       id: socket.id,
       view: view,
@@ -320,7 +320,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp sign_nested_session(%Socket{} = parent, %Socket{} = child, view, session, sticky?) do
-    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
+    # IMPORTANT: If you change the second argument, @token_vsn has to be bumped.
     sign_token(parent.endpoint, %{
       id: child.id,
       view: view,
@@ -336,7 +336,7 @@ defmodule Phoenix.LiveView.Static do
   # the information that is only available during disconnected renders,
   # such as assign_new.
   defp sign_static_token(%Socket{id: id, endpoint: endpoint} = socket) do
-    # IMPORTANT: If you change the third argument, @token_vsn has to be bumped.
+    # IMPORTANT: If you change the second argument, @token_vsn has to be bumped.
     sign_token(endpoint, %{
       id: id,
       flash: socket.assigns.flash,
