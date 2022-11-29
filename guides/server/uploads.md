@@ -44,7 +44,7 @@ Use the `Phoenix.Component.live_file_input/1` component
 to render a file input for the upload:
 
 ```heex
-<%# lib/my_app_web/live/upload_live.html.heex %>
+<%!-- lib/my_app_web/live/upload_live.html.heex --%>
 
 <form id="upload-form" phx-submit="save" phx-change="validate">
   <.live_file_input upload={@uploads.avatar} />
@@ -74,12 +74,12 @@ info, errors, etc.
 Let's look at an annotated example:
 
 ```heex
-<%# lib/my_app_web/live/upload_live.html.heex %>
+<%!-- lib/my_app_web/live/upload_live.html.heex --%>
 
-<%# use phx-drop-target with the upload ref to enable file drag and drop %>
+<%!-- use phx-drop-target with the upload ref to enable file drag and drop --%>
 <section phx-drop-target={@uploads.avatar.ref}>
 
-<%# render each avatar entry %>
+<%!-- render each avatar entry --%>
 <%= for entry <- @uploads.avatar.entries do %>
   <article class="upload-entry">
 
@@ -88,13 +88,13 @@ Let's look at an annotated example:
       <figcaption><%= entry.client_name %></figcaption>
     </figure>
 
-    <%# entry.progress will update automatically for in-flight entries %>
+    <%!-- entry.progress will update automatically for in-flight entries --%>
     <progress value={entry.progress} max="100"> <%= entry.progress %>% </progress>
 
-    <%# a regular click event whose handler will invoke Phoenix.LiveView.cancel_upload/3 %>
+    <%!-- a regular click event whose handler will invoke Phoenix.LiveView.cancel_upload/3 --%>
     <button type="button" phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">&times;</button>
 
-    <%# Phoenix.Component.upload_errors/2 returns a list of error atoms %>
+    <%!-- Phoenix.Component.upload_errors/2 returns a list of error atoms --%>
     <%= for err <- upload_errors(@uploads.avatar, entry) do %>
       <p class="alert alert-danger"><%= error_to_string(err) %></p>
     <% end %>
@@ -102,7 +102,7 @@ Let's look at an annotated example:
   </article>
 <% end %>
 
-<%# Phoenix.Component.upload_errors/1 returns a list of error atoms %>
+<%!-- Phoenix.Component.upload_errors/1 returns a list of error atoms --%>
 <%= for err <- upload_errors(@uploads.avatar) do %>
   <p class="alert alert-danger"><%= error_to_string(err) %></p>
 <% end %>
