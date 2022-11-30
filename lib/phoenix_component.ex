@@ -2036,12 +2036,12 @@ defmodule Phoenix.Component do
   ```
 
   ```heex
-  <.link href="/the_world" method={:delete} data-confirm="Really?">delete</.link>
+  <.link href="/the_world" method="delete" data-confirm="Really?">delete</.link>
   ```
 
   ## JavaScript dependency
 
-  In order to support links where `:method` is not `:get` or use the above data attributes,
+  In order to support links where `:method` is not `"get"` or use the above data attributes,
   `Phoenix.HTML` relies on JavaScript. You can load `priv/static/phoenix_html.js` into your
   build tool.
 
@@ -2051,7 +2051,7 @@ defmodule Phoenix.Component do
   attributes are supported:
 
   * `data-confirm` - shows a confirmation prompt before generating and submitting the form when
-  `:method` is not `:get`.
+  `:method` is not `"get"`.
 
   ### Overriding the default confirm behaviour
 
