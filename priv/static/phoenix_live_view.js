@@ -2101,7 +2101,7 @@ within:
       view.withinTargets(phxTarget, (targetView, targetCtx) => {
         if (eventType === "change") {
           let { newCid, _target, callback } = args;
-          _target = _target || (sourceEl instanceof HTMLInputElement ? sourceEl.name : void 0);
+          _target = _target || (dom_default.isFormInput(sourceEl) ? sourceEl.name : void 0);
           if (_target) {
             pushOpts._target = _target;
           }
@@ -3943,7 +3943,7 @@ within:
       if (!this.isConnected()) {
         return browser_default.redirect(href, flash);
       }
-      if (/^\/[^\/]+.*$/.test(href)) {
+      if (/^\/$|^\/[^\/]+.*$/.test(href)) {
         let { protocol, host } = window.location;
         href = `${protocol}//${host}${href}`;
       }
