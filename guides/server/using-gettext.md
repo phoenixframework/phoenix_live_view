@@ -25,8 +25,6 @@ You can also use the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook to
 automatically restore the locale for every LiveView in your application:
 
     defmodule MyAppWeb.RestoreLocale do
-      import Phoenix.LiveView
-
       def on_mount(:default, _params, %{"locale" => locale} = _session, socket) do
         Gettext.put_locale(MyApp.Gettext, locale)
         {:cont, socket}
