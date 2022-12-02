@@ -2308,7 +2308,7 @@ var View = class {
     this.href = href;
   }
   isMain() {
-    return this.el.getAttribute(PHX_MAIN) !== null;
+    return this.el.hasAttribute(PHX_MAIN);
   }
   connectParams(liveReferer) {
     let params = this.liveSocket.params(this.el);
@@ -3529,7 +3529,7 @@ var LiveSocket = class {
         let view = this.newRootView(rootEl);
         view.setHref(this.getHref());
         view.join();
-        if (rootEl.getAttribute(PHX_MAIN)) {
+        if (rootEl.hasAttribute(PHX_MAIN)) {
           this.main = view;
         }
       }
