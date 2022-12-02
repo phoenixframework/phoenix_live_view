@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.4
+
+### Enhancements
+  * Support string upload name to support dynamically generated `allow_upload`'s
+
 ## 0.18.3 (2022-10-26)
 
 ### Enhancements

@@ -387,6 +387,10 @@ defmodule Phoenix.LiveView.UploadConfigTest do
     end
   end
 
+  test "supports binary upload name" do
+    assert LiveView.allow_upload(build_socket(), "avatar", accept: ~w(image/png .jpeg))
+  end
+
   defp build_client_entry(name, attrs \\ %{}) do
     name = "#{name}_#{System.unique_integer([:positive, :monotonic])}"
 

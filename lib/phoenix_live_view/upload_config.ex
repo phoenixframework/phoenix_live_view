@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   # we require a random_ref in order to ensure unique calls to `allow_upload`
   # invalidate old uploads on the client and expire old tokens for the same
   # upload name
-  def build(name, random_ref, [_ | _] = opts) when is_atom(name) do
+  def build(name, random_ref, [_ | _] = opts) when is_atom(name) or is_binary(name) do
     {html_accept, acceptable_types, acceptable_exts} =
       case Keyword.fetch(opts, :accept) do
         {:ok, [_ | _] = accept} ->

@@ -9,7 +9,8 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Allows an upload.
   """
-  def allow_upload(%Socket{} = socket, name, opts) when is_atom(name) and is_list(opts) do
+  def allow_upload(%Socket{} = socket, name, opts)
+      when (is_atom(name) or is_binary(name)) and is_list(opts) do
     case uploaded_entries(socket, name) do
       {[], []} ->
         :ok
@@ -37,7 +38,7 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Disallows a previously allowed upload.
   """
-  def disallow_upload(%Socket{} = socket, name) when is_atom(name) do
+  def disallow_upload(%Socket{} = socket, name) when is_atom(name) or is_binary(name) do
     case uploaded_entries(socket, name) do
       {[], []} ->
         uploads = socket.assigns[:uploads] || %{}
