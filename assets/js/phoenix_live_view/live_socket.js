@@ -363,7 +363,7 @@ export default class LiveSocket {
         let view = this.newRootView(rootEl)
         view.setHref(this.getHref())
         view.join()
-        if(rootEl.getAttribute(PHX_MAIN)){ this.main = view }
+        if(rootEl.hasAttribute(PHX_MAIN)){ this.main = view }
       }
       rootsFound = true
     })

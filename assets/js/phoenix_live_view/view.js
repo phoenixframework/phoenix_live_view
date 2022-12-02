@@ -119,7 +119,7 @@ export default class View {
     this.href = href
   }
 
-  isMain(){ return this.el.getAttribute(PHX_MAIN) !== null }
+  isMain(){ return this.el.hasAttribute(PHX_MAIN) }
 
   connectParams(liveReferer){
     let params = this.liveSocket.params(this.el)
