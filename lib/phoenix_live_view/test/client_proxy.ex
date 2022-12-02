@@ -135,6 +135,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       ids: %{},
       pids: %{},
       replies: %{},
+      dropped_replies: %{},
       root_view: nil,
       html: root_html,
       static_path: static_path,
@@ -358,7 +359,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                 upload
               )
 
-            push_with_callback(acc, view, "event", payload, fn reply, state ->
+            push_with_callback(acc, view, "event", from, payload, fn reply, state ->
               if index == last do
                 {:noreply, render_reply(reply, from, state)}
               else
@@ -436,14 +437,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_info(%Phoenix.Socket.Reply{ref: ref} = reply, state) do
     case fetch_reply(state, ref) do
-      {:ok, {_pid, callback}} ->
+      {:ok, {_pid, _from, callback}} ->
         case handle_reply(state, reply) do
           {:ok, new_state} -> callback.(reply, drop_reply(new_state, ref))
           other -> other
         end
 
       :error ->
-        {:noreply, state}
+        case Map.fetch(state.dropped_replies, ref) do
+          {:ok, from} ->
+            GenServer.reply(from, {:ok, nil})
+            {:noreply, %{state | dropped_replies: Map.delete(state.dropped_replies, ref)}}
+
+          :error ->
+            {:noreply, state}
+        end
     end
   end
 
@@ -532,6 +540,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         state,
         view,
         "allow_upload",
+        from,
         payload,
         fn reply, state ->
           GenServer.reply(from, {:ok, reply.payload})
@@ -570,8 +579,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp flush_replies(state, pid) do
     Enum.reduce(state.replies, state, fn
-      {ref, {^pid, _callback}}, acc -> drop_reply(acc, ref)
-      {_ref, {_pid, _callback}}, acc -> acc
+      {ref, {^pid, _from, _callback}}, acc -> drop_reply(acc, ref)
+      {_ref, {_pid, _from, _callback}}, acc -> acc
     end)
   end
 
@@ -579,12 +588,22 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     Map.fetch(state.replies, ref)
   end
 
-  defp put_reply(state, ref, pid, callback) do
-    %{state | replies: Map.put(state.replies, ref, {pid, callback})}
+  defp put_reply(state, ref, pid, from, callback) do
+    %{state | replies: Map.put(state.replies, ref, {pid, from, callback})}
   end
 
   defp drop_reply(state, ref) do
-    %{state | replies: Map.delete(state.replies, ref)}
+    dropped_replies =
+      case Map.fetch(state.replies, ref) do
+        {:ok, {_pid, from, _callback}} -> Map.put(state.dropped_replies, ref, from)
+        :error -> state.dropped_replies
+      end
+
+    %{
+      state
+      | replies: Map.delete(state.replies, ref),
+        dropped_replies: dropped_replies
+    }
   end
 
   defp put_child(state, %ClientProxy{} = parent, id, session) do
@@ -636,12 +655,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         state = %{state | html: new_html}
         payload = %{"cids" => will_destroy_cids}
 
-        push_with_callback(state, view, "cids_will_destroy", payload, fn _, state ->
+        push_with_callback(state, view, "cids_will_destroy", nil, payload, fn _, state ->
           still_there_cids = DOM.component_ids(view.id, state.html)
           payload = %{"cids" => Enum.reject(will_destroy_cids, &(&1 in still_there_cids))}
 
           state =
-            push_with_callback(state, view, "cids_destroyed", payload, fn reply, state ->
+            push_with_callback(state, view, "cids_destroyed", nil, payload, fn reply, state ->
               cids = reply.payload.cids
               {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, cids))}
             end)
@@ -784,7 +803,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp push_with_reply(state, from, view, event, payload) do
-    push_with_callback(state, view, event, payload, fn reply, state ->
+    push_with_callback(state, view, event, from, payload, fn reply, state ->
       {:noreply, render_reply(reply, from, state)}
     end)
   end
@@ -814,12 +833,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp push_with_callback(state, view, event, payload, callback) do
+  defp push_with_callback(state, view, event, from, payload, callback) do
     ref = to_string(state.ref + 1)
 
     state
     |> push(view, event, payload)
-    |> put_reply(ref, view.pid, callback)
+    |> put_reply(ref, view.pid, from, callback)
   end
 
   defp build_child(%ClientProxy{ref: ref, proxy: proxy, endpoint: endpoint}, attrs) do
@@ -933,6 +952,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_event(:click, {"a", _, _} = node, element) do
     live_nav = DOM.attribute(node, "data-phx-link")
+
     cond do
       event = is_nil(live_nav) && DOM.attribute(node, "phx-click") ->
         {:ok, event}
