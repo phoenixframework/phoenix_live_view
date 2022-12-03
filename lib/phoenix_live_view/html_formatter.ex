@@ -283,7 +283,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     defp tokenize(contents) do
       {:ok, eex_nodes} = EEx.tokenize(contents)
       {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
-      HTMLTokenizer.finalize(tokens, "nofile", cont)
+      HTMLTokenizer.finalize(tokens, "nofile", cont, contents)
     end
 
     defp do_tokenize({:text, text, meta}, {tokens, cont}, contents) do
@@ -312,7 +312,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     defp tokenize(contents) do
       {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 1, %{indentation: 0, trim: false})
       {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
-      HTMLTokenizer.finalize(tokens, "nofile", cont)
+      HTMLTokenizer.finalize(tokens, "nofile", cont, contents)
     end
 
     defp do_tokenize({:text, line, column, text}, {tokens, cont}, contents) do

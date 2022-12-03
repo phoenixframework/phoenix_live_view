@@ -665,7 +665,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         |
       1 | <div>Bar</div>
       2 | <div id=>Foo</div>
-        |        ^\
+        |         ^\
       """
 
       assert_raise(ParseError, message, fn ->
@@ -1308,7 +1308,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "unmatched comment" do
       message = """
-      .exs:1:(11:)? expected closing `-->` for comment
+      test/phoenix_live_view/html_engine_test.exs:1:11: expected closing `-->` for comment
+        |
+      1 | Begin<!-- <%= 123 %>
+        |         ^\
       """
 
       assert_raise(ParseError, message, fn ->
@@ -1317,8 +1320,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "unmatched open/close tags" do
-      message =
-        ~r".exs:4:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:4:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
+        |
+      1 | <br>
+      2 | <div>
+      3 |  text
+      4 | </span>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1331,8 +1341,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "unmatched open/close tags with nested tags" do
-      message =
-        ~r".exs:6:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:6:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
+        |
+      3 |   <p>
+      4 |     text
+      5 |   </p>
+      6 | </span>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1467,7 +1484,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe "html validations" do
     test "phx-update attr requires an unique ID" do
-      message = ~r/.exs:1:(1:)? attribute \"phx-update\" requires the \"id\" attribute to be set/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update=\"ignore\">
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1477,6 +1499,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update=\"ignore\" class=\"foo\">
+        |  ^\
+      """
+
       assert_raise(ParseError, message, fn ->
         eval("""
         <div phx-update="ignore" class="foo">
@@ -1485,11 +1514,25 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update=\"ignore\" class=\"foo\" />
+        |  ^\
+      """
+
       assert_raise(ParseError, message, fn ->
         eval("""
         <div phx-update="ignore" class="foo" />
         """)
       end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update={@value}>Content</div>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1503,8 +1546,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "validates phx-update values" do
-      message =
-        ~r/.exs:1:(14:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:14: the value of the attribute \"phx-update\" must be: ignore, append or prepend
+        |
+      1 | <div id=\"id\" phx-update=\"bar\">
+        |                ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1516,7 +1563,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "phx-hook attr requires an unique ID" do
-      message = ~r/.exs:1:(1:)? attribute \"phx-hook\" requires the \"id\" attribute to be set/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-hook=\"MyHook\">
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1525,6 +1577,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         </div>
         """)
       end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-hook=\"MyHook\" />
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1544,7 +1603,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on unsupported special attrs" do
-      message = ~r/.exs:1:(6:)? unsupported attribute \":let\" in tags/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":let\" in tags
+        |
+      1 | <div :let={@user}>Content</div>
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1552,7 +1616,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/.exs:1:(6:)? unsupported attribute \":foo\" in tags/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":foo\" in tags
+        |
+      1 | <div :foo=\"something\" />
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1634,7 +1703,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/:for must be a generator expression between {...}/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be a generator expression between {...}
+        |
+      1 | <div :for=\"1\">Content</div>
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1692,8 +1766,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on duplicated :for" do
-      message =
-        ~r/cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:28: cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1
+        |
+      1 | <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
+        |                             ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1772,7 +1850,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on invalid :if expr" do
-      message = ~r/:if must be an expression between {...}/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: :if must be an expression between {...}
+        |
+      1 | <div :if=\"1\">test</div>
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1802,8 +1885,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on duplicated :if" do
-      message =
-        ~r/cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:17: cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1
+        |
+      1 | <div :if={true} :if={false}>test</div>
+        |                  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""

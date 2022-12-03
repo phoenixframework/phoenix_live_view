@@ -202,17 +202,29 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on missing/incomplete tag name" do
-      message =
-        "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
+      message = """
+      nofile:2:4: expected tag name after <. If you meant to use < as part of a text, use &lt; instead
+        |
+      1 | <div>
+      2 |   <>
+        |   ^\
+      """
 
-      assert_raise ParseError, "nofile:2:4: " <> message, fn ->
+      assert_raise ParseError, message, fn ->
         tokenize("""
         <div>
           <>\
         """)
       end
 
-      assert_raise ParseError, "nofile:1:2: " <> message, fn ->
+      message = """
+      nofile:1:2: expected tag name after <. If you meant to use < as part of a text, use &lt; instead
+        |
+      1 | <
+        | ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize("<")
       end
 
@@ -266,7 +278,13 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on missing value" do
-      message = ~r"nofile:2:9: invalid attribute value after `=`"
+      message = """
+      nofile:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+        |
+      1 | <div
+      2 |   class=>
+        |         ^\
+      """
 
       assert_raise ParseError, message, fn ->
         tokenize("""
@@ -275,13 +293,23 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         """)
       end
 
-      message = ~r"nofile:1:13: invalid attribute value after `=`"
+      message = """
+      nofile:1:13: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+        |
+      1 | <div class= >
+        |             ^\
+      """
 
       assert_raise ParseError, message, fn ->
         tokenize(~S(<div class= >))
       end
 
-      message = ~r"nofile:1:12: invalid attribute value after `=`"
+      message = """
+      nofile:1:12: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+        |
+      1 | <div class=
+        |            ^\
+      """
 
       assert_raise ParseError, message, fn ->
         tokenize("<div class=")
@@ -289,36 +317,86 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on missing attribute name" do
-      assert_raise ParseError, "nofile:2:8: expected attribute name", fn ->
+      message = """
+      nofile:2:8: expected attribute name
+        |
+      1 | <div>
+      2 |   <div =\"panel\">
+        |       ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize("""
         <div>
           <div ="panel">\
         """)
       end
 
-      assert_raise ParseError, "nofile:1:6: expected attribute name", fn ->
+      message = """
+      nofile:1:6: expected attribute name
+        |
+      1 | <div = >
+        |     ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize(~S(<div = >))
       end
 
-      assert_raise ParseError, "nofile:1:6: expected attribute name", fn ->
+      message = """
+      nofile:1:6: expected attribute name
+        |
+      1 | <div / >
+        |     ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize(~S(<div / >))
       end
     end
 
     test "raise on attribute names with quotes" do
-      assert_raise ParseError, "nofile:1:5: invalid character in attribute name: '", fn ->
+      message = """
+      nofile:1:5: invalid character in attribute name: '
+        |
+      1 | <div'>
+        |    ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize(~S(<div'>))
       end
 
-      assert_raise ParseError, "nofile:1:5: invalid character in attribute name: \"", fn ->
+      message = """
+      nofile:1:5: invalid character in attribute name: \"
+        |
+      1 | <div\">
+        |    ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize(~S(<div">))
       end
 
-      assert_raise ParseError, "nofile:1:10: invalid character in attribute name: '", fn ->
+      message = """
+      nofile:1:10: invalid character in attribute name: '
+        |
+      1 | <div attr'>
+        |         ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize(~S(<div attr'>))
       end
 
-      assert_raise ParseError, "nofile:1:20: invalid character in attribute name: \"", fn ->
+      message = """
+      nofile:1:20: invalid character in attribute name: \"
+        |
+      1 | <div class={\"test\"}\">
+        |                   ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize(~S(<div class={"test"}">))
       end
     end
@@ -627,7 +705,15 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on missing closing `>`" do
-      assert_raise ParseError, "nofile:2:6: expected closing `>`", fn ->
+      message = """
+      nofile:2:6: expected closing `>`
+        |
+      1 | <div>
+      2 | </div text
+        |    ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize("""
         <div>
         </div text\
@@ -636,8 +722,13 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on missing tag name" do
-      message =
-        "nofile:2:5: expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
+      message = """
+      nofile:2:5: expected tag name after <. If you meant to use < as part of a text, use &lt; instead
+        |
+      1 | <div>
+      2 |   </>
+        |   ^\
+      """
 
       assert_raise ParseError, message, fn ->
         tokenize("""

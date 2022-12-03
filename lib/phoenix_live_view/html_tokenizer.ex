@@ -48,12 +48,18 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     end
   end
 
-  def finalize(_tokens, file, {:comment, line, column}) do
+  def finalize(_tokens, file, {:comment, line, column}, source) do
     message = "expected closing `-->` for comment"
-    raise ParseError, file: file, line: line, column: column, description: message
+    meta = %{line: line, column: column}
+
+    raise ParseError,
+      file: file,
+      line: line,
+      column: column,
+      description: message <> ParseError.code_snippet(source, meta, -3)
   end
 
-  def finalize(tokens, _file, _cont) do
+  def finalize(tokens, _file, _cont, _source) do
     tokens
     |> strip_text_token_fully()
     |> Enum.reverse()
@@ -241,7 +247,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -2)
     end
   end
 
@@ -265,7 +277,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
           description: message <> ParseError.code_snippet(state.source, meta, 0)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -3)
     end
   end
 
@@ -372,7 +390,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_attr_value(rest, line, new_column, acc, state)
 
       {:error, message, column} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -2)
     end
   end
 
@@ -478,7 +502,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       file: state.file,
       line: line,
       column: column,
-      description: message <> ParseError.code_snippet(state.source, meta, -2)
+      description: message <> ParseError.code_snippet(state.source, meta, -1)
   end
 
   ## handle_attr_value_quote

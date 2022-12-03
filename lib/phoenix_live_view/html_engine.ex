@@ -170,7 +170,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @impl true
   def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
-    tokens = HTMLTokenizer.finalize(tokens, file, cont)
+    tokens = HTMLTokenizer.finalize(tokens, file, cont, state.source)
 
     token_state =
       state
@@ -367,7 +367,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     at line #{tag_open_meta.line}, got: </#{tag_close_name}>\
     """
 
-    raise ParseError, line: line, column: column, file: file, description: message
+    raise ParseError,
+      line: line,
+      column: column,
+      file: file,
+      description: message <> ParseError.code_snippet(state.source, tag_close_meta, 0)
   end
 
   defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
@@ -1327,7 +1331,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: meta.line,
       column: meta.column,
       file: state.file,
-      description: message
+      description: message <> ParseError.code_snippet(state.source, meta, 0)
   end
 
   defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
@@ -1356,7 +1360,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: attr_meta.line,
         column: attr_meta.column,
         file: state.file,
-        description: message
+        description: message <> ParseError.code_snippet(state.source, attr_meta, 1)
     end
   end
 
@@ -1371,11 +1375,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
     do: validate_phx_attrs!(t, meta, state, attr, id?)
 
   defp validate_phx_attrs!([{":if", _, attr_meta} | _], _meta, state, _attr, _id?) do
+    message = ":if must be an expression between {...}"
+
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
       file: state.file,
-      description: ":if must be an expression between {...}"
+      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
   end
 
   @loop [":for"]
@@ -1386,19 +1392,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_phx_attrs!([{loop, _, attr_meta} | _], _meta, state, _attr, _id?)
        when loop in @loop do
+    message = "#{loop} must be a generator expression between {...}"
+
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
       file: state.file,
-      description: "#{loop} must be a generator expression between {...}"
+      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
   end
 
   defp validate_phx_attrs!([{":" <> _ = name, _, attr_meta} | _], _meta, state, _attr, _id?) do
+    message = "unsupported attribute #{inspect(name)} in tags"
+
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
       file: state.file,
-      description: "unsupported attribute #{inspect(name)} in tags"
+      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
   end
 
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
