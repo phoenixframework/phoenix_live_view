@@ -416,7 +416,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
           file: state.file,
           line: line,
           column: column,
-          description: message <> ParseError.code_snippet(state.source, meta, 0)
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
     end
   end
 
@@ -570,7 +570,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
           file: state.file,
           line: line,
           column: column,
-          description: message <> ParseError.code_snippet(state.source, meta, 0)
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
     end
   end
 

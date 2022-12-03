@@ -591,7 +591,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         |
       1 | <div
       2 |   class={panel
-        |                ^\
+        |               ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -671,7 +671,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         |
       1 | <div
       2 |   {@attrs
-        |           ^\
+        |          ^\
       """
 
       assert_raise ParseError, message, fn ->
