@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
   alias Phoenix.LiveView.HTMLTokenizer
 
   defp tokenize(text) do
-    HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text)
+    HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text, text)
     |> elem(0)
     |> Enum.reverse()
   end
@@ -80,7 +80,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       <div>
       """
 
-      {first_tokens, cont} = HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text)
+      {first_tokens, cont} =
+        HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text, first_part)
 
       second_part = """
       </div>
@@ -91,7 +92,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       </div>
       """
 
-      {tokens, :text} = HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont)
+      {tokens, :text} =
+        HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont, second_part)
 
       assert Enum.reverse(tokens) == [
                {:tag_open, "p", [], %{column: 1, line: 1, inner_location: {1, 4}}},
@@ -118,7 +120,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       <%= "Hello" %>
       """
 
-      {first_tokens, cont} = HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text)
+      {first_tokens, cont} =
+        HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text, first_part)
 
       second_part = """
       -->
@@ -127,7 +130,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       """
 
       {second_tokens, cont} =
-        HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont)
+        HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont, second_part)
 
       third_part = """
       -->
@@ -136,7 +139,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       </p>
       """
 
-      {tokens, :text} = HTMLTokenizer.tokenize(third_part, "nofile", 0, [], second_tokens, cont)
+      {tokens, :text} =
+        HTMLTokenizer.tokenize(third_part, "nofile", 0, [], second_tokens, cont, third_part)
 
       assert Enum.reverse(tokens) == [
                {:tag_open, "p", [], %{column: 1, line: 1, inner_location: {1, 4}}},
@@ -504,7 +508,15 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on incomplete attribute expression (EOF)" do
-      assert_raise ParseError, "nofile:2:15: expected closing `}` for expression", fn ->
+      message = """
+      nofile:2:15: expected closing `}` for expression
+        |
+      1 | <div
+      2 |   class={panel
+        |                ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize("""
         <div
           class={panel\
@@ -576,7 +588,15 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
     end
 
     test "raise on incomplete expression (EOF)" do
-      assert_raise ParseError, "nofile:2:10: expected closing `}` for expression", fn ->
+      message = """
+      nofile:2:10: expected closing `}` for expression
+        |
+      1 | <div
+      2 |   {@attrs
+        |           ^\
+      """
+
+      assert_raise ParseError, message, fn ->
         tokenize("""
         <div
           {@attrs\
