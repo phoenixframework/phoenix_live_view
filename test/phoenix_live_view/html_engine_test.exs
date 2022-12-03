@@ -1452,7 +1452,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       test/phoenix_live_view/html_engine_test.exs:1:11: expected closing `}` for expression
         |
       1 | <div foo={<%= @foo %>}>bar</div>
-        |            ^\
+        |           ^\
       """
 
       assert_raise(ParseError, message, fn ->
