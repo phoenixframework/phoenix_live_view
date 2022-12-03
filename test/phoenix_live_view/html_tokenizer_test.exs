@@ -322,7 +322,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         |
       1 | <div>
       2 |   <div =\"panel\">
-        |       ^\
+        |        ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -336,7 +336,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       nofile:1:6: expected attribute name
         |
       1 | <div = >
-        |     ^\
+        |      ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -347,7 +347,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       nofile:1:6: expected attribute name
         |
       1 | <div / >
-        |     ^\
+        |      ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -360,7 +360,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       nofile:1:5: invalid character in attribute name: '
         |
       1 | <div'>
-        |    ^\
+        |     ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -370,8 +370,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       message = """
       nofile:1:5: invalid character in attribute name: \"
         |
-      1 | <div\">
-        |    ^\
+      1 | <div">
+        |     ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -382,7 +382,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       nofile:1:10: invalid character in attribute name: '
         |
       1 | <div attr'>
-        |         ^\
+        |          ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -392,8 +392,8 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       message = """
       nofile:1:20: invalid character in attribute name: \"
         |
-      1 | <div class={\"test\"}\">
-        |                   ^\
+      1 | <div class={"test"}">
+        |                    ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -710,7 +710,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         |
       1 | <div>
       2 | </div text
-        |    ^\
+        |      ^\
       """
 
       assert_raise ParseError, message, fn ->

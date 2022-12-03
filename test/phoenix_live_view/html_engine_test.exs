@@ -518,13 +518,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on duplicated :let" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:4:9: cannot define multiple :let attributes. Another :let has already been defined at line 3
+      test/phoenix_live_view/html_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
         |
       1 | <br>
       2 | <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
       3 |   :let={var1}
       4 |   :let={var2}
-        |          ^\
+        |    ^\
       """
 
       assert_raise(ParseError, message, fn ->
@@ -538,13 +538,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/html_engine_test.exs:4:9: cannot define multiple :let attributes. Another :let has already been defined at line 3
+      test/phoenix_live_view/html_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
         |
       1 | <br>
       2 | <.local_function_component value='1'
       3 |   :let={var1}
       4 |   :let={var2}
-        |          ^\
+        |    ^\
       """
 
       assert_raise(ParseError, message, fn ->
@@ -1119,7 +1119,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise if self close slot uses :let" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:2:25: cannot use :let on a slot without inner content
+      test/phoenix_live_view/html_engine_test.exs:2:19: cannot use :let on a slot without inner content
         |
       1 | <.function_component_with_self_close_slots>
       2 |   <:sample id=\"1\" :let={var}/>

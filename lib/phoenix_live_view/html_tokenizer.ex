@@ -268,13 +268,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
       {:ok, _, new_column, _} ->
         message = "expected closing `>`"
-        meta = %{line: line, column: column}
+        meta = %{line: line, column: new_column}
 
         raise ParseError,
           file: state.file,
           line: line,
           column: new_column,
-          description: message <> ParseError.code_snippet(state.source, meta, 0)
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
 
       {:error, message} ->
         meta = %{line: line, column: column}
@@ -396,7 +396,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
           file: state.file,
           line: line,
           column: column,
-          description: message <> ParseError.code_snippet(state.source, meta, -2)
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
     end
   end
 

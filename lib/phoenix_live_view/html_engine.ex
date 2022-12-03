@@ -577,7 +577,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: let_meta.line,
         column: let_meta.column,
         file: state.file,
-        description: message <> ParseError.code_snippet(state.source, let_meta, -4)
+        description: message <> ParseError.code_snippet(state.source, let_meta, 2)
     end
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
@@ -1067,7 +1067,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # TODO: Remove deprecation and no longer handle let especially
   @special_attrs ~w(let :let :if :for)
   defp split_component_attr(
-         {attr, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
+         {attr, {:expr, value, %{line: line, column: col} = meta}, attr_meta},
          {special, r, a, locs},
          state,
          _component_or_slot
@@ -1100,7 +1100,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
       %{} ->
         quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
-        {Map.put(special, attr, {quoted_value, meta}), r, a, locs}
+        {Map.put(special, attr, {quoted_value, attr_meta}), r, a, locs}
     end
   end
 
