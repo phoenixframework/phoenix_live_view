@@ -12,7 +12,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         file: __ENV__.file,
         engine: HTMLEngine,
         subengine: Phoenix.LiveView.Engine,
-        caller: __ENV__
+        caller: __ENV__,
+        source: string
       )
 
     EEx.eval_string(string, [assigns: assigns], opts)
@@ -32,7 +33,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           file: __ENV__.file,
           engine: HTMLEngine,
           module: __MODULE__,
-          caller: __CALLER__
+          caller: __CALLER__,
+          source: string
         )
       )
       |> Phoenix.HTML.Safe.to_iodata()
@@ -515,8 +517,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on duplicated :let" do
-      message =
-        ~r".exs:4:(9:)? cannot define multiple :let attributes. Another :let has already been defined at line 3"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
+        |
+      1 | <br>
+      2 | <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
+      3 |   :let={var1}
+      4 |   :let={var2}
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -527,6 +536,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         />
         """)
       end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
+        |
+      1 | <br>
+      2 | <.local_function_component value='1'
+      3 |   :let={var1}
+      4 |   :let={var2}
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -540,7 +559,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "invalid :let expr" do
-      message = ~r"let must be a pattern between {...}"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:70: :let must be a pattern between {...} in component Phoenix.LiveView.HTMLEngineTest.remote_function_component
+        |
+      1 | <br>
+      2 | <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let=\"1\"
+        |                                                                       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -549,6 +574,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         />
         """)
       end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:38: :let must be a pattern between {...} in component .local_function_component
+        |
+      1 | <br>
+      2 | <.local_function_component value='1' :let=\"1\"
+        |                                       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -560,7 +593,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise with invalid special attr" do
-      message = ~r"unsupported attribute \":bar\" in component"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:38: unsupported attribute \":bar\" in component .local_function_component
+        |
+      1 | <br>
+      2 | <.local_function_component value='1' :bar=\"1\"}
+        |                                       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -572,8 +611,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on unclosed local call" do
-      message =
-        ~r".exs:1:(1:)? end of template reached without closing tag for <.local_function_component>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: end of template reached without closing tag for <.local_function_component>
+        |
+      1 | <.local_function_component value='1' :let={var}>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -581,14 +624,54 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message =
-        ~r".exs:2:(3:)? end of do-block reached without closing tag for <.local_function_component>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:3: end of do-block reached without closing tag for <.local_function_component>
+        |
+      1 | <%= if true do %>
+      2 |   <.local_function_component value='1' :let={var}>
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
         <%= if true do %>
           <.local_function_component value='1' :let={var}>
         <% end %>
+        """)
+      end)
+    end
+
+    test "when tag is unclosed" do
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:1: end of template reached without closing tag for <div>
+        |
+      1 | <div>Foo</div>
+      2 | <div>
+        |  ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div>Foo</div>
+        <div>
+        <div>Bar</div>
+        """)
+      end)
+    end
+
+    test "when syntax error on HTML attributes" do
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+        |
+      1 | <div>Bar</div>
+      2 | <div id=>Foo</div>
+        |         ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div>Bar</div>
+        <div id=>Foo</div>
         """)
       end)
     end
@@ -1035,7 +1118,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise if self close slot uses :let" do
-      message = ~r".exs:2:(25:)? cannot use :let on a slot without inner content"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:19: cannot use :let on a slot without inner content
+        |
+      1 | <.function_component_with_self_close_slots>
+      2 |   <:sample id=\"1\" :let={var}/>
+        |                      ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1076,8 +1165,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise if the slot entry is not a direct child of a component" do
-      message =
-        ~r".exs:2:(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:3: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+        |
+      1 | <div>
+      2 |   <:sample>
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1089,8 +1183,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message =
-        ~r".exs:(2|3):(3:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:3:3: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+        |
+      1 | <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
+      2 | <%= if true do %>
+      3 |   <:sample>
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1104,8 +1204,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message =
-        ~r".exs:3:(5:)? invalid slot entry <:footer>. A slot entry must be a direct child of a component"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:3:5: invalid slot entry <:footer>. A slot entry must be a direct child of a component
+        |
+      1 | <.mydiv>
+      2 |   <:sample>
+      3 |     <:footer>
+        |      ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1119,8 +1225,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message =
-        ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+        |
+      1 | <:sample>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1130,8 +1240,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message =
-        ~r".exs:1:(1:)? invalid slot entry <:sample>. A slot entry must be a direct child of a component"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+        |
+      1 | <:sample>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1193,7 +1307,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "unmatched comment" do
-      message = ~r".exs:1:(11:)? expected closing `-->` for comment"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:11: expected closing `-->` for comment
+        |
+      1 | Begin<!-- <%= 123 %>
+        |         ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("Begin<!-- <%= 123 %>")
@@ -1201,8 +1320,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "unmatched open/close tags" do
-      message =
-        ~r".exs:4:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:4:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
+        |
+      1 | <br>
+      2 | <div>
+      3 |  text
+      4 | </span>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1215,8 +1341,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "unmatched open/close tags with nested tags" do
-      message =
-        ~r".exs:6:(1:)? unmatched closing tag. Expected </div> for <div> at line 2, got: </span>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:6:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
+        |
+      3 |   <p>
+      4 |     text
+      5 |   </p>
+      6 | </span>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1231,7 +1364,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "invalid remote tag" do
-      message = ~r".exs:1:(1:)? invalid tag <Foo>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: invalid tag <Foo>
+        |
+      1 | <Foo foo=\"bar\" />
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1241,7 +1379,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing open tag" do
-      message = ~r".exs:2:(3:)? missing opening tag for </span>"
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:3: missing opening tag for </span>
+        |
+      1 | text
+      2 |   </span>
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1252,7 +1396,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "missing closing tag" do
-      message = ~r/.exs:2:(1:)? end of template reached without closing tag for <div>/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:1: end of template reached without closing tag for <div>
+        |
+      1 | <br>
+      2 | <div foo={@foo}>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1261,7 +1411,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/.exs:2:(3:)? end of template reached without closing tag for <span>/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:3: end of template reached without closing tag for <span>
+        |
+      1 | text
+      2 |   <span foo={@foo}>
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1273,7 +1429,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "invalid tag name" do
-      message = ~r/.exs:2:(3:)? invalid tag <Oops>/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:3: invalid tag <Oops>
+        |
+      1 | <br>
+      2 |   <Oops foo={@foo}>
+        |    ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1286,7 +1448,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "invalid tag" do
-      message = ~r/.exs:1:(11:)? expected closing `}` for expression/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:11: expected closing `}` for expression
+        |
+      1 | <div foo={<%= @foo %>}>bar</div>
+        |           ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1317,7 +1484,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe "html validations" do
     test "phx-update attr requires an unique ID" do
-      message = ~r/.exs:1:(1:)? attribute \"phx-update\" requires the \"id\" attribute to be set/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update=\"ignore\">
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1327,6 +1499,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update=\"ignore\" class=\"foo\">
+        |  ^\
+      """
+
       assert_raise(ParseError, message, fn ->
         eval("""
         <div phx-update="ignore" class="foo">
@@ -1335,11 +1514,25 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update=\"ignore\" class=\"foo\" />
+        |  ^\
+      """
+
       assert_raise(ParseError, message, fn ->
         eval("""
         <div phx-update="ignore" class="foo" />
         """)
       end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-update={@value}>Content</div>
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1353,8 +1546,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "validates phx-update values" do
-      message =
-        ~r/.exs:1:(14:)? the value of the attribute \"phx-update\" must be: ignore, append or prepend/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:14: the value of the attribute \"phx-update\" must be: ignore, append or prepend
+        |
+      1 | <div id=\"id\" phx-update=\"bar\">
+        |                ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1366,7 +1563,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "phx-hook attr requires an unique ID" do
-      message = ~r/.exs:1:(1:)? attribute \"phx-hook\" requires the \"id\" attribute to be set/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-hook=\"MyHook\">
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1375,6 +1577,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         </div>
         """)
       end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
+        |
+      1 | <div phx-hook=\"MyHook\" />
+        |  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1394,7 +1603,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on unsupported special attrs" do
-      message = ~r/.exs:1:(6:)? unsupported attribute \":let\" in tags/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":let\" in tags
+        |
+      1 | <div :let={@user}>Content</div>
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1402,7 +1616,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/.exs:1:(6:)? unsupported attribute \":foo\" in tags/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":foo\" in tags
+        |
+      1 | <div :foo=\"something\" />
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1484,7 +1703,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
 
-      message = ~r/:for must be a generator expression between {...}/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be a generator expression between {...}
+        |
+      1 | <div :for=\"1\">Content</div>
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1542,8 +1766,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on duplicated :for" do
-      message =
-        ~r/cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:28: cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1
+        |
+      1 | <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
+        |                             ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1622,7 +1850,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on invalid :if expr" do
-      message = ~r/:if must be an expression between {...}/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: :if must be an expression between {...}
+        |
+      1 | <div :if=\"1\">test</div>
+        |       ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""
@@ -1652,8 +1885,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on duplicated :if" do
-      message =
-        ~r/cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:17: cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1
+        |
+      1 | <div :if={true} :if={false}>test</div>
+        |                  ^\
+      """
 
       assert_raise(ParseError, message, fn ->
         eval("""

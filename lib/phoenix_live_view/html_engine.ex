@@ -131,7 +131,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   defmacro compile(path) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
-    EEx.compile_file(path, engine: __MODULE__, line: 1, trim: trim, caller: __CALLER__)
+    source = File.read!(path)
+
+    EEx.compile_string(source,
+      engine: __MODULE__,
+      line: 1,
+      file: path,
+      trim: trim,
+      caller: __CALLER__,
+      source: source
+    )
   end
 
   @behaviour EEx.Engine
@@ -152,7 +161,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0),
       caller: Keyword.fetch!(opts, :caller),
-      previous_token_slot?: false
+      previous_token_slot?: false,
+      source: Keyword.fetch!(opts, :source)
     }
   end
 
@@ -160,7 +170,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @impl true
   def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
-    tokens = HTMLTokenizer.finalize(tokens, file, cont)
+    tokens = HTMLTokenizer.finalize(tokens, file, cont, state.source)
 
     token_state =
       state
@@ -182,10 +192,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp validate_unclosed_tags!(%{tags: [tag | _]} = state, context) do
-    {:tag_open, name, _attrs, %{line: line, column: column}} = tag
+    {:tag_open, name, _attrs, %{line: line, column: column} = meta} = tag
     file = state.file
     message = "end of #{context} reached without closing tag for <#{name}>"
-    raise ParseError, line: line, column: column, file: file, description: message
+
+    raise ParseError,
+      line: line,
+      column: column,
+      file: file,
+      description: message <> ParseError.code_snippet(state.source, meta, 0)
   end
 
   @impl true
@@ -198,12 +213,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp token_state(
-         %{subengine: subengine, substate: substate, file: file, caller: caller},
+         %{subengine: subengine, substate: substate, file: file, caller: caller, source: source},
          root
        ) do
     %{
       subengine: subengine,
       substate: substate,
+      source: source,
       file: file,
       stack: [],
       tags: [],
@@ -227,9 +243,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @impl true
   def handle_text(state, meta, text) do
-    %{file: file, indentation: indentation, tokens: tokens, cont: cont} = state
-    {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont)
-    %{state | tokens: tokens, cont: cont}
+    %{file: file, indentation: indentation, tokens: tokens, cont: cont, source: source} = state
+    {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont, source)
+    %{state | tokens: tokens, cont: cont, source: state.source}
   end
 
   @impl true
@@ -274,11 +290,19 @@ defmodule Phoenix.LiveView.HTMLEngine do
     :ok
   end
 
-  defp validate_slot!(%{file: file} = _state, slot_name, %{line: line, column: column}) do
+  defp validate_slot!(
+         %{file: file, source: source} = _state,
+         slot_name,
+         %{line: line, column: column} = meta
+       ) do
     message =
       "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component"
 
-    raise ParseError, line: line, column: column, file: file, description: message
+    raise ParseError,
+      line: line,
+      column: column,
+      file: file,
+      description: message <> ParseError.code_snippet(source, meta, 0)
   end
 
   defp pop_slots(%{slots: [slots | other_slots]} = state) do
@@ -343,14 +367,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
     at line #{tag_open_meta.line}, got: </#{tag_close_name}>\
     """
 
-    raise ParseError, line: line, column: column, file: file, description: message
+    raise ParseError,
+      line: line,
+      column: column,
+      file: file,
+      description: message <> ParseError.code_snippet(state.source, tag_close_meta, 0)
   end
 
   defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
     %{line: line, column: column} = tag_meta
     file = state.file
     message = "missing opening tag for </#{tag_name}>"
-    raise ParseError, line: line, column: column, file: file, description: message
+
+    raise ParseError,
+      line: line,
+      column: column,
+      file: file,
+      description: message <> ParseError.code_snippet(state.source, tag_meta, 0)
   end
 
   ## handle_token
@@ -386,8 +419,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
        )
        when first in ?A..?Z do
     attrs = remove_phx_no_break(attrs)
-    file = state.file
-    {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, file)
+    {mod_ast, fun} = decompose_remote_component_tag!(tag_name, tag_meta, state)
 
     {assigns, attr_info} =
       build_self_close_component_assigns(tag_name, attrs, tag_meta.line, state)
@@ -424,7 +456,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_token({:tag_open, <<first, _::binary>> = tag_name, attrs, tag_meta}, state)
        when first in ?A..?Z do
-    mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state.file)
+    mod_fun = decompose_remote_component_tag!(tag_name, tag_meta, state)
     tag_meta = Map.put(tag_meta, :mod_fun, mod_fun)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
@@ -535,15 +567,17 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     %{line: line} = tag_meta
     slot_name = String.to_atom(slot_name)
-    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state.file, tag_name)
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state, tag_name)
     let = special[":let"]
 
     with {_, let_meta} <- let do
+      message = "cannot use :let on a slot without inner content"
+
       raise ParseError,
         line: let_meta.line,
         column: let_meta.column,
         file: state.file,
-        description: "cannot use :let on a slot without inner content"
+        description: message <> ParseError.code_snippet(state.source, let_meta, 2)
     end
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
@@ -567,7 +601,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     attrs = remove_phx_no_break(attrs)
     slot_name = String.to_atom(slot_name)
 
-    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state.file, tag_name)
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state, tag_name)
     clauses = build_component_clauses(special[":let"], state)
 
     ast =
@@ -728,7 +762,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           line: meta.line,
           column: meta.column,
           file: state.file,
-          description: message
+          description: message <> ParseError.code_snippet(state.source, meta, 0)
 
       nil ->
         result
@@ -976,14 +1010,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   ## build_self_close_component_assigns/build_component_assigns
 
-  defp build_self_close_component_assigns(component, attrs, line, %{file: file} = _state) do
-    {special, roots, attrs, attr_info} = split_component_attrs(attrs, file, component)
-    raise_if_let!(special[":let"], file)
+  defp build_self_close_component_assigns(component, attrs, line, state) do
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state, component)
+    raise_if_let!(special[":let"], state.file)
     {merge_component_attrs(roots, attrs, line), attr_info}
   end
 
-  defp build_component_assigns(component, attrs, line, tag_meta, %{file: file} = state) do
-    {special, roots, attrs, attr_info} = split_component_attrs(attrs, file, component)
+  defp build_component_assigns(component, attrs, line, tag_meta, state) do
+    {special, roots, attrs, attr_info} = split_component_attrs(attrs, state, component)
     clauses = build_component_clauses(special[":let"], state)
 
     inner_block =
@@ -1010,11 +1044,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {merge_component_attrs(roots, attrs, line), attr_info, slot_info, state}
   end
 
-  defp split_component_attrs(attrs, file, component_or_slot) do
+  defp split_component_attrs(attrs, state, component_or_slot) do
     {special, roots, attrs, locs} =
       attrs
       |> Enum.reverse()
-      |> Enum.reduce({%{}, [], [], []}, &split_component_attr(&1, &2, file, component_or_slot))
+      |> Enum.reduce({%{}, [], [], []}, &split_component_attr(&1, &2, state, component_or_slot))
 
     {special, roots, attrs, {roots != [], attrs, locs}}
   end
@@ -1022,10 +1056,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp split_component_attr(
          {:root, {:expr, value, %{line: line, column: col}}, _attr_meta},
          {special, r, a, locs},
-         file,
+         state,
          _component_or_slot
        ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
     quoted_value = quote line: line, do: Map.new(unquote(quoted_value))
     {special, [quoted_value | r], a, locs}
   end
@@ -1033,9 +1067,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # TODO: Remove deprecation and no longer handle let especially
   @special_attrs ~w(let :let :if :for)
   defp split_component_attr(
-         {attr, {:expr, value, %{line: line, column: col} = meta}, _attr_meta},
+         {attr, {:expr, value, %{line: line, column: col} = meta}, attr_meta},
          {special, r, a, locs},
-         file,
+         state,
          _component_or_slot
        )
        when attr in @special_attrs do
@@ -1045,7 +1079,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       else
         IO.warn(
           "let is deprecated, please use :let instead",
-          %{__ENV__ | file: file, line: line, module: nil, function: nil}
+          %{__ENV__ | file: state.file, line: line, module: nil, function: nil}
         )
 
         ":#{attr}"
@@ -1061,43 +1095,44 @@ defmodule Phoenix.LiveView.HTMLEngine do
         raise ParseError,
           line: attr_meta.line,
           column: attr_meta.column,
-          file: file,
-          description: message
+          file: state.file,
+          description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
 
       %{} ->
-        quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
-        {Map.put(special, attr, {quoted_value, meta}), r, a, locs}
+        quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
+        {Map.put(special, attr, {quoted_value, attr_meta}), r, a, locs}
     end
   end
 
-  defp split_component_attr({":let", _, meta}, _state, file, component_or_slot) do
+  defp split_component_attr({":let", _, meta}, _state, state, component_or_slot) do
     context = if String.starts_with?(component_or_slot, ":"), do: "slot", else: "component"
+    message = ":let must be a pattern between {...} in #{context} #{component_or_slot}"
 
     raise ParseError,
       line: meta.line,
       column: meta.column,
-      file: file,
-      description: ":let must be a pattern between {...} in #{context} #{component_or_slot}"
+      file: state.file,
+      description: message <> ParseError.code_snippet(state.source, meta, 0)
   end
 
-  defp split_component_attr({":" <> _ = name, _, meta}, _state, file, component_or_slot) do
-    raise_invalid_attr(name, meta, file, component_or_slot)
+  defp split_component_attr({":" <> _ = name, _, meta}, _state, state, component_or_slot) do
+    raise_invalid_attr(name, meta, state, component_or_slot)
   end
 
   defp split_component_attr(
          {name, {:expr, value, %{line: line, column: col}}, attr_meta},
          {special, r, a, locs},
-         file,
+         state,
          _component_or_slot
        ) do
-    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: file)
+    quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
     {special, r, [{String.to_atom(name), quoted_value} | a], [line_column(attr_meta) | locs]}
   end
 
   defp split_component_attr(
          {name, {:string, value, _meta}, attr_meta},
          {special, r, a, locs},
-         _file,
+         _state,
          _component_or_slot
        ) do
     {special, r, [{String.to_atom(name), value} | a], [line_column(attr_meta) | locs]}
@@ -1106,20 +1141,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp split_component_attr(
          {name, nil, attr_meta},
          {special, r, a, locs},
-         _file,
+         _state,
          _component_or_slot
        ) do
     {special, r, [{String.to_atom(name), true} | a], [line_column(attr_meta) | locs]}
   end
 
-  defp raise_invalid_attr(name, meta, file, component_or_slot) do
+  defp raise_invalid_attr(name, meta, state, component_or_slot) do
     context = if String.starts_with?(component_or_slot, ":"), do: "slot", else: "component"
+    message = "unsupported attribute #{inspect(name)} in #{context} #{component_or_slot}"
 
     raise ParseError,
       line: meta.line,
       column: meta.column,
-      file: file,
-      description: "unsupported attribute #{inspect(name)} in #{context} #{component_or_slot}"
+      file: state.file,
+      description: message <> ParseError.code_snippet(state.source, meta, 0)
   end
 
   defp line_column(%{line: line, column: column}), do: {line, column}
@@ -1137,7 +1173,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp decompose_remote_component_tag!(tag_name, tag_meta, file) do
+  defp decompose_remote_component_tag!(tag_name, tag_meta, state) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
         aliases = rest |> Enum.reverse() |> Enum.map(&String.to_atom/1)
@@ -1147,7 +1183,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
       _ ->
         %{line: line, column: column} = tag_meta
         message = "invalid tag <#{tag_name}>"
-        raise ParseError, line: line, column: column, file: file, description: message
+
+        raise ParseError,
+          line: line,
+          column: column,
+          file: state.file,
+          description: message <> ParseError.code_snippet(state.source, tag_meta, 0)
     end
   end
 
@@ -1290,7 +1331,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: meta.line,
       column: meta.column,
       file: state.file,
-      description: message
+      description: message <> ParseError.code_snippet(state.source, meta, 0)
   end
 
   defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
@@ -1319,7 +1360,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: attr_meta.line,
         column: attr_meta.column,
         file: state.file,
-        description: message
+        description: message <> ParseError.code_snippet(state.source, attr_meta, 1)
     end
   end
 
@@ -1334,11 +1375,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
     do: validate_phx_attrs!(t, meta, state, attr, id?)
 
   defp validate_phx_attrs!([{":if", _, attr_meta} | _], _meta, state, _attr, _id?) do
+    message = ":if must be an expression between {...}"
+
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
       file: state.file,
-      description: ":if must be an expression between {...}"
+      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
   end
 
   @loop [":for"]
@@ -1349,19 +1392,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_phx_attrs!([{loop, _, attr_meta} | _], _meta, state, _attr, _id?)
        when loop in @loop do
+    message = "#{loop} must be a generator expression between {...}"
+
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
       file: state.file,
-      description: "#{loop} must be a generator expression between {...}"
+      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
   end
 
   defp validate_phx_attrs!([{":" <> _ = name, _, attr_meta} | _], _meta, state, _attr, _id?) do
+    message = "unsupported attribute #{inspect(name)} in tags"
+
     raise ParseError,
       line: attr_meta.line,
       column: attr_meta.column,
       file: state.file,
-      description: "unsupported attribute #{inspect(name)} in tags"
+      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
   end
 
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),

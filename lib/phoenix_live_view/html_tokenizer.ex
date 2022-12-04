@@ -4,6 +4,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   @quote_chars '"\''
   @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
 
+  alias __MODULE__.ParseError
+
   defmodule ParseError do
     @moduledoc false
     defexception [:file, :line, :column, :description]
@@ -17,14 +19,47 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
       "#{location} #{exception.description}"
     end
+
+    def code_snippet(source, meta, arrow_padding) do
+      line_start = max(meta.line - 3, 1)
+      line_end = meta.line
+      digits = line_end |> Integer.digits() |> length()
+      number_padding = String.duplicate(" ", digits)
+
+      source
+      |> String.split(["\r\n", "\n"])
+      |> Enum.slice((line_start - 1)..(line_end - 1))
+      |> Enum.map_reduce(line_start, fn
+        expr, line_number when line_number == line_end ->
+          arrow = String.duplicate(" ", meta.column + arrow_padding) <> "^"
+          {"#{line_number} | #{expr}\n #{number_padding}| #{arrow}", line_number + 1}
+
+        expr, line_number ->
+          line_number_padding = String.pad_leading("#{line_number}", digits)
+          {"#{line_number_padding} | #{expr}", line_number + 1}
+      end)
+      |> case do
+        {[], _} ->
+          ""
+
+        {snippet, _} ->
+          Enum.join(["\n #{number_padding}|" | snippet], "\n")
+      end
+    end
   end
 
-  def finalize(_tokens, file, {:comment, line, column}) do
+  def finalize(_tokens, file, {:comment, line, column}, source) do
     message = "expected closing `-->` for comment"
-    raise ParseError, file: file, line: line, column: column, description: message
+    meta = %{line: line, column: column}
+
+    raise ParseError,
+      file: file,
+      line: line,
+      column: column,
+      description: message <> ParseError.code_snippet(source, meta, -3)
   end
 
-  def finalize(tokens, _file, _cont) do
+  def finalize(tokens, _file, _cont, _source) do
     tokens
     |> strip_text_token_fully()
     |> Enum.reverse()
@@ -53,10 +88,10 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
        ], :text}
 
   """
-  def tokenize(text, file, indentation, meta, tokens, cont) do
+  def tokenize(text, file, indentation, meta, tokens, cont, source) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
-    state = %{file: file, column_offset: indentation + 1, braces: [], context: []}
+    state = %{file: file, column_offset: indentation + 1, braces: [], context: [], source: source}
 
     case cont do
       :text -> handle_text(text, line, column, [], tokens, state)
@@ -212,7 +247,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -2)
     end
   end
 
@@ -227,10 +268,22 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
       {:ok, _, new_column, _} ->
         message = "expected closing `>`"
-        raise ParseError, file: state.file, line: line, column: new_column, description: message
+        meta = %{line: line, column: new_column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: new_column,
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
 
       {:error, message} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -3)
     end
   end
 
@@ -337,7 +390,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_attr_value(rest, line, new_column, acc, state)
 
       {:error, message, column} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
     end
   end
 
@@ -351,7 +410,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message, line, column} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
     end
   end
 
@@ -431,7 +496,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       "invalid attribute value after `=`. Expected either a value between quotes " <>
         "(such as \"value\" or \'value\') or an Elixir expression between curly brackets (such as `{expr}`)"
 
-    raise ParseError, file: state.file, line: line, column: column, description: message
+    meta = %{line: line, column: column}
+
+    raise ParseError,
+      file: state.file,
+      line: line,
+      column: column,
+      description: message <> ParseError.code_snippet(state.source, meta, -1)
   end
 
   ## handle_attr_value_quote
@@ -475,7 +546,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     Where @some_attributes must be a keyword list or a map.
     """
 
-    raise ParseError, file: state.file, line: line, column: column, description: message
+    meta = %{line: line, column: column}
+
+    raise ParseError,
+      file: state.file,
+      line: line,
+      column: column,
+      description: message <> ParseError.code_snippet(state.source, meta, 0)
   end
 
   ## handle_attr_value_as_expr
@@ -487,7 +564,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message, line, column} ->
-        raise ParseError, file: state.file, line: line, column: column, description: message
+        meta = %{line: line, column: column}
+
+        raise ParseError,
+          file: state.file,
+          line: line,
+          column: column,
+          description: message <> ParseError.code_snippet(state.source, meta, -1)
     end
   end
 

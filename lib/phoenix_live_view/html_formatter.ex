@@ -282,21 +282,28 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   if Code.ensure_loaded?(EEx) && function_exported?(EEx, :tokenize, 2) do
     defp tokenize(contents) do
       {:ok, eex_nodes} = EEx.tokenize(contents)
-      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
-      HTMLTokenizer.finalize(tokens, "nofile", cont)
+      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
+      HTMLTokenizer.finalize(tokens, "nofile", cont, contents)
     end
 
-    defp do_tokenize({:text, text, meta}, {tokens, cont}) do
+    defp do_tokenize({:text, text, meta}, {tokens, cont}, contents) do
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [line: meta.line, column: meta.column], tokens, cont)
+      |> HTMLTokenizer.tokenize(
+        "nofile",
+        0,
+        [line: meta.line, column: meta.column],
+        tokens,
+        cont,
+        contents
+      )
     end
 
-    defp do_tokenize({:comment, text, meta}, {tokens, cont}) do
+    defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents) do
       {[{:eex_comment, List.to_string(text), meta} | tokens], cont}
     end
 
-    defp do_tokenize({type, opt, expr, %{column: column, line: line}}, {tokens, cont})
+    defp do_tokenize({type, opt, expr, %{column: column, line: line}}, {tokens, cont}, _contents)
          when type in @eex_expr do
       meta = %{opt: opt, line: line, column: column}
       {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
@@ -304,23 +311,24 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   else
     defp tokenize(contents) do
       {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 1, %{indentation: 0, trim: false})
-      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize/2)
-      HTMLTokenizer.finalize(tokens, "nofile", cont)
+      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
+      HTMLTokenizer.finalize(tokens, "nofile", cont, contents)
     end
 
-    defp do_tokenize({:text, line, column, text}, {tokens, cont}) do
+    defp do_tokenize({:text, line, column, text}, {tokens, cont}, contents) do
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [line: line, column: column], tokens, cont)
+      |> HTMLTokenizer.tokenize("nofile", 0, [line: line, column: column], tokens, cont, contents)
     end
 
-    defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}) when type in @eex_expr do
+    defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}, _contents)
+         when type in @eex_expr do
       meta = %{opt: opt, line: line, column: column}
       {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
     end
   end
 
-  defp do_tokenize(_node, acc) do
+  defp do_tokenize(_node, acc, _contents) do
     acc
   end
 
