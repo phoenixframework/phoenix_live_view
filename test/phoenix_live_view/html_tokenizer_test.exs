@@ -207,7 +207,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
         |
       1 | <div>
       2 |   <>
-        |   ^\
+        |    ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -221,7 +221,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       nofile:1:2: expected tag name after <. If you meant to use < as part of a text, use &lt; instead
         |
       1 | <
-        | ^\
+        |  ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -587,11 +587,11 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
     test "raise on incomplete attribute expression (EOF)" do
       message = """
-      nofile:2:15: expected closing `}` for expression
+      nofile:2:9: expected closing `}` for expression
         |
       1 | <div
       2 |   class={panel
-        |               ^\
+        |         ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -667,11 +667,11 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
     test "raise on incomplete expression (EOF)" do
       message = """
-      nofile:2:10: expected closing `}` for expression
+      nofile:2:3: expected closing `}` for expression
         |
       1 | <div
       2 |   {@attrs
-        |          ^\
+        |   ^\
       """
 
       assert_raise ParseError, message, fn ->
@@ -723,11 +723,11 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
 
     test "raise on missing tag name" do
       message = """
-      nofile:2:5: expected tag name after <. If you meant to use < as part of a text, use &lt; instead
+      nofile:2:5: expected tag name after </
         |
       1 | <div>
       2 |   </>
-        |   ^\
+        |     ^\
       """
 
       assert_raise ParseError, message, fn ->

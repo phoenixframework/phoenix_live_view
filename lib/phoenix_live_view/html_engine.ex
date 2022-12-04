@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: line,
       column: column,
       file: file,
-      description: message <> ParseError.code_snippet(state.source, meta, 0)
+      description: message <> ParseError.code_snippet(state.source, meta)
   end
 
   @impl true
@@ -302,7 +302,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: line,
       column: column,
       file: file,
-      description: message <> ParseError.code_snippet(source, meta, 0)
+      description: message <> ParseError.code_snippet(source, meta)
   end
 
   defp pop_slots(%{slots: [slots | other_slots]} = state) do
@@ -371,7 +371,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: line,
       column: column,
       file: file,
-      description: message <> ParseError.code_snippet(state.source, tag_close_meta, 0)
+      description: message <> ParseError.code_snippet(state.source, tag_close_meta)
   end
 
   defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
@@ -383,7 +383,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: line,
       column: column,
       file: file,
-      description: message <> ParseError.code_snippet(state.source, tag_meta, 0)
+      description: message <> ParseError.code_snippet(state.source, tag_meta)
   end
 
   ## handle_token
@@ -577,7 +577,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: let_meta.line,
         column: let_meta.column,
         file: state.file,
-        description: message <> ParseError.code_snippet(state.source, let_meta, 2)
+        description: message <> ParseError.code_snippet(state.source, let_meta)
     end
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
@@ -763,7 +763,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           line: meta.line,
           column: meta.column,
           file: state.file,
-          description: message <> ParseError.code_snippet(state.source, meta, 0)
+          description: message <> ParseError.code_snippet(state.source, meta)
 
       nil ->
         result
@@ -1097,7 +1097,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           line: attr_meta.line,
           column: attr_meta.column,
           file: state.file,
-          description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
+          description: message <> ParseError.code_snippet(state.source, attr_meta)
 
       %{} ->
         quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
@@ -1115,7 +1115,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: meta.line,
       column: meta.column,
       file: state.file,
-      description: message <> ParseError.code_snippet(state.source, meta, 0)
+      description: message <> ParseError.code_snippet(state.source, meta)
   end
 
   defp split_component_attr({":" <> _ = name, _, meta}, _state, state, component_or_slot) do
@@ -1158,7 +1158,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: meta.line,
       column: meta.column,
       file: state.file,
-      description: message <> ParseError.code_snippet(state.source, meta, 0)
+      description: message <> ParseError.code_snippet(state.source, meta)
   end
 
   defp line_column(%{line: line, column: column}), do: {line, column}
@@ -1191,7 +1191,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           line: line,
           column: column,
           file: state.file,
-          description: message <> ParseError.code_snippet(state.source, tag_meta, 0)
+          description: message <> ParseError.code_snippet(state.source, tag_meta)
     end
   end
 
@@ -1334,7 +1334,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: meta.line,
       column: meta.column,
       file: state.file,
-      description: message <> ParseError.code_snippet(state.source, meta, 0)
+      description: message <> ParseError.code_snippet(state.source, meta)
   end
 
   defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
@@ -1363,7 +1363,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: attr_meta.line,
         column: attr_meta.column,
         file: state.file,
-        description: message <> ParseError.code_snippet(state.source, attr_meta, 1)
+        description: message <> ParseError.code_snippet(state.source, attr_meta)
     end
   end
 
@@ -1387,7 +1387,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           line: attr_meta.line,
           column: attr_meta.column,
           file: state.file,
-          description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
+          description: message <> ParseError.code_snippet(state.source, attr_meta)
     end
   end
 
@@ -1398,7 +1398,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: attr_meta.line,
       column: attr_meta.column,
       file: state.file,
-      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
+      description: message <> ParseError.code_snippet(state.source, attr_meta)
   end
 
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
@@ -1412,7 +1412,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         line: attr_meta.line,
         column: attr_meta.column,
         file: state.file,
-        description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
+        description: message <> ParseError.code_snippet(state.source, attr_meta)
     else
       :ok
     end
