@@ -224,6 +224,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
       {:ok, line_end, column_end, buffer} ->
         acc = text_to_acc(buffer, acc, line_end, column_end, state.context)
+        # We do column - 4 to point to the opening <!--
         ok(acc, {:comment, line, column - 4})
     end
   end
@@ -422,6 +423,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message} ->
+        # We do column - 1 to point to the opening {
         meta = %{line: line, column: column - 1}
 
         raise ParseError,
@@ -576,6 +578,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, new_line, new_column, acc, state)
 
       {:error, message} ->
+        # We do column - 1 to point to the opening {
         meta = %{line: line, column: column - 1}
 
         raise ParseError,
