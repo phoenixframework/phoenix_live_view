@@ -742,8 +742,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
       |> List.keytake(string_attr, 0)
       |> raise_if_duplicated_special_attr!(state)
       |> case do
-        {{^string_attr, expr, _meta}, attrs} ->
+        {{^string_attr, expr, meta}, attrs} ->
           parsed_expr = parse_expr!(expr, state.file)
+          validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
           {Map.put(meta_acc, attr, parsed_expr), attrs}
 
         nil ->
@@ -1100,13 +1101,15 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
       %{} ->
         quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
+        validate_quoted_special_attr!(attr, quoted_value, attr_meta, state)
         {Map.put(special, attr, {quoted_value, attr_meta}), r, a, locs}
     end
   end
 
-  defp split_component_attr({":let", _, meta}, _state, state, component_or_slot) do
+  defp split_component_attr({attr, _, meta}, _state, state, component_or_slot)
+       when attr in @special_attrs do
     context = if String.starts_with?(component_or_slot, ":"), do: "slot", else: "component"
-    message = ":let must be a pattern between {...} in #{context} #{component_or_slot}"
+    message = "#{attr} must be a pattern between {...} in #{context} #{component_or_slot}"
 
     raise ParseError,
       line: meta.line,
@@ -1371,34 +1374,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp validate_phx_attrs!([{"phx-hook", _, _} | t], meta, state, _attr, id?),
     do: validate_phx_attrs!(t, meta, state, "phx-hook", id?)
 
-  defp validate_phx_attrs!([{":if", {:expr, _, _}, _} | t], meta, state, attr, id?),
-    do: validate_phx_attrs!(t, meta, state, attr, id?)
+  defp validate_phx_attrs!([{special, value, attr_meta} | t], meta, state, attr, id?)
+       when special in ~w(:if :for) do
+    case value do
+      {:expr, _, _} ->
+        validate_phx_attrs!(t, meta, state, attr, id?)
 
-  defp validate_phx_attrs!([{":if", _, attr_meta} | _], _meta, state, _attr, _id?) do
-    message = ":if must be an expression between {...}"
+      _ ->
+        message = "#{special} must be an expression between {...}"
 
-    raise ParseError,
-      line: attr_meta.line,
-      column: attr_meta.column,
-      file: state.file,
-      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
-  end
-
-  @loop [":for"]
-
-  defp validate_phx_attrs!([{loop, {:expr, _, _}, _} | t], meta, state, attr, id?)
-       when loop in @loop,
-       do: validate_phx_attrs!(t, meta, state, attr, id?)
-
-  defp validate_phx_attrs!([{loop, _, attr_meta} | _], _meta, state, _attr, _id?)
-       when loop in @loop do
-    message = "#{loop} must be a generator expression between {...}"
-
-    raise ParseError,
-      line: attr_meta.line,
-      column: attr_meta.column,
-      file: state.file,
-      description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
+        raise ParseError,
+          line: attr_meta.line,
+          column: attr_meta.column,
+          file: state.file,
+          description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
+    end
   end
 
   defp validate_phx_attrs!([{":" <> _ = name, _, attr_meta} | _], _meta, state, _attr, _id?) do
@@ -1413,6 +1403,20 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
     do: validate_phx_attrs!(t, meta, state, attr, id?)
+
+  defp validate_quoted_special_attr!(attr, quoted_value, attr_meta, state) do
+    if attr == ":for" and not match?({:<-, _, [_, _]}, quoted_value) do
+      message = ":for must be a generator expression (pattern <- enumerable) between {...}"
+
+      raise ParseError,
+        line: attr_meta.line,
+        column: attr_meta.column,
+        file: state.file,
+        description: message <> ParseError.code_snippet(state.source, attr_meta, 0)
+    else
+      :ok
+    end
+  end
 
   defp wrap_special_slot(special, ast) do
     case special do

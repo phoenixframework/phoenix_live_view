@@ -1695,16 +1695,21 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "raise on invalid :for expr" do
-      message = ~r/for comprehensions must start with a generator/
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be a generator expression (pattern <- enumerable) between {...}
+        |
+      1 | <div :for={@user}>Content</div>
+        |       ^\
+      """
 
-      assert_raise(CompileError, message, fn ->
+      assert_raise(ParseError, message, fn ->
         eval("""
         <div :for={@user}>Content</div>
         """)
       end)
 
       message = """
-      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be a generator expression between {...}
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be an expression between {...}
         |
       1 | <div :for=\"1\">Content</div>
         |       ^\
