@@ -115,8 +115,8 @@ defmodule Phoenix.LiveComponent do
   same type are rendered on the page and you want to preload or augment
   their data in batches.
 
-  For each rendering, the optional `c:preload/1` and `c:update/2` callbacks
-  are called before `c:render/1`.
+  Once a LiveView renders a LiveComponent, the optional `c:preload/1` and
+  `c:update/2` callbacks are called before `c:render/1`.
 
   So on first render, the following callbacks will be invoked:
 
