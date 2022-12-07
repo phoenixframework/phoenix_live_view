@@ -260,6 +260,9 @@ describe("View + DOM", function(){
 
       view.submitForm(form, form, {target: form})
       expect(DOM.private(form, "phx-has-submitted")).toBeTruthy()
+      Array.from(form.elements).forEach(input => {
+        expect(DOM.private(input, "phx-has-submitted")).toBeTruthy()
+      })
       expect(form.classList.contains("phx-submit-loading")).toBeTruthy()
       expect(form.querySelector("button").dataset.phxDisabled).toBeTruthy()
       expect(form.querySelector("input").dataset.phxReadonly).toBeTruthy()

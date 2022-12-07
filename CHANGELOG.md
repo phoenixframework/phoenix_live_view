@@ -7,6 +7,7 @@
 
 ### Bug Fixes
   * Fix undefined _target param when using `JS.push` for form changes
+  * Fix `phx-no-feedback` missing from inputs added after a form submit
 
 ## 0.18.3 (2022-10-26)
 

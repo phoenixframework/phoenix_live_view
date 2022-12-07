@@ -231,7 +231,7 @@ let DOM = {
     let input = field && container.querySelector(`[id="${field}"], [name="${field}"], [name="${field}[]"]`)
     if(!input){ return }
 
-    if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input.form, PHX_HAS_SUBMITTED))){
+    if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
       el.classList.add(PHX_NO_FEEDBACK_CLASS)
     }
   },
