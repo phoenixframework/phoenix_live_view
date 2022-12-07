@@ -2136,7 +2136,10 @@ defmodule Phoenix.Component do
   attr.(:method, :string,
     default: "get",
     doc: """
-    The HTTP method to use with the link.
+    The HTTP method to use with the link. This is intended for usage outside of LiveView
+    and therefore only works with the `href={...}` attribute. It has no effect on `patch`
+    and `navigate` instructions.
+
     In case the method is not `get`, the link is generated inside the form which sets the proper
     information. In order to submit the form, JavaScript must be enabled in the browser.
     """
