@@ -51,12 +51,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   def finalize(_tokens, file, {:comment, line, column}, source) do
     message = "expected closing `-->` for comment"
     meta = %{line: line, column: column}
-
-    raise ParseError,
-      file: file,
-      line: line,
-      column: column,
-      description: message <> ParseError.code_snippet(source, meta)
+    raise_syntax_error!(message, meta, %{source: source, file: file})
   end
 
   def finalize(tokens, _file, _cont, _source) do
@@ -259,14 +254,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       :error ->
-        message = "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
+        message =
+          "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
+
         meta = %{line: line, column: column}
 
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -282,22 +275,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:ok, _, new_column, _} ->
         message = "expected closing `>`"
         meta = %{line: line, column: new_column}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: new_column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
 
       :error ->
         message = "expected tag name after </"
         meta = %{line: line, column: column}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -404,12 +387,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
       {:error, message, column} ->
         meta = %{line: line, column: column}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -425,12 +403,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:error, message} ->
         # We do column - 1 to point to the opening {
         meta = %{line: line, column: column - 1}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column - 1,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -511,12 +484,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         "(such as \"value\" or \'value\') or an Elixir expression between curly brackets (such as `{expr}`)"
 
     meta = %{line: line, column: column}
-
-    raise ParseError,
-      file: state.file,
-      line: line,
-      column: column,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   ## handle_attr_value_quote
@@ -561,12 +529,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     """
 
     meta = %{line: line, column: column}
-
-    raise ParseError,
-      file: state.file,
-      line: line,
-      column: column,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   ## handle_attr_value_as_expr
@@ -580,12 +543,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:error, message} ->
         # We do column - 1 to point to the opening {
         meta = %{line: line, column: column - 1}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column - 1,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -702,5 +660,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     else
       _ -> tokens
     end
+  end
+
+  defp raise_syntax_error!(message, meta, state) do
+    raise ParseError,
+      file: state.file,
+      line: meta.line,
+      column: meta.column,
+      description: message <> ParseError.code_snippet(state.source, meta)
   end
 end
