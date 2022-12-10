@@ -208,7 +208,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp token_state(
-         %{subengine: subengine, substate: substate, file: file, caller: caller, source: source},
+         %{
+           subengine: subengine,
+           substate: substate,
+           file: file,
+           caller: caller,
+           source: source,
+           indentation: indentation
+         },
          root
        ) do
     %{
@@ -221,7 +228,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       slots: [],
       caller: caller,
       root: root,
-      previous_token_slot?: false
+      previous_token_slot?: false,
+      indentation: indentation
     }
   end
 
@@ -1364,6 +1372,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
       line: meta.line,
       column: meta.column,
       file: state.file,
-      description: message <> ParseError.code_snippet(state.source, meta)
+      description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
   end
 end

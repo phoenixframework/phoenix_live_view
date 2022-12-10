@@ -1460,6 +1460,45 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div foo={<%= @foo %>}>bar</div>
         """)
       end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:3: expected closing `}` for expression
+        |
+      1 | <div foo=
+      2 |   {<%= @foo %>}>bar</div>
+        |   ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval(
+          """
+          <div foo=
+            {<%= @foo %>}>bar</div>
+          """,
+          %{},
+          indentation: 0
+        )
+      end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:2:6: expected closing `}` for expression
+        |
+      1 |    <div foo=
+      2 |      {<%= @foo %>}>bar</div>
+        |      ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval(
+          """
+          <div foo=
+            {<%= @foo %>}>bar</div>
+
+          """,
+          %{},
+          indentation: 3
+        )
+      end)
     end
   end
 
