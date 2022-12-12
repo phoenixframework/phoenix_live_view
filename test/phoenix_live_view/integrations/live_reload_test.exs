@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.LiveReloadTest do
   @pubsub Phoenix.LiveView.PubSub
 
   setup_all do
-    :ok = Application.ensure_started(:phoenix_live_reload)
+    {:ok, _} = Application.ensure_all_started(:phoenix_live_reload)
 
     :ok
   end
