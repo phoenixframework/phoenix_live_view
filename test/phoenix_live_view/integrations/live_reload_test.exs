@@ -12,6 +12,12 @@ defmodule Phoenix.LiveView.LiveReloadTest do
   @endpoint Helpers.Endpoint
   @pubsub Phoenix.LiveView.PubSub
 
+  setup_all do
+    :ok = Application.ensure_started(:phoenix_live_reload)
+
+    :ok
+  end
+
   setup config do
     ExUnit.CaptureLog.capture_log(fn ->
       start_supervised!(@endpoint)
