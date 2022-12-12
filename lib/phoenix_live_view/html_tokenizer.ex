@@ -20,11 +20,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       "#{location} #{exception.description}"
     end
 
-    def code_snippet(source, meta) do
+    def code_snippet(source, meta, indentation \\ 0) do
       line_start = max(meta.line - 3, 1)
       line_end = meta.line
       digits = line_end |> Integer.to_string() |> byte_size()
       number_padding = String.duplicate(" ", digits)
+      indentation = String.duplicate(" ", indentation)
 
       source
       |> String.split(["\r\n", "\n"])
@@ -32,11 +33,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       |> Enum.map_reduce(line_start, fn
         expr, line_number when line_number == line_end ->
           arrow = String.duplicate(" ", meta.column - 1) <> "^"
-          {"#{line_number} | #{expr}\n #{number_padding}| #{arrow}", line_number + 1}
+          acc = "#{line_number} | #{indentation}#{expr}\n #{number_padding}| #{arrow}"
+          {acc, line_number + 1}
 
         expr, line_number ->
           line_number_padding = String.pad_leading("#{line_number}", digits)
-          {"#{line_number_padding} | #{expr}", line_number + 1}
+          {"#{line_number_padding} | #{indentation}#{expr}", line_number + 1}
       end)
       |> case do
         {[], _} ->
@@ -51,12 +53,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   def finalize(_tokens, file, {:comment, line, column}, source) do
     message = "expected closing `-->` for comment"
     meta = %{line: line, column: column}
-
-    raise ParseError,
-      file: file,
-      line: line,
-      column: column,
-      description: message <> ParseError.code_snippet(source, meta)
+    raise_syntax_error!(message, meta, %{source: source, file: file, indentation: 0})
   end
 
   def finalize(tokens, _file, _cont, _source) do
@@ -91,7 +88,15 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   def tokenize(text, file, indentation, meta, tokens, cont, source) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
-    state = %{file: file, column_offset: indentation + 1, braces: [], context: [], source: source}
+
+    state = %{
+      file: file,
+      column_offset: indentation + 1,
+      braces: [],
+      context: [],
+      source: source,
+      indentation: indentation
+    }
 
     case cont do
       :text -> handle_text(text, line, column, [], tokens, state)
@@ -259,14 +264,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         handle_maybe_tag_open_end(rest, line, new_column, acc, state)
 
       :error ->
-        message = "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
+        message =
+          "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
+
         meta = %{line: line, column: column}
 
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -282,22 +285,12 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:ok, _, new_column, _} ->
         message = "expected closing `>`"
         meta = %{line: line, column: new_column}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: new_column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
 
       :error ->
         message = "expected tag name after </"
         meta = %{line: line, column: column}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -404,12 +397,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
       {:error, message, column} ->
         meta = %{line: line, column: column}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -425,12 +413,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:error, message} ->
         # We do column - 1 to point to the opening {
         meta = %{line: line, column: column - 1}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column - 1,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -511,12 +494,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         "(such as \"value\" or \'value\') or an Elixir expression between curly brackets (such as `{expr}`)"
 
     meta = %{line: line, column: column}
-
-    raise ParseError,
-      file: state.file,
-      line: line,
-      column: column,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   ## handle_attr_value_quote
@@ -561,12 +539,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     """
 
     meta = %{line: line, column: column}
-
-    raise ParseError,
-      file: state.file,
-      line: line,
-      column: column,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   ## handle_attr_value_as_expr
@@ -580,12 +553,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:error, message} ->
         # We do column - 1 to point to the opening {
         meta = %{line: line, column: column - 1}
-
-        raise ParseError,
-          file: state.file,
-          line: line,
-          column: column - 1,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
     end
   end
 
@@ -702,5 +670,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
     else
       _ -> tokens
     end
+  end
+
+  defp raise_syntax_error!(message, meta, state) do
+    raise ParseError,
+      file: state.file,
+      line: meta.line,
+      column: meta.column,
+      description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
   end
 end

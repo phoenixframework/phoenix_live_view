@@ -192,15 +192,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp validate_unclosed_tags!(%{tags: [tag | _]} = state, context) do
-    {:tag_open, name, _attrs, %{line: line, column: column} = meta} = tag
-    file = state.file
+    {:tag_open, name, _attrs, meta} = tag
     message = "end of #{context} reached without closing tag for <#{name}>"
 
-    raise ParseError,
-      line: line,
-      column: column,
-      file: file,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   @impl true
@@ -213,7 +208,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp token_state(
-         %{subengine: subengine, substate: substate, file: file, caller: caller, source: source},
+         %{
+           subengine: subengine,
+           substate: substate,
+           file: file,
+           caller: caller,
+           source: source,
+           indentation: indentation
+         },
          root
        ) do
     %{
@@ -226,7 +228,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       slots: [],
       caller: caller,
       root: root,
-      previous_token_slot?: false
+      previous_token_slot?: false,
+      indentation: indentation
     }
   end
 
@@ -290,19 +293,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     :ok
   end
 
-  defp validate_slot!(
-         %{file: file, source: source} = _state,
-         slot_name,
-         %{line: line, column: column} = meta
-       ) do
+  defp validate_slot!(state, slot_name, meta) do
     message =
       "invalid slot entry <:#{slot_name}>. A slot entry must be a direct child of a component"
 
-    raise ParseError,
-      line: line,
-      column: column,
-      file: file,
-      description: message <> ParseError.code_snippet(source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   defp pop_slots(%{slots: [slots | other_slots]} = state) do
@@ -359,31 +354,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
          %{tags: [{:tag_open, tag_open_name, _attrs, tag_open_meta} | _]} = state,
          {:tag_close, tag_close_name, tag_close_meta}
        ) do
-    %{line: line, column: column} = tag_close_meta
-    file = state.file
-
     message = """
     unmatched closing tag. Expected </#{tag_open_name}> for <#{tag_open_name}> \
     at line #{tag_open_meta.line}, got: </#{tag_close_name}>\
     """
 
-    raise ParseError,
-      line: line,
-      column: column,
-      file: file,
-      description: message <> ParseError.code_snippet(state.source, tag_close_meta)
+    raise_syntax_error!(message, tag_close_meta, state)
   end
 
   defp pop_tag!(state, {:tag_close, tag_name, tag_meta}) do
-    %{line: line, column: column} = tag_meta
-    file = state.file
     message = "missing opening tag for </#{tag_name}>"
 
-    raise ParseError,
-      line: line,
-      column: column,
-      file: file,
-      description: message <> ParseError.code_snippet(state.source, tag_meta)
+    raise_syntax_error!(message, tag_meta, state)
   end
 
   ## handle_token
@@ -550,11 +532,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # Slot
 
   defp handle_token({:tag_open, ":inner_block", _attrs, meta}, state) do
-    raise ParseError,
-      line: meta.line,
-      column: meta.column,
-      file: state.file,
-      description: "the slot name :inner_block is reserved"
+    message = "the slot name :inner_block is reserved"
+    raise_syntax_error!(message, meta, state)
   end
 
   # Slot (self close)
@@ -572,12 +551,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     with {_, let_meta} <- let do
       message = "cannot use :let on a slot without inner content"
-
-      raise ParseError,
-        line: let_meta.line,
-        column: let_meta.column,
-        file: state.file,
-        description: message <> ParseError.code_snippet(state.source, let_meta)
+      raise_syntax_error!(message, let_meta, state)
     end
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
@@ -759,11 +733,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         message =
           "cannot define multiple #{inspect(attr)} attributes. Another #{inspect(attr)} has already been defined at line #{meta.line}"
 
-        raise ParseError,
-          line: meta.line,
-          column: meta.column,
-          file: state.file,
-          description: message <> ParseError.code_snippet(state.source, meta)
+        raise_syntax_error!(message, meta, state)
 
       nil ->
         result
@@ -1093,11 +1063,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         Another #{attr} has already been defined at line #{meta.line}\
         """
 
-        raise ParseError,
-          line: attr_meta.line,
-          column: attr_meta.column,
-          file: state.file,
-          description: message <> ParseError.code_snippet(state.source, attr_meta)
+        raise_syntax_error!(message, attr_meta, state)
 
       %{} ->
         quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
@@ -1110,12 +1076,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
        when attr in @special_attrs do
     context = if String.starts_with?(component_or_slot, ":"), do: "slot", else: "component"
     message = "#{attr} must be a pattern between {...} in #{context} #{component_or_slot}"
-
-    raise ParseError,
-      line: meta.line,
-      column: meta.column,
-      file: state.file,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   defp split_component_attr({":" <> _ = name, _, meta}, _state, state, component_or_slot) do
@@ -1153,12 +1114,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp raise_invalid_attr(name, meta, state, component_or_slot) do
     context = if String.starts_with?(component_or_slot, ":"), do: "slot", else: "component"
     message = "unsupported attribute #{inspect(name)} in #{context} #{component_or_slot}"
-
-    raise ParseError,
-      line: meta.line,
-      column: meta.column,
-      file: state.file,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   defp line_column(%{line: line, column: column}), do: {line, column}
@@ -1184,14 +1140,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
         {{:__aliases__, [], aliases}, fun}
 
       _ ->
-        %{line: line, column: column} = tag_meta
         message = "invalid tag <#{tag_name}>"
-
-        raise ParseError,
-          line: line,
-          column: column,
-          file: state.file,
-          description: message <> ParseError.code_snippet(state.source, tag_meta)
+        raise_syntax_error!(message, tag_meta, state)
     end
   end
 
@@ -1330,11 +1280,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
        when attr in ["phx-update", "phx-hook"] do
     message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
 
-    raise ParseError,
-      line: meta.line,
-      column: meta.column,
-      file: state.file,
-      description: message <> ParseError.code_snippet(state.source, meta)
+    raise_syntax_error!(message, meta, state)
   end
 
   defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
@@ -1358,12 +1304,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       validate_phx_attrs!(t, meta, state, "phx-update", id?)
     else
       message = "the value of the attribute \"phx-update\" must be: ignore, append or prepend"
-
-      raise ParseError,
-        line: attr_meta.line,
-        column: attr_meta.column,
-        file: state.file,
-        description: message <> ParseError.code_snippet(state.source, attr_meta)
+      raise_syntax_error!(message, attr_meta, state)
     end
   end
 
@@ -1382,23 +1323,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
       _ ->
         message = "#{special} must be an expression between {...}"
-
-        raise ParseError,
-          line: attr_meta.line,
-          column: attr_meta.column,
-          file: state.file,
-          description: message <> ParseError.code_snippet(state.source, attr_meta)
+        raise_syntax_error!(message, attr_meta, state)
     end
   end
 
   defp validate_phx_attrs!([{":" <> _ = name, _, attr_meta} | _], _meta, state, _attr, _id?) do
     message = "unsupported attribute #{inspect(name)} in tags"
-
-    raise ParseError,
-      line: attr_meta.line,
-      column: attr_meta.column,
-      file: state.file,
-      description: message <> ParseError.code_snippet(state.source, attr_meta)
+    raise_syntax_error!(message, attr_meta, state)
   end
 
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
@@ -1408,11 +1339,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     if attr == ":for" and not match?({:<-, _, [_, _]}, quoted_value) do
       message = ":for must be a generator expression (pattern <- enumerable) between {...}"
 
-      raise ParseError,
-        line: attr_meta.line,
-        column: attr_meta.column,
-        file: state.file,
-        description: message <> ParseError.code_snippet(state.source, attr_meta)
+      raise_syntax_error!(message, attr_meta, state)
     else
       :ok
     end
@@ -1438,5 +1365,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
       %{} ->
         ast
     end
+  end
+
+  defp raise_syntax_error!(message, meta, state) do
+    raise ParseError,
+      line: meta.line,
+      column: meta.column,
+      file: state.file,
+      description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
   end
 end
