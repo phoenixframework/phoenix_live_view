@@ -1078,10 +1078,10 @@ defmodule Phoenix.Component do
   when none is given:
 
       def my_component(assigns) do
-        assigns = assign_new(assigns, :color, fn -> Enum.random(~w(red green blue)) end)
+        assigns = assign_new(assigns, :bg_color, fn -> Enum.random(~w(bg-red-200 bg-green-200 bg-blue-200)) end)
 
         ~H"""
-        <div class={"bg-#{@color}"}>
+        <div class={@bg_color}>
           Example
         </div>
         """
