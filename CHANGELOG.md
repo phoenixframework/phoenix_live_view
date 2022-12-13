@@ -6,6 +6,7 @@
   * Support string upload name to support dynamically generated `allow_upload`'s
 
 ### Bug Fixes
+  * Fix browser history showing incorrect title when using live navigation with `@page_title`
   * Fix undefined _target param when using `JS.push` for form changes
   * Fix `phx-no-feedback` missing from inputs added after a form submit
 

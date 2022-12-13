@@ -228,9 +228,8 @@ export default class View {
   applyDiff(type, rawDiff, callback){
     this.log(type, () => ["", clone(rawDiff)])
     let {diff, reply, events, title} = Rendered.extract(rawDiff)
-    if(title){ DOM.putTitle(title) }
-
     callback({diff, reply, events})
+    if(title){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
   }
 
   onJoin(resp){
