@@ -1401,14 +1401,15 @@ defmodule Phoenix.Component do
         def about_page(assigns)
       end
 
-  Multiple invocations of `embed_templates` is also supported.
+  Note that multiple invocations of `embed_templates` is supported,
+  and the following extensions are supported: .html.heex, .eex
   """
   defmacro embed_templates(pattern, opts \\ []) do
     quote do
       Phoenix.Template.compile_all(
         &Phoenix.Component.__embed__/1,
         Path.expand(unquote(opts)[:root] || __DIR__, __DIR__),
-        unquote(pattern) <> ".html"
+        unquote(pattern)
       )
     end
   end
@@ -1439,7 +1440,14 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __embed__(path), do: path |> Path.basename() |> Path.rootname() |> Path.rootname()
+  def __embed__(path) do
+    if Path.extname(path) in [".heex", ".eex"] do
+      [template | _] = Path.basename(path) |> Path.rootname() |> String.split(".")
+      template
+    else
+      raise ArgumentError, "expected template file ending in .html.eex or .eex, received: #{path}"
+    end
+  end
 
   @doc ~S'''
   Declares a function component slot.

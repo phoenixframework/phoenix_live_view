@@ -7,6 +7,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
   embed_templates "pages/*"
   embed_templates "another_root/*", root: "pages"
+  embed_templates "templates/*"
 
   defp h2s(template) do
     template
@@ -47,6 +48,10 @@ defmodule Phoenix.ComponentRenderingTest do
 
       # attr'd bodyless definition
       assert render_component(&welcome_page/1) == "Welcome chris"
+    end
+
+    test "embed eex files" do
+      assert sitemap(%{}) =~ "sitemap"
     end
   end
 
