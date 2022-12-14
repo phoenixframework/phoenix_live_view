@@ -2741,6 +2741,13 @@ within:
     applyPendingUpdates() {
       this.pendingDiffs.forEach(({ diff, events }) => this.update(diff, events));
       this.pendingDiffs = [];
+      this.eachChild((child) => child.applyPendingUpdates());
+    }
+    eachChild(callback) {
+      let children = this.root.children[this.id] || {};
+      for (let id in children) {
+        callback(this.getChildById(id));
+      }
     }
     onChannel(event, cb) {
       this.liveSocket.onChannel(this.channel, event, (resp) => {
@@ -2764,9 +2771,7 @@ within:
       this.channel.onClose((reason) => this.onClose(reason));
     }
     destroyAllChildren() {
-      for (let id in this.root.children[this.id]) {
-        this.getChildById(id).destroy();
-      }
+      this.eachChild((child) => child.destroy());
     }
     onLiveRedirect(redir) {
       let { to, kind, flash } = redir;
