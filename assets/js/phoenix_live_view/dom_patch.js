@@ -176,7 +176,7 @@ export default class DOMPatch {
           DOM.discardError(targetContainer, toEl, phxFeedbackFor)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
-          if(isFocusedFormEl){
+          if(isFocusedFormEl && fromEl.type !== "hidden"){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeFocusedInput(fromEl, toEl)
             DOM.syncAttrsToProps(fromEl)
