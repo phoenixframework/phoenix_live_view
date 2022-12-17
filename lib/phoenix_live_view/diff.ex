@@ -267,7 +267,9 @@ defmodule Phoenix.LiveView.Diff do
   def update_component(socket, components, {module, id, updated_assigns}) do
     case fetch_cid(module, id, components) do
       {:ok, cid} ->
-        updated_assigns = maybe_call_preload!(module, updated_assigns)
+        {cid_to_component, _, _} = components
+        current_assigns = fetch_assigns(cid, cid_to_component)
+        updated_assigns = maybe_call_preload!(module, updated_assigns, current_assigns)
 
         {diff, new_components, :noop} =
           write_component(socket, cid, components, fn component_socket, component ->
@@ -330,7 +332,7 @@ defmodule Phoenix.LiveView.Diff do
   """
   def component_to_rendered(socket, component, assigns, mount_assigns) when is_map(assigns) do
     socket = mount_component(socket, component, mount_assigns)
-    assigns = maybe_call_preload!(component, assigns)
+    assigns = maybe_call_preload!(component, assigns, socket.assigns)
 
     socket
     |> Utils.maybe_call_update!(component, assigns)
@@ -607,7 +609,7 @@ defmodule Phoenix.LiveView.Diff do
 
     {{pending, diffs, components}, seen_ids} =
       Enum.reduce(pending, acc, fn {component, entries}, acc ->
-        entries = maybe_preload_components(component, Enum.reverse(entries))
+        entries = maybe_preload_components(component, Enum.reverse(entries), cids)
 
         Enum.reduce(entries, acc, fn {cid, id, new?, new_assigns}, {triplet, seen_ids} ->
           {pending, diffs, components} = triplet
@@ -642,22 +644,48 @@ defmodule Phoenix.LiveView.Diff do
     render_pending_components(socket, pending, seen_ids, cids, diffs, components)
   end
 
-  defp maybe_preload_components(component, entries) do
-    if function_exported?(component, :preload, 1) do
-      list_of_assigns = Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
-      result = component.preload(list_of_assigns)
-      zip_preloads(result, entries, component, result)
-    else
-      entries
+
+  defp maybe_preload_components(component, entries, cids) do
+    cond do
+      function_exported?(component, :preload, 2) ->
+        new_list_of_assigns = new_list_of_assigns(entries)
+
+        current_list_of_assigns =
+          Enum.map(entries, fn {cid, _id, _new?, _new_assigns} ->
+            fetch_assigns(cid, cids)
+          end)
+
+        result = component.preload(new_list_of_assigns, current_list_of_assigns)
+        zip_preloads(result, entries, component, result)
+
+      function_exported?(component, :preload, 1) ->
+        list_of_assigns =
+          Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
+
+        result = component.preload(list_of_assigns)
+        zip_preloads(result, entries, component, result)
+
+      true ->
+        entries
     end
   end
 
-  defp maybe_call_preload!(module, assigns) do
-    if function_exported?(module, :preload, 1) do
-      [new_assigns] = module.preload([assigns])
-      new_assigns
-    else
-      assigns
+  defp new_list_of_assigns(entries) do
+    Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
+  end
+
+  defp maybe_call_preload!(module, input_assigns, current_assigns) do
+    cond do
+      function_exported?(module, :preload, 2) ->
+        [new_assigns] = module.preload([input_assigns], [current_assigns])
+        new_assigns
+
+      function_exported?(module, :preload, 1) ->
+        [new_assigns] = module.preload([input_assigns])
+        new_assigns
+
+      true ->
+        input_assigns
     end
   end
 
@@ -770,6 +798,16 @@ defmodule Phoenix.LiveView.Diff do
     case id_to_cid do
       %{^component => %{^id => cid}} -> {:ok, cid}
       %{} -> :error
+    end
+  end
+
+  defp fetch_assigns(cid, cid_to_component) do
+    case cid_to_component do
+      %{^cid => {_component, _id, assigns, _private, _prints}} ->
+        Map.drop(assigns, [:__changed__, :myself, :flash])
+
+      %{} ->
+        %{}
     end
   end
 

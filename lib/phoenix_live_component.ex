@@ -461,8 +461,13 @@ defmodule Phoenix.LiveComponent do
   @callback mount(socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
-  @callback preload(list_of_assigns :: [Socket.assigns()]) ::
+  @callback preload(new_list_of_assigns :: [Socket.assigns()]) ::
               list_of_assigns :: [Socket.assigns()]
+
+  @callback preload(
+              new_list_of_assigns :: [Socket.assigns()],
+              old_list_of_assigns :: [Socket.assigns()]
+            ) :: list_of_assigns :: [Socket.assigns()]
 
   @callback update(assigns :: Socket.assigns(), socket :: Socket.t()) ::
               {:ok, Socket.t()}
@@ -476,5 +481,5 @@ defmodule Phoenix.LiveComponent do
             ) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
-  @optional_callbacks mount: 1, preload: 1, update: 2, handle_event: 3
+  @optional_callbacks mount: 1, preload: 1, preload: 2, update: 2, handle_event: 3
 end

@@ -146,6 +146,47 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     assert_receive {:preload, [%{id: "chris"}, %{id: "jose"}]}
   end
 
+  test "supports preload/2", %{conn: conn} do
+    conn =
+      conn
+      |> Plug.Test.init_test_session(%{names: ["foo"], from: self()})
+      |> get("/preload2")
+
+    assert_receive {:preload2, new_lists_of_assigns, prev_list_of_assigns}
+    assert new_lists_of_assigns == [%{from: self(), id: "foo"}]
+    assert prev_list_of_assigns == [%{}]
+    assert_receive {:updated, %{id: "foo"}}
+
+    {:ok, view, _html} = live(conn)
+    assert_receive {:preload2, new_lists_of_assigns, prev_list_of_assigns}
+    assert new_lists_of_assigns == [%{from: self(), id: "foo"}]
+    assert prev_list_of_assigns == [%{}]
+    assert_receive {:updated, %{id: "foo"}}
+
+    # add bar
+    send(view.pid, {:add_names, ["bar"]})
+
+    assert_receive {:preload2, new_lists_of_assigns, prev_list_of_assigns}
+    assert new_lists_of_assigns == [%{from: self(), id: "foo"}, %{from: self(), id: "bar"}]
+    assert prev_list_of_assigns == [%{from: self(), id: "foo"}, %{}]
+    assert_receive {:updated, %{id: "foo"}}
+    assert_receive {:updated, %{id: "bar"}}
+
+    # send update to bar
+    send(view.pid, {:send_updates, [%{id: "bar", from: self(), updated: :definitely}]})
+
+    assert_receive {:preload2, new_lists_of_assigns, prev_list_of_assigns}
+    assert new_lists_of_assigns == [%{from: self(), id: "bar", updated: :definitely}]
+    assert prev_list_of_assigns == [%{from: self(), id: "bar"}]
+
+    assert_receive {:updated, %{id: "bar", updated: :definitely}}
+
+    # make sure all messages are accounted for
+    refute_receive {:updated, _}
+    refute_receive {:preload1, _}
+    refute_receive {:preload2, _, _}
+  end
+
   describe "handle_event" do
     test "delegates event to component", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/components")

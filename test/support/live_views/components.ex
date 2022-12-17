@@ -337,3 +337,81 @@ defmodule Phoenix.LiveViewTest.WithLogDisabled do
 
   def render(assigns), do: ~H[]
 end
+
+defmodule Phoenix.LiveViewTest.PreloadTwoComponent do
+  use Phoenix.LiveComponent
+
+  @impl true
+  def mount(socket) do
+    {:ok, socket}
+  end
+
+  @impl true
+  def update(assigns, socket) do
+    if from = assigns[:from] do
+      send(from, {:updated, assigns})
+    end
+
+    {:ok, assign(socket, assigns)}
+  end
+
+  @impl true
+  def preload([assigns | _] = lists_of_assigns) do
+    if from = assigns[:from] do
+      send(from, {:preload1, lists_of_assigns})
+    end
+
+    lists_of_assigns
+  end
+
+  @impl true
+  def preload([assigns | _] = lists_of_assigns, current_list_of_assigns) do
+    if from = assigns[:from] do
+      send(from, {:preload2, lists_of_assigns, current_list_of_assigns})
+    end
+
+    lists_of_assigns
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div>PreloadTwoComponent: <%= @id %></div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.WithPreload2 do
+  use Phoenix.LiveView
+
+  alias Phoenix.LiveViewTest.PreloadTwoComponent
+
+  @impl true
+  def mount(_params, %{"names" => names, "from" => from}, socket) do
+    {:ok, assign(socket, names: names, from: from)}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div>
+      <.live_component :for={name <- @names}
+                       module={PreloadTwoComponent}
+                       id={name}
+                       from={@from} />
+    </div>
+    """
+  end
+
+  @impl true
+  def handle_info({:send_updates, updates}, socket) do
+    Enum.each(updates, fn %{} = args -> send_update(PreloadTwoComponent, args) end)
+    {:noreply, socket}
+  end
+
+  @impl true
+  def handle_info({:add_names, new_names}, socket) do
+    socket = update(socket, :names, fn names -> names ++ new_names end)
+    {:noreply, socket}
+  end
+end

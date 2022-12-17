@@ -39,6 +39,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/time-zones", AppendLive
     live "/shuffle", ShuffleLive
     live "/components", WithComponentLive
+    live "/preload2", WithPreload2
     live "/multi-targets", WithMultipleTargets
     live "/assigns-not-in-socket", AssignsNotInSocketLive
     live "/log-override", WithLogOverride
