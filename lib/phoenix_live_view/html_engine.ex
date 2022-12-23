@@ -777,9 +777,27 @@ defmodule Phoenix.LiveView.HTMLEngine do
         handle_attr_escape(state, meta, name, parse_expr!(expr, state.file))
 
       {name, {:string, value, %{delimiter: ?"}}, _attr_meta}, state ->
+        encoder = Enum.at(List.wrap(Module.get_attribute(state.caller.module, :class_attribute_encoder)), 0)
+
+        value =
+          if encoder do
+            encoder.class_attribute_encode(value)
+          else
+            value
+          end
+
         update_subengine(state, :handle_text, [meta, ~s( #{name}="#{value}")])
 
       {name, {:string, value, %{delimiter: ?'}}, _attr_meta}, state ->
+        encoder = Enum.at(List.wrap(Module.get_attribute(state.caller.module, :class_attribute_encoder)), 0)
+
+        value =
+          if encoder do
+            encoder.class_attribute_encode(value)
+          else
+            value
+          end
+
         update_subengine(state, :handle_text, [meta, ~s( #{name}='#{value}')])
 
       {name, nil, _attr_meta}, state ->
@@ -834,11 +852,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp handle_attr_escape(state, meta, name, value) do
     # See if we can emit anything about the attribute at compile-time.
-    case extract_compile_attr(name, value) do
+    case extract_compile_attr(name, state, value) do
       :error ->
         # Now if the attribute can be encoded as empty whenever
         # it is false or nil, we also emit its text before hand.
-        if call = empty_attribute_encoder(name, value, meta) do
+        if call = empty_attribute_encoder(name, state, value, meta) do
           state
           |> update_subengine(:handle_text, [meta, ~s( #{name}=")])
           |> update_subengine(:handle_expr, ["=", {:safe, call}])
@@ -880,19 +898,31 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp extract_compile_attr("class", [head | tail]) when is_binary(head) do
-    {bins, tail} = Enum.split_while(tail, &is_binary/1)
-    encoded = class_attribute_encode([head | bins])
-
-    if tail == [] do
-      [{:text, IO.iodata_to_binary(encoded)}]
+  defp extract_compile_attr("class", state, [head | tail]) when is_binary(head) do
+    if Module.get_attribute(state.caller.module, :class_attribute_encoder) do
+      :error
     else
-      # We need to return it in reverse order as they are reversed later on.
-      [{:class, tail}, {:text, IO.iodata_to_binary([encoded, ?\s])}]
+      {bins, tail} = Enum.split_while(tail, &is_binary/1)
+      encoded = class_attribute_encode([head | bins])
+
+      if tail == [] do
+        [{:text, IO.iodata_to_binary(encoded)}]
+      else
+        # We need to return it in reverse order as they are reversed later on.
+        [{:class, tail}, {:text, IO.iodata_to_binary([encoded, ?\s])}]
+      end
     end
   end
 
-  defp extract_compile_attr(_name, value) do
+  defp extract_compile_attr("class", state, value) do
+    if Module.get_attribute(state.caller.module, :class_attribute_encoder) do
+      :error
+    else
+      extract_binaries(value, true, [])
+    end
+  end
+
+  defp extract_compile_attr(_name, _meta, value) do
     extract_binaries(value, true, [])
   end
 
@@ -925,15 +955,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
     do: :error
 
   # TODO: We can refactor the empty_attribute_encoder to simply return an atom on Elixir v1.13+
-  defp empty_attribute_encoder("class", value, meta) do
-    quote line: meta[:line], do: unquote(__MODULE__).class_attribute_encode(unquote(value))
+  defp empty_attribute_encoder("class", state, value, meta) do
+    encoder = Enum.at(List.wrap(Module.get_attribute(state.caller.module, :class_attribute_encoder)), 0) || __MODULE__
+    quote line: meta[:line], do: unquote(encoder).class_attribute_encode(unquote(value))
   end
 
-  defp empty_attribute_encoder("style", value, meta) do
+  defp empty_attribute_encoder("style", _, value, meta) do
     quote line: meta[:line], do: unquote(__MODULE__).empty_attribute_encode(unquote(value))
   end
 
-  defp empty_attribute_encoder(_, _, _), do: nil
+  defp empty_attribute_encoder(_, _, _, _), do: nil
 
   @doc false
   def class_attribute_encode(list) when is_list(list),
