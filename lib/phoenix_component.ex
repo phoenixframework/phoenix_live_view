@@ -190,7 +190,7 @@ defmodule Phoenix.Component do
   Note that the function component did not have to explicitly declare a `class` or `phx-click`
   attribute in order to render.
 
-  Global attribute can define defaults which are merged with attributes provided by the caller.
+  Global attributes can define defaults which are merged with attributes provided by the caller.
   For example, you may declare a default `class` if the caller does not provide one:
 
       attr :rest, :global, default: %{class: "bg-blue-200"}
