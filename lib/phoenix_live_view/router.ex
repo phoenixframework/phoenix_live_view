@@ -176,13 +176,15 @@ defmodule Phoenix.LiveView.Router do
   pipe through it:
 
       live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
-        # Regular routes
-        pipe_through [MyAppWeb.AdminPlugAuth]
-        get "/admin/health"
+        scope "/" do
+          # Regular routes
+          pipe_through [MyAppWeb.AdminPlugAuth]
+          get "/admin/health", AdminHealthController, :index
 
-        # Live routes
-        live "/admin", AdminDashboardLive, :index
-        live "/admin/posts", AdminPostLive, :index
+          # Live routes
+          live "/admin", AdminDashboardLive, :index
+          live "/admin/posts", AdminPostLive, :index
+        end
       end
 
   The opposite is also true, if you have regular http routes and you want to
