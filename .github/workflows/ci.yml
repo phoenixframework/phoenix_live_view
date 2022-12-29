@@ -23,6 +23,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Install inotify-tools
+      run: |
+        sudo apt update
+        sudo apt install -y inotify-tools
     - name: Checkout
       uses: actions/checkout@v2
 
