@@ -1103,8 +1103,6 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp sync_with_parent(parent, assign_new) do
-    _ref = Process.monitor(parent)
-
     try do
       GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
     catch
