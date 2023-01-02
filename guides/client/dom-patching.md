@@ -11,12 +11,18 @@ own DOM operations. The following `phx-update` values are supported:
   * `append` - append the new DOM contents instead of replacing
   * `prepend` - prepend the new DOM contents instead of replacing
 
-When using `phx-update`, a unique DOM ID must always be set in the
-container. If using "append" or "prepend", a DOM ID must also be set
-for each child. When appending or prepending elements containing an
-ID already present in the container, LiveView will replace the existing
-element with the new content instead appending or prepending a new
-element.
+> ### Unique DOM IDs {: .info}
+>
+> When using `phx-update`, a unique DOM ID must always be set in the
+> container. If using "append" or "prepend", a DOM ID must also be set
+> for each child. When appending or prepending elements containing an
+> ID already present in the container, LiveView will replace the existing
+> element with the new content instead appending or prepending a new
+> element.
+>
+> Note that if rendering moves a container from *outside* the container
+> with `phx-update` to *inside* the container with `phx-update`, you must 
+> also give it a new DOM ID.
 
 The "ignore" behaviour is frequently used when you need to integrate
 with another JS library. Note only the element contents are ignored,
