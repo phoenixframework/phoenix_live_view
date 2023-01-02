@@ -64,7 +64,7 @@ end
 def router do
   quote do
     # ...
-    import Phoenix.Component
+    import Phoenix.LiveView.Router
   end
 end
 ```
