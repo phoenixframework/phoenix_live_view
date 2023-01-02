@@ -7,6 +7,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
   embed_templates "pages/*"
   embed_templates "another_root/*", root: "pages"
+  embed_templates "another_root/*", root: "pages", keep_format: true
 
   defp h2s(template) do
     template
@@ -44,6 +45,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
       # root
       assert render_component(&root/1) == "root!"
+      assert render_component(&apply(__MODULE__, :"root.html", [&1])) == "root!"
 
       # attr'd bodyless definition
       assert render_component(&welcome_page/1) == "Welcome chris"

@@ -1368,6 +1368,8 @@ defmodule Phoenix.Component do
 
     * `:root` - The root directory to embed files. Defaults to the current
       module's directory (`__DIR__`)
+    * `:keep_format` - Keep the template format in the function component
+      names. Set to `true` to prevent function conflicts within the module.
 
   A wildcard pattern may be used to select all files within a directory tree.
   For example, imagine a directory listing:
@@ -1406,7 +1408,7 @@ defmodule Phoenix.Component do
   defmacro embed_templates(pattern, opts \\ []) do
     quote do
       Phoenix.Template.compile_all(
-        &Phoenix.Component.__embed__/1,
+        &Phoenix.Component.__embed__(&1, unquote(opts)[:keep_format]),
         Path.expand(unquote(opts)[:root] || __DIR__, __DIR__),
         unquote(pattern) <> ".html"
       )
@@ -1439,7 +1441,10 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __embed__(path), do: path |> Path.basename() |> Path.rootname() |> Path.rootname()
+  def __embed__(path, keep_format \\ false) do
+    path = path |> Path.basename() |> Path.rootname()
+    if keep_format, do: path, else: Path.rootname(path)
+  end
 
   @doc ~S'''
   Declares a function component slot.
