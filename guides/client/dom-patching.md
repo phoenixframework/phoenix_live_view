@@ -14,7 +14,7 @@ own DOM operations. The following `phx-update` values are supported:
 > ### Unique DOM IDs {: .info}
 >
 > When using `phx-update`, a unique DOM ID must always be set for the
-> container. If using "append" or "prepend", a DOM ID must also be set
+> container. If using `append` or `prepend`, a DOM ID must also be set
 > for each child. When appending or prepending elements containing an
 > ID already present in the container, LiveView will replace the existing
 > element with the new content instead appending or prepending a new
