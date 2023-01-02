@@ -13,7 +13,7 @@ own DOM operations. The following `phx-update` values are supported:
 
 > ### Unique DOM IDs {: .info}
 >
-> When using `phx-update`, a unique DOM ID must always be set in the
+> When using `phx-update`, a unique DOM ID must always be set for the
 > container. If using "append" or "prepend", a DOM ID must also be set
 > for each child. When appending or prepending elements containing an
 > ID already present in the container, LiveView will replace the existing
@@ -22,7 +22,7 @@ own DOM operations. The following `phx-update` values are supported:
 >
 > Note that if rendering moves a container from *outside* the container
 > with `phx-update` to *inside* the container with `phx-update`, you must 
-> also give it a new DOM ID.
+> also give the moved container a new DOM ID.
 
 The "ignore" behaviour is frequently used when you need to integrate
 with another JS library. Note only the element contents are ignored,
