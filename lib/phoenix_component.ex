@@ -697,7 +697,7 @@ defmodule Phoenix.Component do
   ```heex
   <table id="admin-table" :if={@admin?}>
     <tr :for={user <- @users}>
-      <td><%= user.name %>
+      <td><%= user.name %></td>
     </tr>
   <table>
   ```
