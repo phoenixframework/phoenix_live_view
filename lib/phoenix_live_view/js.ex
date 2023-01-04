@@ -321,7 +321,7 @@ defmodule Phoenix.LiveView.JS do
   During the process, the following events will be dispatched to the shown elements:
 
     * When the action is triggered on the client, `phx:show-start` is dispatched.
-  2. After the time specified by `:time`, `phx:show-end` is dispatched.
+    * After the time specified by `:time`, `phx:show-end` is dispatched.
 
   ## Examples
 
