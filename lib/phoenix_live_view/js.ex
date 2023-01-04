@@ -369,7 +369,7 @@ defmodule Phoenix.LiveView.JS do
 
   During the process, the following events will be dispatched to the hidden elements:
 
-  1. When the action is triggered on the client, `phx:hide-start` is dispatched.
+    * When the action is triggered on the client, `phx:hide-start` is dispatched.
   2. After the time specified by `:time`, `phx:hide-end` is dispatched.
 
   ## Examples
