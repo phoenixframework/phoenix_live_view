@@ -318,8 +318,10 @@ defmodule Phoenix.LiveView.JS do
       Defaults #{@default_transition_time}
     * `:display` - The optional display value to set when showing. Defaults `"block"`.
 
-  When the show is complete on the client, a `phx:show-start` and `phx:show-end` event
-  will be dispatched to the shown elements.
+  During the process, the following events will be dispatched to the shown elements:
+
+    * When the action is triggered on the client, `phx:show-start` is dispatched.
+    * After the time specified by `:time`, `phx:show-end` is dispatched.
 
   ## Examples
 
@@ -365,8 +367,10 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time to apply the transition from `:transition`.
       Defaults #{@default_transition_time}
 
-  When the show is complete on the client, a `phx:hide-start` and `phx:hide-end`
-  event will be dispatched to the hidden elements.
+  During the process, the following events will be dispatched to the hidden elements:
+
+    * When the action is triggered on the client, `phx:hide-start` is dispatched.
+    * After the time specified by `:time`, `phx:hide-end` is dispatched.
 
   ## Examples
 
