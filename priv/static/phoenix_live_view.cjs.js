@@ -1669,7 +1669,7 @@ var DOMPatch = class {
           dom_default.copyPrivates(toEl, fromEl);
           dom_default.discardError(targetContainer, toEl, phxFeedbackFor);
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
-          if (isFocusedFormEl) {
+          if (isFocusedFormEl && fromEl.type !== "hidden") {
             this.trackBefore("updated", fromEl, toEl);
             dom_default.mergeFocusedInput(fromEl, toEl);
             dom_default.syncAttrsToProps(fromEl);
@@ -1714,7 +1714,7 @@ var DOMPatch = class {
       });
     }
     if (externalFormTriggered) {
-      liveSocket.disconnect();
+      liveSocket.unload();
       externalFormTriggered.submit();
     }
     return true;
@@ -3417,6 +3417,14 @@ var LiveSocket = class {
   execJS(el, encodedJS, eventType = null) {
     this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
   }
+  unload() {
+    if (this.main && this.isConnected()) {
+      this.log(this.main, "socket", () => ["disconnect for page nav"]);
+    }
+    this.unloaded = true;
+    this.destroyAllViews();
+    this.disconnect();
+  }
   triggerDOM(kind, args) {
     this.domCallbacks[kind](...args);
   }
@@ -3808,6 +3816,9 @@ var LiveSocket = class {
       }
       let phxEvent = target && target.getAttribute(click);
       if (!phxEvent) {
+        if (!capture && e.target.href !== void 0) {
+          this.unload();
+        }
         return;
       }
       if (target.getAttribute("href") === "#") {
@@ -3966,6 +3977,7 @@ var LiveSocket = class {
       if (!externalFormSubmitted && phxChange && !phxSubmit) {
         externalFormSubmitted = true;
         e.preventDefault();
+        this.unload();
         this.withinOwners(e.target, (view) => {
           view.disableForm(e.target);
           window.requestAnimationFrame(() => e.target.submit());
@@ -3975,7 +3987,7 @@ var LiveSocket = class {
     this.on("submit", (e) => {
       let phxEvent = e.target.getAttribute(this.binding("submit"));
       if (!phxEvent) {
-        return;
+        return this.unload();
       }
       e.preventDefault();
       e.target.disabled = true;

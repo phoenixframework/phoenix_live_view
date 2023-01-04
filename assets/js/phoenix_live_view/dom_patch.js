@@ -222,7 +222,7 @@ export default class DOMPatch {
     }
 
     if(externalFormTriggered){
-      liveSocket.disconnect()
+      liveSocket.unload()
       externalFormTriggered.submit()
     }
     return true

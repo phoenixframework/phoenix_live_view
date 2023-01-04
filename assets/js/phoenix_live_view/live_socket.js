@@ -238,6 +238,13 @@ export default class LiveSocket {
 
   // private
 
+  unload(){
+    if(this.main && this.isConnected()){ this.log(this.main, "socket", () => ["disconnect for page nav"]) }
+    this.unloaded = true
+    this.destroyAllViews()
+    this.disconnect()
+  }
+
   triggerDOM(kind, args){ this.domCallbacks[kind](...args) }
 
   time(name, func){
@@ -624,7 +631,10 @@ export default class LiveSocket {
         this.clickStartedAtTarget = null
       }
       let phxEvent = target && target.getAttribute(click)
-      if(!phxEvent){ return }
+      if(!phxEvent){
+        if(!capture && e.target.href !== undefined){ this.unload() }
+        return
+      }
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
       this.debounce(target, e, "click", () => {
@@ -781,6 +791,7 @@ export default class LiveSocket {
       if(!externalFormSubmitted && phxChange && !phxSubmit){
         externalFormSubmitted = true
         e.preventDefault()
+        this.unload()
         this.withinOwners(e.target, view => {
           view.disableForm(e.target)
           window.requestAnimationFrame(() => e.target.submit()) // safari needs next tick
@@ -790,7 +801,7 @@ export default class LiveSocket {
 
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
-      if(!phxEvent){ return }
+      if(!phxEvent){ return this.unload() }
       e.preventDefault()
       e.target.disabled = true
       this.withinOwners(e.target, view => {
