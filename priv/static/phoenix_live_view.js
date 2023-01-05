@@ -3435,6 +3435,9 @@ within:
       this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
     }
     unload() {
+      if (this.unloaded) {
+        return;
+      }
       if (this.main && this.isConnected()) {
         this.log(this.main, "socket", () => ["disconnect for page nav"]);
       }
@@ -3699,8 +3702,11 @@ within:
       }
       this.boundTopLevelEvents = true;
       this.socket.onClose((event) => {
+        if (event && event.code === 1001) {
+          return this.unload();
+        }
         if (event && event.code === 1e3 && this.main) {
-          this.reloadWithJitter(this.main);
+          return this.reloadWithJitter(this.main);
         }
       });
       document.body.addEventListener("click", function() {
