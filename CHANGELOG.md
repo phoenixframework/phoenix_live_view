@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.18.4
+## 0.18.4 (2023-01-05)
 
 ### Enhancements
   * Support string upload name to support dynamically generated `allow_upload`'s
@@ -10,6 +10,7 @@
   * Fix browser history showing incorrect title when using live navigation with `@page_title`
   * Fix undefined _target param when using `JS.push` for form changes
   * Fix `phx-no-feedback` missing from inputs added after a form submit
+  * Fix `phx-disconnected` events firing when navigating away or submitting external forms
 
 ## 0.18.3 (2022-10-26)
 
