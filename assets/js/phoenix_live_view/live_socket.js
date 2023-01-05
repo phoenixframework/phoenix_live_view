@@ -239,6 +239,7 @@ export default class LiveSocket {
   // private
 
   unload(){
+    if(this.unloaded){ return }
     if(this.main && this.isConnected()){ this.log(this.main, "socket", () => ["disconnect for page nav"]) }
     this.unloaded = true
     this.destroyAllViews()
@@ -501,9 +502,10 @@ export default class LiveSocket {
     this.boundTopLevelEvents = true
     // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
     this.socket.onClose(event => {
-      if(event && event.code === 1000 && this.main){
-        this.reloadWithJitter(this.main)
-      }
+      // unload when navigating href or form submit (such as for firefox)
+      if(event && event.code === 1001){ return this.unload() }
+      // failsafe reload if normal closure and we still have a main LV
+      if(event && event.code === 1000 && this.main){ return this.reloadWithJitter(this.main) }
     })
     document.body.addEventListener("click", function (){ }) // ensure all click events bubble for mobile Safari
     window.addEventListener("pageshow", e => {
