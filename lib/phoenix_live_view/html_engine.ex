@@ -490,6 +490,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
         )
       end
+      |> tag_slots(slot_info)
 
     state
     |> pop_substate_from_stack()
@@ -642,6 +643,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
         )
       end
+      |> tag_slots(slot_info)
 
     state
     |> pop_substate_from_stack()
@@ -1350,6 +1352,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
     else
       :ok
     end
+  end
+
+  defp tag_slots({call, meta, args}, slot_info) do
+    {call, [slots: Keyword.keys(slot_info)] ++ meta, args}
   end
 
   defp wrap_special_slot(special, ast) do

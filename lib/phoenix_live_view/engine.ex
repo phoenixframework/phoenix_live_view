@@ -494,7 +494,7 @@ defmodule Phoenix.LiveView.Engine do
       case {call, args} do
         # If we have a component, we provide change tracking to individual keys.
         {:component, [fun, expr, metadata]} ->
-          [fun, to_component_tracking(fun, expr, [], vars, caller), metadata]
+          [fun, to_component_tracking(meta, fun, expr, [], vars, caller), metadata]
 
         {_, _} ->
           args
@@ -603,7 +603,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Component keys change tracking
 
-  defp to_component_tracking(fun, expr, extra, vars, caller) do
+  defp to_component_tracking(meta, fun, expr, extra, vars, caller) do
     # Separate static and dynamic parts
     {static, dynamic} =
       case expr do
@@ -646,7 +646,7 @@ defmodule Phoenix.LiveView.Engine do
         Macro.escape(%{})
       end
 
-    static = slots_to_rendered(static, vars, caller)
+    static = slots_to_rendered(static, vars, caller, Keyword.get(meta, :slots, []))
 
     cond do
       # We can't infer anything, so return the expression as is.
@@ -736,29 +736,49 @@ defmodule Phoenix.LiveView.Engine do
     end)
   end
 
-  defp slots_to_rendered(static, vars, caller) do
+  defp slots_to_rendered(static, vars, caller, slots) do
     for {key, value} <- static do
       value =
-        if is_list(value) do
-          for maybe_slot <- value do
-            with {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} <-
-                   maybe_slot,
-                 {call, meta, [^key, [do: block]]} <- inner_block,
-                 :inner_block <- extract_call(call) do
-              inner_block =
-                {call, meta, [key, [do: maybe_block_to_rendered(block, vars, caller)]]}
-
-              {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs}
-            else
-              _ -> maybe_slot
-            end
-          end
+        if key in slots do
+          slot_to_rendered(value, key, vars, caller)
         else
           value
         end
 
       {key, value}
     end
+  end
+
+  defp slot_to_rendered(
+         {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs} = maybe_slot,
+         key,
+         vars,
+         caller
+       ) do
+    with {call, meta, [^key, [do: block]]} <- inner_block,
+         :inner_block <- extract_call(call) do
+      inner_block = {call, meta, [key, [do: maybe_block_to_rendered(block, vars, caller)]]}
+
+      {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs}
+    else
+      _ -> maybe_slot
+    end
+  end
+
+  defp slot_to_rendered({left, meta, args}, key, vars, caller) do
+    {left, meta, slot_to_rendered(args, key, vars, caller)}
+  end
+
+  defp slot_to_rendered({left, right}, key, vars, caller) do
+    {slot_to_rendered(left, key, vars, caller), slot_to_rendered(right, key, vars, caller)}
+  end
+
+  defp slot_to_rendered(list, key, vars, caller) when is_list(list) do
+    Enum.map(list, &slot_to_rendered(&1, key, vars, caller))
+  end
+
+  defp slot_to_rendered(other, _key, _vars, _caller) do
+    other
   end
 
   ## Extracts binaries and variable from iodata
