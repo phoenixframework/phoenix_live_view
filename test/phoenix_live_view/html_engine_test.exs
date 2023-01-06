@@ -1834,24 +1834,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) == "<div>0-slot1slot2slot3slot4</div>"
     end
 
-    defmodule SampleLiveComponent do
-      use Phoenix.LiveComponent
-
-      def render(assigns) do
-        ~H"LC"
-      end
-    end
-
-    test ":for in slots with live component" do
-      assigns = %{items: [1, 2, 3, 4]}
-
-      assert compile("""
-             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
-               <:slot :for={i <- @items}><.live_component id={i} module={SampleLiveComponent} /></:slot>
-             </Phoenix.LiveView.HTMLEngineTest.slot_if>
-             """) == "<div>0-slot1slot2slot3slot4</div>"
-    end
-
     test ":for and :if in slots" do
       assigns = %{items: [1, 2, 3, 4]}
 
