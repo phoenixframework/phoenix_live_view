@@ -305,8 +305,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {acc_assigns, acc_info, specials} =
       Enum.reduce(slots, {%{}, %{}, %{}}, fn {key, assigns, special, info},
                                              {acc_assigns, acc_info, specials} ->
-        special? = Map.has_key?(special, ":if") || Map.has_key?(special, ":for")
-        specials = Map.update(specials, key, special?, &(&1 || special?))
+        special? = Map.has_key?(special, ":if") or Map.has_key?(special, ":for")
+        specials = Map.update(specials, key, special?, &(&1 or special?))
 
         case acc_assigns do
           %{^key => existing_assigns} ->
@@ -320,13 +320,20 @@ defmodule Phoenix.LiveView.HTMLEngine do
         end
       end)
 
-    # filter out nil slots via :if exclusion only when :if is present
     acc_assigns =
       Enum.into(acc_assigns, %{}, fn {key, assigns_ast} ->
-        if Map.fetch!(specials, key) do
-          {key, quote(do: List.flatten(unquote(assigns_ast)))}
-        else
-          {key, assigns_ast}
+        cond do
+          # No special entry, return it as a list
+          not Map.fetch!(specials, key) ->
+            {key, assigns_ast}
+
+          # We have a special entry and multiple entries, we have to flatten
+          match?([_, _ | _], assigns_ast) ->
+            {key, quote(do: List.flatten(unquote(assigns_ast)))}
+
+          # A single special entry is guaranteed to return a list from the expression
+          true ->
+            {key, hd(assigns_ast)}
         end
       end)
 
