@@ -1993,10 +1993,10 @@ defmodule Phoenix.Component do
     ~H"""
     <form {@attrs}>
       <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
-        <input name="_method" type="hidden" value={@hidden_method}>
+        <input name="_method" type="hidden" hidden value={@hidden_method}>
       <% end %>
       <%= if @csrf_token do %>
-        <input name="_csrf_token" type="hidden" value={@csrf_token}>
+        <input name="_csrf_token" type="hidden" hidden value={@csrf_token}>
       <% end %>
       <%= render_slot(@inner_block, @form) %>
     </form>
