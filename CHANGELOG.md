@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.6 (2023-01-09)
+
+### Bug Fixes
+  * Fix external anchor click unloading on external click
+
 ## 0.18.5 (2023-01-09)
 
 ### Bug Fixes

@@ -3842,7 +3842,7 @@ within:
         }
         let phxEvent = target && target.getAttribute(click);
         if (!phxEvent) {
-          if (!capture && e.target.href !== void 0 && dom_default.isExternalClick(e)) {
+          if (!capture && e.target.href !== void 0 && !dom_default.isExternalClick(e)) {
             this.unload();
           }
           return;
