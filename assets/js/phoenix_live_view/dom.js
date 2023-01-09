@@ -58,6 +58,11 @@ let DOM = {
     return node.id && DOM.private(node, "destroyed") ? true : false
   },
 
+  isExternalClick(e){
+    return(e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
+      || e.target.getAttribute("target") === "_blank")
+  },
+
   markPhxChildDestroyed(el){
     if(this.isPhxChild(el)){ el.setAttribute(PHX_SESSION, "") }
     this.putPrivate(el, "destroyed", true)

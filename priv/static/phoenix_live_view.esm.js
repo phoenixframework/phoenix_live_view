@@ -289,6 +289,9 @@ var DOM = {
   isPhxDestroyed(node) {
     return node.id && DOM.private(node, "destroyed") ? true : false;
   },
+  isExternalClick(e) {
+    return e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1 || e.target.getAttribute("target") === "_blank";
+  },
   markPhxChildDestroyed(el) {
     if (this.isPhxChild(el)) {
       el.setAttribute(PHX_SESSION, "");
@@ -3809,7 +3812,7 @@ var LiveSocket = class {
       }
       let phxEvent = target && target.getAttribute(click);
       if (!phxEvent) {
-        if (!capture && e.target.href !== void 0) {
+        if (!capture && e.target.href !== void 0 && dom_default.isExternalClick(e)) {
           this.unload();
         }
         return;
