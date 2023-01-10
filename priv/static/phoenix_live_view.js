@@ -319,6 +319,9 @@ var LiveView = (() => {
     isPhxDestroyed(node) {
       return node.id && DOM.private(node, "destroyed") ? true : false;
     },
+    isExternalClick(e) {
+      return e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1 || e.target.getAttribute("target") === "_blank";
+    },
     markPhxChildDestroyed(el) {
       if (this.isPhxChild(el)) {
         el.setAttribute(PHX_SESSION, "");
@@ -1686,7 +1689,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             dom_default.copyPrivates(toEl, fromEl);
             dom_default.discardError(targetContainer, toEl, phxFeedbackFor);
             let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
-            if (isFocusedFormEl) {
+            if (isFocusedFormEl && fromEl.type !== "hidden") {
               this.trackBefore("updated", fromEl, toEl);
               dom_default.mergeFocusedInput(fromEl, toEl);
               dom_default.syncAttrsToProps(fromEl);
@@ -1731,7 +1734,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       }
       if (externalFormTriggered) {
-        liveSocket.disconnect();
+        liveSocket.unload();
         externalFormTriggered.submit();
       }
       return true;
@@ -3434,6 +3437,17 @@ within:
     execJS(el, encodedJS, eventType = null) {
       this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
     }
+    unload() {
+      if (this.unloaded) {
+        return;
+      }
+      if (this.main && this.isConnected()) {
+        this.log(this.main, "socket", () => ["disconnect for page nav"]);
+      }
+      this.unloaded = true;
+      this.destroyAllViews();
+      this.disconnect();
+    }
     triggerDOM(kind, args) {
       this.domCallbacks[kind](...args);
     }
@@ -3691,8 +3705,11 @@ within:
       }
       this.boundTopLevelEvents = true;
       this.socket.onClose((event) => {
+        if (event && event.code === 1001) {
+          return this.unload();
+        }
         if (event && event.code === 1e3 && this.main) {
-          this.reloadWithJitter(this.main);
+          return this.reloadWithJitter(this.main);
         }
       });
       document.body.addEventListener("click", function() {
@@ -3825,6 +3842,9 @@ within:
         }
         let phxEvent = target && target.getAttribute(click);
         if (!phxEvent) {
+          if (!capture && e.target.href !== void 0 && !dom_default.isExternalClick(e)) {
+            this.unload();
+          }
           return;
         }
         if (target.getAttribute("href") === "#") {
@@ -3983,6 +4003,7 @@ within:
         if (!externalFormSubmitted && phxChange && !phxSubmit) {
           externalFormSubmitted = true;
           e.preventDefault();
+          this.unload();
           this.withinOwners(e.target, (view) => {
             view.disableForm(e.target);
             window.requestAnimationFrame(() => e.target.submit());
@@ -3992,7 +4013,7 @@ within:
       this.on("submit", (e) => {
         let phxEvent = e.target.getAttribute(this.binding("submit"));
         if (!phxEvent) {
-          return;
+          return this.unload();
         }
         e.preventDefault();
         e.target.disabled = true;

@@ -697,7 +697,7 @@ defmodule Phoenix.Component do
   ```heex
   <table id="admin-table" :if={@admin?}>
     <tr :for={user <- @users}>
-      <td><%= user.name %>
+      <td><%= user.name %></td>
     </tr>
   <table>
   ```
@@ -2010,10 +2010,10 @@ defmodule Phoenix.Component do
     ~H"""
     <form {@attrs}>
       <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
-        <input name="_method" type="hidden" value={@hidden_method}>
+        <input name="_method" type="hidden" hidden value={@hidden_method}>
       <% end %>
       <%= if @csrf_token do %>
-        <input name="_csrf_token" type="hidden" value={@csrf_token}>
+        <input name="_csrf_token" type="hidden" hidden value={@csrf_token}>
       <% end %>
       <%= render_slot(@inner_block, @form) %>
     </form>
