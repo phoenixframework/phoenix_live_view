@@ -145,8 +145,12 @@ let DOM = {
 
   putTitle(str){
     let titleEl = document.querySelector("title")
-    let {prefix, suffix} = titleEl.dataset
-    document.title = `${prefix || ""}${str}${suffix || ""}`
+    if(titleEl){
+      let {prefix, suffix} = titleEl.dataset
+      document.title = `${prefix || ""}${str}${suffix || ""}`
+    } else {
+      document.title = str
+    }
   },
 
   debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback){
