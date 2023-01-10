@@ -422,6 +422,38 @@ defmodule Phoenix.LiveView.ComponentsTest do
                 ]}
              ] = html
     end
+
+    test "generates form with input values supplied by params" do
+      params = %{"foo" => "my", "bar" => "form"}
+      assigns = %{params: params}
+
+      template = ~H"""
+      <.form :let={f} for={:myform} params={@params}>
+        <%= text_input f, :foo %>
+        <%= textarea f, :bar %>
+      </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [],
+                [
+                  {"input",
+                   [
+                     {"id", "myform_foo"},
+                     {"name", "myform[foo]"},
+                     {"type", "text"},
+                     {"value", "my"}
+                   ], []},
+                  {"textarea",
+                   [
+                     {"id", "myform_bar"},
+                     {"name", "myform[bar]"}
+                   ], ["\nform"]}
+                ]}
+             ] = html
+    end
   end
 
   describe "live_file_input/1" do
