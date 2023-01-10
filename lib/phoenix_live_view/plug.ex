@@ -9,15 +9,12 @@ defmodule Phoenix.LiveView.Plug do
   @impl Plug
   def call(%Plug.Conn{private: %{phoenix_live_view: {view, opts, live_session}}} = conn, _) do
     %{extra: live_session_extra} = live_session
-
     session = live_session(live_session_extra, conn)
-
     opts = Keyword.put(opts, :session, session)
 
     conn
     |> Phoenix.Controller.put_layout(false)
     |> put_root_layout_from_router(live_session_extra)
-    |> put_layout_from_router(live_session_extra)
     |> Phoenix.LiveView.Controller.live_render(view, opts)
   end
 
@@ -37,13 +34,6 @@ defmodule Phoenix.LiveView.Plug do
   defp put_root_layout_from_router(conn, extra) do
     case Map.fetch(extra, :root_layout) do
       {:ok, layout} -> Phoenix.Controller.put_root_layout(conn, layout)
-      :error -> conn
-    end
-  end
-
-  defp put_layout_from_router(conn, extra) do
-    case Map.fetch(extra, :layout) do
-      {:ok, layout} -> Plug.Conn.put_private(conn, :phoenix_live_layout, layout)
       :error -> conn
     end
   end

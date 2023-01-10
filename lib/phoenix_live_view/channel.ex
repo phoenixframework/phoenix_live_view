@@ -1063,7 +1063,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp load_layout(socket, %Route{live_session: %{extra: %{layout: layout}}}) do
-    put_in(socket.private[:phoenix_live_layout], layout)
+    put_in(socket.private[:live_layout], layout)
   end
 
   defp load_layout(socket, _route) do
@@ -1091,7 +1091,7 @@ defmodule Phoenix.LiveView.Channel do
            connect_params: connect_params,
            connect_info: connect_info,
            assign_new: {parent_assigns, assign_new},
-           phoenix_live_layout: false,
+           live_layout: false,
            lifecycle: lifecycle,
            root_view: root_view,
            __changed__: %{}

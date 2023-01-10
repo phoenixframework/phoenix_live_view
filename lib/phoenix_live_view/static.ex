@@ -109,7 +109,7 @@ defmodule Phoenix.LiveView.Static do
           conn_session: conn_session,
           lifecycle: lifecycle,
           root_view: view,
-          phoenix_live_layout: live_layout,
+          live_layout: live_layout,
           __changed__: %{}
         },
         action,
@@ -180,7 +180,7 @@ defmodule Phoenix.LiveView.Static do
         %{
           assign_new: {parent.assigns.__assigns__, []},
           lifecycle: config.lifecycle,
-          phoenix_live_layout: false,
+          live_layout: false,
           root_view: if(sticky?, do: view, else: parent.private.root_view),
           __changed__: %{}
         },
