@@ -43,7 +43,7 @@ defmodule Phoenix.LiveView.Plug do
 
   defp put_layout_from_router(conn, extra) do
     case Map.fetch(extra, :layout) do
-      {:ok, layout} ->  Plug.Conn.put_private(conn, :phoenix_live_layout, layout)
+      {:ok, layout} -> Plug.Conn.put_private(conn, :phoenix_live_layout, layout)
       :error -> conn
     end
   end

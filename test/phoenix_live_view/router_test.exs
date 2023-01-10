@@ -254,16 +254,32 @@ defmodule Phoenix.LiveView.RouterTest do
                Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
 
       assert route.live_session.extra == %{
-        layout: {Phoenix.LiveViewTest.LayoutView, :live_override}
-      }
+               layout: {Phoenix.LiveViewTest.LayoutView, :live_override}
+             }
 
       {:ok, view, html} = live(conn, path)
 
       assert html =~
-        ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+               ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
 
       assert render(view) =~
-        ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+               ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+    end
+
+    test "with layout override on disconnected render", %{conn: conn} do
+      path = "/dashboard-live-session-layout"
+
+      assert {:internal, route} =
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+
+      assert route.live_session.extra == %{
+               layout: {Phoenix.LiveViewTest.LayoutView, :live_override}
+             }
+
+      conn = get(conn, path)
+
+      assert html_response(conn, 200) =~
+               ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
     end
   end
 end
