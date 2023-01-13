@@ -58,9 +58,30 @@ let DOM = {
     return node.id && DOM.private(node, "destroyed") ? true : false
   },
 
-  isExternalClick(e){
-    return(e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
-      || e.target.getAttribute("target") === "_blank")
+  wantsNewTab(e){
+    let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
+    return wantsNewTab || e.target.getAttribute("target") === "_blank"
+  },
+
+  isNewPageHref(href, currentLocation){
+    let url
+    try {
+      url = new URL(href)
+    } catch(e) {
+      try {
+        url = new URL(href, currentLocation)
+      } catch(e) {
+        // bad URL, fallback to let browser try it as external
+        return true
+      }
+    }
+
+    if(url.host === currentLocation.host && url.protocol === currentLocation.protocol){
+      if(url.pathname === currentLocation.pathname && url.search === currentLocation.search){
+        return url.hash === "" && !url.href.endsWith("#")
+      }
+    }
+    return true
   },
 
   markPhxChildDestroyed(el){

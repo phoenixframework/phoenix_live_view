@@ -319,8 +319,27 @@ var LiveView = (() => {
     isPhxDestroyed(node) {
       return node.id && DOM.private(node, "destroyed") ? true : false;
     },
-    isExternalClick(e) {
-      return e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1 || e.target.getAttribute("target") === "_blank";
+    wantsNewTab(e) {
+      let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
+      return wantsNewTab || e.target.getAttribute("target") === "_blank";
+    },
+    isNewPageHref(href, currentLocation) {
+      let url;
+      try {
+        url = new URL(href);
+      } catch (e) {
+        try {
+          url = new URL(href, currentLocation);
+        } catch (e2) {
+          return true;
+        }
+      }
+      if (url.host === currentLocation.host && url.protocol === currentLocation.protocol) {
+        if (url.pathname === currentLocation.pathname && url.search === currentLocation.search) {
+          return url.hash === "" && !url.href.endsWith("#");
+        }
+      }
+      return true;
     },
     markPhxChildDestroyed(el) {
       if (this.isPhxChild(el)) {
@@ -398,8 +417,12 @@ var LiveView = (() => {
     },
     putTitle(str) {
       let titleEl = document.querySelector("title");
-      let { prefix, suffix } = titleEl.dataset;
-      document.title = `${prefix || ""}${str}${suffix || ""}`;
+      if (titleEl) {
+        let { prefix, suffix } = titleEl.dataset;
+        document.title = `${prefix || ""}${str}${suffix || ""}`;
+      } else {
+        document.title = str;
+      }
     },
     debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback) {
       let debounce = el.getAttribute(phxDebounce);
@@ -3842,7 +3865,8 @@ within:
         }
         let phxEvent = target && target.getAttribute(click);
         if (!phxEvent) {
-          if (!capture && e.target.href !== void 0 && !dom_default.isExternalClick(e)) {
+          let href = e.target.href;
+          if (!capture && href !== void 0 && !dom_default.wantsNewTab(e) && dom_default.isNewPageHref(href, window.location)) {
             this.unload();
           }
           return;
@@ -3910,8 +3934,7 @@ within:
       window.addEventListener("click", (e) => {
         let target = closestPhxBinding(e.target, PHX_LIVE_LINK);
         let type = target && target.getAttribute(PHX_LIVE_LINK);
-        let wantsNewTab = e.metaKey || e.ctrlKey || e.button === 1;
-        if (!type || !this.isConnected() || !this.main || wantsNewTab) {
+        if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e)) {
           return;
         }
         let href = target.href;

@@ -7,6 +7,45 @@ describe("DOM", () => {
     curTitle && curTitle.remove()
   })
 
+  describe("isNewPageHref", () => {
+    test("identical locations", () => {
+      let currentLoc
+      currentLoc = new URL("https://test.local/foo")
+      expect(DOM.isNewPageHref("/foo", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("https://test.local/foo", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("//test.local/foo", currentLoc)).toBe(true)
+      // with hash
+      expect(DOM.isNewPageHref("/foo#hash", currentLoc)).toBe(false)
+      expect(DOM.isNewPageHref("https://test.local/foo#hash", currentLoc)).toBe(false)
+      expect(DOM.isNewPageHref("//test.local/foo#hash", currentLoc)).toBe(false)
+      // different paths
+      expect(DOM.isNewPageHref("/foo2#hash", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("https://test.local/foo2#hash", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("//test.local/foo2#hash", currentLoc)).toBe(true)
+    })
+
+    test("identical locations with query", () => {
+      let currentLoc
+      currentLoc = new URL("https://test.local/foo?query=1")
+      expect(DOM.isNewPageHref("/foo", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("https://test.local/foo?query=1", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("//test.local/foo?query=1", currentLoc)).toBe(true)
+      // with hash
+      expect(DOM.isNewPageHref("/foo?query=1#hash", currentLoc)).toBe(false)
+      expect(DOM.isNewPageHref("https://test.local/foo?query=1#hash", currentLoc)).toBe(false)
+      expect(DOM.isNewPageHref("//test.local/foo?query=1#hash", currentLoc)).toBe(false)
+      // different query
+      expect(DOM.isNewPageHref("/foo?query=2#hash", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("https://test.local/foo?query=2#hash", currentLoc)).toBe(true)
+      expect(DOM.isNewPageHref("//test.local/foo?query=2#hash", currentLoc)).toBe(true)
+    })
+
+    test("empty hash href", () => {
+      let currentLoc = new URL("https://test.local/foo")
+      expect(DOM.isNewPageHref("#", currentLoc)).toBe(false)
+    })
+  })
+
   describe("putTitle", () => {
     test("with no attributes", () => {
       appendTitle({})
