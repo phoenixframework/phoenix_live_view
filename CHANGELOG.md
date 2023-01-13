@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.7 (2023-01-13)
+
+### Bug Fixes
+  * Fix live layout not being applied when passed to `:live_session` during disconnect render
+  * Fix external anchor clicks and links with hashes incorrectly unloading socket
+
 ## 0.18.6 (2023-01-09)
 
 ### Bug Fixes
