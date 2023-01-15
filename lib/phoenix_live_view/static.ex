@@ -62,11 +62,11 @@ defmodule Phoenix.LiveView.Static do
     _ -> %{}
   end
 
-  defp maybe_get_live_layout(private, %{extra: %{layout: layout}}) do
+  defp maybe_put_live_layout(private, %{extra: %{layout: layout}}) do
     Map.put(private, :live_layout, layout)
   end
 
-  defp maybe_get_live_layout(private, _live_session) do
+  defp maybe_put_live_layout(private, _live_session) do
     private
   end
 
@@ -110,7 +110,7 @@ defmodule Phoenix.LiveView.Static do
           root_view: view,
           __changed__: %{}
         }
-        |> maybe_get_live_layout(live_session),
+        |> maybe_put_live_layout(live_session),
         action,
         flash,
         host_uri
