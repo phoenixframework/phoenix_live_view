@@ -34,7 +34,7 @@ defmodule Phoenix.LiveView.LayoutTest do
              "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
   end
 
-  test "is picked from config on first render", %{conn: conn} do
+  test "is picked from config on use on first render", %{conn: conn} do
     conn = get(conn, "/layout")
 
     assert html_response(conn, 200) =~
