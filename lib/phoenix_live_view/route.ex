@@ -19,13 +19,6 @@ defmodule Phoenix.LiveView.Route do
   end
 
   @doc """
-  Computes the layout from the route options and falls backs to use options.
-  """
-  def layout(%Route{} = route) do
-    route.opts[:layout] || route.view.__live__()[:layout]
-  end
-
-  @doc """
   Returns the internal or external matched LiveView route info for the given socket
   and uri, raises if none is available.
   """
