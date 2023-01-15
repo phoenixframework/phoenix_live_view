@@ -34,6 +34,13 @@ defmodule Phoenix.LiveView.LayoutTest do
              "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
   end
 
+  test "is picked from config on use on first render", %{conn: conn} do
+    conn = get(conn, "/layout")
+
+    assert html_response(conn, 200) =~
+             ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
+  end
+
   @tag session: %{live_layout: {LayoutView, :live_override}}
   test "is picked from config on mount when given a layout", %{conn: conn} do
     {:ok, view, html} = live(conn, "/layout")

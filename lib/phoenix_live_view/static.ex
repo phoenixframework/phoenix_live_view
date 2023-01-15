@@ -62,12 +62,12 @@ defmodule Phoenix.LiveView.Static do
     _ -> %{}
   end
 
-  defp maybe_get_live_layout(%{extra: %{layout: layout}}) do
-    layout
+  defp maybe_put_live_layout(private, %{extra: %{layout: layout}}) do
+    Map.put(private, :live_layout, layout)
   end
 
-  defp maybe_get_live_layout(_) do
-    false
+  defp maybe_put_live_layout(private, _live_session) do
+    private
   end
 
   @doc """
@@ -88,7 +88,6 @@ defmodule Phoenix.LiveView.Static do
     conn_session = maybe_get_session(conn)
     {to_sign_session, mount_session} = load_session(conn_session, opts)
     live_session = live_session(conn)
-    live_layout = maybe_get_live_layout(live_session)
     config = load_live!(view, :view)
     lifecycle = lifecycle(config, live_session)
     {tag, extended_attrs} = container(config, opts)
@@ -109,9 +108,9 @@ defmodule Phoenix.LiveView.Static do
           conn_session: conn_session,
           lifecycle: lifecycle,
           root_view: view,
-          live_layout: live_layout,
           __changed__: %{}
-        },
+        }
+        |> maybe_put_live_layout(live_session),
         action,
         flash,
         host_uri
