@@ -3886,17 +3886,15 @@ var LiveSocket = class {
       let href = window.location.href;
       this.requestDOMUpdate(() => {
         if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
-          this.main.pushLinkPatch(href, null);
+          this.main.pushLinkPatch(href, null, () => {
+            this.maybeScroll(scroll);
+          });
         } else {
           this.replaceMain(href, null, () => {
             if (root) {
               this.replaceRootHistory();
             }
-            if (typeof scroll === "number") {
-              setTimeout(() => {
-                window.scrollTo(0, scroll);
-              }, 0);
-            }
+            this.maybeScroll(scroll);
           });
         }
       });
@@ -3928,6 +3926,13 @@ var LiveSocket = class {
         }
       });
     }, false);
+  }
+  maybeScroll(scroll) {
+    if (typeof scroll === "number") {
+      requestAnimationFrame(() => {
+        window.scrollTo(0, scroll);
+      });
+    }
   }
   dispatchEvent(event, payload = {}) {
     dom_default.dispatchEvent(window, `phx:${event}`, { detail: payload });

@@ -44,6 +44,11 @@ describe("DOM", () => {
       let currentLoc = new URL("https://test.local/foo")
       expect(DOM.isNewPageHref("#", currentLoc)).toBe(false)
     })
+
+    test("local hash", () => {
+      let currentLoc = new URL("https://test.local/foo")
+      expect(DOM.isNewPageHref("#foo", currentLoc)).toBe(false)
+    })
   })
 
   describe("putTitle", () => {

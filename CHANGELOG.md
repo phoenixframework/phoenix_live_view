@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.8 (2023-01-16)
+
+### Enhancements
+  * Restore scroll position on back when previous navigation was live patch
+
+### Bug Fixes
+  * Fix live layout not being applied until connected render
+
 ## 0.18.7 (2023-01-13)
 
 ### Bug Fixes
