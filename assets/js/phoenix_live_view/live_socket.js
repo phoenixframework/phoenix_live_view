@@ -801,10 +801,13 @@ export default class LiveSocket {
       if(!externalFormSubmitted && phxChange && !phxSubmit){
         externalFormSubmitted = true
         e.preventDefault()
-        this.unload()
         this.withinOwners(e.target, view => {
           view.disableForm(e.target)
-          window.requestAnimationFrame(() => e.target.submit()) // safari needs next tick
+          // safari needs next tick
+          window.requestAnimationFrame(() => {
+            this.unload()
+            e.target.submit()
+          })
         })
       }
     }, true)

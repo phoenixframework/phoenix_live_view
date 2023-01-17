@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.9 (2023-01-17)
+
+### Bug Fixes
+  * Fix regular form submits failing to be dispatched
+
 ## 0.18.8 (2023-01-16)
 
 ### Enhancements

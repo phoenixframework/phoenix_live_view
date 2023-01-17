@@ -4014,10 +4014,12 @@ var LiveSocket = class {
       if (!externalFormSubmitted && phxChange && !phxSubmit) {
         externalFormSubmitted = true;
         e.preventDefault();
-        this.unload();
         this.withinOwners(e.target, (view) => {
           view.disableForm(e.target);
-          window.requestAnimationFrame(() => e.target.submit());
+          window.requestAnimationFrame(() => {
+            this.unload();
+            e.target.submit();
+          });
         });
       }
     }, true);
