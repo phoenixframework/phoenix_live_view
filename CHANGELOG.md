@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.10 (2023-01-18)
+
+### Bug Fixes
+  * Fix svg tags with href incorrectly unloading socket on click
+  * Fix form submits with `target="_blank"` incorrectly unloading socket on submit
+
 ## 0.18.9 (2023-01-17)
 
 ### Bug Fixes
