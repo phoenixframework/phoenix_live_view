@@ -3848,8 +3848,8 @@ var LiveSocket = class {
       }
       let phxEvent = target && target.getAttribute(click);
       if (!phxEvent) {
-        let href = e.target.href;
-        if (!capture && href !== void 0 && !dom_default.wantsNewTab(e) && dom_default.isNewPageHref(href, window.location)) {
+        let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null;
+        if (!capture && href !== null && !dom_default.wantsNewTab(e) && dom_default.isNewPageHref(href, window.location)) {
           this.unload();
         }
         return;
@@ -4017,7 +4017,9 @@ var LiveSocket = class {
         this.withinOwners(e.target, (view) => {
           view.disableForm(e.target);
           window.requestAnimationFrame(() => {
-            this.unload();
+            if (!dom_default.wantsNewTab(e)) {
+              this.unload();
+            }
             e.target.submit();
           });
         });
@@ -4026,7 +4028,10 @@ var LiveSocket = class {
     this.on("submit", (e) => {
       let phxEvent = e.target.getAttribute(this.binding("submit"));
       if (!phxEvent) {
-        return this.unload();
+        if (!dom_default.wantsNewTab(e)) {
+          this.unload();
+        }
+        return;
       }
       e.preventDefault();
       e.target.disabled = true;

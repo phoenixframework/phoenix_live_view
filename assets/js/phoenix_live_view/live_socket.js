@@ -634,8 +634,8 @@ export default class LiveSocket {
       }
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
-        let href = e.target.href
-        if(!capture && href !== undefined && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location)){
+        let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
+        if(!capture && href !== null && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location)){
           this.unload()
         }
         return
@@ -805,7 +805,7 @@ export default class LiveSocket {
           view.disableForm(e.target)
           // safari needs next tick
           window.requestAnimationFrame(() => {
-            this.unload()
+            if(!DOM.wantsNewTab(e)){ this.unload() }
             e.target.submit()
           })
         })
@@ -814,7 +814,10 @@ export default class LiveSocket {
 
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
-      if(!phxEvent){ return this.unload() }
+      if(!phxEvent){
+        if(!DOM.wantsNewTab(e)){ this.unload() }
+        return
+      }
       e.preventDefault()
       e.target.disabled = true
       this.withinOwners(e.target, view => {
