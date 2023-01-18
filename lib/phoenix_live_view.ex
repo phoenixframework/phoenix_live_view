@@ -94,7 +94,7 @@ defmodule Phoenix.LiveView do
   template, which stands for HTML+EEx. They are an extension of Elixir's
   builtin EEx templates, with support for HTML validation, syntax-based
   components, smart change tracking, and more. You can learn more about
-  the template syntax in `Phoenix.Component.sigil_H/2` (note 
+  the template syntax in `Phoenix.Component.sigil_H/2` (note
   `Phoenix.Component` is automatically imported when you use `Phoenix.LiveView`).
 
   Next, decide where you want to use your LiveView.
@@ -309,7 +309,8 @@ defmodule Phoenix.LiveView do
     * [Uploads (External)](uploads-external.md)
   '''
 
-  alias Phoenix.LiveView.Socket
+  alias Phoenix.LiveView.Lifecycle
+  alias Phoenix.LiveView.{Socket, LiveStream}
 
   @type unsigned_params :: map
 
@@ -1470,4 +1471,35 @@ defmodule Phoenix.LiveView do
       end
   """
   defdelegate detach_hook(socket, name, stage), to: Phoenix.LiveView.Lifecycle
+
+  def stream(socket, name, items, opts) do
+    opts = Keyword.merge(opts, name: name)
+    socket
+    |> Phoenix.Component.assign(name, LiveStream.new(items, opts))
+    |> attach_hook(name, :after_render, fn hook_socket ->
+      if Phoenix.LiveView.Utils.changed?(hook_socket, name) do
+        stream = get_stream(hook_socket, name)
+        Phoenix.Component.assign(hook_socket, name, %LiveStream{stream | items: []})
+      else
+        hook_socket
+      end
+    end)
+  end
+
+  defp get_stream(socket, name) do
+    # TODO raise on not found
+    %LiveStream{} = stream = socket.assigns[name]
+    stream
+  end
+
+  def delete_stream_item(socket, name, item) do
+    %LiveStream{} = stream = socket.assigns[name]
+    delete_stream_item_by_id(socket, name, stream.item_id.(item))
+  end
+
+  def delete_stream_item_by_id(socket, name, id) do
+    %LiveStream{} = stream = socket.assigns[name]
+    new_stream = %LiveStream{stream | deletes: [id | stream.deletes]}
+    Phoenix.Component.assign(socket, name, new_stream)
+  end
 end
