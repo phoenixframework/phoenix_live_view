@@ -252,6 +252,8 @@ export default class DOMPatch {
         let sort = parent.getAttribute("phx-stream")
         if(sort === "" || sort === "append" || sort === "prepend"){ return }
         let sortBy = (lhs, rhs) => parseFloat(lhs.getAttribute(sort)) > parseFloat(rhs.getAttribute(sort))
+        console.log(Array.from(parent.children).sort(sortBy))
+
         Array.from(parent.children).sort(sortBy).forEach(child => parent.appendChild(child))
       })
     })

@@ -309,7 +309,6 @@ defmodule Phoenix.LiveView do
     * [Uploads (External)](uploads-external.md)
   '''
 
-  alias Phoenix.LiveView.Lifecycle
   alias Phoenix.LiveView.{Socket, LiveStream}
 
   @type unsigned_params :: map
@@ -1474,12 +1473,13 @@ defmodule Phoenix.LiveView do
 
   def stream(socket, name, items, opts) do
     opts = Keyword.merge(opts, name: name)
+
     socket
     |> Phoenix.Component.assign(name, LiveStream.new(items, opts))
     |> attach_hook(name, :after_render, fn hook_socket ->
       if Phoenix.LiveView.Utils.changed?(hook_socket, name) do
         stream = get_stream(hook_socket, name)
-        Phoenix.Component.assign(hook_socket, name, %LiveStream{stream | items: []})
+        Phoenix.Component.assign(hook_socket, name, LiveStream.prune(stream))
       else
         hook_socket
       end
@@ -1490,6 +1490,11 @@ defmodule Phoenix.LiveView do
     # TODO raise on not found
     %LiveStream{} = stream = socket.assigns[name]
     stream
+  end
+
+  def push_stream(%Socket{} = socket, name, items) do
+    %LiveStream{} = stream = socket.assigns[name]
+    Phoenix.Component.assign(socket, name, LiveStream.push_items(stream, items))
   end
 
   def delete_stream_item(socket, name, item) do

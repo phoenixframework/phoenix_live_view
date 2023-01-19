@@ -4,17 +4,35 @@ defmodule Phoenix.LiveView.LiveStream do
 
   def new(items, opts) when is_list(opts) do
     name = Keyword.fetch!(opts, :name)
-    id = Keyword.fetch!(opts, :id)
+    id = Keyword.get_lazy(opts, :id, fn -> to_string(name) end)
     item_id = Keyword.fetch!(opts, :item_id)
 
     %LiveStream{
       id: id,
       name: name,
       item_id: item_id,
-      items: Enum.to_list(items),
+      items: to_list(items, item_id),
       deletes: [],
       count: Enum.count(items)
     }
+  end
+
+  def prune(%LiveStream{} = stream) do
+    %LiveStream{stream | items: [], deletes: []}
+  end
+
+  def push_items(%LiveStream{} = stream, items) do
+    items_list = to_list(items, stream.item_id)
+
+    %LiveStream{
+      stream
+      | items: stream.items ++ items_list,
+        count: stream.count + Enum.count(items_list)
+    }
+  end
+
+  defp to_list(items, item_id_func) do
+    for item <- Enum.to_list(items), do: {item_id_func.(item), item}
   end
 
   defimpl Enumerable, for: LiveStream do

@@ -78,8 +78,8 @@ defmodule Phoenix.LiveView.Comprehension do
   @doc false
   # TODO fix struct
   def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
-    ids = for item <- stream.items, do: stream.item_id.(item)
-    IO.inspect Map.put(comprehension, :id, [stream.id, ids, stream.deletes])
+    ids = for {id, _item} <- stream.items, do: id
+    Map.put(comprehension, :id, [stream.id, ids, stream.deletes])
   end
 
   def __annotate__(comprehension, _collection), do: comprehension
