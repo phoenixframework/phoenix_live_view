@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.11 (2023-01-19)
+
+### Bug Fixes
+  * Fix socket unloading connection for forms that have defaulted prevented
+
 ## 0.18.10 (2023-01-18)
 
 ### Bug Fixes
