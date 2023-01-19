@@ -323,6 +323,9 @@ var LiveView = (() => {
       let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
       return wantsNewTab || e.target.getAttribute("target") === "_blank";
     },
+    isUnloadableFormSubmit(e) {
+      return !e.defaultPrevented && !this.wantsNewTab(e);
+    },
     isNewPageHref(href, currentLocation) {
       let url;
       try {
@@ -4034,7 +4037,7 @@ within:
           this.withinOwners(e.target, (view) => {
             view.disableForm(e.target);
             window.requestAnimationFrame(() => {
-              if (!dom_default.wantsNewTab(e)) {
+              if (dom_default.isUnloadableFormSubmit(e)) {
                 this.unload();
               }
               e.target.submit();
@@ -4045,7 +4048,7 @@ within:
       this.on("submit", (e) => {
         let phxEvent = e.target.getAttribute(this.binding("submit"));
         if (!phxEvent) {
-          if (!dom_default.wantsNewTab(e)) {
+          if (dom_default.isUnloadableFormSubmit(e)) {
             this.unload();
           }
           return;

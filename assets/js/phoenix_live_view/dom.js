@@ -63,6 +63,10 @@ let DOM = {
     return wantsNewTab || e.target.getAttribute("target") === "_blank"
   },
 
+  isUnloadableFormSubmit(e){
+    return !e.defaultPrevented && !this.wantsNewTab(e)
+  },
+
   isNewPageHref(href, currentLocation){
     let url
     try {

@@ -805,7 +805,7 @@ export default class LiveSocket {
           view.disableForm(e.target)
           // safari needs next tick
           window.requestAnimationFrame(() => {
-            if(!DOM.wantsNewTab(e)){ this.unload() }
+            if(DOM.isUnloadableFormSubmit(e)){ this.unload() }
             e.target.submit()
           })
         })
@@ -815,7 +815,7 @@ export default class LiveSocket {
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
       if(!phxEvent){
-        if(!DOM.wantsNewTab(e)){ this.unload() }
+        if(DOM.isUnloadableFormSubmit(e)){ this.unload() }
         return
       }
       e.preventDefault()
