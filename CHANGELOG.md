@@ -1112,7 +1112,7 @@ The steps are:
   4) You should define the CSRF meta tag inside <head> in your layout, before `app.js` is included:
 
       ```heex
-      <%= csrf_meta_tag() %>
+      <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
       <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
       ```
 
