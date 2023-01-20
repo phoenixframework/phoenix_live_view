@@ -379,7 +379,7 @@ export default class LiveSocket {
   }
 
   redirect(to, flash){
-    this.unload();
+    this.unload()
     Browser.redirect(to, flash)
   }
 
