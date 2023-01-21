@@ -2021,7 +2021,7 @@ defmodule Phoenix.Component do
 
   This function is built on top of `Phoenix.HTML.Form.inputs_for/3`.
 
-  For more information about  options and how to build inputs, see `Phoenix.HTML.Form`.
+  For more information about options and how to build inputs, see `Phoenix.HTML.Form`.
 
   ## Examples
 
@@ -2076,8 +2076,8 @@ defmodule Phoenix.Component do
     default: false,
     doc: """
     Skip the automatic rendering of hidden fields to allow for more tight control
-    over the generated markup. You can access `form.hidden` or use
-    `Phoenix.HTML.Form.hidden_inputs_for/1` to generate them manually.
+    over the generated markup. You can access `form.hidden` or use `.hidden_inputs/1`
+    to generate them manually.
     """
   )
 
@@ -2086,22 +2086,113 @@ defmodule Phoenix.Component do
   def inputs_for(assigns) do
     {form, field} = assigns[:field] || raise ArgumentError, "missing :field assign to inputs_for"
 
-    opts =
+    options =
       assigns
       |> Map.take([:id, :as, :default, :append, :prepend])
       |> Enum.reject(fn {_, v} -> v == nil end)
 
+    options =
+      form.options
+      |> Keyword.take([:multipart])
+      |> Keyword.merge(options)
+
     assigns =
       assigns
       |> assign(:field, nil)
-      |> assign(:inputs, Phoenix.HTML.Form.inputs_for(form, field, opts))
+      |> assign(:forms, form.impl.to_form(form.source, form, field, options))
 
     ~H"""
-    <%= for finner <- @inputs do %>
-      <%= unless @skip_hidden, do: Phoenix.HTML.Form.hidden_inputs_for(finner) %>
+    <%= for finner <- @forms do %>
+      <.hidden_inputs :if={!@skip_hidden} form={finner} />
       <%= render_slot(@inner_block, finner) %>
     <% end %>
     """
+  end
+
+  @doc """
+  Renders hidden inputs for a form.
+
+  [INSERT LVATTRDOCS]
+
+  This function is built on top of `Phoenix.HTML.Form.hidden_inputs_for/1`.
+
+  ## Examples
+
+  ```heex
+  <.form
+    :let={f}
+    for={@changeset}
+    phx-change="change_name"
+  >
+    <.inputs_for :let={f_nested} field={{:f, :nested}} skip_hidden>
+      <%= text_input f_nested, :name %>
+      <.hidden_inputs form={f_nested} />
+    </.inputs_for>
+  </.form>
+  ```
+  """
+
+  attr.(:form, Phoenix.HTML.Form,
+    required: true,
+    doc: "A %Phoenix.HTML.Form{} struct."
+  )
+
+  def hidden_inputs(%{form: form} = assigns) do
+    inputs =
+      Enum.flat_map(form.hidden, fn
+        {field, values} when is_list(values) ->
+          id = input_id(form, field)
+          name = input_name(form, field)
+
+          values
+          |> Enum.with_index()
+          |> Enum.map(fn {value, index} ->
+            %{
+              id: id <> "_" <> Integer.to_string(index),
+              name: name <> "[]",
+              value: value
+            }
+          end)
+
+        {field, value} ->
+          [
+            %{
+              id: input_id(form, field),
+              name: input_name(form, field),
+              value: value
+            }
+          ]
+      end)
+
+    assigns = assign(assigns, :inputs, inputs)
+
+    ~H"""
+    <%= for opts <- @inputs do %>
+      <input type="hidden" {opts} />
+    <% end %>
+    """
+  end
+
+  @spec input_name(Phoenix.HTML.Form.t() | atom, atom | String.t()) :: String.t()
+  defp input_name(form_or_name, field)
+
+  defp input_name(%{name: nil}, field), do: to_string(field)
+
+  defp input_name(%{name: name}, field) when is_atom(field) or is_binary(field),
+    do: "#{name}[#{field}]"
+
+  defp input_name(name, field) when (is_atom(name) and is_atom(field)) or is_binary(field),
+    do: "#{name}[#{field}]"
+
+  @spec input_id(Phoenix.HTML.Form.t() | atom, atom | String.t()) :: String.t()
+  defp input_id(%{id: nil}, field), do: "#{field}"
+
+  defp input_id(%{id: id}, field) when is_atom(field) or is_binary(field) do
+    "#{id}_#{field}"
+  end
+
+  defp input_id(name, field) when (is_atom(name) and is_atom(field)) or is_binary(field) do
+    "#{name}_#{field}"
   end
 
   @doc """
