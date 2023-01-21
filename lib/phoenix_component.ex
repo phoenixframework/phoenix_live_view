@@ -2103,74 +2103,26 @@ defmodule Phoenix.Component do
 
     ~H"""
     <%= for finner <- @forms do %>
-      <.hidden_inputs :if={!@skip_hidden} form={finner} />
+      <%= unless @skip_hidden do %>
+        <%= for {name, value_or_values} <- finner.hidden,
+                name = name_for_value_or_values(finner, name, value_or_values),
+                value <- List.wrap(value_or_values) do %>
+          <input type="hidden" name={name} value={value} />
+        <% end %>
+      <% end %>
       <%= render_slot(@inner_block, finner) %>
     <% end %>
     """
   end
 
-  @doc """
-  Renders hidden inputs for a form.
+  @spec name_for_value_or_values(Phoenix.HTML.Form.t() | atom, atom | String.t(), term) ::
+          String.t()
+  defp name_for_value_or_values(form, field, values) when is_list(values) do
+    input_name(form, field) <> "[]"
+  end
 
-  [INSERT LVATTRDOCS]
-
-  This function is built on top of `Phoenix.HTML.Form.hidden_inputs_for/1`.
-
-  ## Examples
-
-  ```heex
-  <.form
-    :let={f}
-    for={@changeset}
-    phx-change="change_name"
-  >
-    <.inputs_for :let={f_nested} field={{:f, :nested}} skip_hidden>
-      <%= text_input f_nested, :name %>
-      <.hidden_inputs form={f_nested} />
-    </.inputs_for>
-  </.form>
-  ```
-  """
-
-  attr.(:form, Phoenix.HTML.Form,
-    required: true,
-    doc: "A %Phoenix.HTML.Form{} struct."
-  )
-
-  def hidden_inputs(%{form: form} = assigns) do
-    inputs =
-      Enum.flat_map(form.hidden, fn
-        {field, values} when is_list(values) ->
-          id = input_id(form, field)
-          name = input_name(form, field)
-
-          values
-          |> Enum.with_index()
-          |> Enum.map(fn {value, index} ->
-            %{
-              id: id <> "_" <> Integer.to_string(index),
-              name: name <> "[]",
-              value: value
-            }
-          end)
-
-        {field, value} ->
-          [
-            %{
-              id: input_id(form, field),
-              name: input_name(form, field),
-              value: value
-            }
-          ]
-      end)
-
-    assigns = assign(assigns, :inputs, inputs)
-
-    ~H"""
-    <%= for opts <- @inputs do %>
-      <input type="hidden" {opts} />
-    <% end %>
-    """
+  defp name_for_value_or_values(form, field, _value) do
+    input_name(form, field)
   end
 
   @spec input_name(Phoenix.HTML.Form.t() | atom, atom | String.t()) :: String.t()
@@ -2183,17 +2135,6 @@ defmodule Phoenix.Component do
 
   defp input_name(name, field) when (is_atom(name) and is_atom(field)) or is_binary(field),
     do: "#{name}[#{field}]"
-
-  @spec input_id(Phoenix.HTML.Form.t() | atom, atom | String.t()) :: String.t()
-  defp input_id(%{id: nil}, field), do: "#{field}"
-
-  defp input_id(%{id: id}, field) when is_atom(field) or is_binary(field) do
-    "#{id}_#{field}"
-  end
-
-  defp input_id(name, field) when (is_atom(name) and is_atom(field)) or is_binary(field) do
-    "#{name}_#{field}"
-  end
 
   @doc """
   Generates a link for live and href navigation.
