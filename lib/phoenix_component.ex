@@ -2086,10 +2086,7 @@ defmodule Phoenix.Component do
   def inputs_for(assigns) do
     {form, field} = assigns[:field] || raise ArgumentError, "missing :field assign to inputs_for"
 
-    options =
-      assigns
-      |> Map.take([:id, :as, :default, :append, :prepend])
-      |> Enum.reject(fn {_, v} -> v == nil end)
+    options = assigns |> Map.take([:id, :as, :default, :append, :prepend]) |> Keyword.new()
 
     options =
       form.options
@@ -2115,26 +2112,13 @@ defmodule Phoenix.Component do
     """
   end
 
-  @spec name_for_value_or_values(Phoenix.HTML.Form.t() | atom, atom | String.t(), term) ::
-          String.t()
   defp name_for_value_or_values(form, field, values) when is_list(values) do
-    input_name(form, field) <> "[]"
+    Phoenix.HTML.Form.input_name(form, field) <> "[]"
   end
 
   defp name_for_value_or_values(form, field, _value) do
-    input_name(form, field)
+    Phoenix.HTML.Form.input_name(form, field)
   end
-
-  @spec input_name(Phoenix.HTML.Form.t() | atom, atom | String.t()) :: String.t()
-  defp input_name(form_or_name, field)
-
-  defp input_name(%{name: nil}, field), do: to_string(field)
-
-  defp input_name(%{name: name}, field) when is_atom(field) or is_binary(field),
-    do: "#{name}[#{field}]"
-
-  defp input_name(name, field) when (is_atom(name) and is_atom(field)) or is_binary(field),
-    do: "#{name}[#{field}]"
 
   @doc """
   Generates a link for live and href navigation.
