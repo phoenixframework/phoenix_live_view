@@ -1937,13 +1937,6 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:params, :any,
-    doc: """
-    Parameters associated to this form.
-    Can be used to supply input values when the data source is an atom.
-    """
-  )
-
   attr.(:rest, :global,
     include: ~w(autocomplete name rel enctype novalidate target),
     doc: "Additional HTML attributes to add to the form tag."
