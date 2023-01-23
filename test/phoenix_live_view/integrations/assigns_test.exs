@@ -5,14 +5,8 @@ defmodule Phoenix.LiveView.AssignsTest do
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.Endpoint
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
-  end
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}

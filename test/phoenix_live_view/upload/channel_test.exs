@@ -79,14 +79,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   setup_all do
-    ExUnit.CaptureLog.capture_log(fn ->
-      start_supervised!(@endpoint)
-      {:ok, _} =
-        Supervisor.start_link([Phoenix.PubSub.child_spec(name: Phoenix.LiveView.PubSub)],
-          strategy: :one_for_one
-        )
-    end)
-
+    start_supervised!(Phoenix.PubSub.child_spec(name: Phoenix.LiveView.PubSub))
     :ok
   end
 

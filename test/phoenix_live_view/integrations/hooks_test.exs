@@ -6,14 +6,8 @@ defmodule Phoenix.LiveView.HooksTest do
 
   alias Phoenix.Component
   alias Phoenix.LiveViewTest.{Endpoint, HooksLive}
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
-  end
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), %{})}

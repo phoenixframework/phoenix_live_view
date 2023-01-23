@@ -5,14 +5,8 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
   import Phoenix.LiveViewTest
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.{Endpoint, Router}
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
-  end
 
   setup do
     conn =

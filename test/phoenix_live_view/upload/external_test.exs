@@ -7,7 +7,6 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
   alias Phoenix.LiveView
   alias Phoenix.LiveViewTest.UploadLive
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   def inspect_html_safe(term) do
     term
@@ -25,11 +24,6 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     {:ok, lv, _} = live_isolated(conn, UploadLive, session: %{})
     :ok = GenServer.call(lv.pid, {:setup, setup})
     {:ok, lv}
-  end
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
   end
 
   setup %{allow: opts} do

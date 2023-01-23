@@ -5,17 +5,11 @@ defmodule Phoenix.LiveView.NavigationTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), %{})}
-  end
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
   end
 
   # Nested used of navigation helpers go to nested_test.exs
