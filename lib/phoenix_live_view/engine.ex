@@ -286,6 +286,7 @@ defmodule Phoenix.LiveView.Engine do
   handled lazily by the diff algorithm.
   """
 
+  alias Phoenix.HTML.Form
   @behaviour Phoenix.Template.Engine
 
   @impl true
@@ -571,10 +572,10 @@ defmodule Phoenix.LiveView.Engine do
           [assign | tail] ->
             quote do
               unquote(__MODULE__).nested_changed_assign?(
-                unquote(@assigns_var),
-                changed,
+                unquote(tail),
                 unquote(assign),
-                unquote(tail)
+                unquote(@assigns_var),
+                changed
               )
             end
         end
@@ -725,14 +726,14 @@ defmodule Phoenix.LiveView.Engine do
   defp component_changed([path], assigns, changed) do
     case path do
       [key] -> changed_assign(changed, key)
-      [key | tail] -> nested_changed_assign(assigns, changed, key, tail)
+      [key | tail] -> nested_changed_assign(tail, key, assigns, changed)
     end
   end
 
   defp component_changed(entries, assigns, changed) do
     Enum.any?(entries, fn
       [key] -> changed_assign?(changed, key)
-      [key | tail] -> nested_changed_assign?(assigns, changed, key, tail)
+      [key | tail] -> nested_changed_assign?(tail, key, assigns, changed)
     end)
   end
 
@@ -1192,14 +1193,14 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def nested_changed_assign?(assigns, changed, head, tail),
-    do: nested_changed_assign(assigns, changed, head, tail) != false
+  def nested_changed_assign?(tail, head, assigns, changed),
+    do: nested_changed_assign(tail, head, assigns, changed) != false
 
-  defp nested_changed_assign(assigns, changed, head, tail) do
+  defp nested_changed_assign(tail, head, assigns, changed) do
     case changed do
       %{^head => changed} ->
         case assigns do
-          %{^head => assigns} -> recur_changed_assign(assigns, changed, tail)
+          %{^head => assigns} -> recur_changed_assign(tail, assigns, changed)
           %{} -> true
         end
 
@@ -1211,19 +1212,23 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp recur_changed_assign(assigns, changed, [{:struct, head} | tail]) do
-    recur_changed_assign(assigns, changed, head, tail)
+  defp recur_changed_assign([{:struct, head} | tail], assigns, changed) do
+    recur_changed_assign(tail, head, assigns, changed)
   end
 
-  defp recur_changed_assign(assigns, changed, [{:access, head} | tail]) do
+  defp recur_changed_assign([{:access, head}], %Form{} = form1, %Form{} = form2) do
+    Form.input_changed?(form1, form2, head)
+  end
+
+  defp recur_changed_assign([{:access, head} | tail], assigns, changed) do
     if match?(%_{}, assigns) or match?(%_{}, changed) do
       true
     else
-      recur_changed_assign(assigns, changed, head, tail)
+      recur_changed_assign(tail, head, assigns, changed)
     end
   end
 
-  defp recur_changed_assign(assigns, changed, head, []) do
+  defp recur_changed_assign([], head, assigns, changed) do
     case {assigns, changed} do
       {%{^head => value}, %{^head => value}} -> false
       {_, %{^head => value}} when is_map(value) -> value
@@ -1231,10 +1236,10 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp recur_changed_assign(assigns, changed, head, tail) do
+  defp recur_changed_assign(tail, head, assigns, changed) do
     case {assigns, changed} do
       {%{^head => assigns_value}, %{^head => changed_value}} ->
-        recur_changed_assign(assigns_value, changed_value, tail)
+        recur_changed_assign(tail, assigns_value, changed_value)
 
       {_, _} ->
         true
