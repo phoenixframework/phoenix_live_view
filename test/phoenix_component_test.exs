@@ -237,4 +237,41 @@ defmodule Phoenix.ComponentUnitTest do
     assert assigns_to_attributes(%{__changed__: %{}, inner_block: fn -> :ok end, a: 1}) == [a: 1]
     assert assigns_to_attributes(%{__slot__: :foo, inner_block: fn -> :ok end, a: 1}) == [a: 1]
   end
+
+  describe "to_form/2" do
+    test "with a map" do
+      form = to_form(%{})
+      assert form.name == nil
+      assert form.id == nil
+
+      form = to_form(%{}, as: :foo)
+      assert form.name == "foo"
+      assert form.id == "foo"
+
+      form = to_form(%{}, as: :foo, id: "bar")
+      assert form.name == "foo"
+      assert form.id == "bar"
+    end
+
+    test "with a form" do
+      base = to_form(%{}, as: "name", id: "id")
+      assert to_form(base, []) == base
+
+      form = to_form(base, as: :foo)
+      assert form.name == "foo"
+      assert form.id == "foo"
+
+      form = to_form(base, id: "bar")
+      assert form.name == "name"
+      assert form.id == "bar"
+
+      form = to_form(base, as: :foo, id: "bar")
+      assert form.name == "foo"
+      assert form.id == "bar"
+
+      form = to_form(base, as: nil, id: nil)
+      assert form.name == nil
+      assert form.id == nil
+    end
+  end
 end

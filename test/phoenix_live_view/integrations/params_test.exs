@@ -254,7 +254,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert {
                "div",
                [
-                 {"data-phx-main", "true"},
+                 {"data-phx-main", _},
                  {"data-phx-session", _},
                  {"data-phx-static", _},
                  {"id", "phx-" <> _}

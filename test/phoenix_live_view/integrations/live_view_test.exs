@@ -201,7 +201,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, connected_html} = live(conn)
 
       assert static_html =~
-               ~r/<article class="thermo"[^>]*data-phx-main=\"true\".*[^>]*>/
+               ~r/<article class="thermo"[^>]*data-phx-main.*[^>]*>/
 
       assert static_html =~ ~r/<\/article>/
 

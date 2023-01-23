@@ -298,7 +298,7 @@ defmodule Phoenix.Component do
              lib/app_web/my_component.ex:15 -->
   ```
 
-  ### The Default Slot
+  ### The default slot
 
   The example above uses the default slot, accessible as an assign named `@inner_block`, to render
   HEEx content via the `render_slot/2` function.
@@ -342,7 +342,7 @@ defmodule Phoenix.Component do
   Now the separation of concerns is maintained: the caller can specify multiple values in a list
   attribute without having to specify the HEEx content that surrounds and separates them.
 
-  ### Named Slots
+  ### Named slots
 
   In addition to the default slot, function components can accept multiple, named slots of HEEx
   content. For example, imagine you want to create a modal that has a header, body, and footer:
@@ -397,7 +397,7 @@ defmodule Phoenix.Component do
   As shown in the example above, `render_slot/1` returns `nil` when an optional slot
   is declared and none is given. This can be used to attach default behaviour.
 
-  ### Slot Attributes
+  ### Slot attributes
 
   Unlike the default slot, it is possible to pass a named slot multiple pieces of HEEx content.
   Named slots can also accept attributes, defined by passing a block to the `slot/3` macro.
@@ -741,6 +741,7 @@ defmodule Phoenix.Component do
   using `Phoenix.LiveView.HTMLFormatter`. Please check that module
   for more information.
   '''
+  @doc type: :macro
   defmacro sigil_H({:<<>>, meta, [expr]}, []) do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
@@ -1362,6 +1363,81 @@ defmodule Phoenix.Component do
   end
 
   @doc """
+  Converts a given data structure to a `Phoenix.HTML.Form`
+  according to `Phoenix.HTML.FormData`.
+
+  This is commonly used to convert a map or an Ecto changeset
+  into a form to be given to the `form/1` component. For example,
+  if you want to create a form based on `handle_event` parameters,
+  you could do:
+
+      def handle_event("submitted", params, socket) do
+        {:noreply, to_form(params)}
+      end
+
+  However, most typically, we specify a name to nest the parameters:
+
+      def handle_event("submitted", %{"user" => user_params}, socket) do
+        {:noreply, to_form(user_params, as: :user)}
+      end
+
+  When using changesets, the name `:as` is automatically retrieved
+  from the schema. For example, if you have a user schema:
+
+      defmodule MyApp.Users.User do
+        use Ecto.Schema
+
+        schema "..." do
+          ...
+        end
+      end
+
+  And then you create a changeset which you pass to `to_form`:
+
+      %MyApp.Blog.Post{}
+      |> Ecto.Changeset.change()
+      |> to_form()
+
+  Phoenix will take care of getting all of the relevant information
+  from the changeset, including errors, data, and names for you.
+  In this case, the parameters will be available under
+  `%{"post" => post_params}`.
+
+  If an existing `Phoenix.HTML.Form` struct is given, the
+  options below will override its existing values if given.
+  Then the remaining of the struct is returned unchanged.
+
+  ## Options
+
+    * `:as` - the `name` prefix to be used in form inputs
+    * `:id` - the `id` prefix to be used in form inputs
+
+  The underlying data may accept additional options when
+  converted to forms. For example, a map accepts `:errors`
+  to list errors, but such option is not accepted by
+  changesets.
+  """
+  def to_form(data, options \\ [])
+
+  def to_form(%Phoenix.HTML.Form{} = data, options) do
+    case Keyword.fetch(options, :as) do
+      {:ok, as} ->
+        name = if as == nil, do: as, else: to_string(as)
+        %{data | name: name, id: Keyword.get(options, :id) || name}
+
+      :error ->
+        case Keyword.fetch(options, :id) do
+          {:ok, id} -> %{data | id: id}
+          :error -> data
+        end
+    end
+  end
+
+  def to_form(data, options) do
+    Phoenix.HTML.FormData.to_form(data, options)
+  end
+
+  @doc """
   Embeds external template files into the module as function components.
 
   ## Options
@@ -1403,6 +1479,7 @@ defmodule Phoenix.Component do
 
   Multiple invocations of `embed_templates` is also supported.
   """
+  @doc type: :macro
   defmacro embed_templates(pattern, opts \\ []) do
     quote do
       Phoenix.Template.compile_all(
@@ -1539,6 +1616,7 @@ defmodule Phoenix.Component do
   As shown in the example above, `render_slot/1` returns `nil` when an optional slot is declared
   and none is given. This can be used to attach default behaviour.
   '''
+  @doc type: :macro
   defmacro slot(name, opts, block)
 
   defmacro slot(name, opts, do: block) when is_atom(name) and is_list(opts) do
@@ -1557,6 +1635,7 @@ defmodule Phoenix.Component do
   @doc """
   Declares a slot. See `slot/3` for more information.
   """
+  @doc type: :macro
   defmacro slot(name, opts \\ []) when is_atom(name) and is_list(opts) do
     {block, opts} = Keyword.pop(opts, :do, nil)
 
@@ -1684,6 +1763,7 @@ defmodule Phoenix.Component do
         """
       end
   '''
+  @doc type: :macro
   defmacro attr(name, type, opts \\ []) when is_atom(name) and is_list(opts) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
@@ -1796,7 +1876,10 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
-  attr.(:prefix, :string, default: nil, doc: "A prefix added before the content of `inner_block`.")
+  attr.(:prefix, :string,
+    default: nil,
+    doc: "A prefix added before the content of `inner_block`."
+  )
 
   attr.(:suffix, :string, default: nil, doc: "A suffix added after the content of `inner_block`.")
   slot.(:inner_block, required: true, doc: "Content rendered inside the `title` tag.")
@@ -1807,84 +1890,146 @@ defmodule Phoenix.Component do
     """
   end
 
-  @doc """
+  @doc ~S'''
   Renders a form.
+
+  This function receives a form struct, generally created with `to_form/2`,
+  and generates the relevant form tags. It can be used either inside LiveView
+  or outside.
 
   [INSERT LVATTRDOCS]
 
-  This function is built on top of `Phoenix.HTML.Form.form_for/4`.
+  ## Examples: inside LiveView
 
-  For more information about  options and how to build inputs, see `Phoenix.HTML.Form`.
+  Inside LiveViews, the `:for` attribute is generally a form struct created
+  with the `to_form/1` function. `to_form/1` expects either a map or an
+  [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html) as the
+  source of data.
 
-  ## Examples
-
-  ### Inside LiveView
-
-  The `:for` attribute is typically an
-  [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html):
+  For example, you may use the parameters received in a
+  `c:Phoenix.LiveView.handle_event/3` callback to create an Ecto changeset
+  and then use `to_form/1` to convert it to a form. Then, in your templates,
+  you pass the `@form` as argument to `:for`:
 
   ```heex
   <.form
-    :let={f}
-    for={@changeset}
+    for={@form}
     phx-change="change_name"
   >
-    <%= text_input f, :name %>
+    <.input field={@form[:email]} />
   </.form>
+  ```
 
+  The `.input` component is generally defined as part of your own application
+  and adds all styling necessary:
+
+  ```heex
+  def input(assigns) do
+    ~H"""
+    <input type="text" name={@field.name} id={@field.id} value={@field.value} class="..." />
+    """
+  end
+  ```
+
+  A form accepts multiple options. For example, if you are doing file uploads
+  and you want to capture submissions, you might write instead:
+
+  ```heex
   <.form
-    :let={user_form}
-    for={@changeset}
+    for={@form}
     multipart
     phx-change="change_user"
     phx-submit="save_user"
   >
-    <%= text_input user_form, :name %>
-    <%= submit "Save" %>
+    ...
+    <input type="submit" value="Save" />
   </.form>
   ```
 
-  Notice how both examples use `phx-change`. The LiveView must implement the `phx-change` event
-  and store the input values as they arrive on change. This is important because, if an unrelated
-  change happens on the page, LiveView should re-render the inputs with their updated values.
-  Without `phx-change`, the inputs would otherwise be cleared. Alternatively, you can use
-  `phx-update="ignore"` on the form to discard any updates.
+  Notice how both examples use `phx-change`. The LiveView must implement the
+  `phx-change` event and store the input values as they arrive on change.
+  This is important because, if an unrelated change happens on the page,
+  LiveView should re-render the inputs with their updated values. Without `phx-change`,
+  the inputs would otherwise be cleared. Alternatively, you can use `phx-update="ignore"`
+  on the form to discard any updates.
 
-  The `:for` attribute can also be an atom, in case you don't have an existing data layer but you
-  want to use the existing form helpers. In this case, you need to pass the input values explicitly
-   as they change (or use `phx-update="ignore"` as per the previous paragraph):
+  ### Non-form `:for` attributes
+
+  The `:for` attribute can also be a map or an Ecto.Changeset. In such cases,
+  a form will be created on the fly, and you can capture it using `:let`:
 
   ```heex
-  <.form :let={user_form} for={:user} multipart phx-change="change_user" phx-submit="save_user">
-    <%= text_input user_form, :name, value: @user_name %>
-    <%= submit "Save" %>
-  </.form>
+  <.form
+    :let={form}
+    for={@changeset}
+    phx-change="change_user"
+  >
   ```
 
-  In those cases, it may be more straight-forward to drop `:let` altogether and simply rely on
-  HTML to generate inputs:
+  However, such approached is discouraged in LiveView for two reasons:
 
-  ```heex
-  <.form for={:form} multipart phx-change="change_user" phx-submit="save_user">
-    <input type="text" name="user[name]" value={@user_name}>
-    <input type="submit" name="Save">
-  </.form>
-  ```
+    * LiveView can better optimize your code if you access the form fields
+      using `@form[:field]` rather than through the let-variable `form`
 
-  ### Outside LiveView
+    * Ecto changesets are meant to be single use. By never storing the changeset
+      in the assign, you will be less tempted to use it across operations
 
-  The `form` component can still be used to submit forms outside of LiveView. In such cases, the
-  `action` attribute MUST be given. Without said attribute, the `form` method and csrf token are
-  discarded.
+  ### A note on `:errors`
+
+  Even if `changeset.errors` is non-empty, errors will not be displayed in a
+  form if [the changeset
+  `:action`](https://hexdocs.pm/ecto/Ecto.Changeset.html#module-changeset-actions)
+  is `nil` or `:ignore`.
+
+  This is useful for things like validation hints on form fields, e.g. an empty
+  changeset for a new form. That changeset isn't valid, but we don't want to
+  show errors until an actual user action has been performed.
+
+  For example, if the user submits and a `Repo.insert/1` is called and fails on
+  changeset validation, the action will be set to `:insert` to show that an
+  insert was attempted, and the presence of that action will cause errors to be
+  displayed. The same is true for Repo.update/delete.
+
+  If you want to show errors manually you can also set the action yourself,
+  either directly on the `Ecto.Changeset` struct field or by using
+  `Ecto.Changeset.apply_action/2`. Since the action can be arbitrary, you can
+  set it to `:validate` or anything else to avoid giving the impression that a
+  database operation has actually been attempted.
+
+  ## Example: outside LiveView (regular HTTP requests)
+
+  The `form` component can still be used to submit forms outside of LiveView.
+  In such cases, the `action` attribute MUST be given. Without said attribute,
+  the `form` method and csrf token are discarded.
 
   ```heex
   <.form :let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
-    <%= text_input f, :body %>
+    <.input field={f[:body]} />
   </.form>
   ```
-  """
+
+  In the example above, we use passed a changeset to `for` and captured
+  the value using `:let={f}`. This approach is ok outside of LiveViews,
+  as there are no change tracking optimizations to consider.
+
+  ### CSRF protection
+
+  CSRF protection is a mechanism to ensure that the user who rendered
+  the form is the one actually submitting it. This module generates a
+  CSRF token by default. Your application should check this token on
+  the server to avoid attackers from making requests on your server on
+  behalf of other users. Phoenix by default checks this token.
+
+  When posting a form with a host in its address, such as "//host.com/path"
+  instead of only "/path", Phoenix will include the host signature in the
+  token and validate the token only if the accessed host is the same as
+  the host in the token. This is to avoid tokens from leaking to third
+  party applications. If this behaviour is problematic, you can generate
+  a non-host specific token with `Plug.CSRFProtection.get_csrf_token/0` and
+  pass it to the form generator via the `:csrf_token` option.
+  '''
   @doc type: :component
-  attr.(:for, :any, required: true, doc: "The form source data.")
+  attr.(:for, :any, required: true, doc: "An existing form or the form source data.")
 
   attr.(:action, :string,
     default: nil,
@@ -1898,9 +2043,9 @@ defmodule Phoenix.Component do
     default: nil,
     doc: """
     The server side parameter in which all params for this form
-    will be collected (i.e. `as: :user_params` would mean all fields for this form will be
-    accessed as `conn.params.user_params` server side).
-    Automatically inflected when a changeset is given.
+    will be collected. For example, setting `as: :user_params` means
+    the parameters will be nested "user_params" in your `handle_event`
+    or `conn.params.user_params` for regular HTTP requests.
     """
   )
 
@@ -1928,15 +2073,6 @@ defmodule Phoenix.Component do
     """
   )
 
-  attr.(:errors, :list,
-    default: [],
-    doc: """
-    Use this to manually pass a keyword list of errors to the form,
-    e.g. `conn.assigns[:errors]`. This option is only used when a connection is used as the form
-    source and it will make the errors available under `f.errors`.
-    """
-  )
-
   attr.(:rest, :global,
     include: ~w(autocomplete name rel enctype novalidate target),
     doc: "Additional HTML attributes to add to the form tag."
@@ -1951,11 +2087,7 @@ defmodule Phoenix.Component do
     form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), [:action, :for, :rest])
 
     # Since FormData may add options, read the actual options from form
-    %{options: opts} =
-      form = %Phoenix.HTML.Form{
-        Phoenix.HTML.FormData.to_form(form_for, form_options)
-        | action: action || "#"
-      }
+    %{options: opts} = form = to_form(form_for, form_options)
 
     # By default, we will ignore action, method, and csrf token
     # unless the action is given.
