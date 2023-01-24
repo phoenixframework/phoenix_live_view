@@ -2611,7 +2611,7 @@ defmodule Phoenix.Component do
       controls
       data-phx-upload-ref={@entry.upload_ref}
       data-phx-entry-ref={@ref}
-      data-phx-hook="Phoenix.LiveVideoPreview"
+      data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
       {@rest}
     />

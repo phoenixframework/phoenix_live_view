@@ -43,21 +43,6 @@ let Hooks = {
       URL.revokeObjectURL(this.url)
     }
   },
-  // Currently this is exactly the same as the LiveImgPreview, but I wanted to add this 
-  // so possibly this can have functionality specific to videos in the future.
-  LiveVideoPreview: {
-    mounted(){
-      this.ref = this.el.getAttribute("data-phx-entry-ref")
-      this.inputEl = document.getElementById(this.el.getAttribute(PHX_UPLOAD_REF))
-      LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => {
-        this.url = url
-        this.el.src = url
-      })
-    },
-    destroyed(){
-      URL.revokeObjectURL(this.url)
-    }
-  },
   FocusWrap: {
     mounted(){
       this.focusStart = this.el.firstElementChild

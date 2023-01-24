@@ -531,7 +531,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       }
       assigns = %{entry: entry}
 
-      assert render(~H|<.live_video_preview entry={@entry}/>|) == ~s|<video controls data-phx-upload-ref="phx-Fz1Xjn4tLhvww0xC" data-phx-entry-ref="0" data-phx-hook="Phoenix.LiveVideoPreview" data-phx-update="ignore" id="phx-preview-0"></video>|
+      assert render(~H|<.live_video_preview entry={@entry}/>|) == ~s|<video controls data-phx-upload-ref="phx-Fz1Xjn4tLhvww0xC" data-phx-entry-ref="0" data-phx-hook="Phoenix.LiveImgPreview" data-phx-update="ignore" id="phx-preview-0"></video>|
     end
 
     test "requires an entry to be given" do
