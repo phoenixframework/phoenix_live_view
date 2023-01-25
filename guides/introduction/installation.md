@@ -183,7 +183,7 @@ However, if you're adding `phoenix_live_view` to an umbrella project, the depend
 }
 ```
 
-Now run the next commands from your web app root:
+Now run the next commands from the root of your web app project:
 
 ```bash
 npm install --prefix assets
