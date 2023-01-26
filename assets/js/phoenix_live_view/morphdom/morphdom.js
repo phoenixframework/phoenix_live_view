@@ -66,6 +66,7 @@ export default function morphdomFactory(morphAttrs) {
     var onBeforeElChildrenUpdated = options.onBeforeElChildrenUpdated || noop;
     var skipFromChildren = options.skipFromChildren || noop;
     var getIndexChildren = options.getIndexChildren || function(){ return false };
+    var addChild = options.addChild || function(parent, child){ return parent.appendChild(child) };
     var childrenOnly = options.childrenOnly === true;
 
     // This object is used as a lookup to quickly find all keyed elements in the original DOM tree.
@@ -409,7 +410,7 @@ export default function morphdomFactory(morphAttrs) {
             if (curToNodeChild.actualize) {
               curToNodeChild = curToNodeChild.actualize(fromEl.ownerDocument || doc);
             }
-            fromEl.appendChild(curToNodeChild);
+            addChild(fromEl, curToNodeChild);
             handleNodeAdded(curToNodeChild);
           }
         }

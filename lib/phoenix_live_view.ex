@@ -1471,35 +1471,29 @@ defmodule Phoenix.LiveView do
   """
   defdelegate detach_hook(socket, name, stage), to: Phoenix.LiveView.Lifecycle
 
-  def stream(socket, name, items, opts) do
+  def stream(socket, name, items, opts \\ []) do
     opts = Keyword.merge(opts, name: name)
 
     socket
     |> Phoenix.Component.assign(name, LiveStream.new(items, opts))
     |> attach_hook(name, :after_render, fn hook_socket ->
-      if Phoenix.LiveView.Utils.changed?(hook_socket, name) do
-        stream = get_stream(hook_socket, name)
-        Phoenix.Component.assign(hook_socket, name, LiveStream.prune(stream))
+      if Phoenix.Component.changed?(hook_socket, name) do
+        Phoenix.Component.update(hook_socket, name, &LiveStream.prune(&1))
       else
         hook_socket
       end
     end)
   end
 
-  defp get_stream(socket, name) do
-    # TODO raise on not found
+  def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
+    at = Keyword.get(opts, :at, -1)
     %LiveStream{} = stream = socket.assigns[name]
-    stream
-  end
-
-  def push_stream(%Socket{} = socket, name, items) do
-    %LiveStream{} = stream = socket.assigns[name]
-    Phoenix.Component.assign(socket, name, LiveStream.push_items(stream, items))
+    Phoenix.Component.assign(socket, name, LiveStream.insert_item(stream, item, at))
   end
 
   def delete_stream_item(socket, name, item) do
     %LiveStream{} = stream = socket.assigns[name]
-    delete_stream_item_by_id(socket, name, stream.item_id.(item))
+    delete_stream_item_by_id(socket, name, stream.dom_id.(item))
   end
 
   def delete_stream_item_by_id(socket, name, id) do

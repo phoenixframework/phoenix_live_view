@@ -63,6 +63,10 @@ let DOM = {
     return wantsNewTab || e.target.getAttribute("target") === "_blank"
   },
 
+  isUnloadableFormSubmit(e){
+    return !e.defaultPrevented && !this.wantsNewTab(e)
+  },
+
   isNewPageHref(href, currentLocation){
     let url
     try {
@@ -140,7 +144,7 @@ let DOM = {
     }
   },
 
-  private(el, key){ return el[PHX_PRIVATE] ? el[PHX_PRIVATE][key] : null },
+  private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
 
   deletePrivate(el, key){ el[PHX_PRIVATE] && delete (el[PHX_PRIVATE][key]) },
 
@@ -151,7 +155,7 @@ let DOM = {
 
   updatePrivate(el, key, defaultVal, updateFunc){
     let existing = this.private(el, key)
-    if(existing === null){
+    if(existing === undefined){
       this.putPrivate(el, key, updateFunc(defaultVal))
     } else {
       this.putPrivate(el, key, updateFunc(existing))

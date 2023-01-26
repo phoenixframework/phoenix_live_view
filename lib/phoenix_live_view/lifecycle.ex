@@ -185,9 +185,15 @@ defmodule Phoenix.LiveView.Lifecycle do
     {:cont, new_socket} =
       reduce_socket(lifecycle.after_render, socket, fn hook, acc ->
         case hook.function.(acc) do
-          ^socket -> {:cont, socket}
-          %Socket{} = new_socket ->  {:cont, Utils.clear_changed(new_socket)}
-          _other -> raise "TODO"
+          ^socket ->
+            {:cont, socket}
+
+          %Socket{} = new_socket ->
+            {:cont, Utils.clear_changed(new_socket)}
+
+          other ->
+            raise ArgumentError,
+                  "expected after_render hook to return a socket, got: #{inspect(other)}"
         end
       end)
 

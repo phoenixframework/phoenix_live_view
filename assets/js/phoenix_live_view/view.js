@@ -513,7 +513,6 @@ export default class View {
       // (as they may have been added back)
       let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null
       let [html, streams] = this.rendered.toString(cids)
-      console.log(streams)
       return [`<${tag}>${html}</${tag}>`, streams]
     })
   }

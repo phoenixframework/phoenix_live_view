@@ -172,7 +172,7 @@ export default class Rendered {
 
   comprehensionToBuffer(rendered, templates, output){
     let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream} = rendered
-    let [_parentId, _childIds, deleteIds] = stream || [null, null, []]
+    let [_parentId, _inserts, deleteIds] = stream || [null, [], []]
     statics = this.templateStatic(statics, templates)
     let compTemplates = templates || rendered[TEMPLATES]
     for(let d = 0; d < dynamics.length; d++){

@@ -41,7 +41,7 @@ export default class DOMPatch {
     this.rootID = view.root.id
     this.html = html
     this.streams = streams
-    this.accumulatedStreams = new Set()
+    this.streamInserts = {}
     this.targetCID = targetCID
     this.cidPatch = isCid(this.targetCID)
     this.callbacks = {
@@ -68,13 +68,6 @@ export default class DOMPatch {
     })
   }
 
-  accumateStreams(el){
-    let stream = el.nodeType === Node.ELEMENT_NODE && el.parentElement.getAttribute("phx-stream")
-    if(!stream){ return }
-    this.accumulatedStreams.add(el.parentElement)
-    return stream
-  }
-
   perform(){
     let {view, liveSocket, container, html} = this
     let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
@@ -91,7 +84,6 @@ export default class DOMPatch {
     let updates = []
     let appendPrependUpdates = []
     let pendingRemoves = []
-    let streamLookup = {}
 
     let externalFormTriggered = null
 
@@ -112,21 +104,14 @@ export default class DOMPatch {
       //
       // - Perform deletes as we see them
       // TODO when I return – it doesn't appear we need childIds at all
-      this.streams.forEach(([parentId, childIds, deleteIds]) => {
-        let parent = container.querySelector(`[id="${parentId}"]`)
-        if(!parent){ throw new Error(`no stream container found for stream with id "${parentId}"`)}
-        streamLookup[parentId] = streamLookup[parentId] || []
+      this.streams.forEach(([parentId, inserts, deleteIds]) => {
+        this.streamInserts = Object.assign(this.streamInserts, inserts)
+        // let parent = container.querySelector(`[id="${parentId}"]`)
+        // if(!parent){ throw new Error(`no stream container found for stream with id "${parentId}"`)}
         deleteIds.forEach(id => {
-          let child = parent.querySelector(`[id="${id}"]`)
+          let child = container.querySelector(`[id="${id}"]`)
           console.log("delete", child)
           if(child){ child.remove() } // TODO handle remove same as onNodeDiscarded
-        })
-        childIds.forEach(id => {
-          let child = parent.querySelector(`[id="${id}"]`)
-          if(child){
-            streamLookup[parentId].push(child)
-            DOM.putPrivate(child, "nextElementSibling", child.nextElementSibling)
-          }
         })
       })
 
@@ -135,18 +120,28 @@ export default class DOMPatch {
         getNodeKey: (node) => {
           return DOM.isPhxDestroyed(node) ? null : node.id
         },
-        getIndexChildren: (node) => { return streamLookup[node.id] || false },
-        skipFromChildren: (fromEl) => {
-          return fromEl.getAttribute && fromEl.getAttribute("phx-stream") !== null
+        skipFromChildren: (from) => { return from.getAttribute("phx-stream") !== null },
+        addChild: (parent, child) => {
+          let streamAt = child.id && this.streamInserts[child.id]
+          if(streamAt === 0){
+            parent.insertAdjacentElement("afterbegin", child)
+            DOM.putPrivate(child, "phx-stream", true)
+          } else if(streamAt === -1){
+            parent.appendChild(child)
+            DOM.putPrivate(child, "phx-stream", true)
+          } else if(streamAt > 0){
+            let sibling = Array.from(parent.children)[streamAt]
+            parent.insertBefore(child, sibling)
+            DOM.putPrivate(child, "phx-stream", true)
+          } else {
+            parent.appendChild(child)
+          }
         },
         onBeforeNodeAdded: (el) => {
           this.trackBefore("added", el)
           return el
         },
         onNodeAdded: (el) => {
-          if(this.accumateStreams(el) === "prepend"){
-            el.parentElement.insertAdjacentElement("afterbegin", el)
-          }
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
             el.srcset = el.srcset
@@ -171,7 +166,7 @@ export default class DOMPatch {
         },
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
-          if(el.parentElement !== null && el.parentElement.getAttribute("phx-stream") !== null){ return false }
+          if(DOM.private(el, "phx-stream")){ return false }
           if(el.parentElement !== null && DOM.isPhxUpdate(el.parentElement, phxUpdate, ["append", "prepend"]) && el.id){ return false }
           if(el.getAttribute && el.getAttribute(phxRemove)){
             pendingRemoves.push(el)
@@ -181,18 +176,36 @@ export default class DOMPatch {
           return true
         },
         onElUpdated: (el) => {
-          if(this.accumateStreams(el)){
-            let sibling = DOM.private(el, "nextElementSibling")
-            if(sibling){
-              el.parentElement.insertBefore(el, sibling)
-              DOM.deletePrivate(el, "nextElementSibling")
-            }
-          }
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
           updates.push(el)
+
+          let streamAt = el.id && this.streamInserts[el.id]
+          if(streamAt === 0){
+            el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
+            DOM.putPrivate(el, "phx-stream", true)
+          } else if(streamAt > 0){
+            let children = Array.from(el.parentElement.children)
+            let oldIndex = children.indexOf(el)
+            if(children.length - 1 === streamAt){
+              el.parentElement.appendChild(el)
+            } else {
+              let sibling = children[streamAt]
+              if(oldIndex > streamAt){
+                el.parentElement.insertBefore(el, sibling)
+              } else {
+                el.parentElement.insertBefore(el, sibling.nextElementSibling)
+              }
+            }
+            DOM.putPrivate(el, "phx-stream", true)
+          }
         },
+        // onBeforeElChildrenUpdated(from, to) {
+        //   if(from.id === "pings"){
+        //     console.log(Array.from(to.querySelectorAll(":scope > div")).map(e => e.id))
+        //   }
+        // },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
@@ -246,15 +259,6 @@ export default class DOMPatch {
             return true
           }
         }
-      })
-
-      this.accumulatedStreams.forEach(parent => {
-        let sort = parent.getAttribute("phx-stream")
-        if(sort === "" || sort === "append" || sort === "prepend"){ return }
-        let sortBy = (lhs, rhs) => parseFloat(lhs.getAttribute(sort)) > parseFloat(rhs.getAttribute(sort))
-        console.log(Array.from(parent.children).sort(sortBy))
-
-        Array.from(parent.children).sort(sortBy).forEach(child => parent.appendChild(child))
       })
     })
 
