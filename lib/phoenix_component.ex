@@ -877,7 +877,6 @@ defmodule Phoenix.Component do
 
   If you don't want the container to affect layout, you can use the CSS property
   `display: contents` or a class that applies it, like TailWind's ".contents".
-
   """
   def live_render(conn_or_socket, view, opts \\ [])
 
