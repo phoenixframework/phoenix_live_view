@@ -875,6 +875,8 @@ defmodule Phoenix.Component do
 
         live_render socket, MyLiveView, container: {:tr, class: "highlight"}
 
+  If you don't want the container to affect layout, you can use the CSS property
+  `display: contents` or a class that applies it, like Tailwind's `.contents`.
   """
   def live_render(conn_or_socket, view, opts \\ [])
 
