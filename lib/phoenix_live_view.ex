@@ -1491,12 +1491,12 @@ defmodule Phoenix.LiveView do
     Phoenix.Component.assign(socket, name, LiveStream.insert_item(stream, item, at))
   end
 
-  def delete_stream_item(socket, name, item) do
+  def stream_delete(socket, name, item) do
     %LiveStream{} = stream = socket.assigns[name]
-    delete_stream_item_by_id(socket, name, stream.dom_id.(item))
+    stream_delete_by_dom_id(socket, name, stream.dom_id.(item))
   end
 
-  def delete_stream_item_by_id(socket, name, id) do
+  def stream_delete_by_dom_id(socket, name, id) do
     %LiveStream{} = stream = socket.assigns[name]
     new_stream = %LiveStream{stream | deletes: [id | stream.deletes]}
     Phoenix.Component.assign(socket, name, new_stream)

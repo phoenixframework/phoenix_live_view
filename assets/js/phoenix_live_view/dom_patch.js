@@ -44,6 +44,8 @@ export default class DOMPatch {
     this.streamInserts = {}
     this.targetCID = targetCID
     this.cidPatch = isCid(this.targetCID)
+    this.pendingRemoves = []
+    this.phxRemove = this.liveSocket.binding("remove")
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: [],
@@ -79,11 +81,10 @@ export default class DOMPatch {
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
-    let phxRemove = liveSocket.binding("remove")
+    let phxStream = liveSocket.binding("stream")
     let added = []
     let updates = []
     let appendPrependUpdates = []
-    let pendingRemoves = []
 
     let externalFormTriggered = null
 
@@ -96,22 +97,16 @@ export default class DOMPatch {
 
     liveSocket.time("morphdom", () => {
 
-      // - Track the siblings of existing stream children so we can
-      //   put them back in the correct order after we patch.
-      //
-      // - We also build an index of affected children to pass to
-      //   morphdom to avoid traversing unchanged children
-      //
-      // - Perform deletes as we see them
-      // TODO when I return – it doesn't appear we need childIds at all
       this.streams.forEach(([parentId, inserts, deleteIds]) => {
         this.streamInserts = Object.assign(this.streamInserts, inserts)
-        // let parent = container.querySelector(`[id="${parentId}"]`)
-        // if(!parent){ throw new Error(`no stream container found for stream with id "${parentId}"`)}
         deleteIds.forEach(id => {
           let child = container.querySelector(`[id="${id}"]`)
-          console.log("delete", child)
-          if(child){ child.remove() } // TODO handle remove same as onNodeDiscarded
+          if(child){
+            if(!this.maybePendingRemove(child)){
+              child.remove()
+              this.onNodeDiscarded(child)
+            }
+          }
         })
       })
 
@@ -120,20 +115,24 @@ export default class DOMPatch {
         getNodeKey: (node) => {
           return DOM.isPhxDestroyed(node) ? null : node.id
         },
-        skipFromChildren: (from) => { return from.getAttribute("phx-stream") !== null },
+        // skip indexing from children when container is stream
+        skipFromChildren: (from) => { return from.getAttribute(phxStream) !== null },
+        // tell morphdom how to add a child
         addChild: (parent, child) => {
           let streamAt = child.id && this.streamInserts[child.id]
+          //streaming
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
-            DOM.putPrivate(child, "phx-stream", true)
+            DOM.putPrivate(child, phxStream, true)
           } else if(streamAt === -1){
             parent.appendChild(child)
-            DOM.putPrivate(child, "phx-stream", true)
+            DOM.putPrivate(child, phxStream, true)
           } else if(streamAt > 0){
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
-            DOM.putPrivate(child, "phx-stream", true)
+            DOM.putPrivate(child, phxStream, true)
           } else {
+            // fallback to standard append
             parent.appendChild(child)
           }
         },
@@ -159,19 +158,12 @@ export default class DOMPatch {
           }
           added.push(el)
         },
-        onNodeDiscarded: (el) => {
-          // nested view handling
-          if(DOM.isPhxChild(el) || DOM.isPhxSticky(el)){ liveSocket.destroyViewByEl(el) }
-          this.trackAfter("discarded", el)
-        },
+        onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
-          if(DOM.private(el, "phx-stream")){ return false }
+          if(DOM.private(el, phxStream)){ return false }
           if(el.parentElement !== null && DOM.isPhxUpdate(el.parentElement, phxUpdate, ["append", "prepend"]) && el.id){ return false }
-          if(el.getAttribute && el.getAttribute(phxRemove)){
-            pendingRemoves.push(el)
-            return false
-          }
+          if(this.maybePendingRemove(el)){ return false }
           if(this.skipCIDSibling(el)){ return false }
           return true
         },
@@ -184,7 +176,7 @@ export default class DOMPatch {
           let streamAt = el.id && this.streamInserts[el.id]
           if(streamAt === 0){
             el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
-            DOM.putPrivate(el, "phx-stream", true)
+            DOM.putPrivate(el, phxStream, true)
           } else if(streamAt > 0){
             let children = Array.from(el.parentElement.children)
             let oldIndex = children.indexOf(el)
@@ -198,14 +190,9 @@ export default class DOMPatch {
                 el.parentElement.insertBefore(el, sibling.nextElementSibling)
               }
             }
-            DOM.putPrivate(el, "phx-stream", true)
+            DOM.putPrivate(el, phxStream, true)
           }
         },
-        // onBeforeElChildrenUpdated(from, to) {
-        //   if(from.id === "pings"){
-        //     console.log(Array.from(to.querySelectorAll(":scope > div")).map(e => e.id))
-        //   }
-        // },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
@@ -275,6 +262,32 @@ export default class DOMPatch {
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
 
+    this.transitionPendingRemoves()
+
+    if(externalFormTriggered){
+      liveSocket.unload()
+      externalFormTriggered.submit()
+    }
+    return true
+  }
+
+  onNodeDiscarded(el){
+    // nested view handling
+    if(DOM.isPhxChild(el) || DOM.isPhxSticky(el)){ liveSocket.destroyViewByEl(el) }
+    this.trackAfter("discarded", el)
+  }
+
+  maybePendingRemove(node){
+    if(node.getAttribute && node.getAttribute(this.phxRemove)){
+      this.pendingRemoves.push(node)
+      return true
+    } else {
+      return false
+    }
+  }
+
+  transitionPendingRemoves(){
+    let {pendingRemoves, liveSocket} = this
     if(pendingRemoves.length > 0){
       liveSocket.transitionRemoves(pendingRemoves)
       liveSocket.requestDOMUpdate(() => {
@@ -286,12 +299,6 @@ export default class DOMPatch {
         this.trackAfter("transitionsDiscarded", pendingRemoves)
       })
     }
-
-    if(externalFormTriggered){
-      liveSocket.unload()
-      externalFormTriggered.submit()
-    }
-    return true
   }
 
   isCIDPatch(){ return this.cidPatch }
