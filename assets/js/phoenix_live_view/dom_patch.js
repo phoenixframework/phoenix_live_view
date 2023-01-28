@@ -8,7 +8,8 @@ import {
   PHX_SKIP,
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
-  PHX_UPDATE
+  PHX_UPDATE,
+  PHX_STREAM,
 } from "./constants"
 
 import {
@@ -65,7 +66,9 @@ export default class DOMPatch {
   }
 
   markPrunableContentForRemoval(){
-    DOM.all(this.container, "[phx-update=append] > *, [phx-update=prepend] > *", el => {
+    let phxUpdate = liveSocket.binding(PHX_UPDATE)
+    DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => el.innerHTML = "")
+    DOM.all(this.container, `[${phxUpdate}=append] > *, [${phxUpdate}=prepend] > *`, el => {
       el.setAttribute(PHX_PRUNE, "")
     })
   }
@@ -81,7 +84,6 @@ export default class DOMPatch {
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
-    let phxStream = liveSocket.binding("stream")
     let added = []
     let updates = []
     let appendPrependUpdates = []
@@ -97,7 +99,7 @@ export default class DOMPatch {
 
     liveSocket.time("morphdom", () => {
 
-      this.streams.forEach(([parentId, inserts, deleteIds]) => {
+      this.streams.forEach(([inserts, deleteIds]) => {
         this.streamInserts = Object.assign(this.streamInserts, inserts)
         deleteIds.forEach(id => {
           let child = container.querySelector(`[id="${id}"]`)
@@ -116,21 +118,21 @@ export default class DOMPatch {
           return DOM.isPhxDestroyed(node) ? null : node.id
         },
         // skip indexing from children when container is stream
-        skipFromChildren: (from) => { return from.getAttribute(phxStream) !== null },
+        skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
           let streamAt = child.id && this.streamInserts[child.id]
           //streaming
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
-            DOM.putPrivate(child, phxStream, true)
+            DOM.putPrivate(child, PHX_STREAM, true)
           } else if(streamAt === -1){
             parent.appendChild(child)
-            DOM.putPrivate(child, phxStream, true)
+            DOM.putPrivate(child, PHX_STREAM, true)
           } else if(streamAt > 0){
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
-            DOM.putPrivate(child, phxStream, true)
+            DOM.putPrivate(child, PHX_STREAM, true)
           } else {
             // fallback to standard append
             parent.appendChild(child)
@@ -161,7 +163,7 @@ export default class DOMPatch {
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
-          if(DOM.private(el, phxStream)){ return false }
+          if(DOM.private(el, PHX_STREAM)){ return false }
           if(el.parentElement !== null && DOM.isPhxUpdate(el.parentElement, phxUpdate, ["append", "prepend"]) && el.id){ return false }
           if(this.maybePendingRemove(el)){ return false }
           if(this.skipCIDSibling(el)){ return false }
@@ -176,11 +178,11 @@ export default class DOMPatch {
           let streamAt = el.id && this.streamInserts[el.id]
           if(streamAt === 0){
             el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
-            DOM.putPrivate(el, phxStream, true)
+            DOM.putPrivate(el, PHX_STREAM, true)
           } else if(streamAt > 0){
             let children = Array.from(el.parentElement.children)
             let oldIndex = children.indexOf(el)
-            if(children.length - 1 === streamAt){
+            if(streamAt >= children.length - 1){
               el.parentElement.appendChild(el)
             } else {
               let sibling = children[streamAt]
@@ -190,7 +192,7 @@ export default class DOMPatch {
                 el.parentElement.insertBefore(el, sibling.nextElementSibling)
               }
             }
-            DOM.putPrivate(el, phxStream, true)
+            DOM.putPrivate(el, PHX_STREAM, true)
           }
         },
         onBeforeElUpdated: (fromEl, toEl) => {
@@ -278,7 +280,7 @@ export default class DOMPatch {
   }
 
   maybePendingRemove(node){
-    if(node.getAttribute && node.getAttribute(this.phxRemove)){
+    if(node.getAttribute && node.getAttribute(this.phxRemove) !== null){
       this.pendingRemoves.push(node)
       return true
     } else {

@@ -1309,10 +1309,10 @@ defmodule Phoenix.LiveView.HTMLEngine do
          _attr,
          id?
        ) do
-    if value in ~w(ignore append prepend replace) do
+    if value in ~w(ignore stream append prepend replace) do
       validate_phx_attrs!(t, meta, state, "phx-update", id?)
     else
-      message = "the value of the attribute \"phx-update\" must be: ignore, append or prepend"
+      message = "the value of the attribute \"phx-update\" must be: ignore, stream, append or prepend"
       raise_syntax_error!(message, attr_meta, state)
     end
   end

@@ -1471,14 +1471,36 @@ defmodule Phoenix.LiveView do
   """
   defdelegate detach_hook(socket, name, stage), to: Phoenix.LiveView.Lifecycle
 
+  @doc ~S"""
+  Assigns a new stream to the socket.
+
+    * `name` - The name of the assign to hold the stream
+    * `items` - The enumerable of items for initial insert
+
+  The following options are supported:
+
+    * `:dom_id` - The optional function to generate each stream item's DOM id.
+      The function accepts each stream item and converts the item to a string id.
+      By default, the `:id` field of a map or struct will be used if the item has
+      such a field, and will be prefixed by the `name` hypenated with the id.
+      For example, the following definitions are equivalent:
+
+          stream(socket, :songs, songs)
+          stream(socket, :songs, songs, dom_id: &("songs-#{&1.id}))
+  """
   def stream(socket, name, items, opts \\ []) do
-    opts = Keyword.merge(opts, name: name)
+    opts = Keyword.merge(opts, name: name, id: Phoenix.LiveView.Utils.random_id())
 
     socket
-    |> Phoenix.Component.assign(name, LiveStream.new(items, opts))
+    |> Phoenix.Component.assign_new(:streams, fn -> %{__changed__: MapSet.new()} end)
+    |> assign_stream(name, LiveStream.new(items, opts))
     |> attach_hook(name, :after_render, fn hook_socket ->
-      if Phoenix.Component.changed?(hook_socket, name) do
-        Phoenix.Component.update(hook_socket, name, &LiveStream.prune(&1))
+      if name in hook_socket.assigns.streams.__changed__ do
+        Phoenix.Component.update(hook_socket, :streams, fn streams ->
+          streams
+          |> Map.update!(:__changed__, &MapSet.delete(&1, name))
+          |> Map.update!(name, &LiveStream.prune(&1))
+        end)
       else
         hook_socket
       end
@@ -1487,18 +1509,36 @@ defmodule Phoenix.LiveView do
 
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
-    %LiveStream{} = stream = socket.assigns[name]
-    Phoenix.Component.assign(socket, name, LiveStream.insert_item(stream, item, at))
+    update_stream(socket, name, &LiveStream.insert_item(&1, item, at))
   end
 
   def stream_delete(socket, name, item) do
-    %LiveStream{} = stream = socket.assigns[name]
-    stream_delete_by_dom_id(socket, name, stream.dom_id.(item))
+    update_stream(socket, name, &LiveStream.delete_item(&1, item))
   end
 
   def stream_delete_by_dom_id(socket, name, id) do
-    %LiveStream{} = stream = socket.assigns[name]
-    new_stream = %LiveStream{stream | deletes: [id | stream.deletes]}
-    Phoenix.Component.assign(socket, name, new_stream)
+    update_stream(socket, name, &LiveStream.delete_item_by_dom_id(&1, id))
+  end
+
+  defp assign_stream(socket, name, %LiveStream{} = stream) do
+    Phoenix.Component.update(socket, :streams, fn streams ->
+      streams
+      |> Map.put(name, stream)
+      |> Map.update!(:__changed__, &MapSet.put(&1, name))
+    end)
+  end
+
+  defp update_stream(socket, name, func) do
+    Phoenix.Component.update(socket, :streams, fn streams ->
+      stream =
+        case Map.fetch(streams, name) do
+          {:ok, stream} -> stream
+          :error -> raise ArgumentError, "no stream with name #{inspect(name)} previously defined"
+        end
+
+      streams
+      |> Map.put(name, func.(stream))
+      |> Map.update!(:__changed__, &MapSet.put(&1, name))
+    end)
   end
 end
