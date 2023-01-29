@@ -1491,17 +1491,32 @@ defmodule Phoenix.Component do
         embed_templates "emails/*.html", suffix: "_html"
         embed_templates "emails/*.text", suffix: "_text"
       end
+
+  Note: this function is the same as `Phoenix.Template.embed_templates/2`.
+  It is also provided here for convenience and documentation purposes.
+  Therefore, if you want to embed templates for other formats, which are
+  not related to `Phoenix.Component`, prefer to
+  `import Phoenix.Template, only: [embed_templates: 1]` than this module.
   """
   @doc type: :macro
   defmacro embed_templates(pattern, opts \\ []) do
-    quote do
+    quote bind_quoted: [pattern: pattern, opts: opts] do
       Phoenix.Template.compile_all(
-        &Phoenix.Component.__embed__(&1, unquote(opts)[:suffix] || ""),
-        Path.expand(unquote(opts)[:root] || __DIR__, __DIR__),
-        unquote(pattern)
+        &Phoenix.Component.__embed__(&1, opts[:suffix]),
+        Path.expand(opts[:root] || __DIR__, __DIR__),
+        pattern
       )
     end
   end
+
+  @doc false
+  def __embed__(path, suffix),
+    do:
+      path
+      |> Path.basename()
+      |> Path.rootname()
+      |> Path.rootname()
+      |> Kernel.<>(suffix || "")
 
   ## Declarative assigns API
 
@@ -1527,15 +1542,6 @@ defmodule Phoenix.Component do
 
     [conditional, imports]
   end
-
-  @doc false
-  def __embed__(path, suffix),
-    do:
-      path
-      |> Path.basename()
-      |> Path.rootname()
-      |> Path.rootname()
-      |> String.replace_suffix("", suffix)
 
   @doc ~S'''
   Declares a function component slot.
