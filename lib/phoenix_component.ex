@@ -1446,6 +1446,9 @@ defmodule Phoenix.Component do
 
     * `:root` - The root directory to embed files. Defaults to the current
       module's directory (`__DIR__`)
+    * `:suffix` - The string value to append to embedded function names. By
+      default, function names will be the name of the template file excluding
+      the format and engine.
 
   A wildcard pattern may be used to select all files within a directory tree.
   For example, imagine a directory listing:
@@ -1479,15 +1482,23 @@ defmodule Phoenix.Component do
         def about_page(assigns)
       end
 
-  Multiple invocations of `embed_templates` is also supported.
+  Multiple invocations of `embed_templates` is also supported, which can be
+  useful if you have more than one template format. For example:
+
+      defmodule MyAppWeb.Emails do
+        use Phoenix.Component
+
+        embed_templates "emails/*.html", suffix: "_html"
+        embed_templates "emails/*.text", suffix: "_text"
+      end
   """
   @doc type: :macro
   defmacro embed_templates(pattern, opts \\ []) do
     quote do
       Phoenix.Template.compile_all(
-        &Phoenix.Component.__embed__/1,
+        &Phoenix.Component.__embed__(&1, unquote(opts)[:suffix] || ""),
         Path.expand(unquote(opts)[:root] || __DIR__, __DIR__),
-        unquote(pattern) <> ".html"
+        unquote(pattern)
       )
     end
   end
@@ -1518,7 +1529,13 @@ defmodule Phoenix.Component do
   end
 
   @doc false
-  def __embed__(path), do: path |> Path.basename() |> Path.rootname() |> Path.rootname()
+  def __embed__(path, suffix),
+    do:
+      path
+      |> Path.basename()
+      |> Path.rootname()
+      |> Path.rootname()
+      |> String.replace_suffix("", suffix)
 
   @doc ~S'''
   Declares a function component slot.
