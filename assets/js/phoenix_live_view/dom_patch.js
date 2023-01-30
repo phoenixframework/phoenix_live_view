@@ -19,7 +19,7 @@ import {
 
 import DOM from "./dom"
 import DOMPostMorphRestorer from "./dom_post_morph_restorer"
-import morphdom from "./morphdom"
+import morphdom from "morphdom"
 
 export default class DOMPatch {
   static patchEl(fromEl, toEl, activeElement){
@@ -66,7 +66,7 @@ export default class DOMPatch {
   }
 
   markPrunableContentForRemoval(){
-    let phxUpdate = liveSocket.binding(PHX_UPDATE)
+    let phxUpdate = this.liveSocket.binding(PHX_UPDATE)
     DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => el.innerHTML = "")
     DOM.all(this.container, `[${phxUpdate}=append] > *, [${phxUpdate}=prepend] > *`, el => {
       el.setAttribute(PHX_PRUNE, "")
@@ -275,7 +275,7 @@ export default class DOMPatch {
 
   onNodeDiscarded(el){
     // nested view handling
-    if(DOM.isPhxChild(el) || DOM.isPhxSticky(el)){ liveSocket.destroyViewByEl(el) }
+    if(DOM.isPhxChild(el) || DOM.isPhxSticky(el)){ this.liveSocket.destroyViewByEl(el) }
     this.trackAfter("discarded", el)
   }
 
