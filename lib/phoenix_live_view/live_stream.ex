@@ -5,16 +5,16 @@ defmodule Phoenix.LiveView.LiveStream do
 
   alias Phoenix.LiveView.LiveStream
 
-  def new(items, opts) when is_list(opts) do
-    name = Keyword.fetch!(opts, :name)
+  def new(name, items, opts) when is_list(opts) do
     dom_prefix = to_string(name)
     dom_id = Keyword.get_lazy(opts, :dom_id, fn -> &default_id(dom_prefix, &1) end)
-    items_list = for item <- items, do: {dom_id.(item), -1, item}
 
     unless is_function(dom_id, 1) do
       raise ArgumentError,
-            "stream :dom_id's must return a function which accepts each item, got: #{inspect(dom_id)}"
+            "stream :dom_id must return a function which accepts each item, got: #{inspect(dom_id)}"
     end
+
+    items_list = for item <- items, do: {dom_id.(item), -1, item}
 
     %LiveStream{
       name: name,

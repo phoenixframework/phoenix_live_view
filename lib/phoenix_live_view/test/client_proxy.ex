@@ -153,7 +153,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         |> maybe_put_container(resp)
         |> Map.put(:root_view, root_view)
         |> put_view(root_view, rendered)
-        |> detect_added_or_removed_children(root_view, root_html)
+        |> detect_added_or_removed_children(root_view, root_html, [])
 
       send_caller(new_state, {:ok, build_client_view(root_view), DOM.to_html(new_state.html)})
       {:ok, new_state}
@@ -644,12 +644,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           ids: Map.put(state.ids, new_view.id, new_view.topic)
       },
       view,
-      DOM.render_diff(rendered)
+      DOM.render_diff(rendered),
+      rendered.streams
     )
   end
 
-  defp patch_view(state, view, child_html) do
-    case DOM.patch_id(view.id, state.html, child_html) do
+  defp patch_view(state, view, child_html, streams) do
+    case DOM.patch_id(view.id, state.html, child_html, streams) do
       {new_html, [_ | _] = will_destroy_cids} ->
         topic = view.topic
         state = %{state | html: new_html}
@@ -721,16 +722,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         new_view = %ClientProxy{view | rendered: rendered}
 
         %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
-        |> patch_view(new_view, DOM.render_diff(rendered))
-        |> detect_added_or_removed_children(new_view, html_before)
+        |> patch_view(new_view, DOM.render_diff(rendered), rendered.streams)
+        |> detect_added_or_removed_children(new_view, html_before, rendered.streams)
 
       :error ->
         state
     end
   end
 
-  defp detect_added_or_removed_children(state, view, html_before) do
-    new_state = recursive_detect_added_or_removed_children(state, view, html_before)
+  defp detect_added_or_removed_children(state, view, html_before, streams) do
+    new_state = recursive_detect_added_or_removed_children(state, view, html_before, streams)
     {:ok, new_view} = fetch_view_by_topic(new_state, view.topic)
 
     ids_after =
@@ -748,14 +749,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp recursive_detect_added_or_removed_children(state, view, html_before) do
+  defp recursive_detect_added_or_removed_children(state, view, html_before, streams) do
     state.html
     |> DOM.inner_html!(view.id)
     |> DOM.find_live_views()
     |> Enum.reduce(state, fn {id, session, static}, acc ->
       case fetch_view_by_id(acc, id) do
         {:ok, view} ->
-          patch_view(acc, view, DOM.inner_html!(html_before, view.id))
+          patch_view(acc, view, DOM.inner_html!(html_before, view.id), streams)
 
         :error ->
           static = static || Map.get(state.root_view.child_statics, id)
@@ -766,7 +767,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           acc
           |> put_view(child_view, rendered)
           |> put_child(view, id, child_view.session_token)
-          |> recursive_detect_added_or_removed_children(child_view, acc.html)
+          |> recursive_detect_added_or_removed_children(child_view, acc.html, streams)
       end
     end)
   end

@@ -1474,6 +1474,9 @@ defmodule Phoenix.LiveView do
   @doc ~S"""
   Assigns a new stream to the socket.
 
+  Streams are a mechanism for managing large collections on the client without
+  keeping the resources on the server.
+
     * `name` - The name of the assign to hold the stream
     * `items` - The enumerable of items for initial insert
 
@@ -1487,13 +1490,48 @@ defmodule Phoenix.LiveView do
 
           stream(socket, :songs, songs)
           stream(socket, :songs, songs, dom_id: &("songs-#{&1.id}))
+
+  Once a stream is defined, a new `@streams` assign is available containing
+  the name of the defined streams. For example, in the above definition, the
+  stream may be referenced as `@streams.songs` in your template.
+
+  ## Required DOM attributes
+
+  For stream items to be trackable on the client, the following requirements
+  must be met:
+
+    1. The parent DOM container must include a `phx-update="stream"` attribute
+    2. Each stream item must include its DOM id on the item's element
+
+  When consuming a stream in a template, the DOM id and item is passed as a tuple,
+  allowing convenient inclusion of the DOM id for each item. For example:
+
+  ```heex
+  <table>
+    <tbody id="songs" phx-update="stream">
+      <tr
+        :for={{dom_id, song} <- @streams.songs}
+        id={dom_id}
+      >
+        <td><%= song.title %></td>
+        <td><%= song.duration %></td>
+      </tr>
+    </tbody>
+  </table>
+  ```
+  We consume the stream in a for comprehension but referencing the
+  `@streams.songs` assign. We used the computed DOM id to populate
+  the `<tr>` id, then we render the table row as usual.
+
+  Now `stream_insert/3` and `stream_delete/3` may be issued and new rows will
+  be inserted or deleted from the client.
   """
   def stream(socket, name, items, opts \\ []) do
-    opts = Keyword.merge(opts, name: name, id: Phoenix.LiveView.Utils.random_id())
+    opts = Keyword.merge(opts, id: Phoenix.LiveView.Utils.random_id())
 
     socket
     |> Phoenix.Component.assign_new(:streams, fn -> %{__changed__: MapSet.new()} end)
-    |> assign_stream(name, LiveStream.new(items, opts))
+    |> assign_stream(name, LiveStream.new(name, items, opts))
     |> attach_hook(name, :after_render, fn hook_socket ->
       if name in hook_socket.assigns.streams.__changed__ do
         Phoenix.Component.update(hook_socket, :streams, fn streams ->
@@ -1507,15 +1545,66 @@ defmodule Phoenix.LiveView do
     end)
   end
 
+  @doc """
+  Inserts a new item or updates an existing item in the stream.
+
+  By default, the item is appended to the parent DOM container.
+  The `:at` option may be provided to insert or update an item
+  to a particular index in the collection on the client.
+
+  ## Examples
+
+  Imagine you define a stream on mount with a single item:
+
+      stream(socket, :songs, [%Song{id: 1, title: "Song 1"}])
+
+  Then, in a callback such as `handle_info` or `handle_event`, you
+  can append a new song:
+
+      stream_insert(socket, :songs, [%Song{id: 2, title: "Song 2"}])
+
+  Or prepend a new song with `at: 0`:
+
+      stream_insert(socket, :songs, [%Song{id: 2, title: "Song 2"}], at: 0)
+
+  Or updating an exsiting song, while also moving it to the top of the collection:
+
+      stream_insert(socket, :songs, [%Song{id: 1, title: "Song 1 updated"}], at: 0)
+  """
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
     update_stream(socket, name, &LiveStream.insert_item(&1, item, at))
   end
 
+  @doc """
+  Deletes an item from the stream.
+
+  The item's DOM is computed from the `:dom_id` provided in the `stream/3` definition.
+  Delete information for this DOM id is sent to the client and the item's element
+  is removed from the DOM, following the same behavior of element removal, such as
+  invoking `phx-remove` commands and executing client hook `destroyed()` callbacks.
+
+  ## Examples
+
+      def handle_event("delete", %{"id" => id})
+        song = get_song!(id)
+        {:noreply, stream_delete(socket, :songs, song)}
+      end
+
+  See `stream_delete_by_dom_id/3` to remove an item without requiring the
+  original datastructure.
+  """
   def stream_delete(socket, name, item) do
     update_stream(socket, name, &LiveStream.delete_item(&1, item))
   end
 
+  @doc """
+  Deletes an item from the stream given its computed DOM id.
+
+  Behaves just like `stream_delete/3`, but accept the precomputed DOM id,
+  which allows deleting from a stream without fetching or building the original
+  stream datastructure.
+  """
   def stream_delete_by_dom_id(socket, name, id) do
     update_stream(socket, name, &LiveStream.delete_item_by_dom_id(&1, id))
   end
