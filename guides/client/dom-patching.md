@@ -7,23 +7,20 @@ is useful for client-side interop with existing libraries that do their
 own DOM operations. The following `phx-update` values are supported:
 
   * `replace` - the default operation. Replaces the element with the contents
+  * `stream` - supports stream operations. Streams are used to manage large
+    collections in the UI without having to store the collection on the server
   * `ignore` - ignores updates to the DOM regardless of new content changes
-  * `append` - append the new DOM contents instead of replacing
-  * `prepend` - prepend the new DOM contents instead of replacing
 
 When using `phx-update`, a unique DOM ID must always be set in the
-container. If using "append" or "prepend", a DOM ID must also be set
-for each child. When appending or prepending elements containing an
+container. If using "stream", a DOM ID must also be set
+for each child. When inserting stream elements containing an
 ID already present in the container, LiveView will replace the existing
-element with the new content instead appending or prepending a new
-element.
+element with the new content. See `Phoenix.LiveView.stream/3` for more
+information.
 
 The "ignore" behaviour is frequently used when you need to integrate
 with another JS library. Note only the element contents are ignored,
 its attributes can still be updated.
-
-The "append" and "prepend" feature is often used with "Temporary assigns"
-to work with large amounts of data. Let's learn more.
 
 To react to elements being mounted to the DOM, the `phx-mounted` binding
 can be used. For example, to animate an element on mount:

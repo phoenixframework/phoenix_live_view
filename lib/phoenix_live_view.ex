@@ -1493,14 +1493,16 @@ defmodule Phoenix.LiveView do
 
   Once a stream is defined, a new `@streams` assign is available containing
   the name of the defined streams. For example, in the above definition, the
-  stream may be referenced as `@streams.songs` in your template.
+  stream may be referenced as `@streams.songs` in your template. Stream items
+  are temporary and freed from socket state as soon as they are rendered.
 
   ## Required DOM attributes
 
   For stream items to be trackable on the client, the following requirements
   must be met:
 
-    1. The parent DOM container must include a `phx-update="stream"` attribute
+    1. The parent DOM container must include a `phx-update="stream"` attribute,
+      along with a unique DOM id.
     2. Each stream item must include its DOM id on the item's element
 
   When consuming a stream in a template, the DOM id and item is passed as a tuple,
