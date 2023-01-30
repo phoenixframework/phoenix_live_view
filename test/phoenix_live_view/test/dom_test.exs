@@ -132,7 +132,7 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html))
+      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -161,7 +161,7 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html))
+      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -189,7 +189,7 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html))
+      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -216,7 +216,7 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html))
+      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -229,10 +229,10 @@ defmodule Phoenix.LiveViewTest.DOMTest do
   describe "merge_diff" do
     test "merges unless static" do
       assert DOM.merge_diff(%{0 => "bar", s: "foo"}, %{0 => "baz"}) ==
-               %{0 => "baz", s: "foo"}
+               %{0 => "baz", s: "foo", streams: []}
 
       assert DOM.merge_diff(%{s: "foo", d: []}, %{s: "bar"}) ==
-               %{s: "bar"}
+               %{s: "bar", streams: []}
     end
   end
 end

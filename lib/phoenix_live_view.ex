@@ -1561,15 +1561,32 @@ defmodule Phoenix.LiveView do
   Then, in a callback such as `handle_info` or `handle_event`, you
   can append a new song:
 
-      stream_insert(socket, :songs, [%Song{id: 2, title: "Song 2"}])
+      stream_insert(socket, :songs, %Song{id: 2, title: "Song 2"})
 
   Or prepend a new song with `at: 0`:
 
-      stream_insert(socket, :songs, [%Song{id: 2, title: "Song 2"}], at: 0)
+      stream_insert(socket, :songs, %Song{id: 2, title: "Song 2"}, at: 0)
 
   Or updating an exsiting song, while also moving it to the top of the collection:
 
-      stream_insert(socket, :songs, [%Song{id: 1, title: "Song 1 updated"}], at: 0)
+      stream_insert(socket, :songs, %Song{id: 1, title: "Song 1 updated"}, at: 0)
+
+  ## Updating Items
+
+  As shown, an existing on the client can be updating by issuing a `stream_insert` for
+  the existing item. When the client updates an existing item with an "append" operation
+  (passing the `at: -1` option), the item will remain in the same location as it was
+  previously, and will not moved to the end of the parent children. To both update an
+  existing item and move it to the end of a collection, issue a `stream_delete`, followed
+  by a `stream_insert`. For example:
+
+     socket = get_song!(id)
+
+      socket
+      |> stream_delete(:songs, song)
+      |> stream_insert(:songs, song, at: -1)
+
+  See `stream_delete/3` for more information on deleting items.
   """
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
@@ -1598,13 +1615,36 @@ defmodule Phoenix.LiveView do
     update_stream(socket, name, &LiveStream.delete_item(&1, item))
   end
 
-  @doc """
+  @doc ~S'''
   Deletes an item from the stream given its computed DOM id.
 
   Behaves just like `stream_delete/3`, but accept the precomputed DOM id,
   which allows deleting from a stream without fetching or building the original
   stream datastructure.
-  """
+
+  ## Examples
+
+
+      def render(assigns) do
+        ~H"""
+        <table>
+          <tbody id="songs" phx-update="stream">
+            <tr
+              :for={{dom_id, song} <- @streams.songs}
+              id={dom_id}
+            >
+              <td><%= song.title %></td>
+              <td><button phx-click={JS.push("delete", value: %{id: dom_id})}>delete</button></td>
+            </tr>
+          </tbody>
+        </table>
+        """
+      end
+
+      def handle_event("delete", %{"id" => dom_id})
+        {:noreply, stream_delete_by_dom_id(socket, :songs, dom_id)}
+      end
+  '''
   def stream_delete_by_dom_id(socket, name, id) do
     update_stream(socket, name, &LiveStream.delete_item_by_dom_id(&1, id))
   end
