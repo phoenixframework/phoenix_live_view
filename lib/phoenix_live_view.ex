@@ -1407,15 +1407,17 @@ defmodule Phoenix.LiveView do
   patches, and regular messages when necessary, and to inject
   common functionality. Hooks may be attached to any of the following
   lifecycle stages: `:mount` (via `on_mount/1`), `:handle_params`,
-  `:handle_event`, and `:handle_info`.
+  `:handle_event`, `:handle_info`, and `:after_render`.
 
   ## Return Values
 
   Lifecycle hooks take place immediately before a given lifecycle
-  callback is invoked on the LiveView. A hook may return `{:halt, socket}`
-  to halt the reduction, otherwise it must return `{:cont, socket}` so
-  the operation may continue until all hooks have been invoked for
-  the current stage.
+  callback is invoked on the LiveView. With the exception of `:after_render`,
+  A hook may return `{:halt, socket}` to halt the reduction, otherwise
+  it must return `{:cont, socket}` so the operation may continue until
+  all hooks have been invoked for the current stage. For `:after_render`
+  hooks, the `socket` itself must be returned. Any updates to the socket
+  assigns *will not* trigger a new render or diff calculation to the client.
 
   ## Halting the lifecycle
 
