@@ -403,6 +403,7 @@ defmodule Phoenix.LiveViewTest.DOM do
       end)
 
     cond do
+      # reorder and/or remove stream children
       content_changed? && type == "stream" ->
         children = updated_existing_children ++ updated_appended
 
