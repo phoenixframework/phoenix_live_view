@@ -361,7 +361,6 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  require IEx
   defp apply_phx_update(type, html_tree, {tag, attrs, appended_children} = node, streams)
        when type in ["stream", "append", "prepend"] do
     {stream_inserts, stream_deletes} =
