@@ -121,21 +121,18 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let streamAt = child.id && this.streamInserts[child.id]
+          let streamAt = child.id ? this.streamInserts[child.id] : undefined
+          if(streamAt === undefined) { return parent.appendChild(child) }
+
           //streaming
+          DOM.putPrivate(child, PHX_STREAM, true)
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
-            DOM.putPrivate(child, PHX_STREAM, true)
           } else if(streamAt === -1){
             parent.appendChild(child)
-            DOM.putPrivate(child, PHX_STREAM, true)
           } else if(streamAt > 0){
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
-            DOM.putPrivate(child, PHX_STREAM, true)
-          } else {
-            // fallback to standard append
-            parent.appendChild(child)
           }
         },
         onBeforeNodeAdded: (el) => {
