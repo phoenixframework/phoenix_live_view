@@ -1463,9 +1463,6 @@ defmodule Phoenix.LiveView do
 
   Replying to a client event:
 
-      # HEEx:
-      # <div id="my-client-hook" phx-hook="ClientHook"></div>
-
       # JavaScript:
       # let Hooks = {}
       # Hooks.ClientHook = {
@@ -1476,6 +1473,12 @@ defmodule Phoenix.LiveView do
       #   }
       # }
       # let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+
+      def render(assigns) do
+        ~H"\""
+        <div id="my-client-hook" phx-hook="ClientHook"></div>
+        "\""
+      end
 
       def mount(_params, _session, socket) do
         socket =
