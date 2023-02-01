@@ -183,6 +183,7 @@ defmodule Phoenix.LiveView.Lifecycle do
     case function.(hook, acc) do
       {:cont, %Socket{} = socket} -> reduce_socket(hooks, socket, function)
       {:halt, %Socket{} = socket} -> {:halt, socket}
+      {:reply, reply, %Socket{} = socket} -> {:reply, reply, socket}
       other -> bad_lifecycle_response!(other, hook)
     end
   end
@@ -195,10 +196,24 @@ defmodule Phoenix.LiveView.Lifecycle do
 
     Expected one of:
 
-        {:cont, %Socket{}}
-        {:halt, %Socket{}}
+        #{expected_return(hook)}
 
     Got: #{inspect(result)}
+    """
+  end
+
+  defp expected_return(%{stage: :handle_event}) do
+    """
+    {:cont, %Socket{}}
+    {:halt, %Socket{}}
+    {:reply, map, %Socket{}}
+    """
+  end
+
+  defp expected_return(_) do
+    """
+    {:cont, %Socket{}}
+    {:halt, %Socket{}}
     """
   end
 

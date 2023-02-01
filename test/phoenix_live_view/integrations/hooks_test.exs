@@ -88,6 +88,32 @@ defmodule Phoenix.LiveView.HooksTest do
     assert lv |> element("#inc") |> render_click() =~ "count:8"
   end
 
+  test "handle_event/3 halts after reply", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    HooksLive.attach_hook(lv, :greet_1, :handle_event, fn "greet", %{"name" => name}, socket ->
+      {:reply, %{msg: "Hello, #{name}!"}, socket}
+    end)
+
+    HooksLive.attach_hook(lv, :greet_2, :handle_event, fn "greet", %{"name" => name}, socket ->
+      {:reply, %{msg: "Hi, #{name}!"}, socket}
+    end)
+
+    render_hook(lv, :greet, %{name: "Mike"})
+
+    assert_reply(lv, %{msg: "Hello, Mike!"})
+  end
+
+  test "handle_event/3 error output prints reply form", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    HooksLive.attach_hook(lv, :boom, :handle_event, fn _, _, _ -> :boom end)
+
+    assert HooksLive.exits_with(lv, ArgumentError, fn ->
+             lv |> element("#inc") |> render_click()
+           end) =~ "{:reply, map, %Socket{}}"
+  end
+
   test "handle_params/3 raises when hook result is invalid", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle")
 
