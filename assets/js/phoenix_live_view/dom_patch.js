@@ -171,26 +171,7 @@ export default class DOMPatch {
             externalFormTriggered = el
           }
           updates.push(el)
-
-          let streamAt = el.id && this.streamInserts[el.id]
-          if(streamAt === 0){
-            el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
-            DOM.putPrivate(el, PHX_STREAM, true)
-          } else if(streamAt > 0){
-            let children = Array.from(el.parentElement.children)
-            let oldIndex = children.indexOf(el)
-            if(streamAt >= children.length - 1){
-              el.parentElement.appendChild(el)
-            } else {
-              let sibling = children[streamAt]
-              if(oldIndex > streamAt){
-                el.parentElement.insertBefore(el, sibling)
-              } else {
-                el.parentElement.insertBefore(el, sibling.nextElementSibling)
-              }
-            }
-            DOM.putPrivate(el, PHX_STREAM, true)
-          }
+          this.maybeReOrderStream(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.cleanChildNodes(toEl, phxUpdate)
@@ -282,6 +263,29 @@ export default class DOMPatch {
       return true
     } else {
       return false
+    }
+  }
+
+  maybeReOrderStream(el){
+    let streamAt = el.id ? this.streamInserts[el.id] : undefined
+    if(streamAt === undefined){ return }
+
+    DOM.putPrivate(el, PHX_STREAM, true)
+    if(streamAt === 0){
+      el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
+    } else if(streamAt > 0){
+      let children = Array.from(el.parentElement.children)
+      let oldIndex = children.indexOf(el)
+      if(streamAt >= children.length - 1){
+        el.parentElement.appendChild(el)
+      } else {
+        let sibling = children[streamAt]
+        if(oldIndex > streamAt){
+          el.parentElement.insertBefore(el, sibling)
+        } else {
+          el.parentElement.insertBefore(el, sibling.nextElementSibling)
+        }
+      }
     }
   }
 
