@@ -94,7 +94,7 @@ defmodule Phoenix.LiveView do
   template, which stands for HTML+EEx. They are an extension of Elixir's
   builtin EEx templates, with support for HTML validation, syntax-based
   components, smart change tracking, and more. You can learn more about
-  the template syntax in `Phoenix.Component.sigil_H/2` (note 
+  the template syntax in `Phoenix.Component.sigil_H/2` (note
   `Phoenix.Component` is automatically imported when you use `Phoenix.LiveView`).
 
   Next, decide where you want to use your LiveView.
@@ -1436,7 +1436,18 @@ defmodule Phoenix.LiveView do
   attach hooks to intercept specific events before detaching themselves,
   while allowing other events to continue normally.
 
+  ## Replying to events
+
+  Hooks attached to the `:handle_event` stage are able to reply to client events.
+  This is useful especially for [JavaScript
+  interoperability](js-interop.html#client-hooks-via-phx-hook) because a client hook
+  can push an event and receive a reply.
+
+  Note that replying to an event halts the lifecycle.
+
   ## Examples
+
+  Attaching and detaching a hook:
 
       def mount(_params, _session, socket) do
         socket =
@@ -1446,6 +1457,35 @@ defmodule Phoenix.LiveView do
               {:halt, detach_hook(socket, :my_hook, :handle_event)}
 
             _event, _params, socket ->
+              {:cont, socket}
+          end)
+
+        {:ok, socket}
+      end
+
+  Replying to a client event:
+
+      # HEEx:
+      # <div id="my-client-hook" phx-hook="ClientHook"></div>
+
+      # JavaScript:
+      # let Hooks = {}
+      # Hooks.ClientHook = {
+      #   mounted() {
+      #     this.pushEvent("ClientHook:mounted", {hello: "world"}, (reply) => {
+      #       console.log("received reply:", reply)
+      #     })
+      #   }
+      # }
+      # let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+
+      def mount(_params, _session, socket) do
+        socket =
+          attach_hook(socket, :reply_on_client_hook_mounted, :handle_event, fn
+            "ClientHook:mounted", params, socket ->
+              {:reply, params, socket}
+
+            _, _, socket ->
               {:cont, socket}
           end)
 

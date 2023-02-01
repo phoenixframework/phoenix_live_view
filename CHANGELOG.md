@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.12
+
+### Enhancements
+  * Allow replies from `:handle_event` lifecycle hooks
+
 ## 0.18.11 (2023-01-19)
 
 ### Bug Fixes
