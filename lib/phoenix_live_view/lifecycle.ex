@@ -169,7 +169,7 @@ defmodule Phoenix.LiveView.Lifecycle do
     case function.(hook, acc) do
       {:cont, %Socket{} = socket} -> reduce_handle_event(hooks, socket, function)
       {:halt, %Socket{} = socket} -> {:halt, socket}
-      {:reply, reply, %Socket{} = socket} -> {:reply, reply, socket}
+      {:halt, reply, %Socket{} = socket} -> {:halt, reply, socket}
       other -> bad_lifecycle_response!(other, hook)
     end
   end
@@ -216,7 +216,7 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
     {:cont, %Socket{}}
     {:halt, %Socket{}}
-    {:reply, map, %Socket{}}
+    {:halt, map, %Socket{}}
     """
   end
 

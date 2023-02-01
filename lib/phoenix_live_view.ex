@@ -1438,12 +1438,10 @@ defmodule Phoenix.LiveView do
 
   ## Replying to events
 
-  Hooks attached to the `:handle_event` stage are able to reply to client events.
-  This is useful especially for [JavaScript
+  Hooks attached to the `:handle_event` stage are able to reply to client events
+  by returning `{:halt, reply, socket}`. This is useful especially for [JavaScript
   interoperability](js-interop.html#client-hooks-via-phx-hook) because a client hook
   can push an event and receive a reply.
-
-  Note that replying to an event halts the lifecycle.
 
   ## Examples
 
@@ -1483,7 +1481,7 @@ defmodule Phoenix.LiveView do
         socket =
           attach_hook(socket, :reply_on_client_hook_mounted, :handle_event, fn
             "ClientHook:mounted", params, socket ->
-              {:reply, params, socket}
+              {:halt, params, socket}
 
             _, _, socket ->
               {:cont, socket}
