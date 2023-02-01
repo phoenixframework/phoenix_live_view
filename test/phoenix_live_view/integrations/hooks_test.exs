@@ -104,14 +104,30 @@ defmodule Phoenix.LiveView.HooksTest do
     assert_reply(lv, %{msg: "Hello, Mike!"})
   end
 
-  test "handle_event/3 error output prints reply form", %{conn: conn} do
+  test "only handle_event/3 error prints {:reply, map, %Socket{}}", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle")
 
     HooksLive.attach_hook(lv, :boom, :handle_event, fn _, _, _ -> :boom end)
 
-    assert HooksLive.exits_with(lv, ArgumentError, fn ->
-             lv |> element("#inc") |> render_click()
-           end) =~ "{:reply, map, %Socket{}}"
+    result =
+      HooksLive.exits_with(lv, ArgumentError, fn ->
+        lv |> element("#inc") |> render_click()
+      end)
+
+    assert result =~ "{:reply, map, %Socket{}}"
+    assert result =~ "Got: :boom"
+
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    HooksLive.attach_hook(lv, :reply, :handle_info, fn :boom, socket ->
+      {:reply, %{}, socket}
+    end)
+
+    assert ExUnit.CaptureLog.capture_log(fn ->
+             send(lv.pid, :boom)
+             ref = Process.monitor(lv.pid)
+             assert_receive {:DOWN, ^ref, _, _, _}
+           end) =~ "Got: {:reply, %{}, #Phoenix.LiveView.Socket"
   end
 
   test "handle_params/3 raises when hook result is invalid", %{conn: conn} do
