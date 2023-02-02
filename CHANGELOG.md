@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.12 (2023-02-02)
+
+### Enhancements
+  * Introduce streams for efficiently handling large collections
+
 ## 0.18.11 (2023-01-19)
 
 ### Bug Fixes
