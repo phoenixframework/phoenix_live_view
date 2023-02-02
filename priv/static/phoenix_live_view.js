@@ -1483,7 +1483,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               curFromNodeChild = fromNextSibling;
             }
             if (curToNodeKey && (matchingFromEl = fromNodesLookup[curToNodeKey]) && compareNodeNames(matchingFromEl, curToNodeChild)) {
-              addChild(fromEl, matchingFromEl);
+              if (!skipFrom) {
+                addChild(fromEl, matchingFromEl);
+              }
               morphEl(matchingFromEl, curToNodeChild);
             } else {
               var onBeforeNodeAddedResult = onBeforeNodeAdded(curToNodeChild);
@@ -1658,19 +1660,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             return from.getAttribute(phxUpdate) === PHX_STREAM;
           },
           addChild: (parent, child) => {
-            let streamAt = child.id && this.streamInserts[child.id];
+            let streamAt = child.id ? this.streamInserts[child.id] : void 0;
+            if (streamAt === void 0) {
+              return parent.appendChild(child);
+            }
+            dom_default.putPrivate(child, PHX_STREAM, true);
             if (streamAt === 0) {
               parent.insertAdjacentElement("afterbegin", child);
-              dom_default.putPrivate(child, PHX_STREAM, true);
             } else if (streamAt === -1) {
               parent.appendChild(child);
-              dom_default.putPrivate(child, PHX_STREAM, true);
             } else if (streamAt > 0) {
               let sibling = Array.from(parent.children)[streamAt];
               parent.insertBefore(child, sibling);
-              dom_default.putPrivate(child, PHX_STREAM, true);
-            } else {
-              parent.appendChild(child);
             }
           },
           onBeforeNodeAdded: (el) => {
@@ -1716,25 +1717,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               externalFormTriggered = el;
             }
             updates.push(el);
-            let streamAt = el.id && this.streamInserts[el.id];
-            if (streamAt === 0) {
-              el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
-              dom_default.putPrivate(el, PHX_STREAM, true);
-            } else if (streamAt > 0) {
-              let children = Array.from(el.parentElement.children);
-              let oldIndex = children.indexOf(el);
-              if (streamAt >= children.length - 1) {
-                el.parentElement.appendChild(el);
-              } else {
-                let sibling = children[streamAt];
-                if (oldIndex > streamAt) {
-                  el.parentElement.insertBefore(el, sibling);
-                } else {
-                  el.parentElement.insertBefore(el, sibling.nextElementSibling);
-                }
-              }
-              dom_default.putPrivate(el, PHX_STREAM, true);
-            }
+            this.maybeReOrderStream(el);
           },
           onBeforeElUpdated: (fromEl, toEl) => {
             dom_default.cleanChildNodes(toEl, phxUpdate);
@@ -1825,6 +1808,29 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return true;
       } else {
         return false;
+      }
+    }
+    maybeReOrderStream(el) {
+      let streamAt = el.id ? this.streamInserts[el.id] : void 0;
+      if (streamAt === void 0) {
+        return;
+      }
+      dom_default.putPrivate(el, PHX_STREAM, true);
+      if (streamAt === 0) {
+        el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
+      } else if (streamAt > 0) {
+        let children = Array.from(el.parentElement.children);
+        let oldIndex = children.indexOf(el);
+        if (streamAt >= children.length - 1) {
+          el.parentElement.appendChild(el);
+        } else {
+          let sibling = children[streamAt];
+          if (oldIndex > streamAt) {
+            el.parentElement.insertBefore(el, sibling);
+          } else {
+            el.parentElement.insertBefore(el, sibling.nextElementSibling);
+          }
+        }
       }
     }
     transitionPendingRemoves() {
@@ -3706,7 +3712,7 @@ within:
       return rootsFound;
     }
     redirect(to, flash) {
-      this.disconnect();
+      this.unload();
       browser_default.redirect(to, flash);
     }
     replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
