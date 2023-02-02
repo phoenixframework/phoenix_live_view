@@ -206,16 +206,16 @@ defmodule Phoenix.LiveView.HooksTest do
     {:ok, lv, _html} = live(conn, "/lifecycle/components")
 
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
-      lv |> element("#attach") |> render_click()
-    end) =~ "lifecycle hooks are not supported on stateful components."
+             lv |> element("#attach") |> render_click()
+           end) =~ "lifecycle hooks are not supported on stateful components."
   end
 
   test "detach_hook raises when given a live component socket", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle/components")
 
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
-      lv |> element("#detach") |> render_click()
-    end) =~ "lifecycle hooks are not supported on stateful components."
+             lv |> element("#detach") |> render_click()
+           end) =~ "lifecycle hooks are not supported on stateful components."
   end
 
   test "stage_info", %{conn: conn} do
@@ -259,5 +259,35 @@ defmodule Phoenix.LiveView.HooksTest do
              callbacks?: true,
              exported?: false
            }
+  end
+
+  test "afte_render hook", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    assert render(lv) =~ "count:0"
+
+    HooksLive.attach_hook(lv, :after, :after_render, fn socket ->
+      if Phoenix.Component.changed?(socket, :count) && socket.assigns.count >= 1 do
+        Phoenix.Component.assign(socket, :count, socket.assigns.count * 10)
+      else
+        socket
+      end
+    end)
+
+    assert lv |> element("#inc") |> render_click() =~ "count:1"
+
+    socket = HooksLive.run(lv, fn socket -> {:reply, socket, socket} end)
+    assert socket.assigns.count == 10
+
+    assert lv |> element("#inc") |> render_click() =~ "count:1"
+    socket = HooksLive.run(lv, fn socket -> {:reply, socket, socket} end)
+    assert socket.assigns.count == 110
+
+    HooksLive.detach_hook(lv, :after, :after_render)
+
+    assert lv |> element("#inc") |> render_click() =~ "count:111"
+    assert lv |> element("#inc") |> render_click() =~ "count:112"
+    socket = HooksLive.run(lv, fn socket -> {:reply, socket, socket} end)
+    assert socket.assigns.count == 112
   end
 end

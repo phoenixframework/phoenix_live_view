@@ -67,6 +67,7 @@ var PHX_HOOK = "hook";
 var PHX_DEBOUNCE = "debounce";
 var PHX_THROTTLE = "throttle";
 var PHX_UPDATE = "update";
+var PHX_STREAM = "stream";
 var PHX_KEY = "key";
 var PHX_PRIVATE = "phxPrivate";
 var PHX_AUTO_RECOVER = "auto-recover";
@@ -93,6 +94,7 @@ var EVENTS = "e";
 var REPLY = "r";
 var TITLE = "t";
 var TEMPLATES = "p";
+var STREAM = "stream";
 
 // js/phoenix_live_view/entry_uploader.js
 var EntryUploader = class {
@@ -1280,6 +1282,8 @@ function morphdomFactory(morphAttrs2) {
       } else {
         toNode = toElement(toNode);
       }
+    } else if (toNode.nodeType === DOCUMENT_FRAGMENT_NODE$1) {
+      toNode = toNode.firstElementChild;
     }
     var getNodeKey = options.getNodeKey || defaultGetNodeKey;
     var onBeforeNodeAdded = options.onBeforeNodeAdded || noop;
@@ -1289,6 +1293,10 @@ function morphdomFactory(morphAttrs2) {
     var onBeforeNodeDiscarded = options.onBeforeNodeDiscarded || noop;
     var onNodeDiscarded = options.onNodeDiscarded || noop;
     var onBeforeElChildrenUpdated = options.onBeforeElChildrenUpdated || noop;
+    var skipFromChildren = options.skipFromChildren || noop;
+    var addChild = options.addChild || function(parent, child) {
+      return parent.appendChild(child);
+    };
     var childrenOnly = options.childrenOnly === true;
     var fromNodesLookup = Object.create(null);
     var keyedRemovalList = [];
@@ -1389,6 +1397,7 @@ function morphdomFactory(morphAttrs2) {
       }
     }
     function morphChildren(fromEl, toEl) {
+      var skipFrom = skipFromChildren(fromEl);
       var curToNodeChild = toEl.firstChild;
       var curFromNodeChild = fromEl.firstChild;
       var curToNodeKey;
@@ -1400,7 +1409,7 @@ function morphdomFactory(morphAttrs2) {
         while (curToNodeChild) {
           toNextSibling = curToNodeChild.nextSibling;
           curToNodeKey = getNodeKey(curToNodeChild);
-          while (curFromNodeChild) {
+          while (!skipFrom && curFromNodeChild) {
             fromNextSibling = curFromNodeChild.nextSibling;
             if (curToNodeChild.isSameNode && curToNodeChild.isSameNode(curFromNodeChild)) {
               curToNodeChild = toNextSibling;
@@ -1457,7 +1466,7 @@ function morphdomFactory(morphAttrs2) {
             curFromNodeChild = fromNextSibling;
           }
           if (curToNodeKey && (matchingFromEl = fromNodesLookup[curToNodeKey]) && compareNodeNames(matchingFromEl, curToNodeChild)) {
-            fromEl.appendChild(matchingFromEl);
+            addChild(fromEl, matchingFromEl);
             morphEl(matchingFromEl, curToNodeChild);
           } else {
             var onBeforeNodeAddedResult = onBeforeNodeAdded(curToNodeChild);
@@ -1468,7 +1477,7 @@ function morphdomFactory(morphAttrs2) {
               if (curToNodeChild.actualize) {
                 curToNodeChild = curToNodeChild.actualize(fromEl.ownerDocument || doc);
               }
-              fromEl.appendChild(curToNodeChild);
+              addChild(fromEl, curToNodeChild);
               handleNodeAdded(curToNodeChild);
             }
           }
@@ -1546,15 +1555,19 @@ var DOMPatch = class {
       }
     });
   }
-  constructor(view, container, id, html, targetCID) {
+  constructor(view, container, id, html, streams, targetCID) {
     this.view = view;
     this.liveSocket = view.liveSocket;
     this.container = container;
     this.id = id;
     this.rootID = view.root.id;
     this.html = html;
+    this.streams = streams;
+    this.streamInserts = {};
     this.targetCID = targetCID;
     this.cidPatch = isCid(this.targetCID);
+    this.pendingRemoves = [];
+    this.phxRemove = this.liveSocket.binding("remove");
     this.callbacks = {
       beforeadded: [],
       beforeupdated: [],
@@ -1579,7 +1592,9 @@ var DOMPatch = class {
     this.callbacks[`after${kind}`].forEach((callback) => callback(...args));
   }
   markPrunableContentForRemoval() {
-    dom_default.all(this.container, "[phx-update=append] > *, [phx-update=prepend] > *", (el) => {
+    let phxUpdate = this.liveSocket.binding(PHX_UPDATE);
+    dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => el.innerHTML = "");
+    dom_default.all(this.container, `[${phxUpdate}=append] > *, [${phxUpdate}=prepend] > *`, (el) => {
       el.setAttribute(PHX_PRUNE, "");
     });
   }
@@ -1595,11 +1610,9 @@ var DOMPatch = class {
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR);
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
-    let phxRemove = liveSocket.binding("remove");
     let added = [];
     let updates = [];
     let appendPrependUpdates = [];
-    let pendingRemoves = [];
     let externalFormTriggered = null;
     let diffHTML = liveSocket.time("premorph container prep", () => {
       return this.buildDiffHTML(container, html, phxUpdate, targetContainer);
@@ -1607,10 +1620,41 @@ var DOMPatch = class {
     this.trackBefore("added", container);
     this.trackBefore("updated", container, container);
     liveSocket.time("morphdom", () => {
+      this.streams.forEach(([inserts, deleteIds]) => {
+        this.streamInserts = Object.assign(this.streamInserts, inserts);
+        deleteIds.forEach((id) => {
+          let child = container.querySelector(`[id="${id}"]`);
+          if (child) {
+            if (!this.maybePendingRemove(child)) {
+              child.remove();
+              this.onNodeDiscarded(child);
+            }
+          }
+        });
+      });
       morphdom_esm_default(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
           return dom_default.isPhxDestroyed(node) ? null : node.id;
+        },
+        skipFromChildren: (from) => {
+          return from.getAttribute(phxUpdate) === PHX_STREAM;
+        },
+        addChild: (parent, child) => {
+          let streamAt = child.id && this.streamInserts[child.id];
+          if (streamAt === 0) {
+            parent.insertAdjacentElement("afterbegin", child);
+            dom_default.putPrivate(child, PHX_STREAM, true);
+          } else if (streamAt === -1) {
+            parent.appendChild(child);
+            dom_default.putPrivate(child, PHX_STREAM, true);
+          } else if (streamAt > 0) {
+            let sibling = Array.from(parent.children)[streamAt];
+            parent.insertBefore(child, sibling);
+            dom_default.putPrivate(child, PHX_STREAM, true);
+          } else {
+            parent.appendChild(child);
+          }
         },
         onBeforeNodeAdded: (el) => {
           this.trackBefore("added", el);
@@ -1631,21 +1675,18 @@ var DOMPatch = class {
           }
           added.push(el);
         },
-        onNodeDiscarded: (el) => {
-          if (dom_default.isPhxChild(el) || dom_default.isPhxSticky(el)) {
-            liveSocket.destroyViewByEl(el);
-          }
-          this.trackAfter("discarded", el);
-        },
+        onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
           if (el.getAttribute && el.getAttribute(PHX_PRUNE) !== null) {
             return true;
           }
-          if (el.parentNode !== null && dom_default.isPhxUpdate(el.parentNode, phxUpdate, ["append", "prepend"]) && el.id) {
+          if (dom_default.private(el, PHX_STREAM)) {
             return false;
           }
-          if (el.getAttribute && el.getAttribute(phxRemove)) {
-            pendingRemoves.push(el);
+          if (el.parentElement !== null && dom_default.isPhxUpdate(el.parentElement, phxUpdate, ["append", "prepend"]) && el.id) {
+            return false;
+          }
+          if (this.maybePendingRemove(el)) {
             return false;
           }
           if (this.skipCIDSibling(el)) {
@@ -1658,6 +1699,25 @@ var DOMPatch = class {
             externalFormTriggered = el;
           }
           updates.push(el);
+          let streamAt = el.id && this.streamInserts[el.id];
+          if (streamAt === 0) {
+            el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
+            dom_default.putPrivate(el, PHX_STREAM, true);
+          } else if (streamAt > 0) {
+            let children = Array.from(el.parentElement.children);
+            let oldIndex = children.indexOf(el);
+            if (streamAt >= children.length - 1) {
+              el.parentElement.appendChild(el);
+            } else {
+              let sibling = children[streamAt];
+              if (oldIndex > streamAt) {
+                el.parentElement.insertBefore(el, sibling);
+              } else {
+                el.parentElement.insertBefore(el, sibling.nextElementSibling);
+              }
+            }
+            dom_default.putPrivate(el, PHX_STREAM, true);
+          }
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           dom_default.cleanChildNodes(toEl, phxUpdate);
@@ -1729,6 +1789,29 @@ var DOMPatch = class {
     dom_default.dispatchEvent(document, "phx:update");
     added.forEach((el) => this.trackAfter("added", el));
     updates.forEach((el) => this.trackAfter("updated", el));
+    this.transitionPendingRemoves();
+    if (externalFormTriggered) {
+      liveSocket.unload();
+      externalFormTriggered.submit();
+    }
+    return true;
+  }
+  onNodeDiscarded(el) {
+    if (dom_default.isPhxChild(el) || dom_default.isPhxSticky(el)) {
+      this.liveSocket.destroyViewByEl(el);
+    }
+    this.trackAfter("discarded", el);
+  }
+  maybePendingRemove(node) {
+    if (node.getAttribute && node.getAttribute(this.phxRemove) !== null) {
+      this.pendingRemoves.push(node);
+      return true;
+    } else {
+      return false;
+    }
+  }
+  transitionPendingRemoves() {
+    let { pendingRemoves, liveSocket } = this;
     if (pendingRemoves.length > 0) {
       liveSocket.transitionRemoves(pendingRemoves);
       liveSocket.requestDOMUpdate(() => {
@@ -1742,11 +1825,6 @@ var DOMPatch = class {
         this.trackAfter("transitionsDiscarded", pendingRemoves);
       });
     }
-    if (externalFormTriggered) {
-      liveSocket.unload();
-      externalFormTriggered.submit();
-    }
-    return true;
   }
   isCIDPatch() {
     return this.cidPatch;
@@ -1788,6 +1866,9 @@ var DOMPatch = class {
       return diffContainer.outerHTML;
     }
   }
+  indexOf(parent, child) {
+    return Array.from(parent.children).indexOf(child);
+  }
 };
 
 // js/phoenix_live_view/rendered.js
@@ -1808,13 +1889,14 @@ var Rendered = class {
     return this.viewId;
   }
   toString(onlyCids) {
-    return this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids);
+    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids);
+    return [str, streams];
   }
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
-    let output = { buffer: "", components, onlyCids };
+    let output = { buffer: "", components, onlyCids, streams: new Set() };
     this.toOutputBuffer(rendered, null, output);
-    return output.buffer;
+    return [output.buffer, output.streams];
   }
   componentCIDs(diff) {
     return Object.keys(diff[COMPONENTS] || {}).map((i) => parseInt(i));
@@ -1879,7 +1961,8 @@ var Rendered = class {
     for (let key in source) {
       let val = source[key];
       let targetVal = target[key];
-      if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
+      let isObjVal = isObject(val);
+      if (isObjVal && val[STATIC] === void 0 && isObject(targetVal)) {
         this.doMutableMerge(targetVal, val);
       } else {
         target[key] = val;
@@ -1898,7 +1981,8 @@ var Rendered = class {
     return merged;
   }
   componentToString(cid) {
-    return this.recursiveCIDToString(this.rendered[COMPONENTS], cid);
+    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid);
+    return [str, streams];
   }
   pruneCIDs(cids) {
     cids.forEach((cid) => delete this.rendered[COMPONENTS][cid]);
@@ -1929,7 +2013,8 @@ var Rendered = class {
     }
   }
   comprehensionToBuffer(rendered, templates, output) {
-    let { [DYNAMICS]: dynamics, [STATIC]: statics } = rendered;
+    let { [DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream } = rendered;
+    let [_inserts, deleteIds] = stream || [{}, []];
     statics = this.templateStatic(statics, templates);
     let compTemplates = templates || rendered[TEMPLATES];
     for (let d = 0; d < dynamics.length; d++) {
@@ -1940,10 +2025,16 @@ var Rendered = class {
         output.buffer += statics[i];
       }
     }
+    if (stream !== void 0 && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0)) {
+      rendered[DYNAMICS] = [];
+      output.streams.add(stream);
+    }
   }
   dynamicToBuffer(rendered, templates, output) {
     if (typeof rendered === "number") {
-      output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids);
+      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids);
+      output.buffer += str;
+      output.streams = new Set([...output.streams, ...streams]);
     } else if (isObject(rendered)) {
       this.toOutputBuffer(rendered, templates, output);
     } else {
@@ -1953,7 +2044,8 @@ var Rendered = class {
   recursiveCIDToString(components, cid, onlyCids) {
     let component = components[cid] || logError(`no component for CID ${cid}`, components);
     let template = document.createElement("template");
-    template.innerHTML = this.recursiveToString(component, components, onlyCids);
+    let [html, streams] = this.recursiveToString(component, components, onlyCids);
+    template.innerHTML = html;
     let container = template.content;
     let skip = onlyCids && !onlyCids.has(cid);
     let [hasChildNodes, hasChildComponents] = Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
@@ -1988,12 +2080,12 @@ within:
     }, [false, false]);
     if (!hasChildNodes && !hasChildComponents) {
       logError("expected at least one HTML element tag inside a component, but the component is empty:\n", template.innerHTML.trim());
-      return this.createSpan("", cid).outerHTML;
+      return [this.createSpan("", cid).outerHTML, streams];
     } else if (!hasChildNodes && hasChildComponents) {
       logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.", template.innerHTML.trim());
-      return template.innerHTML;
+      return [template.innerHTML, streams];
     } else {
-      return template.innerHTML;
+      return [template.innerHTML, streams];
     }
   }
   createSpan(text, cid) {
@@ -2465,7 +2557,7 @@ var View = class {
     browser_default.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS);
     this.applyDiff("mount", rendered, ({ diff, events }) => {
       this.rendered = new Rendered(this.id, diff);
-      let html = this.renderContainer(null, "join");
+      let [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();
       let forms = this.formsForRecovery(html);
       this.joinCount++;
@@ -2473,12 +2565,12 @@ var View = class {
         forms.forEach(([form, newForm, newCid], i) => {
           this.pushFormRecovery(form, newCid, (resp2) => {
             if (i === forms.length - 1) {
-              this.onJoinComplete(resp2, html, events);
+              this.onJoinComplete(resp2, html, streams, events);
             }
           });
         });
       } else {
-        this.onJoinComplete(resp, html, events);
+        this.onJoinComplete(resp, html, streams, events);
       }
     });
   }
@@ -2488,9 +2580,9 @@ var View = class {
       el.removeAttribute(PHX_REF_SRC);
     });
   }
-  onJoinComplete({ live_patch }, html, events) {
+  onJoinComplete({ live_patch }, html, streams, events) {
     if (this.joinCount > 1 || this.parent && !this.parent.isJoinPending()) {
-      return this.applyJoinPatch(live_patch, html, events);
+      return this.applyJoinPatch(live_patch, html, streams, events);
     }
     let newChildren = dom_default.findPhxChildrenInFragment(html, this.id).filter((toEl) => {
       let fromEl = toEl.id && this.el.querySelector(`[id="${toEl.id}"]`);
@@ -2502,14 +2594,14 @@ var View = class {
     });
     if (newChildren.length === 0) {
       if (this.parent) {
-        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)]);
+        this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, streams, events)]);
         this.parent.ackJoin(this);
       } else {
         this.onAllChildJoinsComplete();
-        this.applyJoinPatch(live_patch, html, events);
+        this.applyJoinPatch(live_patch, html, streams, events);
       }
     } else {
-      this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, events)]);
+      this.root.pendingJoinOps.push([this, () => this.applyJoinPatch(live_patch, html, streams, events)]);
     }
   }
   attachTrueDocEl() {
@@ -2522,9 +2614,9 @@ var View = class {
     });
     dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => this.maybeMounted(el));
   }
-  applyJoinPatch(live_patch, html, events) {
+  applyJoinPatch(live_patch, html, streams, events) {
     this.attachTrueDocEl();
-    let patch = new DOMPatch(this, this.el, this.id, html, null);
+    let patch = new DOMPatch(this, this.el, this.id, html, streams, null);
     patch.markPrunableContentForRemoval();
     this.performPatch(patch, false);
     this.joinNewChildren();
@@ -2696,8 +2788,8 @@ var View = class {
       });
     } else if (!isEmpty(diff)) {
       this.liveSocket.time("full patch complete", () => {
-        let html = this.renderContainer(diff, "update");
-        let patch = new DOMPatch(this, this.el, this.id, html, null);
+        let [html, streams] = this.renderContainer(diff, "update");
+        let patch = new DOMPatch(this, this.el, this.id, html, streams, null);
         phxChildrenAdded = this.performPatch(patch, true);
       });
     }
@@ -2710,15 +2802,15 @@ var View = class {
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName;
       let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null;
-      let html = this.rendered.toString(cids);
-      return `<${tag}>${html}</${tag}>`;
+      let [html, streams] = this.rendered.toString(cids);
+      return [`<${tag}>${html}</${tag}>`, streams];
     });
   }
   componentPatch(diff, cid) {
     if (isEmpty(diff))
       return false;
-    let html = this.rendered.componentToString(cid);
-    let patch = new DOMPatch(this, this.el, this.id, html, cid);
+    let [html, streams] = this.rendered.componentToString(cid);
+    let patch = new DOMPatch(this, this.el, this.id, html, streams, cid);
     let childrenAdded = this.performPatch(patch, true);
     return childrenAdded;
   }
@@ -4107,7 +4199,6 @@ var TransitionSet = class {
   constructor() {
     this.transitions = new Set();
     this.pendingOps = [];
-    this.reset();
   }
   reset() {
     this.transitions.forEach((timer) => {
@@ -4128,9 +4219,7 @@ var TransitionSet = class {
     let timer = setTimeout(() => {
       this.transitions.delete(timer);
       onDone();
-      if (this.size() === 0) {
-        this.flushPendingOps();
-      }
+      this.flushPendingOps();
     }, time);
     this.transitions.add(timer);
   }
@@ -4141,8 +4230,14 @@ var TransitionSet = class {
     return this.transitions.size;
   }
   flushPendingOps() {
-    this.pendingOps.forEach((op) => op());
-    this.pendingOps = [];
+    if (this.size() > 0) {
+      return;
+    }
+    let op = this.pendingOps.shift();
+    if (op) {
+      op();
+      this.flushPendingOps();
+    }
   }
 };
 //# sourceMappingURL=phoenix_live_view.cjs.js.map

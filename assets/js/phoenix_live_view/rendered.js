@@ -7,7 +7,8 @@ import {
   PHX_SKIP,
   REPLY,
   STATIC,
-  TITLE
+  TITLE,
+  STREAM,
 } from "./constants"
 
 import {
@@ -34,14 +35,15 @@ export default class Rendered {
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    return this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+    return [str, streams]
   }
 
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids}
+    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
     this.toOutputBuffer(rendered, null, output)
-    return output.buffer
+    return [output.buffer, output.streams]
   }
 
   componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) }
@@ -112,7 +114,8 @@ export default class Rendered {
     for(let key in source){
       let val = source[key]
       let targetVal = target[key]
-      if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
+      let isObjVal = isObject(val)
+      if(isObjVal && val[STATIC] === undefined && isObject(targetVal)){
         this.doMutableMerge(targetVal, val)
       } else {
         target[key] = val
@@ -132,7 +135,10 @@ export default class Rendered {
     return merged
   }
 
-  componentToString(cid){ return this.recursiveCIDToString(this.rendered[COMPONENTS], cid) }
+  componentToString(cid){
+    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid)
+    return [str, streams]
+  }
 
   pruneCIDs(cids){
     cids.forEach(cid => delete this.rendered[COMPONENTS][cid])
@@ -165,10 +171,10 @@ export default class Rendered {
   }
 
   comprehensionToBuffer(rendered, templates, output){
-    let {[DYNAMICS]: dynamics, [STATIC]: statics} = rendered
+    let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream} = rendered
+    let [_inserts, deleteIds] = stream || [{}, []]
     statics = this.templateStatic(statics, templates)
     let compTemplates = templates || rendered[TEMPLATES]
-
     for(let d = 0; d < dynamics.length; d++){
       let dynamic = dynamics[d]
       output.buffer += statics[0]
@@ -177,11 +183,18 @@ export default class Rendered {
         output.buffer += statics[i]
       }
     }
+
+    if(stream !== undefined && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0)){
+      rendered[DYNAMICS] = []
+      output.streams.add(stream)
+    }
   }
 
   dynamicToBuffer(rendered, templates, output){
     if(typeof (rendered) === "number"){
-      output.buffer += this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      output.buffer += str
+      output.streams = new Set([...output.streams, ...streams])
     } else if(isObject(rendered)){
       this.toOutputBuffer(rendered, templates, output)
     } else {
@@ -192,7 +205,8 @@ export default class Rendered {
   recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let template = document.createElement("template")
-    template.innerHTML = this.recursiveToString(component, components, onlyCids)
+    let [html, streams] = this.recursiveToString(component, components, onlyCids)
+    template.innerHTML = html
     let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
 
@@ -226,13 +240,13 @@ export default class Rendered {
     if(!hasChildNodes && !hasChildComponents){
       logError("expected at least one HTML element tag inside a component, but the component is empty:\n",
         template.innerHTML.trim())
-      return this.createSpan("", cid).outerHTML
+      return [this.createSpan("", cid).outerHTML, streams]
     } else if(!hasChildNodes && hasChildComponents){
       logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.",
         template.innerHTML.trim())
-      return template.innerHTML
+      return [template.innerHTML, streams]
     } else {
-      return template.innerHTML
+      return [template.innerHTML, streams]
     }
   }
 
