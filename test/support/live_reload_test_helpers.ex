@@ -1,14 +1,3 @@
-defmodule Phoenix.LiveView.LiveReloadTestHelpers do
-
-  import ExUnit.Callbacks, only: [start_supervised!: 1]
-
-  def start_endpoint(endpoint \\ Phoenix.LiveView.LiveReloadTestHelpers.Endpoint) do
-    ExUnit.CaptureLog.capture_log(fn ->
-      _pid = start_supervised!(endpoint)
-    end)
-  end
-end
-
 defmodule Phoenix.LiveView.LiveReloadTestHelpers.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix_live_view
 

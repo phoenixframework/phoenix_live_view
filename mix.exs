@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.18.9"
+  @version "0.18.11"
 
   def project do
     [
@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix, "~> 1.6.15 or ~> 1.7.0"},
       {:phoenix_view, "~> 2.0", optional: true},
       {:phoenix_template, "~> 1.0"},
-      {:phoenix_html, "~> 3.1"},
+      {:phoenix_html, "~> 3.3-dev", github: "phoenixframework/phoenix_html", override: true},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
@@ -61,7 +61,8 @@ defmodule Phoenix.LiveView.MixProject do
       groups_for_extras: groups_for_extras(),
       groups_for_modules: groups_for_modules(),
       groups_for_functions: [
-        "Components": &(&1[:type] == :component)
+        "Components": &(&1[:type] == :component),
+        "Macros": &(&1[:type] == :macro)
       ],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]

@@ -275,23 +275,30 @@ defmodule Phoenix.LiveView.ComponentsTest do
       end
     end
 
-    test "does not raise when missing method" do
-      assigns = %{}
+    test "generates form with prebuilt form" do
+      assigns = %{form: to_form(%{})}
 
       template = ~H"""
-      <.form for={:myform} action="/">
+      <.form for={@form}>
+        <%= text_input @form, :foo %>
       </.form>
       """
 
       html = parse(template)
-      assert [{"form", [{"action", "/"}, {"method", "post"}], _}] = html
+
+      assert [
+               {"form", [],
+                [
+                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
+                ]}
+             ] = html
     end
 
-    test "generates form with no options" do
-      assigns = %{}
+    test "generates form with prebuilt form and options" do
+      assigns = %{form: to_form(%{})}
 
       template = ~H"""
-      <.form :let={f} for={:myform}>
+      <.form :let={f} for={@form} as="base">
         <%= text_input f, :foo %>
       </.form>
       """
@@ -301,16 +308,48 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert [
                {"form", [],
                 [
-                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                  {"input", [{"id", "base_foo"}, {"name", "base[foo]"}, {"type", "text"}], []}
                 ]}
              ] = html
+    end
+
+
+    test "generates form with form data" do
+      assigns = %{}
+
+      template = ~H"""
+      <.form :let={f} for={%{}}>
+        <%= text_input f, :foo %>
+      </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [],
+                [
+                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
+                ]}
+             ] = html
+    end
+
+    test "does not raise when action is given and method is missing" do
+      assigns = %{}
+
+      template = ~H"""
+      <.form for={%{}} action="/">
+      </.form>
+      """
+
+      html = parse(template)
+      assert [{"form", [{"action", "/"}, {"method", "post"}], _}] = html
     end
 
     test "generates a csrf_token if if an action is set" do
       assigns = %{}
 
       template = ~H"""
-      <.form :let={f} for={:myform} action="/">
+      <.form :let={f} for={%{}} action="/">
         <%= text_input f, :foo %>
       </.form>
       """
@@ -328,7 +367,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                      {"hidden", "hidden"},
                      {"value", ^csrf_token}
                    ], []},
-                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
                 ]}
              ] = html
     end
@@ -337,7 +376,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-      <.form :let={f} for={:myform} method="get" action="/">
+      <.form :let={f} for={%{}} method="get" action="/">
         <%= text_input f, :foo %>
       </.form>
       """
@@ -347,12 +386,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert [
                {"form", [{"action", "/"}, {"method", "get"}],
                 [
-                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
                 ]}
              ] = html
 
       template = ~H"""
-      <.form :let={f} for={:myform}>
+      <.form :let={f} for={%{}}>
         <%= text_input f, :foo %>
       </.form>
       """
@@ -362,7 +401,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert [
                {"form", [],
                 [
-                  {"input", [{"id", "myform_foo"}, {"name", "myform[foo]"}, {"type", "text"}], []}
+                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
                 ]}
              ] = html
     end
@@ -372,7 +411,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={user_form}
-        for={%Plug.Conn{}}
+        for={%{}}
         id="form"
         action="/"
         method="put"
@@ -419,38 +458,6 @@ defmodule Phoenix.LiveView.ComponentsTest do
                    ], []},
                   {"input", [{"id", "form_foo"}, {"name", "user[foo]"}, {"type", "text"}], []},
                   "\n  [name: \"can't be blank\"]\n\n"
-                ]}
-             ] = html
-    end
-
-    test "generates form with input values supplied by params" do
-      params = %{"foo" => "my", "bar" => "form"}
-      assigns = %{params: params}
-
-      template = ~H"""
-      <.form :let={f} for={:myform} params={@params}>
-        <%= text_input f, :foo %>
-        <%= textarea f, :bar %>
-      </.form>
-      """
-
-      html = parse(template)
-
-      assert [
-               {"form", [],
-                [
-                  {"input",
-                   [
-                     {"id", "myform_foo"},
-                     {"name", "myform[foo]"},
-                     {"type", "text"},
-                     {"value", "my"}
-                   ], []},
-                  {"textarea",
-                   [
-                     {"id", "myform_bar"},
-                     {"name", "myform[bar]"}
-                   ], ["\nform"]}
                 ]}
              ] = html
     end

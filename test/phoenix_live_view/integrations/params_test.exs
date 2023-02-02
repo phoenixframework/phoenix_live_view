@@ -13,11 +13,6 @@ defmodule Phoenix.LiveView.ParamsTest do
 
   @endpoint Endpoint
 
-  setup_all do
-    ExUnit.CaptureLog.capture_log(fn -> Endpoint.start_link() end)
-    :ok
-  end
-
   setup do
     conn =
       Phoenix.ConnTest.build_conn(:get, "http://www.example.com/", nil)
@@ -254,7 +249,7 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert {
                "div",
                [
-                 {"data-phx-main", "true"},
+                 {"data-phx-main", _},
                  {"data-phx-session", _},
                  {"data-phx-static", _},
                  {"id", "phx-" <> _}

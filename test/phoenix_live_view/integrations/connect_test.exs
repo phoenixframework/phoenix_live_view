@@ -2,14 +2,8 @@ defmodule Phoenix.LiveView.ConnectTest do
   use ExUnit.Case, async: false
   import Phoenix.LiveViewTest
   import Phoenix.ConnTest
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Phoenix.LiveViewTest.Endpoint
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
-  end
 
   describe "connect_params" do
     test "can be read on mount" do

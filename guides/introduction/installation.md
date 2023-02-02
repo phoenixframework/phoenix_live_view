@@ -129,7 +129,7 @@ Where `@session_options` are the options given to `plug Plug.Session` by using a
 Finally, ensure you have placed a CSRF meta tag inside the `<head>` tag in your layout (`lib/my_app_web/templates/layout/app.html.*`) before `app.js` is included, like so:
 
 ```heex
-<%= csrf_meta_tag() %>
+<meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
 <script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
 ```
 
@@ -183,7 +183,7 @@ However, if you're adding `phoenix_live_view` to an umbrella project, the depend
 }
 ```
 
-Now run the next commands from your web app root:
+Now run the next commands from the root of your web app project:
 
 ```bash
 npm install --prefix assets
@@ -216,7 +216,7 @@ The layout given to `put_root_layout` is typically very barebones, with mostly `
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <%= csrf_meta_tag() %>
+    <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <Phoenix.Component.live_title><%= assigns[:page_title] || "MyApp" %></Phoenix.Component.live_title>
     <link rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
     <script defer type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>

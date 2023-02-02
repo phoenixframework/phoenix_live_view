@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.18.11 (2023-01-19)
+
+### Bug Fixes
+  * Fix socket unloading connection for forms that have defaulted prevented
+
+## 0.18.10 (2023-01-18)
+
+### Bug Fixes
+  * Fix svg tags with href incorrectly unloading socket on click
+  * Fix form submits with `target="_blank"` incorrectly unloading socket on submit
+
 ## 0.18.9 (2023-01-17)
 
 ### Bug Fixes
@@ -1101,7 +1112,7 @@ The steps are:
   4) You should define the CSRF meta tag inside <head> in your layout, before `app.js` is included:
 
       ```heex
-      <%= csrf_meta_tag() %>
+      <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
       <script type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
       ```
 

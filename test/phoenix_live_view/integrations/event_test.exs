@@ -6,14 +6,8 @@ defmodule Phoenix.LiveView.EventTest do
 
   alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.{Endpoint}
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
-  end
 
   setup config do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}

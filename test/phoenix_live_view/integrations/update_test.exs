@@ -4,14 +4,8 @@ defmodule Phoenix.LiveView.UpdateTest do
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.{Endpoint, DOM}
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
-  end
 
   setup config do
     {:ok,

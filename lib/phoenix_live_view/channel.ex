@@ -890,7 +890,7 @@ defmodule Phoenix.LiveView.Channel do
 
             5) Define the CSRF meta tag inside the `<head>` tag in your layout:
 
-                <%= csrf_meta_tag() %>
+                <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
 
             6) Pass it forward in your app.js:
 
