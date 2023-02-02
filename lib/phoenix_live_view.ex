@@ -1481,7 +1481,8 @@ defmodule Phoenix.LiveView do
   Streams are a mechanism for managing large collections on the client without
   keeping the resources on the server.
 
-    * `name` - The name of the assign to hold the stream
+    * `name` - The string or atom name of the key to place under the
+      `@streams` assign.
     * `items` - The enumerable of items for initial insert
 
   The following options are supported:
