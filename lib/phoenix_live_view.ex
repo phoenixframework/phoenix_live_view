@@ -1413,11 +1413,13 @@ defmodule Phoenix.LiveView do
 
   Lifecycle hooks take place immediately before a given lifecycle
   callback is invoked on the LiveView. With the exception of `:after_render`,
-  A hook may return `{:halt, socket}` to halt the reduction, otherwise
+  a hook may return `{:halt, socket}` to halt the reduction, otherwise
   it must return `{:cont, socket}` so the operation may continue until
-  all hooks have been invoked for the current stage. For `:after_render`
-  hooks, the `socket` itself must be returned. Any updates to the socket
-  assigns *will not* trigger a new render or diff calculation to the client.
+  all hooks have been invoked for the current stage.
+
+  For `:after_render` hooks, the `socket` itself must be returned.
+  Any updates to the socket assigns *will not* trigger a new render
+  or diff calculation to the client.
 
   ## Halting the lifecycle
 
@@ -1487,7 +1489,7 @@ defmodule Phoenix.LiveView do
     * `:dom_id` - The optional function to generate each stream item's DOM id.
       The function accepts each stream item and converts the item to a string id.
       By default, the `:id` field of a map or struct will be used if the item has
-      such a field, and will be prefixed by the `name` hypenated with the id.
+      such a field, and will be prefixed by the `name` hyphenated with the id.
       For example, the following definitions are equivalent:
 
           stream(socket, :songs, songs)
@@ -1571,16 +1573,16 @@ defmodule Phoenix.LiveView do
 
       stream_insert(socket, :songs, %Song{id: 2, title: "Song 2"}, at: 0)
 
-  Or updating an exsiting song, while also moving it to the top of the collection:
+  Or updating an existing song, while also moving it to the top of the collection:
 
       stream_insert(socket, :songs, %Song{id: 1, title: "Song 1 updated"}, at: 0)
 
   ## Updating Items
 
-  As shown, an existing on the client can be updating by issuing a `stream_insert` for
+  As shown, an existing item on the client can be updated by issuing a `stream_insert` for
   the existing item. When the client updates an existing item with an "append" operation
   (passing the `at: -1` option), the item will remain in the same location as it was
-  previously, and will not moved to the end of the parent children. To both update an
+  previously, and will not be moved to the end of the parent children. To both update an
   existing item and move it to the end of a collection, issue a `stream_delete`, followed
   by a `stream_insert`. For example:
 
@@ -1627,7 +1629,6 @@ defmodule Phoenix.LiveView do
   stream datastructure.
 
   ## Examples
-
 
       def render(assigns) do
         ~H"""

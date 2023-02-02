@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.LiveStreamTest do
     msg = ~r/stream :dom_id must return a function which accepts each item, got: false/
 
     assert_raise ArgumentError, msg, fn ->
-      LiveStream.new(:nubmers, [1, 2, 3], dom_id: false)
+      LiveStream.new(:numbers, [1, 2, 3], dom_id: false)
     end
   end
 
