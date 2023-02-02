@@ -59,10 +59,10 @@ defmodule Phoenix.LiveView.Comprehension do
   in `Phoenix.LiveView.Engine` docs.
   """
 
-  defstruct [:static, :dynamics, :fingerprint, :id]
+  defstruct [:static, :dynamics, :fingerprint, :stream]
 
   @type t :: %__MODULE__{
-          id: String.t() | integer(),
+          stream: String.t() | atom() | nil,
           static: [String.t()],
           dynamics: [
             [
@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView.Comprehension do
   @doc false
   def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
     inserts = for {id, at, _item} <- stream.inserts, into: %{}, do: {id, at}
-    Map.put(comprehension, :id, [inserts, stream.deletes])
+    Map.put(comprehension, :stream, [inserts, stream.deletes])
   end
 
   def __annotate__(comprehension, _collection), do: comprehension

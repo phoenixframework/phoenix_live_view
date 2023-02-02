@@ -420,7 +420,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          socket,
-         %Comprehension{fingerprint: fingerprint, dynamics: dynamics, id: stream_id},
+         %Comprehension{fingerprint: fingerprint, dynamics: dynamics, stream: stream_id},
          fingerprint,
          pending,
          components,
@@ -456,7 +456,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          socket,
-         %Comprehension{fingerprint: print, static: static, dynamics: dynamics, id: id},
+         %Comprehension{fingerprint: print, static: static, dynamics: dynamics, stream: stream},
          _,
          pending,
          components,
@@ -468,7 +468,7 @@ defmodule Phoenix.LiveView.Diff do
         traverse_comprehension(socket, dynamics, pending, components, template)
 
       {diff, template} = maybe_template_static(%{@dynamics => dynamics}, print, static, template)
-      diff = maybe_add_stream_id(diff, id)
+      diff = maybe_add_stream_id(diff, stream)
 
       {diff, print, pending, components, template}
     else
@@ -478,7 +478,7 @@ defmodule Phoenix.LiveView.Diff do
       diff =
         %{@dynamics => dynamics, @static => static}
         |> maybe_add_template(comprehension_template)
-        |> maybe_add_stream_id(id)
+        |> maybe_add_stream_id(stream)
 
       {diff, print, pending, components, nil}
     end
