@@ -442,7 +442,7 @@ defmodule Phoenix.LiveView.Engine do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller)
 
-      gen_var = Macro.var(:for, __MODULE__)
+      gen_var = Macro.unique_var(:for, __MODULE__)
       {:<-, gen_meta, [gen_pattern, gen_collection]} = gen
       gen_collection = quote(do: unquote(gen_var) = unquote(gen_collection))
       gen = {:<-, gen_meta, [gen_pattern, gen_var]}
