@@ -1,18 +1,12 @@
 defmodule Phoenix.LiveView.StreamTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveViewTest.{StreamLive, DOM, Endpoint}
-  alias Phoenix.LiveView.LiveReloadTestHelpers, as: Helpers
 
   @endpoint Endpoint
-
-  setup_all do
-    Helpers.start_endpoint(@endpoint)
-    :ok
-  end
 
   setup do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), %{})}
