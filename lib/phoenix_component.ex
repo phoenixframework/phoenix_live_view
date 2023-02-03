@@ -1374,13 +1374,13 @@ defmodule Phoenix.Component do
   you could do:
 
       def handle_event("submitted", params, socket) do
-        {:noreply, to_form(params)}
+        {:noreply, assign(socket, form: to_form(params))}
       end
 
   However, most typically, we specify a name to nest the parameters:
 
       def handle_event("submitted", %{"user" => user_params}, socket) do
-        {:noreply, to_form(user_params, as: :user)}
+        {:noreply, assign(socket, form: to_form(user_params, as: :user))}
       end
 
   When using changesets, the name `:as` is automatically retrieved
