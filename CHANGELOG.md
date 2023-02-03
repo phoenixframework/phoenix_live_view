@@ -4,6 +4,7 @@
 
 ### Enhancements
   * Allow replies from `:handle_event` lifecycle hooks
+  * Introduce streams for efficiently handling large collections
 
 ## 0.18.11 (2023-01-19)
 

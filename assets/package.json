@@ -1,6 +1,6 @@
 {
   "name": "phoenix_live_view",
-  "version": "0.18.11",
+  "version": "0.18.12",
   "description": "The Phoenix LiveView JavaScript client.",
   "license": "MIT",
   "repository": {},
@@ -10,7 +10,7 @@
     "test.watch": "jest --watch"
   },
   "dependencies": {
-    "morphdom": "2.6.1"
+    "morphdom": "2.7.0"
   },
   "devDependencies": {
     "@babel/cli": "7.14.3",

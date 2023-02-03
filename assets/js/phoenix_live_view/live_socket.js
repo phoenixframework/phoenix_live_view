@@ -890,7 +890,6 @@ class TransitionSet {
   constructor(){
     this.transitions = new Set()
     this.pendingOps = []
-    this.reset()
   }
 
   reset(){
@@ -914,7 +913,7 @@ class TransitionSet {
     let timer = setTimeout(() => {
       this.transitions.delete(timer)
       onDone()
-      if(this.size() === 0){ this.flushPendingOps() }
+      this.flushPendingOps()
     }, time)
     this.transitions.add(timer)
   }
@@ -924,7 +923,11 @@ class TransitionSet {
   size(){ return this.transitions.size }
 
   flushPendingOps(){
-    this.pendingOps.forEach(op => op())
-    this.pendingOps = []
+    if(this.size() > 0){ return }
+    let op = this.pendingOps.shift()
+    if(op){
+      op()
+      this.flushPendingOps()
+    }
   }
 }

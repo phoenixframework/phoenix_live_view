@@ -1586,7 +1586,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "validates phx-update values" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:1:14: the value of the attribute \"phx-update\" must be: ignore, append or prepend
+      test/phoenix_live_view/html_engine_test.exs:1:14: the value of the attribute \"phx-update\" must be: ignore, stream, append, prepend, or replace
         |
       1 | <div id="id" phx-update="bar">
         |              ^\

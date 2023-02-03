@@ -117,6 +117,9 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/lifecycle/handle-params-not-defined", HooksLive.HandleParamsNotDefined
     live "/lifecycle/handle-info-not-defined", HooksLive.HandleInfoNotDefined
 
+    # integration stream
+    live "/stream", StreamLive
+
     # integration connect
     live "/connect", ConnectLive
 

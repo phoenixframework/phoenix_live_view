@@ -84,6 +84,7 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Checks if the given assign changed.
   """
+  def changed?(%Socket{} = socket, assign), do: changed?(socket.assigns, assign)
   def changed?(%{__changed__: nil}, _assign), do: true
   def changed?(%{__changed__: changed}, assign), do: Map.has_key?(changed, assign)
 

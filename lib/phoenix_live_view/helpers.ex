@@ -230,7 +230,7 @@ defmodule Phoenix.LiveView.Helpers do
   @doc deprecated: "Use <.live_img_preview /> instead"
   def live_img_preview(entry, opts) do
     live_img_preview(Enum.into(opts, %{entry: entry}))
-  end 
+  end
 
   @doc deprecated: "Use <.live_file_input /> instead"
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts) when is_list(opts) do
