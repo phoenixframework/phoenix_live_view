@@ -1436,6 +1436,27 @@ defmodule Phoenix.Component do
   end
 
   def to_form(data, options) do
+    if is_atom(data) do
+      IO.warn("""
+      Passing an atom to "for" in the form component is deprecated.
+      Instead of:
+
+          <.form :let={f} for={#{inspect(data)}} ...>
+
+      You might do:
+
+          <.form :let={f} for={%{}} as={#{inspect(data)} ...>
+
+      Or, if you prefer, use to_form to create a form in your LiveView:
+
+          assign(socket, form: to_form(%{}, as: #{inspect(data)}))
+
+      and then use it in your templates (no :let required):
+
+          <.form for={@form}>
+      """)
+    end
+
     Phoenix.HTML.FormData.to_form(data, options)
   end
 
@@ -1978,9 +1999,9 @@ defmodule Phoenix.Component do
   the inputs would otherwise be cleared. Alternatively, you can use `phx-update="ignore"`
   on the form to discard any updates.
 
-  ### Non-form `:for` attributes
+  ### Using the `for` attribute
 
-  The `:for` attribute can also be a map or an Ecto.Changeset. In such cases,
+  The `for` attribute can also be a map or an Ecto.Changeset. In such cases,
   a form will be created on the fly, and you can capture it using `:let`:
 
   ```heex
@@ -1991,7 +2012,7 @@ defmodule Phoenix.Component do
   >
   ```
 
-  However, such approached is discouraged in LiveView for two reasons:
+  However, such approach is discouraged in LiveView for two reasons:
 
     * LiveView can better optimize your code if you access the form fields
       using `@form[:field]` rather than through the let-variable `form`
