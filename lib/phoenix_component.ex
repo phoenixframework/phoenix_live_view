@@ -2134,6 +2134,8 @@ defmodule Phoenix.Component do
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} = form = to_form(form_for, form_options)
+    # Ensure all user-provided attributes are applied
+    opts = Keyword.merge(opts, Keyword.drop(form_options, [:as, :errors]))
 
     # By default, we will ignore action, method, and csrf token
     # unless the action is given.
