@@ -2642,7 +2642,7 @@ defmodule Phoenix.Component do
     <:separator>
       <span class="sep">|</span>
     </:separator>
-    <%= item.name %>
+    <%= item %>
   </.intersperse>
   ```
 
