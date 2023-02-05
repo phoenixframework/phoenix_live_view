@@ -257,7 +257,8 @@ defmodule Phoenix.LiveView do
 
   When rendering a child LiveView, the `:id` option is required to uniquely
   identify the child. A child LiveView will only ever be rendered and mounted
-  a single time, provided its ID remains unchanged.
+  a single time, provided its ID remains unchanged. To force a child to re-mount 
+  with new session data, a new ID must be provided.
 
   Given that a LiveView runs on its own process, it is an excellent tool for creating
   completely isolated UI elements, but it is a slightly expensive abstraction if
