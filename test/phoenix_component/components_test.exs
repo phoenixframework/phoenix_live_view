@@ -296,7 +296,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{form: to_form(%{})}
 
       template = ~H"""
-      <.form :let={f} for={@form} as="base">
+      <.form :let={f} for={@form} as="base" data-foo="bar" class="pretty" phx-change="valid">
         <%= text_input f, :foo %>
       </.form>
       """
@@ -304,7 +304,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = parse(template)
 
       assert [
-               {"form", [],
+               {"form", [{"class", "pretty"}, {"data-foo", "bar"}, {"phx-change", "valid"}],
                 [
                   {"input", [{"id", "base_foo"}, {"name", "base[foo]"}, {"type", "text"}], []}
                 ]}
