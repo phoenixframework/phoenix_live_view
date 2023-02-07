@@ -1407,7 +1407,8 @@ defmodule Phoenix.Component do
 
   If an existing `Phoenix.HTML.Form` struct is given, the
   options below will override its existing values if given.
-  Then the remaining of the struct is returned unchanged.
+  Then the remaining options are merged with the existing
+  form options.
 
   ## Options
 
@@ -1422,17 +1423,24 @@ defmodule Phoenix.Component do
   def to_form(data, options \\ [])
 
   def to_form(%Phoenix.HTML.Form{} = data, options) do
-    case Keyword.fetch(options, :as) do
-      {:ok, as} ->
-        name = if as == nil, do: as, else: to_string(as)
-        %{data | name: name, id: Keyword.get(options, :id) || name}
+    {name, id} =
+      case Keyword.fetch(options, :as) do
+        {:ok, as} ->
+          name = if as == nil, do: as, else: to_string(as)
+          {name, Keyword.get(options, :id) || name}
 
-      :error ->
-        case Keyword.fetch(options, :id) do
-          {:ok, id} -> %{data | id: id}
-          :error -> data
-        end
-    end
+        :error ->
+          case Keyword.fetch(options, :id) do
+            {:ok, id} -> {data.name, id}
+            :error -> {data.name, data.id}
+          end
+      end
+
+    {_as, options} = Keyword.pop(options, :as)
+    {errors, options} = Keyword.pop(options, :errors, data.errors)
+    options = Keyword.merge(data.options, options)
+
+    %{data | errors: errors, id: id, name: name, options: options}
   end
 
   def to_form(data, options) do
@@ -2134,8 +2142,6 @@ defmodule Phoenix.Component do
 
     # Since FormData may add options, read the actual options from form
     %{options: opts} = form = to_form(form_for, form_options)
-    # Ensure all user-provided attributes are applied
-    opts = Keyword.merge(opts, Keyword.drop(form_options, [:as, :errors]))
 
     # By default, we will ignore action, method, and csrf token
     # unless the action is given.
