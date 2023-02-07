@@ -261,18 +261,16 @@ defmodule Phoenix.LiveView.ComponentsTest do
   end
 
   describe "form" do
-    test "raises when missing required assigns" do
-      assert_raise ArgumentError, ~r/missing :for assign/, fn ->
-        assigns = %{}
+    test "let without :for" do
+      assigns = %{}
 
-        template = ~H"""
-        <.form :let={f}>
-          <%= text_input f, :foo %>
-        </.form>
-        """
+      template = ~H"""
+      <.form :let={f}>
+        <%= text_input f, :foo %>
+      </.form>
+      """
 
-        parse(template)
-      end
+      assert parse(template)
     end
 
     test "generates form with prebuilt form" do
@@ -312,7 +310,6 @@ defmodule Phoenix.LiveView.ComponentsTest do
                 ]}
              ] = html
     end
-
 
     test "generates form with form data" do
       assigns = %{}
