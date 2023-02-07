@@ -454,7 +454,7 @@ defmodule Phoenix.LiveComponent do
       use Phoenix.Component, Keyword.take(unquote(opts), [:global_prefixes])
 
       @doc false
-      def __live__, do: %{kind: :component, module: __MODULE__}
+      def __live__, do: %{kind: :component, module: __MODULE__, layout: false}
     end
   end
 

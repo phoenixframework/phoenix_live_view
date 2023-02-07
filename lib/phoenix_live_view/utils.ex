@@ -146,18 +146,30 @@ defmodule Phoenix.LiveView.Utils do
     |> drop_private([:connect_info, :connect_params, :assign_new])
   end
 
+  @doc """
+  Validate and normalizes the layout.
+  """
   def normalize_layout(false, _warn_ctx), do: false
-  def normalize_layout(layout, _warn_ctx) when is_atom(layout), do: Atom.to_string(layout)
 
-  def normalize_layout(layout, warn_ctx) when is_binary(layout) do
+  def normalize_layout({mod, layout}, _warn_ctx) when is_atom(mod) and is_atom(layout) do
+    {mod, Atom.to_string(layout)}
+  end
+
+  def normalize_layout({mod, layout}, warn_ctx) when is_atom(mod) and is_binary(layout) do
     root_template = Path.rootname(layout)
 
     IO.warn(
-      "passing a string as a layout template in #{warn_ctx} is deprecated, please pass an atom, " <>
-        "such as :#{root_template} instead of \"#{root_template}.html\""
+      "passing a string as a layout template in #{warn_ctx} is deprecated, please pass " <>
+        "{#{inspect(mod)}, :#{root_template}} instead of {#{inspect(mod)}, \"#{root_template}.html\"}"
     )
 
     root_template
+  end
+
+  def normalize_layout(other, _warn_ctx) do
+    raise ArgumentError,
+          ":layout expects a tuple of the form {MyLayoutView, :my_template} or false, " <>
+            "got: #{inspect(other)}"
   end
 
   @doc """
@@ -491,20 +503,8 @@ defmodule Phoenix.LiveView.Utils do
     """
   end
 
-  defp do_mount_opt(socket, :layout, {mod, template})
-       when is_atom(mod) and (is_atom(template) or is_binary(template)) do
-    template = normalize_layout(template, "mount options")
-    %Socket{socket | private: Map.put(socket.private, :live_layout, {mod, template})}
-  end
-
-  defp do_mount_opt(socket, :layout, false) do
-    put_in(socket.private[:live_layout], false)
-  end
-
-  defp do_mount_opt(_socket, :layout, bad_layout) do
-    raise ArgumentError,
-          "the :layout mount option expects a tuple of the form {MyLayoutView, :my_template}, " <>
-            "got: #{inspect(bad_layout)}"
+  defp do_mount_opt(socket, :layout, layout) do
+    put_in(socket.private[:live_layout], normalize_layout(layout, "mount options"))
   end
 
   defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
@@ -533,7 +533,7 @@ defmodule Phoenix.LiveView.Utils do
   defp layout(socket, view) do
     case socket.private do
       %{live_layout: layout} -> layout
-      %{} -> view.__live__()[:layout] || false
+      %{} -> view.__live__()[:layout]
     end
   end
 

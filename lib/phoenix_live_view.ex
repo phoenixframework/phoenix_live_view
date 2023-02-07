@@ -487,23 +487,7 @@ defmodule Phoenix.LiveView do
     opts = Module.get_attribute(env.module, :phoenix_live_opts)
 
     layout =
-      case opts[:layout] do
-        {mod, template} when is_atom(mod) and is_binary(template) ->
-          root_template = Phoenix.LiveView.Utils.normalize_layout(template, "use options")
-          {mod, root_template}
-
-        {mod, template} when is_atom(mod) and is_atom(template) ->
-          template = Phoenix.LiveView.Utils.normalize_layout(template, "use options")
-          {mod, to_string(template)}
-
-        nil ->
-          nil
-
-        other ->
-          raise ArgumentError,
-                ":layout expects a tuple of the form {MyLayoutView, \"my_template.html\"}, " <>
-                  "or {MyLayoutView, :my_template}, got: #{inspect(other)}"
-      end
+      Phoenix.LiveView.Utils.normalize_layout(Keyword.get(opts, :layout, false), "use options")
 
     log =
       case Keyword.fetch(opts, :log) do
