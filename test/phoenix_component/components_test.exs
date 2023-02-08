@@ -296,7 +296,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{form: to_form(%{})}
 
       template = ~H"""
-      <.form :let={f} for={@form} as="base">
+      <.form :let={f} for={@form} as="base" data-foo="bar" class="pretty" phx-change="valid">
         <%= text_input f, :foo %>
       </.form>
       """
@@ -304,10 +304,26 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = parse(template)
 
       assert [
-               {"form", [],
+               {"form", [{"class", "pretty"}, {"data-foo", "bar"}, {"phx-change", "valid"}],
                 [
                   {"input", [{"id", "base_foo"}, {"name", "base[foo]"}, {"type", "text"}], []}
                 ]}
+             ] = html
+    end
+
+    test "generates form with prebuilt form and errors" do
+      assigns = %{form: to_form(%{})}
+
+      template = ~H"""
+      <.form :let={form} for={@form} errors={[name: "can't be blank"]}>
+        <%= inspect(form.errors) %>
+      </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [], ["\n  \n  \n  \n  [name: \"can't be blank\"]\n\n"]}
              ] = html
     end
 

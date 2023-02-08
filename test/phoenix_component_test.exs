@@ -251,6 +251,12 @@ defmodule Phoenix.ComponentUnitTest do
       form = to_form(%{}, as: :foo, id: "bar")
       assert form.name == "foo"
       assert form.id == "bar"
+
+      form = to_form(%{}, custom: "attr")
+      assert form.options == [custom: "attr"]
+
+      form = to_form(%{}, errors: [name: "can't be blank"])
+      assert form.errors == [name: "can't be blank"]
     end
 
     test "with a form" do
@@ -272,6 +278,12 @@ defmodule Phoenix.ComponentUnitTest do
       form = to_form(base, as: nil, id: nil)
       assert form.name == nil
       assert form.id == nil
+
+      form = to_form(base, custom: "attr")
+      assert form.options[:custom] == "attr"
+
+      form = to_form(base, errors: [name: "can't be blank"])
+      assert form.errors == [name: "can't be blank"]
     end
   end
 end
