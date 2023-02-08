@@ -382,7 +382,7 @@ defmodule Phoenix.LiveView.Router do
   defp validate_live_opts!(opts) do
     {private, opts} = Keyword.pop(opts, :private, %{})
     {metadata, opts} = Keyword.pop(opts, :metadata, %{})
-    {warn_on_verify, opts} = Keyword.pop(opts, :warn_on_verify, true)
+    {warn_on_verify, opts} = Keyword.pop(opts, :warn_on_verify, false)
 
     Enum.each(opts, fn
       {:container, {tag, attrs}} when is_atom(tag) and is_list(attrs) ->
