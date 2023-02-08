@@ -1437,10 +1437,10 @@ defmodule Phoenix.Component do
       end
 
     {_as, options} = Keyword.pop(options, :as)
-    {_errors, options} = Keyword.pop(options, :errors)
+    {errors, options} = Keyword.pop(options, :errors, data.errors)
     options = Keyword.merge(data.options, options)
 
-    %{data | id: id, name: name, options: options}
+    %{data | errors: errors, id: id, name: name, options: options}
   end
 
   def to_form(data, options) do

@@ -283,7 +283,7 @@ defmodule Phoenix.ComponentUnitTest do
       assert form.options[:custom] == "attr"
 
       form = to_form(base, errors: [name: "can't be blank"])
-      assert form.errors == []
+      assert form.errors == [name: "can't be blank"]
     end
   end
 end
