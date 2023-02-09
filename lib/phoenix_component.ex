@@ -1252,6 +1252,10 @@ defmodule Phoenix.Component do
 
   def assign(%{__changed__: changed} = assigns, key, value) do
     case assigns do
+      # force assign the key if the attribute was declared with same default as being assigned
+      %{^key => ^value, __defaults__: %{^key => ^value}} ->
+        Phoenix.LiveView.Utils.force_assign(assigns, changed, key, value)
+
       %{^key => ^value} ->
         assigns
 
@@ -2137,6 +2141,7 @@ defmodule Phoenix.Component do
   def form(assigns) do
     # Extract options and then to the same call as form_for
     action = assigns[:action]
+
     form_for =
       case assigns[:for] do
         nil -> %{}
