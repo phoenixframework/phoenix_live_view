@@ -477,28 +477,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
   end
 
   describe "inputs_for" do
-    test "raises when missing required assigns" do
-      assert_raise ArgumentError, ~r/missing :field assign/, fn ->
-        assigns = %{}
-
-        template = ~H"""
-        <.form :let={_f}  for={:myform}>
-          <.inputs_for :let={finner}>
-            <%= text_input finner, :foo %>
-          </.inputs_for>
-        </.form>
-        """
-
-        parse(template)
-      end
-    end
-
     test "generates nested inputs with no options" do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f}  for={:myform}>
-          <.inputs_for :let={finner} field={{f, :inner}}>
+        <.form :let={f} as={:myform}>
+          <.inputs_for :let={finner} field={f[:inner]}}>
             <%= text_input finner, :foo %>
           </.inputs_for>
         </.form>
@@ -523,8 +507,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f}  for={:myform}>
-          <.inputs_for :let={finner} field={{f, :inner}} id="test" as={:name}>
+        <.form :let={f} as={:myform}>
+          <.inputs_for :let={finner} field={f[:inner]}} id="test" as={:name}>
             <%= text_input finner, :foo %>
           </.inputs_for>
         </.form>
@@ -549,8 +533,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f}  for={:myform}>
-          <.inputs_for :let={finner} field={{f, :inner}} default={%{foo: "123"}}>
+        <.form :let={f} as={:myform}>
+          <.inputs_for :let={finner} field={f[:inner]}} default={%{foo: "123"}}>
             <%= text_input finner, :foo %>
           </.inputs_for>
         </.form>
@@ -576,10 +560,10 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f}  for={:myform}>
+        <.form :let={f} as={:myform}>
           <.inputs_for
             :let={finner}
-            field={{f, :inner}}
+            field={f[:inner]}}
             default={[%{foo: "456"}]}
             prepend={[%{foo: "123"}]}
             append={[%{foo: "789"}]}

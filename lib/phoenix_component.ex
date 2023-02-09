@@ -2137,6 +2137,7 @@ defmodule Phoenix.Component do
   def form(assigns) do
     # Extract options and then to the same call as form_for
     action = assigns[:action]
+
     form_for =
       case assigns[:for] do
         nil -> %{}
@@ -2215,13 +2216,13 @@ defmodule Phoenix.Component do
     for={@changeset}
     phx-change="change_name"
   >
-    <.inputs_for :let={f_nested} field={{:f, :nested}}>
+    <.inputs_for :let={f_nested} field={f[:nested]}}>
       <%= text_input f_nested, :name %>
     </.inputs_for>
   </.form>
   ```
   """
-  attr.(:field, :any,
+  attr.(:field, Phoenix.HTML.FormField,
     required: true,
     doc: "A %Phoenix.HTML.Form{}/field name tuple, for example: {f, :email}."
   )
@@ -2268,8 +2269,7 @@ defmodule Phoenix.Component do
   slot.(:inner_block, required: true, doc: "The content rendered for each nested form.")
 
   def inputs_for(assigns) do
-    {form, field} = assigns[:field] || raise ArgumentError, "missing :field assign to inputs_for"
-
+    %Phoenix.HTML.FormField{field: field_name, form: form} = assigns.field
     options = assigns |> Map.take([:id, :as, :default, :append, :prepend]) |> Keyword.new()
 
     options =
@@ -2280,7 +2280,7 @@ defmodule Phoenix.Component do
     assigns =
       assigns
       |> assign(:field, nil)
-      |> assign(:forms, form.impl.to_form(form.source, form, field, options))
+      |> assign(:forms, form.impl.to_form(form.source, form, field_name, options))
 
     ~H"""
     <%= for finner <- @forms do %>
