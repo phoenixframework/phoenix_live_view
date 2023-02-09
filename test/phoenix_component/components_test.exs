@@ -476,6 +476,153 @@ defmodule Phoenix.LiveView.ComponentsTest do
     end
   end
 
+  describe "inputs_for" do
+    test "raises when missing required assigns" do
+      assert_raise ArgumentError, ~r/missing :field assign/, fn ->
+        assigns = %{}
+
+        template = ~H"""
+        <.form :let={_f}  for={:myform}>
+          <.inputs_for :let={finner}>
+            <%= text_input finner, :foo %>
+          </.inputs_for>
+        </.form>
+        """
+
+        parse(template)
+      end
+    end
+
+    test "generates nested inputs with no options" do
+      assigns = %{}
+
+      template = ~H"""
+        <.form :let={f}  for={:myform}>
+          <.inputs_for :let={finner} field={{f, :inner}}>
+            <%= text_input finner, :foo %>
+          </.inputs_for>
+        </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [],
+                [
+                  {"input",
+                   [
+                     {"id", "myform_inner_foo"},
+                     {"name", "myform[inner][foo]"},
+                     {"type", "text"}
+                   ], []}
+                ]}
+             ] = html
+    end
+
+    test "with naming options" do
+      assigns = %{}
+
+      template = ~H"""
+        <.form :let={f}  for={:myform}>
+          <.inputs_for :let={finner} field={{f, :inner}} id="test" as={:name}>
+            <%= text_input finner, :foo %>
+          </.inputs_for>
+        </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [],
+                [
+                  {"input",
+                   [
+                     {"id", "test_foo"},
+                     {"name", "name[foo]"},
+                     {"type", "text"}
+                   ], []}
+                ]}
+             ] = html
+    end
+
+    test "with default map option" do
+      assigns = %{}
+
+      template = ~H"""
+        <.form :let={f}  for={:myform}>
+          <.inputs_for :let={finner} field={{f, :inner}} default={%{foo: "123"}}>
+            <%= text_input finner, :foo %>
+          </.inputs_for>
+        </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [],
+                [
+                  {"input",
+                   [
+                     {"id", "myform_inner_foo"},
+                     {"name", "myform[inner][foo]"},
+                     {"type", "text"},
+                     {"value", "123"}
+                   ], []}
+                ]}
+             ] = html
+    end
+
+    test "with default list and list related options" do
+      assigns = %{}
+
+      template = ~H"""
+        <.form :let={f}  for={:myform}>
+          <.inputs_for
+            :let={finner}
+            field={{f, :inner}}
+            default={[%{foo: "456"}]}
+            prepend={[%{foo: "123"}]}
+            append={[%{foo: "789"}]}
+          >
+            <%= text_input finner, :foo %>
+          </.inputs_for>
+        </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [],
+                [
+                  {
+                    "input",
+                    [
+                      {"id", "myform_inner_0_foo"},
+                      {"name", "myform[inner][0][foo]"},
+                      {"type", "text"},
+                      {"value", "123"}
+                    ],
+                    []
+                  },
+                  {"input",
+                   [
+                     {"id", "myform_inner_1_foo"},
+                     {"name", "myform[inner][1][foo]"},
+                     {"type", "text"},
+                     {"value", "456"}
+                   ], []},
+                  {"input",
+                   [
+                     {"id", "myform_inner_2_foo"},
+                     {"name", "myform[inner][2][foo]"},
+                     {"type", "text"},
+                     {"value", "789"}
+                   ], []}
+                ]}
+             ] = html
+    end
+  end
+
   describe "live_file_input/1" do
     test "renders attributes" do
       assigns = %{
