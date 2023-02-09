@@ -182,9 +182,10 @@ def handle_event("save", _params, socket) do
   uploaded_files =
     consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
       dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
-      # The `static/uploads` directory must exist for `File.cp!/2` to work.
+      # The `static/uploads` directory must exist for `File.cp!/2`
+      # and MyAppWeb.static_paths/0 should contain uploads to work,.
       File.cp!(path, dest)
-      {:ok, Routes.static_path(socket, "/uploads/#{Path.basename(dest)}")}
+      {:ok, ~p"/uploads/#{Path.basename(dest)}"}
     end)
 
   {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
@@ -231,7 +232,7 @@ defmodule MyAppWeb.UploadLive do
       consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
         dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
         File.cp!(path, dest)
-        {:ok, Routes.static_path(socket, "/uploads/#{Path.basename(dest)}")}
+        {:ok, ~p"/uploads/#{Path.basename(dest)}"}
       end)
 
     {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
