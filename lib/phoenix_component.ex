@@ -2279,10 +2279,7 @@ defmodule Phoenix.Component do
       |> Keyword.take([:multipart])
       |> Keyword.merge(options)
 
-    assigns =
-      assigns
-      |> assign(:field, nil)
-      |> assign(:forms, form.impl.to_form(form.source, form, field_name, options))
+    assigns = assign(assigns, :forms, form.impl.to_form(form.source, form, field_name, options))
 
     ~H"""
     <%= for finner <- @forms do %>
