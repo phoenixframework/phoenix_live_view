@@ -865,12 +865,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     static untrackFile(inputEl, file) {
       dom_default.putPrivate(inputEl, "files", dom_default.private(inputEl, "files").filter((f) => !Object.is(f, file)));
     }
-    static trackFiles(inputEl, files) {
+    static trackFiles(inputEl, files, dataTransfer) {
       if (inputEl.getAttribute("multiple") !== null) {
         let newFiles = files.filter((file) => !this.activeFiles(inputEl).find((f) => Object.is(f, file)));
         dom_default.putPrivate(inputEl, "files", this.activeFiles(inputEl).concat(newFiles));
         inputEl.value = null;
       } else {
+        if (dataTransfer && dataTransfer.files.length > 0) {
+          inputEl.files = dataTransfer.files;
+        }
         dom_default.putPrivate(inputEl, "files", files);
       }
     }
@@ -3356,7 +3359,9 @@ within:
     }
     pushFormRecovery(form, newCid, callback) {
       this.liveSocket.withinOwners(form, (view, targetCtx) => {
-        let input = form.elements[0];
+        let input = Array.from(form.elements[0]).find((el) => {
+          return dom_default.isFormInput(el) && !el.type === "hidden" && !el.hasAttribute(this.binding("change"));
+        });
         let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
         js_default.exec("change", phxEvent, view, input, ["push", { _target: input.name, newCid, callback }]);
       });
@@ -3884,7 +3889,7 @@ within:
         if (!dropTarget || dropTarget.disabled || files.length === 0 || !(dropTarget.files instanceof FileList)) {
           return;
         }
-        LiveUploader.trackFiles(dropTarget, files);
+        LiveUploader.trackFiles(dropTarget, files, e.dataTransfer);
         dropTarget.dispatchEvent(new Event("input", { bubbles: true }));
       });
       this.on(PHX_TRACK_UPLOADS, (e) => {
