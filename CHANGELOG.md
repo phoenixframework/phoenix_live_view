@@ -5,6 +5,9 @@
 ### Enhancements
   * Introduce streams for efficiently handling large collections
 
+### Bug Fixes
+  * Fix change tracking when re-assigning a defaulted attribute to same default value
+
 ## 0.18.11 (2023-01-19)
 
 ### Bug Fixes
