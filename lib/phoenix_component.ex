@@ -2207,10 +2207,6 @@ defmodule Phoenix.Component do
 
   [INSERT LVATTRDOCS]
 
-  This function is built on top of `Phoenix.HTML.Form.inputs_for/3`.
-
-  For more information about options and how to build inputs, see `Phoenix.HTML.Form`.
-
   ## Examples
 
   ```heex
@@ -2263,8 +2259,7 @@ defmodule Phoenix.Component do
     default: false,
     doc: """
     Skip the automatic rendering of hidden fields to allow for more tight control
-    over the generated markup. You can access `form.hidden` or use `.hidden_inputs/1`
-    to generate them manually.
+    over the generated markup.
     """
   )
 
