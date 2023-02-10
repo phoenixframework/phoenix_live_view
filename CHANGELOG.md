@@ -1,15 +1,17 @@
 # Changelog
 
-## 0.18.12
+## 0.18.12 (2023-02-10)
 
 ### Enhancements
-  * Allow replies from `:handle_event` lifecycle hooks
   * Introduce streams for efficiently handling large collections
+  * Allow replies from `:handle_event` lifecycle hooks
   * Add `<.inputs_for>` component to `Phoenix.Component`
+  * Support replies on lifecycle `:handle_event` hooks
 
 ### Bug Fixes
   * Fix change tracking when re-assigning a defaulted attribute to same default value
   * Fix upload drag and drop failing to worka after using file select dialog
+  * Fix form recovery when form's first input is phx-change
 
 ## 0.18.11 (2023-01-19)
 
