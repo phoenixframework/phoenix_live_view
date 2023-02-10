@@ -1031,7 +1031,7 @@ export default class View {
 
   pushFormRecovery(form, newCid, callback){
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
-      let input = Array.from(form.elements[0]).find(el => {
+      let input = Array.from(form.elements).find(el => {
         return DOM.isFormInput(el) && !el.type === "hidden" && !el.hasAttribute(this.binding("change"))
       })
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
