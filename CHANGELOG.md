@@ -8,6 +8,7 @@
 
 ### Bug Fixes
   * Fix change tracking when re-assigning a defaulted attribute to same default value
+  * Fix upload drag and drop failing to worka after using file select dialog
 
 ## 0.18.11 (2023-01-19)
 
