@@ -627,7 +627,7 @@ defmodule Phoenix.Component.Declarative do
               attr_defaults ++ slot_defaults
 
             [_ | _] ->
-              tracked_defaults = Macro.escape(Map.new(attr_defaults))
+              tracked_defaults = Macro.escape(Map.new(attr_defaults, fn {key, _} -> {key, []} end))
               [{:__defaults__, tracked_defaults} | attr_defaults] ++ slot_defaults
           end
 
