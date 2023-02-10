@@ -37,11 +37,11 @@ defmodule Phoenix.LiveView do
   Any time a stateful view changes or updates its socket assigns, it is
   automatically re-rendered and the updates are pushed to the client.
 
-  Socket assigns are values kept on the server side by
-  `Phoenix.Socket`, this is different from the common pattern of sending
-  the connection state to the client in the form of a token or cookie,
-  typically used in HTTP requests. Under the hood there is a GenServer that
-  creates a process for each socket connection through `Phoenix.LiveView.Socket`.
+  Socket assigns are stateful values kept on the server side in
+  `Phoenix.LiveView.Socket`. This is different from the common stateless
+  HTTP pattern of sending the connection state to the client in the form
+  of a token or cookie and rebuilding the state on the server to service
+  every request.
 
   You begin by rendering a LiveView typically from your router.
   When LiveView is first rendered, the `c:mount/3` callback is invoked
@@ -263,7 +263,7 @@ defmodule Phoenix.LiveView do
 
   When rendering a child LiveView, the `:id` option is required to uniquely
   identify the child. A child LiveView will only ever be rendered and mounted
-  a single time, provided its ID remains unchanged. To force a child to re-mount 
+  a single time, provided its ID remains unchanged. To force a child to re-mount
   with new session data, a new ID must be provided.
 
   Given that a LiveView runs on its own process, it is an excellent tool for creating
