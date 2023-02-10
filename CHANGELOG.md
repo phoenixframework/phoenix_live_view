@@ -4,6 +4,7 @@
 
 ### Enhancements
   * Introduce streams for efficiently handling large collections
+  * Add `<.inputs_for>` component to `Phoenix.Component`
 
 ### Bug Fixes
   * Fix change tracking when re-assigning a defaulted attribute to same default value
