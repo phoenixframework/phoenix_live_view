@@ -2214,7 +2214,7 @@ defmodule Phoenix.Component do
     :let={f}
     phx-change="change_name"
   >
-    <.inputs_for :let={f_nested} field={f[:nested]}}>
+    <.inputs_for :let={f_nested} field={f[:nested]}>
       <.input type="text" field={f_nested[:name]} />
     </.inputs_for>
   </.form>

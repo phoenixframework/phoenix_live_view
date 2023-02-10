@@ -44,7 +44,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
       {:floki, "~> 0.30.0", only: :test},
-      {:ex_doc, "~> 0.28", only: :docs},
+      {:ex_doc, "~> 0.29", only: :docs},
       {:makeup_eex, ">= 0.1.1", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4.1", only: :test}
