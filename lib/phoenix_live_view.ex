@@ -1492,8 +1492,8 @@ defmodule Phoenix.LiveView do
   must be met:
 
     1. The parent DOM container must include a `phx-update="stream"` attribute,
-      along with a unique DOM id.
-    2. Each stream item must include its DOM id on the item's element
+       along with a unique DOM id.
+    2. Each stream item must include its DOM id on the item's element.
 
   When consuming a stream in a template, the DOM id and item is passed as a tuple,
   allowing convenient inclusion of the DOM id for each item. For example:
@@ -1511,7 +1511,7 @@ defmodule Phoenix.LiveView do
     </tbody>
   </table>
   ```
-  We consume the stream in a for comprehension but referencing the
+  We consume the stream in a for comprehension by referencing the
   `@streams.songs` assign. We used the computed DOM id to populate
   the `<tr>` id, then we render the table row as usual.
 
