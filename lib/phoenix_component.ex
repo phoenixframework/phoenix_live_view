@@ -1292,6 +1292,11 @@ defmodule Phoenix.Component do
             "Use the appropriate flash functions instead."
   end
 
+  defp validate_assign_key!(:uploads) do
+    raise ArgumentError,
+          ":uploads is a reserved assign by LiveView and it cannot be set directly. "
+  end
+
   defp validate_assign_key!(_key), do: :ok
 
   @doc """
