@@ -3343,7 +3343,7 @@ var View = class {
   pushFormRecovery(form, newCid, callback) {
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
       let input = Array.from(form.elements).find((el) => {
-        return dom_default.isFormInput(el) && !el.type === "hidden" && !el.hasAttribute(this.binding("change"));
+        return dom_default.isFormInput(el) && el.type !== "hidden" && !el.hasAttribute(this.binding("change"));
       });
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
       js_default.exec("change", phxEvent, view, input, ["push", { _target: input.name, newCid, callback }]);
