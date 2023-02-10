@@ -2220,6 +2220,7 @@ defmodule Phoenix.Component do
   </.form>
   ```
   """
+  @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
     required: true,
     doc: "A %Phoenix.HTML.Form{}/field name tuple, for example: {@form[:email]}."
