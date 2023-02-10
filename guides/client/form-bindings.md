@@ -2,17 +2,10 @@
 
 ## A note about form helpers
 
-LiveView works with the existing `Phoenix.HTML` form helpers.
-If you want to use helpers such as [`text_input/2`](`Phoenix.HTML.Form.text_input/2`),
-etc. be sure to `use Phoenix.HTML` at the top of your LiveView.
-If your application was generated with Phoenix v1.6, then `mix phx.new`
-automatically uses `Phoenix.HTML` when you `use MyAppWeb, :live_view` or
-`use MyAppWeb, :live_component` in your modules.
-
-Using the generated `:live_view` and `:live_component` helpers will also
-`import MyAppWeb.ErrorHelpers`, a module generated as part of your application
-where `error_tag/2` resides (usually located at `lib/my_app_web/views/error_helpers.ex`).
-You are welcome to change the `ErrorHelpers` module as you prefer.
+If your application was generated with Phoenix v1.7, then `mix phx.new`
+automatically imports form helpers components defined in your applications
+`CoreComponents` module. You may also use `Phoenix.HTML` functions for building
+inputs.
 
 ## Form Events
 
@@ -24,16 +17,10 @@ For example, to handle real-time form validation and saving, your form would
 use both `phx-change` and `phx-submit` bindings:
 
 ```
-<.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
-  <%= label f, :username %>
-  <%= text_input f, :username %>
-  <%= error_tag f, :username %>
-
-  <%= label f, :email %>
-  <%= text_input f, :email %>
-  <%= error_tag f, :email %>
-
-  <%= submit "Save" %>
+<.form phx-change="validate" phx-submit="save">
+  <.input type="text" field={@form[:username]} />
+  <.input type="email" field={@form[:email]} />
+  <button>Save</button>
 </.form>
 ```
 
@@ -42,16 +29,17 @@ Next, your LiveView picks up the events in `handle_event` callbacks:
     def render(assigns) ...
 
     def mount(_params, _session, socket) do
-      {:ok, assign(socket, %{changeset: Accounts.change_user(%User{})})}
+      {:ok, assign(socket, form: to_form(Accounts.change_user(%User{}))}
     end
 
     def handle_event("validate", %{"user" => params}, socket) do
-      changeset =
+      form =
         %User{}
         |> Accounts.change_user(params)
         |> Map.put(:action, :insert)
+        |> to_form()
 
-      {:noreply, assign(socket, changeset: changeset)}
+      {:noreply, assign(socket, form: form)}
     end
 
     def handle_event("save", %{"user" => user_params}, socket) do
@@ -63,13 +51,13 @@ Next, your LiveView picks up the events in `handle_event` callbacks:
            |> redirect(to: Routes.user_path(MyAppWeb.Endpoint, MyAppWeb.User.ShowView, user))}
 
         {:error, %Ecto.Changeset{} = changeset} ->
-          {:noreply, assign(socket, changeset: changeset)}
+          {:noreply, assign(socket, form: to_form(changeset))}
       end
     end
 
 The validate callback simply updates the changeset based on all form input
-values, then assigns the new changeset to the socket. If the changeset
-changes, such as generating new errors, [`render/1`](`c:Phoenix.LiveView.render/1`)
+values, then convert the changeset to a form and assign it to the socket.
+If the form changes, such as generating new errors, [`render/1`](`c:Phoenix.LiveView.render/1`)
 is invoked and the form is re-rendered.
 
 Likewise for `phx-submit` bindings, the same callback is invoked and
@@ -83,10 +71,9 @@ a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
 ```
-<.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
+<.form phx-change="validate" phx-submit="save">
   ...
-  <%= label f, :county %>
-  <%= text_input f, :email, phx_change: "email_changed", phx_target: @myself %>
+  <.input field={f[:email]}  phx-change="email_changed" phx-target={@myself} />
 </.form>
 ```
 
@@ -109,26 +96,40 @@ Failing to add the `phx-feedback-for` attribute will result in displaying error
 messages for form fields that the user has not changed yet (e.g. required
 fields further down on the page).
 
-For example, your `MyAppWeb.ErrorHelpers` may use this function:
+For example, your `MyAppWeb.CoreComponents` may use this function:
 
-    def error_tag(form, field) do
+    def input(assigns) do
       ~H"""
-      <div phx-feedback-for={Phoenix.HTML.input_name(form, field)}>
-        <%= for error <- Keyword.get_values(form.errors, field) do %>
-          <span class="invalid-feedback"><%= error %></span>
-        <% end %>
+      <div phx-feedback-for={@name}>
+        <input
+          type={@type}
+          name={@name}
+          id={@id || @name}
+          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
+          class={[
+            "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
+            "border-zinc-300 focus:border-zinc-400 focus:ring-zinc-800/5",
+          ]}
+          {@rest}
+        />
+        <.error :for={msg <- @errors}><%%= msg %></.error>
       </div>
+      """
+    end
+
+    def error(assigns) do
+      ~H"""
+      <p class="phx-no-feedback:hidden">
+        <Heroicons.exclamation_circle mini class="mt-0.5 h-5 w-5 flex-none fill-rose-500" />
+        <%= render_slot(@inner_block) %>
+      </p>
       """
     end
 
 Now, any DOM container with the `phx-feedback-for` attribute will receive a
 `phx-no-feedback` class in cases where the form fields has yet to receive
-user input/focus. The following CSS rules are generated in new projects
-to hide the errors:
-
-    .phx-no-feedback.invalid-feedback, .phx-no-feedback .invalid-feedback {
-      display: none;
-    }
+user input/focus. Using new CSS rules or tailwindcss variants allows you
+errors to be shown, hidden, and styled as feedback changes.
 
 ## Number inputs
 
@@ -161,10 +162,8 @@ password field values are not reused when rendering a password input tag. This
 requires explicitly setting the `:value` in your markup, for example:
 
 ```heex
-<%= password_input f, :password, value: input_value(f, :password) %>
-<%= password_input f, :password_confirmation, value: input_value(f, :password_confirmation) %>
-<%= error_tag f, :password %>
-<%= error_tag f, :password_confirmation %>
+<.input field={f[:password]} value={input_value(f[:password].value)} />
+<.input field={f[:password_confirmation]} value={input_value(f[:password_confirmation].value)} />
 ```
 
 ## Nested inputs
@@ -186,8 +185,8 @@ attribute:
 
 ```heex
 <div class="container" phx-drop-target={@uploads.avatar.ref}>
-    ...
-    <.live_file_input upload={@uploads.avatar} />
+  ...
+  <.live_file_input upload={@uploads.avatar} />
 </div>
 ```
 

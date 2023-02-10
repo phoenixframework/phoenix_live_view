@@ -676,16 +676,15 @@ defmodule Phoenix.Component do
   caller. For an example, see how `form/1` works:
 
   ```heex
-  <.form :let={f} for={@changeset} phx-change="validate" phx-submit="save">
-    <%= label(f, :username) %>
-    <%= text_input(f, :username) %>
+  <.form :let={f} for={@form} phx-change="validate" phx-submit="save">
+    <.input field={f[:username]} type="text" />
     ...
   </.form>
   ```
 
-  Notice how the variable `f`, defined by `.form`, is used by `label` and
-  `text_input`. The `Phoenix.Component` module has detailed documentation on
-  how to use and implement such functionality.
+  Notice how the variable `f`, defined by `.form` is used by your `input` component.
+  The `Phoenix.Component` module has detailed documentation on how to use and
+  implement such functionality.
 
   #### :if and :for
 
@@ -2220,7 +2219,7 @@ defmodule Phoenix.Component do
     phx-change="change_name"
   >
     <.inputs_for :let={f_nested} field={f[:nested]}}>
-      <%= text_input f_nested, :name %>
+      <.input type="text" field={f_nested[:name]} />
     </.inputs_for>
   </.form>
   ```
