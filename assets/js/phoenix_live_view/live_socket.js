@@ -549,7 +549,7 @@ export default class LiveSocket {
       let files = Array.from(e.dataTransfer.files || [])
       if(!dropTarget || dropTarget.disabled || files.length === 0 || !(dropTarget.files instanceof FileList)){ return }
 
-      LiveUploader.trackFiles(dropTarget, files)
+      LiveUploader.trackFiles(dropTarget, files, e.dataTransfer)
       dropTarget.dispatchEvent(new Event("input", {bubbles: true}))
     })
     this.on(PHX_TRACK_UPLOADS, e => {
