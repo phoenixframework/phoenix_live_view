@@ -240,6 +240,7 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   def __slot__!(module, name, opts, line, file, block_fun) do
+    ensure_used!(module, line, file)
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
     unless is_binary(doc) or is_nil(doc) or doc == false do
@@ -295,6 +296,7 @@ defmodule Phoenix.Component.Declarative do
 
   @doc false
   def __attr__!(module, name, type, opts, line, file) do
+    ensure_used!(module, line, file)
     slot = Module.get_attribute(module, :__slot__)
 
     if name == :inner_block do
@@ -1232,5 +1234,15 @@ defmodule Phoenix.Component.Declarative do
   # TODO: Provide column information in error messages
   defp warn(message, file, line) do
     IO.warn(message, file: file, line: line)
+  end
+
+  defp ensure_used!(module, line, file) do
+    if !Module.get_attribute(module, :__attrs__) do
+      compile_error!(
+        line,
+        file,
+        "you must `use Phoenix.Component` to declare attributes. It is currently only imported."
+      )
+    end
   end
 end
