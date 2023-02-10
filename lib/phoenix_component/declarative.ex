@@ -3,7 +3,15 @@ defmodule Phoenix.Component.Declarative do
 
   ## Reserved assigns
 
-  @reserved_assigns [:__changed__, :__slot__, :inner_block, :myself, :flash, :socket]
+  @reserved_assigns [
+    :__changed__,
+    :__slot__,
+    :__defaults__,
+    :inner_block,
+    :myself,
+    :flash,
+    :socket
+  ]
 
   @doc false
   def __reserved__, do: @reserved_assigns
@@ -613,7 +621,15 @@ defmodule Phoenix.Component.Declarative do
             {name, []}
           end
 
-        defaults = attr_defaults ++ slot_defaults
+        defaults =
+          case attr_defaults do
+            [] ->
+              attr_defaults ++ slot_defaults
+
+            [_ | _] ->
+              tracked_defaults = Macro.escape(Map.new(attr_defaults, fn {key, _} -> {key, []} end))
+              [{:__defaults__, tracked_defaults} | attr_defaults] ++ slot_defaults
+          end
 
         {global_name, global_default} =
           case Enum.find(attrs, fn attr -> attr.type == :global end) do
@@ -812,7 +828,7 @@ defmodule Phoenix.Component.Declarative do
           build_attr_values_or_examples(attr)
         ]
       end,
-      if Enum.any?(attrs, & &1.type == :global) do
+      if Enum.any?(attrs, &(&1.type == :global)) do
         "\nGlobal attributes are accepted."
       else
         ""

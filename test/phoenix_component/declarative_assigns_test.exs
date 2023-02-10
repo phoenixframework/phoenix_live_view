@@ -584,6 +584,12 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       attr :value, :string
       def no_default(assigns), do: ~H[<%= inspect @value %>]
+
+      attr :id, :any
+      attr :errors, :list, default: []
+      def assigned_with_same_default(assigns) do
+        assign(assigns, errors: [])
+      end
     end
 
     assert render(AttrDefaults, :add, %{}) == "3"
@@ -593,6 +599,9 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert_raise KeyError, ~r":value not found", fn ->
       render(AttrDefaults, :no_default, %{})
     end
+
+    assigns = AttrDefaults.assigned_with_same_default(%{__changed__: %{}})
+    assert Phoenix.Component.changed?(assigns, :errors)
   end
 
   test "provides slot defaults" do
