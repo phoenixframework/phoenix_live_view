@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.13 (2023-02-10)
+
+### Enhancements
+  * Improve error message when failing to use Phoenix.Component
+
 ## 0.18.12 (2023-02-10)
 
 ### Enhancements
