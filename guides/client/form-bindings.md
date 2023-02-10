@@ -173,8 +173,8 @@ Nested inputs are handled using `.inputs_for` function component. By default
 it will add the necessary hidden input fields for tracking ids of Ecto associations.
 
 ```heex
-<.inputs_for :let={fp} field={{f, :friends}}>
-  <%= text_input fp, :name %>
+<.inputs_for :let={fp} field={{f[:friends]}>
+  <.input field={fp[:name]} type="text">
 </.inputs_for>
 ```
 

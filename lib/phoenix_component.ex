@@ -2227,7 +2227,7 @@ defmodule Phoenix.Component do
   """
   attr.(:field, Phoenix.HTML.FormField,
     required: true,
-    doc: "A %Phoenix.HTML.Form{}/field name tuple, for example: {f, :email}."
+    doc: "A %Phoenix.HTML.Form{}/field name tuple, for example: {@form[:email]}."
   )
 
   attr.(:id, :string,
