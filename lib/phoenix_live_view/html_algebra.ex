@@ -436,8 +436,19 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       end
 
     case expr_to_quoted(value, meta) do
-      {{:__block__, _, [string]}, []} when is_binary(string) ->
-        ~s(#{attr}="#{string}")
+      {{:__block__, meta, [string]} = block, []} when is_binary(string) ->
+        case Keyword.get(meta, :delimiter) do
+          # Handle heredocs
+          # """
+          # text
+          # """
+          "\"\"\"" ->
+            group(concat(["#{attr}={", quoted_to_code_algebra(block, [], opts), "}"]))
+
+          # delimiter for normal strings are "\""
+          _ ->
+            ~s(#{attr}="#{string}")
+        end
 
       {{atom, _, _}, []} when atom in [:<<>>, :<>] ->
         concat(["#{attr}={", string(value), "}"])

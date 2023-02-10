@@ -1979,6 +1979,59 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
+    test "handle heredocs" do
+      assert_formatter_output(
+        """
+        <.component msg={"text"}>
+          <div />
+        </.component>
+        """,
+        """
+        <.component msg="text">
+          <div />
+        </.component>
+        """
+      )
+
+      assert_formatter_doesnt_change("""
+      <.component msg={\"""
+      text
+      \"""}>
+        <div />
+      </.component>
+      """)
+
+      assert_formatter_output(
+        """
+        <.component id={@id} msg={\"""
+        text
+        \"""}>
+          <div />
+        </.component>
+        """,
+        """
+        <.component
+          id={@id}
+          msg={\"""
+          text
+          \"""}
+        >
+          <div />
+        </.component>
+        """
+      )
+    end
+
+    test "handle var <> heredocs" do
+      assert_formatter_doesnt_change("""
+      <.component id={@id} msg={@test <> \"""
+      text
+      \"""}>
+        <div />
+      </.component>
+      """)
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do
