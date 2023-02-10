@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix, "~> 1.6.15 or ~> 1.7.0"},
       {:phoenix_view, "~> 2.0", optional: true},
       {:phoenix_template, "~> 1.0"},
-      {:phoenix_html, "~> 3.3-dev", github: "phoenixframework/phoenix_html", override: true},
+      {:phoenix_html, "~> 3.3"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},

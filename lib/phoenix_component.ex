@@ -2204,6 +2204,111 @@ defmodule Phoenix.Component do
   defp form_method(method) when is_binary(method), do: {"post", method}
 
   @doc """
+  Renders nested form inputs for associations or embeds.
+
+  [INSERT LVATTRDOCS]
+
+  This function is built on top of `Phoenix.HTML.Form.inputs_for/3`.
+
+  For more information about options and how to build inputs, see `Phoenix.HTML.Form`.
+
+  ## Examples
+
+  ```heex
+  <.form
+    :let={f}
+    for={@changeset}
+    phx-change="change_name"
+  >
+    <.inputs_for :let={f_nested} field={f[:nested]}}>
+      <%= text_input f_nested, :name %>
+    </.inputs_for>
+  </.form>
+  ```
+  """
+  attr.(:field, Phoenix.HTML.FormField,
+    required: true,
+    doc: "A %Phoenix.HTML.Form{}/field name tuple, for example: {f, :email}."
+  )
+
+  attr.(:id, :string,
+    doc: """
+    The id to be used in the form, defaults to the concatenation of the given
+    field to the parent form id.
+    """
+  )
+
+  attr.(:as, :atom,
+    doc: """
+    The name to be used in the form, defaults to the concatenation of the given
+    field to the parent form name.
+    """
+  )
+
+  attr.(:default, :any, doc: "The value to use if none is available.")
+
+  attr.(:prepend, :list,
+    doc: """
+    The values to prepend when rendering. This only applies if the field value
+    is a list and no parameters were sent through the form.
+    """
+  )
+
+  attr.(:append, :list,
+    doc: """
+    The values to append when rendering. This only applies if the field value
+    is a list and no parameters were sent through the form.
+    """
+  )
+
+  attr.(:skip_hidden, :boolean,
+    default: false,
+    doc: """
+    Skip the automatic rendering of hidden fields to allow for more tight control
+    over the generated markup. You can access `form.hidden` or use `.hidden_inputs/1`
+    to generate them manually.
+    """
+  )
+
+  slot.(:inner_block, required: true, doc: "The content rendered for each nested form.")
+
+  def inputs_for(assigns) do
+    %Phoenix.HTML.FormField{field: field_name, form: form} = assigns.field
+    options = assigns |> Map.take([:id, :as, :default, :append, :prepend]) |> Keyword.new()
+
+    options =
+      form.options
+      |> Keyword.take([:multipart])
+      |> Keyword.merge(options)
+
+    assigns =
+      assigns
+      |> assign(:field, nil)
+      |> assign(:forms, form.impl.to_form(form.source, form, field_name, options))
+
+    ~H"""
+    <%= for finner <- @forms do %>
+      <%= unless @skip_hidden do %>
+        <%= for {name, value_or_values} <- finner.hidden,
+                name = name_for_value_or_values(finner, name, value_or_values),
+                value <- List.wrap(value_or_values) do %>
+          <input type="hidden" name={name} value={value} />
+        <% end %>
+      <% end %>
+      <%= render_slot(@inner_block, finner) %>
+    <% end %>
+    """
+  end
+
+  defp name_for_value_or_values(form, field, values) when is_list(values) do
+    Phoenix.HTML.Form.input_name(form, field) <> "[]"
+  end
+
+  defp name_for_value_or_values(form, field, _value) do
+    Phoenix.HTML.Form.input_name(form, field)
+  end
+
+  @doc """
   Generates a link for live and href navigation.
 
   [INSERT LVATTRDOCS]
