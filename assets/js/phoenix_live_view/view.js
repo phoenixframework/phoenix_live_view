@@ -875,7 +875,7 @@ export default class View {
     }
     this.pushWithReply(refGenerator, "event", event, resp => {
       DOM.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR))
-      if(DOM.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null){
+      if(DOM.isUploadInput(inputEl) && inputEl.dataset.phxAutoUpload !== null){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
           let [ref, _els] = refGenerator()
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
