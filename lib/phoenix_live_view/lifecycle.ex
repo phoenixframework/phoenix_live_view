@@ -161,10 +161,21 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def handle_event(event, val, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.handle_event, socket, fn hook, acc ->
+    reduce_handle_event(lifecycle.handle_event, socket, fn hook, acc ->
       hook.function.(event, val, acc)
     end)
   end
+
+  defp reduce_handle_event([hook | hooks], acc, function) do
+    case function.(hook, acc) do
+      {:cont, %Socket{} = socket} -> reduce_handle_event(hooks, socket, function)
+      {:halt, %Socket{} = socket} -> {:halt, socket}
+      {:halt, reply, %Socket{} = socket} -> {:halt, reply, socket}
+      other -> bad_lifecycle_response!(other, hook)
+    end
+  end
+
+  defp reduce_handle_event([], acc, _function), do: {:cont, acc}
 
   @doc false
   def handle_params(params, uri, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
@@ -216,10 +227,24 @@ defmodule Phoenix.LiveView.Lifecycle do
 
     Expected one of:
 
-        {:cont, %Socket{}}
-        {:halt, %Socket{}}
+        #{expected_return(hook)}
 
     Got: #{inspect(result)}
+    """
+  end
+
+  defp expected_return(%{stage: :handle_event}) do
+    """
+    {:cont, %Socket{}}
+    {:halt, %Socket{}}
+    {:halt, map, %Socket{}}
+    """
+  end
+
+  defp expected_return(_) do
+    """
+    {:cont, %Socket{}}
+    {:halt, %Socket{}}
     """
   end
 

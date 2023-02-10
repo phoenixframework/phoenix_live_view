@@ -3,6 +3,7 @@
 ## 0.18.12
 
 ### Enhancements
+  * Allow replies from `:handle_event` lifecycle hooks
   * Introduce streams for efficiently handling large collections
   * Add `<.inputs_for>` component to `Phoenix.Component`
 

@@ -1431,7 +1431,16 @@ defmodule Phoenix.LiveView do
   attach hooks to intercept specific events before detaching themselves,
   while allowing other events to continue normally.
 
+  ## Replying to events
+
+  Hooks attached to the `:handle_event` stage are able to reply to client events
+  by returning `{:halt, reply, socket}`. This is useful especially for [JavaScript
+  interoperability](js-interop.html#client-hooks-via-phx-hook) because a client hook
+  can push an event and receive a reply.
+
   ## Examples
+
+  Attaching and detaching a hook:
 
       def mount(_params, _session, socket) do
         socket =
@@ -1441,6 +1450,38 @@ defmodule Phoenix.LiveView do
               {:halt, detach_hook(socket, :my_hook, :handle_event)}
 
             _event, _params, socket ->
+              {:cont, socket}
+          end)
+
+        {:ok, socket}
+      end
+
+  Replying to a client event:
+
+      # JavaScript:
+      # let Hooks = {}
+      # Hooks.ClientHook = {
+      #   mounted() {
+      #     this.pushEvent("ClientHook:mounted", {hello: "world"}, (reply) => {
+      #       console.log("received reply:", reply)
+      #     })
+      #   }
+      # }
+      # let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+
+      def render(assigns) do
+        ~H"\""
+        <div id="my-client-hook" phx-hook="ClientHook"></div>
+        "\""
+      end
+
+      def mount(_params, _session, socket) do
+        socket =
+          attach_hook(socket, :reply_on_client_hook_mounted, :handle_event, fn
+            "ClientHook:mounted", params, socket ->
+              {:halt, params, socket}
+
+            _, _, socket ->
               {:cont, socket}
           end)
 
