@@ -1251,8 +1251,8 @@ defmodule Phoenix.Component do
 
   def assign(%{__changed__: changed} = assigns, key, value) do
     case assigns do
-      # force assign the key if the attribute was declared with default
-      %{^key => ^value, __defaults__: %{^key => _}} ->
+      # force assign the key if the attribute was given with matching value
+      %{^key => ^value, __given__: given} when not is_map_key(given, key) ->
         Phoenix.LiveView.Utils.force_assign(assigns, changed, key, value)
 
       %{^key => ^value} ->

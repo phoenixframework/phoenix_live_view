@@ -6,7 +6,7 @@ defmodule Phoenix.Component.Declarative do
   @reserved_assigns [
     :__changed__,
     :__slot__,
-    :__defaults__,
+    :__given__,
     :inner_block,
     :myself,
     :flash,
@@ -623,15 +623,7 @@ defmodule Phoenix.Component.Declarative do
             {name, []}
           end
 
-        defaults =
-          case attr_defaults do
-            [] ->
-              attr_defaults ++ slot_defaults
-
-            [_ | _] ->
-              tracked_defaults = Macro.escape(Map.new(attr_defaults, fn {key, _} -> {key, []} end))
-              [{:__defaults__, tracked_defaults} | attr_defaults] ++ slot_defaults
-          end
+        defaults = attr_defaults ++ slot_defaults
 
         {global_name, global_default} =
           case Enum.find(attrs, fn attr -> attr.type == :global end) do
@@ -654,12 +646,21 @@ defmodule Phoenix.Component.Declarative do
                   %{} -> Map.merge(unquote(global_default), caller_globals)
                 end
 
-              merged = Map.merge(%{unquote_splicing(defaults)}, assigns)
+              merged =
+                %{unquote_splicing(defaults)}
+                |> Map.merge(assigns)
+                |> Map.put(:__given__, assigns)
+
               super(Phoenix.Component.assign(merged, unquote(global_name), globals))
             end
           else
             quote do
-              super(Map.merge(%{unquote_splicing(defaults)}, assigns))
+              merged =
+                %{unquote_splicing(defaults)}
+                |> Map.merge(assigns)
+                |> Map.put(:__given__, assigns)
+
+              super(merged)
             end
           end
 

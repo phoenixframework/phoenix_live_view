@@ -602,6 +602,12 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
     assigns = AttrDefaults.assigned_with_same_default(%{__changed__: %{}})
     assert Phoenix.Component.changed?(assigns, :errors)
+
+    assigns = AttrDefaults.assigned_with_same_default(%{__changed__: %{}, errors: []})
+    refute Phoenix.Component.changed?(assigns, :errors)
+
+    assigns = AttrDefaults.assigned_with_same_default(%{__changed__: %{errors: true}, errors: []})
+    assert Phoenix.Component.changed?(assigns, :errors)
   end
 
   test "provides slot defaults" do
