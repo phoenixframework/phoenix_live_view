@@ -1821,7 +1821,7 @@ defmodule Phoenix.Component do
       end
   '''
   @doc type: :macro
-  defmacro attr(name, type, opts \\ []) when is_atom(name) and is_list(opts) do
+  defmacro attr(name, type, opts \\ []) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
         __MODULE__,

@@ -295,7 +295,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   @doc false
-  def __attr__!(module, name, type, opts, line, file) do
+  def __attr__!(module, name, type, opts, line, file) when is_atom(name) and is_list(opts) do
     ensure_used!(module, line, file)
     slot = Module.get_attribute(module, :__slot__)
 
