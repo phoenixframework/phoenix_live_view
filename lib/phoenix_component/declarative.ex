@@ -295,7 +295,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   @doc false
-  def __attr__!(module, name, type, opts, line, file) do
+  def __attr__!(module, name, type, opts, line, file) when is_atom(name) and is_list(opts) do
     ensure_used!(module, line, file)
     slot = Module.get_attribute(module, :__slot__)
 
@@ -629,7 +629,9 @@ defmodule Phoenix.Component.Declarative do
               attr_defaults ++ slot_defaults
 
             [_ | _] ->
-              tracked_defaults = Macro.escape(Map.new(attr_defaults, fn {key, _} -> {key, []} end))
+              tracked_defaults =
+                Macro.escape(Map.new(attr_defaults, fn {key, _} -> {key, []} end))
+
               [{:__defaults__, tracked_defaults} | attr_defaults] ++ slot_defaults
           end
 
