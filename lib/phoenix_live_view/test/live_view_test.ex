@@ -470,7 +470,7 @@ defmodule Phoenix.LiveViewTest do
 
     assigns =
       Map.new(assigns)
-      |> Map.put_new(:__changed__, %{})
+      #|> Map.put_new(:__changed__, %{})
 
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
