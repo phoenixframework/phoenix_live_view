@@ -573,7 +573,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #   <!-- Modal content -->
   #   <%= render_slot(@inner_block) %>
   #
-  # Thefore the case above will stay as is. Otherwise it would put them in the
+  # Therefore the case above will stay as is. Otherwise it would put them in the
   # same line.
   defp line_html_comment?(text) do
     trimmed_text = String.trim(text)

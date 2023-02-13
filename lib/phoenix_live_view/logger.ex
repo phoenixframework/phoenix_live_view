@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.Logger do
 
   ## Module configuration
 
-  The log level can be overriden for an individual Live View module:
+  The log level can be overridden for an individual Live View module:
 
       use Phoenix.LiveView, log: :debug
 

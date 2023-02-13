@@ -564,7 +564,7 @@ defmodule Phoenix.ComponentVerifyTest do
               </:named>
             </.func_named_slot>
 
-            <!-- with entires for the named slot -->
+            <!-- with entries for the named slot -->
             <.func_named_slot>
               <:named>
                 Hello,
