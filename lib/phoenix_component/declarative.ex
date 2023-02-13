@@ -10,7 +10,10 @@ defmodule Phoenix.Component.Declarative do
     :inner_block,
     :myself,
     :flash,
-    :socket
+    :socket,
+    :uploads,
+    :streams,
+    :live_action
   ]
 
   @doc false

@@ -1569,7 +1569,7 @@ defmodule Phoenix.LiveView do
     opts = Keyword.merge(opts, id: Phoenix.LiveView.Utils.random_id())
 
     socket
-    |> Phoenix.Component.assign_new(:streams, fn -> %{__changed__: MapSet.new()} end)
+    |> Phoenix.Component.do_assign_new(:streams, fn -> %{__changed__: MapSet.new()} end)
     |> assign_stream(name, LiveStream.new(name, items, opts))
     |> attach_hook(name, :after_render, fn hook_socket ->
       if name in hook_socket.assigns.streams.__changed__ do
