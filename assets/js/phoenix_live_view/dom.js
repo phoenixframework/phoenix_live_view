@@ -64,6 +64,15 @@ let DOM = {
   },
 
   isUnloadableFormSubmit(e){
+    // To ignore form submissions intended to close a native <dialog> element
+    // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog#usage_notes
+    if (
+      e.target?.getAttribute("method") === "dialog" ||
+      e?.submitter?.getAttribute("formmethod") === "dialog"
+    ) {
+      return false;
+    }
+
     return !e.defaultPrevented && !this.wantsNewTab(e)
   },
 

@@ -326,6 +326,10 @@ var LiveView = (() => {
       return wantsNewTab || e.target.getAttribute("target") === "_blank";
     },
     isUnloadableFormSubmit(e) {
+      var _a, _b;
+      if (((_a = e.target) == null ? void 0 : _a.getAttribute("method")) === "dialog" || ((_b = e == null ? void 0 : e.submitter) == null ? void 0 : _b.getAttribute("formmethod")) === "dialog") {
+        return false;
+      }
       return !e.defaultPrevented && !this.wantsNewTab(e);
     },
     isNewPageHref(href, currentLocation) {

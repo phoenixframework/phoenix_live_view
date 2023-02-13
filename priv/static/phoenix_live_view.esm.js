@@ -296,6 +296,9 @@ var DOM = {
     return wantsNewTab || e.target.getAttribute("target") === "_blank";
   },
   isUnloadableFormSubmit(e) {
+    if (e.target?.getAttribute("method") === "dialog" || e?.submitter?.getAttribute("formmethod") === "dialog") {
+      return false;
+    }
     return !e.defaultPrevented && !this.wantsNewTab(e);
   },
   isNewPageHref(href, currentLocation) {
