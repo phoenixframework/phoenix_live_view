@@ -1370,8 +1370,11 @@ defmodule Phoenix.Component do
   according to `Phoenix.HTML.FormData`.
 
   This is commonly used to convert a map or an Ecto changeset
-  into a form to be given to the `form/1` component. For example,
-  if you want to create a form based on `handle_event` parameters,
+  into a form to be given to the `form/1` component.
+
+  ## Creating a form from params
+
+  If you want to create a form based on `handle_event` parameters,
   you could do:
 
       def handle_event("submitted", params, socket) do
@@ -1383,6 +1386,8 @@ defmodule Phoenix.Component do
       def handle_event("submitted", %{"user" => user_params}, socket) do
         {:noreply, assign(socket, form: to_form(user_params, as: :user))}
       end
+
+  ## Creating a form from changesets
 
   When using changesets, the name `:as` is automatically retrieved
   from the schema. For example, if you have a user schema:
@@ -1406,11 +1411,6 @@ defmodule Phoenix.Component do
   In this case, the parameters will be available under
   `%{"post" => post_params}`.
 
-  If an existing `Phoenix.HTML.Form` struct is given, the
-  options below will override its existing values if given.
-  Then the remaining options are merged with the existing
-  form options.
-
   ## Options
 
     * `:as` - the `name` prefix to be used in form inputs
@@ -1420,6 +1420,11 @@ defmodule Phoenix.Component do
   converted to forms. For example, a map accepts `:errors`
   to list errors, but such option is not accepted by
   changesets.
+
+  If an existing `Phoenix.HTML.Form` struct is given, the
+  options below will override its existing values if given.
+  Then the remaining options are merged with the existing
+  form options.
   """
   def to_form(data, options \\ [])
 
@@ -1956,10 +1961,10 @@ defmodule Phoenix.Component do
 
   ## Examples: inside LiveView
 
-  Inside LiveViews, the `:for` attribute is generally a form struct created
-  with the `to_form/1` function. `to_form/1` expects either a map or an
-  [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html) as the
-  source of data.
+  Inside LiveViews, the `for={...}` attribute is generally a form struct
+  created with the `to_form/1` function. `to_form/1` expects either a map
+  or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
+  as thesource of data.
 
   For example, you may use the parameters received in a
   `c:Phoenix.LiveView.handle_event/3` callback to create an Ecto changeset
@@ -2136,7 +2141,6 @@ defmodule Phoenix.Component do
   slot.(:inner_block, required: true, doc: "The content rendered inside of the form tag.")
 
   def form(assigns) do
-    # Extract options and then to the same call as form_for
     action = assigns[:action]
 
     form_for =
