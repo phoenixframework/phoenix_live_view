@@ -1957,8 +1957,6 @@ defmodule Phoenix.Component do
   and generates the relevant form tags. It can be used either inside LiveView
   or outside.
 
-  [INSERT LVATTRDOCS]
-
   ## Examples: inside LiveView
 
   Inside LiveViews, the `for={...}` attribute is generally a form struct
@@ -2087,6 +2085,8 @@ defmodule Phoenix.Component do
   party applications. If this behaviour is problematic, you can generate
   a non-host specific token with `Plug.CSRFProtection.get_csrf_token/0` and
   pass it to the form generator via the `:csrf_token` option.
+
+  [INSERT LVATTRDOCS]
   '''
   @doc type: :component
   attr.(:for, :any, required: true, doc: "An existing form or the form source data.")
