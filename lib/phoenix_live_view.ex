@@ -1619,7 +1619,7 @@ defmodule Phoenix.LiveView do
   existing item and move it to the end of a collection, issue a `stream_delete`, followed
   by a `stream_insert`. For example:
 
-     socket = get_song!(id)
+      song = get_song!(id)
 
       socket
       |> stream_delete(:songs, song)

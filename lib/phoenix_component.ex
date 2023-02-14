@@ -153,7 +153,7 @@ defmodule Phoenix.Component do
   But what if you need your function components to support dynamic attributes, such as common HTML
   attributes to mix into a component's container?
 
-  ### Global Attributes
+  ## Global attributes
 
   Global attributes are a set of attributes that a function component can accept when it
   declares an attribute of type `:global`. By default, the set of attributes accepted are those
@@ -231,26 +231,24 @@ defmodule Phoenix.Component do
   end
   ```
 
-  The `:include` option is useful to apply global additions on a case-by-case basis, but
-  sometimes you want attributes to be available to all globals you provide, such
-  as when using frameworks that use attribute prefixes, like Alpine.js's `x-on:click`.
-  For these cases, custom global attribute prefixes can be provided, which we'll outline
-  next.
+  The `:include` option is useful to apply global additions on a case-by-case basis,
+  but sometimes you want to extend existing components with new global attributes,
+  such as Alpine.js' `x-` prefixes, which we'll outline next.
 
-  ### Custom Global Attribute Prefixes
+  ### Custom global attribute prefixes
 
   You can extend the set of global attributes by providing a list of attribute prefixes to
   `use Phoenix.Component`. Like the default attributes common to all HTML elements,
   any number of attributes that start with a global prefix will be accepted by function
-  components defined in this module. By default, the following prefixes are supported:
+  components invoked by the current module. By default, the following prefixes are supported:
   `phx-`, `aria-`, and `data-`. For example, to support the `x-` prefix used by
   [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to
   `use Phoenix.Component`:
 
       use Phoenix.Component, global_prefixes: ~w(x-)
 
-  Now all function components defined in this module will accept any number of attributes prefixed
-  with `x-`, in addition to the default global prefixes.
+  Now all function components invoked by this module will accept any number of attributes
+  prefixed with `x-`, in addition to the default global prefixes.
 
   You can learn more about attributes by reading the documentation for `attr/3`.
 
@@ -1372,8 +1370,11 @@ defmodule Phoenix.Component do
   according to `Phoenix.HTML.FormData`.
 
   This is commonly used to convert a map or an Ecto changeset
-  into a form to be given to the `form/1` component. For example,
-  if you want to create a form based on `handle_event` parameters,
+  into a form to be given to the `form/1` component.
+
+  ## Creating a form from params
+
+  If you want to create a form based on `handle_event` parameters,
   you could do:
 
       def handle_event("submitted", params, socket) do
@@ -1385,6 +1386,8 @@ defmodule Phoenix.Component do
       def handle_event("submitted", %{"user" => user_params}, socket) do
         {:noreply, assign(socket, form: to_form(user_params, as: :user))}
       end
+
+  ## Creating a form from changesets
 
   When using changesets, the name `:as` is automatically retrieved
   from the schema. For example, if you have a user schema:
@@ -1408,11 +1411,6 @@ defmodule Phoenix.Component do
   In this case, the parameters will be available under
   `%{"post" => post_params}`.
 
-  If an existing `Phoenix.HTML.Form` struct is given, the
-  options below will override its existing values if given.
-  Then the remaining options are merged with the existing
-  form options.
-
   ## Options
 
     * `:as` - the `name` prefix to be used in form inputs
@@ -1422,6 +1420,11 @@ defmodule Phoenix.Component do
   converted to forms. For example, a map accepts `:errors`
   to list errors, but such option is not accepted by
   changesets.
+
+  If an existing `Phoenix.HTML.Form` struct is given, the
+  options below will override its existing values if given.
+  Then the remaining options are merged with the existing
+  form options.
   """
   def to_form(data, options \\ [])
 
@@ -1821,7 +1824,7 @@ defmodule Phoenix.Component do
       end
   '''
   @doc type: :macro
-  defmacro attr(name, type, opts \\ []) when is_atom(name) and is_list(opts) do
+  defmacro attr(name, type, opts \\ []) do
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
         __MODULE__,
@@ -1954,14 +1957,12 @@ defmodule Phoenix.Component do
   and generates the relevant form tags. It can be used either inside LiveView
   or outside.
 
-  [INSERT LVATTRDOCS]
-
   ## Examples: inside LiveView
 
-  Inside LiveViews, the `:for` attribute is generally a form struct created
-  with the `to_form/1` function. `to_form/1` expects either a map or an
-  [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html) as the
-  source of data.
+  Inside LiveViews, the `for={...}` attribute is generally a form struct
+  created with the `to_form/1` function. `to_form/1` expects either a map
+  or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
+  as thesource of data.
 
   For example, you may use the parameters received in a
   `c:Phoenix.LiveView.handle_event/3` callback to create an Ecto changeset
@@ -2084,6 +2085,8 @@ defmodule Phoenix.Component do
   party applications. If this behaviour is problematic, you can generate
   a non-host specific token with `Plug.CSRFProtection.get_csrf_token/0` and
   pass it to the form generator via the `:csrf_token` option.
+
+  [INSERT LVATTRDOCS]
   '''
   @doc type: :component
   attr.(:for, :any, required: true, doc: "An existing form or the form source data.")
@@ -2138,7 +2141,6 @@ defmodule Phoenix.Component do
   slot.(:inner_block, required: true, doc: "The content rendered inside of the form tag.")
 
   def form(assigns) do
-    # Extract options and then to the same call as form_for
     action = assigns[:action]
 
     form_for =
@@ -2220,6 +2222,7 @@ defmodule Phoenix.Component do
   </.form>
   ```
   """
+  @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
     required: true,
     doc: "A %Phoenix.HTML.Form{}/field name tuple, for example: {@form[:email]}."

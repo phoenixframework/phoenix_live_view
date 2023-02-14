@@ -1223,7 +1223,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
-    test "handle HTML comments but doens't format it" do
+    test "handle HTML comments but doesn't format it" do
       assert_formatter_output(
         """
             <!-- Inline comment -->
@@ -1615,25 +1615,25 @@ if Version.match?(System.version(), ">= 1.13.0") do
     test "does not format when contenteditable is present" do
       assert_formatter_doesnt_change(
         """
-        <div contenteditable>The content contet content content content</div>
+        <div contenteditable>The content content content content content</div>
         """,
         line_length: 10
       )
 
       assert_formatter_doesnt_change(
         """
-        <div contenteditable="true">The content contet content content content</div>
+        <div contenteditable="true">The content content content content content</div>
         """,
         line_length: 10
       )
 
       assert_formatter_output(
         """
-        <div contenteditable="false">The content contet content content content</div>
+        <div contenteditable="false">The content content content content content</div>
         """,
         """
         <div contenteditable="false">
-          The content contet content content content
+          The content content content content content
         </div>
         """,
         line_length: 10
@@ -1803,7 +1803,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "keep intentional lines breakes between slots" do
+    test "keep intentional line breaks between slots" do
       assert_formatter_doesnt_change("""
       <.component>
         <:title>Guides & Docs</:title>
@@ -1871,7 +1871,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "format attrs from self tag close correclty within preserve mode" do
+    test "format attrs from self tag close correctly within preserve mode" do
       assert_formatter_doesnt_change("""
       <button>
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">

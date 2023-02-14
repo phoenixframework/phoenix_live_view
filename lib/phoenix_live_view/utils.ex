@@ -163,7 +163,7 @@ defmodule Phoenix.LiveView.Utils do
         "{#{inspect(mod)}, :#{root_template}} instead of {#{inspect(mod)}, \"#{root_template}.html\"}"
     )
 
-    root_template
+    {mod, root_template}
   end
 
   def normalize_layout(other, _warn_ctx) do

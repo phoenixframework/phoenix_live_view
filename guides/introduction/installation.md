@@ -69,6 +69,20 @@ def router do
 end
 ```
 
+In that same file, update your live_view layout configuration:
+
+```diff
+# lib/my_app_web.ex
+
+def live_view do
+  use Phoenix.LiveView,
+-    layout: {MyAppWeb.LayoutView, "live.html"}
++    layout: {MyAppWeb.LayoutView, :live}
+
+  unquote(view_helpers())
+end
+```
+
 Then add the `Phoenix.LiveView.Router.fetch_live_flash/2` plug to your browser pipeline, in place of `:fetch_flash`:
 
 ```diff
