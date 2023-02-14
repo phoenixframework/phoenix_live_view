@@ -153,7 +153,7 @@ defmodule Phoenix.Component do
   But what if you need your function components to support dynamic attributes, such as common HTML
   attributes to mix into a component's container?
 
-  ### Global Attributes
+  ## Global attributes
 
   Global attributes are a set of attributes that a function component can accept when it
   declares an attribute of type `:global`. By default, the set of attributes accepted are those
@@ -231,26 +231,24 @@ defmodule Phoenix.Component do
   end
   ```
 
-  The `:include` option is useful to apply global additions on a case-by-case basis, but
-  sometimes you want attributes to be available to all globals you provide, such
-  as when using frameworks that use attribute prefixes, like Alpine.js's `x-on:click`.
-  For these cases, custom global attribute prefixes can be provided, which we'll outline
-  next.
+  The `:include` option is useful to apply global additions on a case-by-case basis,
+  but sometimes you want to extend existing components with new global attributes,
+  such as Alpine.js' `x-` prefixes, which we'll outline next.
 
-  ### Custom Global Attribute Prefixes
+  ### Custom global attribute prefixes
 
   You can extend the set of global attributes by providing a list of attribute prefixes to
   `use Phoenix.Component`. Like the default attributes common to all HTML elements,
   any number of attributes that start with a global prefix will be accepted by function
-  components defined in this module. By default, the following prefixes are supported:
+  components invoked by the current module. By default, the following prefixes are supported:
   `phx-`, `aria-`, and `data-`. For example, to support the `x-` prefix used by
   [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to
   `use Phoenix.Component`:
 
       use Phoenix.Component, global_prefixes: ~w(x-)
 
-  Now all function components defined in this module will accept any number of attributes prefixed
-  with `x-`, in addition to the default global prefixes.
+  Now all function components invoked by this module will accept any number of attributes
+  prefixed with `x-`, in addition to the default global prefixes.
 
   You can learn more about attributes by reading the documentation for `attr/3`.
 
