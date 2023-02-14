@@ -2089,7 +2089,7 @@ defmodule Phoenix.Component do
   [INSERT LVATTRDOCS]
   '''
   @doc type: :component
-  attr.(:for, :any, required: true, doc: "An existing form or the form source data.")
+  attr.(:for, :any, doc: "An existing form or the form source data.")
 
   attr.(:action, :string,
     default: nil,
