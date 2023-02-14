@@ -152,7 +152,8 @@ let JS = {
         if(eventType === "remove"){ return }
         let onStart = () => {
           this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses))
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = (display || "block"))
+          let stickyDisplay = display || this.defaultDisplay(el)
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
           window.requestAnimationFrame(() => {
             this.addOrRemoveClasses(el, inClasses, [])
             window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses))
@@ -174,7 +175,8 @@ let JS = {
       } else {
         window.requestAnimationFrame(() => {
           el.dispatchEvent(new Event("phx:show-start"))
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = display || "block")
+          let stickyDisplay = display || this.defaultDisplay(el)
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
           el.dispatchEvent(new Event("phx:show-end"))
         })
       }
@@ -225,6 +227,10 @@ let JS = {
 
   filterToEls(sourceEl, {to}){
     return to ? DOM.all(document, to) : [sourceEl]
+  },
+
+  defaultDisplay(el){
+    return {tr: "table-row", td: "table-cell"}[el.tagName.toLowerCase()] || "block"
   }
 }
 

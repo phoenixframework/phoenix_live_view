@@ -2327,7 +2327,8 @@ within:
           }
           let onStart = () => {
             this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses));
-            dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = display || "block");
+            let stickyDisplay = display || this.defaultDisplay(el);
+            dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
             window.requestAnimationFrame(() => {
               this.addOrRemoveClasses(el, inClasses, []);
               window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses));
@@ -2349,7 +2350,8 @@ within:
         } else {
           window.requestAnimationFrame(() => {
             el.dispatchEvent(new Event("phx:show-start"));
-            dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = display || "block");
+            let stickyDisplay = display || this.defaultDisplay(el);
+            dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
             el.dispatchEvent(new Event("phx:show-end"));
           });
         }
@@ -2394,6 +2396,9 @@ within:
     },
     filterToEls(sourceEl, { to }) {
       return to ? dom_default.all(document, to) : [sourceEl];
+    },
+    defaultDisplay(el) {
+      return { tr: "table-row", td: "table-cell" }[el.tagName.toLowerCase()] || "block";
     }
   };
   var js_default = JS;
