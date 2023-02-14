@@ -153,7 +153,7 @@ defmodule Phoenix.LiveViewTest.DOM do
       static = if static in [nil, ""], do: nil, else: static
       found = {id, session, static}
 
-      if main == "true" do
+      if main not in [nil, "", "false"] do
         acc ++ [found]
       else
         [found | acc]
