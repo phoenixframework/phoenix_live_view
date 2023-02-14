@@ -2142,7 +2142,14 @@ defmodule Phoenix.Component do
 
   def form(assigns) do
     action = assigns[:action]
-    form_for = assigns[:for] || raise ArgumentError, "missing for={...} attribute"
+
+    form_for =
+      # We require for={...} to be given but we automatically handle nils for convenience
+      case assigns[:for] do
+        nil -> %{}
+        other -> other
+      end
+
     form_options = assigns_to_attributes(Map.merge(assigns, assigns.rest), [:action, :for, :rest])
 
     # Since FormData may add options, read the actual options from form

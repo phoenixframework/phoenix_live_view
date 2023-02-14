@@ -265,7 +265,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-      <.form :let={f} for={%{}} >
+      <.form :let={f}>
         <%= text_input f, :foo %>
       </.form>
       """
@@ -481,7 +481,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} for={%{}} as={:myform}>
+        <.form :let={f} as={:myform}>
           <.inputs_for :let={finner} field={f[:inner]}}>
             <%= text_input finner, :foo %>
           </.inputs_for>
@@ -507,7 +507,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} for={%{}} as={:myform}>
+        <.form :let={f} as={:myform}>
           <.inputs_for :let={finner} field={f[:inner]}} id="test" as={:name}>
             <%= text_input finner, :foo %>
           </.inputs_for>
@@ -533,7 +533,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} for={%{}} as={:myform}>
+        <.form :let={f} as={:myform}>
           <.inputs_for :let={finner} field={f[:inner]}} default={%{foo: "123"}}>
             <%= text_input finner, :foo %>
           </.inputs_for>
@@ -560,7 +560,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} for={%{}} as={:myform}>
+        <.form :let={f} as={:myform}>
           <.inputs_for
             :let={finner}
             field={f[:inner]}}
