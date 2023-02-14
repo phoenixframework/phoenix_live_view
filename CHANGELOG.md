@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.14 (2023-02-14)
+
+### Bug Fixes
+  * Fix LiveViewTest failing to find main live view
+
 ## 0.18.13 (2023-02-10)
 
 ### Enhancements
