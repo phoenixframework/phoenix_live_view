@@ -1,30 +1,44 @@
 # Form bindings
 
-## A note about form helpers
-
-If your application was generated with Phoenix v1.7, then `mix phx.new`
-automatically imports form helpers components defined in your applications
-`CoreComponents` module. You may also use `Phoenix.HTML` functions for building
-inputs.
-
 ## Form Events
 
 To handle form changes and submissions, use the `phx-change` and `phx-submit`
 events. In general, it is preferred to handle input changes at the form level,
 where all form fields are passed to the LiveView's callback given any
-single input change, but individual inputs may also track their own changes.
-For example, to handle real-time form validation and saving, your form would
-use both `phx-change` and `phx-submit` bindings:
+single input change. For example, to handle real-time form validation and
+saving, your form would use both `phx-change` and `phx-submit` bindings.
+Let's get started with an example:
 
-```
-<.form phx-change="validate" phx-submit="save">
+```heex
+<.form for={@form} phx-change="validate" phx-submit="save">
   <.input type="text" field={@form[:username]} />
   <.input type="email" field={@form[:email]} />
   <button>Save</button>
 </.form>
 ```
 
-Next, your LiveView picks up the events in `handle_event` callbacks:
+`.form` is the function component defined in `Phoenix.Component.form/1`.
+It expects a `@form` assign, which can be created from a changeset
+or user parameters via `Phoenix.Component.to_form/1`. `input/1` is a
+function component for rendering inputs, most often defined in your
+own application, such as:
+
+    attr :field, Phoenix.HTML.FormField
+    attr :rest, include: ~w(type)
+    def input(assigns) do
+      ~H"""
+      <input id={@field.id} name={@field.name} value={@field.value} {@rest} />
+      """
+    end
+
+> ## A note about form helpers {.info}
+>
+> If your application was generated with Phoenix v1.7, then `mix phx.new`
+> automatically imports function components, such as `<.input>` above,
+> into your application `CoreComponents` module.
+
+With the form rendered, your LiveView picks up the events in `handle_event`
+callbacks, to validate and attempt to save the parameter accordingly:
 
     def render(assigns) ...
 
@@ -48,7 +62,7 @@ Next, your LiveView picks up the events in `handle_event` callbacks:
           {:noreply,
            socket
            |> put_flash(:info, "user created")
-           |> redirect(to: Routes.user_path(MyAppWeb.Endpoint, MyAppWeb.User.ShowView, user))}
+           |> redirect(to: ~p"/users/#{user}")}
 
         {:error, %Ecto.Changeset{} = changeset} ->
           {:noreply, assign(socket, form: to_form(changeset))}
@@ -71,9 +85,9 @@ a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
 ```
-<.form phx-change="validate" phx-submit="save">
+<.form for={@form} phx-change="validate" phx-submit="save">
   ...
-  <.input field={f[:email]}  phx-change="email_changed" phx-target={@myself} />
+  <.input field={@form[:email]}  phx-change="email_changed" phx-target={@myself} />
 </.form>
 ```
 
