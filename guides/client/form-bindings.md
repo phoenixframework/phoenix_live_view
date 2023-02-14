@@ -17,11 +17,14 @@ Let's get started with an example:
 </.form>
 ```
 
-`.form` is the function component defined in `Phoenix.Component.form/1`.
-It expects a `@form` assign, which can be created from a changeset
-or user parameters via `Phoenix.Component.to_form/1`. `input/1` is a
-function component for rendering inputs, most often defined in your
-own application, such as:
+`.form` is the function component defined in `Phoenix.Component.form/1`,
+we recommend reading its documentation for more details on how it works
+and all supported options. `.form` expects a `@form` assign, which can
+be created from a changeset or user parameters via `Phoenix.Component.to_form/1`.
+
+`input/1` is a function component for rendering inputs, most often
+defined in your own application, often encapsulating labelling,
+error handling, and more. Here is a simple version to get started with:
 
     attr :field, Phoenix.HTML.FormField
     attr :rest, include: ~w(type)
@@ -31,11 +34,11 @@ own application, such as:
       """
     end
 
-> ## A note about form helpers {.info}
+> ### The `CoreComponents` module {.info}
 >
 > If your application was generated with Phoenix v1.7, then `mix phx.new`
-> automatically imports function components, such as `<.input>` above,
-> into your application `CoreComponents` module.
+> automatically imports many ready-to-use function components, such as
+> `.input` component with built-in features and styles.
 
 With the form rendered, your LiveView picks up the events in `handle_event`
 callbacks, to validate and attempt to save the parameter accordingly:
