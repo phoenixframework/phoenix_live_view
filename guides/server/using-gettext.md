@@ -71,7 +71,7 @@ You may also store the locale in the Plug session. For example, in a controller
 you might do:
 
     def put_user_session(conn, current_user) do
-      Gettext.put_locale(MyApp.Gettext, locale)
+      Gettext.put_locale(MyApp.Gettext, current_user.locale)
 
       conn
       |> put_session(:user_id, current_user.id)
