@@ -2133,6 +2133,14 @@ defmodule Phoenix.Component do
     """
   )
 
+  attr.(:errors, :list,
+    doc: """
+    Use this to manually pass a keyword list of errors to the form, such as `@errors`.
+    This option is useful when a regular map is given as the form source and it will
+    make the errors availableunder `f.errors`.
+    """
+  )
+
   attr.(:rest, :global,
     include: ~w(autocomplete name rel enctype novalidate target),
     doc: "Additional HTML attributes to add to the form tag."
