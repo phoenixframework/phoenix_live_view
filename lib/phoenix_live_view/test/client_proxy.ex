@@ -1129,8 +1129,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
-  defp form_defaults({"textarea", _, children}, name, acc) when length(children) <= 1 do
-    Plug.Conn.Query.decode_pair({name, String.replace_prefix("#{children}", "\n", "")}, acc)
+  defp form_defaults({"textarea", _, []}, name, acc) do
+    Plug.Conn.Query.decode_pair({name, ""}, acc)
+  end
+
+  defp form_defaults({"textarea", _, [value]}, name, acc) do
+    Plug.Conn.Query.decode_pair({name, String.replace_prefix(value, "\n", "")}, acc)
   end
 
   defp form_defaults({"input", _, _} = node, name, acc) do
