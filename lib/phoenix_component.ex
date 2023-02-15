@@ -1962,7 +1962,7 @@ defmodule Phoenix.Component do
   Inside LiveViews, the `for={...}` attribute is generally a form struct
   created with the `to_form/1` function. `to_form/1` expects either a map
   or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
-  as thesource of data.
+  as the source of data.
 
   For example, you may use the parameters received in a
   `c:Phoenix.LiveView.handle_event/3` callback to create an Ecto changeset
