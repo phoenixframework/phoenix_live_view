@@ -2137,7 +2137,7 @@ defmodule Phoenix.Component do
     doc: """
     Use this to manually pass a keyword list of errors to the form, such as `@errors`.
     This option is useful when a regular map is given as the form source and it will
-    make the errors availableunder `f.errors`.
+    make the errors available under `f.errors`.
     """
   )
 
