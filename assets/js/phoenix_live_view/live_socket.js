@@ -859,7 +859,7 @@ export default class LiveSocket {
     this.on("reset", (e) => {
       let form = e.target
       DOM.resetForm(form, this.binding(PHX_FEEDBACK_FOR))
-      let input = Array.from(form).find(i => i.type === "reset")
+      let input = Array.from(form.elements).find(el => el.type === "reset")
       // wait until next tick to get updated input value
       window.requestAnimationFrame(() => {
         input.dispatchEvent(new Event("input", {bubbles: true, cancelable: false}))

@@ -276,6 +276,8 @@ let DOM = {
                    [${phxFeedbackFor}="${input.name}"],
                    [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
 
+      this.deletePrivate(input, PHX_HAS_FOCUSED)
+      this.deletePrivate(input, PHX_HAS_SUBMITTED)
       this.all(document, query, feedbackEl => {
         feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS)
       })
