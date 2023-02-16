@@ -511,6 +511,17 @@ var DOM = {
       el.classList.add(PHX_NO_FEEDBACK_CLASS);
     }
   },
+  resetForm(form, phxFeedbackFor) {
+    Array.from(form.elements).forEach((input) => {
+      let query = `[${phxFeedbackFor}="${input.id}"],
+                   [${phxFeedbackFor}="${input.name}"],
+                   [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`;
+      this.all(document, query, (feedbackEl) => {
+        console.log("el", feedbackEl);
+        feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS);
+      });
+    });
+  },
   showError(inputEl, phxFeedbackFor) {
     if (inputEl.id || inputEl.name) {
       this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
@@ -4182,6 +4193,13 @@ var LiveSocket = class {
         });
       }, false);
     }
+    this.on("reset", (e) => {
+      dom_default.resetForm(e.target, this.binding(PHX_FEEDBACK_FOR));
+      let input = e.target.elements[0];
+      window.requestAnimationFrame(() => {
+        input.dispatchEvent(new Event("input", { bubbles: true, cancelable: false }));
+      });
+    });
   }
   debounce(el, event, eventType, callback) {
     if (eventType === "blur" || eventType === "focusout") {

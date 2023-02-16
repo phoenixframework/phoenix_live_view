@@ -95,6 +95,7 @@ import {
   PHX_THROTTLE,
   PHX_TRACK_UPLOADS,
   PHX_SESSION,
+  PHX_FEEDBACK_FOR,
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
 } from "./constants"
@@ -855,6 +856,14 @@ export default class LiveSocket {
         })
       }, false)
     }
+    this.on("reset", (e) => {
+      DOM.resetForm(e.target, this.binding(PHX_FEEDBACK_FOR))
+      let input = e.target.elements[0]
+      // wait until next tick to get updated input value
+      window.requestAnimationFrame(() => {
+        input.dispatchEvent(new Event("input", {bubbles: true, cancelable: false}))
+      })
+    })
   }
 
   debounce(el, event, eventType, callback){

@@ -270,6 +270,19 @@ let DOM = {
     }
   },
 
+  resetForm(form, phxFeedbackFor){
+    Array.from(form.elements).forEach(input => {
+      let query = `[${phxFeedbackFor}="${input.id}"],
+                   [${phxFeedbackFor}="${input.name}"],
+                   [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
+
+      this.all(document, query, feedbackEl => {
+        console.log("el", feedbackEl)
+        feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS)
+      })
+    })
+  },
+
   showError(inputEl, phxFeedbackFor){
     if(inputEl.id || inputEl.name){
       this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
