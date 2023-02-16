@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.17.14 (2023-02-16)
+  * Fix test errors caused by latest Phoenix HTML
+  * Fix incorrect compiled asset build
+
+## 0.17.13 (2023-02-16)
+  * Fix data-phx-main lookup for latest Phoenix HTML
+
 ## 0.17.12 (2022-09-20)
 
 ### Enhancements
