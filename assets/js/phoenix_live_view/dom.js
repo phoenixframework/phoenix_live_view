@@ -277,7 +277,6 @@ let DOM = {
                    [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
 
       this.all(document, query, feedbackEl => {
-        console.log("el", feedbackEl)
         feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS)
       })
     })

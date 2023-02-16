@@ -517,7 +517,6 @@ var DOM = {
                    [${phxFeedbackFor}="${input.name}"],
                    [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`;
       this.all(document, query, (feedbackEl) => {
-        console.log("el", feedbackEl);
         feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS);
       });
     });
@@ -4194,8 +4193,9 @@ var LiveSocket = class {
       }, false);
     }
     this.on("reset", (e) => {
-      dom_default.resetForm(e.target, this.binding(PHX_FEEDBACK_FOR));
-      let input = e.target.elements[0];
+      let form = e.target;
+      dom_default.resetForm(form, this.binding(PHX_FEEDBACK_FOR));
+      let input = Array.from(form).find((i) => i.type === "reset");
       window.requestAnimationFrame(() => {
         input.dispatchEvent(new Event("input", { bubbles: true, cancelable: false }));
       });
