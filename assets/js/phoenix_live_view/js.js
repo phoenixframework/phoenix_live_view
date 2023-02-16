@@ -90,10 +90,7 @@ let JS = {
   },
 
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition}){
-    let [transition_start, running, transition_end] = transition
-    let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(running), [])
-    let onDone = () => this.addOrRemoveClasses(el, transition_end, transition_start.concat(running))
-    view.transition(time, onStart, onDone)
+    this.addOrRemoveClasses(el, [], [], transition, time, view)
   },
 
   exec_toggle(eventType, phxEvent, view, sourceEl, el, {display, ins, outs, time}){
