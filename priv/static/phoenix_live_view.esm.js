@@ -2211,7 +2211,7 @@ var View = class {
     this.href = href;
   }
   isMain() {
-    return this.el.getAttribute(PHX_MAIN) !== null;
+    return this.el.hasAttribute(PHX_MAIN);
   }
   connectParams() {
     let params = this.liveSocket.params(this.el);
