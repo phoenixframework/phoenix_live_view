@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.18.15
+## 0.18.15 (2023-02-16)
+
+### Bug Fixes
+  * Fix `JS.transition` applying incorrect classes
 
 ### Enhancements
   * Reset phx-feedback-for errors on `type="reset"` inputs and buttons
