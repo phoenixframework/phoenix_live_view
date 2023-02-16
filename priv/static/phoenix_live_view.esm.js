@@ -3389,7 +3389,7 @@ var LiveSocket = class {
         let view = this.newRootView(rootEl);
         view.setHref(this.getHref());
         view.join();
-        if (rootEl.getAttribute(PHX_MAIN)) {
+        if (rootEl.hasAttribute(PHX_MAIN)) {
           this.main = view;
         }
       }
