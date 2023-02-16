@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.18.15
+
+### Enhancements
+  * Reset phx-feedback-for errors on `type="reset"` inputs and buttons
+
 ## 0.18.14 (2023-02-14)
 
 ### Bug Fixes

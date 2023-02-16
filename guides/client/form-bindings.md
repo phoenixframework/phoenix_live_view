@@ -283,6 +283,29 @@ above, which would wire up to the following server callbacks in your LiveView:
 
 To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
+## Resetting Forms
+
+To reset a LiveView form, you can use the standard `type="reset"` on a
+form button or input. When clicked, the form inputs will be reset to their
+original values, and Phoenix will hide errors for `phx-fedback-for` elements.
+After the form is reset, a `phx-change` event is emitted with the `_target` param
+containing the reset `name`. For example, the following element:
+
+    <form phx-change="changed">
+      ...
+      <button type="reset" name="reset">Reset</button>
+    </form>
+
+Can be handled on the server differently from your regular change function:
+
+    def handle_event("changed", %{"_target" => ["reset"]} = params, socket) do
+      # handle form reset
+    end
+
+    def handle_event("changed", params, socket) do
+      # handle regular form change
+    end
+
 ## JavaScript client specifics
 
 The JavaScript client is always the source of truth for current input values.
