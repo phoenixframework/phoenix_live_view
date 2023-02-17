@@ -1396,9 +1396,9 @@ defmodule Phoenix.LiveView do
   Hooks provide a mechanism to tap into key stages of the LiveView
   lifecycle in order to bind/update assigns, intercept events,
   patches, and regular messages when necessary, and to inject
-  common functionality. Hooks may be attached to any of the following
-  lifecycle stages: `:mount` (via `on_mount/1`), `:handle_params`,
-  `:handle_event`, `:handle_info`, and `:after_render`.
+  common functionality. Use `attach_hook/1` on any of the following
+  lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, and
+  `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
   ## Return Values
 
