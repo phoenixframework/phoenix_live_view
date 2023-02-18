@@ -1381,7 +1381,10 @@ defmodule Phoenix.Component do
         {:noreply, assign(socket, form: to_form(params))}
       end
 
-  However, most typically, we specify a name to nest the parameters:
+  When you pass a map to `to_form/1`, it assumes said map contains
+  the form parameters, which are expected to have string keys.
+
+  You can also specify a name to nest the parameters:
 
       def handle_event("submitted", %{"user" => user_params}, socket) do
         {:noreply, assign(socket, form: to_form(user_params, as: :user))}
@@ -1389,8 +1392,9 @@ defmodule Phoenix.Component do
 
   ## Creating a form from changesets
 
-  When using changesets, the name `:as` is automatically retrieved
-  from the schema. For example, if you have a user schema:
+  When using changesets, the underlying data, form parameters, and
+  errors are retrieved from it. The `:as` option is automatically
+  computed too. For example, if you have a user schema:
 
       defmodule MyApp.Users.User do
         use Ecto.Schema
@@ -1406,10 +1410,8 @@ defmodule Phoenix.Component do
       |> Ecto.Changeset.change()
       |> to_form()
 
-  Phoenix will take care of getting all of the relevant information
-  from the changeset, including errors, data, and names for you.
-  In this case, the parameters will be available under
-  `%{"post" => post_params}`.
+  In this case, once the form is submitted, the parameters will
+  be available under `%{"post" => post_params}`.
 
   ## Options
 
@@ -1426,7 +1428,7 @@ defmodule Phoenix.Component do
   Then the remaining options are merged with the existing
   form options.
   """
-  def to_form(data, options \\ [])
+  def to_form(data_or_params, options \\ [])
 
   def to_form(%Phoenix.HTML.Form{} = data, options) do
     {name, id} =
