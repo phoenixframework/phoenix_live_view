@@ -430,7 +430,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree(
-         [{:text, text, %{context: [:comment_end]}} | tokens],
+         [{:text, text, %{context: [:comment_end | _rest]}} | tokens],
          buffer,
          [{:comment, start_text, upper_buffer} | stack],
          source
