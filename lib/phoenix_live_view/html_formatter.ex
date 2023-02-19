@@ -197,6 +197,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   alias Phoenix.LiveView.HTMLTokenizer
   alias Phoenix.LiveView.HTMLTokenizer.ParseError
 
+  defguard is_tag_open(tag_type)
+           when tag_type in [:slot, :remote_component, :local_component, :tag]
+
   # Reference for all inline elements so that we can tell the formatter to not
   # force a line break. This list has been taken from here:
   #
@@ -259,21 +262,21 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # Will be tokenized as:
   #
   # [
-  #   {:tag_open, "section", [], %{column: 1, line: 1}},
+  #   {:tag, "section", [], %{column: 1, line: 1}},
   #   {:text, "\n  ", %{column_end: 3, line_end: 2}},
-  #   {:tag_open, "p", [], %{column: 3, line: 2}},
+  #   {:tag, "p", [], %{column: 3, line: 2}},
   #   {:eex_tag_render, "<%= user.name ></p>\n  <%= if true do %>", %{block?: true, column: 6, line: 1}},
   #   {:text, " ", %{column_end: 2, line_end: 1}},
-  #   {:tag_open, "p", [], %{column: 2, line: 1}},
+  #   {:tag, "p", [], %{column: 2, line: 1}},
   #   {:text, "this", %{column_end: 12, line_end: 1}},
-  #   {:tag_close, "p", %{column: 12, line: 1}},
+  #   {::close, :tag, "p", %{column: 12, line: 1}},
   #   {:eex_tag, "<% else %>", %{block?: false, column: 35, line: 2}},
-  #   {:tag_open, "p", [], %{column: 1, line: 1}},
+  #   {:tag, "p", [], %{column: 1, line: 1}},
   #   {:text, "that", %{column_end: 14, line_end: 1}},
-  #   {:tag_close, "p", %{column: 14, line: 1}},
+  #   {::close, :tag, "p", %{column: 14, line: 1}},
   #   {:eex_tag, "<% end %>", %{block?: false, column: 62, line: 2}},
   #   {:text, "\n", %{column_end: 1, line_end: 2}},
-  #   {:tag_close, "section", %{column: 1, line: 2}}
+  #   {::close, :tag, "section", %{column: 1, line: 2}}
   # ]
   #
   # EEx.tokenize/2 was introduced in Elixir 1.14.
@@ -338,16 +341,16 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # tokens. For instance, given this input:
   #
   # [
-  #   {:tag_open, "div", [], %{column: 1, line: 1}},
-  #   {:tag_open, "h1", [], %{column: 6, line: 1}},
+  #   {:tag, "div", [], %{column: 1, line: 1}},
+  #   {:tag, "h1", [], %{column: 6, line: 1}},
   #   {:text, "Hello", %{column_end: 15, line_end: 1}},
-  #   {:tag_close, "h1", %{column: 15, line: 1}},
-  #   {:tag_close, "div", %{column: 20, line: 1}},
-  #   {:tag_open, "div", [], %{column: 1, line: 2}},
-  #   {:tag_open, "h1", [], %{column: 6, line: 2}},
+  #   {::close, :tag, "h1", %{column: 15, line: 1}},
+  #   {::close, :tag, "div", %{column: 20, line: 1}},
+  #   {:tag, "div", [], %{column: 1, line: 2}},
+  #   {:tag, "h1", [], %{column: 6, line: 2}},
   #   {:text, "World", %{column_end: 15, line_end: 2}},
-  #   {:tag_close, "h1", %{column: 15, line: 2}},
-  #   {:tag_close, "div", %{column: 20, line: 2}}
+  #   {::close, :tag, "h1", %{column: 15, line: 2}},
+  #   {::close, :tag, "div", %{column: 20, line: 2}}
   # ]
   #
   # The output will be:
@@ -363,21 +366,21 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # ### How does this algorithm work?
   #
   # As this is a recursive algorithm, it starts with an empty buffer and an empty
-  # stack. The buffer will be accumulated until it finds a `{:tag_open, ..., ...}`.
+  # stack. The buffer will be accumulated until it finds a `{:tag, ..., ...}`.
   #
   # As soon as the `tag_open` arrives, a new buffer will be started and we move
   # the previous buffer to the stack along with the `tag_open`:
   #
   #   ```
-  #   defp build([{:tag_open, name, attrs, _meta} | tokens], buffer, stack) do
+  #   defp build([{:tag, name, attrs, _meta} | tokens], buffer, stack) do
   #     build(tokens, [], [{name, attrs, buffer} | stack])
   #   end
   #   ```
   #
-  # Then, we start to populate the buffer again until a `{:tag_close, ...} arrives:
+  # Then, we start to populate the buffer again until a `{::close, :tag, ...} arrives:
   #
   #   ```
-  #   defp build([{:tag_close, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
+  #   defp build([{::close, :tag, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
   #     build(tokens, [{:tag_block, name, attrs, Enum.reverse(buffer)} | upper_buffer], stack)
   #   end
   #   ```
@@ -464,45 +467,55 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     to_tree(tokens, [{:eex_comment, text} | buffer], stack, source)
   end
 
-  defp to_tree([{:tag_open, name, attrs, %{self_close: true}} | tokens], buffer, stack, source) do
-    to_tree(tokens, [{:tag_self_close, name, attrs} | buffer], stack, source)
+  defp to_tree([{type, name, attrs, %{self_close: true} = meta} | tokens], buffer, stack, source)
+       when is_tag_open(type) do
+    # TODO: fix me
+    tag_name = meta[:tag_name] || name
+    to_tree(tokens, [{:tag_self_close, tag_name, attrs} | buffer], stack, source)
   end
 
   @void_tags ~w(area base br col hr img input link meta param command keygen source)
-  defp to_tree([{:tag_open, name, attrs, _meta} | tokens], buffer, stack, source)
-       when name in @void_tags do
-    to_tree(tokens, [{:tag_self_close, name, attrs} | buffer], stack, source)
+  defp to_tree([{type, name, attrs, meta} | tokens], buffer, stack, source)
+       when is_tag_open(type) and name in @void_tags do
+    # TODO: fix me
+    tag_name = meta[:tag_name] || name
+    to_tree(tokens, [{:tag_self_close, tag_name, attrs} | buffer], stack, source)
   end
 
-  defp to_tree([{:tag_open, name, attrs, meta} | tokens], buffer, stack, source) do
-    to_tree(tokens, [], [{name, attrs, meta, buffer} | stack], source)
+  defp to_tree([{type, name, attrs, meta} | tokens], buffer, stack, source)
+       when is_tag_open(type) do
+    # TODO: fix me
+    tag_name = meta[:tag_name] || name
+    to_tree(tokens, [], [{tag_name, attrs, meta, buffer} | stack], source)
   end
 
   defp to_tree(
-         [{:tag_close, name, close_meta} | tokens],
+         [{:close, _type, _name, close_meta} | tokens],
          buffer,
          [{name, attrs, open_meta, upper_buffer} | stack],
          source
        ) do
+    tag_name = open_meta[:tag_name] || name
+
     {mode, block} =
-      if (name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
+      if (tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
         content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
         {:preserve, [{:text, content, %{newlines: 0}}]}
       else
         mode =
           cond do
-            preserve_format?(name, upper_buffer) -> :preserve
-            name in @inline_elements -> :inline
+            preserve_format?(tag_name, upper_buffer) -> :preserve
+            tag_name in @inline_elements -> :inline
             true -> :block
           end
 
         {mode,
          buffer
          |> Enum.reverse()
-         |> may_set_preserve_on_text(mode, name)}
+         |> may_set_preserve_on_text(mode, tag_name)}
       end
 
-    tag_block = {:tag_block, name, attrs, block, %{mode: mode}}
+    tag_block = {:tag_block, tag_name, attrs, block, %{mode: mode}}
 
     to_tree(tokens, [tag_block | upper_buffer], stack, source)
   end
