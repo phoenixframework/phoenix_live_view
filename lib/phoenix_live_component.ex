@@ -137,7 +137,7 @@ defmodule Phoenix.LiveComponent do
   callback:
 
       def update(assigns, socket) do
-        user = Repo.get!(User, assigns.id)
+        user = Repo.get(User, assigns.id)
         {:ok, assign(socket, :user, user)}
       end
 
