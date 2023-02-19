@@ -45,7 +45,7 @@ defmodule Phoenix.LiveComponent do
   `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
   receives the `socket` as argument. Then `c:update/2` is invoked with all of the
   assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`).
-  If `c:update/2` is not defined all assigns are simply merged into the socket. The assigns received by the [`update/2`](`c:Phoenix.LiveComponent.update/2`) callback will only include the _new_ assigns passed from this function. Pre-existing assigns may be found in `socket.assigns`.
+  If `c:update/2` is not defined all assigns are simply merged into the socket. The assigns received as the first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`) callback will only include the _new_ assigns passed from this function. Pre-existing assigns may be found in `socket.assigns`.
 
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
