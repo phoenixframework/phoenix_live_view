@@ -607,7 +607,7 @@ defmodule Phoenix.Component do
   The expression inside `{...}` must be either a keyword list or a map containing
   the key-value pairs representing the dynamic attributes.
 
-  You can pair this notation `assigns_to_attributes/2` to strip out any internal
+  You can pair this notation with `assigns_to_attributes/2` to strip out any internal
   LiveView attributes and user-defined assigns from being expanded into the HTML tag:
 
   ```heex
@@ -2068,7 +2068,7 @@ defmodule Phoenix.Component do
   </.form>
   ```
 
-  In the example above, we use passed a changeset to `for` and captured
+  In the example above, we passed a changeset to `for` and captured
   the value using `:let={f}`. This approach is ok outside of LiveViews,
   as there are no change tracking optimizations to consider.
 
