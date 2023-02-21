@@ -116,9 +116,7 @@ defmodule Phoenix.LiveView.Logger do
     if level && connected?(socket) do
       Logger.log(level, fn ->
         [
-          "HANDLE PARAMS",
-          ?\n,
-          "  View: ",
+          "HANDLE PARAMS in ",
           inspect(socket.view),
           ?\n,
           "  Parameters: ",
@@ -157,13 +155,10 @@ defmodule Phoenix.LiveView.Logger do
     if level do
       Logger.log(level, fn ->
         [
-          "HANDLE EVENT",
-          ?\n,
-          "  View: ",
-          inspect(socket.view),
-          ?\n,
-          "  Event: ",
+          "HANDLE EVENT ",
           inspect(event),
+          " in ",
+          inspect(socket.view),
           ?\n,
           "  Parameters: ",
           inspect(filter_values(params))
@@ -201,16 +196,12 @@ defmodule Phoenix.LiveView.Logger do
     if level do
       Logger.log(level, fn ->
         [
-          "HANDLE EVENT",
-          ?\n,
+          "HANDLE EVENT ",
+          inspect(event),
+          " in ",
+          inspect(socket.view),
           "  Component: ",
           inspect(component),
-          ?\n,
-          "  View: ",
-          inspect(socket.view),
-          ?\n,
-          "  Event: ",
-          inspect(event),
           ?\n,
           "  Parameters: ",
           inspect(filter_values(params))
