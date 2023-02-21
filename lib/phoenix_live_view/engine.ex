@@ -475,7 +475,7 @@ defmodule Phoenix.LiveView.Engine do
 
         # The reason we can safely ignore assigns here is because
         # each branch in the live/render constructs are their own
-        # rendered struct and, if the rendered has a new fingerpint,
+        # rendered struct and, if the rendered has a new fingerprint,
         # then change tracking is fully disabled.
         #
         # For example, take this code:

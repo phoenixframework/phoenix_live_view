@@ -2,7 +2,7 @@
 
 One of the questions that arise from LiveView stateful model is what considerations are necessary when deploying a new version of LiveView.
 
-First off, whenever LiveView disconnects, it will automatically attempt to reconnect to the server using exponential back-off. This means it will try immediately, then wait 2s and try again, then 5s and so on. If you are deploying, this typically means the next reconnection will immediatelly succeed and your load balancer will automatically redirect to the new servers.
+First off, whenever LiveView disconnects, it will automatically attempt to reconnect to the server using exponential back-off. This means it will try immediately, then wait 2s and try again, then 5s and so on. If you are deploying, this typically means the next reconnection will immediately succeed and your load balancer will automatically redirect to the new servers.
 
 However, your LiveView _may_ still have state that will be lost in this transition. How to deal with it? The good news is that there are a series of practices you can follow that will not only help with deployments but it will improve your application in general.
 

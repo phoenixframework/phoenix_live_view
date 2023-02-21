@@ -436,7 +436,7 @@ describe("View + DOM", function(){
       expect(childIds()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9])
 
       // Make sure we don't have a memory leak when doing updates
-      let initalCount = countChildNodes()
+      let initialCount = countChildNodes()
       updateDynamics(view,
         [["1", "1"], ["2", "2"], ["3", "3"]]
       )
@@ -450,7 +450,7 @@ describe("View + DOM", function(){
         [["1", "1"], ["2", "2"], ["3", "3"]]
       )
 
-      expect(countChildNodes()).toBe(initalCount)
+      expect(countChildNodes()).toBe(initialCount)
     })
 
     test("prepend", async () => {
@@ -500,7 +500,7 @@ describe("View + DOM", function(){
       expect(childIds()).toEqual([8, 9, 6, 7, 4, 5, 2, 3, 1])
 
       // Make sure we don't have a memory leak when doing updates
-      let initalCount = countChildNodes()
+      let initialCount = countChildNodes()
       updateDynamics(view,
         [["1", "1"], ["2", "2"], ["3", "3"]]
       )
@@ -514,7 +514,7 @@ describe("View + DOM", function(){
         [["1", "1"], ["2", "2"], ["3", "3"]]
       )
 
-      expect(countChildNodes()).toBe(initalCount)
+      expect(countChildNodes()).toBe(initialCount)
     })
 
     test("ignore", async () => {
