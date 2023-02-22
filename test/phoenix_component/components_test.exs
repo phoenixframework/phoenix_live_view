@@ -292,6 +292,25 @@ defmodule Phoenix.LiveView.ComponentsTest do
              ] = html
     end
 
+    test "generates form with prebuilt form and :as" do
+      assigns = %{form: to_form(%{}, as: :data)}
+
+      template = ~H"""
+      <.form :let={f} for={@form}>
+        <input id={f[:foo].id} name={f[:foo].name} type="text" />
+      </.form>
+      """
+
+      html = parse(template)
+
+      assert [
+               {"form", [],
+                [
+                  {"input", [{"id", "data_foo"}, {"name", "data[foo]"}, {"type", "text"}], []}
+                ]}
+             ] = html
+    end
+
     test "generates form with prebuilt form and options" do
       assigns = %{form: to_form(%{})}
 
