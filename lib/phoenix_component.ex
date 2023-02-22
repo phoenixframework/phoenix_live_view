@@ -2094,7 +2094,6 @@ defmodule Phoenix.Component do
   attr.(:for, :any, required: true, doc: "An existing form or the form source data.")
 
   attr.(:action, :string,
-    default: nil,
     doc: """
     The action to submit the form on.
     This attribute must be given if you intend to submit the form to a URL without LiveView.
@@ -2102,7 +2101,6 @@ defmodule Phoenix.Component do
   )
 
   attr.(:as, :atom,
-    default: nil,
     doc: """
     The server side parameter in which all params for this form
     will be collected. For example, setting `as: :user_params` means
