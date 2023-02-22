@@ -1022,13 +1022,24 @@ defmodule Phoenix.LiveView.Channel do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
-        socket
-        |> load_layout(route)
-        |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
-        |> build_state(phx_socket)
-        |> maybe_call_mount_handle_params(router, url, params)
-        |> reply_mount(from, verified, route)
-        |> maybe_subscribe_to_live_reload()
+        try do
+          socket
+          |> load_layout(route)
+          |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
+          |> build_state(phx_socket)
+          |> maybe_call_mount_handle_params(router, url, params)
+          |> reply_mount(from, verified, route)
+          |> maybe_subscribe_to_live_reload()
+        rescue
+          exception ->
+            status = Plug.Exception.status(exception)
+            if status >= 400 and status < 500 do
+              GenServer.reply(from, {:error, %{reason: "reload", status: status}})
+              {:stop, :shutdown, :no_state}
+            else
+              reraise(exception, __STACKTRACE__)
+            end
+        end
 
       {:error, :noproc} ->
         GenServer.reply(from, {:error, %{reason: "stale"}})

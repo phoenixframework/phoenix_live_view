@@ -3,6 +3,11 @@ alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
 defmodule Phoenix.LiveViewTest.ThermostatLive do
   use Phoenix.LiveView, container: {:article, class: "thermo"}, namespace: Phoenix.LiveViewTest
 
+  defmodule Error do
+    defexception [:plug_status]
+    def message(%{plug_status: status}), do: "error #{status}"
+  end
+
   def render(assigns) do
     ~H"""
     Redirect: <%= @redirect %>
@@ -16,6 +21,22 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
       <% end %>
     <% end %>
     """
+  end
+
+  def mount(%{"raise_connected" => status}, session, socket) do
+    if connected?(socket) do
+      raise Error, plug_status: String.to_integer(status)
+    else
+      mount(%{}, session, socket)
+    end
+  end
+
+  def mount(%{"raise_disconnected" => status}, session, socket) do
+    if connected?(socket) do
+      mount(%{}, session, socket)
+    else
+      raise Error, plug_status: String.to_integer(status)
+    end
   end
 
   def mount(_params, session, socket) do

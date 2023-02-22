@@ -385,4 +385,26 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert transport_pid == self()
     end
   end
+
+  describe "connected mount exceptions" do
+    test "when disconnected, raises normally per plug wrapper", %{conn: conn} do
+      assert_raise(Plug.Conn.WrapperError, ~r/Phoenix.LiveViewTest.ThermostatLive.Error/, fn ->
+        get(conn, "/thermo?raise_disconnected=500")
+      end)
+
+      assert_raise(Plug.Conn.WrapperError, ~r/Phoenix.LiveViewTest.ThermostatLive.Error/, fn ->
+        get(conn, "/thermo?raise_disconnected=404")
+      end)
+    end
+
+    test "when connected, raises and exits for 5xx", %{conn: conn} do
+      assert {{exception, _}, _} = catch_exit(live(conn, "/thermo?raise_connected=500"))
+      assert %Phoenix.LiveViewTest.ThermostatLive.Error{plug_status: 500} = exception
+    end
+
+    test "when connected, raises and wraps 4xx in client response", %{conn: conn} do
+      assert {reason, _} = catch_exit(live(conn, "/thermo?raise_connected=404"))
+      assert %{reason: "reload", status: 404} = reason
+    end
+  end
 end
