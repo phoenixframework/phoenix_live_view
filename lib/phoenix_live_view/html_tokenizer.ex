@@ -4,7 +4,27 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   @quote_chars '"\''
   @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
 
-  alias __MODULE__.ParseError
+  alias __MODULE__.{ParseError, HTML}
+
+  defmodule TagHandler do
+    @callback classify_tag_type(name :: binary()) :: {type :: atom(), name :: binary()}
+  end
+
+  defmodule HTML do
+    @behaviour TagHandler
+
+    @impl true
+    def classify_tag_type(":" <> name), do: {:slot, String.to_atom(name)}
+    def classify_tag_type(":inner_block"), do: {:error, "the slot name :inner_block is reserved"}
+
+    def classify_tag_type(<<first, _::binary>> = name) when first in ?A..?Z,
+      do: {:remote_component, String.to_atom(name)}
+
+    def classify_tag_type("." <> name),
+      do: {:local_component, String.to_atom(name)}
+
+    def classify_tag_type(name), do: {:tag, name}
+  end
 
   defmodule ParseError do
     @moduledoc false
@@ -85,7 +105,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
        ], :text}
 
   """
-  def tokenize(text, file, indentation, meta, tokens, cont, source) do
+  def tokenize(text, file, indentation, meta, tokens, cont, source, tag_handler \\ HTML) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
 
@@ -95,7 +115,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       braces: [],
       context: [],
       source: source,
-      indentation: indentation
+      indentation: indentation,
+      tag_handler: tag_handler
     }
 
     case cont do
@@ -261,7 +282,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:ok, name, new_column, rest} ->
         meta = %{line: line, column: column - 1, inner_location: nil, tag_name: name}
 
-        case classify_tag_type(name) do
+        case state.tag_handler.classify_tag_type(name) do
           {:error, message} ->
             raise_syntax_error!(message, meta, state)
 
@@ -292,7 +313,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
           tag_name: name
         }
 
-        case classify_tag_type(name) do
+        case state.tag_handler.classify_tag_type(name) do
           {:error, message} ->
             raise_syntax_error!(message, meta, state)
 
@@ -312,17 +333,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         raise_syntax_error!(message, meta, state)
     end
   end
-
-  defp classify_tag_type(":" <> name), do: {:slot, String.to_atom(name)}
-  defp classify_tag_type(":inner_block"), do: {:error, "the slot name :inner_block is reserved"}
-
-  defp classify_tag_type(<<first, _::binary>> = name) when first in ?A..?Z,
-    do: {:remote_component, String.to_atom(name)}
-
-  defp classify_tag_type("." <> name),
-    do: {:local_component, String.to_atom(name)}
-
-  defp classify_tag_type(name), do: {:tag, name}
 
   ## handle_tag_name
 
