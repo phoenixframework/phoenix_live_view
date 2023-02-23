@@ -7,7 +7,6 @@ defmodule Phoenix.LiveViewTest.StreamLive do
 
   def render(assigns) do
     ~H"""
-    <%= @users_count %>
     <div id="users" phx-update="stream">
       <div :for={{id, user} <- @streams.users} id={id}>
         <%= user.name %>
@@ -17,12 +16,24 @@ defmodule Phoenix.LiveViewTest.StreamLive do
         <button phx-click="move-to-last" phx-value-id={id}>make last</button>
       </div>
     </div>
+    <div id="admins" phx-update="stream">
+      <div :for={{id, user} <- @streams.admins} id={id}>
+        <%= user.name %>
+        <button phx-click="admin-delete" phx-value-id={id}>delete</button>
+        <button phx-click="admin-update" phx-value-id={id}>update</button>
+        <button phx-click="admin-move-to-first" phx-value-id={id}>make first</button>
+        <button phx-click="admin-move-to-last" phx-value-id={id}>make last</button>
+      </div>
+    </div>
+    <.live_component id="stream-component" module={Phoenix.LiveViewTest.StreamComponent} />
     """
   end
 
   def mount(_params, _session, socket) do
-    users = [user(1, "chris"), user(2, "callan")]
-    {:ok, socket |> assign(users_count: Enum.count(users)) |> stream(:users, users)}
+    {:ok,
+     socket
+     |> stream(:users, [user(1, "chris"), user(2, "callan")])
+     |> stream(:admins, [user(1, "chris-admin"), user(2, "callan-admin")])}
   end
 
   def handle_event("delete", %{"id" => dom_id}, socket) do
@@ -46,7 +57,85 @@ defmodule Phoenix.LiveViewTest.StreamLive do
      |> stream_insert(:users, user, at: -1)}
   end
 
+  def handle_event("admin-delete", %{"id" => dom_id}, socket) do
+    {:noreply, stream_delete_by_dom_id(socket, :admins, dom_id)}
+  end
+
+  def handle_event("admin-update", %{"id" => "admins-" <> id}, socket) do
+    {:noreply, stream_insert(socket, :admins, user(id, "updated"))}
+  end
+
+  def handle_event("admin-move-to-first", %{"id" => "admins-" <> id}, socket) do
+    {:noreply, stream_insert(socket, :admins, user(id, "updated"), at: 0)}
+  end
+
+  def handle_event("admin-move-to-last", %{"id" => "admins-" <> id = dom_id}, socket) do
+    user = user(id, "updated")
+
+    {:noreply,
+     socket
+     |> stream_delete_by_dom_id(:admins, dom_id)
+     |> stream_insert(:admins, user, at: -1)}
+  end
+
   def handle_call({:run, func}, _, socket), do: func.(socket)
+
+  defp user(id, name) do
+    %{id: id, name: name}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.StreamComponent do
+  use Phoenix.LiveComponent
+
+  def run(lv, func) do
+    GenServer.call(lv.pid, {:run, func})
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div id="c_users" phx-update="stream">
+      <div :for={{id, user} <- @streams.c_users} id={id}>
+        <%= user.name %>
+        <button phx-click="delete" phx-value-id={id} phx-target={@myself}>delete</button>
+        <button phx-click="update" phx-value-id={id} phx-target={@myself}>update</button>
+        <button phx-click="move-to-first" phx-value-id={id} phx-target={@myself}>make first</button>
+        <button phx-click="move-to-last" phx-value-id={id} phx-target={@myself}>make last</button>
+      </div>
+    </div>
+    """
+  end
+
+  def update(%{send_assigns_to: test_pid}, socket) when is_pid(test_pid) do
+    send(test_pid, {:assigns, socket.assigns})
+    {:ok, socket}
+  end
+
+  def update(_assigns, socket) do
+    users = [user(1, "chris"), user(2, "callan")]
+    {:ok, stream(socket, :c_users, users)}
+  end
+
+  def handle_event("delete", %{"id" => dom_id}, socket) do
+    {:noreply, stream_delete_by_dom_id(socket, :c_users, dom_id)}
+  end
+
+  def handle_event("update", %{"id" => "c_users-" <> id}, socket) do
+    {:noreply, stream_insert(socket, :c_users, user(id, "updated"))}
+  end
+
+  def handle_event("move-to-first", %{"id" => "c_users-" <> id}, socket) do
+    {:noreply, stream_insert(socket, :c_users, user(id, "updated"), at: 0)}
+  end
+
+  def handle_event("move-to-last", %{"id" => "c_users-" <> id = dom_id}, socket) do
+    user = user(id, "updated")
+
+    {:noreply,
+     socket
+     |> stream_delete_by_dom_id(:c_users, dom_id)
+     |> stream_insert(:c_users, user, at: -1)}
+  end
 
   defp user(id, name) do
     %{id: id, name: name}

@@ -827,7 +827,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
     test "slot tracking with live component inside conditional slot" do
       assigns = %{socket: %Socket{}, if: true}
-      {socket, full_render, components} = render(conditional_slot_tracking(assigns))
+      {_socket, _full_render, components} = render(conditional_slot_tracking(assigns))
       assert {_, _, 3} = components
 
       assigns = %{socket: %Socket{}, if: false}

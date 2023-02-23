@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.Diff do
   # handled here.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Utils, Rendered, Comprehension, Component}
+  alias Phoenix.LiveView.{Utils, Rendered, Comprehension, Component, Lifecycle}
 
   @components :c
   @static :s
@@ -370,7 +370,15 @@ defmodule Phoenix.LiveView.Diff do
     nil = template
 
     {_counter, diff, children, pending, components, nil} =
-      traverse_dynamic(socket, invoke_dynamic(rendered, changed?), children, pending, components, nil, changed?)
+      traverse_dynamic(
+        socket,
+        invoke_dynamic(rendered, changed?),
+        children,
+        pending,
+        components,
+        nil,
+        changed?
+      )
 
     {diff, {fingerprint, children}, pending, components, nil}
   end
@@ -385,7 +393,15 @@ defmodule Phoenix.LiveView.Diff do
          changed?
        ) do
     {_counter, diff, children, pending, components, template} =
-      traverse_dynamic(socket, invoke_dynamic(rendered, false), %{}, pending, components, template, changed?)
+      traverse_dynamic(
+        socket,
+        invoke_dynamic(rendered, false),
+        %{},
+        pending,
+        components,
+        template,
+        changed?
+      )
 
     {diff, template} = maybe_template_static(diff, fingerprint, static, template)
     {diff, {fingerprint, children}, pending, components, template}
@@ -508,7 +524,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp inject_stacktrace([{__MODULE__, :invoke_dynamic, 2, _} | stacktrace], entry) do
-    [entry | Enum.drop_while(stacktrace, &elem(&1, 0) == __MODULE__)]
+    [entry | Enum.drop_while(stacktrace, &(elem(&1, 0) == __MODULE__))]
   end
 
   defp inject_stacktrace([head | tail], entry) do
@@ -708,7 +724,9 @@ defmodule Phoenix.LiveView.Diff do
 
     socket =
       if changed? or events? do
-        Utils.clear_changed(socket)
+        socket
+        |> Lifecycle.after_render()
+        |> Utils.clear_changed()
       else
         socket
       end
@@ -788,6 +806,7 @@ defmodule Phoenix.LiveView.Diff do
       socket.private
       |> Map.take([:conn_session, :root_view])
       |> Map.put(:__changed__, %{})
+      |> Map.put(:lifecycle, %Phoenix.LiveView.Lifecycle{})
 
     socket =
       configure_socket_for_component(socket, assigns, private, new_fingerprints())

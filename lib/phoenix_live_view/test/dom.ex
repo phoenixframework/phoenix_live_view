@@ -194,9 +194,10 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def merge_diff(rendered, diff) do
     old = Map.get(rendered, @components, %{})
+    # must extract streams from diff before we pop components
+    streams = extract_streams(diff, [])
     {new, diff} = Map.pop(diff, @components)
     rendered = deep_merge_diff(rendered, diff)
-    streams = extract_streams(diff, [])
 
     # If we have any component, we need to get the components
     # sent by the diff and remove any link between components
@@ -368,9 +369,9 @@ defmodule Phoenix.LiveViewTest.DOM do
         {Map.merge(in_acc, inserts), MapSet.union(deletes_acc, MapSet.new(deletes))}
       end)
 
-    id = attribute(node, "id")
-    verify_phx_update_id!(type, id, node)
-    children_before = apply_phx_update_children(html_tree, id)
+    container_id = attribute(node, "id")
+    verify_phx_update_id!(type, container_id, node)
+    children_before = apply_phx_update_children(html_tree, container_id)
     existing_ids = apply_phx_update_children_id(type, children_before)
     new_ids = apply_phx_update_children_id(type, appended_children)
 
@@ -409,11 +410,15 @@ defmodule Phoenix.LiveViewTest.DOM do
         new_children =
           Enum.reduce(stream_inserts, children, fn {id, insert_at}, acc ->
             old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
-            child = Enum.at(acc, old_index)
+            child = old_index && Enum.at(acc, old_index)
             existing? = Enum.find_index(updated_existing_children, &(attribute(&1, "id") == id))
             deleted? = MapSet.member?(stream_deletes, id)
 
             cond do
+              # skip added children that aren't ours
+              parent_id(html_tree, id) != container_id ->
+                acc
+
               # do not append existing child if already present, only update in place
               old_index && insert_at == -1 && existing? ->
                 if deleted? do
@@ -442,7 +447,6 @@ defmodule Phoenix.LiveViewTest.DOM do
 
             deleted? && !inserted_at
           end)
-
 
         {tag, attrs, new_children}
 
@@ -516,5 +520,23 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp by_id(html_tree, id) do
     html_tree |> Floki.find("##{id}") |> List.first()
+  end
+
+  def parent_id(html_tree, child_id) do
+    try do
+      walk(html_tree, fn {tag, attrs, children} = node ->
+        parent_id = attribute(node, "id")
+
+        if parent_id && Enum.find(children, fn child -> attribute(child, "id") == child_id end) do
+          throw(parent_id)
+        else
+          {tag, attrs, children}
+        end
+      end)
+
+      nil
+    catch
+      :throw, parent_id -> parent_id
+    end
   end
 end
