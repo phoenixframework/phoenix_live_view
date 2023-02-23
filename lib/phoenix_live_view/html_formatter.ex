@@ -194,8 +194,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   """
 
   alias Phoenix.LiveView.HTMLAlgebra
-  alias Phoenix.LiveView.HTMLTokenizer
-  alias Phoenix.LiveView.HTMLTokenizer.ParseError
+  alias Phoenix.LiveView.Tokenizer
+  alias Phoenix.LiveView.Tokenizer.ParseError
 
   defguard is_tag_open(tag_type)
            when tag_type in [:slot, :remote_component, :local_component, :tag]
@@ -253,7 +253,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     IO.iodata_to_binary([formatted, newline])
   end
 
-  # Tokenize contents using EEx.tokenize and Phoenix.Live.HTMLTokenizer respectively.
+  # Tokenize contents using EEx.tokenize and Phoenix.Live.Tokenizer respectively.
   #
   # The following content:
   #
@@ -286,13 +286,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     defp tokenize(contents) do
       {:ok, eex_nodes} = EEx.tokenize(contents)
       {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
-      HTMLTokenizer.finalize(tokens, "nofile", cont, contents)
+      Tokenizer.finalize(tokens, "nofile", cont, contents)
     end
 
     defp do_tokenize({:text, text, meta}, {tokens, cont}, contents) do
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize(
+      |> Tokenizer.tokenize(
         "nofile",
         0,
         [line: meta.line, column: meta.column],
@@ -315,13 +315,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     defp tokenize(contents) do
       {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 1, %{indentation: 0, trim: false})
       {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
-      HTMLTokenizer.finalize(tokens, "nofile", cont, contents)
+      Tokenizer.finalize(tokens, "nofile", cont, contents)
     end
 
     defp do_tokenize({:text, line, column, text}, {tokens, cont}, contents) do
       text
       |> List.to_string()
-      |> HTMLTokenizer.tokenize("nofile", 0, [line: line, column: column], tokens, cont, contents)
+      |> Tokenizer.tokenize("nofile", 0, [line: line, column: column], tokens, cont, contents)
     end
 
     defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}, _contents)

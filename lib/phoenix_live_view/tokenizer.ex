@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.HTMLTokenizer do
+defmodule Phoenix.LiveView.Tokenizer do
   @moduledoc false
   @space_chars '\s\t\f'
   @quote_chars '"\''
@@ -104,8 +104,8 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   ### Examples
 
-      iex> alias Phoenix.LiveView.HTMLTokenizer
-      iex> HTMLTokenizer.tokenize("<section><div/></section>", "nofile", 0, [line: 1, column: 1], [], :text)
+      iex> alias Phoenix.LiveView.Tokenizer
+      iex> Tokenizer.tokenize("<section><div/></section>", "nofile", 0, [line: 1, column: 1], [], :text)
       {[
          {:close, :tag, "section", %{column: 16, line: 1}},
          {:tag, "div", [], %{column: 10, line: 1, self_close: true}},

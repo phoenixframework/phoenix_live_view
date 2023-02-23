@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   import Phoenix.Component
 
   alias Phoenix.LiveView.HTMLEngine
-  alias Phoenix.LiveView.HTMLTokenizer.{ParseError, HTML}
+  alias Phoenix.LiveView.Tokenizer.{ParseError, HTML}
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     opts =

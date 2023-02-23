@@ -751,7 +751,7 @@ defmodule Phoenix.Component do
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
       source: expr,
-      tag_handler: Phoenix.LiveView.HTMLTokenizer.HTML
+      tag_handler: Phoenix.LiveView.Tokenizer.HTML
     ]
 
     EEx.compile_string(expr, options)

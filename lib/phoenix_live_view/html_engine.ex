@@ -114,8 +114,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end
   end
 
-  alias Phoenix.LiveView.HTMLTokenizer
-  alias Phoenix.LiveView.HTMLTokenizer.{ParseError, HTML}
+  alias Phoenix.LiveView.Tokenizer
+  alias Phoenix.LiveView.Tokenizer.{ParseError, HTML}
 
   @behaviour Phoenix.Template.Engine
 
@@ -172,7 +172,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @impl true
   def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
-    tokens = HTMLTokenizer.finalize(tokens, file, cont, state.source)
+    tokens = Tokenizer.finalize(tokens, file, cont, state.source)
 
     token_state =
       state
@@ -250,7 +250,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @impl true
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont, source: source} = state
-    {tokens, cont} = HTMLTokenizer.tokenize(text, file, indentation, meta, tokens, cont, source)
+    {tokens, cont} = Tokenizer.tokenize(text, file, indentation, meta, tokens, cont, source)
     %{state | tokens: tokens, cont: cont, source: state.source}
   end
 
