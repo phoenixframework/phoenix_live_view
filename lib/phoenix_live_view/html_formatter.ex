@@ -283,23 +283,17 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # TODO: Remove this when we no longer support earlier versions.
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
   if Code.ensure_loaded?(EEx) && function_exported?(EEx, :tokenize, 2) do
-    defp tokenize(contents) do
-      {:ok, eex_nodes} = EEx.tokenize(contents)
-      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
-      Tokenizer.finalize(tokens, "nofile", cont, contents)
+    defp tokenize(source) do
+      {:ok, eex_nodes} = EEx.tokenize(source)
+      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, source))
+      Tokenizer.finalize(tokens, "nofile", cont, source)
     end
 
-    defp do_tokenize({:text, text, meta}, {tokens, cont}, contents) do
-      text
-      |> List.to_string()
-      |> Tokenizer.tokenize(
-        "nofile",
-        0,
-        [line: meta.line, column: meta.column],
-        tokens,
-        cont,
-        contents
-      )
+    defp do_tokenize({:text, text, meta}, {tokens, cont}, source) do
+      text = List.to_string(text)
+      meta = [line: meta.line, column: meta.column]
+      state = Tokenizer.init(0, "nofile", source, Tokenizer.HTML)
+      Tokenizer.tokenize(text, meta, tokens, cont, state)
     end
 
     defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents) do
@@ -312,16 +306,17 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
     end
   else
-    defp tokenize(contents) do
-      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(contents, 1, 1, %{indentation: 0, trim: false})
-      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, contents))
-      Tokenizer.finalize(tokens, "nofile", cont, contents)
+    defp tokenize(source) do
+      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(source, 1, 1, %{indentation: 0, trim: false})
+      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, source))
+      Tokenizer.finalize(tokens, "nofile", cont, source)
     end
 
-    defp do_tokenize({:text, line, column, text}, {tokens, cont}, contents) do
-      text
-      |> List.to_string()
-      |> Tokenizer.tokenize("nofile", 0, [line: line, column: column], tokens, cont, contents)
+    defp do_tokenize({:text, line, column, text}, {tokens, cont}, source) do
+      text = List.to_string(text)
+      meta = [line: line, column: column]
+      state = Tokenizer.init(0, "nofile", source, Tokenizer.HTML)
+      Tokenizer.tokenize(text, meta, tokens, cont, state)
     end
 
     defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}, _contents)

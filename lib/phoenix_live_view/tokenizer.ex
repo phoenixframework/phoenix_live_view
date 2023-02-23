@@ -92,7 +92,9 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   @doc """
-  Tokenize the given text according to the given params.
+  Init args for Tokenizer.
+
+  ### Options
 
   * `text` - The content to be tokenized.
   * `file` - Can be either a file or a string "nofile".
@@ -101,23 +103,9 @@ defmodule Phoenix.LiveView.Tokenizer do
   * `tokens` - A list of tokens.
   * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
     {:comment, line, column}.
-
-  ### Examples
-
-      iex> alias Phoenix.LiveView.Tokenizer
-      iex> Tokenizer.tokenize("<section><div/></section>", "nofile", 0, [line: 1, column: 1], [], :text)
-      {[
-         {:close, :tag, "section", %{column: 16, line: 1}},
-         {:tag, "div", [], %{column: 10, line: 1, self_close: true}},
-         {:tag, "section", [], %{column: 1, line: 1}}
-       ], :text}
-
   """
-  def tokenize(text, file, indentation, meta, tokens, cont, source, tag_handler \\ HTML) do
-    line = Keyword.get(meta, :line, 1)
-    column = Keyword.get(meta, :column, 1)
-
-    state = %{
+  def init(indentation, file, source, tag_handler) do
+    %{
       file: file,
       column_offset: indentation + 1,
       braces: [],
@@ -126,6 +114,25 @@ defmodule Phoenix.LiveView.Tokenizer do
       indentation: indentation,
       tag_handler: tag_handler
     }
+  end
+
+  @doc """
+  Tokenize the given text according to the given params.
+
+  ### Examples
+
+      iex> alias Phoenix.LiveView.Tokenizer
+      iex> state = Tokenizer.init(text: "<section><div/></section>", cont: :text)
+      iex> Tokenizer.tokenize(state)
+      {[
+         {:close, :tag, "section", %{column: 16, line: 1}},
+         {:tag, "div", [], %{column: 10, line: 1, self_close: true}},
+         {:tag, "section", [], %{column: 1, line: 1}}
+       ], :text}
+  """
+  def tokenize(text, meta, tokens, cont, state) do
+    line = Keyword.get(meta, :line, 1)
+    column = Keyword.get(meta, :column, 1)
 
     case cont do
       :text -> handle_text(text, line, column, [], tokens, state)

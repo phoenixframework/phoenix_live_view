@@ -3,8 +3,10 @@ defmodule Phoenix.LiveView.TokenizerTest do
   alias Phoenix.LiveView.Tokenizer.ParseError
   alias Phoenix.LiveView.Tokenizer
 
+  defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Tokenizer.HTML)
+
   defp tokenize(text) do
-    Tokenizer.tokenize(text, "nofile", 0, [], [], :text, text)
+    Tokenizer.tokenize(text, [], [], :text, tokenizer_state(text))
     |> elem(0)
     |> Enum.reverse()
   end
@@ -81,7 +83,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {first_tokens, cont} =
-        Tokenizer.tokenize(first_part, "nofile", 0, [], [], :text, first_part)
+        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
       </div>
@@ -93,7 +95,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {tokens, :text} =
-        Tokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont, second_part)
+        Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       assert Enum.reverse(tokens) == [
                {:tag, "p", [], %{column: 1, line: 1, inner_location: {1, 4}, tag_name: "p"}},
@@ -123,7 +125,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {first_tokens, cont} =
-        Tokenizer.tokenize(first_part, "nofile", 0, [], [], :text, first_part)
+        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
       -->
@@ -132,7 +134,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {second_tokens, cont} =
-        Tokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont, second_part)
+        Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       third_part = """
       -->
@@ -142,7 +144,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {tokens, :text} =
-        Tokenizer.tokenize(third_part, "nofile", 0, [], second_tokens, cont, third_part)
+        Tokenizer.tokenize(third_part, [], second_tokens, cont, tokenizer_state(third_part))
 
       assert Enum.reverse(tokens) == [
                {:tag, "p", [], %{column: 1, line: 1, inner_location: {1, 4}, tag_name: "p"}},

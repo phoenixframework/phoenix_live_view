@@ -250,7 +250,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @impl true
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont, source: source} = state
-    {tokens, cont} = Tokenizer.tokenize(text, file, indentation, meta, tokens, cont, source)
+    tokenizer_state = Tokenizer.init(indentation, file, source, state.tag_handler)
+    {tokens, cont} = Tokenizer.tokenize(text, meta, tokens, cont, tokenizer_state)
     %{state | tokens: tokens, cont: cont, source: state.source}
   end
 
