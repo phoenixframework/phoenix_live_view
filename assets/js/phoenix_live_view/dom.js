@@ -144,12 +144,12 @@ let DOM = {
     }
   },
 
-  private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
+  private(el, key){ return el && el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
 
-  deletePrivate(el, key){ el[PHX_PRIVATE] && delete (el[PHX_PRIVATE][key]) },
+  deletePrivate(el, key){ el && el[PHX_PRIVATE] && delete (el[PHX_PRIVATE][key]) },
 
   putPrivate(el, key, value){
-    if(!el[PHX_PRIVATE]){ el[PHX_PRIVATE] = {} }
+    if(!el || !el[PHX_PRIVATE]){ el[PHX_PRIVATE] = {} }
     el[PHX_PRIVATE][key] = value
   },
 

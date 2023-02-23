@@ -681,7 +681,7 @@ export default class LiveSocket {
       let href = window.location.href
 
       this.requestDOMUpdate(() => {
-        if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
+        if(this.main && this.main.isConnected() && (type === "patch" && id === this.main.id)){
           this.main.pushLinkPatch(href, null, () => {
             this.maybeScroll(scroll)
           })
