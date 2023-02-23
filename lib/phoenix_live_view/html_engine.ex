@@ -115,7 +115,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   alias Phoenix.LiveView.HTMLTokenizer
-  alias Phoenix.LiveView.HTMLTokenizer.ParseError
+  alias Phoenix.LiveView.HTMLTokenizer.{ParseError, HTML}
 
   @behaviour Phoenix.Template.Engine
 
@@ -139,7 +139,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       file: path,
       trim: trim,
       caller: __CALLER__,
-      source: source
+      source: source,
+      tag_handler: HTML
     )
   end
 
@@ -162,7 +163,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       indentation: Keyword.get(opts, :indentation, 0),
       caller: Keyword.fetch!(opts, :caller),
       previous_token_slot?: false,
-      source: Keyword.fetch!(opts, :source)
+      source: Keyword.fetch!(opts, :source),
+      tag_handler: Keyword.fetch!(opts, :tag_handler)
     }
   end
 
@@ -213,7 +215,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
            file: file,
            caller: caller,
            source: source,
-           indentation: indentation
+           indentation: indentation,
+           tag_handler: tag_handler
          },
          root
        ) do
@@ -228,7 +231,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       caller: caller,
       root: root,
       previous_token_slot?: false,
-      indentation: indentation
+      indentation: indentation,
+      tag_handler: tag_handler
     }
   end
 
@@ -341,7 +345,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp push_tag(state, token) do
     # If we have a void tag, we don't actually push it into the stack.
     with {:tag, name, _attrs, _meta} <- token,
-         true <- void?(name) do
+         true <- state.tag_handler.void?(name) do
       state
     else
       _ -> %{state | tags: [token | state.tags]}
@@ -644,7 +648,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   # HTML element (self close)
 
   defp handle_token({:tag, name, attrs, %{self_close: true} = tag_meta}, state) do
-    suffix = if void?(name), do: ">", else: "></#{name}>"
+    suffix = if state.tag_handler.void?(name), do: ">", else: "></#{name}>"
     attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
@@ -1248,12 +1252,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp attr_type(_value), do: :any
 
   ## Helpers
-
-  for void <- ~w(area base br col hr img input link meta param command keygen source) do
-    defp void?(unquote(void)), do: true
-  end
-
-  defp void?(_), do: false
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 

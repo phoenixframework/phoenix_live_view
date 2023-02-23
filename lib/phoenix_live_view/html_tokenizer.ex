@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
 
   defmodule TagHandler do
     @callback classify_tag_type(name :: binary()) :: {type :: atom(), name :: binary()}
+    @callback void?(name :: binary()) :: boolean()
   end
 
   defmodule HTML do
@@ -24,6 +25,13 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       do: {:local_component, String.to_atom(name)}
 
     def classify_tag_type(name), do: {:tag, name}
+
+    @impl true
+    for void <- ~w(area base br col hr img input link meta param command keygen source) do
+      def void?(unquote(void)), do: true
+    end
+
+    def void?(_), do: false
   end
 
   defmodule ParseError do

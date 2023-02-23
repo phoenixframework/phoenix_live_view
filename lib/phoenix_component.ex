@@ -750,7 +750,8 @@ defmodule Phoenix.Component do
       line: __CALLER__.line + 1,
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
-      source: expr
+      source: expr,
+      tag_handler: Phoenix.LiveView.HTMLTokenizer.HTML
     ]
 
     EEx.compile_string(expr, options)
@@ -2151,8 +2152,8 @@ defmodule Phoenix.Component do
   def form(assigns) do
     action = assigns[:action]
 
+    # We require for={...} to be given but we automatically handle nils for convenience
     form_for =
-      # We require for={...} to be given but we automatically handle nils for convenience
       case assigns[:for] do
         nil -> %{}
         other -> other

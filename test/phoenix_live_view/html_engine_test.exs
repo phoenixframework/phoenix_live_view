@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   import Phoenix.Component
 
   alias Phoenix.LiveView.HTMLEngine
-  alias Phoenix.LiveView.HTMLTokenizer.ParseError
+  alias Phoenix.LiveView.HTMLTokenizer.{ParseError, HTML}
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     opts =
@@ -13,7 +13,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         engine: HTMLEngine,
         subengine: Phoenix.LiveView.Engine,
         caller: __ENV__,
-        source: string
+        source: string,
+        tag_handler: HTML
       )
 
     EEx.eval_string(string, [assigns: assigns], opts)
@@ -34,7 +35,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           engine: HTMLEngine,
           module: __MODULE__,
           caller: __CALLER__,
-          source: string
+          source: string,
+          tag_handler: HTML
         )
       )
       |> Phoenix.HTML.Safe.to_iodata()
