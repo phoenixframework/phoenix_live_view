@@ -1256,7 +1256,7 @@ defmodule Phoenix.Component do
 
   defp validate_assign_key!(assign) when assign in @non_assignables do
     raise ArgumentError,
-          ":#{inspect(assign)} is a reserved assign by LiveView and it cannot be set directly"
+          "#{inspect(assign)} is a reserved assign by LiveView and it cannot be set directly"
   end
 
   defp validate_assign_key!(_key), do: :ok
