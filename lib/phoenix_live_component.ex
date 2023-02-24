@@ -56,6 +56,43 @@ defmodule Phoenix.LiveComponent do
 
       update(assigns, socket) -> render(assigns)
 
+  This can be depicted as follows:
+
+  ```mermaid
+  flowchart LR
+    *((start)):::event-.->P
+    WE([wait for external changes]):::event-.->U
+    W([wait for events]):::event-.->H
+
+    subgraph w[" "]
+
+      subgraph i[" "]
+        direction TB
+        P(preload/1):::callback-->M
+        M(mount/1):::callback-->U
+      end
+
+      U(update/2):::callback-->R
+
+      subgraph j[" "]
+        direction TB
+        A --> |yes| R
+        H(handle_event/3):::callback-->A{any changes?}:::diamond
+
+      end
+
+      A --> |no| W
+
+    end
+
+    R[render/1]:::callback_req-->W
+
+    classDef event fill:#fff,color:#000,stroke:#000
+    classDef diamond fill:#FFFF8C,color:#000,stroke:#000
+    classDef callback fill:#66B2FF,color:#000,stroke-width:0
+    classDef callback_req fill:#2C4D6E,color:#fff,stroke:#fff,stroke-width:1
+  ```
+
   The given `id` is not automatically used as the DOM ID. If you want to set
   a DOM ID, it is your responsibility to do so when rendering:
 

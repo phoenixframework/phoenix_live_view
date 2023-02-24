@@ -64,9 +64,46 @@ defmodule Phoenix.LiveView.MixProject do
         "Components": &(&1[:type] == :component),
         "Macros": &(&1[:type] == :macro)
       ],
-      skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
+      skip_undefined_reference_warnings_on: ["CHANGELOG.md"],
+      before_closing_body_tag: &before_closing_body_tag/1
     ]
   end
+
+  defp before_closing_body_tag(:html) do
+    """
+    <script type="module">
+    import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+    mermaid.initialize({
+      securityLevel: 'loose',
+      theme: 'base'
+    });
+    </script>
+    <style>
+    pre > code.mermaid text.flowchartTitleText {
+      fill: var(--textBody) !important;
+    }
+    pre > code.mermaid g.cluster > rect {
+      fill: var(--background) !important;
+      stroke: var(--neutralBackground) !important;
+    }
+    pre > code.mermaid g.edgePaths > path {
+      stroke: var(--textBody) !important;
+    }
+    pre > code.mermaid g.edgeLabels span.edgeLabel:not(:empty) {
+      background-color: var(--textBody) !important;
+      padding: 3px 5px !important;
+      border-radius:25%;
+      color: var(--background) !important;
+    }
+    pre > code.mermaid .marker {
+      fill: var(--textBody) !important;
+      stroke: var(--textBody) !important;
+    }
+    </style>
+    """
+  end
+
+  defp before_closing_body_tag(_), do: ""
 
   defp extras do
     [
