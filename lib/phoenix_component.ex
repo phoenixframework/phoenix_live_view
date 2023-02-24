@@ -498,6 +498,7 @@ defmodule Phoenix.Component do
 
   alias Phoenix.LiveView.{Static, Socket}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
+  @non_assignables [:uploads, :streams, :live_action, :socket, :myself]
 
   @doc ~S'''
   The `~H` sigil for writing HEEx templates inside source files.
@@ -1250,12 +1251,12 @@ defmodule Phoenix.Component do
   defp validate_assign_key!(:flash) do
     raise ArgumentError,
           ":flash is a reserved assign by LiveView and it cannot be set directly. " <>
-            "Use the appropriate flash functions instead."
+          "Use the appropriate flash functions instead"
   end
 
-  defp validate_assign_key!(assign) when assign in @reserved_assigns do
+  defp validate_assign_key!(assign) when assign in @non_assignables do
     raise ArgumentError,
-          ":#{assign} is a reserved assign by LiveView and it cannot be set directly."
+          ":#{inspect(assign)} is a reserved assign by LiveView and it cannot be set directly"
   end
 
   defp validate_assign_key!(_key), do: :ok
