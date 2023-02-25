@@ -7,7 +7,28 @@ defmodule Phoenix.LiveView.Tokenizer do
   alias __MODULE__.{ParseError, HTML}
 
   defmodule TagHandler do
-    @callback classify_tag_type(name :: binary()) :: {type :: atom(), name :: binary()}
+    @moduledoc """
+    Behaviour for handling tags for `Phoenix.LiveView.Tokenizer`.
+    """
+
+    @doc """
+    Classify the tag type from the given binary.
+
+    This must return a tuple containing the type of the tag and the name of tag.
+    For instance, for LiveView which uses HTML as default tag handler this would
+    return `{:tag, 'div'}` in case the given binary is identified as HTML tag.
+
+    You can also return {:error, "reason"} so that the compiler will display this
+    error.
+    """
+    @callback classify_type(name :: binary()) :: {type :: atom(), name :: binary()}
+
+    @doc """
+    Returns if the given binary is either void or not.
+
+    That's mainly useful for HTML tags and used internally by the compiler. You
+    can just implement as `def void?(_), do: false` if you want to ignore this.
+    """
     @callback void?(name :: binary()) :: boolean()
   end
 
@@ -15,16 +36,16 @@ defmodule Phoenix.LiveView.Tokenizer do
     @behaviour TagHandler
 
     @impl true
-    def classify_tag_type(":" <> name), do: {:slot, String.to_atom(name)}
-    def classify_tag_type(":inner_block"), do: {:error, "the slot name :inner_block is reserved"}
+    def classify_type(":" <> name), do: {:slot, String.to_atom(name)}
+    def classify_type(":inner_block"), do: {:error, "the slot name :inner_block is reserved"}
 
-    def classify_tag_type(<<first, _::binary>> = name) when first in ?A..?Z,
+    def classify_type(<<first, _::binary>> = name) when first in ?A..?Z,
       do: {:remote_component, String.to_atom(name)}
 
-    def classify_tag_type("." <> name),
+    def classify_type("." <> name),
       do: {:local_component, String.to_atom(name)}
 
-    def classify_tag_type(name), do: {:tag, name}
+    def classify_type(name), do: {:tag, name}
 
     @impl true
     for void <- ~w(area base br col hr img input link meta param command keygen source) do
@@ -92,17 +113,15 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   @doc """
-  Init args for Tokenizer.
+  Initiate the Tokenizer state.
 
-  ### Options
+  ### Params
 
-  * `text` - The content to be tokenized.
-  * `file` - Can be either a file or a string "nofile".
   * `indentation` - An integer that indicates the current indentation.
-  * `meta` - A keyword list with `:line` and `:column`. Both must be integers.
-  * `tokens` - A list of tokens.
-  * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
-    {:comment, line, column}.
+  * `file` - Can be either a file or a string "nofile".
+  * `source` - The contents of the file as binary used to be tokenized.
+  * `tag_handler` - Tag handler to classify the tags. See `Phoenex.LiveView.TagHandler`
+    behavivour.
   """
   def init(indentation, file, source, tag_handler) do
     %{
@@ -118,6 +137,15 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   @doc """
   Tokenize the given text according to the given params.
+
+  ### Params
+
+  * `text` - The content to be tokenized.
+  * `meta` - A keyword list with `:line` and `:column`. Both must be integers.
+  * `tokens` - A list of tokens.
+  * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
+    {:comment, line, column}.
+  * `state` - The tokenizer state that must be initiated by `Tokenizer.init/3`
 
   ### Examples
 
@@ -297,7 +325,7 @@ defmodule Phoenix.LiveView.Tokenizer do
       {:ok, name, new_column, rest} ->
         meta = %{line: line, column: column - 1, inner_location: nil, tag_name: name}
 
-        case state.tag_handler.classify_tag_type(name) do
+        case state.tag_handler.classify_type(name) do
           {:error, message} ->
             raise_syntax_error!(message, meta, state)
 
@@ -328,7 +356,7 @@ defmodule Phoenix.LiveView.Tokenizer do
           tag_name: name
         }
 
-        case state.tag_handler.classify_tag_type(name) do
+        case state.tag_handler.classify_type(name) do
           {:error, message} ->
             raise_syntax_error!(message, meta, state)
 
