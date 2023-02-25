@@ -182,7 +182,7 @@ defmodule Phoenix.LiveComponent do
   ```mermaid
   flowchart LR
     *((start)):::event-.->P
-    WE([wait for external changes]):::event-.->U
+    WE([wait for parent changes]):::event-.->U
     W([wait for events]):::event-.->H
 
     subgraph w[" "]
@@ -206,12 +206,12 @@ defmodule Phoenix.LiveComponent do
 
     end
 
-    R[render/1]:::callback_req-->W
+    R(render/1):::callback_req-->W
 
     classDef event fill:#fff,color:#000,stroke:#000
     classDef diamond fill:#FFFF8C,color:#000,stroke:#000
     classDef callback fill:#66B2FF,color:#000,stroke-width:0
-    classDef callback_req fill:#2C4D6E,color:#fff,stroke:#fff,stroke-width:1
+    classDef callback_req fill:#66B2FF,color:#000,stroke-width:0,text-decoration:underline
   ```
 
   ## Slots
