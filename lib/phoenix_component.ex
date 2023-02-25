@@ -1461,7 +1461,7 @@ defmodule Phoenix.Component do
 
       You might do:
 
-          <.form :let={f} for={%{}} as={#{inspect(data)} ...>
+          <.form :let={f} for={%{}} as={#{inspect(data)}} ...>
 
       Or, if you prefer, use to_form to create a form in your LiveView:
 
