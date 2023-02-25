@@ -745,7 +745,7 @@ defmodule Phoenix.Component do
     end
 
     options = [
-      engine: Phoenix.LiveView.HTMLEngine,
+      engine: Phoenix.LiveView.TagEngine,
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
       caller: __CALLER__,

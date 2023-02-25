@@ -1,6 +1,6 @@
-defmodule Phoenix.LiveView.HTMLEngine do
+defmodule Phoenix.LiveView.TagEngine do
   @moduledoc """
-  The HTMLEngine that powers `.heex` templates and the `~H` sigil.
+  The TagEngine that powers `.heex` templates and the `~H` sigil.
 
   It works by adding a HTML parsing and validation layer on top
   of EEx engine. By default it uses `Phoenix.LiveView.Engine` as
@@ -123,8 +123,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def compile(path, _name) do
     # We need access for the caller, so we return a call to a macro.
     quote do
-      require Phoenix.LiveView.HTMLEngine
-      Phoenix.LiveView.HTMLEngine.compile(unquote(path))
+      require Phoenix.LiveView.TagEngine
+      Phoenix.LiveView.TagEngine.compile(unquote(path))
     end
   end
 
@@ -151,7 +151,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
 
     unless subengine do
-      raise ArgumentError, ":subengine is missing for HTMLEngine"
+      raise ArgumentError, ":subengine is missing for TagEngine"
     end
 
     %{
@@ -184,7 +184,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
     quote do
-      require Phoenix.LiveView.HTMLEngine
+      require Phoenix.LiveView.TagEngine
       unquote(ast)
     end
   end
@@ -424,7 +424,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: tag_meta.line do
-        Phoenix.LiveView.HTMLEngine.component(
+        Phoenix.LiveView.TagEngine.component(
           &(unquote(mod_ast).unquote(fun) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
@@ -488,7 +488,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.HTMLEngine.component(
+        Phoenix.LiveView.TagEngine.component(
           &(unquote(mod_ast).unquote(fun) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
@@ -545,7 +545,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.HTMLEngine.inner_block(unquote(slot_name), do: unquote(clauses))
+        Phoenix.LiveView.TagEngine.inner_block(unquote(slot_name), do: unquote(clauses))
       end
 
     attrs = [__slot__: slot_name, inner_block: ast] ++ attrs
@@ -573,7 +573,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.HTMLEngine.component(
+        Phoenix.LiveView.TagEngine.component(
           &(unquote(Macro.var(name, __MODULE__)) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
@@ -632,7 +632,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     ast =
       quote line: line do
-        Phoenix.LiveView.HTMLEngine.component(
+        Phoenix.LiveView.TagEngine.component(
           &(unquote(Macro.var(name, __MODULE__)) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
@@ -997,7 +997,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
     inner_block =
       quote line: line do
-        Phoenix.LiveView.HTMLEngine.inner_block(:inner_block, do: unquote(clauses))
+        Phoenix.LiveView.TagEngine.inner_block(:inner_block, do: unquote(clauses))
       end
 
     inner_block_assigns =
@@ -1193,7 +1193,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         end ++
           quote line: line, generated: true do
             other ->
-              Phoenix.LiveView.HTMLEngine.__unmatched_let__!(
+              Phoenix.LiveView.TagEngine.__unmatched_let__!(
                 unquote(Macro.to_string(pattern)),
                 other
               )

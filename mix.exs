@@ -61,8 +61,8 @@ defmodule Phoenix.LiveView.MixProject do
       groups_for_extras: groups_for_extras(),
       groups_for_modules: groups_for_modules(),
       groups_for_functions: [
-        "Components": &(&1[:type] == :component),
-        "Macros": &(&1[:type] == :macro)
+        Components: &(&1[:type] == :component),
+        Macros: &(&1[:type] == :macro)
       ],
       skip_undefined_reference_warnings_on: ["CHANGELOG.md"]
     ]
@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView.MixProject do
     # Phoenix.LiveViewTest
 
     [
-      "Configuration": [
+      Configuration: [
         Phoenix.LiveView.HTMLFormatter,
         Phoenix.LiveView.Logger,
         Phoenix.LiveView.Socket
@@ -125,7 +125,7 @@ defmodule Phoenix.LiveView.MixProject do
       "Plugin API": [
         Phoenix.LiveComponent.CID,
         Phoenix.LiveView.Engine,
-        Phoenix.LiveView.HTMLEngine,
+        Phoenix.LiveView.TagEngine,
         Phoenix.LiveView.Component,
         Phoenix.LiveView.Rendered,
         Phoenix.LiveView.Comprehension
