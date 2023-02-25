@@ -35,6 +35,8 @@ defmodule Phoenix.LiveComponent do
 
   ## Life-cycle
 
+  ### Mount and update
+
   Stateful components are identified by the component module and their ID.
   Therefore, two stateful components with the same module and ID are treated
   as the same component. We often tie the component ID to some application based ID:
@@ -45,7 +47,10 @@ defmodule Phoenix.LiveComponent do
   `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
   receives the `socket` as argument. Then `c:update/2` is invoked with all of the
   assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`).
-  If `c:update/2` is not defined all assigns are simply merged into the socket. The assigns received as the first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`) callback will only include the _new_ assigns passed from this function. Pre-existing assigns may be found in `socket.assigns`.
+  If `c:update/2` is not defined all assigns are simply merged into the socket.
+  The assigns received as the first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`)
+  callback will only include the _new_ assigns passed from this function.
+  Pre-existing assigns may be found in `socket.assigns`.
 
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -55,43 +60,6 @@ defmodule Phoenix.LiveComponent do
   On further rendering:
 
       update(assigns, socket) -> render(assigns)
-
-  This can be depicted as follows:
-
-  ```mermaid
-  flowchart LR
-    *((start)):::event-.->P
-    WE([wait for external changes]):::event-.->U
-    W([wait for events]):::event-.->H
-
-    subgraph w[" "]
-
-      subgraph i[" "]
-        direction TB
-        P(preload/1):::callback-->M
-        M(mount/1):::callback-->U
-      end
-
-      U(update/2):::callback-->R
-
-      subgraph j[" "]
-        direction TB
-        A --> |yes| R
-        H(handle_event/3):::callback-->A{any changes?}:::diamond
-
-      end
-
-      A --> |no| W
-
-    end
-
-    R[render/1]:::callback_req-->W
-
-    classDef event fill:#fff,color:#000,stroke:#000
-    classDef diamond fill:#FFFF8C,color:#000,stroke:#000
-    classDef callback fill:#66B2FF,color:#000,stroke-width:0
-    classDef callback_req fill:#2C4D6E,color:#fff,stroke:#fff,stroke-width:1
-  ```
 
   The given `id` is not automatically used as the DOM ID. If you want to set
   a DOM ID, it is your responsibility to do so when rendering:
@@ -108,7 +76,7 @@ defmodule Phoenix.LiveComponent do
         end
       end
 
-  ## Targeting Component Events
+  ### Events
 
   Stateful components can also implement the `c:handle_event/3` callback
   that works exactly the same as in LiveView. For a client event to
@@ -146,7 +114,7 @@ defmodule Phoenix.LiveComponent do
         Dismiss
       </a>
 
-  ## Preloading and update
+  ### Preloading and update
 
   Stateful components also support an optional `c:preload/1` callback.
   The `c:preload/1` callback is useful when multiple components of the
@@ -204,6 +172,47 @@ defmodule Phoenix.LiveComponent do
 
   Finally, note that `c:preload/1` must return an updated `list_of_assigns`,
   keeping the assigns in the same order as they were given.
+
+  ### Summary
+
+  All of the life-cycle events are summarized in the diagram below.
+  The bubble events in white are triggers that invoke the component.
+  In blue you have component callbacks:
+
+  ```mermaid
+  flowchart LR
+    *((start)):::event-.->P
+    WE([wait for external changes]):::event-.->U
+    W([wait for events]):::event-.->H
+
+    subgraph w[" "]
+
+      subgraph i[" "]
+        direction TB
+        P(preload/1):::callback-->M
+        M(mount/1):::callback-->U
+      end
+
+      U(update/2):::callback-->R
+
+      subgraph j[" "]
+        direction TB
+        A --> |yes| R
+        H(handle_event/3):::callback-->A{any changes?}:::diamond
+
+      end
+
+      A --> |no| W
+
+    end
+
+    R[render/1]:::callback_req-->W
+
+    classDef event fill:#fff,color:#000,stroke:#000
+    classDef diamond fill:#FFFF8C,color:#000,stroke:#000
+    classDef callback fill:#66B2FF,color:#000,stroke-width:0
+    classDef callback_req fill:#2C4D6E,color:#fff,stroke:#fff,stroke-width:1
+  ```
 
   ## Slots
 
