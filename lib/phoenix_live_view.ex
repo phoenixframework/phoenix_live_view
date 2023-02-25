@@ -1526,7 +1526,7 @@ defmodule Phoenix.LiveView do
       For example, the following definitions are equivalent:
 
           stream(socket, :songs, songs)
-          stream(socket, :songs, songs, dom_id: &("songs-#{&1.id}))
+          stream(socket, :songs, songs, dom_id: &("songs-#{&1.id}"))
 
   Once a stream is defined, a new `@streams` assign is available containing
   the name of the defined streams. For example, in the above definition, the
