@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
   alias Phoenix.LiveView.Tokenizer.ParseError
   alias Phoenix.LiveView.Tokenizer
 
-  defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Tokenizer.HTML)
+  defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Phoenix.LiveView.HTMLEngine)
 
   defp tokenize(text) do
     Tokenizer.tokenize(text, [], [], :text, tokenizer_state(text))

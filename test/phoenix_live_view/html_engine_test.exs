@@ -1,20 +1,18 @@
-defmodule Phoenix.LiveView.TagEngineTest do
+defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
   import Phoenix.Component
-
-  alias Phoenix.LiveView.TagEngine
   alias Phoenix.LiveView.Tokenizer.{ParseError, HTML}
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     opts =
       Keyword.merge(opts,
         file: __ENV__.file,
-        engine: TagEngine,
+        engine: Phoenix.LiveView.TagEngine,
         subengine: Phoenix.LiveView.Engine,
         caller: __ENV__,
         source: string,
-        tag_handler: HTML
+        tag_handler: Phoenix.LiveView.HTMLEngine
       )
 
     EEx.eval_string(string, [assigns: assigns], opts)
@@ -32,11 +30,11 @@ defmodule Phoenix.LiveView.TagEngineTest do
       unquote(
         EEx.compile_string(string,
           file: __ENV__.file,
-          engine: TagEngine,
+          engine: Phoenix.LiveView.TagEngine,
           module: __MODULE__,
           caller: __CALLER__,
           source: string,
-          tag_handler: HTML
+          tag_handler: Phoenix.LiveView.HTMLEngine
         )
       )
       |> Phoenix.HTML.Safe.to_iodata()
@@ -225,7 +223,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     template = ~S"""
     <%= @text %>
-    <%= Phoenix.LiveView.TagEngineTest.do_block do %><%= assigns[:not_text] %><% end %>
+    <%= Phoenix.LiveView.HTMLEngineTest.do_block do %><%= assigns[:not_text] %><% end %>
     """
 
     # A bug made it so "not text" appeared inside @text.
@@ -234,7 +232,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
     template = ~S"""
     <%= for i <- ["id1", "id2", "id3"] do %>
       <div id={i}>
-        <%= Phoenix.LiveView.TagEngineTest.do_block do %>
+        <%= Phoenix.LiveView.HTMLEngineTest.do_block do %>
           <%= i %>
         <% end %>
       </div>
@@ -342,15 +340,15 @@ defmodule Phoenix.LiveView.TagEngineTest do
     test "remote call (self close)" do
       assigns = %{}
 
-      assert compile("<Phoenix.LiveView.TagEngineTest.remote_function_component value='1'/>") ==
+      assert compile("<Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'/>") ==
                "REMOTE COMPONENT: Value: 1"
     end
 
     test "remote call from alias (self close)" do
-      alias Phoenix.LiveView.TagEngineTest
+      alias Phoenix.LiveView.HTMLEngineTest
       assigns = %{}
 
-      assert compile("<TagEngineTest.remote_function_component value='1'/>") ==
+      assert compile("<HTMLEngineTest.remote_function_component value='1'/>") ==
                "REMOTE COMPONENT: Value: 1"
     end
 
@@ -358,9 +356,9 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assigns = %{}
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block value='1'>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block value='1'>
                The inner content
-             </Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block>
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
              """) == "REMOTE COMPONENT: Value: 1, Content: \n  The inner content\n"
     end
 
@@ -396,13 +394,13 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assigns = %{}
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block_args
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
                value="aBcD"
                :let={%{upcase: upcase, downcase: downcase}}
              >
                Upcase: <%= upcase %>
                Downcase: <%= downcase %>
-             </Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block_args>
+             </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
              """) =~ expected
     end
 
@@ -417,12 +415,12 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert_raise(RuntimeError, message, fn ->
         compile("""
-        <Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block_args
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args
           {[value: "aBcD"]}
           :let={%{wrong: _}}
         >
           ...
-        </Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block_args>
+        </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
         """)
       end)
     end
@@ -433,7 +431,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assert_raise(CompileError, message, fn ->
         eval("""
         <br>
-        <Phoenix.LiveView.TagEngineTest.remote_function_component value='1' :let={var}/>
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let={var}/>
         """)
       end)
     end
@@ -520,10 +518,10 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise on duplicated :let" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
+      test/phoenix_live_view/html_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
         |
       1 | <br>
-      2 | <Phoenix.LiveView.TagEngineTest.remote_function_component value='1'
+      2 | <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
       3 |   :let={var1}
       4 |   :let={var2}
         |   ^\
@@ -532,7 +530,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("""
         <br>
-        <Phoenix.LiveView.TagEngineTest.remote_function_component value='1'
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1'
           :let={var1}
           :let={var2}
         />
@@ -540,7 +538,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
+      test/phoenix_live_view/html_engine_test.exs:4:3: cannot define multiple :let attributes. Another :let has already been defined at line 3
         |
       1 | <br>
       2 | <.local_function_component value='1'
@@ -562,23 +560,23 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "invalid :let expr" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:69: :let must be a pattern between {...} in remote_component Phoenix.LiveView.TagEngineTest.remote_function_component
+      test/phoenix_live_view/html_engine_test.exs:2:70: :let must be a pattern between {...} in remote_component Phoenix.LiveView.HTMLEngineTest.remote_function_component
         |
       1 | <br>
-      2 | <Phoenix.LiveView.TagEngineTest.remote_function_component value='1' :let=\"1\"
-        |                                                                     ^\
+      2 | <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let=\"1\"
+        |                                                                      ^\
       """
 
       assert_raise(ParseError, message, fn ->
         eval("""
         <br>
-        <Phoenix.LiveView.TagEngineTest.remote_function_component value='1' :let="1"
+        <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let="1"
         />
         """)
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:38: :let must be a pattern between {...} in local_component .local_function_component
+      test/phoenix_live_view/html_engine_test.exs:2:38: :let must be a pattern between {...} in local_component .local_function_component
         |
       1 | <br>
       2 | <.local_function_component value='1' :let=\"1\"
@@ -596,7 +594,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise with invalid special attr" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:38: unsupported attribute \":bar\" in local_component .local_function_component
+      test/phoenix_live_view/html_engine_test.exs:2:38: unsupported attribute \":bar\" in local_component .local_function_component
         |
       1 | <br>
       2 | <.local_function_component value='1' :bar=\"1\"}
@@ -614,7 +612,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise on unclosed local call" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: end of template reached without closing tag for <.local_function_component>
+      test/phoenix_live_view/html_engine_test.exs:1:1: end of template reached without closing tag for <.local_function_component>
         |
       1 | <.local_function_component value='1' :let={var}>
         | ^\
@@ -627,7 +625,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:3: end of do-block reached without closing tag for <.local_function_component>
+      test/phoenix_live_view/html_engine_test.exs:2:3: end of do-block reached without closing tag for <.local_function_component>
         |
       1 | <%= if true do %>
       2 |   <.local_function_component value='1' :let={var}>
@@ -645,7 +643,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "when tag is unclosed" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:1: end of template reached without closing tag for <div>
+      test/phoenix_live_view/html_engine_test.exs:2:1: end of template reached without closing tag for <div>
         |
       1 | <div>Foo</div>
       2 | <div>
@@ -663,7 +661,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "when syntax error on HTML attributes" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      test/phoenix_live_view/html_engine_test.exs:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
         |
       1 | <div>Bar</div>
       2 | <div id=>Foo</div>
@@ -795,11 +793,11 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert compile("""
              COMPONENT WITH SLOTS:
-             <Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
                <:sample>
                  The sample slot
                </:sample>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
              """) == expected
     end
 
@@ -856,14 +854,14 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert compile("""
              COMPONENT WITH SLOTS:
-             <Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
                <:sample>
                  entry 1
                </:sample>
                <:sample>
                  entry 2
                </:sample>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
              """) == expected
     end
 
@@ -885,10 +883,10 @@ defmodule Phoenix.LiveView.TagEngineTest do
              """) == expected
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.function_component_with_multiple_slots_entries>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_multiple_slots_entries>
                <:sample id="1">one</:sample>
                <:sample id="2">two</:sample>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_multiple_slots_entries>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_multiple_slots_entries>
              """) == expected
     end
 
@@ -903,9 +901,9 @@ defmodule Phoenix.LiveView.TagEngineTest do
              """) == expected
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.function_component_with_slot_attrs>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_attrs>
                <:sample a={@a} b="B"> and </:sample>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_slot_attrs>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slot_attrs>
              """) == expected
     end
 
@@ -944,14 +942,14 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert compile("""
              BEFORE COMPONENT
-             <Phoenix.LiveView.TagEngineTest.function_component_with_slots>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots>
                <:header>
                  The header content
                </:header>
                <:footer>
                  The footer content
                </:footer>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_slots>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots>
              AFTER COMPONENT
              """) == expected
     end
@@ -998,7 +996,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert compile("""
              BEFORE COMPONENT
-             <Phoenix.LiveView.TagEngineTest.function_component_with_slots_and_default>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_default>
                top
                <:header>
                  The header content
@@ -1008,7 +1006,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
                  The footer content
                </:footer>
                bot
-             </Phoenix.LiveView.TagEngineTest.function_component_with_slots_and_default>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_default>
              AFTER COMPONENT
              """) == expected
     end
@@ -1039,12 +1037,12 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert compile("""
              COMPONENT WITH SLOTS:
-             <Phoenix.LiveView.TagEngineTest.function_component_with_slots_and_args>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
                <:sample :let={arg}>
                  The sample slot
                  Arg: <%= arg %>
                </:sample>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_slots_and_args>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_slots_and_args>
              """) == expected
     end
 
@@ -1068,7 +1066,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       """
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
                <:sample>
                 The outer slot
                  <.function_component_with_single_slot>
@@ -1077,7 +1075,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
                    </:sample>
                  </.function_component_with_single_slot>
                </:sample>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
              """) == expected
 
       assert compile("""
@@ -1112,16 +1110,16 @@ defmodule Phoenix.LiveView.TagEngineTest do
              """) == expected
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.function_component_with_self_close_slots>
+             <Phoenix.LiveView.HTMLEngineTest.function_component_with_self_close_slots>
                <:sample id="1"/>
                <:sample id="2"/>
-             </Phoenix.LiveView.TagEngineTest.function_component_with_self_close_slots>
+             </Phoenix.LiveView.HTMLEngineTest.function_component_with_self_close_slots>
              """) == expected
     end
 
     test "raise if self close slot uses :let" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:19: cannot use :let on a slot without inner content
+      test/phoenix_live_view/html_engine_test.exs:2:19: cannot use :let on a slot without inner content
         |
       1 | <.function_component_with_self_close_slots>
       2 |   <:sample id="1" :let={var}/>
@@ -1168,7 +1166,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise if the slot entry is not a direct child of a component" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:3: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+      test/phoenix_live_view/html_engine_test.exs:2:3: invalid slot entry <:sample>. A slot entry must be a direct child of a component
         |
       1 | <div>
       2 |   <:sample>
@@ -1186,9 +1184,9 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:3:3: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+      test/phoenix_live_view/html_engine_test.exs:3:3: invalid slot entry <:sample>. A slot entry must be a direct child of a component
         |
-      1 | <Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+      1 | <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
       2 | <%= if true do %>
       3 |   <:sample>
         |   ^\
@@ -1196,18 +1194,18 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert_raise(ParseError, message, fn ->
         eval("""
-        <Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+        <Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
         <%= if true do %>
           <:sample>
             <p>Content</p>
           </:sample>
         <% end %>
-        </Phoenix.LiveView.TagEngineTest.function_component_with_single_slot>
+        </Phoenix.LiveView.HTMLEngineTest.function_component_with_single_slot>
         """)
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:3:5: invalid slot entry <:footer>. A slot entry must be a direct child of a component
+      test/phoenix_live_view/html_engine_test.exs:3:5: invalid slot entry <:footer>. A slot entry must be a direct child of a component
         |
       1 | <.mydiv>
       2 |   <:sample>
@@ -1228,7 +1226,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+      test/phoenix_live_view/html_engine_test.exs:1:1: invalid slot entry <:sample>. A slot entry must be a direct child of a component
         |
       1 | <:sample>
         | ^\
@@ -1243,7 +1241,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: invalid slot entry <:sample>. A slot entry must be a direct child of a component
+      test/phoenix_live_view/html_engine_test.exs:1:1: invalid slot entry <:sample>. A slot entry must be a direct child of a component
         |
       1 | <:sample>
         | ^\
@@ -1310,7 +1308,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "unmatched comment" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:6: expected closing `-->` for comment
+      test/phoenix_live_view/html_engine_test.exs:1:6: expected closing `-->` for comment
         |
       1 | Begin<!-- <%= 123 %>
         |      ^\
@@ -1323,7 +1321,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "unmatched open/close tags" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:4:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
+      test/phoenix_live_view/html_engine_test.exs:4:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
         |
       1 | <br>
       2 | <div>
@@ -1344,7 +1342,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "unmatched open/close tags with nested tags" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:6:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
+      test/phoenix_live_view/html_engine_test.exs:6:1: unmatched closing tag. Expected </div> for <div> at line 2, got: </span>
         |
       3 |   <p>
       4 |     text
@@ -1367,7 +1365,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "invalid remote tag" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: invalid tag <Foo>
+      test/phoenix_live_view/html_engine_test.exs:1:1: invalid tag <Foo>
         |
       1 | <Foo foo=\"bar\" />
         | ^\
@@ -1382,7 +1380,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "missing open tag" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:3: missing opening tag for </span>
+      test/phoenix_live_view/html_engine_test.exs:2:3: missing opening tag for </span>
         |
       1 | text
       2 |   </span>
@@ -1399,7 +1397,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "missing closing tag" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:1: end of template reached without closing tag for <div>
+      test/phoenix_live_view/html_engine_test.exs:2:1: end of template reached without closing tag for <div>
         |
       1 | <br>
       2 | <div foo={@foo}>
@@ -1414,7 +1412,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:3: end of template reached without closing tag for <span>
+      test/phoenix_live_view/html_engine_test.exs:2:3: end of template reached without closing tag for <span>
         |
       1 | text
       2 |   <span foo={@foo}>
@@ -1432,7 +1430,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "invalid tag name" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:3: invalid tag <Oops>
+      test/phoenix_live_view/html_engine_test.exs:2:3: invalid tag <Oops>
         |
       1 | <br>
       2 |   <Oops foo={@foo}>
@@ -1451,7 +1449,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "invalid tag" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:10: expected closing `}` for expression
+      test/phoenix_live_view/html_engine_test.exs:1:10: expected closing `}` for expression
         |
       1 | <div foo={<%= @foo %>}>bar</div>
         |          ^\
@@ -1464,7 +1462,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:3: expected closing `}` for expression
+      test/phoenix_live_view/html_engine_test.exs:2:3: expected closing `}` for expression
         |
       1 | <div foo=
       2 |   {<%= @foo %>}>bar</div>
@@ -1483,7 +1481,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:2:6: expected closing `}` for expression
+      test/phoenix_live_view/html_engine_test.exs:2:6: expected closing `}` for expression
         |
       1 |    <div foo=
       2 |      {<%= @foo %>}>bar</div>
@@ -1514,9 +1512,9 @@ defmodule Phoenix.LiveView.TagEngineTest do
     assigns = %{}
 
     assert compile("""
-           <Phoenix.LiveView.TagEngineTest.textarea phx-no-format>
+           <Phoenix.LiveView.HTMLEngineTest.textarea phx-no-format>
             Content
-           </Phoenix.LiveView.TagEngineTest.textarea>
+           </Phoenix.LiveView.HTMLEngineTest.textarea>
            """) == "<textarea>\n Content\n</textarea>"
 
     assert compile("<.textarea phx-no-format>Content</.textarea>") ==
@@ -1526,7 +1524,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
   describe "html validations" do
     test "phx-update attr requires an unique ID" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
         |
       1 | <div phx-update=\"ignore\">
         | ^\
@@ -1541,7 +1539,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
         |
       1 | <div phx-update=\"ignore\" class=\"foo\">
         | ^\
@@ -1556,7 +1554,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
         |
       1 | <div phx-update=\"ignore\" class=\"foo\" />
         | ^\
@@ -1569,7 +1567,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-update\" requires the \"id\" attribute to be set
         |
       1 | <div phx-update={@value}>Content</div>
         | ^\
@@ -1588,7 +1586,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "validates phx-update values" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:14: the value of the attribute \"phx-update\" must be: ignore, stream, append, prepend, or replace
+      test/phoenix_live_view/html_engine_test.exs:1:14: the value of the attribute \"phx-update\" must be: ignore, stream, append, prepend, or replace
         |
       1 | <div id="id" phx-update="bar">
         |              ^\
@@ -1605,7 +1603,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "phx-hook attr requires an unique ID" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
         |
       1 | <div phx-hook=\"MyHook\">
         | ^\
@@ -1620,7 +1618,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
+      test/phoenix_live_view/html_engine_test.exs:1:1: attribute \"phx-hook\" requires the \"id\" attribute to be set
         |
       1 | <div phx-hook=\"MyHook\" />
         | ^\
@@ -1645,7 +1643,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise on unsupported special attrs" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:6: unsupported attribute \":let\" in tags
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":let\" in tags
         |
       1 | <div :let={@user}>Content</div>
         |      ^\
@@ -1658,7 +1656,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:6: unsupported attribute \":foo\" in tags
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":foo\" in tags
         |
       1 | <div :foo=\"something\" />
         |      ^\
@@ -1676,7 +1674,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
     test "inside attribute values" do
       assert_raise(
         SyntaxError,
-        ~r"test/phoenix_live_view/tag_engine_test.exs:12:22: syntax error before: ','",
+        ~r"test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','",
         fn ->
           opts = [line: 10, indentation: 8]
 
@@ -1696,7 +1694,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
     test "inside root attribute value" do
       assert_raise(
         SyntaxError,
-        ~r"test/phoenix_live_view/tag_engine_test.exs:12:16: syntax error before: ','",
+        ~r"test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','",
         fn ->
           opts = [line: 10, indentation: 8]
 
@@ -1737,7 +1735,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise on invalid :for expr" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:6: :for must be a generator expression (pattern <- enumerable) between {...}
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be a generator expression (pattern <- enumerable) between {...}
         |
       1 | <div :for={@user}>Content</div>
         |      ^\
@@ -1750,7 +1748,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:6: :for must be an expression between {...}
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be an expression between {...}
         |
       1 | <div :for=\"1\">Content</div>
         |      ^\
@@ -1767,7 +1765,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assert %Phoenix.LiveView.Rendered{static: ["", ""], dynamic: dynamic} =
                eval(
                  """
-                 <Phoenix.LiveView.TagEngineTest.remote_function_component value={@val} :if={@val == 1} />
+                 <Phoenix.LiveView.HTMLEngineTest.remote_function_component value={@val} :if={@val == 1} />
                  """,
                  %{__changed__: %{val: true}, val: 1}
                )
@@ -1779,7 +1777,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
       %Phoenix.LiveView.Rendered{static: ["", ""], dynamic: dynamic} =
         eval(
           """
-          <Phoenix.LiveView.TagEngineTest.remote_function_component :for={val <- @items} value={val} />
+          <Phoenix.LiveView.HTMLEngineTest.remote_function_component :for={val <- @items} value={val} />
           """,
           %{__changed__: %{items: true}, items: [1, 2]}
         )
@@ -1796,12 +1794,12 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
       assert compile("""
              <br>
-             <Phoenix.LiveView.TagEngineTest.remote_function_component :for={val <- @items} value={val} />
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component :for={val <- @items} value={val} />
              """) == "<br>\nREMOTE COMPONENT: Value: 1REMOTE COMPONENT: Value: 2"
 
       assert compile("""
              <br>
-             <Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block :for={val <- @items} value={val}>inner<%= val %></Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block :for={val <- @items} value={val}>inner<%= val %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
              """) ==
                "<br>\nREMOTE COMPONENT: Value: 1, Content: inner1REMOTE COMPONENT: Value: 2, Content: inner2"
 
@@ -1813,7 +1811,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise on duplicated :for" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:28: cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1
+      test/phoenix_live_view/html_engine_test.exs:1:28: cannot define multiple \":for\" attributes. Another \":for\" has already been defined at line 1
         |
       1 | <div :for={item <- [1, 2]} :for={item <- [1, 2]}>Content</div>
         |                            ^\
@@ -1830,9 +1828,9 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assigns = %{items: [1, 2, 3, 4]}
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.slot_if value={0}>
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
                <:slot :for={i <- @items}>slot<%= i %></:slot>
-             </Phoenix.LiveView.TagEngineTest.slot_if>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot1slot2slot3slot4</div>"
     end
 
@@ -1840,9 +1838,9 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assigns = %{items: [1, 2, 3, 4]}
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.slot_if value={0}>
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
                <:slot :for={i <- @items} :if={rem(i, 2) == 0}>slot<%= i %></:slot>
-             </Phoenix.LiveView.TagEngineTest.slot_if>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot2slot4</div>"
     end
 
@@ -1850,9 +1848,9 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assigns = %{items: [1, 2, 3, 4]}
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.slot_if value={0}>
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
                <:slot :for={i <- @items} :if={rem(i, 2) == 0} :let={val}>slot<%= i %>(<%= val %>)</:slot>
-             </Phoenix.LiveView.TagEngineTest.slot_if>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot2(0)slot4(0)</div>"
     end
 
@@ -1860,12 +1858,12 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assigns = %{items: [2, 3]}
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.slot_if value={0}>
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
                <:slot :if={false}>slot0</:slot>
                <:slot>slot1</:slot>
                <:slot :for={i <- @items}>slot<%= i %></:slot>
                <:slot>slot4</:slot>
-             </Phoenix.LiveView.TagEngineTest.slot_if>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot1slot2slot3slot4</div>"
     end
   end
@@ -1897,7 +1895,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
 
     test "raise on invalid :if expr" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:6: :if must be an expression between {...}
+      test/phoenix_live_view/html_engine_test.exs:1:6: :if must be an expression between {...}
         |
       1 | <div :if=\"1\">test</div>
         |      ^\
@@ -1922,17 +1920,17 @@ defmodule Phoenix.LiveView.TagEngineTest do
              """) == ""
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.remote_function_component value="123" :if={@flag} />
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={@flag} />
              """) == "REMOTE COMPONENT: Value: 123"
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.remote_function_component value="123" :if={!@flag}>test</Phoenix.LiveView.TagEngineTest.remote_function_component>
+             <Phoenix.LiveView.HTMLEngineTest.remote_function_component value="123" :if={!@flag}>test</Phoenix.LiveView.HTMLEngineTest.remote_function_component>
              """) == ""
     end
 
     test "raise on duplicated :if" do
       message = """
-      test/phoenix_live_view/tag_engine_test.exs:1:17: cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1
+      test/phoenix_live_view/html_engine_test.exs:1:17: cannot define multiple \":if\" attributes. Another \":if\" has already been defined at line 1
         |
       1 | <div :if={true} :if={false}>test</div>
         |                 ^\
@@ -1961,19 +1959,19 @@ defmodule Phoenix.LiveView.TagEngineTest do
       assigns = %{flag: true}
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.slot_if value={0}>
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
                <:slot :if={@flag}>slot1</:slot>
                <:slot :if={!@flag}>slot2</:slot>
                <:slot :if={@flag}>slot3</:slot>
-             </Phoenix.LiveView.TagEngineTest.slot_if>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot1slot3</div>"
 
       assert compile("""
-             <Phoenix.LiveView.TagEngineTest.slot_if_self_close value={0}>
+             <Phoenix.LiveView.HTMLEngineTest.slot_if_self_close value={0}>
                <:slot :if={@flag} val={1} />
                <:slot :if={!@flag} val={2} />
                <:slot :if={@flag} val={3} />
-             </Phoenix.LiveView.TagEngineTest.slot_if_self_close>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if_self_close>
              """) == "<div>0-1-3-</div>"
     end
   end
@@ -2015,7 +2013,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
              """) == "LOCAL COMPONENT: Value: 2LOCAL COMPONENT: Value: 4"
 
       assert compile("""
-               <Phoenix.LiveView.TagEngineTest.remote_function_component  :for={i <- @items} :if={rem(i, 2) == 0} value={i}/>
+               <Phoenix.LiveView.HTMLEngineTest.remote_function_component  :for={i <- @items} :if={rem(i, 2) == 0} value={i}/>
              """) == "REMOTE COMPONENT: Value: 2REMOTE COMPONENT: Value: 4"
 
       assert compile("""
@@ -2023,7 +2021,7 @@ defmodule Phoenix.LiveView.TagEngineTest do
              """) == "LOCAL COMPONENT: Value: 2, Content: 2LOCAL COMPONENT: Value: 4, Content: 4"
 
       assert compile("""
-               <Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></Phoenix.LiveView.TagEngineTest.remote_function_component_with_inner_block>
+               <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
              """) ==
                "REMOTE COMPONENT: Value: 2, Content: 2REMOTE COMPONENT: Value: 4, Content: 4"
     end
