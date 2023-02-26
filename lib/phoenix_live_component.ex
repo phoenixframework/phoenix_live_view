@@ -177,7 +177,8 @@ defmodule Phoenix.LiveComponent do
 
   All of the life-cycle events are summarized in the diagram below.
   The bubble events in white are triggers that invoke the component.
-  In blue you have component callbacks, where the dark blue callbacks are required:
+  In blue you have component callbacks, where the underlined names
+  represent required callbacks:
 
   ```mermaid
   flowchart LR
