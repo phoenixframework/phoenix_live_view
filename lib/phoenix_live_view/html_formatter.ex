@@ -292,7 +292,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     defp do_tokenize({:text, text, meta}, {tokens, cont}, source) do
       text = List.to_string(text)
       meta = [line: meta.line, column: meta.column]
-      state = Tokenizer.init(0, "nofile", source, Tokenizer.HTML)
+      state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
       Tokenizer.tokenize(text, meta, tokens, cont, state)
     end
 
@@ -315,7 +315,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     defp do_tokenize({:text, line, column, text}, {tokens, cont}, source) do
       text = List.to_string(text)
       meta = [line: line, column: column]
-      state = Tokenizer.init(0, "nofile", source, Tokenizer.HTML)
+      state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
       Tokenizer.tokenize(text, meta, tokens, cont, state)
     end
 

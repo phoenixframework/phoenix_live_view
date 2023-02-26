@@ -4,57 +4,6 @@ defmodule Phoenix.LiveView.Tokenizer do
   @quote_chars '"\''
   @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
 
-  alias __MODULE__.{ParseError, HTML}
-
-  defmodule TagHandler do
-    @moduledoc """
-    Behaviour for handling tags for `Phoenix.LiveView.Tokenizer`.
-    """
-
-    @doc """
-    Classify the tag type from the given binary.
-
-    This must return a tuple containing the type of the tag and the name of tag.
-    For instance, for LiveView which uses HTML as default tag handler this would
-    return `{:tag, 'div'}` in case the given binary is identified as HTML tag.
-
-    You can also return {:error, "reason"} so that the compiler will display this
-    error.
-    """
-    @callback classify_type(name :: binary()) :: {type :: atom(), name :: binary()}
-
-    @doc """
-    Returns if the given binary is either void or not.
-
-    That's mainly useful for HTML tags and used internally by the compiler. You
-    can just implement as `def void?(_), do: false` if you want to ignore this.
-    """
-    @callback void?(name :: binary()) :: boolean()
-  end
-
-  defmodule HTML do
-    @behaviour TagHandler
-
-    @impl true
-    def classify_type(":" <> name), do: {:slot, String.to_atom(name)}
-    def classify_type(":inner_block"), do: {:error, "the slot name :inner_block is reserved"}
-
-    def classify_type(<<first, _::binary>> = name) when first in ?A..?Z,
-      do: {:remote_component, String.to_atom(name)}
-
-    def classify_type("." <> name),
-      do: {:local_component, String.to_atom(name)}
-
-    def classify_type(name), do: {:tag, name}
-
-    @impl true
-    for void <- ~w(area base br col hr img input link meta param command keygen source) do
-      def void?(unquote(void)), do: true
-    end
-
-    def void?(_), do: false
-  end
-
   defmodule ParseError do
     @moduledoc false
     defexception [:file, :line, :column, :description]

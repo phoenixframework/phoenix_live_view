@@ -126,6 +126,7 @@ defmodule Phoenix.LiveView.MixProject do
         Phoenix.LiveComponent.CID,
         Phoenix.LiveView.Engine,
         Phoenix.LiveView.TagEngine,
+        Phoenix.LiveView.HTMLEngine,
         Phoenix.LiveView.Component,
         Phoenix.LiveView.Rendered,
         Phoenix.LiveView.Comprehension

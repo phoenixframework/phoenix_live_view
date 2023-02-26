@@ -1,11 +1,44 @@
 defmodule Phoenix.LiveView.TagEngine do
   @moduledoc """
-  The TagEngine that powers `.heex` templates and the `~H` sigil.
+  An EEx engine that understands tags.
 
-  It works by adding a HTML parsing and validation layer on top
-  of EEx engine. By default it uses `Phoenix.LiveView.Engine` as
-  its "subengine".
+  This cannot be directly used by Phoenix applications.
+  Instead, it is the building block by engines such as
+  `Phoenix.LiveView.HTMLEngine`.
+
+  It is typically invoked like this:
+
+      EEx.compile_string(source,
+        engine: Phoenix.LiveView.TagEngine,
+        line: 1,
+        file: path,
+        caller: __CALLER__,
+        source: source,
+        tag_handler: FooBarEngine
+      )
+
+  Where `:tag_handler` implements the behaviour defined by this module.
   """
+
+  @doc """
+  Classify the tag type from the given binary.
+
+  This must return a tuple containing the type of the tag and the name of tag.
+  For instance, for LiveView which uses HTML as default tag handler this would
+  return `{:tag, 'div'}` in case the given binary is identified as HTML tag.
+
+  You can also return {:error, "reason"} so that the compiler will display this
+  error.
+  """
+  @callback classify_type(name :: binary()) :: {type :: atom(), name :: binary()}
+
+  @doc """
+  Returns if the given binary is either void or not.
+
+  That's mainly useful for HTML tags and used internally by the compiler. You
+  can just implement as `def void?(_), do: false` if you want to ignore this.
+  """
+  @callback void?(name :: binary()) :: boolean()
 
   @doc """
   Renders a component defined by the given function.
@@ -115,44 +148,13 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   alias Phoenix.LiveView.Tokenizer
-  alias Phoenix.LiveView.Tokenizer.{ParseError, HTML}
-
-  @behaviour Phoenix.Template.Engine
-
-  @impl true
-  def compile(path, _name) do
-    # We need access for the caller, so we return a call to a macro.
-    quote do
-      require Phoenix.LiveView.TagEngine
-      Phoenix.LiveView.TagEngine.compile(unquote(path))
-    end
-  end
-
-  @doc false
-  defmacro compile(path) do
-    trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
-    source = File.read!(path)
-
-    EEx.compile_string(source,
-      engine: __MODULE__,
-      line: 1,
-      file: path,
-      trim: trim,
-      caller: __CALLER__,
-      source: source,
-      tag_handler: HTML
-    )
-  end
+  alias Phoenix.LiveView.Tokenizer.ParseError
 
   @behaviour EEx.Engine
 
   @impl true
   def init(opts) do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
-
-    unless subengine do
-      raise ArgumentError, ":subengine is missing for TagEngine"
-    end
 
     %{
       cont: :text,
