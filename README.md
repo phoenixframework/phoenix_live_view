@@ -134,6 +134,8 @@ $ npm install --save --prefix assets mdn-polyfills url-search-params-polyfill fo
 
 Note: The `shim-keyboard-event-key` polyfill is also required for [MS Edge 12-18](https://caniuse.com/#feat=keyboardevent-key).
 
+Note: The `event-submitter-polyfill` package is also required for [MS Edge 12-80 &amp; Safari &lt; 15.4](https://caniuse.com/mdn-api_submitevent_submitter).
+
 ```
 // assets/js/app.js
 import "mdn-polyfills/Object.assign"
@@ -153,6 +155,7 @@ import "classlist-polyfill"
 import "new-event-polyfill"
 import "@webcomponents/template"
 import "shim-keyboard-event-key"
+import "event-submitter-polyfill"
 import "core-js/features/set"
 import "core-js/features/url"
 

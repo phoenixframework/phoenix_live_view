@@ -47,7 +47,8 @@ let JS = {
         if(_target){ pushOpts._target = _target }
         targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback)
       } else if(eventType === "submit"){
-        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, pushOpts)
+        let {submitter} = args
+        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, submitter, pushOpts)
       } else {
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts)
       }

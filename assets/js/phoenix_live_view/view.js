@@ -51,8 +51,18 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
-let serializeForm = (form, meta, onlyNames = []) => {
+let serializeForm = (form, metadata, onlyNames = []) => {
+  let {submitter, ...meta} = metadata
+
+  // TODO: Replace with `new FormData(form, submitter)` when supported by latest browsers,
+  //       and mention `formdata-submitter-polyfill` in the docs.
   let formData = new FormData(form)
+
+  // TODO: Remove when FormData constructor supports the submitter argument.
+  if (submitter && submitter.form && submitter.form === form){
+    formData.append(submitter.name, submitter.value)
+  }
+
   let toRemove = []
 
   formData.forEach((val, key, _index) => {
@@ -954,18 +964,18 @@ export default class View {
     return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts)
   }
 
-  pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply){
+  pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply){
     let refGenerator = () => this.disableForm(formEl, opts)
     let cid = this.targetComponentID(formEl, targetCtx)
     if(LiveUploader.hasUploadsInProgress(formEl)){
       let [ref, _els] = refGenerator()
-      let push = () => this.pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply)
+      let push = () => this.pushFormSubmit(formEl, submitter, targetCtx, phxEvent, opts, onReply)
       return this.scheduleSubmit(formEl, ref, opts, push)
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els, opts]
       this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
-        let formData = serializeForm(formEl, {})
+        let formData = serializeForm(formEl, {submitter})
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
@@ -974,7 +984,7 @@ export default class View {
         }, onReply)
       })
     } else {
-      let formData = serializeForm(formEl, {})
+      let formData = serializeForm(formEl, {submitter})
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
@@ -1127,13 +1137,13 @@ export default class View {
       (!parentViewEl && this.isDead)
   }
 
-  submitForm(form, targetCtx, phxEvent, opts = {}){
+  submitForm(form, targetCtx, phxEvent, submitter, opts = {}){
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
     let phxFeedback = this.liveSocket.binding(PHX_FEEDBACK_FOR)
     let inputs = Array.from(form.elements)
     inputs.forEach(input => DOM.putPrivate(input, PHX_HAS_SUBMITTED, true))
     this.liveSocket.blurActiveElement(this)
-    this.pushFormSubmit(form, targetCtx, phxEvent, opts, () => {
+    this.pushFormSubmit(form, targetCtx, phxEvent, submitter, opts, () => {
       inputs.forEach(input => DOM.showError(input, phxFeedback))
       this.liveSocket.restorePreviouslyActiveFocus()
     })
