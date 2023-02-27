@@ -250,6 +250,32 @@ describe("View + DOM", function(){
       view.submitForm(form, form, {target: form})
     })
 
+    test("payload includes submitter when provided", function(){
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let form = el.querySelector("form")
+      let btn = document.createElement("button")
+      btn.setAttribute("type", "submit")
+      btn.setAttribute("name", "btnName")
+      btn.setAttribute("value", "btnValue")
+      form.appendChild(btn)
+
+      let view = simulateJoinedView(el, liveSocket)
+      let channelStub = {
+        push(_evt, payload, _timeout){
+          expect(payload.type).toBe("form")
+          expect(payload.event).toBeDefined()
+          expect(payload.value).toBe("increment=1&note=2&btnName=btnValue")
+          return {
+            receive(){ return this }
+          }
+        }
+      }
+
+      view.channel = channelStub
+      view.submitForm(form, form, {target: form}, btn)
+    })
+
     test("disables elements after submission", function(){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()

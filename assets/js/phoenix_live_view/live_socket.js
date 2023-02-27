@@ -822,7 +822,7 @@ export default class LiveSocket {
       e.preventDefault()
       e.target.disabled = true
       this.withinOwners(e.target, view => {
-        JS.exec("submit", phxEvent, view, e.target, ["push", {}])
+        JS.exec("submit", phxEvent, view, e.target, ["push", {submitter: e.submitter}])
       })
     }, false)
 
