@@ -163,7 +163,7 @@ defmodule Phoenix.LiveView.Engine do
   @moduledoc ~S"""
   An `EEx` template engine that tracks changes.
 
-  This is often used by `Phoenix.LiveView.HTMLEngine` which also adds
+  This is often used by `Phoenix.LiveView.TagEngine` which also adds
   HTML validation. In the documentation below, we will explain how it
   works internally. For user-facing documentation, see `Phoenix.LiveView`.
 
@@ -309,7 +309,7 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def init(opts) do
-    # Phoenix.LiveView.HTMLEngine calls this engine in a non-linear order
+    # Phoenix.LiveView.TagEngine calls this engine in a non-linear order
     # to evaluate slots, which can lead to variable conflicts. Therefore we
     # use a counter to ensure all variable names are unique.
     %{
@@ -530,7 +530,7 @@ defmodule Phoenix.LiveView.Engine do
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}),
     do: func
 
-  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :HTMLEngine]}, func]}),
+  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, func]}),
     do: func
 
   defp extract_call(call),
@@ -1279,7 +1279,7 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:with, _), do: :live
   defp classify_taint(:for, _), do: :live
 
-  # Constructs from Phoenix and HTMLEngine
+  # Constructs from Phoenix and TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
 

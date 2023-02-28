@@ -1,10 +1,8 @@
-defmodule Phoenix.LiveView.HTMLTokenizer do
+defmodule Phoenix.LiveView.Tokenizer do
   @moduledoc false
   @space_chars '\s\t\f'
   @quote_chars '"\''
   @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
-
-  alias __MODULE__.ParseError
 
   defmodule ParseError do
     @moduledoc false
@@ -64,39 +62,54 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
   end
 
   @doc """
-  Tokenize the given text according to the given params.
+  Initiate the Tokenizer state.
 
-  * `text` - The content to be tokenized.
-  * `file` - Can be either a file or a string "nofile".
+  ### Params
+
   * `indentation` - An integer that indicates the current indentation.
-  * `meta` - A keyword list with `:line` and `:column`. Both must be integers.
-  * `tokens` - A list of tokens.
-  * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
-    {:comment, line, column}.
-
-  ### Examples
-
-      iex> alias Phoenix.LiveView.HTMLTokenizer
-      iex> HTMLTokenizer.tokenize("<section><div/></section>", "nofile", 0, [line: 1, column: 1], [], :text)
-      {[
-         {:close, :tag, "section", %{column: 16, line: 1}},
-         {:tag, "div", [], %{column: 10, line: 1, self_close: true}},
-         {:tag, "section", [], %{column: 1, line: 1}}
-       ], :text}
-
+  * `file` - Can be either a file or a string "nofile".
+  * `source` - The contents of the file as binary used to be tokenized.
+  * `tag_handler` - Tag handler to classify the tags. See `Phoenex.LiveView.TagHandler`
+    behavivour.
   """
-  def tokenize(text, file, indentation, meta, tokens, cont, source) do
-    line = Keyword.get(meta, :line, 1)
-    column = Keyword.get(meta, :column, 1)
-
-    state = %{
+  def init(indentation, file, source, tag_handler) do
+    %{
       file: file,
       column_offset: indentation + 1,
       braces: [],
       context: [],
       source: source,
-      indentation: indentation
+      indentation: indentation,
+      tag_handler: tag_handler
     }
+  end
+
+  @doc """
+  Tokenize the given text according to the given params.
+
+  ### Params
+
+  * `text` - The content to be tokenized.
+  * `meta` - A keyword list with `:line` and `:column`. Both must be integers.
+  * `tokens` - A list of tokens.
+  * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
+    {:comment, line, column}.
+  * `state` - The tokenizer state that must be initiated by `Tokenizer.init/3`
+
+  ### Examples
+
+      iex> alias Phoenix.LiveView.Tokenizer
+      iex> state = Tokenizer.init(text: "<section><div/></section>", cont: :text)
+      iex> Tokenizer.tokenize(state)
+      {[
+         {:close, :tag, "section", %{column: 16, line: 1}},
+         {:tag, "div", [], %{column: 10, line: 1, self_close: true}},
+         {:tag, "section", [], %{column: 1, line: 1}}
+       ], :text}
+  """
+  def tokenize(text, meta, tokens, cont, state) do
+    line = Keyword.get(meta, :line, 1)
+    column = Keyword.get(meta, :column, 1)
 
     case cont do
       :text -> handle_text(text, line, column, [], tokens, state)
@@ -261,7 +274,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
       {:ok, name, new_column, rest} ->
         meta = %{line: line, column: column - 1, inner_location: nil, tag_name: name}
 
-        case classify_tag_type(name) do
+        case state.tag_handler.classify_type(name) do
           {:error, message} ->
             raise_syntax_error!(message, meta, state)
 
@@ -292,7 +305,7 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
           tag_name: name
         }
 
-        case classify_tag_type(name) do
+        case state.tag_handler.classify_type(name) do
           {:error, message} ->
             raise_syntax_error!(message, meta, state)
 
@@ -312,17 +325,6 @@ defmodule Phoenix.LiveView.HTMLTokenizer do
         raise_syntax_error!(message, meta, state)
     end
   end
-
-  defp classify_tag_type(":" <> name), do: {:slot, String.to_atom(name)}
-  defp classify_tag_type(":inner_block"), do: {:error, "the slot name :inner_block is reserved"}
-
-  defp classify_tag_type(<<first, _::binary>> = name) when first in ?A..?Z,
-    do: {:remote_component, String.to_atom(name)}
-
-  defp classify_tag_type("." <> name),
-    do: {:local_component, String.to_atom(name)}
-
-  defp classify_tag_type(name), do: {:tag, name}
 
   ## handle_tag_name
 

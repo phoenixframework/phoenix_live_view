@@ -2,18 +2,17 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
   import Phoenix.Component
-
-  alias Phoenix.LiveView.HTMLEngine
-  alias Phoenix.LiveView.HTMLTokenizer.ParseError
+  alias Phoenix.LiveView.Tokenizer.{ParseError, HTML}
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     opts =
       Keyword.merge(opts,
         file: __ENV__.file,
-        engine: HTMLEngine,
+        engine: Phoenix.LiveView.TagEngine,
         subengine: Phoenix.LiveView.Engine,
         caller: __ENV__,
-        source: string
+        source: string,
+        tag_handler: Phoenix.LiveView.HTMLEngine
       )
 
     EEx.eval_string(string, [assigns: assigns], opts)
@@ -31,10 +30,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       unquote(
         EEx.compile_string(string,
           file: __ENV__.file,
-          engine: HTMLEngine,
+          engine: Phoenix.LiveView.TagEngine,
           module: __MODULE__,
           caller: __CALLER__,
-          source: string
+          source: string,
+          tag_handler: Phoenix.LiveView.HTMLEngine
         )
       )
       |> Phoenix.HTML.Safe.to_iodata()

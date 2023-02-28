@@ -1,10 +1,12 @@
-defmodule Phoenix.LiveView.HTMLTokenizerTest do
+defmodule Phoenix.LiveView.TokenizerTest do
   use ExUnit.Case, async: true
-  alias Phoenix.LiveView.HTMLTokenizer.ParseError
-  alias Phoenix.LiveView.HTMLTokenizer
+  alias Phoenix.LiveView.Tokenizer.ParseError
+  alias Phoenix.LiveView.Tokenizer
+
+  defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Phoenix.LiveView.HTMLEngine)
 
   defp tokenize(text) do
-    HTMLTokenizer.tokenize(text, "nofile", 0, [], [], :text, text)
+    Tokenizer.tokenize(text, [], [], :text, tokenizer_state(text))
     |> elem(0)
     |> Enum.reverse()
   end
@@ -81,7 +83,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       """
 
       {first_tokens, cont} =
-        HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text, first_part)
+        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
       </div>
@@ -93,7 +95,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       """
 
       {tokens, :text} =
-        HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont, second_part)
+        Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       assert Enum.reverse(tokens) == [
                {:tag, "p", [], %{column: 1, line: 1, inner_location: {1, 4}, tag_name: "p"}},
@@ -123,7 +125,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       """
 
       {first_tokens, cont} =
-        HTMLTokenizer.tokenize(first_part, "nofile", 0, [], [], :text, first_part)
+        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
       -->
@@ -132,7 +134,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       """
 
       {second_tokens, cont} =
-        HTMLTokenizer.tokenize(second_part, "nofile", 0, [], first_tokens, cont, second_part)
+        Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       third_part = """
       -->
@@ -142,7 +144,7 @@ defmodule Phoenix.LiveView.HTMLTokenizerTest do
       """
 
       {tokens, :text} =
-        HTMLTokenizer.tokenize(third_part, "nofile", 0, [], second_tokens, cont, third_part)
+        Tokenizer.tokenize(third_part, [], second_tokens, cont, tokenizer_state(third_part))
 
       assert Enum.reverse(tokens) == [
                {:tag, "p", [], %{column: 1, line: 1, inner_location: {1, 4}, tag_name: "p"}},

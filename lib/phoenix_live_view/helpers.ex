@@ -198,7 +198,7 @@ defmodule Phoenix.LiveView.Helpers do
   defp rewrite_do!(do_block, key, caller) do
     if Macro.Env.has_var?(caller, {:assigns, nil}) do
       # TODO: make __inner_block__ private once this is removed.
-      Phoenix.LiveView.HTMLEngine.__inner_block__(do_block, key)
+      Phoenix.LiveView.TagEngine.__inner_block__(do_block, key)
     else
       raise ArgumentError,
             "cannot use live_component because the assigns var is unbound/unset"
