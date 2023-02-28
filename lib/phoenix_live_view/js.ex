@@ -113,12 +113,52 @@ defmodule Phoenix.LiveView.JS do
 
   You can also use `window.addEventListener` to listen to events pushed
   from the server. You can learn more in our [JS interoperability guide](js-interop.md).
+
+  ## `:to` selectors and scoping
+
+  By default, JS commands target the emitting element (i.e. the element they
+  are defined on). When they accept a `:to` option you may specify another
+  target with a DOM selector string, or a two element tuple in the form
+  `{target_selector, scope_selector}`.
+
+  The tuple form allows us to restrict our target elements to only the
+  descendants of a single element. The "scope root" will be the *closest parent*
+  of the emitting element that matches `scope_selector`, as discovered by the
+  [`Element.closest`](https://developer.mozilla.org/en-US/docs/Web/API/Element/closest)
+  function.
+
+  For example,
+
+      def show_color(js \\ %JS{}) do
+        JS.show(js, to: {"td", "tr"})
+      end
+
+      def table(assigns) do
+        ~H"""
+        <table>
+          <tr>
+            <td phx-click={show_color()}>Jane</td>
+            <td class="hidden">Blue</td>
+          </tr>
+          <tr>
+            <td phx-click={show_color()}>John</td>
+            <td class="hidden">Green</td>
+          </tr>
+        </table>
+        """
+      end
+
+  When clicking "Jane", we find the nearest `<tr>` parent, then show all child
+  `<td>` elements inside that `<tr>`. Johns row will not be effected.
+
+  To target the scope element itself, you may pass `nil` as the target selector.
   '''
   alias Phoenix.LiveView.JS
 
   defstruct ops: []
 
   @opaque t :: %__MODULE__{}
+  @type to :: String.t() | {target_selector :: String.t() | nil, scope_selector :: String.t()} | nil
 
   @default_transition_time 200
 
@@ -188,7 +228,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to dispatch the event to.
+    * `:to` - The optional DOM selector or scoped selector tuple to dispatch the event to.
       Defaults to the interacted element.
     * `:detail` - The optional detail map to dispatch along
       with the client event. The details will be available in the
@@ -254,7 +294,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to toggle.
+    * `:to` - The optional DOM selector or scoped selector tuple to toggle.
       Defaults to the interacted element.
     * `:in` - The string of classes to apply when toggling in, or
       a 3-tuple containing the transition class, the class to apply
@@ -308,7 +348,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to show.
+    * `:to` - The optional DOM selector or scoped selector tuple to show.
       Defaults to the interacted element.
     * `:transition` - The string of classes to apply before showing or
       a 3-tuple containing the transition class, the class to apply
@@ -358,7 +398,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to hide.
+    * `:to` - The optional DOM selector or scoped selector tuple to hide.
       Defaults to the interacted element.
     * `:transition` - The string of classes to apply before hiding or
       a 3-tuple containing the transition class, the class to apply
@@ -408,7 +448,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to add classes to.
+    * `:to` - The optional DOM selector or scoped selector tuple to add classes to.
       Defaults to the interacted element.
     * `:transition` - The string of classes to apply before adding classes or
       a 3-tuple containing the transition class, the class to apply
@@ -455,7 +495,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove classes from.
+    * `:to` - The optional DOM selector or scoped selector tuple to remove classes from.
       Defaults to the interacted element.
     * `:transition` - The string of classes to apply before removing classes or
       a 3-tuple containing the transition class, the class to apply
@@ -508,7 +548,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to apply transitions to.
+    * `:to` - The optional DOM selector or scoped selector tuple to apply transitions to.
       Defaults to the interacted element.
     * `:time` - The time to apply the transition from `:transition`.
       Defaults #{@default_transition_time}
@@ -552,7 +592,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to add attributes to.
+    * `:to` - The optional DOM selector or scoped selector tuple to add attributes to.
       Defaults to the interacted element.
 
   ## Examples
@@ -582,7 +622,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove attributes from.
+    * `:to` - The optional DOM selector or scoped selector tuple to remove attributes from.
       Defaults to the interacted element.
 
   ## Examples
@@ -610,7 +650,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to send focus to.
+    * `:to` - The optional DOM selector or scoped selector tuple to send focus to.
       Defaults to the current element.
 
   ## Examples
@@ -630,7 +670,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to focus.
+    * `:to` - The optional DOM selector or scoped selector tuple to focus.
       Defaults to the current element.
 
   ## Examples
@@ -650,7 +690,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to push focus to.
+    * `:to` - The optional DOM selector or scoped selector tuple to push focus to.
       Defaults to the current element.
 
   ## Examples
@@ -728,6 +768,14 @@ defmodule Phoenix.LiveView.JS do
     put_op(js, "patch", %{href: href, replace: !!opts[:replace]})
   end
 
+  defp put_op(%JS{} = js, kind, %{to: {target, scope}} = args)
+       when (is_binary(target) or is_nil(target)) and is_binary(scope) do
+    put_op(js, kind, %{args | to: [target, scope]})
+  end
+  defp put_op(%JS{} = _js, _kind, %{to: to} = _args) when is_tuple(to) do
+    raise ArgumentError,
+          "`:to` tuple must have two elements, a target selector or nil and a scope selector."
+  end
   defp put_op(%JS{ops: ops} = js, kind, %{} = args) do
     %JS{js | ops: ops ++ [[kind, args]]}
   end

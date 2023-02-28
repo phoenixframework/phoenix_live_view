@@ -277,6 +277,20 @@ defmodule Phoenix.LiveView.JSTest do
              }
     end
 
+    test "with scoped to" do
+      assert JS.dispatch("click", to: {"target", "scope"}) == %JS{
+               ops: [["dispatch", %{to: ["target", "scope"], event: "click"}]]
+             }
+
+      assert JS.dispatch("click", to: {nil, "scope"}) == %JS{
+               ops: [["dispatch", %{to: [nil, "scope"], event: "click"}]]
+             }
+
+      assert_raise ArgumentError, ~r/tuple must have two elements/, fn ->
+        JS.dispatch("click", to: {})
+      end
+    end
+
     test "raises with unknown options" do
       assert_raise ArgumentError, ~r/invalid option for dispatch/, fn ->
         JS.dispatch("click", to: ".foo", bad: :opt)

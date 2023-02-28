@@ -511,6 +511,58 @@ describe("JS", () => {
       expect(modal.getAttribute("aria-expanded")).toEqual(null)
     })
 
+    test("with defaults and selector + scope", () => {
+      let view = setupView(`
+      <div id="out-of-scope" class="modal"></div>
+      <div id="scope">
+        <div id="in-scope" class="modal">
+          <div id="set" phx-click='[["set_attr", {"to": [".modal", "#scope"], "attr": ["aria-expanded", "true"]}]]'></div>
+          <div id="remove" phx-click='[["remove_attr", {"to": [".modal", "#scope"], "attr": "aria-expanded"}]]'></div>
+        </div>
+      </div>
+      `)
+
+      let targetModal = document.querySelector("#in-scope")
+      let otherModal = document.querySelector("#out-of-scope")
+      let set = document.querySelector("#set")
+      let remove = document.querySelector("#remove")
+
+      expect(targetModal.getAttribute("aria-expanded")).toEqual(null)
+      expect(otherModal.getAttribute("aria-expanded")).toEqual(null)
+      JS.exec("click", set.getAttribute("phx-click"), view, set)
+      expect(targetModal.getAttribute("aria-expanded")).toEqual("true")
+      expect(otherModal.getAttribute("aria-expanded")).toEqual(null)
+
+      JS.exec("click", remove.getAttribute("phx-click"), view, remove)
+      expect(targetModal.getAttribute("aria-expanded")).toEqual(null)
+      expect(otherModal.getAttribute("aria-expanded")).toEqual(null)
+    })
+
+    test("with defaults and null target + scope", () => {
+      let view = setupView(`
+      <div id="out-of-scope" class="modal"></div>
+      <div id="in-scope" class="modal">
+        <div id="set" phx-click='[["set_attr", {"to": [null, ".modal"], "attr": ["aria-expanded", "true"]}]]'></div>
+        <div id="remove" phx-click='[["remove_attr", {"to": [null, ".modal"], "attr": "aria-expanded"}]]'></div>
+      </div>
+      `)
+
+      let targetModal = document.querySelector("#in-scope")
+      let otherModal = document.querySelector("#out-of-scope")
+      let set = document.querySelector("#set")
+      let remove = document.querySelector("#remove")
+
+      expect(targetModal.getAttribute("aria-expanded")).toEqual(null)
+      expect(otherModal.getAttribute("aria-expanded")).toEqual(null)
+      JS.exec("click", set.getAttribute("phx-click"), view, set)
+      expect(targetModal.getAttribute("aria-expanded")).toEqual("true")
+      expect(otherModal.getAttribute("aria-expanded")).toEqual(null)
+
+      JS.exec("click", remove.getAttribute("phx-click"), view, remove)
+      expect(targetModal.getAttribute("aria-expanded")).toEqual(null)
+      expect(otherModal.getAttribute("aria-expanded")).toEqual(null)
+    })
+
     test("with no selector", () => {
       let view = setupView(`
       <div id="set" phx-click='[["set_attr", {"to": null, "attr": ["aria-expanded", "true"]}]]'></div>

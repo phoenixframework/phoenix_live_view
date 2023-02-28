@@ -224,7 +224,19 @@ let JS = {
   },
 
   filterToEls(sourceEl, {to}){
-    return to ? DOM.all(document, to) : [sourceEl]
+    if(Array.isArray(to)){
+      let [elSelector, scopeSelector] = to
+      let scopeEl = sourceEl.closest(scopeSelector)
+      // It's not possible to select the scope root with a query. A null element
+      // selector indicates we should use the scope element itself.
+      if(elSelector === null){
+        return scopeEl ? [scopeEl] : []
+      } else {
+        return scopeEl ? DOM.all(scopeEl, elSelector) : []
+      }
+    } else {
+      return to ? DOM.all(document, to) : [sourceEl]
+    }
   },
 
   defaultDisplay(el){
