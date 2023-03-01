@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
   import Phoenix.Component
-  alias Phoenix.LiveView.Tokenizer.{ParseError, HTML}
+  alias Phoenix.LiveView.Tokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     opts =
