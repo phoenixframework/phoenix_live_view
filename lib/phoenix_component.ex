@@ -462,7 +462,7 @@ defmodule Phoenix.Component do
 
   You can learn more about slots and the `slot/3` macro [in its documentation](`slot/3`).
 
-  ### Embedding external template files
+  ## Embedding external template files
 
   The `embed_templates/1` macro can be used to embed `.html.heex` files
   as function components. The directory path is based on the current
