@@ -498,6 +498,7 @@ defmodule Phoenix.Component do
 
   alias Phoenix.LiveView.{Static, Socket}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
+  @non_assignables [:uploads, :streams, :live_action, :socket, :myself]
 
   @doc ~S'''
   The `~H` sigil for writing HEEx templates inside source files.
@@ -1137,48 +1138,9 @@ defmodule Phoenix.Component do
   '''
   def assign_new(socket_or_assigns, key, fun)
 
-  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 1) do
+  def assign_new(%Socket{} = socket, key, fun) do
     validate_assign_key!(key)
-
-    case socket do
-      %{assigns: %{^key => _}} ->
-        socket
-
-      %{private: %{assign_new: {assigns, keys}}} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
-
-        Phoenix.LiveView.Utils.force_assign(
-          socket,
-          key,
-          case assigns do
-            %{^key => value} -> value
-            %{} -> fun.(socket.assigns)
-          end
-        )
-
-      %{assigns: assigns} ->
-        Phoenix.LiveView.Utils.force_assign(socket, key, fun.(assigns))
-    end
-  end
-
-  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 0) do
-    validate_assign_key!(key)
-
-    case socket do
-      %{assigns: %{^key => _}} ->
-        socket
-
-      %{private: %{assign_new: {assigns, keys}}} ->
-        # It is important to store the keys even if they are not in assigns
-        # because maybe the controller doesn't have it but the view does.
-        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
-        Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, fun))
-
-      %{} ->
-        Phoenix.LiveView.Utils.force_assign(socket, key, fun.())
-    end
+    Phoenix.LiveView.Utils.assign_new(socket, key, fun)
   end
 
   def assign_new(%{__changed__: changed} = assigns, key, fun) when is_function(fun, 1) do
@@ -1289,7 +1251,12 @@ defmodule Phoenix.Component do
   defp validate_assign_key!(:flash) do
     raise ArgumentError,
           ":flash is a reserved assign by LiveView and it cannot be set directly. " <>
-            "Use the appropriate flash functions instead."
+          "Use the appropriate flash functions instead"
+  end
+
+  defp validate_assign_key!(assign) when assign in @non_assignables do
+    raise ArgumentError,
+          "#{inspect(assign)} is a reserved assign by LiveView and it cannot be set directly"
   end
 
   defp validate_assign_key!(_key), do: :ok
@@ -1322,7 +1289,7 @@ defmodule Phoenix.Component do
 
   def update(%Socket{assigns: assigns} = socket, key, fun) when is_function(fun, 1) do
     case assigns do
-      %{^key => val} -> assign(socket, key, fun.(val))
+      %{^key => val} -> Phoenix.LiveView.Utils.assign(socket, key, fun.(val))
       %{} -> raise KeyError, key: key, term: assigns
     end
   end

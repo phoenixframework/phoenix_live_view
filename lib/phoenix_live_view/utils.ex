@@ -41,6 +41,49 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  Assigns the given `key` with value from `fun` into `socket_or_assigns` if one does not yet exist.
+  """
+  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 1) do
+    case socket do
+      %{assigns: %{^key => _}} ->
+        socket
+
+      %{private: %{assign_new: {assigns, keys}}} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
+
+        Phoenix.LiveView.Utils.force_assign(
+          socket,
+          key,
+          case assigns do
+            %{^key => value} -> value
+            %{} -> fun.(socket.assigns)
+          end
+        )
+
+      %{assigns: assigns} ->
+        Phoenix.LiveView.Utils.force_assign(socket, key, fun.(assigns))
+    end
+  end
+
+  def assign_new(%Socket{} = socket, key, fun) when is_function(fun, 0) do
+    case socket do
+      %{assigns: %{^key => _}} ->
+        socket
+
+      %{private: %{assign_new: {assigns, keys}}} ->
+        # It is important to store the keys even if they are not in assigns
+        # because maybe the controller doesn't have it but the view does.
+        socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
+        Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, fun))
+
+      %{} ->
+        Phoenix.LiveView.Utils.force_assign(socket, key, fun.())
+    end
+  end
+
+  @doc """
   Forces an assign on a socket.
   """
   def force_assign(%Socket{assigns: assigns} = socket, key, val) do
