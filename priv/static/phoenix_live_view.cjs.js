@@ -1662,7 +1662,6 @@ var DOMPatch = class {
           if (streamAt === void 0) {
             return parent.appendChild(child);
           }
-          dom_default.putPrivate(child, PHX_STREAM, true);
           if (streamAt === 0) {
             parent.insertAdjacentElement("afterbegin", child);
           } else if (streamAt === -1) {
@@ -1696,10 +1695,7 @@ var DOMPatch = class {
           if (el.getAttribute && el.getAttribute(PHX_PRUNE) !== null) {
             return true;
           }
-          if (dom_default.private(el, PHX_STREAM)) {
-            return false;
-          }
-          if (el.parentElement !== null && dom_default.isPhxUpdate(el.parentElement, phxUpdate, ["append", "prepend"]) && el.id) {
+          if (el.parentElement !== null && el.id && dom_default.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])) {
             return false;
           }
           if (this.maybePendingRemove(el)) {
@@ -1813,7 +1809,6 @@ var DOMPatch = class {
     if (streamAt === void 0) {
       return;
     }
-    dom_default.putPrivate(el, PHX_STREAM, true);
     if (streamAt === 0) {
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
     } else if (streamAt > 0) {
@@ -2232,7 +2227,8 @@ var JS = {
         }
         targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback);
       } else if (eventType === "submit") {
-        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, pushOpts);
+        let { submitter } = args;
+        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, submitter, pushOpts);
       } else {
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts);
       }
@@ -2396,8 +2392,12 @@ var JS = {
 var js_default = JS;
 
 // js/phoenix_live_view/view.js
-var serializeForm = (form, meta, onlyNames = []) => {
+var serializeForm = (form, metadata, onlyNames = []) => {
+  let { submitter, ...meta } = metadata;
   let formData = new FormData(form);
+  if (submitter && submitter.form && submitter.form === form) {
+    formData.append(submitter.name, submitter.value);
+  }
   let toRemove = [];
   formData.forEach((val, key, _index) => {
     if (val instanceof File) {
@@ -3280,18 +3280,18 @@ var View = class {
     formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
     return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts);
   }
-  pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply) {
+  pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
     let refGenerator = () => this.disableForm(formEl, opts);
     let cid = this.targetComponentID(formEl, targetCtx);
     if (LiveUploader.hasUploadsInProgress(formEl)) {
       let [ref, _els] = refGenerator();
-      let push = () => this.pushFormSubmit(formEl, targetCtx, phxEvent, opts, onReply);
+      let push = () => this.pushFormSubmit(formEl, submitter, targetCtx, phxEvent, opts, onReply);
       return this.scheduleSubmit(formEl, ref, opts, push);
     } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       let [ref, els] = refGenerator();
       let proxyRefGen = () => [ref, els, opts];
       this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
-        let formData = serializeForm(formEl, {});
+        let formData = serializeForm(formEl, { submitter });
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
@@ -3300,7 +3300,7 @@ var View = class {
         }, onReply);
       });
     } else {
-      let formData = serializeForm(formEl, {});
+      let formData = serializeForm(formEl, { submitter });
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
@@ -3428,13 +3428,13 @@ var View = class {
     let parentViewEl = el.closest(PHX_VIEW_SELECTOR);
     return el.getAttribute(PHX_PARENT_ID) === this.id || parentViewEl && parentViewEl.id === this.id || !parentViewEl && this.isDead;
   }
-  submitForm(form, targetCtx, phxEvent, opts = {}) {
+  submitForm(form, targetCtx, phxEvent, submitter, opts = {}) {
     dom_default.putPrivate(form, PHX_HAS_SUBMITTED, true);
     let phxFeedback = this.liveSocket.binding(PHX_FEEDBACK_FOR);
     let inputs = Array.from(form.elements);
     inputs.forEach((input) => dom_default.putPrivate(input, PHX_HAS_SUBMITTED, true));
     this.liveSocket.blurActiveElement(this);
-    this.pushFormSubmit(form, targetCtx, phxEvent, opts, () => {
+    this.pushFormSubmit(form, targetCtx, phxEvent, submitter, opts, () => {
       inputs.forEach((input) => dom_default.showError(input, phxFeedback));
       this.liveSocket.restorePreviouslyActiveFocus();
     });
@@ -4159,7 +4159,7 @@ var LiveSocket = class {
       e.preventDefault();
       e.target.disabled = true;
       this.withinOwners(e.target, (view) => {
-        js_default.exec("submit", phxEvent, view, e.target, ["push", {}]);
+        js_default.exec("submit", phxEvent, view, e.target, ["push", { submitter: e.submitter }]);
       });
     }, false);
     for (let type of ["change", "input"]) {
