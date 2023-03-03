@@ -98,7 +98,6 @@ export default class DOMPatch {
     this.trackBefore("updated", container, container)
 
     liveSocket.time("morphdom", () => {
-
       this.streams.forEach(([inserts, deleteIds]) => {
         this.streamInserts = Object.assign(this.streamInserts, inserts)
         deleteIds.forEach(id => {
@@ -124,8 +123,7 @@ export default class DOMPatch {
           let streamAt = child.id ? this.streamInserts[child.id] : undefined
           if(streamAt === undefined) { return parent.appendChild(child) }
 
-          //streaming
-          DOM.putPrivate(child, PHX_STREAM, true)
+          // streaming
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
           } else if(streamAt === -1){
@@ -160,10 +158,13 @@ export default class DOMPatch {
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
-          if(DOM.private(el, PHX_STREAM)){ return false }
-          if(el.parentElement !== null && DOM.isPhxUpdate(el.parentElement, phxUpdate, ["append", "prepend"]) && el.id){ return false }
+          if(el.parentElement !== null && el.id &&
+             DOM.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])){
+            return false
+          }
           if(this.maybePendingRemove(el)){ return false }
           if(this.skipCIDSibling(el)){ return false }
+
           return true
         },
         onElUpdated: (el) => {
@@ -270,7 +271,6 @@ export default class DOMPatch {
     let streamAt = el.id ? this.streamInserts[el.id] : undefined
     if(streamAt === undefined){ return }
 
-    DOM.putPrivate(el, PHX_STREAM, true)
     if(streamAt === 0){
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
     } else if(streamAt > 0){
