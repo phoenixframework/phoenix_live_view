@@ -11,8 +11,7 @@ From Phoenix v1.7, your application is made of two layouts:
     in the root layout will remain the same, even as you live navigate
     across LiveViews. The root layout is typically declared on the
     router with `put_root_layout` and defined as "root.html.heex"
-    in your layouts folder. It may also be given via the
-    `:root_layout` option to a `live_session` macro in the router.
+    in your layouts folder
 
   * the app layout - this is the default application layout which
     is rendered on both regular HTTP requests and LiveViews.
@@ -24,17 +23,37 @@ embedded within `MyAppWeb.Layouts`.
 All layouts must call `<%= @inner_content %>` to inject the
 content rendered by the layout.
 
+### Root layout
+
 The "root" layout is rendered only on the initial request and
 therefore it has access to the `@conn` assign. The root layout
 is typically defined in your router:
 
-    plug :put_root_layout, {MyAppWeb.LayoutView, :root}
+    plug :put_root_layout, html: {MyAppWeb.LayoutView, :root}
+
+The root layout can also be set via the `:root_layout` option
+in your router via `Phoenix.LiveView.Router.live_session/2`.
+
+### Application layout
 
 The "app.html.heex" layout is rendered with either `@conn` or
-`@socket`. See the `def controller` and `def live_view` definitions
-in your `MyAppWeb` to learn how it is included.
+`@socket`. Both Controllers and LiveViews explicitly define
+the default layouts they will use. See the `def controller`
+and `def live_view` definitions in your `MyAppWeb` to learn how
+it is included.
 
-*Note*: The live layout is always wrapped by the LiveView's `:container` tag.
+For LiveViews, the default layout can be overidden in two different
+ways for flexibility:
+
+  1. The `:layout` option in `Phoenix.LiveView.Router.live_session/2`,
+     when set, will override the `:layout` option given via
+     `use Phoenix.LiveView`
+
+  2. The `:layout` option returned on mount, via `{ok, socket, layout: ...}`
+     will override any previously set layout option
+
+The LiveView itself will be rendered inside the layout wrapped by
+the `:container` tag.
 
 ## Updating the HTML document title
 

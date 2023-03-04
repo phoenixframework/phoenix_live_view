@@ -143,7 +143,10 @@ defmodule Phoenix.LiveView.Router do
       each LiveView in the session_. See `Phoenix.LiveView.on_mount/1`. Passing a
       single value is also accepted.
 
-    * `:layout` - The optional layout the LiveView will be rendered in.
+    * `:layout` - The optional layout the LiveView will be rendered in. Setting
+      this option overrides the layout via `use Phoenix.LiveView`. This option
+      may be overridden inside a LiveView by returning `{:ok, socket, layout: ...}`
+      from the mount callback
 
   ## Examples
 

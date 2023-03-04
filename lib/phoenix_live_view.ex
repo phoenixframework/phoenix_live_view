@@ -343,7 +343,9 @@ defmodule Phoenix.LiveView do
       the value is reset, it won't be re-rendered again until it is explicitly
       assigned
 
-    * `:layout` - the optional layout to be used by the LiveView
+    * `:layout` - the optional layout to be used by the LiveView. Setting
+      this option will override any layout previously set via
+      `Phoenix.LiveView.Router.live_session/2` or on `use Phoenix.LiveView`
 
   """
   @callback mount(
@@ -457,12 +459,19 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
-    * `:namespace` - configures the namespace the `LiveView` is in
     * `:container` - configures the container the `LiveView` will be wrapped in
-    * `:layout` - configures the layout the `LiveView` will be rendered in
-    * `:log` - configures the log level for the `LiveView`
+
     * `:global_prefixes` - the global prefixes to use for components. See
       `Global Attributes` in `Phoenix.Component` for more information.
+
+    * `:layout` - configures the layout the `LiveView` will be rendered in.
+      This layout can be overridden by on `c:mount/3` or via the `:layout`
+      option in `Phoenix.LiveView.Router.live_session/2`
+
+    * `:log` - configures the log level for the `LiveView`
+
+    * `:namespace` - configures the namespace the `LiveView` is in
+
   """
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
