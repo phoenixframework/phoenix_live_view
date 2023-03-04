@@ -204,10 +204,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # force a line break. This list has been taken from here:
   #
   # https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
-  @inline_elements ~w(a abbr acronym audio b bdi bdo big br button canvas cite
+  @inline_tags ~w(a abbr acronym audio b bdi bdo big br button canvas cite
   code data datalist del dfn em embed i iframe img input ins kbd label map
   mark meter noscript object output picture progress q ruby s samp select slot
   small span strong sub sup svg template textarea time u tt var video wbr)
+
+  @inline_components ~w(.link)
+
+  @inline_elements @inline_tags ++ @inline_components
 
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98

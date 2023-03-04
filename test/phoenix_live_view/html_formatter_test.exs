@@ -2041,6 +2041,15 @@ if Version.match?(System.version(), ">= 1.13.0") do
       """)
     end
 
+    test "treats .link component as inline" do
+      assert_formatter_doesnt_change(
+        """
+        <.link class="font-semibold" navigate={~p"/open/file?autosave=true"}>Browse them here</.link>.
+        """,
+        heex_line_length: 72
+      )
+    end
+
     # TODO: Remove this `if` after Elixir versions before than 1.14 are no
     # longer supported.
     if function_exported?(EEx, :tokenize, 2) do
