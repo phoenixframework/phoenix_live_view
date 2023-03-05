@@ -11,7 +11,7 @@
   * Support streams in Live Components
   * Optimize plug error translation when a Plug.Exception is raised over connected LiveView
 
-## Bug Fixes
+### Bug Fixes
   * Fix formatter issues when there are multiple HTML comments
 
 ## 0.18.15 (2023-02-16)
