@@ -34,7 +34,7 @@ error handling, and more. Here is a simple version to get started with:
       """
     end
 
-> ### The `CoreComponents` module {.info}
+> ### The `CoreComponents` module {: .info}
 >
 > If your application was generated with Phoenix v1.7, then `mix phx.new`
 > automatically imports many ready-to-use function components, such as
