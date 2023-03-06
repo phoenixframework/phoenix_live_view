@@ -238,7 +238,7 @@ defmodule Phoenix.LiveView.Channel do
       :noop ->
         {module, id, _} = update
 
-        if function_exported?(module, :__info__, 1) do
+        if exported?(module, :__info__, 1) do
           # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
           Logger.debug(
             "send_update failed because component #{inspect(module)} with ID #{inspect(id)} does not exist or it has been removed"
@@ -344,7 +344,7 @@ defmodule Phoenix.LiveView.Channel do
   def terminate(reason, %{socket: socket}) do
     %{view: view} = socket
 
-    if function_exported?(view, :terminate, 2) do
+    if exported?(view, :terminate, 2) do
       view.terminate(reason, socket)
     else
       :ok
@@ -359,7 +359,7 @@ defmodule Phoenix.LiveView.Channel do
   def code_change(old, %{socket: socket} = state, extra) do
     %{view: view} = socket
 
-    if function_exported?(view, :code_change, 3) do
+    if exported?(view, :code_change, 3) do
       view.code_change(old, socket, extra)
     else
       {:ok, state}
@@ -409,7 +409,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp view_handle_info(msg, %{view: view} = socket) do
-    exported? = function_exported?(view, :handle_info, 2)
+    exported? = exported?(view, :handle_info, 2)
 
     case Lifecycle.handle_info(msg, socket) do
       {:cont, %Socket{} = socket} when exported? ->
@@ -425,6 +425,10 @@ defmodule Phoenix.LiveView.Channel do
       {_, %Socket{} = socket} ->
         {:noreply, socket}
     end
+  end
+
+  defp exported?(m, f, a) do
+    function_exported?(m, f, a) || (Code.ensure_loaded?(m) && function_exported?(m, f, a))
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
