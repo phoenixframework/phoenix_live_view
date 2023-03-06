@@ -1251,7 +1251,7 @@ defmodule Phoenix.Component do
   defp validate_assign_key!(:flash) do
     raise ArgumentError,
           ":flash is a reserved assign by LiveView and it cannot be set directly. " <>
-          "Use the appropriate flash functions instead"
+            "Use the appropriate flash functions instead"
   end
 
   defp validate_assign_key!(assign) when assign in @non_assignables do
@@ -2059,7 +2059,7 @@ defmodule Phoenix.Component do
   [INSERT LVATTRDOCS]
   '''
   @doc type: :component
-  attr.(:for, :any, required: true, doc: "An existing form or the form source data.")
+  attr.(:for, :any, doc: "An existing form or the form source data.")
 
   attr.(:action, :string,
     doc: """
