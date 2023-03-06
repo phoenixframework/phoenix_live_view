@@ -406,11 +406,11 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Calls the `c:Phoenix.LiveComponent.mount/1` callback, otherwise returns the socket as is.
   """
-  def maybe_call_live_component_mount!(%Socket{} = socket, view) do
-    if function_exported?(view, :mount, 1) do
+  def maybe_call_live_component_mount!(%Socket{} = socket, component) do
+    if Code.ensure_loaded?(component) and function_exported?(component, :mount, 1) do
       socket
-      |> view.mount()
-      |> handle_mount_result!({:mount, 1, view})
+      |> component.mount()
+      |> handle_mount_result!({:mount, 1, component})
     else
       socket
     end
