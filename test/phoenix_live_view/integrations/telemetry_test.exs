@@ -47,7 +47,7 @@ defmodule Phoenix.LiveView.TelemtryTest do
       refute log =~ "MOUNT Phoenix.LiveViewTest.ThermostatLive"
       refute log =~ "Replied in "
 
-      refute log =~ "HANDLE PARAMS"
+      refute log =~ "HANDLE PARAMS in Phoenix.LiveViewTest.ThermostatLive"
       refute log =~ "Replied in "
     end
 
@@ -108,8 +108,7 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert log =~ "  Session: %{\"current_user_id\" => \"1\"}"
       assert log =~ "Replied in"
 
-      assert log =~ "HANDLE PARAMS"
-      assert log =~ "  View: Phoenix.LiveViewTest.ThermostatLive"
+      assert log =~ "HANDLE PARAMS in Phoenix.LiveViewTest.ThermostatLive"
       assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
       assert log =~ "Replied in"
     end
@@ -164,9 +163,7 @@ defmodule Phoenix.LiveView.TelemtryTest do
           assert metadata.params == %{"temp" => "20"}
         end)
 
-      assert log =~ "HANDLE EVENT"
-      assert log =~ "  View: Phoenix.LiveViewTest.ThermostatLive"
-      assert log =~ "  Event: \"save\""
+      assert log =~ "HANDLE EVENT \"save\" in Phoenix.LiveViewTest.ThermostatLive"
       assert log =~ "  Parameters: %{\"temp\" => \"20\"}"
       assert log =~ "Replied in"
     end
@@ -223,10 +220,8 @@ defmodule Phoenix.LiveView.TelemtryTest do
           assert metadata.params == %{"op" => "upcase"}
         end)
 
-      assert log =~ "HANDLE EVENT"
+      assert log =~ "HANDLE EVENT \"transform\" in Phoenix.LiveViewTest.WithComponentLive"
       assert log =~ "  Component: Phoenix.LiveViewTest.StatefulComponent"
-      assert log =~ "  View: Phoenix.LiveViewTest.WithComponentLive"
-      assert log =~ "  Event: \"transform\""
       assert log =~ "  Parameters: %{\"op\" => \"upcase\"}"
       assert log =~ "Replied in"
     end
