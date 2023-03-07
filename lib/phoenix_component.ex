@@ -1385,7 +1385,7 @@ defmodule Phoenix.Component do
 
     * `:as` - the `name` prefix to be used in form inputs
     * `:id` - the `id` prefix to be used in form inputs
-    * `:errors` - keyword list of errors (used by maps, but not changesets)
+    * `:errors` - keyword list of errors (used by maps exclusively)
 
   The underlying data may accept additional options when
   converted to forms. For example, a map accepts `:errors`
