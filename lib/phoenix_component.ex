@@ -1251,7 +1251,7 @@ defmodule Phoenix.Component do
   defp validate_assign_key!(:flash) do
     raise ArgumentError,
           ":flash is a reserved assign by LiveView and it cannot be set directly. " <>
-          "Use the appropriate flash functions instead"
+            "Use the appropriate flash functions instead"
   end
 
   defp validate_assign_key!(assign) when assign in @non_assignables do
@@ -1385,11 +1385,19 @@ defmodule Phoenix.Component do
 
     * `:as` - the `name` prefix to be used in form inputs
     * `:id` - the `id` prefix to be used in form inputs
+    * `:errors` - keyword list of errors (used by maps, but not changesets)
 
   The underlying data may accept additional options when
   converted to forms. For example, a map accepts `:errors`
   to list errors, but such option is not accepted by
   changesets.
+
+  When using a plain map, you may pass errors as an option.
+
+  Notice that errors use atom keys to refer to the field and errors are given
+  as a tuple in the shape of `{error message, options list}`
+
+      to_form(%{"search" => nil}, errors: [search: [{"Can't be blank", []}]])
 
   If an existing `Phoenix.HTML.Form` struct is given, the
   options below will override its existing values if given.
