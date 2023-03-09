@@ -1799,6 +1799,13 @@ defmodule Phoenix.Component do
   '''
   @doc type: :macro
   defmacro attr(name, type, opts \\ []) do
+    type =
+      if Macro.quoted_literal?(type) do
+        Macro.prewalk(type, &expand_alias(&1, __CALLER__))
+      else
+        type
+      end
+
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
         __MODULE__,
@@ -1810,6 +1817,11 @@ defmodule Phoenix.Component do
       )
     end
   end
+
+  defp expand_alias({:__aliases__, _, _} = alias, env),
+    do: Macro.expand(alias, %{env | function: {:__attr__, 3}})
+
+  defp expand_alias(other, _env), do: other
 
   ## Components
 
