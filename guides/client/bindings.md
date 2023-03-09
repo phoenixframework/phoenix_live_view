@@ -166,13 +166,13 @@ Rate limited and debounced events have the following behavior:
   * `phx-debounce` - Accepts either an integer timeout value (in milliseconds),
     or `"blur"`. When an integer is provided, emitting the event is delayed by
     the specified milliseconds. When `"blur"` is provided, emitting the event is
-    delayed until the field is blurred by the user. Debouncing is typically used for
-    input elements.
+    delayed until the field is blurred by the user. When the value is omitted
+    a default of 300ms is used. Debouncing is typically used for input elements.
 
   * `phx-throttle` - Accepts an integer timeout value to throttle the event in milliseconds.
     Unlike debounce, throttle will immediately emit the event, then rate limit it at once
-    per provided timeout. Throttling is typically used to rate limit clicks, mouse and
-    keyboard actions.
+    per provided timeout. When the value is omitted a default of 300ms is used.
+    Throttling is typically used to rate limit clicks, mouse and keyboard actions.
 
 For example, to avoid validating an email until the field is blurred, while validating
 the username at most every 2 seconds after a user changes the field:
