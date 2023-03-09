@@ -270,23 +270,18 @@ window.addEventListener("phx:page-loading-start", info => topbar.show())
 window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 ```
 
-Alternatively, you can also delay showing the `topbar` and wait if the results do not appear within 200ms:
+Alternatively, you can also delay showing the `topbar` and wait if the results do not appear within 200ms by passing a value of `200` to `topbar.show()`:
 
 ```js
 // Show progress bar on live navigation and form submits
 import topbar from "topbar"
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
-let topBarScheduled = undefined
 
 window.addEventListener("phx:page-loading-start", () => {
-  if(!topBarScheduled) {
-    topBarScheduled = setTimeout(() => topbar.show(), 200)
-  }
+  topbar.show(200)
 })
 
 window.addEventListener("phx:page-loading-stop", () => {
-  clearTimeout(topBarScheduled)
-  topBarScheduled = undefined
   topbar.hide()
 })
 ```
