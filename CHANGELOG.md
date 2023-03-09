@@ -1,9 +1,13 @@
 # Changelog
 
-## 0.18.17
+## 0.18.17 (2023-03-09)
+
+### Bug Fixes
+  * Fix callbacks like `handle_info` failing to be invoked in development after a code change with the Phoenix code reloader
 
 ### Enhancements
   * Support [`submitter`](https://developer.mozilla.org/en-US/docs/Web/API/SubmitEvent/submitter) on form submit events.
+  * Avoid compile-time dependency for `attr` when referencing structs
 
 ## 0.18.16 (2023-02-23)
 
