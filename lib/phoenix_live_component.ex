@@ -183,14 +183,16 @@ defmodule Phoenix.LiveComponent do
   ```mermaid
   flowchart LR
     *((start)):::event-.->P
-    WE([wait for parent changes]):::event-.->U
-    W([wait for events]):::event-.->H
+    WE([wait for<br>parent changes]):::event-.->P
+    W([wait for<br>events]):::event-.->H
 
-    subgraph w[" "]
+    subgraph j__transparent[" "]
 
       subgraph i[" "]
         direction TB
-        P(preload/1):::callback-->M
+        P(preload/1):::callback-->C{ever<br>mounted?}:::diamond
+        C --> |yes| U
+        C --> |no| M
         M(mount/1):::callback-->U
       end
 
@@ -199,8 +201,7 @@ defmodule Phoenix.LiveComponent do
       subgraph j[" "]
         direction TB
         A --> |yes| R
-        H(handle_event/3):::callback-->A{any changes?}:::diamond
-
+        H(handle_event/3):::callback-->A{any<br>changes?}:::diamond
       end
 
       A --> |no| W
