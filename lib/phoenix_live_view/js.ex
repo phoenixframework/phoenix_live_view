@@ -728,7 +728,42 @@ defmodule Phoenix.LiveView.JS do
     put_op(js, "patch", %{href: href, replace: !!opts[:replace]})
   end
 
-  defp put_op(%JS{ops: ops} = js, kind, %{} = args) do
+  @doc """
+  Executes JS commands located in element attributes.
+
+    * `attr` - The string attribute where the JS command is specified
+
+  ## Options
+
+    * `:to` - The optional DOM selector to push focus to.
+      Defaults to the current element.
+
+  ## Examples
+
+      <div id="modal" phx-remove={JS.hide("#modal")}>...</div>
+      <button phx-click={JS.exec("phx-remove", to: "#modal")}>close</button>
+  """
+  def exec(attr) when is_binary(attr) do
+    exec(%JS{}, attr, [])
+  end
+
+  @doc "See `exec/1`."
+  def exec(attr, opts) when is_binary(attr) and is_list(opts) do
+    exec(%JS{}, attr, opts)
+  end
+
+  def exec(%JS{} = js, attr) when is_binary(attr) do
+    exec(js, attr, [])
+  end
+
+  @doc "See `exec/1`."
+  def exec(%JS{} = js, attr, opts) when is_binary(attr) and is_list(opts) do
+    opts = validate_keys(opts, :exec, [:to])
+    ops = if to = opts[:to], do: [attr, to], else: [attr]
+    put_op(js, "exec", ops)
+  end
+
+  defp put_op(%JS{ops: ops} = js, kind, args) do
     %JS{js | ops: ops ++ [[kind, args]]}
   end
 

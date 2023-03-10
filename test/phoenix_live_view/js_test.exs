@@ -3,6 +3,13 @@ defmodule Phoenix.LiveView.JSTest do
 
   alias Phoenix.LiveView.JS
 
+  describe "exec" do
+    test "with defaults" do
+      assert JS.exec("phx-remove") == %JS{ops: [["exec", ["phx-remove"]]]}
+      assert JS.exec("phx-remove", to: "#modal") == %JS{ops: [["exec", ["phx-remove", "#modal"]]]}
+    end
+  end
+
   describe "push" do
     test "with defaults" do
       assert JS.push("inc") == %JS{ops: [["push", %{event: "inc"}]]}

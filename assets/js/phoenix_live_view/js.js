@@ -27,6 +27,15 @@ let JS = {
 
   // commands
 
+  exec_exec(eventType, phxEvent, view, sourceEl, el, [attr, to]){
+    let nodes = to ? DOM.all(document, to) : [sourceEl]
+    nodes.forEach(node => {
+      let encodedJS = node.getAttribute(attr)
+      if(!encodedJS){ throw new Error(`expected ${attr} to contain JS command on "${to}"`) }
+      view.liveSocket.execJS(node, encodedJS, eventType)
+    })
+  },
+
   exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail, bubbles}){
     detail = detail || {}
     detail.dispatcher = sourceEl

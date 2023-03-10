@@ -556,4 +556,21 @@ describe("JS", () => {
       expect(modal.getAttribute("aria-expanded")).toEqual("true")
     })
   })
+
+  describe("exec", () => {
+    test("executes command", done => {
+      let view = setupView(`
+      <div id="modal" phx-remove='[["push", {"event": "clicked"}]]'>modal</div>
+      <div id="click" phx-click='[["exec",["phx-remove","#modal"]]]'></div>
+      `)
+      let click = document.querySelector("#click")
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, meta) => {
+        expect(eventType).toBe("exec")
+        expect(event).toBe("clicked")
+        done()
+      }
+      JS.exec("exec", click.getAttribute("phx-click"), view, click)
+    })
+  })
+
 })
