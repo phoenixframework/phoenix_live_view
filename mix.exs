@@ -90,6 +90,13 @@ defmodule Phoenix.LiveView.MixProject do
       fill-opacity: 0 !important;
       stroke: none !important;
     }
+    code.mermaid g.nodes span.nodeLabel > em {
+      font-style: normal;
+      background-color: white;
+      opacity: 0.5;
+      padding: 1px 2px;
+      border-radius: 5px;
+    }
     code.mermaid g.edgePaths > path {
       stroke: var(--textBody) !important;
     }

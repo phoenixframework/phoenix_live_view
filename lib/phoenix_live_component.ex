@@ -190,13 +190,11 @@ defmodule Phoenix.LiveComponent do
 
       subgraph i[" "]
         direction TB
-        P(preload/1):::callback-->C{ever<br>mounted?}:::diamond
-        C --> |yes| U
-        C --> |no| M
-        M(mount/1):::callback-->U
+        P(preload/1):::callback-->M(mount/1)
+        M(mount/1<br><em>only once</em>):::callback-->U
       end
 
-      U(update/2):::callback-->R
+      U(update/2):::callback-->A
 
       subgraph j[" "]
         direction TB
@@ -211,9 +209,9 @@ defmodule Phoenix.LiveComponent do
     R(render/1):::callback_req-->W
 
     classDef event fill:#fff,color:#000,stroke:#000
-    classDef diamond fill:#FFFF8C,color:#000,stroke:#000
-    classDef callback fill:#66B2FF,color:#000,stroke-width:0
-    classDef callback_req fill:#66B2FF,color:#000,stroke-width:0,text-decoration:underline
+    classDef diamond fill:#FFC28C,color:#000,stroke:#000
+    classDef callback fill:#B7ADFF,color:#000,stroke-width:0
+    classDef callback_req fill:#B7ADFF,color:#000,stroke-width:0,text-decoration:underline
   ```
 
   ## Slots
