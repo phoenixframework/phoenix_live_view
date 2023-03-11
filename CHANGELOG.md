@@ -8,7 +8,7 @@
 ### Enhancements
   * Support [`submitter`](https://developer.mozilla.org/en-US/docs/Web/API/SubmitEvent/submitter) on form submit events.
   * Avoid compile-time dependency for `attr` when referencing structs
-  * Validate reserved assigns. Attempting to assign `:uploads`, `:streams`, `:live_action`, `:socket`, `:myself` will now raise in `LiveView`, `LiveComponent`, and `Phoenix.Component` modules.
+  * Validate reserved assigns. Attempting to assign `:uploads`, `:streams`, `:live_action`, `:socket`, `:myself` will now raise in `LiveView` and `LiveComponent`
 
 ## 0.18.16 (2023-02-23)
 
