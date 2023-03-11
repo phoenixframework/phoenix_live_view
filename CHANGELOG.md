@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.18.18-dev
+
+### Bug fixes
+  * Allow `:live_action` to be assigned in a component
+  * Only filter internal function component attributes in `assigns_to_attributes`
+
 ## 0.18.17 (2023-03-09)
 
 ### Bug Fixes

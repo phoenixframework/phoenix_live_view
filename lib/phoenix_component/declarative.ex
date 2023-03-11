@@ -3,15 +3,10 @@ defmodule Phoenix.Component.Declarative do
 
   ## Reserved assigns
 
-  @reserved_assigns [
-    :__changed__,
-    :__slot__,
-    :__given__,
-    :inner_block,
-    :myself,
-    :flash,
-    :socket
-  ]
+  # This list should only contain attributes that are given to components by engines
+  # @socket, @myself, etc. should not be listed here, as they shouldn't be given to
+  # function components in the first place
+  @reserved_assigns [:__changed__, :__slot__, :__given__, :inner_block]
 
   @doc false
   def __reserved__, do: @reserved_assigns
