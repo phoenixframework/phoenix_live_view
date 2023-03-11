@@ -498,7 +498,8 @@ defmodule Phoenix.Component do
 
   alias Phoenix.LiveView.{Static, Socket}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
-  @non_assignables [:uploads, :streams, :live_action, :socket, :myself]
+  # Note we allow live_action as it may be passed down to a component
+  @non_assignables [:uploads, :streams, :socket, :myself]
 
   @doc ~S'''
   The `~H` sigil for writing HEEx templates inside source files.
