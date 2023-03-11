@@ -200,10 +200,9 @@ defmodule Phoenix.LiveView.Logger do
           inspect(event),
           " in ",
           inspect(socket.view),
-          "  Component: ",
+          "\n  Component: ",
           inspect(component),
-          ?\n,
-          "  Parameters: ",
+          "\n  Parameters: ",
           inspect(filter_values(params))
         ]
       end)
