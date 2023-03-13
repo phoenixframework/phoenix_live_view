@@ -735,7 +735,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to push focus to.
+    * `:to` - The optional DOM selector to fetch the attribute from.
       Defaults to the current element.
 
   ## Examples
