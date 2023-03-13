@@ -1401,8 +1401,6 @@ defmodule Phoenix.LiveView do
   > Note: This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
   > [JS Interop guide](js-interop.html#client-hooks).
-    
-  > Note: Hooks are not supported in LiveComponents.
 
   Hooks provide a mechanism to tap into key stages of the LiveView
   lifecycle in order to bind/update assigns, intercept events,
@@ -1410,6 +1408,8 @@ defmodule Phoenix.LiveView do
   common functionality. Use `attach_hook/1` on any of the following
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
+
+  > Note: only `:after_render` hooks are currently supported in LiveComponents.
 
   ## Return Values
 
