@@ -330,3 +330,9 @@ defmodule Phoenix.LiveViewTest.ErrorsLive do
 
   def handle_event("crash", _params, _socket), do: raise("boom handle_event")
 end
+
+defmodule Phoenix.LiveViewTest.ClassListLive do
+  use Phoenix.LiveView, container: {:span, class: ~w(foo bar)}
+
+  def render(assigns), do: ~H|Some content|
+end

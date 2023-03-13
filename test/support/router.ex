@@ -133,6 +133,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live_session :test do
       live "/thermo-live-session", ThermostatLive
       live "/clock-live-session", ClockLive
+      live "/classlist", ClassListLive
     end
 
     live_session :admin, session: %{"admin" => true} do

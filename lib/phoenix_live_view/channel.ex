@@ -1137,13 +1137,23 @@ defmodule Phoenix.LiveView.Channel do
   defp put_container(%Session{} = session, %Route{} = route, %{} = diff) do
     if container = session.redirected? && Route.container(route) do
       {tag, attrs} = container
-      Map.put(diff, :container, [tag, Enum.into(attrs, %{})])
+
+      attrs = attrs |> resolve_class_attribute_as_list() |> Enum.into(%{})
+
+      Map.put(diff, :container, [tag, attrs])
     else
       diff
     end
   end
 
   defp put_container(%Session{}, nil = _route, %{} = diff), do: diff
+
+  defp resolve_class_attribute_as_list(attrs) do
+    case attrs[:class] do
+      c when is_list(c) -> Keyword.put(attrs, :class, Enum.join(c, " "))
+      _ -> attrs
+    end
+  end
 
   defp reply_mount(result, from, %Session{} = session, route) do
     case result do
