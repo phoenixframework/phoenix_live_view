@@ -349,6 +349,7 @@ let DOM = {
     } else {
       target.removeAttribute("readonly")
     }
+    DOM.applyStickyOperations(target)
   },
 
   hasSelectionRange(el){
