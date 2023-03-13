@@ -328,6 +328,9 @@ defmodule Phoenix.LiveViewTest.DOM do
       |> Enum.map(fn {attr, value} -> {String.downcase(to_string(attr)), value} end)
       |> Enum.filter(fn {attr, _value} -> attr not in reserved_attrs end)
       |> Enum.reduce(container_attrs_list, fn {attr, new_val}, acc ->
+        new_val =
+          if attr == "class" and is_list(new_val), do: Enum.join(new_val, " "), else: new_val
+
         if Map.has_key?(container_attrs, attr) do
           Enum.map(acc, fn
             {^attr, _old_val} -> {attr, new_val}
@@ -442,7 +445,6 @@ defmodule Phoenix.LiveViewTest.DOM do
 
             deleted? && !inserted_at
           end)
-
 
         {tag, attrs, new_children}
 

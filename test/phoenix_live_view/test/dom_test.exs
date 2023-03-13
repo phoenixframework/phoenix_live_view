@@ -104,6 +104,21 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                   ], ["contents"]}
                ]
     end
+
+    test "deals with class as list" do
+      # this test fails because floky, when converting to html, will parse a list of classes as
+      container =
+        DOM.parse("""
+        <div id="container"
+             data-phx-main="true"
+             data-phx-session="session"
+             data-phx-static="static">contents</div>
+        """)
+
+      assert container
+             |> DOM.replace_root_container(:div, %{"class" => ["a", "b"]})
+             |> DOM.to_html() =~ ~s(class="a b")
+    end
   end
 
   describe "patch_id" do
@@ -132,7 +147,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -161,7 +177,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -189,7 +206,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -216,7 +234,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
