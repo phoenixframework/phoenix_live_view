@@ -130,6 +130,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert html =~ "The temp is: 1"
       assert html =~ "O'Connor" |> HTML.html_escape() |> HTML.safe_to_string()
     end
+
+    test "live render with container giving class as list", %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/classlist")
+      assert html =~ ~s|class="foo bar"|
+    end
   end
 
   describe "render_*" do

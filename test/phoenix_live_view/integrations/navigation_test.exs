@@ -209,6 +209,13 @@ defmodule Phoenix.LiveView.NavigationTest do
                  end
                )
     end
+
+    test "assigns given class list to redirected to container", %{conn: conn} do
+      assert {:ok, thermo_live, _} = live(conn, "/thermo-live-session")
+      assert {:ok, _classlist_live, html} = live_redirect(thermo_live, to: "/classlist")
+
+      assert html =~ ~s|class="foo bar"|
+    end
   end
 
   describe "live_patch" do
