@@ -1409,6 +1409,8 @@ defmodule Phoenix.LiveView do
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
+  > Note: only `:after_render` hooks are currently supported in LiveComponents.
+
   ## Return Values
 
   Lifecycle hooks take place immediately before a given lifecycle
