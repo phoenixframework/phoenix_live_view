@@ -2299,17 +2299,17 @@ defmodule Phoenix.Component do
   ```
 
   ```heex
-  <.link navigate={Routes.page_path(@socket, :index)} class="underline">home</.link>
+  <.link navigate={~p"/"} class="underline">home</.link>
   ```
 
   ```heex
-  <.link navigate={Routes.live_path(@socket, MyLive, dir: :asc)} replace={false}>
+  <.link navigate={~p"/?sort=asc"} replace={false}>
     Sort By Price
   </.link>
   ```
 
   ```heex
-  <.link patch={Routes.page_path(@socket, :index, :details)}>view details</.link>
+  <.link patch={~p"/details"}>view details</.link>
   ```
 
   ```heex
