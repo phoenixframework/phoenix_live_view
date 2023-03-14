@@ -562,7 +562,7 @@ defmodule Phoenix.Component.Declarative do
           case length(args) do
             1 ->
               "could not define attributes for function #{name}/1. " <>
-                "Please make sure that you have `use Phoenix.Component` and that the function has no default arguments"
+                "Please make sure that you have `use MyAppWeb, :component` and that the function has no default arguments"
 
             arity ->
               "cannot declare attributes for function #{name}/#{arity}. Components must be functions with arity 1"
@@ -1237,7 +1237,7 @@ defmodule Phoenix.Component.Declarative do
       compile_error!(
         line,
         file,
-        "you must `use Phoenix.Component` to declare attributes. It is currently only imported."
+        "you must `use MyAppWeb, :component` to declare attributes. It is currently only imported."
       )
     end
   end
