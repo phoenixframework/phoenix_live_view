@@ -7,7 +7,7 @@ defmodule Phoenix.Component do
   [the `~H` sigil](`sigil_H/2`):
 
       defmodule MyComponent do
-        use Phoenix.Component
+        use MyAppWeb, :component
 
         def greet(assigns) do
           ~H"""
@@ -130,7 +130,7 @@ defmodule Phoenix.Component do
   `<Component.heading>` requires a `title`, but *does not* require a `name`.
 
       defmodule Components do
-        use Phoenix.Component
+        use MyAppWeb, :component
 
         attr :title, :string, required: true
 
@@ -238,14 +238,14 @@ defmodule Phoenix.Component do
   ### Custom global attribute prefixes
 
   You can extend the set of global attributes by providing a list of attribute prefixes to
-  `use Phoenix.Component`. Like the default attributes common to all HTML elements,
+  `use MyAppWeb, :component`. Like the default attributes common to all HTML elements,
   any number of attributes that start with a global prefix will be accepted by function
   components invoked by the current module. By default, the following prefixes are supported:
   `phx-`, `aria-`, and `data-`. For example, to support the `x-` prefix used by
   [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to
-  `use Phoenix.Component`:
+  `use MyAppWeb, :component`:
 
-      use Phoenix.Component, global_prefixes: ~w(x-)
+      use MyAppWeb, :component, global_prefixes: ~w(x-)
 
   Now all function components invoked by this module will accept any number of attributes
   prefixed with `x-`, in addition to the default global prefixes.
@@ -478,7 +478,7 @@ defmodule Phoenix.Component do
   and call them like any other function component:
 
       defmodule MyAppWeb.Components do
-        use Phoenix.Component
+        use MyAppWeb, :component
 
         embed_templates "cards/*"
 
@@ -631,7 +631,7 @@ defmodule Phoenix.Component do
   where the component could be defined as follows:
 
       defmodule MyApp.Weather do
-        use Phoenix.Component
+        use MyAppWeb, :component
 
         def city(assigns) do
           ~H"""
@@ -1457,7 +1457,7 @@ defmodule Phoenix.Component do
   Then to embed the page templates in your `components.ex` module:
 
       defmodule MyAppWeb.Components do
-        use Phoenix.Component
+        use MyAppWeb, :component
 
         embed_templates "pages/*"
       end
@@ -1467,7 +1467,7 @@ defmodule Phoenix.Component do
   via bodyless function definitions, for example:
 
       defmodule MyAppWeb.Components do
-        use Phoenix.Component
+        use MyAppWeb, :component
 
         embed_templates "pages/*"
 
@@ -1482,7 +1482,7 @@ defmodule Phoenix.Component do
   useful if you have more than one template format. For example:
 
       defmodule MyAppWeb.Emails do
-        use Phoenix.Component
+        use MyAppWeb, :component
 
         embed_templates "emails/*.html", suffix: "_html"
         embed_templates "emails/*.text", suffix: "_text"
