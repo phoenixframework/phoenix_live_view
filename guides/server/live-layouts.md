@@ -48,6 +48,30 @@ ways for flexibility:
   1. The `:layout` option in `Phoenix.LiveView.Router.live_session/2`,
      when set, will override the `:layout` option given via
      `use Phoenix.LiveView`
+     
+    scope "/", MyappWeb do
+      pipe_through [:browser, :redirect_if_user_is_authenticated]
+  
+      live_session :redirect_if_user_is_authenticated,
+        on_mount: [{MyappWeb.UserAuth, :redirect_if_user_is_authenticated}],
+        layout: {MyappWeb.Layouts, :main_app} do
+        live "/users/register", UserRegistrationLive, :new
+        live "/users/log_in", UserLoginLive, :new
+        live "/users/reset_password", UserForgotPasswordLive, :new
+        live "/users/reset_password/:token", UserResetPasswordLive, :edit
+      end
+  
+      post "/users/log_in", UserSessionController, :create
+    end
+
+  Folder layout:
+
+    myapp_web/
+      -> components
+         -> layouts
+            -> main_app.html.heex
+            
+   main_app.html.heex should `<%= @inner_content %>`
 
   2. The `:layout` option returned on mount, via `{ok, socket, layout: ...}`
      will override any previously set layout option
