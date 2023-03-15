@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.Channel do
   require Logger
 
   alias Phoenix.LiveView.{Socket, Utils, Diff, Upload, UploadConfig, Route, Session, Lifecycle}
-  alias Phoenix.Socket.Message
+  alias Phoenix.Socket.{Broadcast, Message}
 
   @prefix :phoenix
   @not_mounted_at_router :not_mounted_at_router
@@ -97,6 +97,11 @@ defmodule Phoenix.LiveView.Channel do
         |> view_handle_info(socket)
         |> handle_result({:handle_info, 2, nil}, state)
     end
+  end
+
+  def handle_info(%Broadcast{event: "phx_drain"}, state) do
+    send(state.socket.transport_pid, :socket_drain)
+    {:stop, {:shutdown, :draining}, state}
   end
 
   def handle_info(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do
