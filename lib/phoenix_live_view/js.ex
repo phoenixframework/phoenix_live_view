@@ -63,22 +63,22 @@ defmodule Phoenix.LiveView.JS do
   with the event, apply loading states to external elements, etc. For example,
   given this basic `phx-click` event:
 
-      <div phx-click="inc">+</div>
+      <button phx-click="inc">+</button>
 
   Imagine you need to target your current component, and apply a loading state
   to the parent container while the client awaits the server acknowledgement:
 
       alias Phoenix.LiveView.JS
 
-      <div phx-click={JS.push("inc", loading: ".thermo", target: @myself)}>+</div>
+      <button phx-click={JS.push("inc", loading: ".thermo", target: @myself)}>+</button>
 
   Push commands also compose with all other utilities. For example,
   to add a class when pushing:
 
-      <div phx-click={
+      <button phx-click={
         JS.push("inc", loading: ".thermo", target: @myself)
         |> JS.add_class("warmer", to: ".thermo")
-      }>+</div>
+      }>+</button>
 
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
