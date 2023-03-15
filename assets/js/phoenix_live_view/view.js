@@ -59,7 +59,7 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   let formData = new FormData(form)
 
   // TODO: Remove when FormData constructor supports the submitter argument.
-  if (submitter && submitter.form && submitter.form === form){
+  if (submitter && submitter.hasAttribute("name") && submitter.form && submitter.form === form){
     formData.append(submitter.name, submitter.value)
   }
 
