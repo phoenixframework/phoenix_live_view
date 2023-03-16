@@ -1,10 +1,14 @@
 # Changelog
 
-## 0.18.18-dev
+## 0.18.18 (2023-03-16)
 
 ### Bug fixes
   * Allow `:live_action` to be assigned in a component
   * Only filter internal function component attributes in `assigns_to_attributes`
+  * Only include submitter with name
+
+### Enhancements
+  * Add `JS.exec` command for executing commands defined on other element attributes
 
 ## 0.18.17 (2023-03-09)
 

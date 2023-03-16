@@ -2234,6 +2234,16 @@ within:
     isVisible(el) {
       return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
     },
+    exec_exec(eventType, phxEvent, view, sourceEl, el, [attr, to]) {
+      let nodes = to ? dom_default.all(document, to) : [sourceEl];
+      nodes.forEach((node) => {
+        let encodedJS = node.getAttribute(attr);
+        if (!encodedJS) {
+          throw new Error(`expected ${attr} to contain JS command on "${to}"`);
+        }
+        view.liveSocket.execJS(node, encodedJS, eventType);
+      });
+    },
     exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail, bubbles }) {
       detail = detail || {};
       detail.dispatcher = sourceEl;
@@ -2424,7 +2434,7 @@ within:
   var serializeForm = (form, metadata, onlyNames = []) => {
     let _a = metadata, { submitter } = _a, meta = __objRest(_a, ["submitter"]);
     let formData = new FormData(form);
-    if (submitter && submitter.form && submitter.form === form) {
+    if (submitter && submitter.hasAttribute("name") && submitter.form && submitter.form === form) {
       formData.append(submitter.name, submitter.value);
     }
     let toRemove = [];
