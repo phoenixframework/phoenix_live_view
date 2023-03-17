@@ -1742,6 +1742,9 @@ defmodule Phoenix.LiveViewTest do
 
       assert render_upload(avatar, "myfile.jpeg", 49) =~ "49%"
       assert render_upload(avatar, "myfile.jpeg", 51) =~ "100%"
+
+  Before making assertions about the how the upload is consumed server-side,
+  you will need to call `render_submit/1`.
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
     if UploadClient.allow_acknowledged?(upload) do
