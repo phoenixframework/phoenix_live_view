@@ -1,6 +1,7 @@
 import {
   PHX_ACTIVE_ENTRY_REFS,
   PHX_LIVE_FILE_UPDATED,
+  PHX_LIVE_IMG_PREVIEW_LOADED,
   PHX_PREFLIGHTED_REFS,
   PHX_UPLOAD_REF
 } from "./constants"
@@ -37,6 +38,7 @@ let Hooks = {
       LiveUploader.getEntryDataURL(this.inputEl, this.ref, url => {
         this.url = url
         this.el.src = url
+        this.el.dispatchEvent(new CustomEvent(PHX_LIVE_IMG_PREVIEW_LOADED))
       })
     },
     destroyed(){
