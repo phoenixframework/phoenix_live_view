@@ -1383,7 +1383,7 @@ defmodule Phoenix.Component do
       to_form(%{"search" => nil}, errors: [search: [{"Can't be blank", []}]])
 
   If an existing `Phoenix.HTML.Form` struct is given, the
-  options below will override its existing values if given.
+  options above will override its existing values if given.
   Then the remaining options are merged with the existing
   form options.
   """
