@@ -2036,7 +2036,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     defmodule Tracer do
       def trace(event, _env)
-          when elem(event, 0) in [:alias_expansion, :alias_reference, :imported_function, :remote_function] do
+          when elem(event, 0) in [
+                 :alias_expansion,
+                 :alias_reference,
+                 :imported_function,
+                 :remote_function
+               ] do
         send(self(), event)
         :ok
       end
@@ -2052,6 +2057,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       )
     end
 
+    @supports_columns? Version.match?(System.version(), ">= 1.14.0")
+
     test "handles imports" do
       tracer_eval(__ENV__.line, """
       <.focus_wrap>Ok</.focus_wrap>
@@ -2059,7 +2066,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_receive {:imported_function, meta, Phoenix.Component, :focus_wrap, 1}
       assert meta[:line] == __ENV__.line - 4
-      assert meta[:column] == 7
+      if @supports_columns?, do: assert(meta[:column] == 7)
     end
 
     test "handles remote calls" do
@@ -2069,11 +2076,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_receive {:alias_reference, meta, Phoenix.Component}
       assert meta[:line] == __ENV__.line - 4
-      assert meta[:column] == 7
+      if @supports_columns?, do: assert(meta[:column] == 7)
 
       assert_receive {:remote_function, meta, Phoenix.Component, :focus_wrap, 1}
       assert meta[:line] == __ENV__.line - 8
-      assert meta[:column] == 26
+      if @supports_columns?, do: assert(meta[:column] == 26)
     end
 
     test "handles aliases" do
@@ -2091,7 +2098,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_receive {:remote_function, meta, Phoenix.Component, :focus_wrap, 1}
       assert meta[:line] == __ENV__.line - 12
-      assert meta[:column] == 10
+      if @supports_columns?, do: assert(meta[:column] == 10)
     end
   end
 end
