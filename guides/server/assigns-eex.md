@@ -1,8 +1,9 @@
 # Socket state and HEEx templates
 
-All of the data in a LiveView is stored in the socket, in a server 
-side struct in `Phoenix.LiveView.Socket` called `assigns`. Socket state 
-is never shared with the client beyond what your template renders.
+All of the data in a LiveView is stored in the socket, which is a server 
+side struct called `Phoenix.LiveView.Socket`. Your own data is stored
+under the `assigns` key of said struct. The server data is never shared
+with the client beyond what your template renders.
 
 Phoenix template language is called HEEx (HTML+EEx). EEx is Embedded 
 Elixir, an Elixir string template engine. Those templates
