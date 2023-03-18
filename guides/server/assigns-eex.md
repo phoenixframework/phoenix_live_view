@@ -1,4 +1,4 @@
-# Socket state and HEEx templates
+# Assigns and HEEx templates
 
 All of the data in a LiveView is stored in the socket, which is a server 
 side struct called `Phoenix.LiveView.Socket`. Your own data is stored
