@@ -1,18 +1,20 @@
 # Assigns and HEEx templates
 
-All of the data in a LiveView is stored in the socket as assigns, which
-is a server side struct in `Phoenix.LiveView.Socket`. Socket state is
-never shared with the client beyond what your template renders.
+All of the data in a LiveView is stored in the socket, which is a server 
+side struct called `Phoenix.LiveView.Socket`. Your own data is stored
+under the `assigns` key of said struct. The server data is never shared
+with the client beyond what your template renders.
+
+Phoenix template language is called HEEx (HTML+EEx). EEx is Embedded 
+Elixir, an Elixir string template engine. Those templates
+are either files with the `.heex` extension or they are created
+directly in source files via the `~H` sigil. You can learn more about
+the HEEx syntax by checking the docs for [the `~H` sigil](`Phoenix.Component.sigil_H/2`).
 
 The `Phoenix.Component.assign/2` and `Phoenix.Component.assign/3`
 functions help store those values. Those values can be accessed
 in the LiveView as `socket.assigns.name` but they are accessed
-inside LiveView templates as `@name`.
-
-Phoenix template language is called HEEx (HTML+EEx). Those templates
-are either files with the `.heex` extension or they are created
-directly in source files via the `~H` sigil. You can learn more about
-the HEEx syntax by checking the docs for [the `~H` sigil](`Phoenix.Component.sigil_H/2`).
+inside HEEx templates as `@name`.
 
 In this section, we are going to cover how LiveView minimizes
 the payload over the wire by understanding the interplay between
