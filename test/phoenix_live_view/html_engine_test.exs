@@ -564,7 +564,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "invalid :let expr" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:2:70: :let must be a pattern between {...} in remote_component Phoenix.LiveView.HTMLEngineTest.remote_function_component
+      test/phoenix_live_view/html_engine_test.exs:2:70: :let must be a pattern between {...} in remote component: Phoenix.LiveView.HTMLEngineTest.remote_function_component
         |
       1 | <br>
       2 | <Phoenix.LiveView.HTMLEngineTest.remote_function_component value='1' :let=\"1\"
@@ -580,7 +580,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/html_engine_test.exs:2:38: :let must be a pattern between {...} in local_component .local_function_component
+      test/phoenix_live_view/html_engine_test.exs:2:38: :let must be a pattern between {...} in local component: local_function_component
         |
       1 | <br>
       2 | <.local_function_component value='1' :let=\"1\"
@@ -598,7 +598,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise with invalid special attr" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:2:38: unsupported attribute \":bar\" in local_component .local_function_component
+      test/phoenix_live_view/html_engine_test.exs:2:38: unsupported attribute \":bar\" in local component: local_function_component
         |
       1 | <br>
       2 | <.local_function_component value='1' :bar=\"1\"}

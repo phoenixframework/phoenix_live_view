@@ -462,40 +462,28 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
-  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack, source) do
-    to_tree(tokens, [{:eex_comment, text} | buffer], stack, source)
-  end
-
-  defp to_tree([{type, name, attrs, %{self_close: true} = meta} | tokens], buffer, stack, source)
-       when is_tag_open(type) do
-    # TODO: fix me
-    tag_name = meta[:tag_name] || name
-    to_tree(tokens, [{:tag_self_close, tag_name, attrs} | buffer], stack, source)
-  end
-
   @void_tags ~w(area base br col hr img input link meta param command keygen source)
-  defp to_tree([{type, name, attrs, meta} | tokens], buffer, stack, source)
-       when is_tag_open(type) and name in @void_tags do
-    # TODO: fix me
-    tag_name = meta[:tag_name] || name
-    to_tree(tokens, [{:tag_self_close, tag_name, attrs} | buffer], stack, source)
+  defp to_tree([{:tag, name, attrs, meta} | tokens], buffer, stack, source)
+       when name in @void_tags do
+    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
   end
 
-  defp to_tree([{type, name, attrs, meta} | tokens], buffer, stack, source)
+  defp to_tree([{type, _name, attrs, %{self_close: true} = meta} | tokens], buffer, stack, source)
        when is_tag_open(type) do
-    # TODO: fix me
-    tag_name = meta[:tag_name] || name
-    to_tree(tokens, [], [{tag_name, attrs, meta, buffer} | stack], source)
+    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
+  end
+
+  defp to_tree([{type, _name, attrs, meta} | tokens], buffer, stack, source)
+       when is_tag_open(type) do
+    to_tree(tokens, [], [{meta.tag_name, attrs, meta, buffer} | stack], source)
   end
 
   defp to_tree(
          [{:close, _type, _name, close_meta} | tokens],
          buffer,
-         [{name, attrs, open_meta, upper_buffer} | stack],
+         [{tag_name, attrs, open_meta, upper_buffer} | stack],
          source
        ) do
-    tag_name = open_meta[:tag_name] || name
-
     {mode, block} =
       if (tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
         content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
@@ -520,6 +508,10 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   # handle eex
+
+  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [{:eex_comment, text} | buffer], stack, source)
+  end
 
   defp to_tree([{:eex, :start_expr, expr, _meta} | tokens], buffer, stack, source) do
     to_tree(tokens, [], [{:eex_block, expr, buffer} | stack], source)
