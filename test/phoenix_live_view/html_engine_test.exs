@@ -5,17 +5,21 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   alias Phoenix.LiveView.Tokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
+    {env, opts} = Keyword.pop(opts, :env, __ENV__)
+
     opts =
       Keyword.merge(opts,
-        file: __ENV__.file,
+        file: env.file,
         engine: Phoenix.LiveView.TagEngine,
         subengine: Phoenix.LiveView.Engine,
-        caller: __ENV__,
+        caller: env,
         source: string,
         tag_handler: Phoenix.LiveView.HTMLEngine
       )
 
-    EEx.eval_string(string, [assigns: assigns], opts)
+    quoted = EEx.compile_string(string, opts)
+    {result, _} = Code.eval_quoted(quoted, [assigns: assigns], env)
+    result
   end
 
   defp render(string, assigns \\ %{}) do
@@ -2024,6 +2028,70 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
              """) ==
                "REMOTE COMPONENT: Value: 2, Content: 2REMOTE COMPONENT: Value: 4, Content: 4"
+    end
+  end
+
+  describe "compiler tracing" do
+    alias Phoenix.Component, as: C, warn: false
+
+    defmodule Tracer do
+      def trace(event, _env)
+          when elem(event, 0) in [:alias_expansion, :alias_reference, :imported_function, :remote_function] do
+        send(self(), event)
+        :ok
+      end
+
+      def trace(_event, _env), do: :ok
+    end
+
+    defp tracer_eval(line, content) do
+      eval(content, %{},
+        env: %{__ENV__ | tracers: [Tracer], lexical_tracker: self(), line: line + 1},
+        line: line + 1,
+        indentation: 6
+      )
+    end
+
+    test "handles imports" do
+      tracer_eval(__ENV__.line, """
+      <.focus_wrap>Ok</.focus_wrap>
+      """)
+
+      assert_receive {:imported_function, meta, Phoenix.Component, :focus_wrap, 1}
+      assert meta[:line] == __ENV__.line - 4
+      assert meta[:column] == 7
+    end
+
+    test "handles remote calls" do
+      tracer_eval(__ENV__.line, """
+      <Phoenix.Component.focus_wrap>Ok</Phoenix.Component.focus_wrap>
+      """)
+
+      assert_receive {:alias_reference, meta, Phoenix.Component}
+      assert meta[:line] == __ENV__.line - 4
+      assert meta[:column] == 7
+
+      assert_receive {:remote_function, meta, Phoenix.Component, :focus_wrap, 1}
+      assert meta[:line] == __ENV__.line - 8
+      assert meta[:column] == 26
+    end
+
+    test "handles aliases" do
+      tracer_eval(__ENV__.line, """
+      <C.focus_wrap>Ok</C.focus_wrap>
+      """)
+
+      assert_receive {:alias_expansion, meta, Elixir.C, Phoenix.Component}
+      assert meta[:line] == __ENV__.line - 4
+      assert meta[:column] == 7
+
+      assert_receive {:alias_reference, meta, Phoenix.Component}
+      assert meta[:line] == __ENV__.line - 8
+      assert meta[:column] == 7
+
+      assert_receive {:remote_function, meta, Phoenix.Component, :focus_wrap, 1}
+      assert meta[:line] == __ENV__.line - 12
+      assert meta[:column] == 10
     end
   end
 end

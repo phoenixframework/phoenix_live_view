@@ -406,11 +406,12 @@ defmodule Phoenix.LiveView.TagEngine do
   # Remote function component (self close)
 
   defp handle_token(
-         {:remote_component, _name, attrs, %{self_close: true, line: line} = tag_meta},
+         {:remote_component, _name, attrs, %{self_close: true} = tag_meta},
          state
        ) do
     attrs = remove_phx_no_break(attrs)
-    {mod_ast, fun} = decompose_remote_component_tag!(tag_meta.tag_name, tag_meta, state)
+    {mod_ast, mod_size, fun} = decompose_remote_component_tag!(tag_meta.tag_name, tag_meta, state)
+    %{line: line, column: column} = tag_meta
 
     {assigns, attr_info} =
       build_self_close_component_assigns(
@@ -421,13 +422,15 @@ defmodule Phoenix.LiveView.TagEngine do
         state
       )
 
-    mod = Macro.expand(mod_ast, state.caller)
+    mod = expand_with_line(mod_ast, line, state.caller)
     store_component_call({mod, fun}, attr_info, [], line, state)
+    meta = [line: line, column: column + mod_size]
+    call = {{:., meta, [mod_ast, fun]}, meta, []}
 
     ast =
       quote line: tag_meta.line do
         Phoenix.LiveView.TagEngine.component(
-          &(unquote(mod_ast).unquote(fun) / 1),
+          &(unquote(call) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
         )
@@ -477,21 +480,23 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp handle_token({:close, :remote_component, _name, _tag_close_meta} = token, state) do
-    {{:remote_component, name, attrs, %{mod_fun: {mod_ast, fun}, line: line} = tag_meta}, state} =
-      pop_tag!(state, token)
+    {{:remote_component, name, attrs, tag_meta}, state} = pop_tag!(state, token)
+    %{mod_fun: {mod_ast, mod_size, fun}, line: line, column: column} = tag_meta
 
-    mod = Macro.expand(mod_ast, state.caller)
+    mod = expand_with_line(mod_ast, line, state.caller)
     attrs = remove_phx_no_break(attrs)
 
     {assigns, attr_info, slot_info, state} =
       build_component_assigns(:remote_component, name, attrs, line, tag_meta, state)
 
     store_component_call({mod, fun}, attr_info, slot_info, line, state)
+    meta = [line: line, column: column + mod_size]
+    call = {{:., meta, [mod_ast, fun]}, meta, []}
 
     ast =
       quote line: line do
         Phoenix.LiveView.TagEngine.component(
-          &(unquote(mod_ast).unquote(fun) / 1),
+          &(unquote(call) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
         )
@@ -561,10 +566,8 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # Local function component (self close)
 
-  defp handle_token(
-         {:local_component, name, attrs, %{self_close: true, line: line} = tag_meta},
-         state
-       ) do
+  defp handle_token({:local_component, name, attrs, %{self_close: true} = tag_meta}, state) do
+    %{line: line, column: column} = tag_meta
     attrs = remove_phx_no_break(attrs)
 
     {assigns, attr_info} =
@@ -572,11 +575,12 @@ defmodule Phoenix.LiveView.TagEngine do
 
     mod = actual_component_module(state.caller, name)
     store_component_call({mod, name}, attr_info, [], line, state)
+    call = {name, [line: line, column: column], __MODULE__}
 
     ast =
       quote line: line do
         Phoenix.LiveView.TagEngine.component(
-          &(unquote(Macro.var(name, __MODULE__)) / 1),
+          &(unquote(call) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
         )
@@ -623,7 +627,8 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp handle_token({:close, :local_component, _name, _tag_close_meta} = token, state) do
-    {{:local_component, name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
+    {{:local_component, name, attrs, tag_meta}, state} = pop_tag!(state, token)
+    %{line: line, column: column} = tag_meta
     attrs = remove_phx_no_break(attrs)
     mod = actual_component_module(state.caller, name)
 
@@ -631,11 +636,12 @@ defmodule Phoenix.LiveView.TagEngine do
       build_component_assigns(:local_component, name, attrs, line, tag_meta, state)
 
     store_component_call({mod, name}, attr_info, slot_info, line, state)
+    call = {name, [line: line, column: column], __MODULE__}
 
     ast =
       quote line: line do
         Phoenix.LiveView.TagEngine.component(
-          &(unquote(Macro.var(name, __MODULE__)) / 1),
+          &(unquote(call) / 1),
           unquote(assigns),
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(line)}
         )
@@ -1147,9 +1153,11 @@ defmodule Phoenix.LiveView.TagEngine do
   defp decompose_remote_component_tag!(tag_name, tag_meta, state) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
+        size = Enum.sum(Enum.map(rest, &byte_size/1)) + length(rest) + 1
         aliases = rest |> Enum.reverse() |> Enum.map(&String.to_atom/1)
         fun = String.to_atom(fun_name)
-        {{:__aliases__, [], aliases}, fun}
+        %{line: line, column: column} = tag_meta
+        {{:__aliases__, [line: line, column: column], aliases}, size, fun}
 
       _ ->
         message = "invalid tag <#{tag_name}>"
@@ -1377,6 +1385,10 @@ defmodule Phoenix.LiveView.TagEngine do
       %{} ->
         ast
     end
+  end
+
+  defp expand_with_line(ast, line, env) do
+    Macro.expand(ast, %{env | line: line})
   end
 
   defp raise_syntax_error!(message, meta, state) do
