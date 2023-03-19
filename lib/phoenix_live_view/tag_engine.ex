@@ -1230,7 +1230,15 @@ defmodule Phoenix.LiveView.TagEngine do
         root: root?
       }
 
-      Module.put_attribute(module, :__components_calls__, call)
+      # This may still fail under a very specific scenario where
+      # we are defining a template dynamically inside a function
+      # (most likely a test) that starts running while the module
+      # is still open.
+      try do
+        Module.put_attribute(module, :__components_calls__, call)
+      rescue
+        _ -> :ok
+      end
     end
   end
 
