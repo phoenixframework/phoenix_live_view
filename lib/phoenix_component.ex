@@ -720,6 +720,9 @@ defmodule Phoenix.Component do
   <.error :for={msg <- @errors} :if={msg != nil} message={msg} />
   ```
 
+  Note that unlike Elixir's regular `for`, HEEx' `:for` does not support multiple
+  generators in one expression.
+
   ## Code formatting
 
   You can automatically format HEEx templates (.heex) and `~H` sigils
