@@ -312,6 +312,9 @@ var DOM = {
     return !e.defaultPrevented && !this.wantsNewTab(e);
   },
   isNewPageHref(href, currentLocation) {
+    if (href.startsWith("mailto:") || href.startsWith("tel:")) {
+      return false;
+    }
     let url;
     try {
       url = new URL(href);
