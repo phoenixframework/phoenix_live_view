@@ -726,6 +726,16 @@ defmodule Phoenix.LiveView.TagEngine do
       |> raise_if_duplicated_special_attr!(state)
       |> case do
         {{^string_attr, expr, meta}, attrs} ->
+          expr =
+            case attr do
+              :for ->
+                {:expr, expr_string, meta} = expr
+                {:expr, wrap_for_expr(expr_string), meta}
+
+              _ ->
+                expr
+            end
+
           parsed_expr = parse_expr!(expr, state.file)
           validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
           {Map.put(meta_acc, attr, parsed_expr), attrs}
@@ -801,13 +811,13 @@ defmodule Phoenix.LiveView.TagEngine do
       case tag_meta do
         %{for: for_expr, if: if_expr} ->
           quote do
-            for unquote(for_expr), unquote(if_expr),
+            for unquote_splicing(for_expr), unquote(if_expr),
               do: unquote(invoke_subengine(state, :handle_end, []))
           end
 
         %{for: for_expr} ->
           quote do
-            for unquote(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
+            for unquote_splicing(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
           end
 
         %{if: if_expr} ->
@@ -1078,7 +1088,17 @@ defmodule Phoenix.LiveView.TagEngine do
         raise_syntax_error!(message, attr_meta, state)
 
       %{} ->
-        quoted_value = Code.string_to_quoted!(value, line: line, column: col, file: state.file)
+        quoted_value =
+          case attr do
+            ":for" ->
+              value
+              |> wrap_for_expr()
+              |> Code.string_to_quoted!(line: line, column: col, file: state.file)
+
+            _ ->
+              Code.string_to_quoted!(value, line: line, column: col, file: state.file)
+          end
+
         validate_quoted_special_attr!(attr, quoted_value, attr_meta, state)
         {Map.put(special, attr, {quoted_value, attr_meta}), r, a, locs}
     end
@@ -1347,14 +1367,19 @@ defmodule Phoenix.LiveView.TagEngine do
   defp validate_phx_attrs!([_h | t], meta, state, attr, id?),
     do: validate_phx_attrs!(t, meta, state, attr, id?)
 
-  defp validate_quoted_special_attr!(attr, quoted_value, attr_meta, state) do
-    if attr == ":for" and not match?({:<-, _, [_, _]}, quoted_value) do
-      message = ":for must be a generator expression (pattern <- enumerable) between {...}"
+  defp validate_quoted_special_attr!(":for", quoted_value, attr_meta, state) do
+    if Enum.all?(quoted_value, &match?({:<-, _, [_, _]}, &1)) do
+      :ok
+    else
+      message =
+        ":for must be one or more generator expressions (pattern <- enumerable) between {...}"
 
       raise_syntax_error!(message, attr_meta, state)
-    else
-      :ok
     end
+  end
+
+  defp validate_quoted_special_attr!(_attr, _quoted_value, _attr_meta, _state) do
+    :ok
   end
 
   defp tag_slots({call, meta, args}, slot_info) do
@@ -1365,12 +1390,12 @@ defmodule Phoenix.LiveView.TagEngine do
     case special do
       %{":for" => {for_expr, %{line: line}}, ":if" => {if_expr, %{line: _line}}} ->
         quote line: line do
-          for unquote(for_expr), unquote(if_expr), do: unquote(ast)
+          for unquote_splicing(for_expr), unquote(if_expr), do: unquote(ast)
         end
 
       %{":for" => {for_expr, %{line: line}}} ->
         quote line: line do
-          for unquote(for_expr), do: unquote(ast)
+          for unquote_splicing(for_expr), do: unquote(ast)
         end
 
       %{":if" => {if_expr, %{line: line}}} ->
@@ -1393,5 +1418,11 @@ defmodule Phoenix.LiveView.TagEngine do
       column: meta.column,
       file: state.file,
       description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
+  end
+
+  defp wrap_for_expr(expr) do
+    # :for attrs may contain multiple raw generators in the form "x <- y, a <- b".
+    # We must wrap the generators in a list to allow parsing.
+    "[#{expr}]"
   end
 end

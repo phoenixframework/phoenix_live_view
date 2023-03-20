@@ -1737,9 +1737,40 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              """) =~ expected
     end
 
+    test "supports multiple generators in one expression" do
+      expected = ~s(<div>red</div><div>green</div><div>orange</div><div>yellow</div>)
+
+      assigns = %{
+        users: [
+          %{name: "Alice", colors: ~w(red green)},
+          %{name: "Bob", colors: ~w(orange yellow)}
+        ]
+      }
+
+      assert compile("""
+               <div :for={user <- @users, color <- user.colors}><%= color %></div>
+             """) =~ expected
+    end
+
+    test "supports multiple generators in one expression with :if filter" do
+      expected = ~s(<div>orange</div><div>yellow</div>)
+
+      assigns = %{
+        users: [
+          %{name: "Alice", colors: ~w(red green)},
+          %{name: "Bob", colors: ~w(orange yellow)}
+        ]
+      }
+
+      assert compile("""
+               <div :for={user <- @users, color <- user.colors}
+                    :if={String.length(color) > 5} ><%= color %></div>
+             """) =~ expected
+    end
+
     test "raise on invalid :for expr" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be a generator expression (pattern <- enumerable) between {...}
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be one or more generator expressions (pattern <- enumerable) between {...}
         |
       1 | <div :for={@user}>Content</div>
         |      ^\
@@ -1761,6 +1792,32 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("""
         <div :for="1">Content</div>
+        """)
+      end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be one or more generator expressions (pattern <- enumerable) between {...}
+        |
+      1 | <div :for={n <- [1,2,3], into: []}>Content</div>
+        |      ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :for={n <- [1,2,3], into: []}>Content</div>
+        """)
+      end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:6: :for must be one or more generator expressions (pattern <- enumerable) between {...}
+        |
+      1 | <div :for={n <- [1,2,3], n > 2}>Content</div>
+        |      ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <div :for={n <- [1,2,3], n > 2}>Content</div>
         """)
       end)
     end
@@ -1836,6 +1893,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                <:slot :for={i <- @items}>slot<%= i %></:slot>
              </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot1slot2slot3slot4</div>"
+
+      assigns = %{
+        users: [
+          %{name: "Alice", colors: ~w(red green)},
+          %{name: "Bob", colors: ~w(orange yellow)}
+        ]
+      }
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot :for={user <- @users, color <- user.colors}>slot<%= color %></:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slotredslotgreenslotorangeslotyellow</div>"
     end
 
     test ":for and :if in slots" do
@@ -1846,6 +1916,21 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                <:slot :for={i <- @items} :if={rem(i, 2) == 0}>slot<%= i %></:slot>
              </Phoenix.LiveView.HTMLEngineTest.slot_if>
              """) == "<div>0-slot2slot4</div>"
+
+      assigns = %{
+        users: [
+          %{name: "Alice", colors: ~w(red green)},
+          %{name: "Bob", colors: ~w(orange yellow)}
+        ]
+      }
+
+      assert compile("""
+             <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
+               <:slot
+                  :for={user <- @users, color <- user.colors}
+                  :if={String.length(color) > 5}>slot<%= color %></:slot>
+             </Phoenix.LiveView.HTMLEngineTest.slot_if>
+             """) == "<div>0-slotorangeslotyellow</div>"
     end
 
     test ":for and :if and :let in slots" do

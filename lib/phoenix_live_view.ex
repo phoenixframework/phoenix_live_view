@@ -1575,6 +1575,8 @@ defmodule Phoenix.LiveView do
 
   Now `stream_insert/3` and `stream_delete/3` may be issued and new rows will
   be inserted or deleted from the client.
+
+  Note that streams must the first generator given to `:for`.
   """
   def stream(socket, name, items, opts \\ []) do
     opts = Keyword.merge(opts, id: Phoenix.LiveView.Utils.random_id())
