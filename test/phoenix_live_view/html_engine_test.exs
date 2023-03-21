@@ -152,6 +152,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              "Hello <div name=\"1\" phone=\"2\">text</div>"
   end
 
+  test "keeps underscores in dynamic attributes" do
+    assert render("Hello <div {@attrs}>text</div>", %{attrs: [full_name: "1"]}) ==
+             "Hello <div full_name=\"1\">text</div>"
+  end
+
   test "keeps attribute ordering" do
     assigns = %{attrs1: [d1: "1"], attrs2: [d2: "2"]}
     template = ~S(<div {@attrs1} sd1={1} s1="1" {@attrs2} s2="2" sd2={2} />)

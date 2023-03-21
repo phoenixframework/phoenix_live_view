@@ -258,6 +258,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert render(~H|<.dynamic_tag name="br"/>|) == ~s|<br/>|
       assert render(~H|<.dynamic_tag name="input" type="text"/>|) == ~s|<input type="text"/>|
     end
+
+    test "keeps underscores un attributes" do
+      assigns = %{}
+
+      assert render(~H|<.dynamic_tag name="br" foo_bar="baz"/>|) == ~s|<br foo_bar="baz"/>|
+    end
   end
 
   describe "form" do
