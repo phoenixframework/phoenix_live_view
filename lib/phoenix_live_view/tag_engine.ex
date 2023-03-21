@@ -835,7 +835,7 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_attrs_escape(state, meta, attrs) do
     ast =
       quote line: meta[:line] do
-        Phoenix.HTML.attributes_escape(unquote(attrs))
+        unquote(__MODULE__).attributes_escape(unquote(attrs))
       end
 
     update_subengine(state, :handle_expr, ["=", ast])
@@ -887,6 +887,19 @@ defmodule Phoenix.LiveView.TagEngine do
 
         update_subengine(state, :handle_expr, ["=", ast])
     end)
+  end
+
+  @doc false
+  def attributes_escape(attrs) do
+    # We don't want to dasherize keys, which Phoenix.HTML does for atoms,
+    # so we convert those to strings
+
+    attrs
+    |> Enum.map(fn
+      {key, value} when is_atom(key) -> {Atom.to_string(key), value}
+      other -> other
+    end)
+    |> Phoenix.HTML.attributes_escape()
   end
 
   defp extract_compile_attr("class", [head | tail]) when is_binary(head) do
