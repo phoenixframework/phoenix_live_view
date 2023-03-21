@@ -152,7 +152,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              "Hello <div name=\"1\" phone=\"2\">text</div>"
   end
 
-  test "keeps dashes in dynamic attributes" do
+  test "keeps underscores in dynamic attributes" do
     assert render("Hello <div {@attrs}>text</div>", %{attrs: [full_name: "1"]}) ==
              "Hello <div full_name=\"1\">text</div>"
   end
