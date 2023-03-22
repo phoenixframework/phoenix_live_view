@@ -19,42 +19,27 @@ steps:
     $ mix archive.install hex phx_new
     $ mix phx.new demo
 
-## Features
+## Feature highlights
 
-  * Use a declarative model to render HTML on the server
-    over WebSockets with optional LongPolling fallback
+  * **Declarative rendering:** Render HTML on the server over WebSockets with a declarative model, including an optional LongPolling fallback.
 
-  * A rich templating language, called HEEx, with support
-    for function components, slots, HTML validation, and more
+  * **Rich templating language:** Enjoy HEEx: a templating language that supports function components, slots, HTML validation, verified routes, and more.
 
-  * Smart change tracking - once connected, LiveView sends
-    only what changed to the client, skipping the template
-    markup and reducing the payload. This makes LiveView
-    payloads much smaller than server-rendered HTML and on
-    par with fine-tuned SPA applications
+  * **Small payloads:** LiveView is smart enough to track changes so it only sends what the client needs, making LiveView payloads much smaller than server-rendered HTML.
 
-  * Live form validation with file upload support
+  * **Live form validation:** LiveView supports real-time form validation out of the box. Create rich user interfaces with features like uploads, nested inputs, and <a href="https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects">specialized recovery</a>.
 
-  * A rich integration API with the client with `phx-click`,
-    `phx-focus`, `phx-blur`, `phx-submit`, etc. `phx-hook` is
-    included for the cases where you have to write JavaScript
+  * **Rich integration API:** Use the rich integration API to interact with the client, with `phx-click`, `phx-focus`, `phx-blur`, `phx-submit`, and `phx-hook` included for cases where you have to write JavaScript.
 
-  * Perform optimistic updates and transitions via JavaScript
-    commands (`Phoenix.LiveView.JS`)
+  * **Optimistic updates and transitions:** Perform optimistic updates and transitions with JavaScript commands via `Phoenix.LiveView.JS`.
 
-  * Code reuse via stateful components, which break templates,
-    state, and event handling into reusable bits, which is essential
-    in large applications
+  * **Loose coupling:** Reuse more code via stateful components with loosely-coupled templates, state, and event handling — a must for enterprise application development.
 
-  * Live navigation to enrich links and redirects to only load the
-    minimum amount of content as users navigate between pages
+  * **Live navigation:** Enriched links and redirects are just more ways LiveView keeps your app light and performant. Clients load the minimum amount of content needed as users navigate around your app without any compromise in user experience.
 
-  * A latency simulator so you can emulate how slow clients will
-    interact with your application
+  * **Latency simulator:** Emulate how slow clients will interact with your application with the latency simulator.
 
-  * Testing tools that allow you to write a confident test suite
-    without the complexity of running a whole browser alongside
-    your tests
+  * **Robust test suite:** Write tests with confidence alongside Phoenix LiveView built-in testing tools. No more running a whole browser alongside your tests.
 
 ## Official announcements
 
