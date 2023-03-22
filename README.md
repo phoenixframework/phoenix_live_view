@@ -27,7 +27,9 @@ steps:
 
   * **Small payloads:** LiveView is smart enough to track changes so it only sends what the client needs, making LiveView payloads much smaller than server-rendered HTML.
 
-  * **Live form validation:** LiveView supports real-time form validation out of the box. Create rich user interfaces with features like uploads, nested inputs, and <a href="https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects">specialized recovery</a>.
+  * **Live form validation:** LiveView supports real-time form validation out of the box. Create rich user interfaces with features like uploads, nested inputs, and [specialized recovery](https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects).
+  
+  * **File uploads:** Real-time file uploads with progress indicators and image previews. Process your uploads on the fly or submit them to your desired cloud service.
 
   * **Rich integration API:** Use the rich integration API to interact with the client, with `phx-click`, `phx-focus`, `phx-blur`, `phx-submit`, and `phx-hook` included for cases where you have to write JavaScript.
 
