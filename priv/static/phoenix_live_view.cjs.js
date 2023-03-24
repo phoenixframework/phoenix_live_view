@@ -3206,10 +3206,11 @@ var View = class {
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx);
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts);
     let formData;
+    let meta = this.extractMeta(inputEl.form);
     if (inputEl.getAttribute(this.binding("change"))) {
-      formData = serializeForm(inputEl.form, { _target: opts._target }, [inputEl.name]);
+      formData = serializeForm(inputEl.form, { _target: opts._target, ...meta }, [inputEl.name]);
     } else {
-      formData = serializeForm(inputEl.form, { _target: opts._target });
+      formData = serializeForm(inputEl.form, { _target: opts._target, ...meta });
     }
     if (dom_default.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0) {
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files));
@@ -3304,7 +3305,8 @@ var View = class {
       let [ref, els] = refGenerator();
       let proxyRefGen = () => [ref, els, opts];
       this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
-        let formData = serializeForm(formEl, { submitter });
+        let meta = this.extractMeta(formEl);
+        let formData = serializeForm(formEl, { submitter, ...meta });
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
@@ -3313,7 +3315,8 @@ var View = class {
         }, onReply);
       });
     } else {
-      let formData = serializeForm(formEl, { submitter });
+      let meta = this.extractMeta(formEl);
+      let formData = serializeForm(formEl, { submitter, ...meta });
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
