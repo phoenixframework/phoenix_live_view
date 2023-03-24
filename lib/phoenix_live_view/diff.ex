@@ -466,7 +466,6 @@ defmodule Phoenix.LiveView.Diff do
          template,
          _changed?
        ) do
-
     # The comprehension has no elements and it was not rendered yet, so we skip it,
     # but if there is a stream delete, we send it
     if stream do
@@ -486,7 +485,6 @@ defmodule Phoenix.LiveView.Diff do
          template,
          _changed?
        ) do
-
     if template do
       {dynamics, {pending, components, template}} =
         traverse_comprehension(socket, dynamics, pending, components, template)
