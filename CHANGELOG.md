@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.18.19
+
+### Bug fixes
+  * Fix stream deletes not being sent on nested for comprehensions
+
+### Enhancements
+  * Send form phx-value's on form events
+
 ## 0.18.18 (2023-03-16)
 
 ### Bug fixes
