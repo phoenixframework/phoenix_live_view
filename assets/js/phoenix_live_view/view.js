@@ -59,7 +59,7 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   let formData = new FormData(form)
 
   // TODO: Remove when FormData constructor supports the submitter argument.
-  if (submitter && submitter.hasAttribute("name") && submitter.form && submitter.form === form){
+  if(submitter && submitter.hasAttribute("name") && submitter.form && submitter.form === form){
     formData.append(submitter.name, submitter.value)
   }
 
@@ -870,15 +870,17 @@ export default class View {
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
     let formData
+    let meta  = this.extractMeta(inputEl.form)
     if(inputEl.getAttribute(this.binding("change"))){
-      formData = serializeForm(inputEl.form, {_target: opts._target}, [inputEl.name])
+      formData = serializeForm(inputEl.form, {_target: opts._target, ...meta}, [inputEl.name])
     } else {
-      formData = serializeForm(inputEl.form, {_target: opts._target})
+      formData = serializeForm(inputEl.form, {_target: opts._target, ...meta})
     }
     if(DOM.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0){
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
     }
     uploads = LiveUploader.serializeUploads(inputEl)
+
     let event = {
       type: "form",
       event: phxEvent,
@@ -975,7 +977,8 @@ export default class View {
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els, opts]
       this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
-        let formData = serializeForm(formEl, {submitter})
+        let meta = this.extractMeta(formEl)
+        let formData = serializeForm(formEl, {submitter, ...meta})
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
@@ -984,7 +987,8 @@ export default class View {
         }, onReply)
       })
     } else {
-      let formData = serializeForm(formEl, {submitter})
+      let meta = this.extractMeta(formEl)
+      let formData = serializeForm(formEl, {submitter, ...meta})
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
