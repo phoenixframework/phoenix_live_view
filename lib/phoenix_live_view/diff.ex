@@ -459,15 +459,22 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          _socket,
-         %Comprehension{dynamics: []},
+         %Comprehension{dynamics: [], stream: stream},
          _,
          pending,
          components,
          template,
          _changed?
        ) do
-    # The comprehension has no elements and it was not rendered yet, so we skip it.
-    {"", nil, pending, components, template}
+
+    # The comprehension has no elements and it was not rendered yet, so we skip it,
+    # but if there is a stream delete, we send it
+    if stream do
+      diff = %{@dynamics => [], @static => []}
+      {maybe_add_stream_id(diff, stream), nil, pending, components, template}
+    else
+      {"", nil, pending, components, template}
+    end
   end
 
   defp traverse(
@@ -479,6 +486,7 @@ defmodule Phoenix.LiveView.Diff do
          template,
          _changed?
        ) do
+
     if template do
       {dynamics, {pending, components, template}} =
         traverse_comprehension(socket, dynamics, pending, components, template)
