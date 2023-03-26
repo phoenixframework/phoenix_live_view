@@ -1390,7 +1390,9 @@ defmodule Phoenix.Component do
   Then the remaining options are merged with the existing
   form options.
 
-  Errors will not be displayed in a form if the changeset :action is nil or :ignore. Refer to [a note on :errors for more information](https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html#form/1-a-note-on-errors).
+  Errors in a form are only displayed if the changeset's `action`
+  field is set (and it is not set to `:ignore`). Refer to
+  [a note on :errors for more information](#form/1-a-note-on-errors).
   """
   def to_form(data_or_params, options \\ [])
 
