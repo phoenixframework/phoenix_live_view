@@ -1389,6 +1389,10 @@ defmodule Phoenix.Component do
   options above will override its existing values if given.
   Then the remaining options are merged with the existing
   form options.
+
+  Errors in a form are only displayed if the changeset's `action`
+  field is set (and it is not set to `:ignore`). Refer to
+  [a note on :errors for more information](#form/1-a-note-on-errors).
   """
   def to_form(data_or_params, options \\ [])
 
