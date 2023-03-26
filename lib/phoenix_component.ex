@@ -1389,6 +1389,8 @@ defmodule Phoenix.Component do
   options above will override its existing values if given.
   Then the remaining options are merged with the existing
   form options.
+
+  Errors will not be displayed in a form if the changeset :action is nil or :ignore. Refer to [a note on :errors for more information](https://hexdocs.pm/phoenix_live_view/Phoenix.Component.html#form/1-a-note-on-errors).
   """
   def to_form(data_or_params, options \\ [])
 
