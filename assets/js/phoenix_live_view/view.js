@@ -986,7 +986,7 @@ export default class View {
           cid: cid
         }, onReply)
       })
-    } else {
+    } else if(!formEl.hasAttribute(PHX_REF)){
       let meta = this.extractMeta(formEl)
       let formData = serializeForm(formEl, {submitter, ...meta})
       this.pushWithReply(refGenerator, "event", {
