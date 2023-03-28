@@ -7,9 +7,9 @@ With live navigation, the page is updated without a full page reload.
 You can trigger live navigation in two ways:
 
   * From the client - this is done by passing either `patch={url}` or `navigate={url}`
-    to the `Phoenix.Component.link/1` component
+    to the `Phoenix.Component.link/1` component.
 
-  * From the server - this is done by by `Phoenix.LiveView.push_patch/2` or `Phoenix.LiveView.push_navigate/2`.
+  * From the server - this is done by `Phoenix.LiveView.push_patch/2` or `Phoenix.LiveView.push_navigate/2`.
 
 For example, instead of writing the following in a template:
 
