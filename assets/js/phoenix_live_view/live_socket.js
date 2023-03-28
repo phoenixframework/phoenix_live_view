@@ -98,6 +98,7 @@ import {
   PHX_FEEDBACK_FOR,
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
+  PHX_REF,
 } from "./constants"
 
 import {
@@ -642,6 +643,8 @@ export default class LiveSocket {
         return
       }
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
+      // noop if we are in the middle of awaiting an ack for this el already
+      if(target.hasAttribute(PHX_REF)){ return }
 
       this.debounce(target, e, "click", () => {
         this.withinOwners(target, view => {
