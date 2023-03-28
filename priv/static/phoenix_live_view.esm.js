@@ -3301,7 +3301,7 @@ var View = class {
           cid
         }, onReply);
       });
-    } else {
+    } else if (!formEl.hasAttribute(PHX_REF)) {
       let meta = this.extractMeta(formEl);
       let formData = serializeForm(formEl, { submitter, ...meta });
       this.pushWithReply(refGenerator, "event", {
@@ -3982,6 +3982,9 @@ var LiveSocket = class {
       }
       if (target.getAttribute("href") === "#") {
         e.preventDefault();
+      }
+      if (target.hasAttribute(PHX_REF)) {
+        return;
       }
       this.debounce(target, e, "click", () => {
         this.withinOwners(target, (view) => {

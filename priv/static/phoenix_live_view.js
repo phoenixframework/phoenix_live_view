@@ -3343,7 +3343,7 @@ within:
             cid
           }, onReply);
         });
-      } else {
+      } else if (!formEl.hasAttribute(PHX_REF)) {
         let meta = this.extractMeta(formEl);
         let formData = serializeForm(formEl, __spreadValues({ submitter }, meta));
         this.pushWithReply(refGenerator, "event", {
@@ -4024,6 +4024,9 @@ within:
         }
         if (target.getAttribute("href") === "#") {
           e.preventDefault();
+        }
+        if (target.hasAttribute(PHX_REF)) {
+          return;
         }
         this.debounce(target, e, "click", () => {
           this.withinOwners(target, (view) => {
