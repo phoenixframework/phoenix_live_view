@@ -324,6 +324,11 @@ export default class View {
     DOM.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, el => this.maybeMounted(el))
   }
 
+  execDynamicMounted(el) {
+    this.maybeAddNewHook(el)
+    this.maybeMounted(el)
+  }
+
   applyJoinPatch(live_patch, html, streams, events){
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, streams, null)
