@@ -598,7 +598,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
   defp head_may_not_have_whitespace?(_), do: false
 
-  # In case the given tag is inline and the there is no white spaces in the next
+  # In case the given tag is inline and there is no white spaces in the next
   # text, we want to set mode as preserve. So this tag will not be formatted.
   defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do

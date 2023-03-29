@@ -356,7 +356,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {:reply, :ok, socket}
         end)
 
-        # Wait for the the UploadClient and UploadChannel to shutdown
+        # Wait for the UploadClient and UploadChannel to shutdown
         assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
         assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
         assert_receive {:file, tmp_path, "foo.jpeg", "123"}
