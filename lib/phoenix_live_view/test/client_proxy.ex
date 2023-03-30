@@ -312,8 +312,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
                {:ok, event_or_js} <- maybe_event(type, node, element),
-               {:ok, dom_values} <- maybe_values(type, node, element) do
-            event_or_js
+               {:ok, dom_values} <- maybe_values(type, node, element),
+               decoded_js <- maybe_decode_js(event_or_js),
+               :ok <- check_not_patch_or_navigate(decoded_js, proxy_topic(element)) do
+            decoded_js
             |> maybe_js_event()
             |> List.wrap()
             |> Enum.map(fn {event, js_values, js_target_selector} ->
@@ -1012,8 +1014,33 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_js_event("[" <> _ = encoded_js) do
-    js = encoded_js |> DOM.parse() |> Phoenix.json_library().decode!()
+  defp maybe_decode_js("[" <> _ = encoded_js),
+    do: {:decoded, encoded_js |> DOM.parse() |> Phoenix.json_library().decode!()}
+
+  defp maybe_decode_js(event), do: {:raw, event}
+
+  defp check_not_patch_or_navigate({:decoded, js}, topic) do
+    op = Enum.filter(js, fn [kind, _args] -> kind == "patch" || kind == "navigate" end)
+
+    case op do
+      [] ->
+        :ok
+
+      [["patch", %{"href" => target}]] ->
+        {:patch, topic, target}
+
+      [["navigate", %{"href" => target}]] ->
+        {:stop, topic, {:live_redirect, %{to: target}}}
+
+      [_ | _] ->
+        raise ArgumentError,
+              "Phoenix.LiveViewTest currently only supports a single patch or navigate within JS commands"
+    end
+  end
+
+  defp check_not_patch_or_navigate(_, _), do: :ok
+
+  defp maybe_js_event({:decoded, js}) do
     op = Enum.filter(js, fn [kind, _args] -> kind == "push" end)
 
     case op do
@@ -1027,7 +1054,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_js_event(event), do: {event, _values = %{}, _target = nil}
+  defp maybe_js_event({:raw, event}), do: {event, _values = %{}, _target = nil}
 
   defp maybe_enabled(_type, {tag, _, _}, %{form_data: form_data})
        when tag != "form" and form_data != nil do

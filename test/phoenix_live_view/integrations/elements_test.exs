@@ -885,6 +885,18 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert view |> element("#button-js-click-value") |> render_click()
       assert last_event(view) == "<div id=\"last-event\">button-click: %{\"one\" => 1}</div>"
     end
+
+    test "patch", %{live: view} do
+      assert view |> element("#button-js-patch") |> render_click()
+
+      assert last_event(view) ==
+               "<div id=\"last-event\">handle_params: %{\"from\" => \"patch\"}</div>"
+    end
+
+    test "navigate", %{live: view} do
+      assert view |> element("#button-js-navigate") |> render_click()
+      assert_redirect(view, "/example")
+    end
   end
 
   describe "child component / JS commands" do
