@@ -1249,7 +1249,11 @@ defmodule Phoenix.Component do
           "#{inspect(assign)} is a reserved assign by LiveView and it cannot be set directly"
   end
 
-  defp validate_assign_key!(_key), do: :ok
+  defp validate_assign_key!(key) when is_atom(key), do: :ok
+
+  defp validate_assign_key!(key) do
+    raise ArgumentError, "assigns in LiveView must be atoms, got: #{inspect(key)}"
+  end
 
   @doc """
   Updates an existing `key` with `fun` in the given `socket_or_assigns`.
