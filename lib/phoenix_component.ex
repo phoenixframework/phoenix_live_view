@@ -2270,7 +2270,18 @@ defmodule Phoenix.Component do
       |> Keyword.take([:multipart])
       |> Keyword.merge(options)
 
-    assigns = assign(assigns, :forms, form.impl.to_form(form.source, form, field_name, options))
+    forms = form.impl.to_form(form.source, form, field_name, options)
+    seen_ids = for f <- forms, vid = f.params["_persistent_id"], into: %{}, do: {vid, true}
+
+    forms =
+      forms
+      |> Enum.with_index()
+      |> Enum.map(fn {%Phoenix.HTML.Form{params: params} = form, idx} ->
+        new_params = Map.put_new_lazy(params, "_persistent_id", fn -> next_id(idx, seen_ids) end)
+        %Phoenix.HTML.Form{form | id: new_params["_persistent_id"], params: new_params}
+      end)
+
+    assigns = assign(assigns, :forms, forms)
 
     ~H"""
     <%= for finner <- @forms do %>
@@ -2280,11 +2291,27 @@ defmodule Phoenix.Component do
                 value <- List.wrap(value_or_values) do %>
           <input type="hidden" name={name} value={value} />
         <% end %>
+        <input
+          type="hidden"
+          name={finner.name <> "[_persistent_id]"}
+          value={finner[:_persistent_id].value}
+        />
       <% end %>
       <%= render_slot(@inner_block, finner) %>
     <% end %>
     """
   end
+
+  defp next_id(idx, %{} = seen_ids) do
+    id_str = to_string(idx)
+
+    if Map.has_key?(seen_ids, id_str) do
+      next_id(idx + 1, seen_ids)
+    else
+      id_str
+    end
+  end
+
 
   defp name_for_value_or_values(form, field, values) when is_list(values) do
     Phoenix.HTML.Form.input_name(form, field) <> "[]"
