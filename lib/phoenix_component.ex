@@ -2265,6 +2265,7 @@ defmodule Phoenix.Component do
 
   slot.(:inner_block, required: true, doc: "The content rendered for each nested form.")
 
+  @persistent_id "_persistent_id"
   def inputs_for(assigns) do
     %Phoenix.HTML.FormField{field: field_name, form: form} = assigns.field
     options = assigns |> Map.take([:id, :as, :default, :append, :prepend]) |> Keyword.new()
@@ -2274,7 +2275,24 @@ defmodule Phoenix.Component do
       |> Keyword.take([:multipart])
       |> Keyword.merge(options)
 
-    assigns = assign(assigns, :forms, form.impl.to_form(form.source, form, field_name, options))
+    forms = form.impl.to_form(form.source, form, field_name, options)
+    seen_ids = for f <- forms, vid = f.params[@persistent_id], into: %{}, do: {vid, true}
+
+    {forms, _} =
+      Enum.map_reduce(forms, seen_ids, fn %Phoenix.HTML.Form{params: params} = form, seen_ids ->
+        id =
+          case params do
+            %{@persistent_id => id} -> id
+            %{} -> next_id(map_size(seen_ids), seen_ids)
+          end
+
+        new_params = Map.put(params, @persistent_id, id)
+        new_hidden = [{@persistent_id, id} | form.hidden]
+        new_form = %Phoenix.HTML.Form{form | id: id, params: new_params, hidden: new_hidden}
+        {new_form, Map.put(seen_ids, id, true)}
+      end)
+
+    assigns = assign(assigns, :forms, forms)
 
     ~H"""
     <%= for finner <- @forms do %>
@@ -2288,6 +2306,16 @@ defmodule Phoenix.Component do
       <%= render_slot(@inner_block, finner) %>
     <% end %>
     """
+  end
+
+  defp next_id(idx, %{} = seen_ids) do
+    id_str = to_string(idx)
+
+    if Map.has_key?(seen_ids, id_str) do
+      next_id(idx + 1, seen_ids)
+    else
+      id_str
+    end
   end
 
   defp name_for_value_or_values(form, field, values) when is_list(values) do

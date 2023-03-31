@@ -491,14 +491,14 @@ var DOM = {
     this.putPrivate(el, key, [currentCycle, trigger]);
     return currentCycle;
   },
-  discardError(container, el, phxFeedbackFor) {
-    let field = el.getAttribute && el.getAttribute(phxFeedbackFor);
-    let input = field && container.querySelector(`[id="${field}"], [name="${field}"], [name="${field}[]"]`);
-    if (!input) {
-      return;
-    }
+  maybeHideFeedback(container, input, phxFeedbackFor) {
     if (!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))) {
-      el.classList.add(PHX_NO_FEEDBACK_CLASS);
+      let feedbacks = [input.name];
+      if (input.name.endsWith("[]")) {
+        feedbacks.push(input.name.slice(0, -2));
+      }
+      let selector = feedbacks.map((f) => `[${phxFeedbackFor}="${f}"]`).join(", ");
+      DOM.all(container, selector, (el) => el.classList.add(PHX_NO_FEEDBACK_CLASS));
     }
   },
   resetForm(form, phxFeedbackFor) {
@@ -1618,6 +1618,7 @@ var DOMPatch = class {
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
     let added = [];
+    let trackedInputs = [];
     let updates = [];
     let appendPrependUpdates = [];
     let externalFormTriggered = null;
@@ -1674,7 +1675,9 @@ var DOMPatch = class {
           if (dom_default.isNowTriggerFormExternal(el, phxTriggerExternal)) {
             externalFormTriggered = el;
           }
-          dom_default.discardError(targetContainer, el, phxFeedbackFor);
+          if (el.getAttribute && el.getAttribute("name")) {
+            trackedInputs.push(el);
+          }
           if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
             this.trackAfter("phxChildAdded", el);
           }
@@ -1740,7 +1743,6 @@ var DOMPatch = class {
             return false;
           }
           dom_default.copyPrivates(toEl, fromEl);
-          dom_default.discardError(targetContainer, toEl, phxFeedbackFor);
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
           if (isFocusedFormEl && fromEl.type !== "hidden") {
             this.trackBefore("updated", fromEl, toEl);
@@ -1748,6 +1750,7 @@ var DOMPatch = class {
             dom_default.syncAttrsToProps(fromEl);
             updates.push(fromEl);
             dom_default.applyStickyOperations(fromEl);
+            trackedInputs.push(fromEl);
             return false;
           } else {
             if (dom_default.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])) {
@@ -1755,6 +1758,9 @@ var DOMPatch = class {
             }
             dom_default.syncAttrsToProps(toEl);
             dom_default.applyStickyOperations(toEl);
+            if (toEl.getAttribute("name")) {
+              trackedInputs.push(toEl);
+            }
             this.trackBefore("updated", fromEl, toEl);
             return true;
           }
@@ -1769,6 +1775,9 @@ var DOMPatch = class {
         appendPrependUpdates.forEach((update) => update.perform());
       });
     }
+    trackedInputs.forEach((input) => {
+      dom_default.maybeHideFeedback(targetContainer, input, phxFeedbackFor);
+    });
     liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
     dom_default.dispatchEvent(document, "phx:update");
     added.forEach((el) => this.trackAfter("added", el));

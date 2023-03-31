@@ -85,6 +85,7 @@ export default class DOMPatch {
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
+    let trackedInputs = []
     let updates = []
     let appendPrependUpdates = []
 
@@ -147,8 +148,10 @@ export default class DOMPatch {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
-          //input handling
-          DOM.discardError(targetContainer, el, phxFeedbackFor)
+
+          if(el.getAttribute && el.getAttribute("name")){
+            trackedInputs.push(el)
+          }
           // nested view handling
           if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
             this.trackAfter("phxChildAdded", el)
@@ -207,7 +210,6 @@ export default class DOMPatch {
 
           // input handling
           DOM.copyPrivates(toEl, fromEl)
-          DOM.discardError(targetContainer, toEl, phxFeedbackFor)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           if(isFocusedFormEl && fromEl.type !== "hidden"){
@@ -216,6 +218,7 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
+            trackedInputs.push(fromEl)
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
@@ -223,6 +226,9 @@ export default class DOMPatch {
             }
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
+            if(toEl.getAttribute("name")){
+              trackedInputs.push(toEl)
+            }
             this.trackBefore("updated", fromEl, toEl)
             return true
           }
@@ -237,6 +243,10 @@ export default class DOMPatch {
         appendPrependUpdates.forEach(update => update.perform())
       })
     }
+
+    trackedInputs.forEach(input => {
+      DOM.maybeHideFeedback(targetContainer, input, phxFeedbackFor)
+    })
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
