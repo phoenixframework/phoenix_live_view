@@ -261,14 +261,10 @@ let DOM = {
     return currentCycle
   },
 
-  discardError(container, el, phxFeedbackFor){
-    let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
-    // TODO: Remove id lookup after we update Phoenix to use input_name instead of input_id
-    let input = field && container.querySelector(`[id="${field}"], [name="${field}"], [name="${field}[]"]`)
-    if(!input){ return }
-
+  maybeHideFeedback(container, input, phxFeedbackFor){
     if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
-      el.classList.add(PHX_NO_FEEDBACK_CLASS)
+      let feedbacks = `[${phxFeedbackFor}="${input.id}"], [${phxFeedbackFor}="${input.name}"], [${phxFeedbackFor}="${input.name}[]"]`
+      DOM.all(container, feedbacks, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
     }
   },
 
