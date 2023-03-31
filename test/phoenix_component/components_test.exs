@@ -516,15 +516,20 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = parse(template)
 
       assert [
-               {"form", [],
-                [
-                  {"input",
-                   [
-                     {"id", "myform_inner_foo"},
-                     {"name", "myform[inner][foo]"},
-                     {"type", "text"}
-                   ], []}
-                ]}
+               {
+                 "form",
+                 [],
+                 [
+                   {"input",
+                    [
+                      {"type", "hidden"},
+                      {"name", "myform[inner][_persistent_id]"},
+                      {"value", "0"}
+                    ], []},
+                   {"input", [{"id", "0_foo"}, {"name", "myform[inner][foo]"}, {"type", "text"}],
+                    []}
+                 ]
+               }
              ] = html
     end
 
@@ -542,15 +547,15 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = parse(template)
 
       assert [
-               {"form", [],
-                [
-                  {"input",
-                   [
-                     {"id", "test_foo"},
-                     {"name", "name[foo]"},
-                     {"type", "text"}
-                   ], []}
-                ]}
+               {
+                 "form",
+                 [],
+                 [
+                   {"input",
+                    [{"type", "hidden"}, {"name", "name[_persistent_id]"}, {"value", "0"}], []},
+                   {"input", [{"id", "0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
+                 ]
+               }
              ] = html
     end
 
@@ -568,16 +573,25 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = parse(template)
 
       assert [
-               {"form", [],
-                [
-                  {"input",
-                   [
-                     {"id", "myform_inner_foo"},
-                     {"name", "myform[inner][foo]"},
-                     {"type", "text"},
-                     {"value", "123"}
-                   ], []}
-                ]}
+               {
+                 "form",
+                 [],
+                 [
+                   {"input",
+                    [
+                      {"type", "hidden"},
+                      {"name", "myform[inner][_persistent_id]"},
+                      {"value", "0"}
+                    ], []},
+                   {"input",
+                    [
+                      {"id", "0_foo"},
+                      {"name", "myform[inner][foo]"},
+                      {"type", "text"},
+                      {"value", "123"}
+                    ], []}
+                 ]
+               }
              ] = html
     end
 
@@ -601,33 +615,51 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = parse(template)
 
       assert [
-               {"form", [],
-                [
-                  {
-                    "input",
+               {
+                 "form",
+                 [],
+                 [
+                   {"input",
                     [
-                      {"id", "myform_inner_0_foo"},
+                      {"type", "hidden"},
+                      {"name", "myform[inner][0][_persistent_id]"},
+                      {"value", "0"}
+                    ], []},
+                   {"input",
+                    [
+                      {"id", "0_foo"},
                       {"name", "myform[inner][0][foo]"},
                       {"type", "text"},
                       {"value", "123"}
-                    ],
-                    []
-                  },
-                  {"input",
-                   [
-                     {"id", "myform_inner_1_foo"},
-                     {"name", "myform[inner][1][foo]"},
-                     {"type", "text"},
-                     {"value", "456"}
-                   ], []},
-                  {"input",
-                   [
-                     {"id", "myform_inner_2_foo"},
-                     {"name", "myform[inner][2][foo]"},
-                     {"type", "text"},
-                     {"value", "789"}
-                   ], []}
-                ]}
+                    ], []},
+                   {"input",
+                    [
+                      {"type", "hidden"},
+                      {"name", "myform[inner][1][_persistent_id]"},
+                      {"value", "1"}
+                    ], []},
+                   {"input",
+                    [
+                      {"id", "1_foo"},
+                      {"name", "myform[inner][1][foo]"},
+                      {"type", "text"},
+                      {"value", "456"}
+                    ], []},
+                   {"input",
+                    [
+                      {"type", "hidden"},
+                      {"name", "myform[inner][2][_persistent_id]"},
+                      {"value", "2"}
+                    ], []},
+                   {"input",
+                    [
+                      {"id", "2_foo"},
+                      {"name", "myform[inner][2][foo]"},
+                      {"type", "text"},
+                      {"value", "789"}
+                    ], []}
+                 ]
+               }
              ] = html
     end
   end
