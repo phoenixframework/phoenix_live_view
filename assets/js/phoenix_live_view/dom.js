@@ -263,8 +263,10 @@ let DOM = {
 
   maybeHideFeedback(container, input, phxFeedbackFor){
     if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
-      let feedbacks = `[${phxFeedbackFor}="${input.id}"], [${phxFeedbackFor}="${input.name}"], [${phxFeedbackFor}="${input.name}[]"]`
-      DOM.all(container, feedbacks, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
+      let feedbacks = [input.id, input.name]
+      if(input.name.endsWith("[]")){ feedbacks.push(input.name.slice(0, -2)) }
+      let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
+      DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
     }
   },
 

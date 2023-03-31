@@ -226,7 +226,9 @@ export default class DOMPatch {
             }
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
-            trackedInputs.push(toEl)
+            if(toEl.getAttribute("name")){
+              trackedInputs.push(toEl)
+            }
             this.trackBefore("updated", fromEl, toEl)
             return true
           }
