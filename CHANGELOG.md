@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.18.19
+## 0.19
+
+### Backwards incompatible changes
+  * Drop support for passing an id to the `phx-feedback-for` attribute. An input name must be passed instead.
+
+### Enhancements
+  * Support ordered inputs within `inputs_for`, to pair with Ecto's new `sort_param` and `drop_param` casting
 
 ### Bug fixes
   * Fix stream deletes not being sent on nested for comprehensions
