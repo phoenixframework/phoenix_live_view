@@ -827,7 +827,7 @@ defmodule Phoenix.Component.Declarative do
         ]
       end,
       if Enum.any?(attrs, &(&1.type == :global)) do
-        "\nGlobal attributes are accepted."
+        "\n* Global attributes are accepted."
       else
         ""
       end
