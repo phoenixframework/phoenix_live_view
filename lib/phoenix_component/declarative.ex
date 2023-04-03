@@ -815,6 +815,11 @@ defmodule Phoenix.Component.Declarative do
   defp build_attrs_docs(attrs) do
     [
       "## Attributes\n",
+      if Enum.any?(attrs, &(&1.type == :global)) do
+        "\n* Global attributes are accepted."
+      else
+        ""
+      end,
       for attr <- attrs, attr.doc != false, attr.type != :global, into: [] do
         [
           "\n* ",
@@ -825,11 +830,6 @@ defmodule Phoenix.Component.Declarative do
           build_attr_doc_and_default(attr, "  "),
           build_attr_values_or_examples(attr)
         ]
-      end,
-      if Enum.any?(attrs, &(&1.type == :global)) do
-        "\nGlobal attributes are accepted."
-      else
-        ""
       end
     ]
   end
