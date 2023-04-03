@@ -1,8 +1,5 @@
 # Live layouts
 
-*NOTE:* Make sure you've read the [Assigns and HEEx templates](assigns-eex.md)
-guide before moving forward.
-
 From Phoenix v1.7, your application is made of two layouts:
 
   * the root layout - this is a layout used by both LiveView and
@@ -23,7 +20,7 @@ embedded within `MyAppWeb.Layouts`.
 All layouts must call `<%= @inner_content %>` to inject the
 content rendered by the layout.
 
-### Root layout
+## Root layout
 
 The "root" layout is rendered only on the initial request and
 therefore it has access to the `@conn` assign. The root layout
@@ -34,7 +31,7 @@ is typically defined in your router:
 The root layout can also be set via the `:root_layout` option
 in your router via `Phoenix.LiveView.Router.live_session/2`.
 
-### Application layout
+## Application layout
 
 The "app.html.heex" layout is rendered with either `@conn` or
 `@socket`. Both Controllers and LiveViews explicitly define
@@ -55,7 +52,7 @@ ways for flexibility:
 The LiveView itself will be rendered inside the layout wrapped by
 the `:container` tag.
 
-## Updating the HTML document title
+## Updating document title
 
 Because the root layout from the Plug pipeline is rendered outside of
 LiveView, the contents cannot be dynamically changed. The one exception

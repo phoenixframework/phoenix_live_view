@@ -1,4 +1,4 @@
-# Security considerations of the LiveView model
+# Security considerations
 
 LiveView begins its life-cycle as a regular HTTP request. Then a stateful
 connection is established. Both the HTTP request and the stateful connection

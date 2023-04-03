@@ -15,7 +15,7 @@ defmodule Phoenix.LiveView.MixProject do
       xref: [exclude: [Floki]],
       deps: deps(),
       aliases: aliases(),
-      docs: docs(),
+      docs: &docs/0,
       name: "Phoenix LiveView",
       homepage_url: "http://www.phoenixframework.org",
       description: """
@@ -117,23 +117,7 @@ defmodule Phoenix.LiveView.MixProject do
   defp before_closing_body_tag(_), do: ""
 
   defp extras do
-    [
-      "CHANGELOG.md",
-      "guides/introduction/installation.md",
-      "guides/client/bindings.md",
-      "guides/client/form-bindings.md",
-      "guides/client/dom-patching.md",
-      "guides/client/js-interop.md",
-      "guides/client/uploads-external.md",
-      "guides/server/assigns-eex.md",
-      "guides/server/error-handling.md",
-      "guides/server/live-layouts.md",
-      "guides/server/live-navigation.md",
-      "guides/server/security-model.md",
-      "guides/server/telemetry.md",
-      "guides/server/uploads.md",
-      "guides/server/using-gettext.md"
-    ]
+    ["CHANGELOG.md"] ++ Path.wildcard("guides/*/*.md")
   end
 
   defp groups_for_extras do
