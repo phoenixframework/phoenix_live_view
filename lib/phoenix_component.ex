@@ -2641,15 +2641,15 @@ defmodule Phoenix.Component do
 
   ## Attributes
 
-  * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
+  * `:upload` - The [`%Phoenix.LiveView.UploadConfig{}`](`Phoenix.LiveView.UploadConfig`) struct.
 
   Arbitrary attributes may be passed to be applied to the file input tag.
 
   ## Drag and Drop
 
   Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
-  attribute pointing to the DOM `id` of the file input. By default, the file input `id` is the
-  upload `ref`, so the following markup is all that is required for drag and drop support:
+  attribute pointing to the UploadConfig `ref`, so the following markup is all that is required
+  for drag and drop support:
 
   ```heex
   <div class="container" phx-drop-target={@uploads.avatar.ref}>
@@ -2660,7 +2660,16 @@ defmodule Phoenix.Component do
 
   ## Examples
 
+  Rendering a file input:
+
   ```heex
+  <.live_file_input upload={@uploads.avatar} />
+  ```
+
+  Rendering a file input with a label:
+
+  ```heex
+  <label for={@uploads.avatar.ref}>Avatar</label>
   <.live_file_input upload={@uploads.avatar} />
   ```
   """
