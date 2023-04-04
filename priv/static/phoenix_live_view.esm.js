@@ -55,6 +55,7 @@ var PHX_DEBOUNCE = "debounce";
 var PHX_THROTTLE = "throttle";
 var PHX_UPDATE = "update";
 var PHX_STREAM = "stream";
+var PHX_STREAM_REF = "data-phx-stream";
 var PHX_KEY = "key";
 var PHX_PRIVATE = "phxPrivate";
 var PHX_AUTO_RECOVER = "auto-recover";
@@ -1628,15 +1629,19 @@ var DOMPatch = class {
     this.trackBefore("added", container);
     this.trackBefore("updated", container, container);
     liveSocket.time("morphdom", () => {
-      this.streams.forEach(([inserts, deleteIds]) => {
-        this.streamInserts = Object.assign(this.streamInserts, inserts);
+      this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
+        Object.entries(inserts).forEach(([key, streamAt]) => {
+          this.streamInserts[key] = { ref, streamAt };
+        });
+        if (reset !== void 0) {
+          dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
+            this.removeStreamChildElement(child);
+          });
+        }
         deleteIds.forEach((id) => {
           let child = container.querySelector(`[id="${id}"]`);
           if (child) {
-            if (!this.maybePendingRemove(child)) {
-              child.remove();
-              this.onNodeDiscarded(child);
-            }
+            this.removeStreamChildElement(child);
           }
         });
       });
@@ -1649,10 +1654,11 @@ var DOMPatch = class {
           return from.getAttribute(phxUpdate) === PHX_STREAM;
         },
         addChild: (parent, child) => {
-          let streamAt = child.id ? this.streamInserts[child.id] : void 0;
-          if (streamAt === void 0) {
+          let { ref, streamAt } = this.getStreamInsert(child);
+          if (ref === void 0) {
             return parent.appendChild(child);
           }
+          dom_default.putSticky(child, PHX_STREAM_REF, (el) => el.setAttribute(PHX_STREAM_REF, ref));
           if (streamAt === 0) {
             parent.insertAdjacentElement("afterbegin", child);
           } else if (streamAt === -1) {
@@ -1667,6 +1673,9 @@ var DOMPatch = class {
           return el;
         },
         onNodeAdded: (el) => {
+          if (el.getAttribute) {
+            this.maybeReOrderStream(el);
+          }
           if (el instanceof HTMLImageElement && el.srcset) {
             el.srcset = el.srcset;
           } else if (el instanceof HTMLVideoElement && el.autoplay) {
@@ -1803,11 +1812,22 @@ var DOMPatch = class {
       return false;
     }
   }
+  removeStreamChildElement(child) {
+    if (!this.maybePendingRemove(child)) {
+      child.remove();
+      this.onNodeDiscarded(child);
+    }
+  }
+  getStreamInsert(el) {
+    let insert = el.id ? this.streamInserts[el.id] : {};
+    return insert || {};
+  }
   maybeReOrderStream(el) {
-    let streamAt = el.id ? this.streamInserts[el.id] : void 0;
+    let { ref, streamAt } = this.getStreamInsert(el);
     if (streamAt === void 0) {
       return;
     }
+    dom_default.putSticky(el, PHX_STREAM_REF, (el2) => el2.setAttribute(PHX_STREAM_REF, ref));
     if (streamAt === 0) {
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
     } else if (streamAt > 0) {
@@ -2029,7 +2049,7 @@ var Rendered = class {
   }
   comprehensionToBuffer(rendered, templates, output) {
     let { [DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream } = rendered;
-    let [_inserts, deleteIds] = stream || [{}, []];
+    let [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
     statics = this.templateStatic(statics, templates);
     let compTemplates = templates || rendered[TEMPLATES];
     for (let d = 0; d < dynamics.length; d++) {
@@ -2040,7 +2060,7 @@ var Rendered = class {
         output.buffer += statics[i];
       }
     }
-    if (stream !== void 0 && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0)) {
+    if (stream !== void 0 && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0 || reset)) {
       rendered[DYNAMICS] = [];
       output.streams.add(stream);
     }
@@ -3413,7 +3433,7 @@ var View = class {
       if (newForm) {
         return [form, newForm, this.targetComponentID(newForm)];
       } else {
-        return [form, null, null];
+        return [form, form, this.targetComponentID(form)];
       }
     }).filter(([form, newForm, newCid]) => newForm);
   }
