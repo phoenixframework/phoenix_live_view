@@ -364,9 +364,31 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp apply_phx_update(type, html_tree, {tag, attrs, appended_children} = node, streams)
        when type in ["stream", "append", "prepend"] do
-    {stream_inserts, stream_deletes} =
-      Enum.reduce(streams, {%{}, MapSet.new()}, fn [inserts, deletes], {in_acc, deletes_acc} ->
-        {Map.merge(in_acc, inserts), MapSet.union(deletes_acc, MapSet.new(deletes))}
+    {stream_inserts, stream_deletes, stream_resets} =
+      Enum.reduce(streams, {%{}, MapSet.new(), MapSet.new()}, fn item, acc ->
+        [ref, inserts, deletes | maybe_reset] = item
+        {in_acc, deletes_acc, resets_acc} = acc
+        # rewrite inserts to nest ref
+        inserts = Enum.into(inserts, %{}, fn {id, at} -> {id, {ref, at}} end)
+        new_inserts = Map.merge(in_acc, inserts)
+        new_deletes = MapSet.union(deletes_acc, MapSet.new(deletes))
+
+        case maybe_reset do
+          [] -> {new_inserts, new_deletes, resets_acc}
+          [true] -> {new_inserts, new_deletes, MapSet.put(resets_acc, ref)}
+        end
+      end)
+
+    # remove stream reset children from tree
+    html_tree =
+      walk(html_tree, fn {tag, attrs, children} = node ->
+        stream_ref = attribute(node, "data-phx-stream")
+
+        if stream_ref in stream_resets do
+          nil
+        else
+          {tag, attrs, children}
+        end
       end)
 
     container_id = attribute(node, "id")
@@ -408,11 +430,16 @@ defmodule Phoenix.LiveViewTest.DOM do
         children = updated_existing_children ++ updated_appended
 
         new_children =
-          Enum.reduce(stream_inserts, children, fn {id, insert_at}, acc ->
+          Enum.reduce(stream_inserts, children, fn {id, {ref, insert_at}}, acc ->
             old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
-            child = old_index && Enum.at(acc, old_index)
             existing? = Enum.find_index(updated_existing_children, &(attribute(&1, "id") == id))
             deleted? = MapSet.member?(stream_deletes, id)
+
+            child =
+              case old_index && Enum.at(acc, old_index) do
+                nil -> nil
+                child -> set_attr(child, "data-phx-stream", ref)
+              end
 
             cond do
               # skip added children that aren't ours
@@ -443,7 +470,7 @@ defmodule Phoenix.LiveViewTest.DOM do
           |> Enum.reject(fn child ->
             id = attribute(child, "id")
             deleted? = MapSet.member?(stream_deletes, id)
-            inserted_at = Map.get(stream_inserts, id, false)
+            {_ref, inserted_at} = Map.get(stream_inserts, id, {nil, false})
 
             deleted? && !inserted_at
           end)
@@ -538,5 +565,14 @@ defmodule Phoenix.LiveViewTest.DOM do
     catch
       :throw, parent_id -> parent_id
     end
+  end
+
+  def set_attr({tag, attrs, children} = _el, name, val) do
+    new_attrs =
+      attrs
+      |> Enum.filter(fn {existing_name, _} -> existing_name != name end)
+      |> Kernel.++([{name, val}])
+
+    {tag, new_attrs, children}
   end
 end

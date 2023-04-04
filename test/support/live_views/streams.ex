@@ -106,6 +106,10 @@ defmodule Phoenix.LiveViewTest.StreamComponent do
     """
   end
 
+  def update(%{reset: {stream, collection}}, socket) do
+    {:ok, stream(socket, stream, collection, reset: true)}
+  end
+
   def update(%{send_assigns_to: test_pid}, socket) when is_pid(test_pid) do
     send(test_pid, {:assigns, socket.assigns})
     {:ok, socket}
@@ -114,6 +118,10 @@ defmodule Phoenix.LiveViewTest.StreamComponent do
   def update(_assigns, socket) do
     users = [user(1, "chris"), user(2, "callan")]
     {:ok, stream(socket, :c_users, users)}
+  end
+
+  def handle_event("reset", %{}, socket) do
+    {:noreply, stream(socket, :c_users, [], reset: true)}
   end
 
   def handle_event("delete", %{"id" => dom_id}, socket) do

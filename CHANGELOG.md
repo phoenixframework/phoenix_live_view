@@ -1,12 +1,19 @@
 # Changelog
 
-## 0.18.19
+## 0.19
+
+### Deprecations
+  * Passing `:dom_id` to `stream/4` is deprecated. Use `stream_configure/3` instead.
+
+### Backwards incompatible changes
+  * Drop support for passing an id to the `phx-feedback-for` attribute. An input name must be passed instead.
+
+### Enhancements
+  * Support ordered inputs within `inputs_for`, to pair with Ecto's new `sort_param` and `drop_param` casting
+  * Send form phx-value's on form events
 
 ### Bug fixes
   * Fix stream deletes not being sent on nested for comprehensions
-
-### Enhancements
-  * Send form phx-value's on form events
 
 ## 0.18.18 (2023-03-16)
 

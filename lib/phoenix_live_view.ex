@@ -1530,19 +1530,31 @@ defmodule Phoenix.LiveView do
 
   The following options are supported:
 
-    * `:dom_id` - The optional function to generate each stream item's DOM id.
-      The function accepts each stream item and converts the item to a string id.
-      By default, the `:id` field of a map or struct will be used if the item has
-      such a field, and will be prefixed by the `name` hyphenated with the id.
-      For example, the following definitions are equivalent:
+    * `:at` - the index to insert or update the items in the
+      collection on the client. By default `-1` is used, which appends the items
+      to the parent DOM container. A value of `0` prepends the items.
 
-          stream(socket, :songs, songs)
-          stream(socket, :songs, songs, dom_id: &("songs-#{&1.id}"))
+    * `:reset` - the boolean to reset the stream on the client or not. Defaults
+      to `false`.
 
   Once a stream is defined, a new `@streams` assign is available containing
   the name of the defined streams. For example, in the above definition, the
   stream may be referenced as `@streams.songs` in your template. Stream items
   are temporary and freed from socket state as soon as they are rendered.
+
+  By default, calling `stream/4` on an existing stream will bulk insert the new items
+  on the client while leaving the existing items in place. Streams may also be reset
+  when calling `stream/4`, which we discuss below.
+
+  ## Resetting a stream
+
+  To empty a stream container on the client, you can pass `:reset` with an empty list:
+
+          stream(socket, :songs, [], reset: true)
+
+  Or you can replace the entire stream on the client with a new collection:
+
+          stream(socket, :songs, new_songs, reset: true)
 
   ## Required DOM attributes
 
@@ -1576,22 +1588,67 @@ defmodule Phoenix.LiveView do
   Now `stream_insert/3` and `stream_delete/3` may be issued and new rows will
   be inserted or deleted from the client.
   """
-  def stream(socket, name, items, opts \\ []) do
-    opts = Keyword.merge(opts, id: Phoenix.LiveView.Utils.random_id())
+  def stream(%Socket{} = socket, name, items, opts \\ []) do
+    if Keyword.has_key?(opts, :dom_id) do
+      IO.warn(
+        "passing a :dom_id to stream/4 is deprecated. Use stream_configure/3 beforehand instead."
+      )
+    end
 
     socket
-    |> Phoenix.LiveView.Utils.assign_new(:streams, fn -> %{__changed__: MapSet.new()} end)
-    |> assign_stream(name, LiveStream.new(name, items, opts))
-    |> attach_hook(name, :after_render, fn hook_socket ->
-      if name in hook_socket.assigns.streams.__changed__ do
-        Phoenix.Component.update(hook_socket, :streams, fn streams ->
-          streams
-          |> Map.update!(:__changed__, &MapSet.delete(&1, name))
-          |> Map.update!(name, &LiveStream.prune(&1))
-        end)
-      else
-        hook_socket
+    |> ensure_streams()
+    |> assign_stream(name, items, opts)
+  end
+
+  @doc ~S"""
+  Configures a stream.
+
+  The following options are supported:
+
+    * `:dom_id` - The optional function to generate each stream item's DOM id.
+      The function accepts each stream item and converts the item to a string id.
+      By default, the `:id` field of a map or struct will be used if the item has
+      such a field, and will be prefixed by the `name` hyphenated with the id.
+      For example, the following examples are equivalent:
+
+          stream(socket, :songs, songs)
+
+          socket
+          |> configure_stream(:songs, dom_id: &("songs-#{&1.id}")
+          |> stream(:songs, songs)
+
+  A stream must be configured before items are inserted, and once configured,
+  a stream may not be re-configured. To ensure a stream is only configured a
+  single time in a LiveComponent, use the `mount/1` callback. For example:
+
+      def mount(socket) do
+        {:ok, configure_stream(socket, :songs, dom_id: &("songs-#{&1.id}")}
       end
+
+      def update(assigns, socket) do
+        {:ok, stream(socket, :songs, ...)}
+      end
+  """
+  def stream_configure(%Socket{} = socket, name, opts) when is_list(opts) do
+    new_socket = ensure_streams(socket)
+
+    case socket.assigns.streams do
+      %{^name => %LiveStream{}} ->
+        raise ArgumentError, "cannot configure stream :#{name} after it has been streamed"
+
+      %{__configured__: %{^name => _opts}} ->
+        raise ArgumentError, "cannot re-configure stream :#{name} after it has been configured"
+
+      %{} ->
+        Phoenix.Component.update(new_socket, :streams, fn streams ->
+          Map.update!(streams, :__configured__, fn conf -> Map.put(conf, name, opts) end)
+        end)
+    end
+  end
+
+  defp ensure_streams(%Socket{} = socket) do
+    Phoenix.LiveView.Utils.assign_new(socket, :streams, fn ->
+      %{__ref__: 0, __changed__: MapSet.new(), __configured__: %{}}
     end)
   end
 
@@ -1601,6 +1658,8 @@ defmodule Phoenix.LiveView do
   By default, the item is appended to the parent DOM container.
   The `:at` option may be provided to insert or update an item
   to a particular index in the collection on the client.
+
+  See `stream/4` for inserting multiple items at once.
 
   ## Examples
 
@@ -1661,7 +1720,7 @@ defmodule Phoenix.LiveView do
   See `stream_delete_by_dom_id/3` to remove an item without requiring the
   original datastructure.
   """
-  def stream_delete(socket, name, item) do
+  def stream_delete(%Socket{} = socket, name, item) do
     update_stream(socket, name, &LiveStream.delete_item(&1, item))
   end
 
@@ -1694,19 +1753,57 @@ defmodule Phoenix.LiveView do
         {:noreply, stream_delete_by_dom_id(socket, :songs, dom_id)}
       end
   '''
-  def stream_delete_by_dom_id(socket, name, id) do
+  def stream_delete_by_dom_id(%Socket{} = socket, name, id) do
     update_stream(socket, name, &LiveStream.delete_item_by_dom_id(&1, id))
   end
 
-  defp assign_stream(socket, name, %LiveStream{} = stream) do
-    Phoenix.Component.update(socket, :streams, fn streams ->
-      streams
-      |> Map.put(name, stream)
-      |> Map.update!(:__changed__, &MapSet.put(&1, name))
-    end)
+  defp assign_stream(%Socket{} = socket, name, items, opts) do
+    streams = socket.assigns.streams
+
+    case streams do
+      %{^name => %LiveStream{}} ->
+        new_socket =
+          if opts[:reset] do
+            update_stream(socket, name, &LiveStream.reset(&1))
+          else
+            socket
+          end
+
+        Enum.reduce(items, new_socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
+
+      %{} ->
+        config = get_in(streams, [:__configured__, name]) || []
+
+        ref =
+          if cid = socket.assigns[:myself] do
+            "#{cid}-#{streams.__ref__}"
+          else
+            to_string(streams.__ref__)
+          end
+
+        stream = LiveStream.new(name, ref, items, config)
+
+        socket
+        |> Phoenix.Component.update(:streams, fn streams ->
+          %{streams | __ref__: streams.__ref__ + 1}
+          |> Map.put(name, stream)
+          |> Map.update!(:__changed__, &MapSet.put(&1, name))
+        end)
+        |> attach_hook(name, :after_render, fn hook_socket ->
+          if name in hook_socket.assigns.streams.__changed__ do
+            Phoenix.Component.update(hook_socket, :streams, fn streams ->
+              streams
+              |> Map.update!(:__changed__, &MapSet.delete(&1, name))
+              |> Map.update!(name, &LiveStream.prune(&1))
+            end)
+          else
+            hook_socket
+          end
+        end)
+    end
   end
 
-  defp update_stream(socket, name, func) do
+  defp update_stream(%Socket{} = socket, name, func) do
     Phoenix.Component.update(socket, :streams, fn streams ->
       stream =
         case Map.fetch(streams, name) do

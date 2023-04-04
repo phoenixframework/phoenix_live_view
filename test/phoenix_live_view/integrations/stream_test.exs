@@ -91,6 +91,17 @@ defmodule Phoenix.LiveView.StreamTest do
            |> render_click()
            |> users_in_dom("admins") ==
              [{"admins-2", "updated"}]
+
+    # resets
+
+    assert lv |> render() |> users_in_dom("users") == [{"users-2", "updated"}]
+
+    StreamLive.run(lv, fn socket ->
+      {:reply, :ok, Phoenix.LiveView.stream(socket, :users, [], reset: true)}
+    end)
+
+    assert lv |> render() |> users_in_dom("users") == []
+    assert lv |> render() |> users_in_dom("admins") == [{"admins-2", "updated"}]
   end
 
   describe "within live component" do
@@ -128,6 +139,17 @@ defmodule Phoenix.LiveView.StreamTest do
              |> users_in_dom("c_users") ==
                [{"c_users-2", "updated"}]
 
+      # resets
+
+      assert lv |> render() |> users_in_dom("c_users") == [{"c_users-2", "updated"}]
+
+     Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StreamComponent,
+        id: "stream-component",
+        reset: {:c_users, []}
+      )
+
+      assert lv |> render() |> users_in_dom("c_users") == []
+
       Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StreamComponent,
         id: "stream-component",
         send_assigns_to: self()
@@ -150,8 +172,8 @@ defmodule Phoenix.LiveView.StreamTest do
     html
     |> DOM.parse()
     |> DOM.all("##{parent_id} > *")
-    |> Enum.map(fn {_tag, [{"id", id}], [text | _children]} ->
-      {id, String.trim(text)}
+    |> Enum.map(fn {_tag, _attrs, [text | _children]} = child ->
+      {DOM.attribute(child, "id"), String.trim(text)}
     end)
   end
 end
