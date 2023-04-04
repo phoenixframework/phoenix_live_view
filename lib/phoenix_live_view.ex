@@ -1548,7 +1548,7 @@ defmodule Phoenix.LiveView do
 
   ## Resetting a stream
 
-  To empty a stream container on the client, you can pass `:reset` when an empty list:
+  To empty a stream container on the client, you can pass `:reset` with an empty list:
 
           stream(socket, :songs, [], reset: true)
 
@@ -1618,7 +1618,7 @@ defmodule Phoenix.LiveView do
           |> stream(:songs, songs)
 
   A stream must be configured before items are inserted, and once configured,
-  a stream may not be re-configured. To ensure you only configure  a stream a
+  a stream may not be re-configured. To ensure a stream is only configured a
   single time in a LiveComponent, use the `mount/1` callback. For example:
 
       def mount(socket) do
