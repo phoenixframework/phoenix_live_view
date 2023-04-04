@@ -365,12 +365,9 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp apply_phx_update(type, html_tree, {tag, attrs, appended_children} = node, streams)
        when type in ["stream", "append", "prepend"] do
     {stream_inserts, stream_deletes, stream_resets} =
-      Enum.reduce(streams, {%{}, MapSet.new(), MapSet.new()}, fn [
-                                                                   ref,
-                                                                   inserts,
-                                                                   deletes | maybe_reset
-                                                                 ],
-                                                                 {in_acc, deletes_acc, resets_acc} ->
+      Enum.reduce(streams, {%{}, MapSet.new(), MapSet.new()}, fn item, acc ->
+        [ref, inserts, deletes | maybe_reset] = item
+        {in_acc, deletes_acc, resets_acc} = acc
         # rewrite inserts to nest ref
         inserts = Enum.into(inserts, %{}, fn {id, at} -> {id, {ref, at}} end)
         new_inserts = Map.merge(in_acc, inserts)
