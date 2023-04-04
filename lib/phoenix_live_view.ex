@@ -286,7 +286,7 @@ defmodule Phoenix.LiveView do
 
     * `:hibernate_after` (optional) - the idle time in milliseconds allowed in
     the LiveView before compressing its own memory and state.
-    Defaults to 15000ms (15 seconds)
+    Defaults to `15_000`ms (15 seconds)
 
   ## Guides
 
@@ -769,16 +769,16 @@ defmodule Phoenix.LiveView do
       atom :any to allow any kind of file. For example, `[".jpeg"]`, `:any`, etc.
 
     * `:max_entries` - The maximum number of selected files to allow per
-      file input. Defaults to 1.
+      file input. Defaults to `1`.
 
     * `:max_file_size` - The maximum file size in bytes to allow to be uploaded.
-      Defaults 8MB. For example, `12_000_000`.
+      Defaults to `8_000_000`. For example, `12_000_000`.
 
     * `:chunk_size` - The chunk size in bytes to send when uploading.
-      Defaults `64_000`.
+      Defaults to `64_000`.
 
     * `:chunk_timeout` - The time in milliseconds to wait before closing the
-      upload channel when a new chunk has not been received. Defaults `10_000`.
+      upload channel when a new chunk has not been received. Defaults to `10_000`.
 
     * `:external` - The 2-arity function for generating metadata for external
       client uploaders. See the Uploads section for example usage.
@@ -973,7 +973,7 @@ defmodule Phoenix.LiveView do
 
     * `:to` - the required path to link to. It must always be a local path
     * `:replace` - the flag to replace the current history or push a new state.
-      Defaults `false`.
+      Defaults to `false`.
 
   ## Examples
 
@@ -999,7 +999,7 @@ defmodule Phoenix.LiveView do
 
     * `:to` - the required path to link to. It must always be a local path
     * `:replace` - the flag to replace the current history or push a new state.
-      Defaults `false`.
+      Defaults to `false`.
 
   ## Examples
 
@@ -1025,7 +1025,7 @@ defmodule Phoenix.LiveView do
 
     * `:to` - the required path to link to. It must always be a local path
     * `:replace` - the flag to replace the current history or push a new state.
-      Defaults `false`.
+      Defaults to `false`.
 
   ## Examples
 
