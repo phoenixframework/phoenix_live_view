@@ -300,6 +300,7 @@ export default class DOMPatch {
     let {ref, streamAt} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
 
+    // we need to the PHX_STREAM_REF here as well as addChid is invoked only for parents
     DOM.putSticky(el, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
     if(streamAt === 0){
