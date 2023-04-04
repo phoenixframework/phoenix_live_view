@@ -1,11 +1,11 @@
 defmodule Phoenix.LiveView.LiveStream do
   @moduledoc false
 
-  defstruct name: nil, dom_id: nil, inserts: [], deletes: []
+  defstruct name: nil, dom_id: nil, ref: nil, inserts: [], deletes: [], reset?: false
 
   alias Phoenix.LiveView.LiveStream
 
-  def new(name, items, opts) when is_list(opts) do
+  def new(name, ref, items, opts) when is_list(opts) do
     dom_prefix = to_string(name)
     dom_id = Keyword.get_lazy(opts, :dom_id, fn -> &default_id(dom_prefix, &1) end)
 
@@ -17,10 +17,12 @@ defmodule Phoenix.LiveView.LiveStream do
     items_list = for item <- items, do: {dom_id.(item), -1, item}
 
     %LiveStream{
+      ref: ref,
       name: name,
       dom_id: dom_id,
       inserts: items_list,
       deletes: [],
+      reset?: false
     }
   end
 
@@ -34,8 +36,12 @@ defmodule Phoenix.LiveView.LiveStream do
     """
   end
 
+  def reset(%LiveStream{} = stream) do
+    %LiveStream{stream | reset?: true}
+  end
+
   def prune(%LiveStream{} = stream) do
-    %LiveStream{stream | inserts: [], deletes: []}
+    %LiveStream{stream | inserts: [], deletes: [], reset?: false}
   end
 
   def delete_item(%LiveStream{} = stream, item) do
@@ -49,7 +55,7 @@ defmodule Phoenix.LiveView.LiveStream do
   def insert_item(%LiveStream{} = stream, item, at) do
     item_id = stream.dom_id.(item)
 
-    %LiveStream{stream |inserts: stream.inserts ++ [{item_id, at, item}]}
+    %LiveStream{stream | inserts: stream.inserts ++ [{item_id, at, item}]}
   end
 
   defimpl Enumerable, for: LiveStream do

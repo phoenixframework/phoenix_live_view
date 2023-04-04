@@ -10,6 +10,7 @@ import {
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
   PHX_STREAM,
+  PHX_STREAM_REF,
 } from "./constants"
 
 import {
@@ -99,16 +100,18 @@ export default class DOMPatch {
     this.trackBefore("updated", container, container)
 
     liveSocket.time("morphdom", () => {
-      this.streams.forEach(([inserts, deleteIds]) => {
-        this.streamInserts = Object.assign(this.streamInserts, inserts)
+      this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
+        Object.entries(inserts).forEach(([key, streamAt]) => {
+          this.streamInserts[key] = {ref, streamAt}
+        })
+        if(reset !== undefined){
+          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
+            this.removeStreamChildElement(child)
+          })
+        }
         deleteIds.forEach(id => {
           let child = container.querySelector(`[id="${id}"]`)
-          if(child){
-            if(!this.maybePendingRemove(child)){
-              child.remove()
-              this.onNodeDiscarded(child)
-            }
-          }
+          if(child){ this.removeStreamChildElement(child) }
         })
       })
 
@@ -121,8 +124,10 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let streamAt = child.id ? this.streamInserts[child.id] : undefined
-          if(streamAt === undefined) { return parent.appendChild(child) }
+          let {ref, streamAt} = this.getStreamInsert(child)
+          if(ref === undefined) { return parent.appendChild(child) }
+
+          DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
           // streaming
           if(streamAt === 0){
@@ -139,6 +144,8 @@ export default class DOMPatch {
           return el
         },
         onNodeAdded: (el) => {
+          if(el.getAttribute){ this.maybeReOrderStream(el) }
+
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
             el.srcset = el.srcset
@@ -162,7 +169,7 @@ export default class DOMPatch {
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
           if(el.parentElement !== null && el.id &&
-             DOM.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])){
+            DOM.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])){
             return false
           }
           if(this.maybePendingRemove(el)){ return false }
@@ -277,9 +284,23 @@ export default class DOMPatch {
     }
   }
 
+  removeStreamChildElement(child){
+    if(!this.maybePendingRemove(child)){
+      child.remove()
+      this.onNodeDiscarded(child)
+    }
+  }
+
+  getStreamInsert(el){
+    let insert = el.id ? this.streamInserts[el.id] : {}
+    return insert || {}
+  }
+
   maybeReOrderStream(el){
-    let streamAt = el.id ? this.streamInserts[el.id] : undefined
+    let {ref, streamAt} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
+
+    DOM.putSticky(el, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
     if(streamAt === 0){
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild)

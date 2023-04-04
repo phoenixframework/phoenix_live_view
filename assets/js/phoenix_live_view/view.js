@@ -1100,7 +1100,7 @@ export default class View {
           if(newForm){
             return [form, newForm, this.targetComponentID(newForm)]
           } else {
-            return [form, null, null]
+            return [form, form, this.targetComponentID(form)]
           }
         })
         .filter(([form, newForm, newCid]) => newForm)
