@@ -1763,13 +1763,13 @@ defmodule Phoenix.LiveView do
     case streams do
       %{^name => %LiveStream{}} ->
         new_socket =
-          Enum.reduce(items, socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
+          if opts[:reset] do
+            update_stream(socket, name, &LiveStream.reset(&1))
+          else
+            socket
+          end
 
-        if opts[:reset] do
-          update_stream(new_socket, name, &LiveStream.reset(&1))
-        else
-          new_socket
-        end
+        Enum.reduce(items, new_socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
 
       %{} ->
         config = get_in(streams, [:__configured__, name]) || []
