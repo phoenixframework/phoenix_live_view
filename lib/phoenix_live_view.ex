@@ -1548,7 +1548,7 @@ defmodule Phoenix.LiveView do
 
   ## Resetting a stream
 
-  To empty a stream container on a client, you can pass `:reset` when an empty list:
+  To empty a stream container on the client, you can pass `:reset` when an empty list:
 
           stream(socket, :songs, [], reset: true)
 
