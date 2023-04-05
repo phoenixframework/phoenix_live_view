@@ -412,9 +412,7 @@ export default class LiveSocket {
     let removeAttr = this.binding("remove")
     elements = elements || DOM.all(document, `[${removeAttr}]`)
     elements.forEach(el => {
-      if(document.body.contains(el)){ // skip children already removed
-        this.execJS(el, el.getAttribute(removeAttr), "remove")
-      }
+      this.execJS(el, el.getAttribute(removeAttr), "remove")
     })
   }
 

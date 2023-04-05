@@ -3790,9 +3790,7 @@ var LiveSocket = class {
     let removeAttr = this.binding("remove");
     elements = elements || dom_default.all(document, `[${removeAttr}]`);
     elements.forEach((el) => {
-      if (document.body.contains(el)) {
-        this.execJS(el, el.getAttribute(removeAttr), "remove");
-      }
+      this.execJS(el, el.getAttribute(removeAttr), "remove");
     });
   }
   isPhxView(el) {
