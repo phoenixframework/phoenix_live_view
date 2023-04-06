@@ -3030,6 +3030,7 @@ within:
       if (resp.live_redirect) {
         return this.onLiveRedirect(resp.live_redirect);
       }
+      this.displayError();
       this.log("error", () => ["unable to join", resp]);
       if (this.liveSocket.isConnected()) {
         this.liveSocket.reloadWithJitter(this);
