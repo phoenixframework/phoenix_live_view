@@ -101,8 +101,8 @@ export default class DOMPatch {
 
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-        Object.entries(inserts).forEach(([key, streamAt]) => {
-          this.streamInserts[key] = {ref, streamAt}
+        Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
+          this.streamInserts[key] = {ref, streamAt, limit}
         })
         if(reset !== undefined){
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
@@ -124,7 +124,7 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let {ref, streamAt} = this.getStreamInsert(child)
+          let {ref, streamAt, limit} = this.getStreamInsert(child)
           if(ref === undefined) { return parent.appendChild(child) }
 
           DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
@@ -137,6 +137,12 @@ export default class DOMPatch {
           } else if(streamAt > 0){
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
+          }
+          let children = limit !== null && Array.from(parent.children)
+          if(limit && limit < 0 && children.length > limit * -1){
+            children.slice(0, children.length + limit).forEach(child => this.removeStreamChildElement(child))
+          } else if(limit && limit >= 0 && children.length > limit){
+            children.slice(limit).forEach(child => this.removeStreamChildElement(child))
           }
         },
         onBeforeNodeAdded: (el) => {
@@ -297,7 +303,7 @@ export default class DOMPatch {
   }
 
   maybeReOrderStream(el){
-    let {ref, streamAt} = this.getStreamInsert(el)
+    let {ref, streamAt, limit} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
 
     // we need to the PHX_STREAM_REF here as well as addChild is invoked only for parents
