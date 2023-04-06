@@ -1614,7 +1614,7 @@ defmodule Phoenix.LiveView do
           stream(socket, :songs, songs)
 
           socket
-          |> configure_stream(:songs, dom_id: &("songs-#{&1.id}")
+          |> stream_configure(:songs, dom_id: &("songs-#{&1.id}")
           |> stream(:songs, songs)
 
   A stream must be configured before items are inserted, and once configured,
@@ -1622,7 +1622,7 @@ defmodule Phoenix.LiveView do
   single time in a LiveComponent, use the `mount/1` callback. For example:
 
       def mount(socket) do
-        {:ok, configure_stream(socket, :songs, dom_id: &("songs-#{&1.id}")}
+        {:ok, stream_configure(socket, :songs, dom_id: &("songs-#{&1.id}")}
       end
 
       def update(assigns, socket) do
