@@ -22,6 +22,7 @@
 
 ### Bug fixes
   * Fix stream deletes not being sent on nested for comprehensions
+  * Fix `phx-disconnected` bindings not firing on mount failures
 
 ## 0.18.18 (2023-03-16)
 
