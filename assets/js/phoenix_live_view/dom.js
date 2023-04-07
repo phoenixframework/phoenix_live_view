@@ -183,6 +183,7 @@ let DOM = {
   debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
+
     if(debounce === ""){ debounce = defaultDebounce }
     if(throttle === ""){ throttle = defaultThrottle }
     let value = debounce || throttle
