@@ -172,16 +172,6 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       assert_patched(flash_live, "/flash-root?foo=bar")
     end
 
-    test "clears flash when passed down to component", %{conn: conn} do
-      {:ok, flash_live, _} = live(conn, "/flash-root")
-
-      result = render_click(flash_live, "set_error", %{"error" => "oops!"})
-      assert result =~ "stateless_component[oops!]:error"
-
-      result = render_click(flash_live, "clear_flash", %{"kind" => "error"})
-      assert result =~ "stateless_component[]:error"
-    end
-
     test "nested redirect with flash", %{conn: conn} do
       {:ok, flash_live, _} = live(conn, "/flash-root")
 

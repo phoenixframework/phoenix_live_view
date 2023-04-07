@@ -124,6 +124,7 @@ defmodule Phoenix.LiveView.Helpers do
        it by `render_slot/2`
 
   """
+  # TODO: Remove live_component arity checks from Engine
   @doc deprecated: "Use .live_component (live_component/1) instead"
   defmacro live_component(component, assigns, do_block \\ []) do
     if is_assign?(:socket, component) do
@@ -179,12 +180,8 @@ defmodule Phoenix.LiveView.Helpers do
     id = assigns[:id]
 
     # TODO: Remove logic from Diff once stateless components are removed.
-    # TODO: Remove live_component arity checks from Engine
-    if is_nil(id) and
-         (function_exported?(component, :handle_event, 3) or
-            function_exported?(component, :preload, 1)) do
-      raise "a component #{inspect(component)} that has implemented handle_event/3 or preload/1 " <>
-              "requires an :id assign to be given"
+    if is_nil(id) do
+      IO.warn("stateless LiveComponent are deprecated, please pass an :id or use the new function component instead")
     end
 
     %Component{id: id, assigns: assigns, component: component}

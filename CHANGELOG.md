@@ -18,6 +18,7 @@
   * Deprecate `render_block/2` in favor of `render_slot/2`
   * Deprecate `<%= live_img_preview(entry, opts) %>`. Use `<.live_img_preview entry={entry} {opts} />`
   * Deprecate `<%= live_file_upload(upload, opts) %>`. Use `<.live_file_upload upload={upload} {opts} />`
+  * Deprecate stateless LiveComponent in favor of function components or in favor of `<.live_component id={...} />` (note the `id` is required)
 
 ### Bug fixes
   * Fix stream deletes not being sent on nested for comprehensions

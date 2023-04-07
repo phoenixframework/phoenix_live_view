@@ -419,7 +419,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
     def render(assigns) do
       ~H"""
-      <%= live_component RenderOnlyComponent, from: @from %>
+      <%= live_component RenderOnlyComponent, from: @from, id: "render-only-component" %>
       """
     end
   end
