@@ -1060,8 +1060,7 @@ defmodule Phoenix.LiveView.TagEngine do
     {special, [quoted_value | r], a, locs}
   end
 
-  # TODO: Remove deprecation and no longer handle let especially
-  @special_attrs ~w(let :let :if :for)
+  @special_attrs ~w(:let :if :for)
   defp split_component_attr(
          {attr, {:expr, value, %{line: line, column: col} = meta}, attr_meta},
          {special, r, a, locs},
@@ -1069,18 +1068,6 @@ defmodule Phoenix.LiveView.TagEngine do
          _type_component
        )
        when attr in @special_attrs do
-    attr =
-      if String.starts_with?(attr, ":") do
-        attr
-      else
-        IO.warn(
-          "let is deprecated, please use :let instead",
-          %{__ENV__ | file: state.file, line: line, module: nil, function: nil}
-        )
-
-        ":#{attr}"
-      end
-
     case special do
       %{^attr => {_, attr_meta}} ->
         message = """

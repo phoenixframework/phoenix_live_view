@@ -213,7 +213,7 @@ defmodule Phoenix.LiveView.Helpers do
   This function is deprecated for function components. Use `render_slot/2`
   instead.
   """
-  @doc deprecated: "Use render_slot/2 instead"
+  @deprecated "Use render_slot/2 instead"
   defmacro render_block(inner_block, argument \\ []) do
     quote do
       unquote(__MODULE__).__render_block__(unquote(inner_block)).(
@@ -227,12 +227,12 @@ defmodule Phoenix.LiveView.Helpers do
   def __render_block__([%{inner_block: fun}]), do: fun
   def __render_block__(fun), do: fun
 
-  @doc deprecated: "Use <.live_img_preview /> instead"
+  @deprecated "Use <.live_img_preview /> instead"
   def live_img_preview(entry, opts) do
     live_img_preview(Enum.into(opts, %{entry: entry}))
   end
 
-  @doc deprecated: "Use <.live_file_input /> instead"
+  @deprecated "Use <.live_file_input /> instead"
   def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts) when is_list(opts) do
     require Phoenix.LiveViewTest
     assigns = Enum.into(opts, %{upload: conf})

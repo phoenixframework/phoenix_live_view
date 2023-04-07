@@ -1742,21 +1742,6 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    test "transform 'let' to :let" do
-      assert_formatter_output(
-        """
-        <.form let={f} for={@changeset}>
-          <%= input(f, :foo) %>
-        </.form>
-        """,
-        """
-        <.form :let={f} for={@changeset}>
-          <%= input(f, :foo) %>
-        </.form>
-        """
-      )
-    end
-
     test "order :let :for and :if over HTML attributes" do
       assert_formatter_output(
         """
@@ -2050,8 +2035,7 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
-    # TODO: Remove this `if` after Elixir versions before than 1.14 are no
-    # longer supported.
+    # TODO: Remove this `if` when we require Elixir 1.14+
     if function_exported?(EEx, :tokenize, 2) do
       test "handle EEx comments" do
         assert_formatter_doesnt_change("""
