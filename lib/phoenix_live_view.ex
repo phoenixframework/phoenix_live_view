@@ -237,7 +237,7 @@ defmodule Phoenix.LiveView do
       end
 
   You can learn more about function components in the `Phoenix.Component`
-  module. At the end of the day, they are useful mechanism to reuse markup
+  module. At the end of the day, they are a useful mechanism to reuse markup
   in your LiveViews.
 
   However, sometimes you need to compartmentalize or reuse more than markup.
