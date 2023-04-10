@@ -247,6 +247,16 @@ defmodule Phoenix.Component do
 
       use Phoenix.Component, global_prefixes: ~w(x-)
 
+  In your Phoenix application, this is typically done in your
+  `lib/my_app.ex` file, inside the `def html` definition:
+
+      def html do
+        quote do
+          use Phoenix.Component, global_prefixes: ~w(x-)
+          # ...
+        end
+      end
+
   Now all function components invoked by this module will accept any number of attributes
   prefixed with `x-`, in addition to the default global prefixes.
 
