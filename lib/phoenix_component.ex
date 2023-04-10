@@ -245,9 +245,15 @@ defmodule Phoenix.Component do
   [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to
   `use Phoenix.Component`:
 
+      use Phoenix.Component, global_prefixes: ~w(x-)
+
+  In your Phoenix application, this is typically done in your
+  `lib/my_app.ex` file, inside the `def html` definition:
+
       def html do
         quote do
           use Phoenix.Component, global_prefixes: ~w(x-)
+          # ...
         end
       end
 
