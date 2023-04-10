@@ -245,7 +245,11 @@ defmodule Phoenix.Component do
   [Alpine.js](https://alpinejs.dev/), you can pass the `:global_prefixes` option to
   `use Phoenix.Component`:
 
-      use Phoenix.Component, global_prefixes: ~w(x-)
+      def html do
+        quote do
+          use Phoenix.Component, global_prefixes: ~w(x-)
+        end
+      end
 
   Now all function components invoked by this module will accept any number of attributes
   prefixed with `x-`, in addition to the default global prefixes.
