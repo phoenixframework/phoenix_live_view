@@ -23,6 +23,36 @@ defmodule Phoenix.LiveViewUnitTest do
             URI.parse("https://www.example.com")
           )
 
+  describe "stream_configure/3" do
+    test "raises when already streamed" do
+      configured_socket = stream_configure(@socket, :songs, [])
+
+      streamed_socket =
+        Phoenix.Component.update(configured_socket, :streams, fn streams ->
+          Map.put(streams, :songs, %Phoenix.LiveView.LiveStream{})
+        end)
+
+      assert_raise ArgumentError,
+                   "cannot configure stream :songs after it has been streamed",
+                   fn -> stream_configure(streamed_socket, :songs, []) end
+    end
+
+    test "raises when already configured" do
+      configured_socket = stream_configure(@socket, :songs, [])
+
+      assert_raise ArgumentError,
+                   "cannot re-configure stream :songs after it has been configured",
+                   fn -> stream_configure(configured_socket, :songs, []) end
+    end
+
+    test "configures a bespoke dom_id" do
+      dom_id_fun = fn item -> "tunes-#{item.id}" end
+      socket = stream_configure(@socket, :songs, dom_id: dom_id_fun)
+
+      assert get_in(socket.assigns.streams, [:__configured__, :songs, :dom_id]) == dom_id_fun
+    end
+  end
+
   describe "flash" do
     test "get and put" do
       assert put_flash(@socket, :hello, "world").assigns.flash == %{"hello" => "world"}
