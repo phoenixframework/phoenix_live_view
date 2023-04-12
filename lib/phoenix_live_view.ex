@@ -1632,7 +1632,7 @@ defmodule Phoenix.LiveView do
   def stream_configure(%Socket{} = socket, name, opts) when is_list(opts) do
     new_socket = ensure_streams(socket)
 
-    case socket.assigns.streams do
+    case new_socket.assigns.streams do
       %{^name => %LiveStream{}} ->
         raise ArgumentError, "cannot configure stream :#{name} after it has been streamed"
 
