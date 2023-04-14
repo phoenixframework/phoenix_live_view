@@ -46,7 +46,7 @@ ways for flexibility:
      when set, will override the `:layout` option given via
      `use Phoenix.LiveView`
 
-  2. The `:layout` option returned on mount, via `{ok, socket, layout: ...}`
+  2. The `:layout` option returned on mount, via `{:ok, socket, layout: ...}`
      will override any previously set layout option
 
 The LiveView itself will be rendered inside the layout wrapped by
