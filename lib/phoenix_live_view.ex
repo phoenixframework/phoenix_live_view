@@ -1712,7 +1712,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      def handle_event("delete", %{"id" => id})
+      def handle_event("delete", %{"id" => id}, socket)
         song = get_song!(id)
         {:noreply, stream_delete(socket, :songs, song)}
       end
@@ -1749,7 +1749,7 @@ defmodule Phoenix.LiveView do
         """
       end
 
-      def handle_event("delete", %{"id" => dom_id})
+      def handle_event("delete", %{"id" => dom_id}, socket)
         {:noreply, stream_delete_by_dom_id(socket, :songs, dom_id)}
       end
   '''
