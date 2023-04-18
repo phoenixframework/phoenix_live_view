@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView.Socket do
             root_pid: nil,
             router: nil,
             assigns: %{__changed__: %{}},
-            private: %{__changed__: %{}},
+            private: %{__temp__: %{}},
             fingerprints: Phoenix.LiveView.Diff.new_fingerprints(),
             redirected: nil,
             host_uri: nil,

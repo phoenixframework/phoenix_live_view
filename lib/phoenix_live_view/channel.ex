@@ -1107,7 +1107,7 @@ defmodule Phoenix.LiveView.Channel do
        assign_new: {%{}, assign_new},
        lifecycle: lifecycle,
        root_view: root_view,
-       __changed__: %{}
+       __temp__: %{}
      }}
   end
 
@@ -1123,7 +1123,7 @@ defmodule Phoenix.LiveView.Channel do
            live_layout: false,
            lifecycle: lifecycle,
            root_view: root_view,
-           __changed__: %{}
+           __temp__: %{}
          }}
 
       {:error, :noproc} ->

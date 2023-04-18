@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView.Static do
           conn_session: conn_session,
           lifecycle: lifecycle,
           root_view: view,
-          __changed__: %{}
+          __temp__: %{}
         }
         |> maybe_put_live_layout(live_session),
         action,
@@ -181,7 +181,7 @@ defmodule Phoenix.LiveView.Static do
           lifecycle: config.lifecycle,
           live_layout: false,
           root_view: if(sticky?, do: view, else: parent.private.root_view),
-          __changed__: %{}
+          __temp__: %{}
         },
         nil,
         %{},
