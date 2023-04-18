@@ -66,11 +66,19 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
 
     def render(assigns) do
       ~H"""
-      <button id="comp-reply"
-              phx-click="reply"
-              phx-target={@myself}>
-        bump reply!
-      </button>
+      <div>
+        <button id="comp-reply"
+                phx-click="reply"
+                phx-target={@myself}>
+          bump reply!
+        </button>
+
+        <button id="comp-noreply"
+                phx-click="noreply"
+                phx-target={@myself}>
+          bump no reply!
+        </button>
+      </div>
       """
     end
 
@@ -85,6 +93,10 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
 
     def handle_event("reply", reply, socket) do
       {:reply, %{"comp-reply" => reply}, socket}
+    end
+
+    def handle_event("noreply", _reply, socket) do
+      {:noreply, socket}
     end
   end
 

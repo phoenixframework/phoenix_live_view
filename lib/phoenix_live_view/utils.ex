@@ -111,12 +111,14 @@ defmodule Phoenix.LiveView.Utils do
   """
   def clear_changed(%Socket{private: private, assigns: assigns} = socket) do
     temporary = Map.get(private, :temporary_assigns, %{})
+    %{socket | assigns: assigns |> Map.merge(temporary) |> Map.put(:__changed__, %{})}
+  end
 
-    %Socket{
-      socket
-      | assigns: assigns |> Map.merge(temporary) |> Map.put(:__changed__, %{}),
-        private: Map.put(private, :__temp__, %{})
-    }
+  @doc """
+  Clears temporary data (flash, pushes, etc) from the socket privates.
+  """
+  def clear_temp(socket) do
+    put_in(socket.private.__temp__, %{})
   end
 
   @doc """
@@ -186,6 +188,7 @@ defmodule Phoenix.LiveView.Utils do
   def post_mount_prune(%Socket{} = socket) do
     socket
     |> clear_changed()
+    |> clear_temp()
     |> drop_private([:connect_info, :connect_params, :assign_new])
   end
 

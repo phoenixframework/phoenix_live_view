@@ -121,6 +121,12 @@ defmodule Phoenix.LiveView.EventTest do
       |> render_click(%{reply: "123"})
 
       assert_reply(view, %{"comp-reply" => %{"reply" => "123"}})
+
+      view
+      |> element("#comp-noreply")
+      |> render_click(%{reply: "123"})
+
+      refute_received _
     end
   end
 end

@@ -710,18 +710,15 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, rendered, prints, pending, components, nil, changed?)
 
         diff = if linked_cid, do: Map.put(diff, @static, linked_cid), else: diff
-        {%{socket | fingerprints: component_prints}, pending, diff, components}
+
+        socket =
+          %{socket | fingerprints: component_prints}
+          |> Lifecycle.after_render()
+          |> Utils.clear_changed()
+
+        {socket, pending, diff, components}
       else
         {socket, pending, %{}, components}
-      end
-
-    socket =
-      if changed? do
-        socket
-        |> Lifecycle.after_render()
-        |> Utils.clear_changed()
-      else
-        socket
       end
 
     diffs =
@@ -731,6 +728,7 @@ defmodule Phoenix.LiveView.Diff do
         diffs
       end
 
+    socket = Utils.clear_temp(socket)
     cid_to_component = Map.put(cid_to_component, cid, dump_component(socket, component, id))
     {pending, diffs, {cid_to_component, id_to_cid, uuids}}
   end
