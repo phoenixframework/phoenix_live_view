@@ -571,6 +571,37 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Puts the submitter `element_or_selector` on the given `form` element.
+
+  A submitter is an element that initiates the form's submit event on the client. When a submitter
+  is put on an element created with `form/3` and then the form is submitted via `render_submit/2`,
+  the name/value pair of the submitter will be included in the submit event payload.
+
+  The given element or selector must exist within the form and match one of the following:
+
+  - A `button` or `input` element with `type="submit"`.
+
+  - A `button` element without a `type` attribute.
+
+  ## Examples
+
+      form = view |> form("#my-form")
+
+      assert form
+             |> put_submitter("button[name=example]")
+             |> render_submit() =~ "Submitted example"
+  """
+  def put_submitter(form, element_or_selector)
+
+  def put_submitter(%Element{proxy: proxy} = form, submitter) when is_binary(submitter) do
+    put_submitter(form, %Element{proxy: proxy, selector: submitter})
+  end
+
+  def put_submitter(%Element{} = form, %Element{} = submitter) do
+    %{form | meta: Map.put(form.meta, :submitter, submitter)}
+  end
+
+  @doc """
   Sends a form submit event given by `element` and returns the rendered result.
 
   The `element` is created with `element/3` and must point to a single
@@ -594,8 +625,15 @@ defmodule Phoenix.LiveViewTest do
   To submit a form along with some with hidden input values:
 
       assert view
-            |> form("#term", user: %{name: "hello"})
-            |> render_submit(%{user: %{"hidden_field" => "example"}}) =~ "Name updated"
+             |> form("#term", user: %{name: "hello"})
+             |> render_submit(%{user: %{"hidden_field" => "example"}}) =~ "Name updated"
+
+  To submit a form by a specific submit element via `put_submitter/2`:
+
+      assert view
+             |> form("#term", user: %{name: "hello"})
+             |> put_submitter("button[name=example_action]")
+             |> render_submit() =~ "Action taken"
 
   """
   def render_submit(element, value \\ %{})
