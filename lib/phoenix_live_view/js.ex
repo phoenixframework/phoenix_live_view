@@ -363,7 +363,7 @@ defmodule Phoenix.LiveView.JS do
     * `:transition` - The string of classes to apply before hiding or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
-      `{"ease-out duration-300", "opacity-0", "opacity-100"}`
+      `{"ease-out duration-300", "opacity-100", "opacity-0"}`
     * `:time` - The time to apply the transition from `:transition`.
       Defaults #{@default_transition_time}
 
