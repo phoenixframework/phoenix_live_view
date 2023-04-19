@@ -99,6 +99,7 @@ import {
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF,
+  PHX_PAGE_LOADING
 } from "./constants"
 
 import {
@@ -852,7 +853,8 @@ export default class LiveSocket {
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher}])
+            const form_page_loading = input.form.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null
+            JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher, page_loading: form_page_loading}])
           })
         })
       }, false)
