@@ -853,7 +853,7 @@ export default class LiveSocket {
             if(!DOM.isTextualInput(input)){
               this.setActiveElement(input)
             }
-            const form_page_loading = input.form.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null
+            const form_page_loading = input.form && input.form.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null
             JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher, page_loading: form_page_loading}])
           })
         })
