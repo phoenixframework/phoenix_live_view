@@ -317,10 +317,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             # but we take care to only send the `value` and any `extra` values
             # (collected from phx-value or form inputs) once with the first event.
             #
-            # (I can't quite reckon when you might be able to send phx-value-x values
-            # and uploads from a phx-click and also trigger JS events, but this
-            # method retains any previous behaviour: traditional events come in as [event] and
-            # multi-js-push come in as [js_push, js_push, ...].)
+            # > I can't quite reckon when you might be able to send phx-value-x values
+            # > and uploads from a phx-click and also trigger JS events, but this
+            # > method retains any current behaviour, even if aberrant.
+            #
+            # > This means that the `phx-target` and `phx-value` below will
+            # > be attached to the first event.
+            #
+            # > <button phx-target={@myself}
+            # >         phx-value-x="also-sent"
+            # >         phx-click={JS.push("e", ...) |> JS.push("e", target: @myself, ...)}>
+            # >   both to self
+            # > </button>
             event_or_js
             |> maybe_js_event()
             |> List.wrap()
