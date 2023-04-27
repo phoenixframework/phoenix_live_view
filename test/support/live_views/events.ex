@@ -30,11 +30,23 @@ defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
 
   def render(assigns) do
     ~H"""
+    count: <%= @count %>
+
     <span id="add-one-and-ten"
-      phx-click={JS.push("inc", value: %{inc: 1}) |> JS.push("inc", value: %{inc: 10})}>
+      phx-click={
+      JS.push("inc", value: %{inc: 1})
+      |> JS.push("inc", value: %{inc: 10})
+      }>
       Add 1 and 10
     </span>
-    count: <%= @count %>
+
+    <span id="reply-values"
+      phx-click={
+      JS.push("reply", value: %{int: 1})
+      |> JS.push("reply", value: %{int: 2})
+      }>
+      Reply with 1 and 2
+    </span>
     """
   end
 
@@ -46,9 +58,59 @@ defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
     {:noreply, update(socket, :count, &(&1 + v))}
   end
 
+  def handle_event("reply", %{"int" => i}, socket) do
+    {:reply, %{value: i}, socket}
+  end
+
   def handle_call({:run, func}, _, socket), do: func.(socket)
 
   def handle_info({:run, func}, socket), do: func.(socket)
+end
+
+defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+  alias Phoenix.LiveView.JS
+
+  defmodule Child do
+    use Phoenix.LiveComponent
+
+    def handle_event("inc", %{"inc" => v}, socket) do
+      {:noreply, update(socket, :count, &(&1 + v))}
+    end
+
+    def render(assigns) do
+      ~H"""
+      <div id={@id}>
+        <button id="push-to-self-component"
+                phx-click={
+                  JS.push("inc", target: "#child_1", value: %{inc: 1})
+                |> JS.push("inc", target: "#child_1", value: %{inc: 10})}>
+          both to self
+        </button>
+
+        <button id="push-between-components"
+                phx-click={
+                  JS.push("inc", target: "#child_2", value: %{inc: 2})
+                |> JS.push("inc", target: "#child_1", value: %{inc: 1})}>
+          one to either
+        </button>
+
+        <%= @id %> count: <%= @count %>
+      </div>
+      """
+    end
+  end
+
+  def render(assigns) do
+    ~H"""
+    <%= live_component Child, id: :child_1, count: @count %>
+    <%= live_component Child, id: :child_2, count: @count %>
+    """
+  end
+
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, events: [], count: 0)}
+  end
 end
 
 defmodule Phoenix.LiveViewTest.EventsInMountLive do
