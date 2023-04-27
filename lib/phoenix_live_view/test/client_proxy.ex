@@ -299,10 +299,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           case value do
             %Upload{} = upload ->
-              {view, cids, event, %{}, upload}
+              [{view, cids, event, %{}, upload}]
 
             other ->
-              {view, cids, event, stringify(other, & &1), nil}
+              [{view, cids, event, stringify(other, & &1), nil}]
           end
 
         %Element{} = element ->
@@ -312,59 +312,70 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
                {:ok, event_or_js} <- maybe_event(type, node, element),
-               {:ok, extra} <- maybe_values(type, node, element) do
-            {event, js_values, js_target_selector} = maybe_js_event(event_or_js)
-            extra = Map.merge(extra, js_values)
+               {:ok, dom_values} <- maybe_values(type, node, element) do
+            event_or_js
+            |> maybe_js_event()
+            |> List.wrap()
+            |> Enum.map(fn {event, js_values, js_target_selector} ->
+              event_values = Map.merge(dom_values, js_values)
 
-            {values, uploads} =
-              case value do
-                %Upload{} = upload -> {extra, upload}
-                other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
-              end
+              {values, uploads} =
+                case value do
+                  %Upload{} = upload -> {event_values, upload}
+                  other -> {DOM.deep_merge(event_values, stringify(other, & &1)), nil}
+                end
 
-            js_targets = DOM.targets_from_selector(root, js_target_selector)
-            node_targets = DOM.targets_from_node(root, node)
+              js_targets = DOM.targets_from_selector(root, js_target_selector)
+              node_targets = DOM.targets_from_node(root, node)
 
-            targets =
-              case {js_targets, node_targets} do
-                {[nil], right} -> right
-                {left, [nil]} -> left
-                {left, right} -> Enum.uniq(left ++ right)
-              end
+              targets =
+                case {js_targets, node_targets} do
+                  {[nil], right} -> right
+                  {left, [nil]} -> left
+                  {left, right} -> Enum.uniq(left ++ right)
+                end
 
-            {view, targets, event, values, uploads}
+              {view, targets, event, values, uploads}
+            end)
           end
       end
 
     case result do
-      {view, cids, event, values, upload} when is_list(cids) ->
-        last = length(cids) - 1
+      [{%ClientProxy{} = _view, _cids, _event, _values, _upload} | _] = events ->
+        last_event = length(events) - 1
 
         diffs =
-          cids
+          events
           |> Enum.with_index()
-          |> Enum.reduce(state, fn {cid, index}, acc ->
-            {type, encoded_value} = encode_event_type(type, values)
+          |> Enum.reduce(state, fn {{view, cids, event, values, upload}, event_index}, state
+                                   when is_list(cids) ->
+            last_cid = length(cids) - 1
 
-            payload =
-              maybe_put_uploads(
-                state,
-                view,
-                %{
-                  "cid" => cid,
-                  "type" => type,
-                  "event" => event,
-                  "value" => encoded_value
-                },
-                upload
-              )
+            cids
+            |> Enum.with_index()
+            |> Enum.reduce(state, fn {cid, cid_index}, acc ->
+              {type, encoded_value} = encode_event_type(type, values)
 
-            push_with_callback(acc, view, "event", from, payload, fn reply, state ->
-              if index == last do
-                {:noreply, render_reply(reply, from, state)}
-              else
-                {:noreply, state}
-              end
+              payload =
+                maybe_put_uploads(
+                  state,
+                  view,
+                  %{
+                    "cid" => cid,
+                    "type" => type,
+                    "event" => event,
+                    "value" => encoded_value
+                  },
+                  upload
+                )
+
+              push_with_callback(acc, view, "event", from, payload, fn reply, state ->
+                if event_index == last_event and cid_index == last_cid do
+                  {:noreply, render_reply(reply, from, state)}
+                else
+                  {:noreply, state}
+                end
+              end)
             end)
           end)
 
@@ -1009,12 +1020,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       [] ->
         raise ArgumentError, "no push command found within JS commands: #{inspect(js)}"
 
-      [["push", %{"event" => event} = args]] ->
-        {event, args["value"] || %{}, args["target"]}
-
-      [_ | _] ->
-        raise ArgumentError,
-              "Phoenix.LiveViewTest currently only supports a single push within JS commands"
+      push_events ->
+        Enum.map(push_events, fn ["push", %{"event" => event} = args] ->
+          {event, args["value"] || %{}, args["target"]}
+        end)
     end
   end
 
