@@ -17,7 +17,7 @@ defmodule Phoenix.LiveView.EventTest do
     test "LiveViewTest supports sending multiple push events in one render call", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events-multi-js")
 
-      assert element(view, "[phx-click]")
+      assert element(view, "#add-one-and-ten")
              |> render_click() =~ "count: 11"
     end
   end

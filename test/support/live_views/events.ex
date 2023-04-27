@@ -30,10 +30,10 @@ defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
 
   def render(assigns) do
     ~H"""
-    <span phx-click={
-      JS.push("inc", value: %{inc: 1})
-      |> JS.push("inc", value: %{inc: 10})
-    }>push-button</span>
+    <span id="add-one-and-ten"
+      phx-click={JS.push("inc", value: %{inc: 1}) |> JS.push("inc", value: %{inc: 10})}>
+      Add 1 and 10
+    </span>
     count: <%= @count %>
     """
   end
