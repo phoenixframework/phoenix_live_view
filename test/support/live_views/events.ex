@@ -32,21 +32,25 @@ defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
     ~H"""
     count: <%= @count %>
 
-    <span id="add-one-and-ten"
+    <button
+      id="add-one-and-ten"
       phx-click={
-      JS.push("inc", value: %{inc: 1})
-      |> JS.push("inc", value: %{inc: 10})
-      }>
+        JS.push("inc", value: %{inc: 1})
+        |> JS.push("inc", value: %{inc: 10})
+      }
+    >
       Add 1 and 10
-    </span>
+    </button>
 
-    <span id="reply-values"
+    <button
+      id="reply-values"
       phx-click={
-      JS.push("reply", value: %{int: 1})
-      |> JS.push("reply", value: %{int: 2})
-      }>
+        JS.push("reply", value: %{int: 1})
+        |> JS.push("reply", value: %{int: 2})
+      }
+    >
       Reply with 1 and 2
-    </span>
+    </button>
     """
   end
 
@@ -85,20 +89,24 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
     def render(assigns) do
       ~H"""
       <div id={@id}>
-        <button id="push-to-self"
-                phx-click={
-                  JS.push("inc", target: "#child_1", value: %{inc: 1})
-                |> JS.push("inc", target: "#child_1", value: %{inc: 10})}>
-          both to self
+        <button
+          id="push-to-self"
+          phx-click={
+            JS.push("inc", target: "#child_1", value: %{inc: 1})
+            |> JS.push("inc", target: "#child_1", value: %{inc: 10})}
+        >
+          Both to self
         </button>
 
-        <button id="push-to-other-targets"
-                phx-click={
-                JS.push("inc", target: "#child_2", value: %{inc: 2})
-                |> JS.push("inc", target: "#child_1", value: %{inc: 1})
-                |> JS.push("inc", value: %{inc: -1})
-                }>
-          one to either
+        <button
+          id="push-to-other-targets"
+          phx-click={
+            JS.push("inc", target: "#child_2", value: %{inc: 2})
+            |> JS.push("inc", target: "#child_1", value: %{inc: 1})
+            |> JS.push("inc", value: %{inc: -1})
+          }
+        >
+          One to everyone
         </button>
 
         <%= @id %> count: <%= @count %>
