@@ -366,8 +366,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       end
 
     case result do
-      [{%ClientProxy{} = _view, cids, _event, _values, _upload} | _] = events
-      when is_list(cids) ->
+      [{%ClientProxy{} = _view, _cids, _event, _values, _upload} | _] = events ->
         last_event = length(events) - 1
 
         diffs =
