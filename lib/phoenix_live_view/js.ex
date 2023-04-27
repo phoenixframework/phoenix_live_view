@@ -80,6 +80,19 @@ defmodule Phoenix.LiveView.JS do
         |> JS.add_class("warmer", to: ".thermo")
       }>+</button>
 
+  Any `phx-value-*` attributes will also be included in the payload, their
+  values will be overwritten by values given directly to `push/1`. Any
+  `phx-target` attribute will also be used, and overwritten.
+
+      <button
+        phx-click={JS.push("inc", value: %{limit: 40})}
+        phx-value-room="bedroom"
+        phx-value-limit="this value will be 40"
+        phx-target={@myself}
+      >+</button>
+
+  Push command
+
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
   `dispatch/1` can be used to dispatch custom JavaScript events to
@@ -135,11 +148,14 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:target` - The selector or component ID to push to
-    * `:loading` - The selector to apply the phx loading classes to
+    * `:target` - The selector or component ID to push to. This value will
+      overwrite any `phx-target` attribute present on the element.
+    * `:loading` - The selector to apply the phx loading classes to.
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
-      phx:page-loading-stop events for this push. Defaults to `false`
-    * `:value` - The map of values to send to the server
+      phx:page-loading-stop events for this push. Defaults to `false`.
+    * `:value` - The map of values to send to the server. These values will be
+      merged over any `phx-value-*` attributes that are present on the element.
+      All keys will be treated as strings when merging.
 
   ## Examples
 
