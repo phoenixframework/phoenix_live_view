@@ -74,6 +74,10 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
   defmodule Child do
     use Phoenix.LiveComponent
 
+    def update(assigns, socket) do
+      {:ok, assign(socket, id: assigns.id, count: 0)}
+    end
+
     def handle_event("inc", %{"inc" => v}, socket) do
       {:noreply, update(socket, :count, &(&1 + v))}
     end
@@ -81,17 +85,19 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
     def render(assigns) do
       ~H"""
       <div id={@id}>
-        <button id="push-to-self-component"
+        <button id="push-to-self"
                 phx-click={
                   JS.push("inc", target: "#child_1", value: %{inc: 1})
                 |> JS.push("inc", target: "#child_1", value: %{inc: 10})}>
           both to self
         </button>
 
-        <button id="push-between-components"
+        <button id="push-to-other-targets"
                 phx-click={
-                  JS.push("inc", target: "#child_2", value: %{inc: 2})
-                |> JS.push("inc", target: "#child_1", value: %{inc: 1})}>
+                JS.push("inc", target: "#child_2", value: %{inc: 2})
+                |> JS.push("inc", target: "#child_1", value: %{inc: 1})
+                |> JS.push("inc", value: %{inc: -1})
+                }>
           one to either
         </button>
 
@@ -103,9 +109,14 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
 
   def render(assigns) do
     ~H"""
-    <%= live_component Child, id: :child_1, count: @count %>
-    <%= live_component Child, id: :child_2, count: @count %>
+    <%= live_component Child, id: :child_1 %>
+    <%= live_component Child, id: :child_2 %>
+    root count: <%= @count %>
     """
+  end
+
+  def handle_event("inc", %{"inc" => v}, socket) do
+    {:noreply, update(socket, :count, &(&1 + v))}
   end
 
   def mount(_params, _session, socket) do
