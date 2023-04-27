@@ -312,44 +312,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
                {:ok, event_or_js} <- maybe_event(type, node, element),
-               {:ok, extra} <- maybe_values(type, node, element) do
-            # There may be multiple `push` events collected from JS commands,
-            # but we take care to only send the `value` and any `extra` values
-            # (collected from phx-value or form inputs) once with the first event.
-            #
-            # > I can't quite reckon when you might be able to send phx-value-x values
-            # > and uploads from a phx-click and also trigger JS events, but this
-            # > method retains any current behaviour, even if aberrant.
-            #
-            # > This means that the `phx-target` and `phx-value` below will
-            # > be attached to the first event.
-            #
-            # > <button phx-target={@myself}
-            # >         phx-value-x="also-sent"
-            # >         phx-click={JS.push("e", ...) |> JS.push("e", target: @myself, ...)}>
-            # >   both to self
-            # > </button>
+               {:ok, dom_values} <- maybe_values(type, node, element) do
             event_or_js
             |> maybe_js_event()
             |> List.wrap()
-            |> Enum.with_index(fn
-              {event, js_values, js_target_selector}, 0 ->
-                # Attach any extra values and uploads to first event.
-                extra = Map.merge(extra, js_values)
+            |> Enum.map(fn {event, js_values, js_target_selector} ->
+              dom_values = Map.merge(dom_values, js_values)
 
-                {values, uploads} =
-                  case value do
-                    %Upload{} = upload -> {extra, upload}
-                    other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
-                  end
+              {values, uploads} =
+                case value do
+                  %Upload{} = upload -> {dom_values, upload}
+                  other -> {DOM.deep_merge(dom_values, stringify(other, & &1)), nil}
+                end
 
-                {event, values, js_target_selector, uploads}
-
-              {event, js_values, js_target_selector}, _index ->
-                # Additional events should not include any extra data or no uploads.
-                {event, js_values, js_target_selector, nil}
-            end)
-            |> Enum.map(fn {event, values, js_target_selector, uploads} ->
               js_targets = DOM.targets_from_selector(root, js_target_selector)
               node_targets = DOM.targets_from_node(root, node)
 
