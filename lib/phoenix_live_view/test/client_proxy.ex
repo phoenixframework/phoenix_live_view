@@ -317,12 +317,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             |> maybe_js_event()
             |> List.wrap()
             |> Enum.map(fn {event, js_values, js_target_selector} ->
-              dom_values = Map.merge(dom_values, js_values)
+              event_values = Map.merge(dom_values, js_values)
 
               {values, uploads} =
                 case value do
-                  %Upload{} = upload -> {dom_values, upload}
-                  other -> {DOM.deep_merge(dom_values, stringify(other, & &1)), nil}
+                  %Upload{} = upload -> {event_values, upload}
+                  other -> {DOM.deep_merge(event_values, stringify(other, & &1)), nil}
                 end
 
               js_targets = DOM.targets_from_selector(root, js_target_selector)
