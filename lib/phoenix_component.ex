@@ -2725,26 +2725,16 @@ defmodule Phoenix.Component do
 
   attr.(:rest, :global, [])
 
-  def live_img_preview(%{entry: %Phoenix.LiveView.UploadEntry{ref: ref} = entry} = assigns) do
-    rest =
-      assigns
-      |> assigns_to_attributes([:entry])
-      |> Keyword.put_new_lazy(:id, fn -> "phx-preview-#{ref}" end)
-
-    assigns = assign(assigns, entry: entry, ref: ref, rest: rest)
-
+  def live_img_preview(assigns) do
     ~H"""
     <img
+      id={"phx-preview-#{@entry.ref}"}
       data-phx-upload-ref={@entry.upload_ref}
-      data-phx-entry-ref={@ref}
+      data-phx-entry-ref={@entry.ref}
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
       {@rest} />
     """
-  end
-
-  def live_img_preview(_assigns) do
-    raise ArgumentError, "missing required :entry attribute to <.live_img_preview/>"
   end
 
   @doc """
