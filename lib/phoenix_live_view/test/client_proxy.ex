@@ -299,10 +299,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           case value do
             %Upload{} = upload ->
-              {view, cids, event, %{}, upload}
+              [{view, cids, event, %{}, upload}]
 
             other ->
-              {view, cids, event, stringify(other, & &1), nil}
+              [{view, cids, event, stringify(other, & &1), nil}]
           end
 
         %Element{} = element ->
@@ -313,58 +313,87 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                :ok <- maybe_enabled(type, node, element),
                {:ok, event_or_js} <- maybe_event(type, node, element),
                {:ok, extra} <- maybe_values(type, node, element) do
-            {event, js_values, js_target_selector} = maybe_js_event(event_or_js)
-            extra = Map.merge(extra, js_values)
+            # There may be multiple `push` events collected from JS commands,
+            # but we take care to only send the `value` and any `extra` values
+            # (collected from phx-value or form inputs) once with the first event.
+            #
+            # (I can't quite reckon when you might be able to send phx-value-x values
+            # and uploads from a phx-click and also trigger JS events, but this
+            # method retains any previous behaviour: traditional events come in as [event] and
+            # multi-js-push come in as [js_push, js_push, ...].)
+            event_or_js
+            |> maybe_js_event()
+            |> List.wrap()
+            |> Enum.with_index(fn
+              {event, js_values, js_target_selector}, 0 ->
+                # Attach any extra values and uploads to first event.
+                extra = Map.merge(extra, js_values)
 
-            {values, uploads} =
-              case value do
-                %Upload{} = upload -> {extra, upload}
-                other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
-              end
+                {values, uploads} =
+                  case value do
+                    %Upload{} = upload -> {extra, upload}
+                    other -> {DOM.deep_merge(extra, stringify(other, & &1)), nil}
+                  end
 
-            js_targets = DOM.targets_from_selector(root, js_target_selector)
-            node_targets = DOM.targets_from_node(root, node)
+                {event, values, js_target_selector, uploads}
 
-            targets =
-              case {js_targets, node_targets} do
-                {[nil], right} -> right
-                {left, [nil]} -> left
-                {left, right} -> Enum.uniq(left ++ right)
-              end
+              {event, js_values, js_target_selector}, _index ->
+                # Additional events should not include any extra data or no uploads.
+                {event, js_values, js_target_selector, nil}
+            end)
+            |> Enum.map(fn {event, values, js_target_selector, uploads} ->
+              js_targets = DOM.targets_from_selector(root, js_target_selector)
+              node_targets = DOM.targets_from_node(root, node)
 
-            {view, targets, event, values, uploads}
+              targets =
+                case {js_targets, node_targets} do
+                  {[nil], right} -> right
+                  {left, [nil]} -> left
+                  {left, right} -> Enum.uniq(left ++ right)
+                end
+
+              {view, targets, event, values, uploads}
+            end)
           end
       end
 
     case result do
-      {view, cids, event, values, upload} when is_list(cids) ->
-        last = length(cids) - 1
+      [{%ClientProxy{} = _view, cids, _event, _values, _upload} | _] = events
+      when is_list(cids) ->
+        last_event = length(events) - 1
 
         diffs =
-          cids
+          events
           |> Enum.with_index()
-          |> Enum.reduce(state, fn {cid, index}, acc ->
-            {type, encoded_value} = encode_event_type(type, values)
+          |> Enum.reduce(state, fn {{view, cids, event, values, upload}, event_index}, state
+                                   when is_list(cids) ->
+            last_cid = length(cids) - 1
 
-            payload =
-              maybe_put_uploads(
-                state,
-                view,
-                %{
-                  "cid" => cid,
-                  "type" => type,
-                  "event" => event,
-                  "value" => encoded_value
-                },
-                upload
-              )
+            cids
+            |> Enum.with_index()
+            |> Enum.reduce(state, fn {cid, cid_index}, acc ->
+              {type, encoded_value} = encode_event_type(type, values)
 
-            push_with_callback(acc, view, "event", from, payload, fn reply, state ->
-              if index == last do
-                {:noreply, render_reply(reply, from, state)}
-              else
-                {:noreply, state}
-              end
+              payload =
+                maybe_put_uploads(
+                  state,
+                  view,
+                  %{
+                    "cid" => cid,
+                    "type" => type,
+                    "event" => event,
+                    "value" => encoded_value
+                  },
+                  upload
+                )
+
+              push_with_callback(acc, view, "event", from, payload, fn reply, state ->
+                if event_index == last_event and cid_index == last_cid do
+                  {:noreply, render_reply(reply, from, state)}
+                else
+                  {:noreply, state}
+                end
+              end)
             end)
           end)
 
@@ -1009,12 +1038,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       [] ->
         raise ArgumentError, "no push command found within JS commands: #{inspect(js)}"
 
-      [["push", %{"event" => event} = args]] ->
-        {event, args["value"] || %{}, args["target"]}
-
-      [_ | _] ->
-        raise ArgumentError,
-              "Phoenix.LiveViewTest currently only supports a single push within JS commands"
+      push_events ->
+        Enum.map(push_events, fn ["push", %{"event" => event} = args] ->
+          {event, args["value"] || %{}, args["target"]}
+        end)
     end
   end
 
