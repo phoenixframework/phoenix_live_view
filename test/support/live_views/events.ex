@@ -24,6 +24,33 @@ defmodule Phoenix.LiveViewTest.EventsLive do
   def handle_info({:run, func}, socket), do: func.(socket)
 end
 
+defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+  alias Phoenix.LiveView.JS
+
+  def render(assigns) do
+    ~H"""
+    <span phx-click={
+      JS.push("inc", value: %{inc: 1})
+      |> JS.push("inc", value: %{inc: 10})
+    }>push-button</span>
+    count: <%= @count %>
+    """
+  end
+
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, events: [], count: 0)}
+  end
+
+  def handle_event("inc", %{"inc" => v}, socket) do
+    {:noreply, update(socket, :count, &(&1 + v))}
+  end
+
+  def handle_call({:run, func}, _, socket), do: func.(socket)
+
+  def handle_info({:run, func}, socket), do: func.(socket)
+end
+
 defmodule Phoenix.LiveViewTest.EventsInMountLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 

@@ -13,6 +13,15 @@ defmodule Phoenix.LiveView.EventTest do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
   end
 
+  describe "multiple push_event" do
+    test "LiveViewTest supports sending multiple push events in one render call", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-multi-js")
+
+      assert element(view, "[phx-click]")
+             |> render_click() =~ "count: 11"
+    end
+  end
+
   describe "push_event" do
     test "sends updates with general assigns diff", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events")
