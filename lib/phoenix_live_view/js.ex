@@ -91,8 +91,6 @@ defmodule Phoenix.LiveView.JS do
         phx-target={@myself}
       >+</button>
 
-  Push command
-
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
   `dispatch/1` can be used to dispatch custom JavaScript events to
