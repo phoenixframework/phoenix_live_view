@@ -637,7 +637,7 @@ defmodule Phoenix.LiveViewTest do
     render_event(element, :submit, value)
   end
 
-  def render_submit(view, event, value) when is_map(value) do
+  def render_submit(view, event, value) do
     render_event(view, :submit, event, value)
   end
 
