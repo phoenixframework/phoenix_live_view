@@ -635,7 +635,9 @@ export default class LiveSocket {
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
         let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
-        if(!capture && href !== null && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location)){
+        // allow explicitly annotating data-phx-no-disconnect to avoid unload from custom anchor clicks
+        let dataNoDisconnect = e.target.dataset.phxNoDisconnect === 'true';
+        if(!capture && href !== null && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location) && !dataNoDisconnect){
           this.unload()
         }
         return

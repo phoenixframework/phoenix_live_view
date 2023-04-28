@@ -60,7 +60,9 @@ let DOM = {
 
   wantsNewTab(e){
     let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
-    return wantsNewTab || e.target.getAttribute("target") === "_blank"
+    let isDownload = (e.target instanceof HTMLAnchorElement && e.target.getAttribute("download") !== null)
+    let isTargetBlank = e.target.getAttribute("target") === "_blank" 
+    return wantsNewTab || isTargetBlank || isDownload
   },
 
   isUnloadableFormSubmit(e){
