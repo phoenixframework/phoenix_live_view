@@ -105,6 +105,11 @@ In the case of an `"element"` page loading event, the info will contain a
 `"target"` key containing the DOM element which triggered the page loading
 state.
 
+If you ever need to prevent a client-managed anchor element from triggering
+a LiveView unmount on click (e.g. if using client-side routing for part of
+an otherwise LiveView-rendered page), you can annotate the DOM element with `phx-no-disconnect`.
+This will signal to LiveView to exclude this element from its default routing disconnect logic.
+
 ### Handling server-pushed events
 
 When the server uses `Phoenix.LiveView.push_event/3`, the event name
