@@ -227,10 +227,20 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert {:error, [[_ref, :too_many_files]]} = render_upload(avatar, "myfile1.jpeg", 1)
       end
 
-      @tag allow: [accept: :any]
-      test "registering returns too_many_files on back-to-back entries", %{lv: lv} do
-        avatar = file_input(lv, "form", :avatar, build_entries(1))
+      @tag allow: [max_entries: 1, accept: :any]
+      test "replacement of previous entry with max_entries 1", %{lv: lv} do
+        [first_entry, second_entry] = build_entries(2)
+        avatar = file_input(lv, "form", :avatar, [first_entry])
         assert render_upload(avatar, "myfile1.jpeg", 1) =~ "#{@context}:myfile1.jpeg:1%"
+        second_avatar = file_input(lv, "form", :avatar, [second_entry])
+        assert render_upload(second_avatar, "myfile2.jpeg", 2) =~ "#{@context}:myfile2.jpeg:2%"
+      end
+
+      @tag allow: [max_entries: 2, accept: :any]
+      test "registering returns too_many_files on back-to-back entries with max_entries greater than 1", %{lv: lv} do
+        avatar = file_input(lv, "form", :avatar, build_entries(2))
+        assert render_upload(avatar, "myfile1.jpeg", 1) =~ "#{@context}:myfile1.jpeg:1%"
+        assert render_upload(avatar, "myfile2.jpeg", 2) =~ "#{@context}:myfile2.jpeg:2%"
         dup_avatar = file_input(lv, "form", :avatar, build_entries(1))
         assert {:error, [[_, :too_many_files]]} = preflight_upload(dup_avatar)
       end

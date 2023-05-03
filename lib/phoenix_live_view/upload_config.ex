@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveView.UploadEntry do
   @moduledoc """
   The struct representing an upload entry.
+
+    * `cancelled?` - This field is depreciated and will always return false
   """
 
   alias Phoenix.LiveView.UploadEntry
@@ -320,9 +322,10 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def unregister_completed_entry(%UploadConfig{} = conf, entry_ref) do
-    %UploadEntry{} = entry = get_entry_by_ref(conf, entry_ref)
-
-    drop_entry(conf, entry)
+    case get_entry_by_ref(conf, entry_ref) do
+      %UploadEntry{} = entry -> drop_entry(conf, entry)
+      _ -> conf #entry already unregistered, probably by cancel_entry
+    end
   end
 
   @doc false
@@ -630,14 +633,11 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def cancel_entry(%UploadConfig{} = conf, %UploadEntry{} = entry) do
-    case entry_pid(conf, entry) do
-      channel_pid when is_pid(channel_pid) ->
-        Phoenix.LiveView.UploadChannel.cancel(channel_pid)
-        update_entry(conf, entry.ref, fn entry -> %UploadEntry{entry | cancelled?: true} end)
-
-      _ ->
-        drop_entry(conf, entry)
+    channel_pid = entry_pid(conf, entry)
+    with true <- is_pid(channel_pid) do
+      Phoenix.LiveView.UploadChannel.cancel(channel_pid)
     end
+    drop_entry(conf, entry)
   end
 
   @doc false
