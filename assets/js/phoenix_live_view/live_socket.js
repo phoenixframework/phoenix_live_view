@@ -99,7 +99,6 @@ import {
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF,
-  PHX_NO_DISCONNECT,
 } from "./constants"
 
 import {
@@ -636,9 +635,7 @@ export default class LiveSocket {
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
         let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
-        // allow explicitly annotating phx-no-disconnect to avoid unload from anchor clicks with custom behavior outside lv
-        let phxNoDisconnect = e.target.hasAttribute(PHX_NO_DISCONNECT);
-        if(!capture && href !== null && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location) && !phxNoDisconnect){
+        if(!capture && href !== null && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location)){
           this.unload()
         }
         return
