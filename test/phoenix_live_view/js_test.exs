@@ -689,6 +689,8 @@ defmodule Phoenix.LiveView.JSTest do
     test "encoding" do
       assert js_to_string(JS.set_attribute({"disabled", "true"})) ==
                "[[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;],&quot;to&quot;:null}]]"
+      assert js_to_string(JS.set_attribute({"phx-click", JS.set_attribute({"aria-expanded", "true"})})) ==
+                "[[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;phx-click&quot;,[[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;aria-expanded&quot;,&quot;true&quot;],&quot;to&quot;:null}]]]}]]"
     end
   end
 

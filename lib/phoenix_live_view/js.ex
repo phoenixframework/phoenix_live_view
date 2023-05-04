@@ -135,7 +135,16 @@ defmodule Phoenix.LiveView.JS do
 
   defimpl Phoenix.HTML.Safe, for: Phoenix.LiveView.JS do
     def to_iodata(%Phoenix.LiveView.JS{} = js) do
-      Phoenix.HTML.Engine.html_escape(Phoenix.json_library().encode!(js.ops))
+      js
+      |> traverse()
+      |> Phoenix.json_library.encode!()
+      |> Phoenix.HTML.Engine.html_escape()
+    end
+    defp traverse(%Phoenix.LiveView.JS{ops: [[a, %{attr: [b, %Phoenix.LiveView.JS{} = c]}]]} = js) do
+      traverse(%{js | ops: [[a, %{attr: [b, traverse(c)]}]]})
+    end
+    defp traverse(%Phoenix.LiveView.JS{} = js) do
+      js.ops
     end
   end
 
