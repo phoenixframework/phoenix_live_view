@@ -221,8 +221,10 @@ let JS = {
 
     DOM.putSticky(el, "attrs", currentEl => {
       newRemoves.forEach(attr => currentEl.removeAttribute(attr))
-      if (val.constructor === Array) {val = JSON.stringify(val)}
-      newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val))
+      newSets.forEach(([attr, val]) => {
+        if (val.constructor === Array) {val = JSON.stringify(val)}
+        currentEl.setAttribute(attr, val)
+      })
       return [newSets, newRemoves]
     })
   },
