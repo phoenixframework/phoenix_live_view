@@ -12,6 +12,7 @@
 ### Enhancements
   * Support ordered inputs within `inputs_for`, to pair with Ecto's new `sort_param` and `drop_param` casting
   * Send form phx-value's on form events
+  * Support for `ctrl`, `meta`, `shift` modifiers on key events. E.g: `phx-keydown-control-a={JS.set_attribute({"aria-select", "true"}, to: "div")}`
 
 ### Deprecations
   * Deprecate passing `:dom_id` to `stream/4` in favor of `stream_configure/3`

@@ -97,7 +97,7 @@ values will be sent as part of the payload. For example:
 ## Key Events
 
 The `onkeydown`, and `onkeyup` events are supported via the `phx-keydown`,
-and `phx-keyup` bindings. Each binding supports a `phx-key` attribute, which triggers
+`phx-keyup`, `phx-keyup-*`, and `phx-keydown-*` bindings. Each binding supports a `phx-key` attribute, which triggers
 the event for the specific key press. If no `phx-key` is provided, the event is triggered
 for any key press. When pushed, the value sent to the server will contain the `"key"`
 that was pressed, plus any user-defined metadata. For example, pressing the

@@ -521,8 +521,16 @@ export default class LiveSocket {
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
-      if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
-
+      let binding = this.binding(e.type)
+      let keys = []
+      if (e.ctrlKey){keys.push("control")}
+      if (e.metaKey){keys.push("meta")}
+      if (e.shiftKey){keys.push("shift")}
+      if (keys.includes(pressedKey) === false){keys.push(pressedKey)}
+      let phxKey = [binding].concat(keys).join("-")
+      let hasPhxKey = targetEl.getAttributeNames().includes(phxKey)
+      phxEvent = hasPhxKey ? targetEl.getAttribute(phxKey) : phxEvent
+      if (hasPhxKey === false && matchKey && matchKey.toLowerCase() !== pressedKey) {return}
       let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
       JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
     })
