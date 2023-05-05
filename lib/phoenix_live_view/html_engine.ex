@@ -48,6 +48,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def classify_type(name), do: {:tag, name}
 
   @impl true
+  def preprocess_tokens(tokens), do: tokens
+
+  @impl true
   for void <- ~w(area base br col hr img input link meta param command keygen source) do
     def void?(unquote(void)), do: true
   end

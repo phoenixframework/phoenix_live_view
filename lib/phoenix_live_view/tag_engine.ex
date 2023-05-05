@@ -41,6 +41,17 @@ defmodule Phoenix.LiveView.TagEngine do
   @callback void?(name :: binary()) :: boolean()
 
   @doc """
+  Returns a list of tokens to be rendered.
+
+  This function allows HTML engines to perform initial transformations on
+  nodes within the template AST before it is processed for rendering. You
+  can just implement as `def preprocess_tokens(tokens), do: tokens` if you
+  want to ignore this.
+  """
+  @type token :: {atom(), binary(), list(tuple()), map()}
+  @callback preprocess_tokens(tokens :: [token()]) :: [token()]
+
+  @doc """
   Renders a component defined by the given function.
 
   This function is rarely invoked directly by users. Instead, it is used by `~H`
@@ -174,7 +185,10 @@ defmodule Phoenix.LiveView.TagEngine do
 
   @impl true
   def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
-    tokens = Tokenizer.finalize(tokens, file, cont, state.source)
+    tokens =
+      tokens
+      |> Tokenizer.finalize(file, cont, state.source)
+      |> state.tag_handler.preprocess_tokens()
 
     token_state =
       state
