@@ -652,7 +652,8 @@ export default class LiveSocket {
 
   bindKey(eventName){
     let key = this.binding(eventName)
-    window.addEventListener(eventName, e => {
+    let windowBinding = this.binding(`window-${eventName}`)
+    this.on(eventName, e => {
       let target = e.target
       let matchKey = target.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
@@ -672,6 +673,16 @@ export default class LiveSocket {
           this.withinOwners(target, view => {
             let data = {key: e.key, ...this.eventMeta(eventName, e, target)}
             JS.exec(eventName, phxEvent, view, target, ["push", {data}])
+          })
+        })
+      } else {
+        DOM.all(document, `[${windowBinding}]`, el => {
+          let phxEvent = el.getAttribute(windowBinding)
+          this.debounce(el, e, browserEventName, () => {
+            this.withinOwners(el, view => {
+              let data = {key: e.key, ...this.eventMeta(eventName, e, target)}
+              JS.exec(eventName, phxEvent, view, target, ["push", {data}])
+            })
           })
         })
       }
