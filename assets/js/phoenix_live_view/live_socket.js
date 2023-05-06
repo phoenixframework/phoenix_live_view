@@ -518,22 +518,7 @@ export default class LiveSocket {
     if(!dead){ this.bindNav() }
     this.bindClicks()
     if(!dead){ this.bindForms() }
-    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
-      let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
-      let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
-      let binding = this.binding(e.type)
-      let keys = []
-      if (e.ctrlKey){keys.push("control")}
-      if (e.metaKey){keys.push("meta")}
-      if (e.shiftKey){keys.push("shift")}
-      if (keys.includes(pressedKey) === false){keys.push(pressedKey)}
-      let phxKey = [binding].concat(keys).join("-")
-      let hasPhxKey = targetEl.getAttributeNames().includes(phxKey)
-      phxEvent = hasPhxKey ? targetEl.getAttribute(phxKey) : phxEvent
-      if (hasPhxKey === false && matchKey && matchKey.toLowerCase() !== pressedKey) {return}
-      let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
-      JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
-    })
+    this.bindKeys()
     this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
       if(!eventTarget){
         let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
@@ -658,6 +643,39 @@ export default class LiveSocket {
         })
       })
     }, capture)
+  }
+
+  bindKeys(){
+    this.bindKey("keyup")
+    this.bindKey("keydown")
+  }
+
+  bindKey(eventName){
+    let key = this.binding(eventName)
+    window.addEventListener(eventName, e => {
+      let target = e.target
+      let matchKey = target.getAttribute(this.binding(PHX_KEY))
+      let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
+      let keys = []
+      if (e.ctrlKey){keys.push("control")}
+      if (e.metaKey){keys.push("meta")}
+      if (e.shiftKey){keys.push("shift")}
+      if (keys.includes(pressedKey) === false){keys.push(pressedKey)}
+      let phxKey = [key].concat(keys).join("-")
+      let hasPhxKey = target.matches(`[${phxKey}]`)
+      if (hasPhxKey || target.matches(`[${key}]`)) {
+        let phxEvent = hasPhxKey ? target.getAttribute(phxKey) : target.getAttribute(key)
+
+        if (matchKey && matchKey.toLowerCase() !== pressedKey && hasPhxKey === false) {return}
+
+        this.debounce(target, e, eventName, () => {
+          this.withinOwners(target, view => {
+            let data = {key: e.key, ...this.eventMeta(eventName, e, target)}
+            JS.exec(eventName, phxEvent, view, target, ["push", {data}])
+          })
+        })
+      }
+    })
   }
 
   dispatchClickAway(e, clickStartedAt){
