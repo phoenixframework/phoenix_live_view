@@ -191,12 +191,19 @@ let JS = {
   },
 
   addOrRemoveClasses(el, adds, removes, transition, time, view){
-    let [transition_run, transition_start, transition_end] = transition || [[], [], []]
-    if(transition_run.length > 0){
-      let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(transition_run), [])
-      let onDone = () => this.addOrRemoveClasses(el, adds.concat(transition_end), removes.concat(transition_run).concat(transition_start))
+    let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []]
+    if(transitionRun.length > 0){
+      let onStart = () => {
+        this.addOrRemoveClasses(el, transitionStart, [].concat(transitionRun).concat(transitionEnd))
+        window.requestAnimationFrame(() => {
+          this.addOrRemoveClasses(el, transitionRun, [])
+          window.requestAnimationFrame(() => this.addOrRemoveClasses(el, transitionEnd, transitionStart))
+        })
+      }
+      let onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart))
       return view.transition(time, onStart, onDone)
     }
+
     window.requestAnimationFrame(() => {
       let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
       let keepAdds = adds.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
