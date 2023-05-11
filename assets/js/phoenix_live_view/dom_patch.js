@@ -11,6 +11,8 @@ import {
   PHX_UPDATE,
   PHX_STREAM,
   PHX_STREAM_REF,
+  PHX_VIEWPORT_TOP,
+  PHX_VIEWPORT_BOTTOM,
 } from "./constants"
 
 import {
@@ -84,6 +86,8 @@ export default class DOMPatch {
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
+    let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
+    let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
     let trackedInputs = []
@@ -101,8 +105,8 @@ export default class DOMPatch {
 
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-        Object.entries(inserts).forEach(([key, streamAt]) => {
-          this.streamInserts[key] = {ref, streamAt}
+        Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
+          this.streamInserts[key] = {ref, streamAt, limit}
         })
         if(reset !== undefined){
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
@@ -124,7 +128,7 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let {ref, streamAt} = this.getStreamInsert(child)
+          let {ref, streamAt, limit} = this.getStreamInsert(child)
           if(ref === undefined) { return parent.appendChild(child) }
 
           DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
@@ -138,8 +142,15 @@ export default class DOMPatch {
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
           }
+          let children = limit !== null && Array.from(parent.children)
+          if(limit && limit < 0 && children.length > limit * -1){
+            children.slice(0, children.length + limit).forEach(child => this.removeStreamChildElement(child))
+          } else if(limit && limit >= 0 && children.length > limit){
+            children.slice(limit).forEach(child => this.removeStreamChildElement(child))
+          }
         },
         onBeforeNodeAdded: (el) => {
+          this.maybePrivateHooks(el, phxViewportTop, phxViewportBottom)
           this.trackBefore("added", el)
           return el
         },
@@ -231,6 +242,8 @@ export default class DOMPatch {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
               appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
+
+            this.maybePrivateHooks(toEl, phxViewportTop, phxViewportBottom)
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
             if(toEl.getAttribute("name")){
@@ -275,6 +288,12 @@ export default class DOMPatch {
     this.trackAfter("discarded", el)
   }
 
+  maybePrivateHooks(el, phxViewportTop, phxViewportBottom){
+    if(el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))){
+      el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
+    }
+  }
+
   maybePendingRemove(node){
     if(node.getAttribute && node.getAttribute(this.phxRemove) !== null){
       this.pendingRemoves.push(node)
@@ -297,7 +316,7 @@ export default class DOMPatch {
   }
 
   maybeReOrderStream(el){
-    let {ref, streamAt} = this.getStreamInsert(el)
+    let {ref, streamAt, limit} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
 
     // we need to the PHX_STREAM_REF here as well as addChild is invoked only for parents

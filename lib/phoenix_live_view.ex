@@ -1699,7 +1699,8 @@ defmodule Phoenix.LiveView do
   """
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
-    update_stream(socket, name, &LiveStream.insert_item(&1, item, at))
+    limit = Keyword.get(opts, :limit)
+    update_stream(socket, name, &LiveStream.insert_item(&1, item, at, limit))
   end
 
   @doc """

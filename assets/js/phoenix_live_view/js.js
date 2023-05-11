@@ -5,13 +5,16 @@ let focusStack = null
 
 let JS = {
   exec(eventType, phxEvent, view, sourceEl, defaults){
-    let [defaultKind, defaultArgs] = defaults || [null, {}]
+    let [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
     let commands = phxEvent.charAt(0) === "[" ?
       JSON.parse(phxEvent) : [[defaultKind, defaultArgs]]
+
+
 
     commands.forEach(([kind, args]) => {
       if(kind === defaultKind && defaultArgs.data){
         args.data = Object.assign(args.data || {}, defaultArgs.data)
+        args.callback = args.callback || defaultArgs.callback
       }
       this.filterToEls(sourceEl, args).forEach(el => {
         this[`exec_${kind}`](eventType, phxEvent, view, sourceEl, el, args)
@@ -45,21 +48,21 @@ let JS = {
   exec_push(eventType, phxEvent, view, sourceEl, el, args){
     if(!view.isConnected()){ return }
 
-    let {event, data, target, page_loading, loading, value, dispatcher} = args
+    let {event, data, target, page_loading, loading, value, dispatcher, callback} = args
     let pushOpts = {loading, value, target, page_loading: !!page_loading}
     let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
     let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
       if(eventType === "change"){
-        let {newCid, _target, callback} = args
+        let {newCid, _target} = args
         _target = _target || (DOM.isFormInput(sourceEl) ? sourceEl.name : undefined)
         if(_target){ pushOpts._target = _target }
         targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback)
       } else if(eventType === "submit"){
         let {submitter} = args
-        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, submitter, pushOpts)
+        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, submitter, pushOpts, callback)
       } else {
-        targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts)
+        targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts, callback)
       }
     })
   },

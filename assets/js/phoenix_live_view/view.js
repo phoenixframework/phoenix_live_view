@@ -8,9 +8,11 @@ import {
   PHX_DISABLE_WITH,
   PHX_DISABLE_WITH_RESTORE,
   PHX_DISABLED,
-  PHX_DISCONNECTED_CLASS,
+  PHX_LOADING_CLASS,
   PHX_EVENT_CLASSES,
   PHX_ERROR_CLASS,
+  PHX_CLIENT_ERROR_CLASS,
+  PHX_SERVER_ERROR_CLASS,
   PHX_FEEDBACK_FOR,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
@@ -178,8 +180,10 @@ export default class View {
   setContainerClasses(...classes){
     this.el.classList.remove(
       PHX_CONNECTED_CLASS,
-      PHX_DISCONNECTED_CLASS,
-      PHX_ERROR_CLASS
+      PHX_LOADING_CLASS,
+      PHX_ERROR_CLASS,
+      PHX_CLIENT_ERROR_CLASS,
+      PHX_SERVER_ERROR_CLASS
     )
     this.el.classList.add(...classes)
   }
@@ -190,7 +194,7 @@ export default class View {
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout)
     } else {
       for(let id in this.viewHooks){ this.viewHooks[id].__disconnected() }
-      this.setContainerClasses(PHX_DISCONNECTED_CLASS)
+      this.setContainerClasses(PHX_LOADING_CLASS)
     }
   }
 
@@ -655,6 +659,7 @@ export default class View {
     }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
+    this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
     this.log("error", () => ["unable to join", resp])
     if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
   }
@@ -676,13 +681,19 @@ export default class View {
   onError(reason){
     this.onClose(reason)
     if(this.liveSocket.isConnected()){ this.log("error", () => ["view crashed", reason]) }
-    if(!this.liveSocket.isUnloaded()){ this.displayError() }
+    if(!this.liveSocket.isUnloaded()){
+      if(this.liveSocket.isConnected()){
+        this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+      } else {
+        this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS])
+      }
+    }
   }
 
-  displayError(){
+  displayError(classes){
     if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-start", {detail: {to: this.href, kind: "error"}}) }
     this.showLoader()
-    this.setContainerClasses(PHX_DISCONNECTED_CLASS, PHX_ERROR_CLASS)
+    this.setContainerClasses(...classes)
     this.execAll(this.binding("disconnected"))
   }
 
@@ -806,12 +817,12 @@ export default class View {
     }
   }
 
-  pushHookEvent(targetCtx, event, payload, onReply){
+  pushHookEvent(el, targetCtx, event, payload, onReply){
     if(!this.isConnected()){
       this.log("hook", () => ["unable to push hook event. LiveView not connected", event, payload])
       return false
     }
-    let [ref, els, opts] = this.putRef([], "hook")
+    let [ref, els, opts] = this.putRef([el], "hook")
     this.pushWithReply(() => [ref, els, opts], "event", {
       type: "hook",
       event: event,
@@ -844,13 +855,14 @@ export default class View {
     return meta
   }
 
-  pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}){
+
+  pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply){
     this.pushWithReply(() => this.putRef([el], type, opts), "event", {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    })
+    }, (resp, reply) => onReply && onReply(reply))
   }
 
   pushFileProgress(fileEl, entryRef, progress, onReply = function (){ }){

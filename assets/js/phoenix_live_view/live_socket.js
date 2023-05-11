@@ -240,6 +240,12 @@ export default class LiveSocket {
 
   // private
 
+  execJSHookPush(el, phxEvent, data, callback){
+    this.withinOwners(el, view => {
+      JS.exec("hook", phxEvent, view, el, ["push", {data, callback}])
+    })
+  }
+
   unload(){
     if(this.unloaded){ return }
     if(this.main && this.isConnected()){ this.log(this.main, "socket", () => ["disconnect for page nav"]) }

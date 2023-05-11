@@ -185,7 +185,7 @@ export default class Rendered {
     }
 
     if(stream !== undefined && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0 || reset)){
-      rendered[DYNAMICS] = []
+      delete rendered[STREAM]
       output.streams.add(stream)
     }
   }
