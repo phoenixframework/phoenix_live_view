@@ -369,7 +369,7 @@ defmodule Phoenix.LiveViewTest.DOM do
         [ref, inserts, deletes | maybe_reset] = item
         {in_acc, deletes_acc, resets_acc} = acc
         # rewrite inserts to nest ref
-        inserts = Enum.into(inserts, %{}, fn {id, at} -> {id, {ref, at}} end)
+        inserts = Enum.into(inserts, %{}, fn {id, [at, limit]} -> {id, {ref, at, limit}} end)
         new_inserts = Map.merge(in_acc, inserts)
         new_deletes = MapSet.union(deletes_acc, MapSet.new(deletes))
 
@@ -430,7 +430,7 @@ defmodule Phoenix.LiveViewTest.DOM do
         children = updated_existing_children ++ updated_appended
 
         new_children =
-          Enum.reduce(stream_inserts, children, fn {id, {ref, insert_at}}, acc ->
+          Enum.reduce(stream_inserts, children, fn {id, {ref, insert_at, _limit}}, acc ->
             old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
             existing? = Enum.find_index(updated_existing_children, &(attribute(&1, "id") == id))
             deleted? = MapSet.member?(stream_deletes, id)
@@ -470,7 +470,7 @@ defmodule Phoenix.LiveViewTest.DOM do
           |> Enum.reject(fn child ->
             id = attribute(child, "id")
             deleted? = MapSet.member?(stream_deletes, id)
-            {_ref, inserted_at} = Map.get(stream_inserts, id, {nil, false})
+            {_ref, inserted_at, _limit} = Map.get(stream_inserts, id, {nil, false, nil})
 
             deleted? && !inserted_at
           end)
