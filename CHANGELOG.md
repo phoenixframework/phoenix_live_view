@@ -10,6 +10,7 @@
   * Remove previously deprecated `<%= live_component(Component) %>`. Use `<.live_component module={Component} id=\"hello\" />` instead
 
 ### Enhancements
+  * Support stream resets with bulk insert operations
   * Support ordered inputs within `inputs_for`, to pair with Ecto's new `sort_param` and `drop_param` casting
   * Send form phx-value's on form events
 
@@ -21,6 +22,7 @@
   * Deprecate stateless LiveComponent in favor of function components or in favor of `<.live_component id={...} />` (note the `id` is required)
 
 ### Bug fixes
+  * Fix LiveView disconnects when clicking a `download` link
   * Fix stream deletes not being sent on nested for comprehensions
   * Fix `phx-disconnected` bindings not firing on mount failures
 
