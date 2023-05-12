@@ -3559,7 +3559,7 @@ within:
     pushFormRecovery(form, newCid, callback) {
       this.liveSocket.withinOwners(form, (view, targetCtx) => {
         let phxChange = this.binding("change");
-        let inputs = Array.from(form.elements).filter((el) => dom_default.isFormInput(el) && !el.hasAttribute(phxChange));
+        let inputs = Array.from(form.elements).filter((el) => dom_default.isFormInput(el) && el.name && !el.hasAttribute(phxChange));
         if (inputs.length === 0) {
           return;
         }
