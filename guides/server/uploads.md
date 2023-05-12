@@ -180,8 +180,9 @@ upload data alongside the form data:
 @impl Phoenix.LiveView
 def handle_event("save", _params, socket) do
   uploaded_files =
-    consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
-      dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
+    consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
+      ext = "." <> get_entry_extension(entry)
+      dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path <> ext)])
       # The `static/uploads` directory must exist for `File.cp!/2`
       # and MyAppWeb.static_paths/0 should contain uploads to work,.
       File.cp!(path, dest)
@@ -189,6 +190,11 @@ def handle_event("save", _params, socket) do
     end)
 
   {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
+end
+
+defp get_entry_extension(entry) do
+  [ext | _] = MIME.extensions(entry.client_type)
+  ext
 end
 ```
 
@@ -229,13 +235,19 @@ defmodule MyAppWeb.UploadLive do
   @impl Phoenix.LiveView
   def handle_event("save", _params, socket) do
     uploaded_files =
-      consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
-        dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
+      consume_uploaded_entries(socket, :avatar, fn %{path: path}, entry ->
+        ext = "." <> get_entry_extension(entry)
+        dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path <> ext)])
         File.cp!(path, dest)
         {:ok, ~p"/uploads/#{Path.basename(dest)}"}
       end)
 
     {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
+  end
+
+  defp get_entry_extension(entry) do
+    [ext | _] = MIME.extensions(entry.client_type)
+    ext
   end
 
   defp error_to_string(:too_large), do: "Too large"
