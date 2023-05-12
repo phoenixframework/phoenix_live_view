@@ -1565,10 +1565,8 @@ defmodule Phoenix.LiveView do
        along with a unique DOM id.
     2. Each stream item must include its DOM id on the item's element.
 
-> #### Info {: .info}
->
-> Not placing `phx-update="stream"` on the **immediate parent** for **each stream**
-> will result in unexpected behavior when calling `stream_insert` or `stream_delete`.
+  > **Note**: Failing to place `phx-update="stream"` on the **immediate parent** for
+  > **each stream** will result in broken behavior.
 
   When consuming a stream in a template, the DOM id and item is passed as a tuple,
   allowing convenient inclusion of the DOM id for each item. For example:
