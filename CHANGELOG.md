@@ -25,6 +25,7 @@
   * Fix LiveView disconnects when clicking a `download` link
   * Fix stream deletes not being sent on nested for comprehensions
   * Fix `phx-disconnected` bindings not firing on mount failures
+  * Support form recovery on forms with only hidden inputs
 
 ## 0.18.18 (2023-03-16)
 
