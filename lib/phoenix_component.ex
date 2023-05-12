@@ -2268,15 +2268,15 @@ defmodule Phoenix.Component do
 
   @persistent_id "_persistent_id"
   def inputs_for(assigns) do
-    %Phoenix.HTML.FormField{field: field_name, form: form} = assigns.field
+    %Phoenix.HTML.FormField{field: field_name, form: parent_form} = assigns.field
     options = assigns |> Map.take([:id, :as, :default, :append, :prepend]) |> Keyword.new()
 
     options =
-      form.options
+      parent_form.options
       |> Keyword.take([:multipart])
       |> Keyword.merge(options)
 
-    forms = form.impl.to_form(form.source, form, field_name, options)
+    forms = parent_form.impl.to_form(parent_form.source, parent_form, field_name, options)
     seen_ids = for f <- forms, vid = f.params[@persistent_id], into: %{}, do: {vid, true}
 
     {forms, _} =
@@ -2287,9 +2287,10 @@ defmodule Phoenix.Component do
             %{} -> next_id(map_size(seen_ids), seen_ids)
           end
 
+        form_id = "#{parent_form.id}_#{field_name}_#{id}"
         new_params = Map.put(params, @persistent_id, id)
         new_hidden = [{@persistent_id, id} | form.hidden]
-        new_form = %Phoenix.HTML.Form{form | id: id, params: new_params, hidden: new_hidden}
+        new_form = %Phoenix.HTML.Form{form | id: form_id, params: new_params, hidden: new_hidden}
         {new_form, Map.put(seen_ids, id, true)}
       end)
 

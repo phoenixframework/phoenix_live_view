@@ -526,7 +526,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                       {"name", "myform[inner][_persistent_id]"},
                       {"value", "0"}
                     ], []},
-                   {"input", [{"id", "0_foo"}, {"name", "myform[inner][foo]"}, {"type", "text"}],
+                   {"input", [{"id", "myform_inner_0_foo"}, {"name", "myform[inner][foo]"}, {"type", "text"}],
                     []}
                  ]
                }
@@ -553,7 +553,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                  [
                    {"input",
                     [{"type", "hidden"}, {"name", "name[_persistent_id]"}, {"value", "0"}], []},
-                   {"input", [{"id", "0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
+                   {"input", [{"id", "myform_inner_0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
                  ]
                }
              ] = html
@@ -585,7 +585,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                     ], []},
                    {"input",
                     [
-                      {"id", "0_foo"},
+                      {"id", "myform_inner_0_foo"},
                       {"name", "myform[inner][foo]"},
                       {"type", "text"},
                       {"value", "123"}
@@ -627,7 +627,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                     ], []},
                    {"input",
                     [
-                      {"id", "0_foo"},
+                      {"id", "myform_inner_0_foo"},
                       {"name", "myform[inner][0][foo]"},
                       {"type", "text"},
                       {"value", "123"}
@@ -640,7 +640,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                     ], []},
                    {"input",
                     [
-                      {"id", "1_foo"},
+                      {"id", "myform_inner_1_foo"},
                       {"name", "myform[inner][1][foo]"},
                       {"type", "text"},
                       {"value", "456"}
@@ -653,7 +653,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
                     ], []},
                    {"input",
                     [
-                      {"id", "2_foo"},
+                      {"id", "myform_inner_2_foo"},
                       {"name", "myform[inner][2][foo]"},
                       {"type", "text"},
                       {"value", "789"}
