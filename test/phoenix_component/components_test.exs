@@ -692,7 +692,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       """
 
       assert render(template) ==
-               "\n  \n    \n  Item1\n\n  \n\n  \n    <span class=\"sep\">|</span>\n  \n\n  \n    \n  Item2\n\n  \n\n  \n    <span class=\"sep\">|</span>\n  \n\n  \n    \n  Item3\n\n  \n"
+               "\n  Item1\n<span class=\"sep\">|</span>\n  Item2\n<span class=\"sep\">|</span>\n  Item3\n"
 
       template = ~H"""
       <.intersperse :let={item} enum={[1]}>
@@ -701,7 +701,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.intersperse>
       """
 
-      assert render(template) == "\n  \n    \n  Item1\n\n  \n"
+      assert render(template) == "\n  Item1\n"
     end
   end
 end
