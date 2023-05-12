@@ -298,7 +298,9 @@ var DOM = {
   },
   wantsNewTab(e) {
     let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
-    return wantsNewTab || e.target.getAttribute("target") === "_blank";
+    let isDownload = e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download");
+    let isTargetBlank = e.target.getAttribute("target") === "_blank";
+    return wantsNewTab || isTargetBlank || isDownload;
   },
   isUnloadableFormSubmit(e) {
     return !e.defaultPrevented && !this.wantsNewTab(e);
@@ -3514,9 +3516,12 @@ var View = class {
   }
   pushFormRecovery(form, newCid, callback) {
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
-      let input = Array.from(form.elements).find((el) => {
-        return dom_default.isFormInput(el) && el.type !== "hidden" && !el.hasAttribute(this.binding("change"));
-      });
+      let phxChange = this.binding("change");
+      let inputs = Array.from(form.elements).filter((el) => dom_default.isFormInput(el) && !el.hasAttribute(phxChange));
+      if (inputs.length === 0) {
+        return;
+      }
+      let input = inputs.find((el) => el.type !== "hidden") || input[0];
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
       js_default.exec("change", phxEvent, view, input, ["push", { _target: input.name, newCid, callback }]);
     });

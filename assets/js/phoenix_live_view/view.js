@@ -1060,11 +1060,12 @@ export default class View {
 
   pushFormRecovery(form, newCid, callback){
     this.liveSocket.withinOwners(form, (view, targetCtx) => {
-      let input = Array.from(form.elements).find(el => {
-        return DOM.isFormInput(el) && el.type !== "hidden" && !el.hasAttribute(this.binding("change"))
-      })
-      let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
+      let phxChange = this.binding("change")
+      let inputs = Array.from(form.elements).filter(el => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange))
+      if(inputs.length === 0){ return }
 
+      let input = inputs.find(el => el.type !== "hidden") || input[0]
+      let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
       JS.exec("change", phxEvent, view, input, ["push", {_target: input.name, newCid: newCid, callback: callback}])
     })
   }
