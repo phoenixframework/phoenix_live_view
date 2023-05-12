@@ -3,6 +3,12 @@ import LiveSocket from "phoenix_live_view/live_socket"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
+import {
+  PHX_LOADING_CLASS,
+  PHX_ERROR_CLASS,
+  PHX_SERVER_ERROR_CLASS
+} from "phoenix_live_view/constants"
+
 import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
 
 describe("View + DOM", function(){
@@ -647,7 +653,7 @@ describe("View", function(){
     let view = simulateJoinedView(el, liveSocket)
 
     expect(status.style.display).toBe("none")
-    view.displayError()
+    view.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
     expect(el.classList.contains("phx-loading")).toBeTruthy()
     expect(el.classList.contains("phx-error")).toBeTruthy()
     expect(el.classList.contains("phx-connected")).toBeFalsy()
