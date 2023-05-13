@@ -79,8 +79,8 @@ their own events too.
 For live page navigation via `<.link navigate={...}>` and `<.link patch={...}>`,
 their server-side equivalents `push_redirect` and `push_patch`, as well as form
 submits via `phx-submit`, the JavaScript events `"phx:page-loading-start"` and
-`"phx:page-loading-stop"` are dispatched on window. Additionally, any `phx-`
-event may dispatch page loading events by annotating the DOM element with
+`"phx:page-loading-stop"` are dispatched on window. Additionally, `phx-`
+events may dispatch page loading events by annotating the DOM element with
 `phx-page-loading`. This is useful for showing main page loading status, for example:
 
 ```
@@ -104,6 +104,17 @@ key in the info metadata pointing to the href associated with the page load.
 In the case of an `"element"` page loading event, the info will contain a
 `"target"` key containing the DOM element which triggered the page loading
 state.
+
+Be aware that putting `phx-change` and `phx-page-loading` on a form element
+will not trigger `phx:page-loading-*` events. Instead `phx-page-loading` should
+be placed on individual inputs:
+
+```
+<.form for={@form} phx-change="adjust_filters">
+  <.input field={@form[:only_high_priority]} type="checkbox" phx-page-loading/>
+  <.input field={@form[:include_deleted]} type="checkbox" phx-page-loading/>
+</.form>
+```
 
 ### Handling server-pushed events
 
