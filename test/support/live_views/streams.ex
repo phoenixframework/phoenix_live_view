@@ -160,3 +160,59 @@ defmodule Phoenix.LiveViewTest.StreamComponent do
     %{id: id, name: name}
   end
 end
+
+defmodule Phoenix.LiveViewTest.HealthyLive do
+  use Phoenix.LiveView
+
+  @healthy_stuff %{
+    "fruits" => [
+      %{id: 1, name: "Apples"},
+      %{id: 2, name: "Oranges"}
+    ],
+    "veggies" => [
+      %{id: 3, name: "Carrots"},
+      %{id: 4, name: "Tomatoes"}
+    ]
+  }
+
+  def render(assigns) do
+    ~H"""
+    <p>
+      <.link patch={other(@category)}>Switch</.link>
+    </p>
+
+    <h1><%= String.capitalize(@category) %></h1>
+
+    <ul id="items" phx-update="stream">
+      <li :for={{dom_id, item} <- @streams.items} id={dom_id}>
+        <%= item.name %>
+      </li>
+    </ul>
+    """
+  end
+
+  defp other("fruits" = _current_category) do
+    "/healthy/veggies"
+  end
+
+  defp other("veggies" = _current_category) do
+    "/healthy/fruits"
+  end
+
+  def mount(%{"category" => category} = _params, _session, socket) do
+    socket =
+      socket
+      |> assign(:category, category)
+
+    {:ok, socket}
+  end
+
+  def handle_params(%{"category" => category} = _params, _url, socket) do
+    socket =
+      socket
+      |> assign(:category, category)
+      |> stream(:items, Map.fetch!(@healthy_stuff, category), reset: true)
+
+    {:noreply, socket}
+  end
+end

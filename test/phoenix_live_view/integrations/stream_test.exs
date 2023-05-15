@@ -104,6 +104,29 @@ defmodule Phoenix.LiveView.StreamTest do
     assert lv |> render() |> users_in_dom("admins") == [{"admins-2", "updated"}]
   end
 
+  test "stream reset on patch", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/healthy/fruits")
+
+    assert has_element?(lv, "h1", "Fruits")
+
+    assert has_element?(lv, "li", "Apples")
+    assert has_element?(lv, "li", "Oranges")
+
+    lv
+    |> element("a", "Switch")
+    |> render_click()
+
+    assert_patched(lv, "/healthy/veggies")
+
+    assert has_element?(lv, "h1", "Veggies")
+
+    assert has_element?(lv, "li", "Carrots")
+    assert has_element?(lv, "li", "Tomatoes")
+
+    refute has_element?(lv, "li", "Apples")
+    refute has_element?(lv, "li", "Oranges")
+  end
+
   describe "within live component" do
     test "stream operations", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/stream")
@@ -172,7 +195,7 @@ defmodule Phoenix.LiveView.StreamTest do
 
       assert lv |> render() |> users_in_dom("c_users") == [{"c_users-2", "updated"}]
 
-     Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StreamComponent,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StreamComponent,
         id: "stream-component",
         reset: {:c_users, []}
       )
