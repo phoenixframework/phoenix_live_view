@@ -3468,7 +3468,7 @@ var View = class {
           cid
         }, onReply);
       });
-    } else if (!formEl.hasAttribute(PHX_REF)) {
+    } else if (!(formEl.hasAttribute(PHX_REF) && formEl.classList.contains("phx-submit-loading"))) {
       let meta = this.extractMeta(formEl);
       let formData = serializeForm(formEl, { submitter, ...meta });
       this.pushWithReply(refGenerator, "event", {
