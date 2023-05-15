@@ -1088,6 +1088,7 @@ defmodule Phoenix.LiveViewTest do
     * `:content` - the binary content of the file
     * `:size` - the byte size of the content
     * `:type` - the MIME type of the file
+    * `:relative_path` - for simulating webkitdirectory metadata
 
   ## Examples
 
