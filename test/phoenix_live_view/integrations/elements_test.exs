@@ -409,6 +409,15 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
   end
 
+  test "put_submitter/2 puts submitter meta on element", %{live: view} do
+    selector = "button[name=submitter]"
+
+    from_element = view |> element("form") |> put_submitter(element(view, selector))
+    from_selector = view |> element("form") |> put_submitter(selector)
+
+    assert from_element.meta.submitter == from_selector.meta.submitter
+  end
+
   describe "render_submit" do
     test "raises if element is not a form", %{live: view} do
       assert_raise ArgumentError, "phx-submit is only allowed in forms, got \"a\"", fn ->
@@ -431,13 +440,15 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert_raise ArgumentError, ~r"invalid form submitter", fn ->
         assert view
                |> element("#submitter-form")
-               |> render_submit(%{}, submitter: "#element-does-not-exist")
+               |> put_submitter("#element-does-not-exist")
+               |> render_submit()
       end
 
       assert_raise ArgumentError, ~r"invalid form submitter", fn ->
         assert view
                |> element("#submitter-form")
-               |> render_submit(%{}, submitter: "button")
+               |> put_submitter("button")
+               |> render_submit()
       end
 
       assert_raise ArgumentError,
@@ -445,7 +456,8 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn ->
                      assert view
                             |> element("#submitter-form")
-                            |> render_submit(%{}, submitter: "#input_no_name")
+                            |> put_submitter("#input_no_name")
+                            |> render_submit()
                    end
 
       assert_raise ArgumentError,
@@ -453,7 +465,8 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn ->
                      assert view
                             |> element("#submitter-form")
-                            |> render_submit(%{}, submitter: "[name=input_disabled]")
+                            |> put_submitter("[name=input_disabled]")
+                            |> render_submit()
                    end
 
       assert_raise ArgumentError,
@@ -461,7 +474,8 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn ->
                      assert view
                             |> element("#submitter-form")
-                            |> render_submit(%{}, submitter: "[name=button_disabled]")
+                            |> put_submitter("[name=button_disabled]")
+                            |> render_submit()
                    end
 
       assert_raise ArgumentError,
@@ -469,39 +483,45 @@ defmodule Phoenix.LiveView.ElementsTest do
                    fn ->
                      assert view
                             |> element("#submitter-form")
-                            |> render_submit(%{}, submitter: "[name=button_no_submit]")
+                            |> put_submitter("[name=button_no_submit]")
+                            |> render_submit()
                    end
     end
 
     test "includes the submitter key/value pair in the payload", %{live: view} do
       assert view
              |> element("#submitter-form")
-             |> render_submit(%{}, submitter: "[name=input]")
+             |> put_submitter("[name=input]")
+             |> render_submit()
 
       assert last_event(view) =~ ~s|form-submit: %{"data" => %{"a" => "b"}, "input" => "yes"}|
 
       assert view
              |> element("#submitter-form")
-             |> render_submit(%{}, submitter: "input#data-nested")
+             |> put_submitter("input#data-nested")
+             |> render_submit()
 
       assert last_event(view) =~ ~s|form-submit: %{"data" => %{"a" => "b", "nested" => "yes"}}|
 
       assert view
              |> element("#submitter-form")
-             |> render_submit(%{}, submitter: "[name=button]")
+             |> put_submitter("[name=button]")
+             |> render_submit()
 
       assert last_event(view) =~ ~s|form-submit: %{"button" => "yes", "data" => %{"a" => "b"}}|
 
       assert view
              |> element("#submitter-form")
-             |> render_submit(%{}, submitter: "[name=button_no_type]")
+             |> put_submitter("[name=button_no_type]")
+             |> render_submit()
 
       assert last_event(view) =~
                ~s|form-submit: %{"button_no_type" => "yes", "data" => %{"a" => "b"}}|
 
       assert view
              |> element("#submitter-form")
-             |> render_submit(%{}, submitter: "[name=button_no_value]")
+             |> put_submitter("[name=button_no_value]")
+             |> render_submit()
 
       assert last_event(view) =~
                ~s|form-submit: %{"button_no_value" => "", "data" => %{"a" => "b"}}|
