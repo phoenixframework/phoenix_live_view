@@ -1056,8 +1056,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           end)
           |> Enum.reduce(%{}, &form_defaults/2)
 
-        case fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
-          {:ok, value} -> {:ok, DOM.deep_merge(defaults, value)}
+        with {:ok, defaults} <- maybe_submitter(defaults, type, node, element),
+             {:ok, value} <- fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
+          {:ok, DOM.deep_merge(defaults, value)}
+        else
           {:error, _, _} = error -> error
         end
 
@@ -1071,6 +1073,45 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_values(_type, node, _element) do
     {:ok, DOM.all_values(node)}
+  end
+
+  defp maybe_submitter(defaults, :submit, form, %Element{meta: %{submitter: element}}) do
+    collect_submitter(form, element, defaults)
+  end
+
+  defp maybe_submitter(defaults, _, _, _), do: {:ok, defaults}
+
+  defp collect_submitter(form, element, defaults) do
+    case select_node(form, element) do
+      {:ok, node} -> collect_submitter(node, form, element, defaults)
+      {:error, _, msg} -> {:error, :invalid, "invalid form submitter, " <> msg}
+    end
+  end
+
+  defp collect_submitter(node, form, element, defaults) do
+    name = DOM.attribute(node, "name")
+
+    cond do
+      is_nil(name) ->
+        {:error, :invalid,
+         "form submitter selected by #{inspect(element.selector)} must have a name"}
+
+      submitter?(node) and is_nil(DOM.attribute(node, "disabled")) ->
+        {:ok, Plug.Conn.Query.decode_pair({name, DOM.attribute(node, "value")}, defaults)}
+
+      true ->
+        {:error, :invalid,
+         "could not find non-disabled submit input or button with name #{inspect(name)} within:\n\n" <>
+           DOM.inspect_html(DOM.all(form, "[name]"))}
+    end
+  end
+
+  defp submitter?({"input", _, _} = node) do
+    DOM.attribute(node, "type") == "submit"
+  end
+
+  defp submitter?({"button", _, _} = node) do
+    DOM.attribute(node, "type") in ["submit", nil]
   end
 
   defp maybe_push_events(diff, state) do

@@ -131,6 +131,19 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <input name="hello[individual]" type="text" phx-change="individual-changed"/>
     </form>
 
+    <form id="submitter-form" phx-submit="form-submit">
+      <input name="data[a]" type="hidden" value="b">
+      <input name="input" type="submit" value="yes">
+      <input name="input_disabled" type="submit" value="yes" disabled>
+      <input name="data[nested]" id="data-nested" type="submit" value="yes">
+      <input id="input_no_name" type="submit" value="yes">
+      <button name="button" type="submit" value="yes">button</button>
+      <button name="button_disabled" type="submit" value="yes" disabled />
+      <button name="button_no_submit" type="button" value="this_value_should_never_appear">button_no_submit</button>
+      <button name="button_no_type" value="yes">button_no_type</button>
+      <button name="button_no_value">Button No Value</button>
+    </form>
+
     <form id="trigger-form-default" phx-submit="form-submit-trigger"
           phx-trigger-action={@trigger_action}>
     </form>
