@@ -2678,7 +2678,7 @@ defmodule Phoenix.Component do
     doc: "The `Phoenix.LiveView.UploadConfig` struct"
   )
 
-  attr.(:rest, :global, [])
+  attr.(:rest, :global, include: ~w(webkitdirectory))
 
   def live_file_input(assigns) do
     ~H"""

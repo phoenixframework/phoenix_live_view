@@ -678,6 +678,17 @@ defmodule Phoenix.LiveView.ComponentsTest do
              ) ==
                ~s|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-auto-upload class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;">|
     end
+
+    test "renders optional webkitdirectory attribute" do
+      assigns = %{
+        conf: %Phoenix.LiveView.UploadConfig{
+          entries: [%{preflighted?: false, done?: false, ref: "foo"}]
+        }
+      }
+
+      assert render(~H|<.live_file_input upload={@conf} webkitdirectory />|) ==
+               ~s|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" webkitdirectory>|
+    end
   end
 
   describe "intersperse" do
