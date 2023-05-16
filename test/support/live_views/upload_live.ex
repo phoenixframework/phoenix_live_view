@@ -16,6 +16,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
         <%= for msg <- upload_errors(@uploads.avatar, entry) do %>
           error:<%= inspect(msg) %>
         <% end %>
+        relative path:<%= entry.client_relative_path %>
       <% end %>
       <.live_file_input upload={@uploads.avatar} />
       <button type="submit">save</button>
