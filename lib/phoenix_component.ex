@@ -2767,10 +2767,13 @@ defmodule Phoenix.Component do
 
   def intersperse(assigns) do
     ~H"""
-    <%= for item <- Enum.intersperse(@enum, :separator) do
-    %><%= if item == :separator do %><%= render_slot(@separator)
-    %><% else
-    %><%= render_slot(@inner_block, item)%><% end %><% end %>
+    <%= for item <- Enum.intersperse(@enum, :separator) do %><%=
+      if item == :separator do
+        render_slot(@separator)
+      else
+        render_slot(@inner_block, item)
+      end
+    %><% end %>
     """
   end
 end
