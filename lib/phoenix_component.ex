@@ -1397,7 +1397,7 @@ defmodule Phoenix.Component do
   changesets. `:errors` a keyword of tuples in the shape
   of `{error_message, options_list}`. Here is an example:
 
-      to_form(%{"search" => nil}, errors: [search: [{"Can't be blank", []}]])
+      to_form(%{"search" => nil}, errors: [search: {"Can't be blank", []}])
 
   If an existing `Phoenix.HTML.Form` struct is given, the
   options above will override its existing values if given.
