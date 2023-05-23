@@ -53,7 +53,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp docs do
     [
-      main: "Phoenix.Component",
+      main: "welcome",
       source_ref: "v#{@version}",
       source_url: "https://github.com/phoenixframework/phoenix_live_view",
       extra_section: "GUIDES",

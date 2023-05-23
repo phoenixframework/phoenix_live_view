@@ -8,7 +8,7 @@ defmodule Phoenix.LiveComponent do
   They run inside the LiveView process but have their own state and
   life-cycle. For this reason, they are also often called "stateful components".
   This is a contrast to `Phoenix.Component`, also known as "function components",
-  which are stateless.
+  which are stateless and can only compartmentalize markup.
 
   The smallest LiveComponent only needs to define a `c:render/1` function:
 

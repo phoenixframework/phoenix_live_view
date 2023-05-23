@@ -16,6 +16,12 @@ defmodule Phoenix.Component do
         end
       end
 
+  This function uses the `~H` sigil to return a rendered template.
+  `~H` stands for HEEx (HTML + EEx). HEEx is a template language for
+  writing HTML mixed with Elixir interpolation. We can write Elixir
+  code inside HEEx using `<%= ... %>` tags and we use `@name` to
+  access the key `name` defined inside `assigns`.
+
   When invoked within a `~H` sigil or HEEx template file:
 
   ```heex
@@ -49,9 +55,8 @@ defmodule Phoenix.Component do
   </.card>
   ```
 
-  Note how the `name` attribute automatically becomes the `@name` assign inside
-  function components. This can be further leveraged by using two higher-level
-  abstractions for us: attributes and slots.
+  In this module we will learn how to build rich and composable components to
+  use in our applications.
 
   ## Attributes
 

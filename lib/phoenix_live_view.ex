@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView do
   @moduledoc ~S'''
-  LiveView provides rich, real-time user experiences with
-  server-rendered HTML.
+  A LiveView is a process that receives events, updates
+  its state, and render updates to a page as diffs.
 
   The LiveView programming model is declarative: instead of
   saying "once event X happens, change Y on the page",
@@ -14,8 +14,7 @@ defmodule Phoenix.LiveView do
   work of tracking changes and sending the relevant diffs to
   the browser.
 
-  A LiveView is just a process that receives events as messages and updates
-  its state. The state itself is nothing more than functional and immutable
+  LiveView state is nothing more than functional and immutable
   Elixir data structures. The events are either internal application messages
   (usually emitted by `Phoenix.PubSub`) or sent by the client/browser.
 
@@ -26,8 +25,7 @@ defmodule Phoenix.LiveView do
   server. This allows LiveView applications to react faster to user
   events as there is less work to be done and less data to be sent
   compared to stateless requests that have to authenticate, decode, load,
-  and encode data on every request. The flipside is that LiveView
-  uses more memory on the server compared to stateless requests.
+  and encode data on every request.
 
   ## Life-cycle
 
@@ -70,17 +68,11 @@ defmodule Phoenix.LiveView do
 
   ## Example
 
-  Before writing your first example, make sure that Phoenix LiveView
-  is properly installed. All applications generated with Phoenix v1.6
-  and later come with LiveView installed and configured. For previously
-  existing projects, please follow the steps in the
-  [installation guide](installation.md) before continuing.
-
-  A LiveView is a simple module that requires two callbacks: `c:mount/3`
-  and `c:render/1`:
+  A LiveView is a module that requires two callbacks: `c:mount/3` and
+  `c:render/1`:
 
       defmodule MyAppWeb.ThermostatLive do
-        # In Phoenix v1.6+ apps, the line below should be: use MyAppWeb, :live_view
+        # In Phoenix v1.6+ apps, the line is typically: use MyAppWeb, :live_view
         use Phoenix.LiveView
 
         def render(assigns) do
