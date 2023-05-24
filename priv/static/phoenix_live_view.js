@@ -3219,20 +3219,23 @@ within:
             if (resp.live_redirect) {
               this.onLiveRedirect(resp.live_redirect);
             }
-            if (ref !== null) {
-              this.undoRefs(ref);
-            }
             onLoadingDone();
             onReply(resp, hookReply);
           };
           if (resp.diff) {
             this.liveSocket.requestDOMUpdate(() => {
               this.applyDiff("update", resp.diff, ({ diff, reply, events }) => {
+                if (ref !== null) {
+                  this.undoRefs(ref);
+                }
                 this.update(diff, events);
                 finish(reply);
               });
             });
           } else {
+            if (ref !== null) {
+              this.undoRefs(ref);
+            }
             finish(null);
           }
         });
