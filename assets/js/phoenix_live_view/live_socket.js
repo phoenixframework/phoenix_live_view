@@ -99,6 +99,7 @@ import {
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF,
+  FOCUSABLE_INPUTS
 } from "./constants"
 
 import {
@@ -527,7 +528,12 @@ export default class LiveSocket {
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
-      if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
+      const matchingKey = matchKey && matchKey.toLowerCase() === pressedKey
+      // we don't want event to fire when user is typing text
+      const inputHasFocus = FOCUSABLE_INPUTS.includes(document.activeElement.type)
+      const pressedPrintableKey = pressedKey.length === 1 && pressedKey.charCodeAt(0) >= 32
+      
+      if(!matchingKey || inputHasFocus && pressedPrintableKey){ return }
 
       let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
       JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
