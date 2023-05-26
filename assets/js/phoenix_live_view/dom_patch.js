@@ -150,7 +150,7 @@ export default class DOMPatch {
           }
         },
         onBeforeNodeAdded: (el) => {
-          this.maybePrivateHooks(el, phxViewportTop, phxViewportBottom)
+          DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
           this.trackBefore("added", el)
           return el
         },
@@ -243,7 +243,7 @@ export default class DOMPatch {
               appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
 
-            this.maybePrivateHooks(toEl, phxViewportTop, phxViewportBottom)
+            DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
             if(toEl.getAttribute("name")){
@@ -286,12 +286,6 @@ export default class DOMPatch {
     // nested view handling
     if(DOM.isPhxChild(el) || DOM.isPhxSticky(el)){ this.liveSocket.destroyViewByEl(el) }
     this.trackAfter("discarded", el)
-  }
-
-  maybePrivateHooks(el, phxViewportTop, phxViewportBottom){
-    if(el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))){
-      el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
-    }
   }
 
   maybePendingRemove(node){

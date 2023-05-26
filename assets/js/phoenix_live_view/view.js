@@ -33,6 +33,8 @@ import {
   PHX_MAIN,
   PHX_MOUNTED,
   PUSH_TIMEOUT,
+  PHX_VIEWPORT_TOP,
+  PHX_VIEWPORT_BOTTOM,
 } from "./constants"
 
 import {
@@ -322,6 +324,12 @@ export default class View {
   }
 
   execNewMounted(){
+    let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
+    let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
+    DOM.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
+      DOM.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom)
+      this.maybeAddNewHook(hookEl)
+    })
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
       this.maybeAddNewHook(hookEl)
     })

@@ -264,6 +264,12 @@ let DOM = {
     return currentCycle
   },
 
+  maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom){
+    if(el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))){
+      el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
+    }
+  },
+
   maybeHideFeedback(container, input, phxFeedbackFor){
     if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
       let feedbacks = [input.name]
