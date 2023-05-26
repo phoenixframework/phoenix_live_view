@@ -14,6 +14,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
         <button phx-click="update" phx-value-id={id}>update</button>
         <button phx-click="move-to-first" phx-value-id={id}>make first</button>
         <button phx-click="move-to-last" phx-value-id={id}>make last</button>
+        <button phx-click="move" phx-value-id={id} phx-value-name="moved" phx-value-at="1">move</button>
       </div>
     </div>
     <div id="admins" phx-update="stream">
@@ -55,6 +56,16 @@ defmodule Phoenix.LiveViewTest.StreamLive do
      socket
      |> stream_delete_by_dom_id(:users, dom_id)
      |> stream_insert(:users, user, at: -1)}
+  end
+
+  def handle_event("move", %{"id" => "users-" <> id = dom_id, "name" => name, "at" => at}, socket) do
+    at = String.to_integer(at)
+    user = user(id, name)
+
+    {:noreply,
+     socket
+     |> stream_delete_by_dom_id(:users, dom_id)
+     |> stream_insert(:users, user, at: at)}
   end
 
   def handle_event("admin-delete", %{"id" => dom_id}, socket) do

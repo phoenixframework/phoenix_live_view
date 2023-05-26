@@ -139,6 +139,35 @@ defmodule Phoenix.LiveView.StreamTest do
              |> users_in_dom("c_users") ==
                [{"c_users-2", "updated"}]
 
+      assert lv |> render() |> users_in_dom("users") == [
+               {"users-1", "chris"},
+               {"users-2", "callan"}
+             ]
+
+      assert lv
+             |> element(~S|#users-1 button[phx-click="move"]|)
+             |> render_click(%{at: "1", name: "chris-forward"})
+             |> users_in_dom("users") ==
+               [{"users-2", "callan"}, {"users-1", "chris-forward"}]
+
+      assert lv
+             |> element(~S|#users-1 button[phx-click="move"]|)
+             |> render_click(%{at: "0", name: "chris-backward"})
+             |> users_in_dom("users") ==
+               [{"users-1", "chris-backward"}, {"users-2", "callan"}]
+
+      assert lv
+             |> element(~S|#users-1 button[phx-click="move"]|)
+             |> render_click(%{at: "0", name: "chris-same"})
+             |> users_in_dom("users") ==
+               [{"users-1", "chris-same"}, {"users-2", "callan"}]
+
+      assert lv
+             |> element(~S|#users-2 button[phx-click="move"]|)
+             |> render_click(%{at: "1", name: "callan-same"})
+             |> users_in_dom("users") ==
+               [{"users-1", "chris-same"}, {"users-2", "callan-same"}]
+
       # resets
 
       assert lv |> render() |> users_in_dom("c_users") == [{"c_users-2", "updated"}]

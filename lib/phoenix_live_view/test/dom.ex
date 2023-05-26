@@ -454,13 +454,7 @@ defmodule Phoenix.LiveViewTest.DOM do
                   acc
                 end
 
-              old_index && insert_at in [0, -1] ->
-                acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
-
-              old_index && insert_at > old_index ->
-                acc |> List.delete_at(old_index) |> List.insert_at(insert_at - 1, child)
-
-              old_index && insert_at < old_index ->
+              old_index && insert_at ->
                 acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
 
               !old_index && insert_at ->
