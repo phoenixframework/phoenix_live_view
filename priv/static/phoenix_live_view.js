@@ -540,6 +540,11 @@ var LiveView = (() => {
       this.putPrivate(el, key, [currentCycle, trigger]);
       return currentCycle;
     },
+    maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom) {
+      if (el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))) {
+        el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
+      }
+    },
     maybeHideFeedback(container, input, phxFeedbackFor) {
       if (!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))) {
         let feedbacks = [input.name];
@@ -1823,7 +1828,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           },
           onBeforeNodeAdded: (el) => {
-            this.maybePrivateHooks(el, phxViewportTop, phxViewportBottom);
+            dom_default.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom);
             this.trackBefore("added", el);
             return el;
           },
@@ -1920,7 +1925,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               if (dom_default.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])) {
                 appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)));
               }
-              this.maybePrivateHooks(toEl, phxViewportTop, phxViewportBottom);
+              dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
               dom_default.syncAttrsToProps(toEl);
               dom_default.applyStickyOperations(toEl);
               if (toEl.getAttribute("name")) {
@@ -1959,11 +1964,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.liveSocket.destroyViewByEl(el);
       }
       this.trackAfter("discarded", el);
-    }
-    maybePrivateHooks(el, phxViewportTop, phxViewportBottom) {
-      if (el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))) {
-        el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
-      }
     }
     maybePendingRemove(node) {
       if (node.getAttribute && node.getAttribute(this.phxRemove) !== null) {
@@ -2823,6 +2823,12 @@ within:
       this.el.setAttribute(PHX_ROOT_ID, this.root.id);
     }
     execNewMounted() {
+      let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
+      let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
+      dom_default.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
+        dom_default.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom);
+        this.maybeAddNewHook(hookEl);
+      });
       dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
         this.maybeAddNewHook(hookEl);
       });
