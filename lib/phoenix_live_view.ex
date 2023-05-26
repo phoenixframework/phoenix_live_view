@@ -1541,6 +1541,18 @@ defmodule Phoenix.LiveView do
     * `:reset` - the boolean to reset the stream on the client or not. Defaults
       to `false`.
 
+    * `:limit` - the optional positive or negative number of results to limit
+      on the UI on the client. As new items are streamed, the UI will remove existing
+      items to maintain the limit. For example, to limit the stream to the last 10 items
+      in the UI while appending new items, pass a negative value:
+
+          stream(socket, :posts, posts, at: -1, limit: -10)
+
+      Likewise, to limit the stream to the first 10 items, while prepending new items,
+      pass a positive value:
+
+          stream(socket, :posts, posts, at: 0, limit: 10)
+
   Once a stream is defined, a new `@streams` assign is available containing
   the name of the defined streams. For example, in the above definition, the
   stream may be referenced as `@streams.songs` in your template. Stream items
@@ -1559,6 +1571,18 @@ defmodule Phoenix.LiveView do
   Or you can replace the entire stream on the client with a new collection:
 
           stream(socket, :songs, new_songs, reset: true)
+
+  ## Limiting a stream
+
+  It is often useful to limit the number of items in the UI while allowing the
+  server to stream new items in a fire-and-forget fashion. This prevents
+  the server from overwhelming the client with new results while also opening up
+  powerful features like virtualized infinite scrolling. See a complete
+  bidirectional infinite scrolling example with stream limits in the
+  [scroll events guide](bindings.md##scroll-events-and-infinite-stream-pagination)
+
+  When a stream exceeds the limit on the client, the existing items will be removed
+  based on the
 
   ## Required DOM attributes
 
