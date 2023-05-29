@@ -2253,7 +2253,6 @@ defmodule Phoenix.Component do
           drop_param: :emails_drop
         )
       end
-  ```
 
   Here we see the `:sort_param` and `:drop_param` options in action.
 
@@ -2267,20 +2266,20 @@ defmodule Phoenix.Component do
   The markup for such a schema and association would look like this:
 
   ```heex
-    <.inputs_for :let={ef} field={@form[:emails]}>
-      <input type="hidden" name="list[emails_sort][]" value={ef.index} />
-      <.input type="text" field={ef[:email]} placeholder="email" />
-      <.input type="text" field={ef[:name]} placeholder="name" />
-      <label>
-        <input type="checkbox" name="list[emails_drop][]" value={ef.index} class="hidden" />
-        <.icon name="hero-x-mark" class="w-6 h-6 relative top-2" />
-      </label>
-    </.inputs_for>
-
-    <label class="block cursor-pointer">
-      <input type="checkbox" name="list[emails_sort][]" class="hidden" />
-      add more
+  <.inputs_for :let={ef} field={@form[:emails]}>
+    <input type="hidden" name="list[emails_sort][]" value={ef.index} />
+    <.input type="text" field={ef[:email]} placeholder="email" />
+    <.input type="text" field={ef[:name]} placeholder="name" />
+    <label>
+      <input type="checkbox" name="list[emails_drop][]" value={ef.index} class="hidden" />
+      <.icon name="hero-x-mark" class="w-6 h-6 relative top-2" />
     </label>
+  </.inputs_for>
+
+  <label class="block cursor-pointer">
+    <input type="checkbox" name="list[emails_sort][]" class="hidden" />
+    add more
+  </label>
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
