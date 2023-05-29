@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.19
+## 0.19.0 (2023-05-29)
 
 ### Backwards incompatible changes
   * Drop support for passing an id to the `phx-feedback-for` attribute. An input name must be passed instead.
