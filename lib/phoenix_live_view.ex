@@ -1579,7 +1579,7 @@ defmodule Phoenix.LiveView do
   the server from overwhelming the client with new results while also opening up
   powerful features like virtualized infinite scrolling. See a complete
   bidirectional infinite scrolling example with stream limits in the
-  [scroll events guide](bindings.md##scroll-events-and-infinite-stream-pagination)
+  [scroll events guide](bindings.md#scroll-events-and-infinite-stream-pagination)
 
   When a stream exceeds the limit on the client, the existing items will be removed
   based on the
