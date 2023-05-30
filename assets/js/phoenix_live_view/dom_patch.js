@@ -167,7 +167,7 @@ export default class DOMPatch {
             externalFormTriggered = el
           }
 
-          if(el.getAttribute && el.getAttribute("name")){
+          if(el.getAttribute && el.getAttribute("name") && DOM.isFormInput(el)){
             trackedInputs.push(el)
           }
           // nested view handling
