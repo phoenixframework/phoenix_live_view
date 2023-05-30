@@ -2280,6 +2280,8 @@ defmodule Phoenix.Component do
     <input type="checkbox" name="list[emails_sort][]" class="hidden" />
     add more
   </label>
+
+  <input type="hidden" name="list[emails_drop][]" />
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
@@ -2295,7 +2297,9 @@ defmodule Phoenix.Component do
 
   Finally, outside the `inputs_for`, we render another label with a value-less
   `list[emails_sort][]` checkbox witih accompanied "add more" text. Ecto will
-  treat unknown sort params as new children and build a new child.
+  treat unknown sort params as new children and build a new child. We also render an
+  empty `list[emails_drop][]` to ensure that all children are deleted when saving our
+  form in the event that the user dropped all the inputs.
   """
   @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
