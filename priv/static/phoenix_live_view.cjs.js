@@ -1815,7 +1815,7 @@ var DOMPatch = class {
           if (dom_default.isNowTriggerFormExternal(el, phxTriggerExternal)) {
             externalFormTriggered = el;
           }
-          if (el.getAttribute && el.getAttribute("name")) {
+          if (el.getAttribute && el.getAttribute("name") && dom_default.isFormInput(el)) {
             trackedInputs.push(el);
           }
           if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
