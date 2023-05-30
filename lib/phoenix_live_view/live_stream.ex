@@ -1,7 +1,13 @@
 defmodule Phoenix.LiveView.LiveStream do
   @moduledoc false
 
-  defstruct name: nil, dom_id: nil, ref: nil, inserts: [], deletes: [], reset?: false
+  defstruct name: nil,
+            dom_id: nil,
+            ref: nil,
+            inserts: [],
+            deletes: [],
+            reset?: false,
+            consumable?: false
 
   alias Phoenix.LiveView.LiveStream
 
@@ -63,8 +69,17 @@ defmodule Phoenix.LiveView.LiveStream do
 
     def member?(%LiveStream{}, _item), do: raise(RuntimeError, "not implemented")
 
-    def reduce(%LiveStream{inserts: inserts}, acc, fun) do
-      do_reduce(inserts, acc, fun)
+    def reduce(%LiveStream{inserts: inserts} = stream, acc, fun) do
+      if stream.consumable? do
+        do_reduce(inserts, acc, fun)
+      else
+        raise ArgumentError, """
+        streams can only be consumed directly by a for comprehension.
+        If you are attempting to consume the stream ahead of time, such as with
+        `Enum.with_index(@stream.#{stream.name})`, you need to place the relevant information
+        within the stream items instead.
+        """
+      end
     end
 
     defp do_reduce(_list, {:halt, acc}, _fun), do: {:halted, acc}

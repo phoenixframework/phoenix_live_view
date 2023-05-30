@@ -76,9 +76,17 @@ defmodule Phoenix.LiveView.Comprehension do
         }
 
   @doc false
+  def __mark_consumable__(%Phoenix.LiveView.LiveStream{} = stream) do
+    %Phoenix.LiveView.LiveStream{stream | consumable?: true}
+  end
+
+  def __mark_consumable__(collection), do: collection
+
+  @doc false
   def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
     inserts = for {id, at, _item, limit} <- stream.inserts, into: %{}, do: {id, [at, limit]}
     data = [stream.ref, inserts, stream.deletes]
+
     if stream.reset? do
       Map.put(comprehension, :stream, data ++ [true])
     else
@@ -450,7 +458,13 @@ defmodule Phoenix.LiveView.Engine do
 
       gen_var = Macro.unique_var(:for, __MODULE__)
       {:<-, gen_meta, [gen_pattern, gen_collection]} = gen
-      gen_collection = quote(do: unquote(gen_var) = unquote(gen_collection))
+
+      gen_collection =
+        quote do
+          unquote(gen_var) =
+            Phoenix.LiveView.Comprehension.__mark_consumable__(unquote(gen_collection))
+        end
+
       gen = {:<-, gen_meta, [gen_pattern, gen_var]}
       for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
 
