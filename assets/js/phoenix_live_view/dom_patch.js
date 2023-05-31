@@ -229,8 +229,8 @@ export default class DOMPatch {
           // input handling
           DOM.copyPrivates(toEl, fromEl)
 
-          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
-          if(isFocusedFormEl && fromEl.type !== "hidden"){
+          let isFocusedFormEl = focused && fromEl.isSameNode(focused)
+          if(isFocusedFormEl && DOM.isFormInput(fromEl) && fromEl.type !== "hidden"){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeFocusedInput(fromEl, toEl)
             DOM.syncAttrsToProps(fromEl)
@@ -246,7 +246,7 @@ export default class DOMPatch {
             DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
-            if(toEl.getAttribute("name")){
+            if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){
               trackedInputs.push(toEl)
             }
             this.trackBefore("updated", fromEl, toEl)
