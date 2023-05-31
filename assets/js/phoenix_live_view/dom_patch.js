@@ -246,7 +246,7 @@ export default class DOMPatch {
             DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
-            if(toEl.getAttribute("name")){
+            if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){
               trackedInputs.push(toEl)
             }
             this.trackBefore("updated", fromEl, toEl)
