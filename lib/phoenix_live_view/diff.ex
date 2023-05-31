@@ -733,7 +733,8 @@ defmodule Phoenix.LiveView.Diff do
     {pending, diffs, {cid_to_component, id_to_cid, uuids}}
   end
 
-  @attempts 3
+  # 32 is one bucket from large maps
+  @attempts 32
 
   # If the component is new or is getting a new static root, we search if another
   # component has the same tree root. If so, we will point to the whole existing

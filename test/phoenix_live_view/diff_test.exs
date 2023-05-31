@@ -1547,30 +1547,30 @@ defmodule Phoenix.LiveView.DiffTest do
 
       %{fingerprint: _fingerprint} =
         rendered = ~H"""
-        <%= for key <- [:b, :c, :a] do %>
+        <%= for key <- [:b, :c] do %>
           <.live_component module={NestedDynamicComponent} id={key} key={key} />
         <% end %>
         """
 
       {_socket, full_render, _components} = render(rendered)
 
-      assert full_render == %{
-               0 => %{d: [[1], [2], [3]], s: ["\n  ", "\n"]},
+      assert %{
+               0 => %{d: [[1], [2]], s: ["\n  ", "\n"]},
                :c => %{
                  1 => %{0 => %{0 => "", :s => ["", ""]}, :s => ["<div>\n  ", "\n</div>"]},
-                 2 => %{0 => %{0 => 4, :s => ["", ""]}, :s => 1},
+                 2 => %{0 => %{0 => 3, :s => ["", ""]}, :s => 1},
                  3 => %{
                    0 => %{
                      0 => %{d: [["nothing", "nothing"]], s: ["\n  ", "", "\n"]},
                      :s => ["", ""]
                    },
-                   :s => 1
-                 },
-                 4 => %{0 => %{0 => %{d: [["nothing", "nothing"]]}}, :s => 3}
+                   :s => static
+                 }
                },
                :s => ["", ""]
-             }
+             } = full_render
 
+      assert is_integer(static)
       assert rendered_to_binary(full_render) =~ "nothingnothing"
     end
 
