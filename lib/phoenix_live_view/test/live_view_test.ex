@@ -1350,8 +1350,11 @@ defmodule Phoenix.LiveViewTest do
           end
 
         case flush_navigation(ref, topic, nil) do
-          nil -> raise ArgumentError, message <> "but got none"
-          {kind, to} -> raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
+          {new_kind, new_to} when new_to != to ->
+            raise ArgumentError, message <> "but got a #{new_kind} to #{inspect(new_to)}"
+
+          _ ->
+            raise ArgumentError, message <> "but got none"
         end
     end
   end
