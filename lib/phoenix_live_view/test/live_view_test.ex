@@ -1202,8 +1202,9 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a live patch will happen within `timeout` milliseconds. The default
-  `timeout` is 100.
+  Asserts a live patch will happen within `timeout` milliseconds.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns the new path.
 
@@ -1222,7 +1223,7 @@ defmodule Phoenix.LiveViewTest do
       path = assert_patch view
       assert path =~ ~r/path/\d+/
   """
-  def assert_patch(view, timeout \\ 100)
+  def assert_patch(view, timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout))
 
   def assert_patch(view, timeout) when is_integer(timeout) do
     {path, _flash} = assert_navigation(view, :patch, nil, timeout)
@@ -1272,7 +1273,8 @@ defmodule Phoenix.LiveViewTest do
 
   @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
-  The default `timeout` is 100.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns a tuple containing the new path and the flash messages from said
   redirect, if any. Note the flash will contain string keys.
@@ -1287,13 +1289,15 @@ defmodule Phoenix.LiveViewTest do
       render_click(view, :event_that_triggers_redirect)
       assert_redirect view, 30
   """
-  def assert_redirect(view, timeout \\ 100)
+  def assert_redirect(view, timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout))
 
   def assert_redirect(view, timeout) when is_integer(timeout) do
     assert_navigation(view, :redirect, nil, timeout)
   end
 
-  def assert_redirect(view, to) when is_binary(to), do: assert_redirect(view, to, 100)
+  def assert_redirect(view, to) when is_binary(to) do
+    assert_redirect(view, to, Application.fetch_env!(:ex_unit, :assert_receive_timeout))
+  end
 
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
@@ -1500,12 +1504,19 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts an event will be pushed within `timeout`.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   ## Examples
 
       assert_push_event view, "scores", %{points: 100, user: "josé"}
   """
-  defmacro assert_push_event(view, event, payload, timeout \\ 100) do
+  defmacro assert_push_event(
+             view,
+             event,
+             payload,
+             timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+           ) do
     quote do
       %{proxy: {ref, _topic, _}} = unquote(view)
 
@@ -1516,11 +1527,18 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a hook reply was returned from a `handle_event` callback.
 
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
+
   ## Examples
 
       assert_reply view, %{result: "ok", transaction_id: _}
   """
-  defmacro assert_reply(view, payload, timeout \\ 100) do
+  defmacro assert_reply(
+             view,
+             payload,
+             timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+           ) do
     quote do
       %{proxy: {ref, _topic, _}} = unquote(view)
 
