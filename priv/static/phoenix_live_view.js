@@ -1821,11 +1821,17 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               parent.insertBefore(child, sibling);
             }
             let children = limit !== null && Array.from(parent.children);
+            let childrenToRemove = [];
             if (limit && limit < 0 && children.length > limit * -1) {
-              children.slice(0, children.length + limit).forEach((child2) => this.removeStreamChildElement(child2));
+              childrenToRemove = children.slice(0, children.length + limit);
             } else if (limit && limit >= 0 && children.length > limit) {
-              children.slice(limit).forEach((child2) => this.removeStreamChildElement(child2));
+              childrenToRemove = children.slice(limit);
             }
+            childrenToRemove.forEach((removeChild) => {
+              if (!this.streamInserts[removeChild.id]) {
+                this.removeStreamChildElement(removeChild);
+              }
+            });
           },
           onBeforeNodeAdded: (el) => {
             dom_default.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom);
@@ -1928,7 +1934,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
               dom_default.syncAttrsToProps(toEl);
               dom_default.applyStickyOperations(toEl);
-              if (toEl.getAttribute("name")) {
+              if (toEl.getAttribute("name") && dom_default.isFormInput(toEl)) {
                 trackedInputs.push(toEl);
               }
               this.trackBefore("updated", fromEl, toEl);
