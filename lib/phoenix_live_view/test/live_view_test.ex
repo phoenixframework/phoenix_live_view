@@ -1203,7 +1203,8 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a live patch will happen within `timeout` milliseconds.
-  The default `timeout` is ExUnit's `assert_receive_timeout` (100 ms).
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns the new path.
 
@@ -1272,7 +1273,8 @@ defmodule Phoenix.LiveViewTest do
 
   @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
-  The default `timeout` is ExUnit's `assert_receive_timeout` (100 ms).
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns a tuple containing the new path and the flash messages from said
   redirect, if any. Note the flash will contain string keys.
@@ -1502,7 +1504,8 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts an event will be pushed within `timeout`.
-  The default `timeout` is ExUnit's `assert_receive_timeout` (100 ms).
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   ## Examples
 
@@ -1523,6 +1526,9 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a hook reply was returned from a `handle_event` callback.
+
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   ## Examples
 
