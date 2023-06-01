@@ -20,6 +20,9 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
         <i><%= user.name %> <%= user.email %></i>
       <% end %>
     <% end %>
+    <%= if @private do %>
+      Private is: <%= @private %>
+    <% end %>
     """
   end
 
@@ -44,7 +47,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
     users = session["users"] || []
     val = if connected?(socket), do: 1, else: 0
 
-    {:ok, assign(socket, val: val, nest: nest, users: users, greeting: nil)}
+    {:ok, assign(socket, val: val, nest: nest, users: users, greeting: nil, private: socket.private[:val])}
   end
 
   def handle_params(params, _url, socket) do

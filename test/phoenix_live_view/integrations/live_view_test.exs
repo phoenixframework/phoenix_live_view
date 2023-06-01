@@ -251,6 +251,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
+  describe "private" do
+    test "pass router live private to socket mount", %{conn: conn} do
+      {:ok, view, _} = live(conn, "/thermo-private")
+      assert render(view) =~ "Private is: 1"
+    end
+  end
+
   describe "messaging callbacks" do
     test "handle_event with no change in socket", %{conn: conn} do
       {:ok, view, html} = live(conn, "/thermo")

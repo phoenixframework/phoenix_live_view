@@ -1029,7 +1029,7 @@ defmodule Phoenix.LiveView.Channel do
     merged_session = Map.merge(socket_session, verified_user_session)
     lifecycle = load_lifecycle(config, route)
 
-    case mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
+    case mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle, route) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
@@ -1102,37 +1102,50 @@ defmodule Phoenix.LiveView.Channel do
     socket
   end
 
-  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle) do
-    {:ok,
-     %{
-       connect_params: connect_params,
-       connect_info: connect_info,
-       assign_new: {%{}, assign_new},
-       lifecycle: lifecycle,
-       root_view: root_view,
-       __temp__: %{}
-     }}
+  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle, route) do
+    private =
+      maybe_merge_route_private(route, %{
+        connect_params: connect_params,
+        connect_info: connect_info,
+        assign_new: {%{}, assign_new},
+        lifecycle: lifecycle,
+        root_view: root_view,
+        __temp__: %{}
+      })
+
+    {:ok, private}
   end
 
-  defp mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
+  defp mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle, route) do
     case sync_with_parent(parent, assign_new) do
       {:ok, parent_assigns} ->
         # Child live views always ignore the layout on `:use`.
-        {:ok,
-         %{
-           connect_params: connect_params,
-           connect_info: connect_info,
-           assign_new: {parent_assigns, assign_new},
-           live_layout: false,
-           lifecycle: lifecycle,
-           root_view: root_view,
-           __temp__: %{}
-         }}
+        private =
+          maybe_merge_route_private(route, %{
+            connect_params: connect_params,
+            connect_info: connect_info,
+            assign_new: {parent_assigns, assign_new},
+            live_layout: false,
+            lifecycle: lifecycle,
+            root_view: root_view,
+            __temp__: %{}
+          })
+
+        {:ok, private}
 
       {:error, :noproc} ->
         {:error, :noproc}
     end
   end
+
+  defp maybe_merge_route_private(nil = _route, private), do: private
+
+  defp maybe_merge_route_private(route, private) do
+    route_private = route.opts[:private] || %{}
+    Map.merge(route_private, private)
+  end
+
+  defp maybe_merge_route_private(_route_private, private), do: private
 
   defp sync_with_parent(parent, assign_new) do
     try do

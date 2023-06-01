@@ -73,7 +73,7 @@ defmodule Phoenix.LiveView.Router do
     * `:metadata` - a map to optional feed metadata used on telemetry events and route info,
       for example: `%{route_name: :foo, access: :user}`.
 
-    * `:private` - an optional map of private data to put in the plug connection.
+    * `:private` - an optional map of private data to put in the plug connection,
       for example: `%{route_name: :foo, access: :user}`.
 
   ## Examples
@@ -365,6 +365,7 @@ defmodule Phoenix.LiveView.Router do
       opts
       |> Keyword.put(:router, router)
       |> Keyword.put(:action, action)
+      |> Keyword.put(:private, private)
 
     {as_helper, as_action} = inferred_as(live_view, opts[:as], action)
 
