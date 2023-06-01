@@ -1145,8 +1145,6 @@ defmodule Phoenix.LiveView.Channel do
     Map.merge(route_private, private)
   end
 
-  defp maybe_merge_route_private(_route_private, private), do: private
-
   defp sync_with_parent(parent, assign_new) do
     try do
       GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
