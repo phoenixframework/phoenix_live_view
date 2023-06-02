@@ -451,7 +451,7 @@ defmodule Phoenix.LiveViewTest.DOM do
                 if deleted? do
                   acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
                 else
-                  acc |> List.replace_at(old_index, child)
+                  List.replace_at(acc, old_index, child)
                 end
 
               old_index && insert_at ->
