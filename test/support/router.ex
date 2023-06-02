@@ -122,6 +122,9 @@ defmodule Phoenix.LiveViewTest.Router do
     # integration stream
     live "/stream", StreamLive
 
+    # healthy
+    live "/healthy/:category", HealthyLive
+
     # integration connect
     live "/connect", ConnectLive
 
