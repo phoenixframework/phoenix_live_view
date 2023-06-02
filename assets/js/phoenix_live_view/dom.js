@@ -371,8 +371,8 @@ let DOM = {
   },
 
   mergeFocusedInput(target, source){
-    // skip selects because FF will reset highlighted index for any setAttribute
-    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, {exclude: ["value"]}) }
+    DOM.mergeAttrs(target, source, {exclude: ["value"]})
+
     if(source.readOnly){
       target.setAttribute("readonly", true)
     } else {
