@@ -2249,7 +2249,7 @@ defmodule Phoenix.Component do
         |> cast(attrs, [:title])
         |> cast_embed(:emails,
           with: &email_changeset/2,
-          sort_param: :emails_order,
+          sort_param: :emails_sort,
           drop_param: :emails_drop
         )
       end
