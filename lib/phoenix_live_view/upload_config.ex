@@ -621,7 +621,8 @@ defmodule Phoenix.LiveView.UploadConfig do
 
   @doc false
   def put_error(%UploadConfig{} = conf, _entry_ref, @too_many_files = reason) do
-    %UploadConfig{conf | errors: Enum.uniq(conf.errors ++ [{conf.ref, reason}])}
+    pair = {conf.ref, reason}
+    %UploadConfig{conf | errors: List.delete(conf.errors, pair) ++ [pair]}
   end
 
   def put_error(%UploadConfig{} = conf, entry_ref, reason) do

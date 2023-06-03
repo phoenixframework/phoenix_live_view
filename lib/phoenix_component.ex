@@ -1005,25 +1005,8 @@ defmodule Phoenix.Component do
 
   def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
 
-  @doc """
-  Returns the entry errors for an upload.
-
-  The following error may be returned:
-
-  * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
-
-  ## Examples
-
-      def error_to_string(:too_many_files), do: "You have selected too many files"
-
-  ```heex
-  <%= for err <- upload_errors(@uploads.avatar) do %>
-    <div class="alert alert-danger">
-      <%= error_to_string(err) %>
-    </div>
-  <% end %>
-  ```
-  """
+  @doc false
+  @deprecated "Use upload_errors/2 instead (this function has no effect and always returns an empty list)"
   def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf) do
     for {ref, error} <- conf.errors, ref == conf.ref, do: error
   end
@@ -1035,17 +1018,23 @@ defmodule Phoenix.Component do
 
   * `:too_large` - The entry exceeds the `:max_file_size` constraint
   * `:not_accepted` - The entry does not match the `:accept` MIME types
+  * `:too_many_files` - The entry exceeds the `:max_entries` constraint
+  * `:external_client_failure` - When external upload fails
 
   ## Examples
 
-      def error_to_string(:too_large), do: "Too large"
-      def error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
+  ```elixir
+  defp upload_error_to_string(:too_large), do: "The file is too large"
+  defp upload_error_to_string(:too_many_files), do: "You have selected too many files"
+  defp upload_error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
+  defp upload_error_to_string(:external_client_failure), do: "Something went terribly wrong"
+  ```
 
   ```heex
   <%= for entry <- @uploads.avatar.entries do %>
     <%= for err <- upload_errors(@uploads.avatar, entry) do %>
       <div class="alert alert-danger">
-        <%= error_to_string(err) %>
+        <%= upload_error_to_string(err) %>
       </div>
     <% end %>
   <% end %>
@@ -1287,8 +1276,8 @@ defmodule Phoenix.Component do
       iex> update(socket, :count, fn count -> count + 1 end)
       iex> update(socket, :count, &(&1 + 1))
       iex> update(socket, :max_users_this_session, fn current_max, %{users: users} ->
-             max(current_max, length(users))
-           end)
+      ...>   max(current_max, length(users))
+      ...> end)
   """
   def update(socket_or_assigns, key, fun)
 
