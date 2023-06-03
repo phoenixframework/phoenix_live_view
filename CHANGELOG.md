@@ -6,7 +6,7 @@
   * Drop support for passing an id to the `phx-feedback-for` attribute. An input name must be passed instead.
   * Remove previously deprecated `let` attribute. Use `:let` instead
   * Remove previously deprecated `<%= live_img_preview(entry) %>`. Use `<.live_img_preview entry={entry} />` instead
-  * Remove previously deprecated `<%= live_file_upload(upload) %>`. Use `<.live_file_upload upload={upload} />` instead
+  * Remove previously deprecated `<%= live_file_input(upload) %>`. Use `<.live_file_input upload={upload} />` instead
   * Remove previously deprecated `<%= live_component(Component) %>`. Use `<.live_component module={Component} id=\"hello\" />` instead
 
 ### Enhancements
@@ -18,7 +18,7 @@
   * Deprecate passing `:dom_id` to `stream/4` in favor of `stream_configure/3`
   * Deprecate `render_block/2` in favor of `render_slot/2`
   * Deprecate `<%= live_img_preview(entry, opts) %>`. Use `<.live_img_preview entry={entry} {opts} />`
-  * Deprecate `<%= live_file_upload(upload, opts) %>`. Use `<.live_file_upload upload={upload} {opts} />`
+  * Deprecate `<%= live_file_input(upload, opts) %>`. Use `<.live_file_input upload={upload} {opts} />`
   * Deprecate stateless LiveComponent in favor of function components or in favor of `<.live_component id={...} />` (note the `id` is required)
 
 ### Bug fixes
