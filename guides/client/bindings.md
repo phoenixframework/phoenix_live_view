@@ -190,7 +190,7 @@ Generally, applications will add padding above and below a container when perfor
         [_ | _] = posts ->
           socket
           |> assign(end_of_timeline?: false)   socket
-          |> assign(page: if(posts == [], do: cur_page, else: new_page))
+          |> assign(:page, new_page)
           |> stream(:posts, posts, at: at, limit: limit)
       end
     end
