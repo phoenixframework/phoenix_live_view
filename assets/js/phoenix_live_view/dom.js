@@ -69,10 +69,13 @@ let DOM = {
     return !e.defaultPrevented && !this.wantsNewTab(e)
   },
 
-  isNewPageHref(href, currentLocation){
+  isNewPageClick(e, currentLocation){
+    let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
+    let url
+
+    if(e.defaultPrevented || href === null || this.wantsNewTab(e)){ return false }
     if(href.startsWith("mailto:") || href.startsWith("tel:")){ return false }
 
-    let url
     try {
       url = new URL(href)
     } catch(e) {

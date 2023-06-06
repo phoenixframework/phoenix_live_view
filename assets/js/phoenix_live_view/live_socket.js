@@ -637,14 +637,10 @@ export default class LiveSocket {
         this.clickStartedAtTarget = null
       }
       let phxEvent = target && target.getAttribute(click)
-      if(!phxEvent){
-        let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
-        if(!capture && href !== null && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location)){
-          this.unload()
-        }
-        return
-      }
+      if(!phxEvent && !capture && DOM.isNewPageClick(e, window.location)){ return this.unload() }
+
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
+
       // noop if we are in the middle of awaiting an ack for this el already
       if(target.hasAttribute(PHX_REF)){ return }
 
