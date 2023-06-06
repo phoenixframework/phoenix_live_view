@@ -1216,6 +1216,7 @@ defmodule Phoenix.Component.Declarative do
   defp type_mismatch(_type, :any), do: nil
   defp type_mismatch(type, {type, _value}), do: nil
   defp type_mismatch(:atom, {:boolean, _value}), do: nil
+  defp type_mismatch({:struct, _}, {:map, {:%{}, _, [{:|, _, [_, _]}]}}), do: nil
   defp type_mismatch(_type, {_, value}), do: Macro.to_string(value)
 
   defp component_fa(%{component: {mod, fun}}) do
@@ -1224,6 +1225,7 @@ defmodule Phoenix.Component.Declarative do
 
   ## Shared helpers
 
+  defp type_with_article({:struct, struct}), do: "a #{inspect(struct)} struct"
   defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
   defp type_with_article(type), do: "a #{inspect(type)}"
 

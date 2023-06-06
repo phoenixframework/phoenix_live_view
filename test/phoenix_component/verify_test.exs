@@ -409,6 +409,38 @@ defmodule Phoenix.ComponentVerifyTest do
     end
   end
 
+  test "validates struct types" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule SlotStruct do
+          use Phoenix.Component
+
+          attr :uri, URI
+          def func(assigns), do: ~H[]
+
+          def line, do: __ENV__.line + 2
+
+          def render(assigns) do
+            ~H"""
+            <.func uri={123} />
+            <.func uri={%URI{}} />
+            <.func uri={%{@foo | bar: :baz}} />
+            """
+          end
+        end
+      end)
+
+    line = get_line(__MODULE__.SlotStruct, :line)
+
+    assert Regex.scan(~r/attribute "uri" in component/, warnings) |> length() == 1
+
+    assert warnings =~ """
+           attribute "uri" in component Phoenix.ComponentVerifyTest.SlotStruct.func/1 \
+           must be a URI struct, got: 123
+             test/phoenix_component/verify_test.exs:#{line + 2}: (file)
+           """
+  end
+
   test "validates attr values" do
     warnings =
       capture_io(:stderr, fn ->
