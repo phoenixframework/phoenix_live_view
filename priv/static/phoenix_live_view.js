@@ -4191,8 +4191,11 @@ within:
           this.clickStartedAtTarget = null;
         }
         let phxEvent = target && target.getAttribute(click);
-        if (!phxEvent && !capture && dom_default.isNewPageClick(e, window.location)) {
-          return this.unload();
+        if (!phxEvent) {
+          if (!capture && dom_default.isNewPageClick(e, window.location)) {
+            this.unload();
+          }
+          return;
         }
         if (target.getAttribute("href") === "#") {
           e.preventDefault();

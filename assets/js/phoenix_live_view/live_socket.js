@@ -637,7 +637,10 @@ export default class LiveSocket {
         this.clickStartedAtTarget = null
       }
       let phxEvent = target && target.getAttribute(click)
-      if(!phxEvent && !capture && DOM.isNewPageClick(e, window.location)){ return this.unload() }
+      if(!phxEvent){
+        if(!capture && DOM.isNewPageClick(e, window.location)){ this.unload() }
+        return
+      }
 
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
