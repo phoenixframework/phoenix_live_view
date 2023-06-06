@@ -2748,15 +2748,22 @@ defmodule Phoenix.Component do
     doc: "The `Phoenix.LiveView.UploadConfig` struct"
   )
 
+  attr.(:accept, :string,
+    doc:
+      "the optional override for the accept attribute. Defaults to :accept specified by allow_upload"
+  )
+
   attr.(:rest, :global, include: ~w(webkitdirectory))
 
-  def live_file_input(assigns) do
+  def live_file_input(%{upload: upload} = assigns) do
+    assigns = assign_new(assigns, :accept, fn -> upload.accept != :any && upload.accept end)
+
     ~H"""
     <input
       id={@upload.ref}
       type="file"
       name={@upload.name}
-      accept={@upload.accept != :any && @upload.accept}
+      accept={@accept}
       data-phx-hook="Phoenix.LiveFileUpload"
       data-phx-update="ignore"
       data-phx-upload-ref={@upload.ref}

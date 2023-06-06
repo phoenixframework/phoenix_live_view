@@ -689,6 +689,30 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert render(~H|<.live_file_input upload={@conf} webkitdirectory />|) ==
                ~s|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" webkitdirectory>|
     end
+
+    test "sets accept from config" do
+      assigns = %{
+        conf: %Phoenix.LiveView.UploadConfig{
+          accept: ~w(.png),
+          entries: [%{preflighted?: false, done?: false, ref: "foo"}]
+        }
+      }
+
+      assert render(~H|<.live_file_input upload={@conf} />|) ==
+               ~s|<input type="file" accept=".png" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="">|
+    end
+
+    test "renders accept override" do
+      assigns = %{
+        conf: %Phoenix.LiveView.UploadConfig{
+          accept: ~w(.png),
+          entries: [%{preflighted?: false, done?: false, ref: "foo"}]
+        }
+      }
+
+      assert render(~H|<.live_file_input upload={@conf} accept=".jpeg" />|) ==
+               ~s|<input type="file" accept=".jpeg" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="">|
+    end
   end
 
   describe "intersperse" do
