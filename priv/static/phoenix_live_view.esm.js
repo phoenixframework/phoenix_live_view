@@ -328,7 +328,7 @@ var DOM = {
         return url.hash === "" && !url.href.endsWith("#");
       }
     }
-    return true;
+    return url.protocol.startsWith("http");
   },
   markPhxChildDestroyed(el) {
     if (this.isPhxChild(el)) {
