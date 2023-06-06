@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.19.1 (2023-06-06)
+
+### Enhancements
+  * Allow `accept` attribute on `<.live_file_input>` to override default values
+
+### Bug fixes
+  * Fix issue causing anchor clicks to disconnect LV when they were already handled via `preventDefault()` by other scripts
+
 ## 0.19.0 (2023-05-29)
 
 ### Backwards incompatible changes
