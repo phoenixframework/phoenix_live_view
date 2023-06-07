@@ -1006,7 +1006,7 @@ defmodule Phoenix.Component do
   def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
 
   @doc false
-  @deprecated "Use upload_errors/2 instead (this function has no effect and always returns an empty list)"
+  @deprecated "Check on the schema or on params if there are too many uploads"
   def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf) do
     for {ref, error} <- conf.errors, ref == conf.ref, do: error
   end
@@ -1018,14 +1018,12 @@ defmodule Phoenix.Component do
 
   * `:too_large` - The entry exceeds the `:max_file_size` constraint
   * `:not_accepted` - The entry does not match the `:accept` MIME types
-  * `:too_many_files` - The entry exceeds the `:max_entries` constraint
   * `:external_client_failure` - When external upload fails
 
   ## Examples
 
   ```elixir
   defp upload_error_to_string(:too_large), do: "The file is too large"
-  defp upload_error_to_string(:too_many_files), do: "You have selected too many files"
   defp upload_error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
   defp upload_error_to_string(:external_client_failure), do: "Something went terribly wrong"
   ```
