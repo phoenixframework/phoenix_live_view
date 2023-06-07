@@ -203,6 +203,7 @@ export default class DOMPatch {
           this.maybeReOrderStream(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
           if(DOM.isPhxSticky(fromEl)){ return false }
@@ -250,7 +251,6 @@ export default class DOMPatch {
               appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
 
-            DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
             if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){

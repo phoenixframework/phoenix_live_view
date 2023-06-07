@@ -1857,6 +1857,7 @@ var DOMPatch = class {
           this.maybeReOrderStream(el);
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
           dom_default.cleanChildNodes(toEl, phxUpdate);
           if (this.skipCIDSibling(toEl)) {
             return false;
@@ -1906,7 +1907,6 @@ var DOMPatch = class {
             if (dom_default.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])) {
               appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)));
             }
-            dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
             dom_default.syncAttrsToProps(toEl);
             dom_default.applyStickyOperations(toEl);
             if (toEl.getAttribute("name") && dom_default.isFormInput(toEl)) {
