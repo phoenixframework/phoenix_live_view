@@ -219,7 +219,7 @@ LiveView does not use the default app layout. Instead, you typically call `put_r
 
 pipeline :browser do
   # ...
-  plug :put_root_layout, {MyAppWeb.LayoutView, :root}
+  plug :put_root_layout, html: {MyAppWeb.LayoutView, :root}
   # ...
 end
 ```
