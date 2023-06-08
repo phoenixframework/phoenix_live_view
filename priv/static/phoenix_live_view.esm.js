@@ -1750,7 +1750,9 @@ var DOMPatch = class {
         });
         if (reset !== void 0) {
           dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
-            this.removeStreamChildElement(child);
+            if (!this.streamInserts[child.id]) {
+              this.removeStreamChildElement(child);
+            }
           });
         }
         deleteIds.forEach((id) => {
