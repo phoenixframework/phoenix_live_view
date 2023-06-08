@@ -253,7 +253,7 @@ defmodule Phoenix.Component do
       use Phoenix.Component, global_prefixes: ~w(x-)
 
   In your Phoenix application, this is typically done in your
-  `lib/my_app.ex` file, inside the `def html` definition:
+  `lib/my_app_web.ex` file, inside the `def html` definition:
 
       def html do
         quote do
