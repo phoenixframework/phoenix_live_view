@@ -125,6 +125,20 @@ defmodule Phoenix.LiveView.StreamTest do
 
     refute has_element?(lv, "li", "Apples")
     refute has_element?(lv, "li", "Oranges")
+
+    lv
+    |> element("a", "Switch")
+    |> render_click()
+
+    assert_patched(lv, "/healthy/fruits")
+
+    assert has_element?(lv, "h1", "Fruits")
+
+    refute has_element?(lv, "li", "Carrots")
+    refute has_element?(lv, "li", "Tomatoes")
+
+    assert has_element?(lv, "li", "Apples")
+    assert has_element?(lv, "li", "Oranges")
   end
 
   describe "within live component" do
