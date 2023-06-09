@@ -1008,6 +1008,9 @@ defmodule Phoenix.Component do
   @doc """
   Returns the errors for an upload.
 
+  Note this function returns errors that apply to the allowed upload as a whole. For errors that
+  apply to a specific uploaded entry, use `upload_errors/2`.
+
   The following error may be returned:
 
   * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
@@ -1017,11 +1020,9 @@ defmodule Phoenix.Component do
       def upload_error_to_string(:too_many_files), do: "You have selected too many files"
 
   ```heex
-  <%= for err <- upload_errors(@uploads.avatar) do %>
-    <div class="alert alert-danger">
-      <%= upload_error_to_string(err) %>
-    </div>
-  <% end %>
+  <div :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger">
+    <%= upload_error_to_string(err) %>
+  </div>
   ```
   """
   def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf) do
@@ -1047,11 +1048,9 @@ defmodule Phoenix.Component do
 
   ```heex
   <%= for entry <- @uploads.avatar.entries do %>
-    <%= for err <- upload_errors(@uploads.avatar, entry) do %>
-      <div class="alert alert-danger">
-        <%= upload_error_to_string(err) %>
-      </div>
-    <% end %>
+    <div :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">
+      <%= upload_error_to_string(err) %>
+    </div>
   <% end %>
   ```
   """
