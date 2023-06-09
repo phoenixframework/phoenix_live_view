@@ -622,8 +622,7 @@ defmodule Phoenix.LiveView.UploadConfig do
   @doc false
   def put_error(%UploadConfig{} = conf, _entry_ref, @too_many_files = reason) do
     pair = {conf.ref, reason}
-    remaining_errors = for error <- conf.errors, error != pair, do: error
-    %UploadConfig{conf | errors: remaining_errors ++ [pair]}
+    %UploadConfig{conf | errors: List.delete(conf.errors, pair) ++ [pair]}
   end
 
   def put_error(%UploadConfig{} = conf, entry_ref, reason) do
