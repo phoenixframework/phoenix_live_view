@@ -1005,8 +1005,25 @@ defmodule Phoenix.Component do
 
   def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
 
-  @doc false
-  @deprecated "Check on the schema or on params if there are too many uploads"
+  @doc """
+  Returns the errors for an upload.
+
+  The following error may be returned:
+
+  * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
+
+  ## Examples
+
+      def upload_error_to_string(:too_many_files), do: "You have selected too many files"
+
+  ```heex
+  <%= for err <- upload_errors(@uploads.avatar) do %>
+    <div class="alert alert-danger">
+      <%= upload_error_to_string(err) %>
+    </div>
+  <% end %>
+  ```
+  """
   def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf) do
     for {ref, error} <- conf.errors, ref == conf.ref, do: error
   end
