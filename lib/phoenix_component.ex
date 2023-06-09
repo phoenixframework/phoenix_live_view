@@ -2751,7 +2751,7 @@ defmodule Phoenix.Component do
       "the optional override for the accept attribute. Defaults to :accept specified by allow_upload"
   )
 
-  attr.(:rest, :global, include: ~w(webkitdirectory required))
+  attr.(:rest, :global, include: ~w(webkitdirectory required disabled))
 
   def live_file_input(%{upload: upload} = assigns) do
     assigns = assign_new(assigns, :accept, fn -> upload.accept != :any && upload.accept end)
