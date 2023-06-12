@@ -849,7 +849,7 @@ export default class View {
       let name = el.attributes[i].name
       if(name.startsWith(prefix)){ meta[name.replace(prefix, "")] = el.getAttribute(name) }
     }
-    if(el.value !== undefined){
+    if(el.value !== undefined && !(el instanceof HTMLFormElement)){
       if(!meta){ meta = {} }
       meta.value = el.value
 

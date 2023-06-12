@@ -3335,7 +3335,7 @@ var View = class {
         meta[name.replace(prefix, "")] = el.getAttribute(name);
       }
     }
-    if (el.value !== void 0) {
+    if (el.value !== void 0 && !(el instanceof HTMLFormElement)) {
       if (!meta) {
         meta = {};
       }
