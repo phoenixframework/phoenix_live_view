@@ -1886,6 +1886,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             this.maybeReOrderStream(el);
           },
           onBeforeElUpdated: (fromEl, toEl) => {
+            dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
             dom_default.cleanChildNodes(toEl, phxUpdate);
             if (this.skipCIDSibling(toEl)) {
               return false;
@@ -1935,7 +1936,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               if (dom_default.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])) {
                 appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)));
               }
-              dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
               dom_default.syncAttrsToProps(toEl);
               dom_default.applyStickyOperations(toEl);
               if (toEl.getAttribute("name") && dom_default.isFormInput(toEl)) {
@@ -3364,7 +3364,7 @@ within:
           meta[name.replace(prefix, "")] = el.getAttribute(name);
         }
       }
-      if (el.value !== void 0) {
+      if (el.value !== void 0 && !(el instanceof HTMLFormElement)) {
         if (!meta) {
           meta = {};
         }
