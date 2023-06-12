@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.2 (2023-06-12)
+
+### Bug fixes
+  * Fix issue when `<input name="value" />` is used
+
 ## 0.19.1 (2023-06-06)
 
 ### Enhancements
