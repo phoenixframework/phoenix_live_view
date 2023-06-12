@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.19.3
+
+  * Bring back accidentally deprecated `upload_errors/1`
+
 ## 0.19.2 (2023-06-12)
 
 ### Bug fixes
