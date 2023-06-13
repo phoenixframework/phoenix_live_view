@@ -990,6 +990,13 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: transport_pid
     } = phx_socket
 
+    Process.put(:"$initial_call", {view, :mount, 3})
+
+    case params do
+      %{"caller" => {pid, _}} when is_pid(pid) -> Process.put(:"$callers", [pid])
+      _ -> Process.put(:"$callers", [transport_pid])
+    end
+
     # Optional parameter handling
     connect_params = params["params"]
 
@@ -1001,11 +1008,6 @@ defmodule Phoenix.LiveView.Channel do
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
-
-    case params do
-      %{"caller" => {pid, _}} when is_pid(pid) -> Process.put(:"$callers", [pid])
-      _ -> Process.put(:"$callers", [transport_pid])
-    end
 
     socket = %Socket{
       endpoint: endpoint,
