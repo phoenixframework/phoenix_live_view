@@ -2807,6 +2807,19 @@ defmodule Phoenix.Component do
     <.live_img_preview entry={entry} width="75" />
   <% end %>
   ```
+  
+  When you need to use it multiple times, make sure that they have distinct ids
+  
+  ```heex
+  <%= for entry <- @uploads.avatar.entries do %>
+    <.live_img_preview entry={entry} width="75" />
+  <% end %>
+  
+  
+  <%= for entry <- @uploads.avatar.entries do %>
+    <.live_img_preview id={"modal-#{entry.ref}"} entry={entry} width="500" />
+  <% end %>
+  ```
   """
   @doc type: :component
 
@@ -2814,13 +2827,13 @@ defmodule Phoenix.Component do
     required: true,
     doc: "The `Phoenix.LiveView.UploadEntry` struct"
   )
-
+  attr.(:id, :string, default: nil, doc: "Override the id if using live_img_preview more than once in the template")
   attr.(:rest, :global, [])
 
   def live_img_preview(assigns) do
     ~H"""
     <img
-      id={"phx-preview-#{@entry.ref}"}
+      id={@id || "phx-preview-#{@entry.ref}"}
       data-phx-upload-ref={@entry.upload_ref}
       data-phx-entry-ref={@entry.ref}
       data-phx-hook="Phoenix.LiveImgPreview"
