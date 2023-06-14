@@ -71,7 +71,10 @@ defmodule Phoenix.LiveView.Router do
       actions.
 
     * `:metadata` - a map to optional feed metadata used on telemetry events and route info,
-      for example: `%{route_name: :foo, access: :user}`.
+      for example: `%{route_name: :foo, access: :user}`. This data can be retrieved by
+      calling `Phoenix.Router.route_info/4` with the `uri` from the `handle_params`
+      callback. This can be used to customize a LiveView which may be invoked from
+      different routes.
 
     * `:private` - an optional map of private data to put in the plug connection,
       for example: `%{route_name: :foo, access: :user}`.
