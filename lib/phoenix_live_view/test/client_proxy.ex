@@ -457,7 +457,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       :error ->
         case Map.fetch(state.dropped_replies, ref) do
           {:ok, from} ->
-            from  && GenServer.reply(from, {:ok, nil})
+            from && GenServer.reply(from, {:ok, nil})
             {:noreply, %{state | dropped_replies: Map.delete(state.dropped_replies, ref)}}
 
           :error ->
