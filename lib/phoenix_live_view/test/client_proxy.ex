@@ -456,11 +456,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
       :error ->
         case Map.fetch(state.dropped_replies, ref) do
-          {:ok, :missing_from} ->
-            {:noreply, %{state | dropped_replies: Map.delete(state.dropped_replies, ref)}}
-
           {:ok, from} ->
-            GenServer.reply(from, {:ok, nil})
+            from  && GenServer.reply(from, {:ok, nil})
             {:noreply, %{state | dropped_replies: Map.delete(state.dropped_replies, ref)}}
 
           :error ->
@@ -670,12 +667,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         state = %{state | html: new_html}
         payload = %{"cids" => will_destroy_cids}
 
-        push_with_callback(state, view, "cids_will_destroy", :missing_from, payload, fn _, state ->
+        push_with_callback(state, view, "cids_will_destroy", nil, payload, fn _, state ->
           still_there_cids = DOM.component_ids(view.id, state.html)
           payload = %{"cids" => Enum.reject(will_destroy_cids, &(&1 in still_there_cids))}
 
           state =
-            push_with_callback(state, view, "cids_destroyed", :missing_from, payload, fn reply, state ->
+            push_with_callback(state, view, "cids_destroyed", nil, payload, fn reply, state ->
               cids = reply.payload.cids
               {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, cids))}
             end)
