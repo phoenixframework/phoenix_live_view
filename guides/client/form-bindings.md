@@ -46,7 +46,7 @@ callbacks, to validate and attempt to save the parameter accordingly:
     def render(assigns) ...
 
     def mount(_params, _session, socket) do
-      {:ok, assign(socket, form: to_form(Accounts.change_user(%User{}))}
+      {:ok, assign(socket, form: to_form(Accounts.change_user(%User{})))}
     end
 
     def handle_event("validate", %{"user" => params}, socket) do
