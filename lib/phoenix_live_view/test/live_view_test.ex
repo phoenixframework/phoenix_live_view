@@ -1143,7 +1143,7 @@ defmodule Phoenix.LiveViewTest do
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
       require Phoenix.ChannelTest
-      builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+      builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}) end
       Phoenix.LiveViewTest.__file_input__(view, selector, name, entries, builder)
     end
   end
