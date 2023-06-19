@@ -211,6 +211,7 @@ defmodule Phoenix.LiveView.Diff do
         {cdiffs, components} =
           render_pending_components(socket, pending, %{}, cids, cdiffs, components)
 
+        {diff, cdiffs} = extract_events({diff, cdiffs})
         {Map.put(diff, @components, cdiffs), components, extra}
 
       %{} ->
