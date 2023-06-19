@@ -99,6 +99,14 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
+    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
+    live_view =
+      if Macro.quoted_literal?(live_view) do
+        Macro.prewalk(live_view, &expand_alias(&1, __CALLER__))
+      else
+        live_view
+      end
+
     quote bind_quoted: binding() do
       {action, router_options} =
         Phoenix.LiveView.Router.__live__(__MODULE__, live_view, action, opts)
@@ -106,6 +114,11 @@ defmodule Phoenix.LiveView.Router do
       Phoenix.Router.get(path, Phoenix.LiveView.Plug, action, router_options)
     end
   end
+
+  defp expand_alias({:__aliases__, _, _} = alias, env),
+    do: Macro.expand(alias, %{env | function: {:__attr__, 3}})
+
+  defp expand_alias(other, _env), do: other
 
   @doc """
   Defines a live session for live redirects within a group of live routes.

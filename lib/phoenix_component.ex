@@ -1815,6 +1815,7 @@ defmodule Phoenix.Component do
   '''
   @doc type: :macro
   defmacro attr(name, type, opts \\ []) do
+    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
     type =
       if Macro.quoted_literal?(type) do
         Macro.prewalk(type, &expand_alias(&1, __CALLER__))
