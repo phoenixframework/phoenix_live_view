@@ -115,11 +115,6 @@ defmodule Phoenix.LiveView.Router do
     end
   end
 
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:__attr__, 3}})
-
-  defp expand_alias(other, _env), do: other
-
   @doc """
   Defines a live session for live redirects within a group of live routes.
 
