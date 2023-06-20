@@ -1492,14 +1492,23 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp open_with_system_cmd(path) do
-    cmd =
+    {cmd, args} =
       case :os.type() do
-        {:unix, :darwin} -> "open"
-        {:unix, _} -> "xdg-open"
-        {:win32, _} -> "start"
+        {:win32, _} ->
+          {"cmd", ["/c", "start", path]}
+
+        {:unix, :darwin} ->
+          {"open", [path]}
+
+        {:unix, _} ->
+          if System.find_executable("cmd.exe") do
+            {"cmd.exe", ["/c", "start", path]}
+          else
+            {"xdg-open", [path]}
+          end
       end
 
-    System.cmd(cmd, [path])
+    System.cmd(cmd, args)
   end
 
   @doc """
