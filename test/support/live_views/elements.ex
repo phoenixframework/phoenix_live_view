@@ -153,6 +153,9 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <form id="trigger-form-value" action="/not_found" method="POST" phx-submit="form-submit-trigger"
           phx-trigger-action={@trigger_action}>
     </form>
+
+    <%# @page_title assign is unique %>
+    <svg><title>SVG with title</title></svg>
     """
   end
 
