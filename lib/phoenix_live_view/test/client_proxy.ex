@@ -1368,7 +1368,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp put_cid(payload, cid), do: Map.put(payload, "cid", cid)
 
   defp root_page_title(root_html) do
-    case DOM.maybe_one(root_html, "title") do
+    case DOM.maybe_one(root_html, "head > title") do
       {:ok, {"title", _, [text]}} -> text
       {:error, _kind, _desc} -> nil
     end
