@@ -1,7 +1,9 @@
 # Changelog
 
-## 0.19.3
+## 0.19.3 (2023-06-21)
 
+### Bug fixes
+  * Fix `push_event` inside component update not being sent in some cases
   * Bring back accidentally deprecated `upload_errors/1`
 
 ## 0.19.2 (2023-06-12)
