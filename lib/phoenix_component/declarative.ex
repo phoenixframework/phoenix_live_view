@@ -33,6 +33,7 @@ defmodule Phoenix.Component.Declarative do
     height
     hidden
     id
+    inert
     inputmode
     is
     itemid
