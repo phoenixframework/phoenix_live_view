@@ -2943,6 +2943,7 @@ var View = class {
     let child = this.getChildById(el.id);
     if (!child) {
       let view = new View(el, this.liveSocket, this);
+      view.setHref(this.href);
       this.root.children[this.id][view.id] = view;
       view.join();
       this.childJoins++;
