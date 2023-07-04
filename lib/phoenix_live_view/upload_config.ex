@@ -74,7 +74,8 @@ defmodule Phoenix.LiveView.UploadConfig do
              :accept,
              :errors,
              :auto_upload?,
-             :progress_event
+             :progress_event,
+             :writer
            ]}
 
   defstruct name: nil,
@@ -95,7 +96,8 @@ defmodule Phoenix.LiveView.UploadConfig do
             ref: nil,
             errors: [],
             auto_upload?: false,
-            progress_event: nil
+            progress_event: nil,
+            writer: nil
 
   @type t :: %__MODULE__{
           name: atom() | String.t(),
@@ -118,6 +120,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           errors: list(),
           ref: String.t(),
           auto_upload?: boolean(),
+          writer: Module.t() | nil,
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
@@ -270,6 +273,26 @@ defmodule Phoenix.LiveView.UploadConfig do
           nil
       end
 
+    writer =
+      case Keyword.fetch(opts, :writer) do
+        {:ok, {mod, opts}} when is_atom(mod) ->
+          {mod, opts}
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :writer value provided to allow_upload.
+
+          Only {module, opts} tuples are supported. Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          {Phoenix.LiveView.UploadWriter, []}
+      end
+
+
+
     %UploadConfig{
       ref: random_ref,
       name: name,
@@ -284,6 +307,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       chunk_size: chunk_size,
       chunk_timeout: chunk_timeout,
       progress_event: progress_event,
+      writer: writer,
       auto_upload?: Keyword.get(opts, :auto_upload, false),
       allowed?: true
     }

@@ -30,7 +30,7 @@ defmodule Phoenix.LiveView.UploadChannel do
               return
 
             return ->
-              IO.warn """
+              IO.warn("""
               consuming uploads requires a return signature matching:
 
                   {:ok, value} | {:postpone, value}
@@ -38,7 +38,8 @@ defmodule Phoenix.LiveView.UploadChannel do
               got:
 
                   #{inspect(return)}
-              """
+              """)
+
               GenServer.call(pid, :consume_done, @timeout)
               return
           end
@@ -60,14 +61,14 @@ defmodule Phoenix.LiveView.UploadChannel do
     with {:ok, %{pid: pid, ref: ref, cid: cid}} <- Static.verify_token(socket.endpoint, token),
          {:ok, config} <- Channel.register_upload(pid, ref, cid),
          %{max_file_size: max_file_size, chunk_timeout: chunk_timeout} = config,
-         {:ok, path} <- Plug.Upload.random_file("live_view_upload"),
-         {:ok, handle} <- File.open(path, [:binary, :write]) do
+         {writer, writer_opts} <- config.writer,
+         {:ok, writer_state} <- writer.init(writer_opts) do
       Process.monitor(pid)
 
       socket =
         assign(socket, %{
-          path: path,
-          handle: handle,
+          writer: writer,
+          writer_state: writer_state,
           live_view_pid: pid,
           max_file_size: max_file_size,
           chunk_timeout: chunk_timeout,
@@ -154,20 +155,20 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   defp write_bytes(socket, payload) do
-    IO.binwrite(socket.assigns.handle, payload)
+    {:ok, writer_state} = socket.assigns.writer.write_chunk(socket.assigns.writer_state, payload)
     socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
 
     if socket.assigns.uploaded_size == socket.assigns.max_file_size do
       socket
       |> close_file()
-      |> assign(:done?, true)
+      |> assign(done?: true, writer_state: writer_state)
     else
-      socket
+      assign(socket, writer_state: writer_state)
     end
   end
 
   defp close_file(socket) do
-    File.close(socket.assigns.handle)
+    socket.assigns.writer.close(socket.assigns.writer_state)
     cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
 
     socket
@@ -182,5 +183,5 @@ defmodule Phoenix.LiveView.UploadChannel do
     socket
   end
 
-  defp file_meta(socket), do: %{path: socket.assigns.path}
+  defp file_meta(socket), do: socket.assigns.writer.meta(socket.assigns.writer_state)
 end
