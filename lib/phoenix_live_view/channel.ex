@@ -1237,7 +1237,7 @@ defmodule Phoenix.LiveView.Channel do
           reply = %{
             max_file_size: entry.client_size,
             chunk_timeout: conf.chunk_timeout,
-            writer: conf.writer.(socket)
+            writer: writer!(socket, conf.writer)
           }
 
           GenServer.reply(from, {:ok, reply})
@@ -1249,6 +1249,25 @@ defmodule Phoenix.LiveView.Channel do
           {socket, :error}
       end
     end)
+  end
+
+  defp writer!(socket, writer) do
+    result =
+      case writer do
+        writer when is_function(writer, 1) -> writer.(socket)
+        other -> other
+      end
+
+    case result do
+      {mod, opts} when is_atom(mod) ->
+        {mod, opts}
+
+      other ->
+        raise """
+        expected writer to return a tuple of {module, opts}, or be a function
+        which accepts the socket and returns {mod, opts}, got #{inspect(other)}
+        """
+    end
   end
 
   defp read_socket(state, nil = _cid, func) do

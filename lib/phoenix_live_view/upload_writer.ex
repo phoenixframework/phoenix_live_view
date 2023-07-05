@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.UploadWriter do
   @callback init(opts :: term) :: {:ok, state :: term} | {:error, term}
   @callback meta(state :: term) :: map
   @callback write_chunk(state :: term, data :: binary) :: {:ok, state :: term} | {:error, term}
-  @callback close(state :: term) :: :ok | {:error, term}
+  @callback close(state :: term) :: {:ok, state :: term} | {:error, term}
 
   def init(_opts) do
     with {:ok, path} <- Plug.Upload.random_file("live_view_upload"),
@@ -24,6 +24,9 @@ defmodule Phoenix.LiveView.UploadWriter do
   end
 
   def close(state) do
-    File.close(state.file)
+    case File.close(state.file) do
+      :ok -> {:ok, state}
+      {:error, reason} -> {:error, reason}
+    end
   end
 end

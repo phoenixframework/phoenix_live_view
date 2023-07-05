@@ -33,7 +33,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     @impl true
     def close(test_name) do
       send(test_name, :close)
-      :ok
+      {:ok, test_name}
     end
   end
 
