@@ -156,14 +156,17 @@ defmodule Phoenix.LiveView.UploadChannel do
 
   defp write_bytes(socket, payload) do
     {:ok, writer_state} = socket.assigns.writer.write_chunk(socket.assigns.writer_state, payload)
-    socket = assign(socket, :uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
+    socket =
+      socket
+      |> assign(:uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
+      |> assign(:writer_state, writer_state)
 
     if socket.assigns.uploaded_size == socket.assigns.max_file_size do
       socket
       |> close_file()
-      |> assign(done?: true, writer_state: writer_state)
+      |> assign(done?: true)
     else
-      assign(socket, writer_state: writer_state)
+      socket
     end
   end
 
