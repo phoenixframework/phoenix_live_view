@@ -20,6 +20,8 @@ defmodule Phoenix.LiveView.TagEngine do
   Where `:tag_handler` implements the behaviour defined by this module.
   """
 
+  alias Phoenix.LiveView.SourceCodeInspector
+
   @doc """
   Classify the tag type from the given binary.
 
@@ -656,6 +658,9 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_token({:tag, name, attrs, %{self_close: true} = tag_meta}, state) do
     suffix = if state.tag_handler.void?(name), do: ">", else: "></#{name}>"
     attrs = remove_phx_no_break(attrs)
+
+    attrs = maybe_add_source_code_inspector_attributes(attrs, tag_meta, state)
+
     validate_phx_attrs!(attrs, tag_meta, state)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
@@ -677,8 +682,11 @@ defmodule Phoenix.LiveView.TagEngine do
   # HTML element
 
   defp handle_token({:tag, name, attrs, tag_meta} = token, state) do
-    validate_phx_attrs!(attrs, tag_meta, state)
     attrs = remove_phx_no_break(attrs)
+
+    attrs = maybe_add_source_code_inspector_attributes(attrs, tag_meta, state)
+
+    validate_phx_attrs!(attrs, tag_meta, state)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
       {^tag_meta, attrs} ->
@@ -703,6 +711,115 @@ defmodule Phoenix.LiveView.TagEngine do
     state
     |> update_subengine(:handle_text, [to_location(tag_meta), "</#{name}>"])
     |> handle_special_expr(tag_open_meta)
+  end
+
+  def has_possibly_dynamic_id?(attrs, state) do
+    has_possibly_dynamic_attr_with_name?(attrs, :id, state)
+  end
+
+  def has_possibly_dynamic_phx_hook?(attrs, state) do
+    has_possibly_dynamic_attr_with_name?(attrs, :"phx-hook", state)
+  end
+
+
+  defp maybe_add_source_code_inspector_attributes(attrs, tag_meta, state) do
+    # Create the AST for expressions that will be true if a
+    has_phx_hook_test = has_possibly_dynamic_phx_hook?(attrs, state)
+    has_id_attr_test = has_possibly_dynamic_id?(attrs, state)
+
+    # Test whether the source code inspector is enabled at compile time.
+    # Adding source code inspector capabilities introduces some runtime overhead
+    # and in particular makes all HTML elements dynamic (instead of static)
+    # and makes our diffs bigger, even if the source inspector is disabled
+    # at runtime! This is not acceptable in production
+    if SourceCodeInspector.enabled?() do
+      # The source code inspector is enabled at compile time, add the attributes
+      source_code_inspector_attributes =
+        SourceCodeInspector.attributes(
+          state,
+          tag_meta,
+          has_id_attr_test,
+          has_phx_hook_test
+        )
+
+      attrs ++ source_code_inspector_attributes
+    else
+      # The source code inspector is disabled at compile time,
+      # don't add the attributes
+      attrs
+    end
+  end
+
+  defp contains_attr_with_name?(
+         {:root, {:expr, _expr_as_text, _meta1} = expr, _meta2},
+         attr_name,
+         state
+       )
+       when is_atom(attr_name) do
+    expr = parse_expr!(expr, state.file)
+
+    quote do
+      Map.has_key?(unquote(expr), unquote(attr_name)) or
+        Map.has_key?(unquote(expr), unquote(Atom.to_string(attr_name)))
+    end
+  end
+
+  defp contains_attr_with_name?(
+         {name, _value, _meta2} = _attr,
+         attr_name,
+         _state
+       )
+       when is_atom(attr_name) do
+
+    if name == attr_name or name == to_string(attr_name) do
+      true
+    else
+      false
+    end
+  end
+
+  defp contains_attr_with_name?(_other, _attr_name, _state) do
+    false
+  end
+
+  defp has_possibly_dynamic_attr_with_name?(attrs, attr_name, state) do
+    tests = Enum.map(attrs, fn attr -> contains_attr_with_name?(attr, attr_name, state) end)
+    any_true? = Enum.any?(tests, fn test -> test == true end)
+    all_false? = Enum.all?(tests, fn test -> test == false end)
+
+    cond do
+      # If there are no attributes, then our attribute can't be among them
+      attrs == [] ->
+        false
+
+      # If there are only static attributes and none of them has the name
+      # we want, then also no further work here is required
+      any_true? ->
+        true
+
+      # If there is a static attribute with the name we need,
+      # then no further work is required
+      all_false? ->
+        false
+
+      true ->
+        # Optimize and simplify the expression by rejecting the constants
+        dynamic_tests = Enum.reject(tests, fn test -> test == true or test == false end)
+
+        case dynamic_tests do
+          [single_test] ->
+            # Just return the simple test
+            single_test
+
+          [first_test | other_tests] ->
+            # Build a big nested or expression
+            Enum.reduce(other_tests, first_test, fn next_test, expression ->
+              quote do
+                unquote(expression) or unquote(next_test)
+              end
+            end)
+        end
+    end
   end
 
   # Pop the given attr from attrs. Raises if the given attr is duplicated within
