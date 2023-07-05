@@ -168,7 +168,7 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   defp close_file(socket) do
-    socket.assigns.writer.close(socket.assigns.writer_state)
+    :ok = socket.assigns.writer.close(socket.assigns.writer_state)
     cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
 
     socket

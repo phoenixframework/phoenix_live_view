@@ -120,7 +120,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           errors: list(),
           ref: String.t(),
           auto_upload?: boolean(),
-          writer: Module.t() | nil,
+          writer: (Socket.t() -> {Module.t(), term()}),
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
@@ -275,20 +275,20 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     writer =
       case Keyword.fetch(opts, :writer) do
-        {:ok, {mod, opts}} when is_atom(mod) ->
-          {mod, opts}
+        {:ok, func} when is_function(func) ->
+          func
 
         {:ok, other} ->
           raise ArgumentError, """
           invalid :writer value provided to allow_upload.
 
-          Only {module, opts} tuples are supported. Got:
+          Only a function which accepts the socket is supported. Got:
 
           #{inspect(other)}
           """
 
         :error ->
-          {Phoenix.LiveView.UploadWriter, []}
+          fn _socket -> {Phoenix.LiveView.UploadWriter, []} end
       end
 
 

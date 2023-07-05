@@ -37,6 +37,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
   end
 
+  def build_writer(%Phoenix.LiveView.Socket{}) do
+    {TestWriter, :test_writer}
+  end
+
   def valid_token(lv_pid, ref) do
     LiveView.Static.sign_token(@endpoint, %{pid: lv_pid, ref: ref})
   end
@@ -677,12 +681,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              max_entries: 1,
              chunk_size: 50,
              accept: :any,
-             writer: {TestWriter, :test_writer}
+             writer: &__MODULE__.build_writer/1
            ]
+
       test "writer can be configured", %{lv: lv} do
         Process.register(self(), :test_writer)
 
         content = String.duplicate("0", 100)
+
         avatar =
           file_input(lv, "form", :avatar, [
             %{name: "foo.jpeg", content: content}

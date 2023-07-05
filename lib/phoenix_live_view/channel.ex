@@ -1237,7 +1237,7 @@ defmodule Phoenix.LiveView.Channel do
           reply = %{
             max_file_size: entry.client_size,
             chunk_timeout: conf.chunk_timeout,
-            writer: conf.writer
+            writer: conf.writer.(socket)
           }
 
           GenServer.reply(from, {:ok, reply})
