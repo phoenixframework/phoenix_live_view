@@ -16,6 +16,19 @@ describe("DOM", () => {
     curTitle && curTitle.remove()
   })
 
+  describe ("wantsNewTab", () => {
+    test("case insensitive target", () => {
+      let event = e("https://test.local")
+      expect(DOM.wantsNewTab(event)).toBe(false)
+      // lowercase
+      event.target.setAttribute("target", "_blank")
+      expect(DOM.wantsNewTab(event)).toBe(true)
+      // uppercase
+      event.target.setAttribute("target", "_BLANK")
+      expect(DOM.wantsNewTab(event)).toBe(true)
+    })
+  })
+
   describe("isNewPageClick", () => {
     test("identical locations", () => {
       let currentLoc
