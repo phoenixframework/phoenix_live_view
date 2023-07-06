@@ -96,14 +96,23 @@ var EntryUploader = class {
     this.offset = 0;
     this.chunkSize = chunkSize;
     this.chunkTimer = null;
+    this.errored = false;
     this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, { token: entry.metadata() });
   }
   error(reason) {
+    if (this.errored) {
+      return;
+    }
+    this.errored = true;
     clearTimeout(this.chunkTimer);
-    this.uploadChannel.leave();
     this.entry.error(reason);
   }
   upload() {
+    this.uploadChannel.onClose(() => {
+      if (!this.isDone()) {
+        this.error("io_error");
+      }
+    });
     this.uploadChannel.onError((reason) => this.error(reason));
     this.uploadChannel.join().receive("ok", (_data) => this.readNextChunk()).receive("error", (reason) => this.error(reason));
   }
@@ -132,7 +141,7 @@ var EntryUploader = class {
       if (!this.isDone()) {
         this.chunkTimer = setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0);
       }
-    });
+    }).receive("error", ({ reason }) => this.error(reason));
   }
 };
 
