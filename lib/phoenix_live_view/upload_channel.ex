@@ -73,6 +73,7 @@ defmodule Phoenix.LiveView.UploadChannel do
           max_file_size: max_file_size,
           chunk_timeout: chunk_timeout,
           chunk_timer: nil,
+          writer_closed?: false,
           done?: false,
           uploaded_size: 0
         })
@@ -84,6 +85,10 @@ defmodule Phoenix.LiveView.UploadChannel do
 
       {:error, reason} when reason in [:already_registered, :disallowed] ->
         {:error, %{reason: reason}}
+
+      # writer init error
+      {:error, _reason} ->
+        {:error, %{reason: :writer_error}}
     end
   end
 
@@ -92,8 +97,20 @@ defmodule Phoenix.LiveView.UploadChannel do
     %{uploaded_size: uploaded_size, max_file_size: max_file_size} = socket.assigns
     socket = reschedule_chunk_timer(socket)
 
-    if byte_size(payload) + uploaded_size <= max_file_size do
-      {:reply, :ok, write_bytes(socket, payload)}
+    if !socket.assigns.writer_closed? and byte_size(payload) + uploaded_size <= max_file_size do
+      case write_bytes(socket, payload) do
+        {:ok, new_socket} ->
+          {:reply, :ok, new_socket}
+
+        {:error, _reason, new_socket} ->
+          new_socket =
+            case close_file(new_socket) do
+              {:ok, new_socket} -> new_socket
+              {:error, _reason, new_socket} -> new_socket
+            end
+
+          {:reply, {:error, %{reason: :io_error}}, new_socket}
+      end
     else
       reply = %{reason: :file_size_limit_exceeded, limit: max_file_size}
       {:stop, {:shutdown, :closed}, {:error, reply}, socket}
@@ -129,9 +146,20 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   def handle_call(:cancel, from, socket) do
-    new_socket = close_file(socket)
-    GenServer.reply(from, :ok)
-    {:stop, {:shutdown, :closed}, new_socket}
+    if socket.assigns.writer_closed? do
+      GenServer.reply(from, :ok)
+      {:stop, {:shutdown, :closed}, socket}
+    else
+      case close_file(socket) do
+        {:ok, new_socket} ->
+          GenServer.reply(from, :ok)
+          {:stop, {:shutdown, :closed}, new_socket}
+
+        {:error, reason, new_socket} ->
+          GenServer.reply(from, {:error, reason})
+          {:stop, {:shutdown, :closed}, new_socket}
+      end
+    end
   end
 
   defp reschedule_chunk_timer(socket) do
@@ -155,28 +183,44 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   defp write_bytes(socket, payload) do
-    {:ok, writer_state} = socket.assigns.writer.write_chunk(socket.assigns.writer_state, payload)
-    socket =
-      socket
-      |> assign(:uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
-      |> assign(:writer_state, writer_state)
+    case socket.assigns.writer.write_chunk(socket.assigns.writer_state, payload) do
+      {:ok, writer_state} ->
+        socket
+        |> assign(:uploaded_size, socket.assigns.uploaded_size + byte_size(payload))
+        |> assign(:writer_state, writer_state)
+        |> maybe_close_completed_file()
 
+      {:error, reason} ->
+        cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
+        {:error, reason, assign(socket, chunk_timer: nil)}
+    end
+  end
+
+  defp maybe_close_completed_file(socket) do
     if socket.assigns.uploaded_size == socket.assigns.max_file_size do
-      socket
-      |> close_file()
-      |> assign(done?: true)
+      case close_file(socket) do
+        {:ok, socket} -> {:ok, assign(socket, done?: true)}
+        {:error, reason, new_socket} -> {:error, reason, new_socket}
+      end
     else
-      socket
+      {:ok, socket}
     end
   end
 
   defp close_file(socket) do
-    {:ok, writer_state} = socket.assigns.writer.close(socket.assigns.writer_state)
     cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
+    socket = assign(socket, chunk_timer: nil, writer_closed?: true)
 
-    socket
-    |> assign(chunk_timer: nil, writer_state: writer_state)
-    |> garbage_collect()
+    case socket.assigns.writer.close(socket.assigns.writer_state) do
+      {:ok, writer_state} ->
+        {:ok,
+         socket
+         |> assign(writer_state: writer_state)
+         |> garbage_collect()}
+
+      {:error, reason} ->
+        {:error, reason, socket}
+    end
   end
 
   defp garbage_collect(socket) do
