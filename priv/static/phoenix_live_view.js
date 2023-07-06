@@ -150,11 +150,6 @@ var LiveView = (() => {
       this.entry.error(reason);
     }
     upload() {
-      this.uploadChannel.onClose(() => {
-        if (!this.isDone()) {
-          this.error("io_error");
-        }
-      });
       this.uploadChannel.onError((reason) => this.error(reason));
       this.uploadChannel.join().receive("ok", (_data) => this.readNextChunk()).receive("error", (reason) => this.error(reason));
     }
