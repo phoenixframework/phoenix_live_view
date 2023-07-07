@@ -822,11 +822,16 @@ defmodule Phoenix.LiveView do
   any blocking work will block the channel  errors will crash the channel process.
 
   Custom implementations of `Phoenix.LiveView.UploadWriter` can be passed to
-  `allow_upload/3` with a tuple of `{writer, writer_opts}`. For example imagine
+  `allow_upload/3`. To initialize the writer with options, define a 3-arity function
+  that returns a tuple of `{writer, writer_opts}`. For example imagine
   an upload writer that logs the chunk sizes and tracks the total bytes sent by the
   client:
 
-      allow_upload(socket, :avatar, accept: :any, writer: {EctoWriter, level: :debug})
+      socket
+      |> allow_upload(:avatar,
+        accept: :any,
+        writer: fn _name, _entry, _socket -> {EchoWriter, level: :debug} end
+      )
 
   And such an `EchoWriter` could look like this:
 

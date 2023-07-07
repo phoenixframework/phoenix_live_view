@@ -37,7 +37,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
   end
 
-  def build_writer(%Phoenix.LiveView.Socket{}) do
+  def build_writer(_name, %Phoenix.LiveView.UploadEntry{}, %Phoenix.LiveView.Socket{}) do
     {TestWriter, :test_writer}
   end
 
@@ -681,7 +681,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              max_entries: 1,
              chunk_size: 50,
              accept: :any,
-             writer: &__MODULE__.build_writer/1
+             writer: &__MODULE__.build_writer/3
            ]
 
       test "writer can be configured", %{lv: lv} do
