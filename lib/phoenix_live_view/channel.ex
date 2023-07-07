@@ -1252,20 +1252,13 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp writer!(socket, name, entry, writer) do
-    result =
-      case writer do
-        writer when is_function(writer, 3) -> writer.(name, entry, socket)
-        other -> other
-      end
-
-    case result do
+    case writer.(name, entry, socket) do
       {mod, opts} when is_atom(mod) ->
         {mod, opts}
 
       other ->
         raise """
-        expected writer to return a tuple of {module, opts}, or be a function
-        which accepts the upload name, the entry, and the socket and returns {mod, opts}, got: #{inspect(other)}
+        expected :writer function to return a tuple of {module, opts}, got: #{inspect(other)}
         """
     end
   end

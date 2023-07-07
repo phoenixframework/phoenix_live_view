@@ -121,8 +121,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           ref: String.t(),
           auto_upload?: boolean(),
           writer:
-            (name :: atom() | String.t(), UploadEntry.t(), Socket.t() -> {Module.t(), term()})
-            | {Module.t(), term()},
+            (name :: atom() | String.t(), UploadEntry.t(), Socket.t() -> {Module.t(), term()}),
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
@@ -277,14 +276,14 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     writer =
       case Keyword.fetch(opts, :writer) do
-        {:ok, func} when is_function(func) ->
+        {:ok, func} when is_function(func, 3) ->
           func
 
         {:ok, other} ->
           raise ArgumentError, """
           invalid :writer value provided to allow_upload.
 
-          Only a function which accepts the socket is supported. Got:
+          Only a 3-arity anonymous function is supported. Got:
 
           #{inspect(other)}
           """
