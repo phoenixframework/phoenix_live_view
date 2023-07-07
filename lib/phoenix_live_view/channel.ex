@@ -1235,7 +1235,7 @@ defmodule Phoenix.LiveView.Channel do
       case Upload.register_entry_upload(socket, conf, pid, entry_ref) do
         {:ok, new_socket, entry} ->
           reply = %{
-            entry: entry,
+            max_file_size: entry.client_size,
             chunk_timeout: conf.chunk_timeout,
             writer: writer!(socket, conf.writer)
           }

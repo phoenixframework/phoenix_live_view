@@ -60,9 +60,9 @@ defmodule Phoenix.LiveView.UploadChannel do
 
     with {:ok, %{pid: pid, ref: ref, cid: cid}} <- Static.verify_token(socket.endpoint, token),
          {:ok, config} <- Channel.register_upload(pid, ref, cid),
-         %{entry: %{client_size: max_file_size} = entry, chunk_timeout: chunk_timeout} = config,
+         %{max_file_size: max_file_size, chunk_timeout: chunk_timeout} = config,
          {writer, writer_opts} <- config.writer,
-         {:ok, writer_state} <- writer.init(entry, writer_opts) do
+         {:ok, writer_state} <- writer.init(writer_opts) do
       Process.monitor(pid)
 
       socket =

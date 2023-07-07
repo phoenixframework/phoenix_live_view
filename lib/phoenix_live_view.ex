@@ -834,7 +834,7 @@ defmodule Phoenix.LiveView do
         @behaviour Phoenix.LiveView.UploadWriter
 
         @impl true
-        def init(_entry, opts) do
+        def init(opts) do
           {:ok, %{total: 0, level: Keyword.fetch!(opts, :level)}}
         end
 
