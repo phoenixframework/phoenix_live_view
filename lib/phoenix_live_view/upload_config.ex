@@ -120,7 +120,9 @@ defmodule Phoenix.LiveView.UploadConfig do
           errors: list(),
           ref: String.t(),
           auto_upload?: boolean(),
-          writer: (Socket.t() -> {Module.t(), term()}),
+          writer:
+            (name :: atom() | String.t(), UploadEntry.t(), Socket.t() -> {Module.t(), term()})
+            | {Module.t(), term()},
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
@@ -288,10 +290,8 @@ defmodule Phoenix.LiveView.UploadConfig do
           """
 
         :error ->
-          fn _socket -> {Phoenix.LiveView.UploadWriter, []} end
+          fn _name, _entry, _socket -> {Phoenix.LiveView.UploadWriter, []} end
       end
-
-
 
     %UploadConfig{
       ref: random_ref,

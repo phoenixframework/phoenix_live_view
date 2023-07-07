@@ -1237,7 +1237,7 @@ defmodule Phoenix.LiveView.Channel do
           reply = %{
             max_file_size: entry.client_size,
             chunk_timeout: conf.chunk_timeout,
-            writer: writer!(socket, conf.writer)
+            writer: writer!(socket, conf.name, entry, conf.writer)
           }
 
           GenServer.reply(from, {:ok, reply})
@@ -1251,10 +1251,10 @@ defmodule Phoenix.LiveView.Channel do
     end)
   end
 
-  defp writer!(socket, writer) do
+  defp writer!(socket, name, entry, writer) do
     result =
       case writer do
-        writer when is_function(writer, 1) -> writer.(socket)
+        writer when is_function(writer, 3) -> writer.(name, entry, socket)
         other -> other
       end
 
@@ -1265,7 +1265,7 @@ defmodule Phoenix.LiveView.Channel do
       other ->
         raise """
         expected writer to return a tuple of {module, opts}, or be a function
-        which accepts the socket and returns {mod, opts}, got #{inspect(other)}
+        which accepts the upload name, the entry, and the socket and returns {mod, opts}, got: #{inspect(other)}
         """
     end
   end
