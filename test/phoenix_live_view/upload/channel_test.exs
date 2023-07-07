@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     @behaviour Phoenix.LiveView.UploadWriter
 
     @impl true
-    def init(test_name) do
+    def init(_entry, test_name) do
       send(test_name, :init)
       {:ok, test_name}
     end
