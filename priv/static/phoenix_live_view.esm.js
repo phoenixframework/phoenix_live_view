@@ -303,7 +303,7 @@ var DOM = {
   wantsNewTab(e) {
     let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
     let isDownload = e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download");
-    let isTargetBlank = e.target.getAttribute("target") === "_blank";
+    let isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank";
     return wantsNewTab || isTargetBlank || isDownload;
   },
   isUnloadableFormSubmit(e) {
