@@ -1515,14 +1515,14 @@ defmodule Phoenix.LiveView do
   defdelegate detach_hook(socket, name, stage), to: Phoenix.LiveView.Lifecycle
 
   @doc ~S"""
-  Assigns a new stream to the socket.
+  Assigns a new stream to the socket or inserts items into an existing stream.
 
   Streams are a mechanism for managing large collections on the client without
   keeping the resources on the server.
 
     * `name` - The string or atom name of the key to place under the
       `@streams` assign.
-    * `items` - The enumerable of items for initial insert
+    * `items` - The enumerable of items to insert.
 
   The following options are supported:
 
