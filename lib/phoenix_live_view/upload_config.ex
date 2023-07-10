@@ -289,7 +289,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           """
 
         :error ->
-          fn _name, _entry, _socket -> {Phoenix.LiveView.UploadWriter, []} end
+          fn _name, _entry, _socket -> {Phoenix.LiveView.UploadTmpFileWriter, []} end
       end
 
     %UploadConfig{
