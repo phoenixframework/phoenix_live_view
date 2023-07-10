@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.UploadWriter do
 
   @callback init(opts :: term) :: {:ok, state :: term} | {:error, term}
   @callback meta(state :: term) :: map
-  @callback write_chunk(state :: term, data :: binary) :: {:ok, state :: term} | {:error, term}
+  @callback write_chunk(data :: binary, state :: term) :: {:ok, state :: term} | {:error, term}
   @callback close(state :: term) :: {:ok, state :: term} | {:error, term}
 
   def init(_opts) do
@@ -16,7 +16,7 @@ defmodule Phoenix.LiveView.UploadWriter do
     %{path: state.path}
   end
 
-  def write_chunk(state, data) do
+  def write_chunk(data, state) do
     case IO.binwrite(state.file, data) do
       :ok -> {:ok, state}
       {:error, reason} -> {:error, reason}

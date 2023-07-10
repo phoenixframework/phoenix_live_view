@@ -847,7 +847,7 @@ defmodule Phoenix.LiveView do
         def meta(state), do: %{level: state.level}
 
         @impl true
-        def write_chunk(state, data) do
+        def write_chunk(data, state) do
           size = byte_size(data)
           Logger.log(state.level, "received chunk of #{size} bytes")
           {:ok, %{state | state.total + size}}

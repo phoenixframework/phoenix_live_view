@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @impl true
-    def write_chunk(test_name, data) do
+    def write_chunk(data, test_name) do
       send(test_name, {:write_chunk, data})
       {:ok, test_name}
     end
