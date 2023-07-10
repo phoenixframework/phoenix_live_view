@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.19.4 (2023-07-10)
+
+### Enhancements
+  * Introduce `Phoenix.LiveView.UploadWriter`
+
 ## 0.19.3 (2023-06-21)
 
 ### Bug fixes
