@@ -138,11 +138,15 @@ var LiveView = (() => {
       this.offset = 0;
       this.chunkSize = chunkSize;
       this.chunkTimer = null;
+      this.errored = false;
       this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, { token: entry.metadata() });
     }
     error(reason) {
+      if (this.errored) {
+        return;
+      }
+      this.errored = true;
       clearTimeout(this.chunkTimer);
-      this.uploadChannel.leave();
       this.entry.error(reason);
     }
     upload() {
@@ -174,7 +178,7 @@ var LiveView = (() => {
         if (!this.isDone()) {
           this.chunkTimer = setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0);
         }
-      });
+      }).receive("error", ({ reason }) => this.error(reason));
     }
   };
 

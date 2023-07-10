@@ -1234,7 +1234,12 @@ defmodule Phoenix.LiveView.Channel do
 
       case Upload.register_entry_upload(socket, conf, pid, entry_ref) do
         {:ok, new_socket, entry} ->
-          reply = %{max_file_size: entry.client_size, chunk_timeout: conf.chunk_timeout}
+          reply = %{
+            max_file_size: entry.client_size,
+            chunk_timeout: conf.chunk_timeout,
+            writer: writer!(socket, conf.name, entry, conf.writer)
+          }
+
           GenServer.reply(from, {:ok, reply})
           new_state = put_upload_pid(state, pid, ref, entry_ref, cid)
           {new_socket, {:ok, nil, new_state}}
@@ -1244,6 +1249,18 @@ defmodule Phoenix.LiveView.Channel do
           {socket, :error}
       end
     end)
+  end
+
+  defp writer!(socket, name, entry, writer) do
+    case writer.(name, entry, socket) do
+      {mod, opts} when is_atom(mod) ->
+        {mod, opts}
+
+      other ->
+        raise """
+        expected :writer function to return a tuple of {module, opts}, got: #{inspect(other)}
+        """
+    end
   end
 
   defp read_socket(state, nil = _cid, func) do

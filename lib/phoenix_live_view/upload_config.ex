@@ -74,7 +74,8 @@ defmodule Phoenix.LiveView.UploadConfig do
              :accept,
              :errors,
              :auto_upload?,
-             :progress_event
+             :progress_event,
+             :writer
            ]}
 
   defstruct name: nil,
@@ -95,7 +96,8 @@ defmodule Phoenix.LiveView.UploadConfig do
             ref: nil,
             errors: [],
             auto_upload?: false,
-            progress_event: nil
+            progress_event: nil,
+            writer: nil
 
   @type t :: %__MODULE__{
           name: atom() | String.t(),
@@ -118,6 +120,8 @@ defmodule Phoenix.LiveView.UploadConfig do
           errors: list(),
           ref: String.t(),
           auto_upload?: boolean(),
+          writer:
+            (name :: atom() | String.t(), UploadEntry.t(), Socket.t() -> {Module.t(), term()}),
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
@@ -270,6 +274,24 @@ defmodule Phoenix.LiveView.UploadConfig do
           nil
       end
 
+    writer =
+      case Keyword.fetch(opts, :writer) do
+        {:ok, func} when is_function(func, 3) ->
+          func
+
+        {:ok, other} ->
+          raise ArgumentError, """
+          invalid :writer value provided to allow_upload.
+
+          Only a 3-arity anonymous function is supported. Got:
+
+          #{inspect(other)}
+          """
+
+        :error ->
+          fn _name, _entry, _socket -> {Phoenix.LiveView.UploadWriter, []} end
+      end
+
     %UploadConfig{
       ref: random_ref,
       name: name,
@@ -284,6 +306,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       chunk_size: chunk_size,
       chunk_timeout: chunk_timeout,
       progress_event: progress_event,
+      writer: writer,
       auto_upload?: Keyword.get(opts, :auto_upload, false),
       allowed?: true
     }
