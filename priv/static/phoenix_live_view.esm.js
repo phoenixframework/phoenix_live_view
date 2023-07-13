@@ -3077,7 +3077,10 @@ var View = class {
   onLivePatch(redir) {
     let { to, kind } = redir;
     this.href = this.expandURL(to);
-    this.liveSocket.historyPatch(to, kind);
+    this.liveSocket.withPageLoading({ to, kind }, (done) => {
+      this.liveSocket.historyPatch(to, kind);
+      done();
+    });
   }
   expandURL(to) {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to;
