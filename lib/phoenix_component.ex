@@ -2233,7 +2233,7 @@ defmodule Phoenix.Component do
 
   Dynamicaly adding and removing inputs is supported by rendering
   checkboxes for inserts and removals. Libraries such as Ecto, or custom param
-  filtering can then inspect the paramters and handle the added or removed fields.
+  filtering can then inspect the parameters and handle the added or removed fields.
   This can be combined with `Ecto.Changeset.cast/3`'s `:sort_param` and `:drop_param`
   options. For example, imagine a parent with an `:emails` `has_many` or `embeds_many`
   association. To cast the user input from a nested form, one simply needs to configure
@@ -2289,7 +2289,7 @@ defmodule Phoenix.Component do
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
-  containes an email address and name input for each child. Within the nested inputs,
+  contains an email address and name input for each child. Within the nested inputs,
   we render a hidden `list[emails_sort][]` input, which is set to the index of the
   given child. This tells Ecto's cast operation how to sort existing children, or
   where to insert new children. Next, we render the email and name inputs as usual.
@@ -2300,7 +2300,7 @@ defmodule Phoenix.Component do
   within the label check and uncheck the checbox.
 
   Finally, outside the `inputs_for`, we render another label with a value-less
-  `list[emails_sort][]` checkbox witih accompanied "add more" text. Ecto will
+  `list[emails_sort][]` checkbox with accompanied "add more" text. Ecto will
   treat unknown sort params as new children and build a new child. We also render an
   empty `list[emails_drop][]` to ensure that all children are deleted when saving our
   form in the event that the user dropped all the inputs.
