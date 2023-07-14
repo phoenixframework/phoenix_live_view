@@ -4218,6 +4218,7 @@ var LiveSocket = class {
       }
       let { type, id, root, scroll } = event.state || {};
       let href = window.location.href;
+      dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: type === "patch", pop: true } });
       this.requestDOMUpdate(() => {
         if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
           this.main.pushLinkPatch(href, null, () => {
@@ -4295,6 +4296,7 @@ var LiveSocket = class {
       return;
     }
     browser_default.pushState(linkState, { type: "patch", id: this.main.id }, href);
+    dom_default.dispatchEvent(window, "phx:navigate", { detail: { patch: true, href, pop: false } });
     this.registerNewLocation(window.location);
   }
   historyRedirect(href, linkState, flash) {
@@ -4309,6 +4311,7 @@ var LiveSocket = class {
     this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
       this.replaceMain(href, flash, () => {
         browser_default.pushState(linkState, { type: "redirect", id: this.main.id, scroll }, href);
+        dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false } });
         this.registerNewLocation(window.location);
         done();
       });

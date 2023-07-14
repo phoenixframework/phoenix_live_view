@@ -684,6 +684,7 @@ export default class LiveSocket {
       let {type, id, root, scroll} = event.state || {}
       let href = window.location.href
 
+      DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true}})
       this.requestDOMUpdate(() => {
         if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
           this.main.pushLinkPatch(href, null, () => {
@@ -761,6 +762,7 @@ export default class LiveSocket {
     if(!this.commitPendingLink(linkRef)){ return }
 
     Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
+    DOM.dispatchEvent(window, "phx:navigate", {detail: {patch: true, href, pop: false}})
     this.registerNewLocation(window.location)
   }
 
@@ -775,6 +777,7 @@ export default class LiveSocket {
     this.withPageLoading({to: href, kind: "redirect"}, done => {
       this.replaceMain(href, flash, () => {
         Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
+        DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
         this.registerNewLocation(window.location)
         done()
       })

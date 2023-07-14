@@ -105,6 +105,15 @@ In the case of an `"element"` page loading event, the info will contain a
 `"target"` key containing the DOM element which triggered the page loading
 state.
 
+A lower level `phx:navigate` event is also triggered any time the browser's URL bar
+is programmatically changed by Phoenix or the user navigation forward or back. The
+`info.detail` will contain the following information:
+
+  - `"href"` - the location the URL bar was navigated to.
+  - `"patch"` - the boolean flag indicating this was a patch navigation.
+  - `"pop"` - the boolean flag indication this was a navigation via `popstate`
+    from a user navigation forward or back in history.
+
 ### Handling server-pushed events
 
 When the server uses `Phoenix.LiveView.push_event/3`, the event name
