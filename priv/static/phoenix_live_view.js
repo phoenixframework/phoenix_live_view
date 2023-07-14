@@ -3595,7 +3595,8 @@ within:
       let linkRef = this.liveSocket.setPendingLink(href);
       let refGen = targetEl ? () => this.putRef([targetEl], "click") : null;
       let fallback = () => this.liveSocket.redirect(window.location.href);
-      let push = this.pushWithReply(refGen, "live_patch", { url: href }, (resp) => {
+      let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href;
+      let push = this.pushWithReply(refGen, "live_patch", { url }, (resp) => {
         this.liveSocket.requestDOMUpdate(() => {
           if (resp.link_redirect) {
             this.liveSocket.replaceMain(href, null, callback, linkRef);
