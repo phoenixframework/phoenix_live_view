@@ -347,6 +347,18 @@ export default class LiveSocket {
     }, afterMs)
   }
 
+  /**
+  * @param {string} name 
+  * @param {Object} hook 
+  */
+  addHookDynamically(name, hook) {
+    this.hooks[name] = hook
+    // go through and find relevant elements which should have `mount` callbacks called
+    document.querySelectorAll(`[phx-hook=${name}]`).forEach(el => {
+      this.main.maybeAddNewHook(el);
+    })
+  }
+
   getHookCallbacks(name){
     return name && name.startsWith("Phoenix.") ? Hooks[name.split(".")[1]] : this.hooks[name]
   }
