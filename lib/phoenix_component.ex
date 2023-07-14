@@ -1374,9 +1374,9 @@ defmodule Phoenix.Component do
 
   When using changesets, the underlying data, form parameters, and
   errors are retrieved from it. The `:as` option is automatically
-  computed too. For example, if you have a post schema:
+  computed too. For example, if you have a user schema:
 
-      defmodule MyApp.Blog.Post do
+      defmodule MyApp.Users.User do
         use Ecto.Schema
 
         schema "..." do
@@ -1386,12 +1386,12 @@ defmodule Phoenix.Component do
 
   And then you create a changeset that you pass to `to_form`:
 
-      %MyApp.Blog.Post{}
+      %MyApp.Users.User{}
       |> Ecto.Changeset.change()
       |> to_form()
 
   In this case, once the form is submitted, the parameters will
-  be available under `%{"post" => post_params}`.
+  be available under `%{"user" => user_params}`.
 
   ## Options
 
