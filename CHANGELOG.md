@@ -2,6 +2,9 @@
 
 ## 0.19.5
 
+### Enhancements
+  * Dispatch `phx:navigate` window events when LiveView changes the history state
+
 ### Bug fixes
   * Fix JS.patch to a Phoenix router scope with `:host` causing errors
 
