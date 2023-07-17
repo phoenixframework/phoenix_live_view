@@ -7,6 +7,7 @@
 
 ### Bug fixes
   * Fix JS.patch to a Phoenix router scope with `:host` causing errors
+  * Fix immediate navigation after patch not updating URL
 
 ## 0.19.4 (2023-07-10)
 
