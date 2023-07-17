@@ -3924,7 +3924,7 @@ var LiveSocket = class {
           dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
           this.outgoingMainEl.replaceWith(newMainEl);
           this.outgoingMainEl = null;
-          callback && requestAnimationFrame(callback);
+          callback && requestAnimationFrame(() => callback(linkRef));
           onDone();
         });
       }
@@ -4297,10 +4297,12 @@ var LiveSocket = class {
     }
     let scroll = window.scrollY;
     this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
-      this.replaceMain(href, flash, () => {
-        browser_default.pushState(linkState, { type: "redirect", id: this.main.id, scroll }, href);
-        dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false } });
-        this.registerNewLocation(window.location);
+      this.replaceMain(href, flash, (linkRef) => {
+        if (linkRef === this.linkRef) {
+          browser_default.pushState(linkState, { type: "redirect", id: this.main.id, scroll }, href);
+          dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false } });
+          this.registerNewLocation(window.location);
+        }
         done();
       });
     });
