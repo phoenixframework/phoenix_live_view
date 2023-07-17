@@ -407,7 +407,7 @@ export default class LiveSocket {
           DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
           this.outgoingMainEl.replaceWith(newMainEl)
           this.outgoingMainEl = null
-          callback && requestAnimationFrame(callback)
+          callback && requestAnimationFrame(() => callback(linkRef))
           onDone()
         })
       }
@@ -775,10 +775,12 @@ export default class LiveSocket {
     }
     let scroll = window.scrollY
     this.withPageLoading({to: href, kind: "redirect"}, done => {
-      this.replaceMain(href, flash, () => {
-        Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
-        DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
-        this.registerNewLocation(window.location)
+      this.replaceMain(href, flash, (linkRef) => {
+        if(linkRef === this.linkRef){
+          Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
+          DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
+          this.registerNewLocation(window.location)
+        }
         done()
       })
     })
