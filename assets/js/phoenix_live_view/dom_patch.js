@@ -284,7 +284,7 @@ export default class DOMPatch {
 
     if(externalFormTriggered){
       liveSocket.unload()
-      externalFormTriggered.submit()
+      Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered)
     }
     return true
   }
