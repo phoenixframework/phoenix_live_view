@@ -987,7 +987,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "BEAM ast for function has the correct line number" do
+  test "BEAM ast for component function has the correct line number" do
     module = Phoenix.LiveViewTest.FunctionComponentWithAttrs
 
     # find the ast with code from ExDoc.Language.Erlang.get_abstract_code/1
@@ -1001,9 +1001,9 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
              end) == 24
 
       assert Enum.find_value(abstract_code, fn
-               {:function, line, :fun_doc_injection, 1, _} -> line
+               {:function, line, :fun_doc_false, 1, _} -> line
                _ -> nil
-             end) == 101
+             end) == 105
     end
   end
 
