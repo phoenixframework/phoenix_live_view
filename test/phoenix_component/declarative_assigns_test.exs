@@ -987,6 +987,26 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "BEAM ast for function has the correct line number" do
+    module = Phoenix.LiveViewTest.FunctionComponentWithAttrs
+
+    # find the ast with code from ExDoc.Language.Erlang.get_abstract_code/1
+    with {^module, binary, _file} <- :code.get_object_code(module),
+         {:ok, {_, [{:abstract_code, {_vsn, abstract_code}}]}} <-
+            :beam_lib.chunks(binary, [:abstract_code]) do
+
+      assert Enum.find_value(abstract_code, fn
+               {:function, line, :identity, 1, _} -> line
+               _ -> nil
+             end) == 24
+
+      assert Enum.find_value(abstract_code, fn
+               {:function, line, :fun_doc_injection, 1, _} -> line
+               _ -> nil
+             end) == 101
+    end
+  end
+
   test "does not override signature of Elixir functions" do
     {:docs_v1, _, :elixir, "text/markdown", _, _, docs} =
       Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
