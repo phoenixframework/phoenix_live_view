@@ -165,7 +165,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    opts: [],
                    required: false
                  }
-               ]
+               ],
+               line: func1_line + 4,
              },
              func2: %{
                kind: :def,
@@ -189,7 +190,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    line: func2_line + 1
                  }
                ],
-               slots: []
+               slots: [],
+               line: func2_line + 3
              },
              with_global: %{
                kind: :def,
@@ -204,7 +206,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    type: :string
                  }
                ],
-               slots: []
+               slots: [],
+               line: with_global_line + 2
              },
              button_with_defaults: %{
                kind: :def,
@@ -219,7 +222,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    type: :global
                  }
                ],
-               slots: []
+               slots: [],
+               line: button_with_defaults_line + 2
              },
              button: %{
                kind: :def,
@@ -243,7 +247,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    type: :global
                  }
                ],
-               slots: []
+               slots: [],
+               line: with_global_line + 6,
              },
              button_with_values: %{
                kind: :def,
@@ -258,7 +263,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    type: :string
                  }
                ],
-               slots: []
+               slots: [],
+               line: button_with_values_line + 2,
              },
              button_with_values_and_default_1: %{
                kind: :def,
@@ -273,7 +279,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    type: :string
                  }
                ],
-               slots: []
+               slots: [],
+               line: button_with_values_and_default_1_line + 2,
              },
              button_with_values_and_default_2: %{
                kind: :def,
@@ -288,7 +295,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    type: :string
                  }
                ],
-               slots: []
+               slots: [],
+               line: button_with_values_and_default_2_line + 2,
              },
              button_with_examples: %{
                kind: :def,
@@ -303,7 +311,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    type: :string
                  }
                ],
-               slots: []
+               slots: [],
+               line: button_with_examples_line + 2
              }
            }
   end
@@ -408,7 +417,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    attrs: [],
                    required: false
                  }
-               ]
+               ],
+               line: FunctionComponentWithSlots.fun_with_slot_line(),
              },
              fun_with_named_slots: %{
                attrs: [],
@@ -430,7 +440,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    attrs: [],
                    required: false
                  }
-               ]
+               ],
+               line: FunctionComponentWithSlots.fun_with_named_slots_line()
              },
              fun_with_slot_attrs: %{
                attrs: [],
@@ -454,7 +465,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    ],
                    required: true
                  }
-               ]
+               ],
+               line: FunctionComponentWithSlots.fun_with_slot_attrs_line(),
              },
              table: %{
                attrs: [
@@ -488,7 +500,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    ],
                    required: false
                  }
-               ]
+               ],
+               line: FunctionComponentWithSlots.table_line()
              }
            }
   end
@@ -530,7 +543,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    slot: nil
                  }
                ],
-               slots: []
+               slots: [],
+               line: Bodyless.example_line() + 1
              },
              example2: %{
                kind: :def,
@@ -544,7 +558,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    attrs: [],
                    required: false
                  }
-               ]
+               ],
+               line: Bodyless.example2_line() + 1,
              }
            }
   end
@@ -771,7 +786,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                  }
                ],
                kind: :def,
-               slots: []
+               slots: [],
+               line: line + 23,
              },
              func_with_slot_docs: %{
                attrs: [],
@@ -795,7 +811,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    opts: [],
                    required: false
                  }
-               ]
+               ],
+               line: line + 29,
              }
            }
   end
@@ -985,6 +1002,25 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     for {{_, fun, _}, _, _, %{"en" => doc}, _} <- docs do
       assert components[fun] == doc
     end
+  end
+
+  test "stores correct line number on AST" do
+    module = Phoenix.LiveViewTest.FunctionComponentWithAttrs
+
+    {^module, binary, _file} = :code.get_object_code(module)
+
+    {:ok, {_, [{:abstract_code, {_vsn, abstract_code}}]}} =
+      :beam_lib.chunks(binary, [:abstract_code])
+
+    assert Enum.find_value(abstract_code, fn
+             {:function, line, :identity, 1, _} -> line
+             _ -> nil
+           end) == 24
+
+    assert Enum.find_value(abstract_code, fn
+             {:function, line, :fun_doc_false, 1, _} -> line
+             _ -> nil
+           end) == 105
   end
 
   test "does not override signature of Elixir functions" do

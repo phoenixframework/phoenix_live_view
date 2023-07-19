@@ -608,7 +608,7 @@ defmodule Phoenix.Component.Declarative do
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
 
     names_and_defs =
-      for {name, %{kind: kind, attrs: attrs, slots: slots}} <- components do
+      for {name, %{kind: kind, attrs: attrs, slots: slots, line: line}} <- components do
         attr_defaults =
           for %{name: name, required: false, opts: opts} <- attrs,
               Keyword.has_key?(opts, :default),
@@ -661,7 +661,7 @@ defmodule Phoenix.Component.Declarative do
           end
 
         merge =
-          quote do
+          quote line: line do
             Kernel.unquote(kind)(unquote(name)(assigns)) do
               unquote(def_body)
             end
@@ -724,7 +724,8 @@ defmodule Phoenix.Component.Declarative do
           |> Map.put(name, %{
             kind: kind,
             attrs: Enum.sort_by(attrs, & &1.name),
-            slots: Enum.sort_by(slots, & &1.name)
+            slots: Enum.sort_by(slots, & &1.name),
+            line: env.line
           })
 
         Module.put_attribute(env.module, :__components__, components)
