@@ -284,6 +284,8 @@ export default class DOMPatch {
 
     if(externalFormTriggered){
       liveSocket.unload()
+      // use prototype's submit in case there's a form control with name or id of "submit"
+      // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
       Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered)
     }
     return true
