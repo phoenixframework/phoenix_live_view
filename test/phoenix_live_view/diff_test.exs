@@ -480,6 +480,15 @@ defmodule Phoenix.LiveView.DiffTest do
       </.live_component>
       """
     end
+
+    def render_with_live_component_shorthand(assigns) do
+      ~H"""
+      COMPONENT
+      <SlotComponent :let={%{value: value}} id="WORLD">
+        WITH VALUE <%= value %>
+      </SlotComponent>
+      """
+    end
   end
 
   defmodule TreeComponent do
@@ -840,6 +849,33 @@ defmodule Phoenix.LiveView.DiffTest do
 
       rendered = ~H"""
       <FunctionComponent.render_with_live_component />
+      """
+
+      {socket, full_render, components} = render(rendered)
+
+      assert full_render == %{
+               0 => %{0 => 1, :s => ["COMPONENT\n", ""]},
+               :c => %{
+                 1 => %{
+                   0 => "WORLD",
+                   1 => %{0 => "1", :s => ["\n  WITH VALUE ", "\n"]},
+                   2 => "WORLD",
+                   3 => %{0 => "2", :s => ["\n  WITH VALUE ", "\n"]},
+                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"]
+                 }
+               },
+               :s => ["", ""]
+             }
+
+      {_socket, full_render, _components} = render(rendered, socket.fingerprints, components)
+      assert full_render == %{0 => %{0 => 1}}
+    end
+
+    test "with live_component shorthand" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~H"""
+      <FunctionComponent.render_with_live_component_shorthand />
       """
 
       {socket, full_render, components} = render(rendered)
@@ -1423,6 +1459,45 @@ defmodule Phoenix.LiveView.DiffTest do
 
         ~H"""
         <.live_component module={RecurComponent} id={@id} children={@children} />
+        """
+      end
+
+      {socket, full_render, diff_components} = render(template.(1, []))
+
+      assert full_render == %{
+               0 => 1,
+               :c => %{
+                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>"], 1 => ""}
+               },
+               :s => ["", ""]
+             }
+
+      {cid_to_component, _, 2} = diff_components
+      assert {RecurComponent, 1, _, _, _} = cid_to_component[1]
+
+      # Now let's add one level of nesting directly
+      {diff, diff_components, :extra} =
+        Diff.write_component(socket, 1, diff_components, fn socket, _component ->
+          {Phoenix.Component.assign(socket, children: [{2, []}]), :extra}
+        end)
+
+      assert diff == %{
+               c: %{
+                 1 => %{1 => %{d: [[2]], s: ["\n    ", "\n  "]}},
+                 2 => %{0 => "2", 1 => "", :s => -1}
+               }
+             }
+
+      {cid_to_component, _, 3} = diff_components
+      assert {RecurComponent, 2, _, _, _} = cid_to_component[2]
+    end
+
+    test "inside comprehension with recursive subtree on update using shorthand" do
+      template = fn id, children ->
+        assigns = %{id: id, children: children}
+
+        ~H"""
+        <RecurComponent id={@id} children={@children} />
         """
       end
 

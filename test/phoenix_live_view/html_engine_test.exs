@@ -1372,19 +1372,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "invalid remote tag" do
-      message = """
-      test/phoenix_live_view/html_engine_test.exs:1:1: invalid tag <Foo>
-        |
-      1 | <Foo foo=\"bar\" />
-        | ^\
-      """
-
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <Foo foo="bar" />
-        """)
-      end)
+    test "allow shorthand for .live_component" do
+      assert %Phoenix.LiveView.Rendered{} =
+               eval("""
+               <Foo foo="bar" />
+               """)
     end
 
     test "missing open tag" do
@@ -1437,23 +1429,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
-    test "invalid tag name" do
-      message = """
-      test/phoenix_live_view/html_engine_test.exs:2:3: invalid tag <Oops>
-        |
-      1 | <br>
-      2 |   <Oops foo={@foo}>
-        |   ^\
-      """
-
-      assert_raise(ParseError, message, fn ->
-        eval("""
-        <br>
-          <Oops foo={@foo}>
-            Bar
-          </Oops>
-        """)
-      end)
+    test "allow shorthand for .live_component with inner content" do
+      assert %Phoenix.LiveView.Rendered{} =
+               eval("""
+               <br>
+                 <Oops foo={@foo}>
+                   Bar
+                 </Oops>
+               """)
     end
 
     test "invalid tag" do

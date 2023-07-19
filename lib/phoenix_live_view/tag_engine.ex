@@ -413,8 +413,21 @@ defmodule Phoenix.LiveView.TagEngine do
     {mod_ast, mod_size, fun} = decompose_remote_component_tag!(name, tag_meta, state)
     %{line: line, column: column} = tag_meta
 
+    attrs =
+      if fun == :live_component do
+        meta = %{line: tag_meta.line, column: tag_meta.column}
+        [{"module", {:expr, name, meta}, meta}] ++ attrs
+      else
+        attrs
+      end
+
     {assigns, attr_info} =
-      build_self_close_component_assigns({"remote component", name}, attrs, tag_meta.line, state)
+      build_self_close_component_assigns(
+        {"remote component", name},
+        attrs,
+        tag_meta.line,
+        state
+      )
 
     mod = expand_with_line(mod_ast, line, state.caller)
     store_component_call({mod, fun}, attr_info, [], line, state)
@@ -451,6 +464,15 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_token({:remote_component, name, attrs, tag_meta}, state) do
     mod_fun = decompose_remote_component_tag!(name, tag_meta, state)
     tag_meta = Map.put(tag_meta, :mod_fun, mod_fun)
+    {_, _, fun} = mod_fun
+
+    attrs =
+      if fun == :live_component do
+        meta = %{line: tag_meta.line, column: tag_meta.column}
+        [{"module", {:expr, name, meta}, meta}] ++ attrs
+      else
+        attrs
+      end
 
     case pop_special_attrs!(attrs, tag_meta, state) do
       {^tag_meta, _attrs} ->
@@ -1138,7 +1160,7 @@ defmodule Phoenix.LiveView.TagEngine do
     end)
   end
 
-  defp decompose_remote_component_tag!(tag_name, tag_meta, state) do
+  defp decompose_remote_component_tag!(tag_name, tag_meta, _state) do
     case String.split(tag_name, ".") |> Enum.reverse() do
       [<<first, _::binary>> = fun_name | rest] when first in ?a..?z ->
         size = Enum.sum(Enum.map(rest, &byte_size/1)) + length(rest) + 1
@@ -1148,8 +1170,11 @@ defmodule Phoenix.LiveView.TagEngine do
         {{:__aliases__, [line: line, column: column], aliases}, size, fun}
 
       _ ->
-        message = "invalid tag <#{tag_meta.tag_name}>"
-        raise_syntax_error!(message, tag_meta, state)
+        fun = :live_component
+        tag_name = String.split(tag_name, ".")
+        size = Enum.sum(Enum.map(tag_name, &byte_size/1)) + length(tag_name) + 1
+        %{line: line, column: column} = tag_meta
+        {{:__aliases__, [line: line, column: column], [:Phoenix, :Component]}, size, fun}
     end
   end
 
