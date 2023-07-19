@@ -237,4 +237,22 @@ describe("LiveSocket", () => {
 
     expect(getItemCalls).toEqual(1)
   })
+
+  test("addHook / removeHook dynamically", async () => {
+    let liveSocket = new LiveSocket("/live", Socket)
+
+    expect(Object.keys(liveSocket.hooks).length).toEqual(0)
+
+    const testHook = {mounted(){}}
+
+    liveSocket.addHook("test", testHook)
+
+    expect(Object.keys(liveSocket.hooks).length).toEqual(1)
+    expect(liveSocket.hooks["test"]).toBeTruthy()
+
+    liveSocket.removeHook("test")
+
+    expect(Object.keys(liveSocket.hooks).length).toEqual(0)
+    expect(liveSocket.hooks["test"]).toBeUndefined()
+  })
 })
