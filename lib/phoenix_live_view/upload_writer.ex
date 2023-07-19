@@ -45,8 +45,8 @@ defmodule Phoenix.LiveView.UploadWriter do
         end
 
         @impl true
-        def close(state) do
-          Logger.log(state.level, "closing upload after #{state.total} bytes}")
+        def close(state, reason) do
+          Logger.log(state.level, "closing upload after #{state.total} bytes}, #{inspect(reason)}")
           {:ok, state}
         end
       end
@@ -54,10 +54,23 @@ defmodule Phoenix.LiveView.UploadWriter do
   When the LiveView consumes the uploaded entry, it will receive the `%{level: ...}`
   returned from the meta callback. This allows the writer to keep state as it handles
   chunks to be later relayed to the LiveView when consumed.
+
+  ## Close reasons
+
+  The `close/2` callback is called when the upload is complete or cancelled. The following
+  values can be passed:
+
+    * `:done` - The client sent all expected chunks and the upload is awaiting consumption
+    * `:cancel` - The upload was canceled, either by the server or the client navigating away.
+    * `{:error, reason}` - The upload was canceled due to an error returned from `write_chunk/2`.
+      For example, if If `write_chunk/2` returns `{:error, :enoent, state}`, the upload will be cancelled
+      and `close/2` will be called with the reason `{:error, :enoent}`.
   """
 
   @callback init(opts :: term) :: {:ok, state :: term} | {:error, term}
   @callback meta(state :: term) :: map
-  @callback write_chunk(data :: binary, state :: term) :: {:ok, state :: term} | {:error, term}
-  @callback close(state :: term) :: {:ok, state :: term} | {:error, term}
+  @callback write_chunk(data :: binary, state :: term) ::
+              {:ok, state :: term} | {:error, reason :: term, state :: term}
+  @callback close(state :: term, reason :: :done | :cancel | {:error, term}) ::
+              {:ok, state :: term} | {:error, term}
 end

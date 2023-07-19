@@ -31,8 +31,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @impl true
-    def close(test_name) do
-      send(test_name, :close)
+    def close(test_name, reason) do
+      send(test_name, {:close, reason})
       {:ok, test_name}
     end
   end
@@ -714,7 +714,37 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert_receive {:write_chunk, chunk2}
         refute_receive {:write_chunk, _}
         assert chunk1 <> chunk2 == content
-        assert_receive :close
+        assert_receive {:close, :done}
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 50,
+             accept: :any,
+             writer: &__MODULE__.build_writer/3
+           ]
+
+      test "writer with LiveView exit", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        content = String.duplicate("0", 100)
+
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: content}
+          ])
+
+        assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:50%"
+
+        assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+        unlink(channel_pid, lv, avatar)
+        Process.monitor(channel_pid)
+        Process.exit(lv.pid, :kill)
+
+        assert_receive {:write_chunk, _chunk1}
+        refute_receive {:write_chunk, _}
+        assert_receive {:close, :cancel}
       end
     end
   end
