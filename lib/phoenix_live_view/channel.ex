@@ -17,15 +17,15 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.start_link(__MODULE__, from, opts)
   end
 
-  def send_update(pid \\ self(), module, id, assigns) do
-    send(pid, {@prefix, :send_update, {module, id, assigns}})
+  def send_update(pid, ref, assigns) do
+    send(pid, {@prefix, :send_update, {ref, assigns}})
   end
 
-  def send_update_after(pid \\ self(), module, id, assigns, time_in_milliseconds)
+  def send_update_after(pid, ref, assigns, time_in_milliseconds)
       when is_integer(time_in_milliseconds) do
     Process.send_after(
       pid,
-      {@prefix, :send_update, {module, id, assigns}},
+      {@prefix, :send_update, {ref, assigns}},
       time_in_milliseconds
     )
   end
@@ -241,16 +241,7 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, push_diff(%{state | components: new_components}, diff, nil)}
 
       :noop ->
-        {module, id, _} = update
-
-        if exported?(module, :__info__, 1) do
-          # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
-          Logger.debug(
-            "send_update failed because component #{inspect(module)} with ID #{inspect(id)} does not exist or it has been removed"
-          )
-        else
-          raise ArgumentError, "send_update failed (module #{inspect(module)} is not available)"
-        end
+        handle_noop(update)
 
         {:noreply, state}
     end
@@ -275,6 +266,24 @@ defmodule Phoenix.LiveView.Channel do
     msg
     |> view_handle_info(socket)
     |> handle_result({:handle_info, 2, nil}, state)
+  end
+
+  defp handle_noop({%Phoenix.LiveComponent.CID{cid: cid}, _}) do
+    # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
+    Logger.debug(
+      "send_update failed because component with CID #{inspect(cid)} does not exist or it has been removed"
+    )
+  end
+
+  defp handle_noop({{module, id}, _}) do
+    if exported?(module, :__info__, 1) do
+      # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
+      Logger.debug(
+        "send_update failed because component #{inspect(module)} with ID #{inspect(id)} does not exist or it has been removed"
+      )
+    else
+      raise ArgumentError, "send_update failed (module #{inspect(module)} is not available)"
+    end
   end
 
   @impl true
