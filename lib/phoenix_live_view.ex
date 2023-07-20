@@ -1573,8 +1573,10 @@ defmodule Phoenix.LiveView do
   bidirectional infinite scrolling example with stream limits in the
   [scroll events guide](bindings.md#scroll-events-and-infinite-stream-pagination)
 
-  When a stream exceeds the limit on the client, the existing items will be removed
-  based on the
+  When a stream exceeds the limit on the client, the existing items will be pruned
+  based on the number of items in the stream container and the limit direction. A
+  positive limit will prune items from the end of the container, while a negative
+  limit will prune items from the beginning of the container.
 
   ## Required DOM attributes
 

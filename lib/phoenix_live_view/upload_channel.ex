@@ -64,6 +64,7 @@ defmodule Phoenix.LiveView.UploadChannel do
          {writer, writer_opts} <- config.writer,
          {:ok, writer_state} <- writer.init(writer_opts) do
       Process.monitor(pid)
+      Process.flag(:trap_exit, true)
 
       socket =
         assign(socket, %{
@@ -102,9 +103,9 @@ defmodule Phoenix.LiveView.UploadChannel do
         {:ok, new_socket} ->
           {:reply, :ok, new_socket}
 
-        {:error, _reason, new_socket} ->
+        {:error, reason, new_socket} ->
           new_socket =
-            case close_file(new_socket) do
+            case close_writer(new_socket, {:error, reason}) do
               {:ok, new_socket} -> new_socket
               {:error, _reason, new_socket} -> new_socket
             end
@@ -123,7 +124,7 @@ defmodule Phoenix.LiveView.UploadChannel do
         %{assigns: %{live_view_pid: live_view_pid}} = socket
       ) do
     reason = if reason == :normal, do: {:shutdown, :closed}, else: reason
-    {:stop, reason, socket}
+    {:stop, reason, maybe_cancel_writer(socket)}
   end
 
   def handle_info(:chunk_timeout, socket) do
@@ -150,7 +151,7 @@ defmodule Phoenix.LiveView.UploadChannel do
       GenServer.reply(from, :ok)
       {:stop, {:shutdown, :closed}, socket}
     else
-      case close_file(socket) do
+      case close_writer(socket, :cancel) do
         {:ok, new_socket} ->
           GenServer.reply(from, :ok)
           {:stop, {:shutdown, :closed}, new_socket}
@@ -160,6 +161,12 @@ defmodule Phoenix.LiveView.UploadChannel do
           {:stop, {:shutdown, :closed}, new_socket}
       end
     end
+  end
+
+  @impl true
+  def terminate(_reason, socket) do
+    _ = maybe_cancel_writer(socket)
+    :ok
   end
 
   defp reschedule_chunk_timer(socket) do
@@ -190,15 +197,15 @@ defmodule Phoenix.LiveView.UploadChannel do
         |> assign(:writer_state, writer_state)
         |> maybe_close_completed_file()
 
-      {:error, reason} ->
+      {:error, reason, writer_state} ->
         cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
-        {:error, reason, assign(socket, chunk_timer: nil)}
+        {:error, reason, assign(socket, writer_state: writer_state, chunk_timer: nil)}
     end
   end
 
   defp maybe_close_completed_file(socket) do
     if socket.assigns.uploaded_size == socket.assigns.max_file_size do
-      case close_file(socket) do
+      case close_writer(socket, :done) do
         {:ok, socket} -> {:ok, assign(socket, done?: true)}
         {:error, reason, new_socket} -> {:error, reason, new_socket}
       end
@@ -207,11 +214,22 @@ defmodule Phoenix.LiveView.UploadChannel do
     end
   end
 
-  defp close_file(socket) do
+  defp maybe_cancel_writer(socket) do
+    if socket.assigns.writer_closed? do
+      socket
+    else
+      case close_writer(socket, :cancel) do
+        {:ok, new_socket} -> new_socket
+        {:error, _reason, new_socket} -> new_socket
+      end
+    end
+  end
+
+  defp close_writer(socket, reason) do
     cancel_timer(socket.assigns.chunk_timer, :chunk_timeout)
     socket = assign(socket, chunk_timer: nil, writer_closed?: true)
 
-    case socket.assigns.writer.close(socket.assigns.writer_state) do
+    case socket.assigns.writer.close(socket.assigns.writer_state, reason) do
       {:ok, writer_state} ->
         {:ok,
          socket

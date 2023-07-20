@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.19.5 (2023-07-19)
+
+### Backwards incompatible changes
+  * The `close/1` callback of `Phoenix.LiveView.UploadWriter` is now `close/2` with the close reason passed as the second argument.
+  * The `write_chunk` callback of `Phoenix.LiveView.UploadWriter` must now return the updated
+    writer state when an error occurs. Instead of `{:error, reason}`, return `{:error, reason, new_state}`.
+
+### Enhancements
+  * Pass close reason to `Phoenix.LiveView.UploadWriter` close.
+  * Dispatch `phx:navigate` window events when LiveView changes the history state
+
+### Bug fixes
+  * Call `Phoenix.LiveView.UploadWriter` close callback when LiveView goes down or connection is lost
+  * Fix JS.patch to a Phoenix router scope with `:host` causing errors
+  * Fix immediate navigation after patch not updating URL
+
 ## 0.19.4 (2023-07-10)
 
 ### Enhancements

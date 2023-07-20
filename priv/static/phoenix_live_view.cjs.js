@@ -3566,7 +3566,8 @@ var View = class {
     let linkRef = this.liveSocket.setPendingLink(href);
     let refGen = targetEl ? () => this.putRef([targetEl], "click") : null;
     let fallback = () => this.liveSocket.redirect(window.location.href);
-    let push = this.pushWithReply(refGen, "live_patch", { url: href }, (resp) => {
+    let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href;
+    let push = this.pushWithReply(refGen, "live_patch", { url }, (resp) => {
       this.liveSocket.requestDOMUpdate(() => {
         if (resp.link_redirect) {
           this.liveSocket.replaceMain(href, null, callback, linkRef);
@@ -3936,7 +3937,7 @@ var LiveSocket = class {
           dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
           this.outgoingMainEl.replaceWith(newMainEl);
           this.outgoingMainEl = null;
-          callback && requestAnimationFrame(callback);
+          callback && requestAnimationFrame(() => callback(linkRef));
           onDone();
         });
       }
@@ -4309,10 +4310,12 @@ var LiveSocket = class {
     }
     let scroll = window.scrollY;
     this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
-      this.replaceMain(href, flash, () => {
-        browser_default.pushState(linkState, { type: "redirect", id: this.main.id, scroll }, href);
-        dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false } });
-        this.registerNewLocation(window.location);
+      this.replaceMain(href, flash, (linkRef) => {
+        if (linkRef === this.linkRef) {
+          browser_default.pushState(linkState, { type: "redirect", id: this.main.id, scroll }, href);
+          dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false } });
+          this.registerNewLocation(window.location);
+        }
         done();
       });
     });

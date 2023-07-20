@@ -13,11 +13,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.12.0
-            otp: 24.2
+          - elixir: 1.13.4
+            otp: 24.3
 
-          - elixir: 1.13.2
-            otp: 24.2
+          - elixir: 1.15.4
+            otp: 25.3
             lint: lint
 
     runs-on: ubuntu-latest
