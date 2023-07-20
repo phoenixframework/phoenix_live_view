@@ -1286,20 +1286,24 @@ defmodule Phoenix.LiveView do
   @doc """
   Asynchronously updates a `Phoenix.LiveComponent` with new assigns.
 
-  The `:id` that identifies the component must be passed as part of the
-  assigns and it will be used to identify the live components to be updated.
-
   The `pid` argument is optional and it defaults to the current process,
   which means the update instruction will be sent to a component running
   on the same LiveView. If the current process is not a LiveView or you
   want to send updates to a live component running on another LiveView,
   you should explicitly pass the LiveView's pid instead.
 
+  The second argument can be either the value of the `@myself` or the module of
+  the live component. If you pass the module, then the `:id` that identifies
+  the component must be passed as part of the assigns.
+
   When the component receives the update, first the optional
   [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) then
   [`update/2`](`c:Phoenix.LiveComponent.update/2`) is invoked with the new assigns.
   If [`update/2`](`c:Phoenix.LiveComponent.update/2`) is not defined
-  all assigns are simply merged into the socket. The assigns received as the first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`) callback will only include the _new_ assigns passed from this function. Pre-existing assigns may be found in `socket.assigns`.
+  all assigns are simply merged into the socket. The assigns received as the
+  first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`)
+  callback will only include the _new_ assigns passed from this function.
+  Pre-existing assigns may be found in `socket.assigns`.
 
   While a component may always be updated from the parent by updating some
   parent assigns which will re-render the child, thus invoking
@@ -1309,7 +1313,6 @@ defmodule Phoenix.LiveView do
   LiveView.
 
   ## Examples
-
       def handle_event("cancel-order", _, socket) do
         ...
         send_update(Cart, id: "cart", status: "cancelled")
@@ -1327,15 +1330,27 @@ defmodule Phoenix.LiveView do
 
         {:noreply, socket}
       end
+
+      def render(assigns) do
+        <.some_component on_complete={&send_update(@myself, completed: &1)} />
+      end
   """
-  def send_update(pid \\ self(), module, assigns) when is_atom(module) and is_pid(pid) do
+  def send_update(pid \\ self(), module_or_cid, assigns)
+
+  def send_update(pid, module, assigns) when is_atom(module) and is_pid(pid) do
     assigns = Enum.into(assigns, %{})
 
     id =
       assigns[:id] ||
         raise ArgumentError, "missing required :id in send_update. Got: #{inspect(assigns)}"
 
-    Phoenix.LiveView.Channel.send_update(pid, module, id, assigns)
+    Phoenix.LiveView.Channel.send_update(pid, {module, id}, assigns)
+  end
+
+  def send_update(pid, %Phoenix.LiveComponent.CID{} = cid, assigns) when is_pid(pid) do
+    assigns = Enum.into(assigns, %{})
+
+    Phoenix.LiveView.Channel.send_update(pid, cid, assigns)
   end
 
   @doc """
@@ -1361,7 +1376,16 @@ defmodule Phoenix.LiveView do
         {:noreply, socket}
       end
   """
-  def send_update_after(pid \\ self(), module, assigns, time_in_milliseconds)
+  def send_update_after(pid \\ self(), module_or_cid, assigns, time_in_milliseconds)
+
+  def send_update_after(pid, %Phoenix.LiveComponent.CID{} = cid, assigns, time_in_milliseconds)
+      when is_integer(time_in_milliseconds) and is_pid(pid) do
+    assigns = Enum.into(assigns, %{})
+
+    Phoenix.LiveView.Channel.send_update_after(pid, cid, assigns, time_in_milliseconds)
+  end
+
+  def send_update_after(pid, module, assigns, time_in_milliseconds)
       when is_atom(module) and is_integer(time_in_milliseconds) and is_pid(pid) do
     assigns = Enum.into(assigns, %{})
 
@@ -1369,7 +1393,7 @@ defmodule Phoenix.LiveView do
       assigns[:id] ||
         raise ArgumentError, "missing required :id in send_update_after. Got: #{inspect(assigns)}"
 
-    Phoenix.LiveView.Channel.send_update_after(pid, module, id, assigns, time_in_milliseconds)
+    Phoenix.LiveView.Channel.send_update_after(pid, {module, id}, assigns, time_in_milliseconds)
   end
 
   @doc """

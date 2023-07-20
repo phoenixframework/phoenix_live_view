@@ -301,6 +301,19 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       refute_receive {:updated, _}
     end
 
+    test "updates with cid", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/components")
+
+      Phoenix.LiveView.send_update_after(view.pid, StatefulComponent, [id: "jose", name: "NEW-jose", from: self(), all_assigns: true], 10)
+      assert_receive {:updated, %{id: "jose", name: "NEW-jose", myself: myself}}
+
+      Phoenix.LiveView.send_update(view.pid, myself, [name: "NEXTGEN-jose", from: self()])
+      assert_receive {:updated, %{id: "jose", name: "NEXTGEN-jose"}}
+
+      Phoenix.LiveView.send_update_after(view.pid, myself, [name: "after-NEXTGEN-jose", from: self()], 10)
+      assert_receive {:updated, %{id: "jose", name: "after-NEXTGEN-jose"}}, 500
+    end
+
     test "updates without :id raise", %{conn: conn} do
       Process.flag(:trap_exit, true)
       {:ok, view, _html} = live(conn, "/components")
@@ -315,12 +328,20 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     test "warns if component doesn't exist", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/components")
 
+      # with module and id
       assert ExUnit.CaptureLog.capture_log(fn ->
                send(view.pid, {:send_update, [{StatefulComponent, id: "nemo", name: "NEW-nemo"}]})
                render(view)
                refute_receive {:updated, _}
              end) =~
                "send_update failed because component Phoenix.LiveViewTest.StatefulComponent with ID \"nemo\" does not exist or it has been removed"
+
+      # with @myself
+      assert ExUnit.CaptureLog.capture_log(fn ->
+               send(view.pid, {:send_update, [{%Phoenix.LiveComponent.CID{cid: 999}, name: "NEW-nemo"}]})
+               render(view)
+               refute_receive {:updated, _}
+             end) =~ "send_update failed because component with CID 999 does not exist or it has been removed"
     end
 
     test "raises if component module is not available", %{conn: conn} do
