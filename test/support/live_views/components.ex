@@ -178,7 +178,8 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
 
   def update(assigns, socket) do
     if from = assigns[:from] do
-      send(from, {:updated, assigns})
+      sent_assigns = Map.merge(assigns, %{id: socket.assigns[:id], myself: socket.assigns.myself})
+      send(from, {:updated, sent_assigns})
     end
 
     {:ok, assign(socket, assigns)}

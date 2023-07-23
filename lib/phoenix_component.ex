@@ -2231,7 +2231,7 @@ defmodule Phoenix.Component do
 
   ## Dynamically adding and removing inputs
 
-  Dynamicaly adding and removing inputs is supported by rendering
+  Dynamically adding and removing inputs is supported by rendering
   checkboxes for inserts and removals. Libraries such as Ecto, or custom param
   filtering can then inspect the parameters and handle the added or removed fields.
   This can be combined with `Ecto.Changeset.cast/3`'s `:sort_param` and `:drop_param`
@@ -2265,7 +2265,7 @@ defmodule Phoenix.Component do
 
   When Ecto sees the specified sort or drop parameter from the form, it will sort
   the children based on the order they appear in the form, add new children it hasn't
-  seen, or drop children if the parameter intructs it to do so.
+  seen, or drop children if the parameter instructs it to do so.
 
   The markup for such a schema and association would look like this:
 
@@ -2297,7 +2297,7 @@ defmodule Phoenix.Component do
   with the name `list[emails_drop][]`, containing the index of the child as its value.
   Like before, this tells Ecto to delete the child at this index when the checkbox is
   checked. Wrapping the checkbox and textual content in a label makes any clicked content
-  within the label check and uncheck the checbox.
+  within the label check and uncheck the checkbox.
 
   Finally, outside the `inputs_for`, we render another label with a value-less
   `list[emails_sort][]` checkbox with accompanied "add more" text. Ecto will
