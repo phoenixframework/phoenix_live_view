@@ -48,6 +48,11 @@ defmodule Phoenix.LiveView.Channel do
     send(self(), {@prefix, :drop_upload_entries, info})
   end
 
+  def report_writer_error(pid, reason) do
+    channel_pid = self()
+    send(pid, {@prefix, :report_writer_error, channel_pid, reason})
+  end
+
   @impl true
   def init({pid, _ref}) do
     {:ok, Process.monitor(pid)}
@@ -233,6 +238,31 @@ defmodule Phoenix.LiveView.Channel do
       end)
 
     {:noreply, new_state}
+  end
+
+  def handle_info({@prefix, :report_writer_error, channel_pid, reason}, state) do
+    case Map.fetch(state.upload_pids, channel_pid) do
+      {:ok, {ref, entry_ref, cid}} ->
+        new_state =
+          write_socket(state, cid, nil, fn socket, _ ->
+            upload_config = Upload.get_upload_by_ref!(socket, ref)
+
+            new_socket =
+              Upload.put_upload_error(
+                socket,
+                upload_config.name,
+                entry_ref,
+                {:writer_failure, reason}
+              )
+
+            {new_socket, {:ok, nil, state}}
+          end)
+
+        {:noreply, new_state}
+
+      :error ->
+        {:noreply, state}
+    end
   end
 
   def handle_info({@prefix, :send_update, update}, state) do

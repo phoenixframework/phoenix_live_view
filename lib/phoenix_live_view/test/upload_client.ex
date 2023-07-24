@@ -167,6 +167,9 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       %Phoenix.Socket.Reply{ref: ^ref, status: :ok} ->
         :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, stats.new_percent, state.cid)
         update_entry_start(state, entry, stats.new_start)
+      %Phoenix.Socket.Reply{ref: ^ref, status: :error} ->
+        :ok = ClientProxy.report_upload_progress(proxy_pid, from, element, entry.ref, %{"error" => "failure"}, state.cid)
+        update_entry_start(state, entry, stats.new_start)
     after
       get_chunk_timeout(state) -> exit(:timeout)
     end

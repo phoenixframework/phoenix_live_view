@@ -110,7 +110,9 @@ defmodule Phoenix.LiveView.UploadChannel do
               {:error, _reason, new_socket} -> new_socket
             end
 
-          {:reply, {:error, %{reason: :io_error}}, new_socket}
+          Channel.report_writer_error(socket.assigns.live_view_pid, reason)
+
+          {:reply, {:error, %{reason: :writer_error}}, new_socket}
       end
     else
       reply = %{reason: :file_size_limit_exceeded, limit: max_file_size}
