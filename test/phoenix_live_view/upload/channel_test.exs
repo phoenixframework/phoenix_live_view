@@ -25,8 +25,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
 
     @impl true
-    def write_chunk("error_with:" <> reason, test_name) do
-      {:error, reason, test_name}
+    def write_chunk("error", test_name) do
+      {:error, :custom_error, test_name}
     end
 
     def write_chunk(data, test_name) do
@@ -761,7 +761,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       test "writer with error", %{lv: lv} do
         Process.register(self(), :test_writer)
 
-        content = "error_with:oops"
+        content = "error"
 
         avatar =
           file_input(lv, "form", :avatar, [
@@ -769,9 +769,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           ])
 
         assert render_upload(avatar, "foo.jpeg") =~
-                 ~s/entry_error:{:writer_failure, &quot;oops&quot;}/
+                 ~s/entry_error:{:writer_failure, :custom_error}/
 
-        assert_receive {:close, {:error, "oops"}}
+        assert_receive {:close, {:error, :custom_error}}
       end
     end
   end
