@@ -241,8 +241,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({@prefix, :report_writer_error, channel_pid, reason}, state) do
-    case Map.fetch(state.upload_pids, channel_pid) do
-      {:ok, {ref, entry_ref, cid}} ->
+    case state.upload_pids do
+      %{^channel_pid => {ref, entry_ref, cid}} ->
         new_state =
           write_socket(state, cid, nil, fn socket, _ ->
             upload_config = Upload.get_upload_by_ref!(socket, ref)
@@ -260,7 +260,7 @@ defmodule Phoenix.LiveView.Channel do
 
         {:noreply, new_state}
 
-      :error ->
+      _ ->
         {:noreply, state}
     end
   end
