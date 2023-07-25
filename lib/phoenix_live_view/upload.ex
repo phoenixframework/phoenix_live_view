@@ -132,7 +132,11 @@ defmodule Phoenix.LiveView.Upload do
       when is_binary(reason) do
     conf = get_upload_by_ref!(socket, config_ref)
 
-    put_upload_error(socket, conf.name, entry_ref, :external_client_failure)
+    if conf.external do
+      put_upload_error(socket, conf.name, entry_ref, :external_client_failure)
+    else
+      socket
+    end
   end
 
   @doc """

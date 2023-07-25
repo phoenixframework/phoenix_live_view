@@ -1037,6 +1037,7 @@ defmodule Phoenix.Component do
   * `:too_large` - The entry exceeds the `:max_file_size` constraint
   * `:not_accepted` - The entry does not match the `:accept` MIME types
   * `:external_client_failure` - When external upload fails
+  * `{:writer_failure, reason}` - When the custom writer fails with `reason`
 
   ## Examples
 
