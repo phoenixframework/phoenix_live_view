@@ -1602,6 +1602,10 @@ defmodule Phoenix.LiveView do
   positive limit will prune items from the end of the container, while a negative
   limit will prune items from the beginning of the container.
 
+  Note that on the first `mount/3` render (when no websocket connection was established yet),
+  the limit set is not enforced. In this situation, one should pass the desired amount of
+  items to the stream to avoid confusions.
+
   ## Required DOM attributes
 
   For stream items to be trackable on the client, the following requirements
