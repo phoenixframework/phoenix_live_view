@@ -17,6 +17,11 @@ defmodule Phoenix.LiveView.Router do
 
       live_path(@socket, ThermostatLive)
 
+  > #### HTTP requests {: .info}
+  >
+  > The HTTP request method that a route defined by the `live/4` macro
+  > responds to is `GET`.
+
   ## Actions and live navigation
 
   It is common for a LiveView to have multiple states and multiple URLs.
