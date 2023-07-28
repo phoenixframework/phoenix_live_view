@@ -57,7 +57,6 @@ let Hooks = {
   }
 }
 
-let scrollTop = () => document.documentElement.scrollTop || document.body.scrollTop
 let winHeight = () => window.innerHeight || document.documentElement.clientHeight
 
 let isAtViewportTop = (el) => {
@@ -75,9 +74,16 @@ let isWithinViewport = (el) => {
   return rect.top >= 0 && rect.left >= 0 && rect.top <= winHeight()
 }
 
+let findScrollContainer = (el) => {
+  if (["scroll", "auto"].indexOf(getComputedStyle(el).overflowY) >= 0) return el
+  if (document.body === el) throw Error("Could not find a scrollable container")
+  return findScrollContainer(el.parentElement)
+}
+
 Hooks.InfiniteScroll = {
   mounted(){
-    let scrollBefore = scrollTop()
+    let scrollContainer = findScrollContainer(this.el)
+    let scrollBefore = scrollContainer.scrollTop
     let topOverran = false
     let throttleInterval = 500
     let pendingOp = null
@@ -106,7 +112,7 @@ Hooks.InfiniteScroll = {
     })
 
     this.onScroll = (e) => {
-      let scrollNow = scrollTop()
+      let scrollNow = scrollContainer.scrollTop
 
       if(pendingOp){
         scrollBefore = scrollNow
@@ -135,9 +141,9 @@ Hooks.InfiniteScroll = {
       }
       scrollBefore = scrollNow
     }
-    window.addEventListener("scroll", this.onScroll)
+    scrollContainer.addEventListener("scroll", this.onScroll)
   },
-  destroyed(){ window.removeEventListener("scroll", this.onScroll) },
+  destroyed(){ findScrollContainer(this.el).removeEventListener("scroll", this.onScroll) },
 
   throttle(interval, callback){
     let lastCallAt = 0
