@@ -30,6 +30,14 @@ defmodule Phoenix.LiveView.Channel do
     )
   end
 
+  def write_socket(lv_pid, cid, func) when is_function(func, 1) do
+    GenServer.call(lv_pid, {@prefix, :write_socket, cid, func})
+  end
+
+  def async_pids(lv_pid) do
+    GenServer.call(lv_pid, {@prefix, :async_pids})
+  end
+
   def ping(pid) do
     GenServer.call(pid, {@prefix, :ping}, :infinity)
   end
@@ -280,6 +288,31 @@ defmodule Phoenix.LiveView.Channel do
   @impl true
   def handle_call({@prefix, :ping}, _from, state) do
     {:reply, :ok, state}
+  end
+
+  def handle_call({@prefix, :async_pids}, _from, state) do
+    %{socket: socket} = state
+    lv_pids = get_async_pids(socket.assigns)
+
+    component_pids =
+      state
+      |> component_assigns()
+      |> Enum.flat_map(fn
+        {_cid, %{async: %{}} = assigns} -> get_async_pids(assigns)
+        {_cid, %{}} -> []
+      end)
+
+    {:reply, {:ok, lv_pids ++ component_pids}, state}
+  end
+
+  def handle_call({@prefix, :write_socket, cid, func}, _from, state) do
+    new_state =
+      write_socket(state, cid, nil, fn socket, _ ->
+        %Phoenix.LiveView.Socket{} = new_socket = func.(socket)
+        {new_socket, {:ok, nil, state}}
+      end)
+
+    {:reply, :ok, new_state}
   end
 
   def handle_call({@prefix, :fetch_upload_config, name, cid}, _from, state) do
@@ -1391,4 +1424,16 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_subscribe_to_live_reload(response), do: response
+
+  defp component_assigns(state) do
+    %{components: {components, _ids, _}} = state
+
+    Enum.into(components, %{}, fn {cid, {_mod, _id, assigns, _private, _prints}} ->
+      {cid, assigns}
+    end)
+  end
+
+  defp get_async_pids(assigns) do
+    Enum.map(assigns[:async] || %{}, fn {_, %Phoenix.LiveView.AsyncAssign{pid: pid}} -> pid end)
+  end
 end

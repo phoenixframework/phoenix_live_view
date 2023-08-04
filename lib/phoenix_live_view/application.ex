@@ -6,6 +6,11 @@ defmodule Phoenix.LiveView.Application do
   @impl true
   def start(_type, _args) do
     Phoenix.LiveView.Logger.install()
-    Supervisor.start_link([], strategy: :one_for_one, name: Phoenix.LiveView.Supervisor)
+
+    children = [
+      {Task.Supervisor, name: Phoenix.LiveView.TaskSup}
+    ]
+
+    Supervisor.start_link(children, strategy: :one_for_one, name: Phoenix.LiveView.Supervisor)
   end
 end

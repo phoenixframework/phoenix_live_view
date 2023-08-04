@@ -468,8 +468,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
 
-    assigns =
-      Map.new(assigns)
+    assigns = Map.new(assigns)
 
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
@@ -920,6 +919,33 @@ defmodule Phoenix.LiveViewTest do
 
   defp render_event(%View{} = view, type, event, value) when is_map(value) or is_list(value) do
     call(view, {:render_event, {proxy_topic(view), to_string(event), view.target}, type, value})
+  end
+
+  @doc """
+  TODO
+  """
+  def await_async(view_or_element, timeout \\ 100) do
+    pids =
+      case view_or_element do
+        %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
+        %Element{} = element -> call(element, {:async_pids, element})
+      end
+
+    task =
+      Task.async(fn ->
+        pids
+        |> Enum.map(&Process.monitor(&1))
+        |> Enum.each(fn ref ->
+          receive do
+            {:DOWN, ^ref, :process, _pid, _reason} -> :ok
+          end
+        end)
+      end)
+
+    case Task.yield(task, timeout) || Task.ignore(task) do
+      {:ok, _} -> :ok
+      nil -> raise RuntimeError, "expected async processes to finish within #{timeout}ms"
+    end
   end
 
   @doc """

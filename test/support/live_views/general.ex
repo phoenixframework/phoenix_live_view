@@ -336,3 +336,48 @@ defmodule Phoenix.LiveViewTest.ClassListLive do
 
   def render(assigns), do: ~H|Some content|
 end
+
+defmodule Phoenix.LiveViewTest.AsyncLive do
+  use Phoenix.LiveView
+  import Phoenix.LiveView.AsyncAssign
+
+  defmodule LC do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <div><%= inspect(@async.data) %></div>
+      """
+    end
+
+    def update(_assigns, socket) do
+      {:ok, assign_async(socket, :data, fn -> {:ok, %{data: 123}} end)}
+    end
+  end
+
+  def render(assigns) do
+    ~H"""
+    <.live_component module={LC} id="lc" />
+    <div :if={@async.data.loading?}>data loading...</div>
+    <div :if={!@async.data.loading? && @async.data.result == nil}>no data found</div>
+    <div :if={!@async.data.loading? && @async.data.result}>data: <%= inspect(@async.data.result) %></div>
+    <div :if={err = @async.data.error}>error: <%= inspect(err) %></div>
+    """
+  end
+
+  def mount(%{"test" => "bad_return"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> 123 end)}
+  end
+
+  def mount(%{"test" => "bad_ok"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> {:ok, %{bad: 123}} end)}
+  end
+
+  def mount(%{"test" => "ok"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> {:ok, %{data: 123}} end)}
+  end
+
+  def mount(%{"test" => "raise"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> raise("boom") end)}
+  end
+end
