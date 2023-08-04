@@ -107,7 +107,9 @@ import {
   closure,
   debug,
   isObject,
-  maybe
+  maybe,
+  parsePhxKey,
+  hasSpecificKeyBeenPressed
 } from "./utils"
 
 import Browser from "./browser"
@@ -523,12 +525,11 @@ export default class LiveSocket {
     this.bindClicks()
     if(!dead){ this.bindForms() }
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
-      let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
-      let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
-      if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
-
-      let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
-      JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
+      let matchKey = parsePhxKey(targetEl.getAttribute(this.binding(PHX_KEY)))
+      if (hasSpecificKeyBeenPressed(e, matchKey)) {
+        let data = {phx_key: matchKey, key: e.key, ...this.eventMeta(type, e, targetEl)}
+        JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
+      }
     })
     this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
       if(!eventTarget){

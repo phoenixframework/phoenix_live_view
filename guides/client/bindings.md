@@ -104,7 +104,7 @@ for any key press. When pushed, the value sent to the server will contain the `"
 that was pressed, plus any user-defined metadata. For example, pressing the
 Escape key looks like this:
 
-    %{"key" => "Escape"}
+    %{"key" => "Escape", "phx_key" => "esc"}
 
 To capture additional user-defined metadata, the `metadata` option for keydown events
 may be provided to the `LiveSocket` constructor. For example:
@@ -122,10 +122,50 @@ may be provided to the `LiveSocket` constructor. For example:
       }
     })
 
-To determine which key has been pressed you should use `key` value. The
-available options can be found on
-[MDN](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values)
-or via the [Key Event Viewer](https://w3c.github.io/uievents/tools/key-event-viewer.html).
+You can also use the `phx-key` value to listen for more complex combinations, for example
+here is a `phx-key` value that listens for when the `Shift` key is held and `Enter` is
+pressed:
+
+```heex
+<div class="container"
+    phx-keydown="new_line"
+    phx-key="shift.enter">
+  ...
+</div>
+```
+
+You can directly use any valid key names exposed via KeyboardEvent.key as modifiers by 
+converting them to kebab-case.
+
+```heex
+<div class="container"
+    phx-keydown="new_line"
+    phx-key="page-down">
+  ...
+</div>
+```
+
+For easy reference, here is a list of common keys you may want to listen for.
+
+| Modifier    | Keyboard Key |
+| ----------- | ------------ |
+| .shift	  | Shift        |
+| .enter      | Enter        |
+| .space	  | Space        |
+| .ctrl	      | Ctrl         |
+| .cmd        | Cmd          |
+| .meta       | Cmd/Windows  |
+| .alt        | Alt          |
+| .up         | Up           |
+| .down       | Down         |
+| .left       | Left         |
+| .right      | Right        |
+| .escape     | Escape       |
+| .tab        | Tab          |
+| .caps-lock  | Caps Lock    |
+| .equal      | Equal, =     |
+| .period     | Period, .    |
+| .slash      | /            |
 
 *Note*: it is possible for certain browser features like autofill to trigger key events
 with no `"key"` field present in the value map sent to the server. For this reason, we
