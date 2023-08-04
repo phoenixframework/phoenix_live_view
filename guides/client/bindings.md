@@ -149,9 +149,9 @@ For easy reference, here is a list of common keys you may want to listen for.
 
 | Modifier    | Keyboard Key |
 | ----------- | ------------ |
-| .shift	  | Shift        |
+| .shift      | Shift        |
 | .enter      | Enter        |
-| .space	  | Space        |
+| .space      | Space        |
 | .ctrl	      | Ctrl         |
 | .cmd        | Cmd          |
 | .meta       | Cmd/Windows  |

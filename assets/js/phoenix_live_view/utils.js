@@ -66,36 +66,54 @@ export let parsePhxKey = (key) => {
   if(!key){ return [] }
   return key.match(/[^.\]]+(?=[^\]]*$)/g) || []
 }
+// The following is thanks to Alpine.js https://github.com/alpinejs/alpine/blob/main/packages/alpinejs/src/utils/on.js
+// # MIT License
 
-// Thanks to Alpine.js https://github.com/alpinejs/alpine/blob/main/packages/alpinejs/src/utils/on.js#L108 
+// Copyright © 2019-2021 Caleb Porzio and contributors
+// 
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
 export let hasSpecificKeyBeenPressed = (e, keys) => {
-
   // If no key is defined, its a press
   if (keys.length === 0) return true
 
   // If one is passed, AND it matches the key pressed, we'll call it a press.
-  if (keys.length === 1 && keyToModifiers(e.key).includes(keys[0])) return true
+    if (keys.length === 1 && keyToModifiers(e.key).includes(keys[0])) return true
 
   // The user is listening for key combinations.
-  const systemKeyModifiers = ['ctrl', 'shift', 'alt', 'meta', 'cmd', 'super']
+    const systemKeyModifiers = ['ctrl', 'shift', 'alt', 'meta', 'cmd', 'super']
   const selectedSystemKeyModifiers = systemKeyModifiers.filter(modifier => keys.includes(modifier))
 
   keys = keys.filter(i => ! selectedSystemKeyModifiers.includes(i))
   if (selectedSystemKeyModifiers.length > 0) {
-      const activelyPressedKeyModifiers = selectedSystemKeyModifiers.filter(modifier => {
-          // Alias "cmd" and "super" to "meta"
-          if (modifier === 'cmd' || modifier === 'super') modifier = 'meta'
+    const activelyPressedKeyModifiers = selectedSystemKeyModifiers.filter(modifier => {
+      // Alias "cmd" and "super" to "meta"
+      if (modifier === 'cmd' || modifier === 'super') modifier = 'meta'
 
-          return e[`${modifier}Key`]
-      })
+      return e[`${modifier}Key`]
+    })
 
-      // If all the modifiers selected are pressed, ...
+    // If all the modifiers selected are pressed, ...
       if (activelyPressedKeyModifiers.length === selectedSystemKeyModifiers.length) {
-          // AND the remaining key is pressed as well. It's a press.
+        // AND the remaining key is pressed as well. It's a press.
           if (keyToModifiers(e.key).includes(keys[0])) return true
       }
   }
-
   return false
 }
 
@@ -104,30 +122,29 @@ function kebabCase(subject) {
   return subject.replace(/([a-z])([A-Z])/g, '$1-$2').replace(/[_\s]/, '-').toLowerCase()
 }
 
-// Thanks to Alpine.js https://github.com/alpinejs/alpine/blob/main/packages/alpinejs/src/utils/on.js#L154
 export let keyToModifiers = (key) => {
   if (!key) return []
   key = kebabCase(key)
   let modifierToKeyMap = {
-      'ctrl': 'control',
-      'slash': '/',
-      'space': ' ',
-      'spacebar': ' ',
-      'cmd': 'meta',
-      'esc': 'escape',
-      'up': 'arrow-up',
-      'down': 'arrow-down',
-      'left': 'arrow-left',
-      'right': 'arrow-right',
-      'period': '.',
-      'equal': '=',
-      'minus': '-',
-      'underscore': '_',
+    'ctrl': 'control',
+    'slash': '/',
+    'space': ' ',
+    'spacebar': ' ',
+    'cmd': 'meta',
+    'esc': 'escape',
+    'up': 'arrow-up',
+    'down': 'arrow-down',
+    'left': 'arrow-left',
+    'right': 'arrow-right',
+    'period': '.',
+    'equal': '=',
+    'minus': '-',
+    'underscore': '_',
   }
 
   modifierToKeyMap[key] = key
 
   return Object.keys(modifierToKeyMap).map(modifier => {
-      if (modifierToKeyMap[modifier] === key) return modifier
+    if (modifierToKeyMap[modifier] === key) return modifier
   }).filter(modifier => modifier)
 }
