@@ -39,6 +39,14 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/async?test=raise")
 
       assert render_async(lv) =~ "error: {:error, %RuntimeError{message: &quot;boom&quot;}}"
+      assert render(lv)
+    end
+
+    test "exit during execution", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/async?test=exit")
+
+      assert render_async(lv) =~ "error: {:exit, :boom}"
+      assert render(lv)
     end
   end
 end

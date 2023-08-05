@@ -380,4 +380,8 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
   def mount(%{"test" => "raise"}, _session, socket) do
     {:ok, assign_async(socket, :data, fn -> raise("boom") end)}
   end
+
+  def mount(%{"test" => "exit"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> exit(:boom) end)}
+  end
 end
