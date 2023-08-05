@@ -924,7 +924,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   TODO
   """
-  def await_async(view_or_element, timeout \\ 100) do
+  def render_async(view_or_element, timeout \\ 100) do
     pids =
       case view_or_element do
         %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
@@ -946,6 +946,8 @@ defmodule Phoenix.LiveViewTest do
       {:ok, _} -> :ok
       nil -> raise RuntimeError, "expected async processes to finish within #{timeout}ms"
     end
+
+    render(view_or_element)
   end
 
   @doc """

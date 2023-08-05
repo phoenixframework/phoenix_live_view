@@ -15,8 +15,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     test "bad return", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=bad_return")
 
-      await_async(lv)
-      assert render(lv) =~
+      assert render_async(lv) =~
                "error: {:error, %ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:data] or {:error, reason}, got: 123\\n&quot;}}"
 
       assert render(lv)
@@ -25,8 +24,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     test "missing known key", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=bad_ok")
 
-      await_async(lv)
-      assert render(lv) =~
+      assert render_async(lv) =~
                "expected assign_async to return map of\\nassigns for all keys in [:data]"
 
       assert render(lv)
@@ -34,15 +32,13 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
     test "valid return", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=ok")
-      await_async(lv)
-      assert render(lv) =~ "data: 123"
+      assert render_async(lv) =~ "data: 123"
     end
 
     test "raise during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=raise")
 
-      await_async(lv)
-      assert render(lv) =~ "error: {:error, %RuntimeError{message: &quot;boom&quot;}}"
+      assert render_async(lv) =~ "error: {:error, %RuntimeError{message: &quot;boom&quot;}}"
     end
   end
 end
