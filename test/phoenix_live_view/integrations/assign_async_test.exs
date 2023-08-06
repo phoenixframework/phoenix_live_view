@@ -48,5 +48,32 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv) =~ "error: {:exit, :boom}"
       assert render(lv)
     end
+
+    test "lv exit brings down asyncs", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/async?test=lv_exit")
+      Process.unlink(lv.pid)
+      lv_ref = Process.monitor(lv.pid)
+      async_ref = Process.monitor(Process.whereis(:lv_exit))
+      send(lv.pid, :boom)
+
+      assert_receive {:DOWN, ^lv_ref, :process, _pid, :boom}
+      assert_receive {:DOWN, ^async_ref, :process, _pid, :boom}
+    end
+
+    test "cancel_async", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/async?test=cancel")
+      Process.unlink(lv.pid)
+      async_ref = Process.monitor(Process.whereis(:cancel))
+      send(lv.pid, :cancel)
+
+      assert_receive {:DOWN, ^async_ref, :process, _pid, :killed}
+
+      assert render(lv) =~ "data canceled"
+
+      send(lv.pid, :renew_canceled)
+
+      assert render(lv) =~ "data loading..."
+      assert render_async(lv, 200) =~ "data: 123"
+    end
   end
 end

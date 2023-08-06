@@ -359,6 +359,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
     ~H"""
     <.live_component module={LC} id="lc" />
     <div :if={@async.data.loading?}>data loading...</div>
+    <div :if={@async.data.canceled?}>data canceled</div>
     <div :if={!@async.data.loading? && @async.data.result == nil}>no data found</div>
     <div :if={!@async.data.loading? && @async.data.result}>data: <%= inspect(@async.data.result) %></div>
     <div :if={err = @async.data.error}>error: <%= inspect(err) %></div>
@@ -383,5 +384,32 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
 
   def mount(%{"test" => "exit"}, _session, socket) do
     {:ok, assign_async(socket, :data, fn -> exit(:boom) end)}
+  end
+
+  def mount(%{"test" => "lv_exit"}, _session, socket) do
+    {:ok,
+     assign_async(socket, :data, fn ->
+       Process.register(self(), :lv_exit)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def mount(%{"test" => "cancel"}, _session, socket) do
+    {:ok,
+     assign_async(socket, :data, fn ->
+       Process.register(self(), :cancel)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def handle_info(:boom, _socket), do: exit(:boom)
+
+  def handle_info(:cancel, socket), do: {:noreply, cancel_async(socket, :data)}
+
+  def handle_info(:renew_canceled, socket) do
+    {:noreply, assign_async(socket, :data, fn ->
+      Process.sleep(100)
+      {:ok, %{data: 123}}
+    end)}
   end
 end
