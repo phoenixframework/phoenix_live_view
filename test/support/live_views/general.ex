@@ -355,6 +355,12 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
     end
   end
 
+  on_mount {__MODULE__, :defaults}
+
+  def on_mount(:defaults, _params, _session, socket) do
+    {:cont, assign(socket, enum: false)}
+  end
+
   def render(assigns) do
     ~H"""
     <.live_component module={LC} id="lc" />
@@ -363,6 +369,9 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
     <div :if={!@async.data.loading? && @async.data.result == nil}>no data found</div>
     <div :if={!@async.data.loading? && @async.data.result}>data: <%= inspect(@async.data.result) %></div>
     <div :if={err = @async.data.error}>error: <%= inspect(err) %></div>
+    <%= if @enum do %>
+      <div :for={i <- @async.data}><%= i %></div>
+    <% end %>
     """
   end
 
@@ -402,14 +411,20 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
      end)}
   end
 
+  def mount(%{"test" => "enum"}, _session, socket) do
+    {:ok,
+     socket |> assign(enum: true) |> assign_async(:data, fn -> {:ok, %{data: [1, 2, 3]}} end)}
+  end
+
   def handle_info(:boom, _socket), do: exit(:boom)
 
   def handle_info(:cancel, socket), do: {:noreply, cancel_async(socket, :data)}
 
   def handle_info(:renew_canceled, socket) do
-    {:noreply, assign_async(socket, :data, fn ->
-      Process.sleep(100)
-      {:ok, %{data: 123}}
-    end)}
+    {:noreply,
+     assign_async(socket, :data, fn ->
+       Process.sleep(100)
+       {:ok, %{data: 123}}
+     end)}
   end
 end

@@ -182,4 +182,47 @@ defmodule Phoenix.LiveView.AsyncAssign do
       socket
     end
   end
+
+  defimpl Enumerable, for: Phoenix.LiveView.AsyncAssign do
+    alias Phoenix.LiveView.AsyncAssign
+
+    def count(%AsyncAssign{result: result, loading?: false, error: nil, canceled?: false}),
+      do: Enum.count(result)
+
+    def count(%AsyncAssign{}), do: 0
+
+    def member?(%AsyncAssign{result: result, loading?: false, error: nil, canceled?: false}, item) do
+      Enum.member?(result, item)
+    end
+
+    def member?(%AsyncAssign{}, _item) do
+      raise RuntimeError, "cannot lookup member? while loading"
+    end
+
+    def reduce(
+          %AsyncAssign{result: result, loading?: false, error: nil, canceled?: false},
+          acc,
+          fun
+        ) do
+      do_reduce(result, acc, fun)
+    end
+
+    def reduce(%AsyncAssign{}, acc, _fun), do: acc
+
+    defp do_reduce(_list, {:halt, acc}, _fun), do: {:halted, acc}
+    defp do_reduce(list, {:suspend, acc}, fun), do: {:suspended, acc, &do_reduce(list, &1, fun)}
+    defp do_reduce([], {:cont, acc}, _fun), do: {:done, acc}
+
+    defp do_reduce([item | tail], {:cont, acc}, fun) do
+      do_reduce(tail, fun.(item, acc), fun)
+    end
+
+    def slice(%AsyncAssign{result: result, loading?: false, error: nil, canceled?: false}) do
+      fn start, length, step -> Enum.slice(result, start..(start + length - 1)//step) end
+    end
+
+    def slice(%AsyncAssign{}) do
+      fn _start, _length, _step -> [] end
+    end
+  end
 end

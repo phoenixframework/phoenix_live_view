@@ -76,4 +76,12 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv, 200) =~ "data: 123"
     end
   end
+
+  test "enum", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/async?test=enum")
+
+    html = render_async(lv, 200)
+    assert html =~ "data: [1, 2, 3]"
+    assert html =~ "<div>1</div><div>2</div><div>3</div>"
+  end
 end
