@@ -1,38 +1,69 @@
 defmodule Phoenix.LiveView.AsyncAssign do
   @moduledoc ~S'''
-  Adds async_assign functionality to LiveViews.
+  Adds async_assign functionality to LiveViews and LiveComponents.
+
+  Performing asynchronous work is common in LiveViews and LiveComponents.
+  It allows the user to get a working UI quicky while the system fetches some
+  data in the background or talks to an external service. For async work,
+  you also typically need to handle the different states of the async operation,
+  such as loading, error, and the successful result. You also want to catch any
+  error and translate it to a meaningful update in the UI rather than crashing
+  the user experience.
 
   ## Examples
 
-  defmodule MyLive do
+  The `assign_async/3` function takes a name, a list of keys which will be assigned
+  asynchronously, and a function that returns the result of the async operation.
+  For example, let's say we want to async fetch a user's organization from the database,
+  as well as their profile and rank:
 
-    def render(assigns) do
+      def mount(%{"slug" => slug}, _, socket) do
+        {:ok,
+         socket
+         |> assign(:foo, "bar")
+         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)} end)
+         |> assign_async(:profile, [:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
+      end
 
-      ~H"""
-      <div :if={@async.org.loading?}>Loading organization...</div>
-      <div :if={@async.org.result == nil}}>You don't have an org yet</div>
-      <div :if={@async.org.error}>there was an error loading the organization</div>
+  Here we are assigning `:org` and `[:profile, :rank]` asynchronously. If no keys are
+  given (as in the case of `:org`), the keys will default to `[:org]`. The async function
+  must return a `{:ok, assigns}` or `{:error, reason}` tuple where `assigns` is a map of
+  the keys passed to `assign_async`. If the function returns other keys or a different
+  set of keys, an error is raised.
 
-      <.async_result let={org} item={@async.org}>
-        <:loading>Loading organization...</:loading>
-        <:empty>You don't have an organization yet</:error>
-        <:error>there was an error loading the organization</:error>
-        <%= org.name %>
-      <.async_result>
+  The state of the async operation is stored in the socket assigns under the `@async` assign
+  on the socket with the name given to `assign_async/3`. It carries the `:loading?`,
+  `:error`, and `:result` keys. For example, if we wanted to show the loading states
+  in the UI for the `:org`, our template could conditionally render the states:
 
-      <div :for={orgs <- @async.orgs}>...</div>
-      """
-    end
+  ```heex
+  <div :if={@async.org.loading?}>Loading organization...</div>
+  <div :if={@async.org.error}>there was an error loading the organization</div>
+  <div :if={@async.org.result == nil}}>You don't have an org yet</div>
+  <div :if={org = @async.org.result}}><%= org.name%> loaded!</div>
+  ```
 
-    def mount(%{"slug" => slug}, _, socket) do
-      {:ok,
-       socket
-       |> assign(:foo, "bar)
-       |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)} end)
-       |> assign_async(:profile, [:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
-    end
-  end
+  The `async_result` function component can also be used to declaratively
+  render the different states using slots:
+
+  ```heex
+  <.async_result :let={org} assign={@async.org}>
+    <:loading>Loading organization...</:loading>
+    <:empty>You don't have an organization yet</:error>
+    <:error>there was an error loading the organization</:error>
+    <%= org.name %>
+  <.async_result>
+  ```
+
+  Additionally, for async assigns which result in a list of items, you
+  can consume the `@async.<name>` directly, and it will only enumerate
+  the results once the results are loaded. For example:
+
+  ```heex
+  <div :for={orgs <- @async.orgs}><%= org.name %></div>
+  ```
   '''
+  use Phoenix.Component
 
   defstruct name: nil,
             ref: nil,
@@ -46,7 +77,56 @@ defmodule Phoenix.LiveView.AsyncAssign do
   alias Phoenix.LiveView.AsyncAssign
 
   @doc """
-  TODO
+  Renders an async assign with slots for the different loading states.
+
+  ## Examples
+
+  ```heex
+  <.async_result :let={org} assign={@async.org}>
+    <:loading>Loading organization...</:loading>
+    <:empty>You don't have an organization yet</:error>
+    <:error :let={_reason}>there was an error loading the organization</:error>
+    <:canceled :let={_reason}>loading cancled</:canceled>
+    <%= org.name %>
+  <.async_result>
+  ```
+  """
+  attr :assign, :any, required: true
+  slot :loading
+  slot :canceled
+
+  slot :empty,
+    doc:
+      "rendered when the result is loaded and is either nil or an empty enumerable. Receives the result as a :let."
+
+  slot :error,
+    doc:
+      "rendered when an error is caught or the function return `{:error, reason}`. Receives the error as a :let."
+
+  def async_result(assigns) do
+    case assigns.assign do
+      %AsyncAssign{result: result, loading?: false, error: nil, canceled?: false} ->
+        if assigns.empty != [] && (is_nil(result) or Enum.empty?(result)) do
+          ~H|<%= render_slot(@empty, @assign.result) %>|
+        else
+          ~H|<%= render_slot(@inner_block, @assign.result) %>|
+        end
+
+      %AsyncAssign{loading?: true} ->
+        ~H|<%= render_slot(@loading) %>|
+
+      %AsyncAssign{loading?: false, error: error} when not is_nil(error) ->
+        ~H|<%= render_slot(@error, @assign.error) %>|
+
+      %AsyncAssign{loading?: false, canceled?: true} ->
+        ~H|<%= render_slot(@canceled) %>|
+    end
+  end
+
+  @doc """
+  Assigns keys ansynchronously.
+
+  See the module docs for more and exmaple usage.
   """
   def assign_async(%Phoenix.LiveView.Socket{} = socket, name, func) do
     assign_async(socket, name, [name], func)
@@ -77,7 +157,13 @@ defmodule Phoenix.LiveView.AsyncAssign do
   end
 
   @doc """
-  TODO
+  Cancels an async assign.
+
+  ## Examples
+
+      def handle_event("cancel_preview", _, socket) do
+        {:noreply, cancel_async(socket, :preview)}
+      end
   """
   def cancel_async(%Phoenix.LiveView.Socket{} = socket, name) do
     case get(socket, name) do
