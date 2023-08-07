@@ -430,15 +430,17 @@ defmodule Phoenix.LiveViewTest.AsyncLive.LC do
   def render(assigns) do
     ~H"""
     <div>
-      <div :if={@async.lc_data.loading?}>lc_data loading...</div>
-      <div :if={@async.lc_data.canceled?}>lc_data canceled</div>
-      <div :if={!@async.lc_data.loading? && @async.lc_data.result == nil}>no lc_data found</div>
-      <div :if={!@async.lc_data.loading? && @async.lc_data.result}>lc_data: <%= inspect(@async.lc_data.result) %></div>
-      <div :if={err = @async.lc_data.error}>error: <%= inspect(err) %></div>
-
       <%= if @enum do %>
         <div :for={i <- @async.lc_data}><%= i %></div>
       <% end %>
+      <.async_result :let={data} assign={@async.lc_data}>
+        <:loading>lc_data loading...</:loading>
+        <:canceled>lc_data canceled</:canceled>
+        <:empty :let={_res}>no lc_data found</:empty>
+        <:error :let={err}>error: <%= inspect(err) %></:error>
+
+        lc_data: <%= inspect(data) %>
+      </.async_result>
     </div>
     """
   end

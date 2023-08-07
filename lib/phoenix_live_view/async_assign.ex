@@ -97,7 +97,7 @@ defmodule Phoenix.LiveView.AsyncAssign do
 
   slot :empty,
     doc:
-      "rendered when the result is loaded and is either nil or an empty enumerable. Receives the result as a :let."
+      "rendered when the result is loaded and is either nil or an empty list. Receives the result as a :let."
 
   slot :error,
     doc:
@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.AsyncAssign do
   def async_result(assigns) do
     case assigns.assign do
       %AsyncAssign{result: result, loading?: false, error: nil, canceled?: false} ->
-        if assigns.empty != [] && (is_nil(result) or Enum.empty?(result)) do
+        if assigns.empty != [] && result in [nil, []] do
           ~H|<%= render_slot(@empty, @assign.result) %>|
         else
           ~H|<%= render_slot(@inner_block, @assign.result) %>|
