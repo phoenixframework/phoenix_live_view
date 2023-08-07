@@ -341,38 +341,32 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
   use Phoenix.LiveView
   import Phoenix.LiveView.AsyncAssign
 
-  defmodule LC do
-    use Phoenix.LiveComponent
-
-    def render(assigns) do
-      ~H"""
-      <div><%= inspect(@async.data) %></div>
-      """
-    end
-
-    def update(_assigns, socket) do
-      {:ok, assign_async(socket, :data, fn -> {:ok, %{data: 123}} end)}
-    end
-  end
-
   on_mount {__MODULE__, :defaults}
 
   def on_mount(:defaults, _params, _session, socket) do
-    {:cont, assign(socket, enum: false)}
+    {:cont, assign(socket, enum: false, lc: false)}
   end
 
   def render(assigns) do
     ~H"""
-    <.live_component module={LC} id="lc" />
+    <.live_component :if={@lc} module={Phoenix.LiveViewTest.AsyncLive.LC} test={@lc} id="lc" />
     <div :if={@async.data.loading?}>data loading...</div>
     <div :if={@async.data.canceled?}>data canceled</div>
     <div :if={!@async.data.loading? && @async.data.result == nil}>no data found</div>
     <div :if={!@async.data.loading? && @async.data.result}>data: <%= inspect(@async.data.result) %></div>
     <div :if={err = @async.data.error}>error: <%= inspect(err) %></div>
+
     <%= if @enum do %>
       <div :for={i <- @async.data}><%= i %></div>
     <% end %>
     """
+  end
+
+  def mount(%{"test" => "lc_" <> lc_test}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(lc: lc_test)
+     |> assign_async(:data, fn -> {:ok, %{data: :live_component}} end)}
   end
 
   def mount(%{"test" => "bad_return"}, _session, socket) do
@@ -425,6 +419,86 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
      assign_async(socket, :data, fn ->
        Process.sleep(100)
        {:ok, %{data: 123}}
+     end)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.AsyncLive.LC do
+  use Phoenix.LiveComponent
+  import Phoenix.LiveView.AsyncAssign
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      <div :if={@async.lc_data.loading?}>lc_data loading...</div>
+      <div :if={@async.lc_data.canceled?}>lc_data canceled</div>
+      <div :if={!@async.lc_data.loading? && @async.lc_data.result == nil}>no lc_data found</div>
+      <div :if={!@async.lc_data.loading? && @async.lc_data.result}>lc_data: <%= inspect(@async.lc_data.result) %></div>
+      <div :if={err = @async.lc_data.error}>error: <%= inspect(err) %></div>
+
+      <%= if @enum do %>
+        <div :for={i <- @async.lc_data}><%= i %></div>
+      <% end %>
+    </div>
+    """
+  end
+
+  def mount(socket) do
+    {:ok, assign(socket, enum: false)}
+  end
+
+  def update(%{test: "bad_return"}, socket) do
+    {:ok, assign_async(socket, :lc_data, fn -> 123 end)}
+  end
+
+  def update(%{test: "bad_ok"}, socket) do
+    {:ok, assign_async(socket, :lc_data, fn -> {:ok, %{bad: 123}} end)}
+  end
+
+  def update(%{test: "ok"}, socket) do
+    {:ok, assign_async(socket, :lc_data, fn -> {:ok, %{lc_data: 123}} end)}
+  end
+
+  def update(%{test: "raise"}, socket) do
+    {:ok, assign_async(socket, :lc_data, fn -> raise("boom") end)}
+  end
+
+  def update(%{test: "exit"}, socket) do
+    {:ok, assign_async(socket, :lc_data, fn -> exit(:boom) end)}
+  end
+
+  def update(%{test: "lv_exit"}, socket) do
+    {:ok,
+     assign_async(socket, :lc_data, fn ->
+       Process.register(self(), :lc_exit)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def update(%{test: "cancel"}, socket) do
+    {:ok,
+     assign_async(socket, :lc_data, fn ->
+       Process.register(self(), :lc_cancel)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def update(%{test: "enum"}, socket) do
+    {:ok,
+     socket
+     |> assign(enum: true)
+     |> assign_async(:lc_data, fn -> {:ok, %{lc_data: [4, 5, 6]}} end)}
+  end
+
+  def update(%{action: :boom}, _socket), do: exit(:boom)
+
+  def update(%{action: :cancel}, socket), do: {:ok, cancel_async(socket, :lc_data)}
+
+  def update(%{action: :renew_canceled}, socket) do
+    {:ok,
+     assign_async(socket, :lc_data, fn ->
+       Process.sleep(100)
+       {:ok, %{lc_data: 123}}
      end)}
   end
 end
