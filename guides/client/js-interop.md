@@ -2,7 +2,7 @@
 
 To enable LiveView client/server interaction, we instantiate a LiveSocket. For example:
 
-```
+```javascript
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 
@@ -57,7 +57,7 @@ the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disable
 functions which apply throughout the current browser session. The `enableLatencySim` function
 accepts an integer in milliseconds for the round-trip-time to the server. For example:
 
-```
+```javascript
 // app.js
 let liveSocket = new LiveSocket(...)
 liveSocket.connect()
@@ -216,24 +216,28 @@ The above life-cycle callbacks have in-scope access to the following attributes:
 For example, the markup for a controlled input for phone-number formatting could be written
 like this:
 
-    <input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber" />
+```heex
+<input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber" />
+```
 
 Then a hook callback object could be defined and passed to the socket:
 
-    let Hooks = {}
-    Hooks.PhoneNumber = {
-      mounted() {
-        this.el.addEventListener("input", e => {
-          let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
-          if(match) {
-            this.el.value = `${match[1]}-${match[2]}-${match[3]}`
-          }
-        })
+```javascript
+let Hooks = {}
+Hooks.PhoneNumber = {
+  mounted() {
+    this.el.addEventListener("input", e => {
+      let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
+      if(match) {
+        this.el.value = `${match[1]}-${match[2]}-${match[3]}`
       }
-    }
+    })
+  }
+}
 
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
-    ...
+let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+...
+```
 
 *Note*: when using `phx-hook`, a unique DOM ID must always be set.
 
@@ -279,23 +283,27 @@ hook element or by using `Phoenix.LiveView.push_event/3` on the server and `hand
 
 For example, to implement infinite scrolling, one can pass the current page using data attributes:
 
-    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page={@page}>
+```heex
+<div id="infinite-scroll" phx-hook="InfiniteScroll" data-page={@page}>
+```
 
 And then in the client:
 
-    Hooks.InfiniteScroll = {
-      page() { return this.el.dataset.page },
-      mounted(){
-        this.pending = this.page()
-        window.addEventListener("scroll", e => {
-          if(this.pending == this.page() && scrollAt() > 90){
-            this.pending = this.page() + 1
-            this.pushEvent("load-more", {})
-          }
-        })
-      },
-      updated(){ this.pending = this.page() }
-    }
+```javascript
+Hooks.InfiniteScroll = {
+  page() { return this.el.dataset.page },
+  mounted(){
+    this.pending = this.page()
+    window.addEventListener("scroll", e => {
+      if(this.pending == this.page() && scrollAt() > 90){
+        this.pending = this.page() + 1
+        this.pushEvent("load-more", {})
+      }
+    })
+  },
+  updated(){ this.pending = this.page() }
+}
+```
 
 However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
@@ -304,11 +312,13 @@ However, the data attribute approach is not a good approach if you need to frequ
 
 And then on the client:
 
-    Hooks.Chart = {
-      mounted(){
-        this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
-      }
-    }
+```javascript
+Hooks.Chart = {
+  mounted(){
+    this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
+  }
+}
+```
 
 *Note*: remember events pushed from the server via `push_event` are global and will be dispatched
 to all active hooks on the client who are handling that event.
