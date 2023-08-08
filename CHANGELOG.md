@@ -15,6 +15,7 @@
   * Call `Phoenix.LiveView.UploadWriter` close callback when LiveView goes down or connection is lost
   * Fix JS.patch to a Phoenix router scope with `:host` causing errors
   * Fix immediate navigation after patch not updating URL
+  * Fix stream reset on nested streams inside live components causing nested stream children to be removed
 
 ## 0.19.4 (2023-07-10)
 

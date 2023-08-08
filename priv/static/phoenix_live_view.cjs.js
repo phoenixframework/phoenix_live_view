@@ -1767,7 +1767,9 @@ var DOMPatch = class {
         });
         if (reset !== void 0) {
           dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
-            this.removeStreamChildElement(child);
+            if (!inserts[child.id]) {
+              this.removeStreamChildElement(child);
+            }
           });
         }
         deleteIds.forEach((id) => {
@@ -2208,6 +2210,7 @@ var Rendered = class {
     }
     if (stream !== void 0 && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0 || reset)) {
       delete rendered[STREAM];
+      rendered[DYNAMICS] = [];
       output.streams.add(stream);
     }
   }
