@@ -3586,7 +3586,7 @@ within:
         if (inputs.length === 0) {
           return;
         }
-        let input = inputs.find((el) => el.type !== "hidden") || input[0];
+        let input = inputs.find((el) => el.type !== "hidden") || inputs[0];
         let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
         js_default.exec("change", phxEvent, view, input, ["push", { _target: input.name, newCid, callback }]);
       });
