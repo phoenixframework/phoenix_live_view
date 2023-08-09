@@ -1215,11 +1215,13 @@ defmodule Phoenix.LiveView.Channel do
     cid = payload["cid"]
 
     Enum.reduce(uploads, socket, fn {ref, entries}, acc ->
-      upload_conf = Upload.get_upload_by_ref!(acc, ref)
-
-      case Upload.put_entries(acc, upload_conf, entries, cid) do
-        {:ok, new_socket} -> new_socket
-        {:error, _error_resp, %Socket{} = new_socket} -> new_socket
+      case Upload.get_upload_by_ref(acc, ref) do
+        {:ok, upload_conf} ->
+          case Upload.put_entries(acc, upload_conf, entries, cid) do
+            {:ok, new_socket} -> new_socket
+            {:error, _error_resp, %Socket{} = new_socket} -> new_socket
+          end
+        :error -> acc
       end
     end)
   end
