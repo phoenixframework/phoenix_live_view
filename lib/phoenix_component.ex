@@ -1385,14 +1385,14 @@ defmodule Phoenix.Component do
         end
       end
 
-  And then you create a changeset which you pass to `to_form`:
+  And then you create a changeset that you pass to `to_form`:
 
-      %MyApp.Blog.Post{}
+      %MyApp.Users.User{}
       |> Ecto.Changeset.change()
       |> to_form()
 
   In this case, once the form is submitted, the parameters will
-  be available under `%{"post" => post_params}`.
+  be available under `%{"user" => user_params}`.
 
   ## Options
 
