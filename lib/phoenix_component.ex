@@ -7,6 +7,7 @@ defmodule Phoenix.Component do
   [the `~H` sigil](`sigil_H/2`):
 
       defmodule MyComponent do
+        # In Phoenix apps, the line is typically: use MyAppWeb, :html
         use Phoenix.Component
 
         def greet(assigns) do
@@ -135,6 +136,7 @@ defmodule Phoenix.Component do
   `<Component.heading>` requires a `title`, but *does not* require a `name`.
 
       defmodule Components do
+        # In Phoenix apps, the line is typically: use MyAppWeb, :html
         use Phoenix.Component
 
         attr :title, :string, required: true

@@ -72,7 +72,7 @@ defmodule Phoenix.LiveView do
   `c:render/1`:
 
       defmodule MyAppWeb.ThermostatLive do
-        # In Phoenix v1.6+ apps, the line is typically: use MyAppWeb, :live_view
+        # In Phoenix apps, the line is typically: use MyAppWeb, :live_view
         use Phoenix.LiveView
 
         def render(assigns) do
@@ -139,6 +139,7 @@ defmodule Phoenix.LiveView do
   with a timer:
 
       defmodule DemoWeb.ThermostatLive do
+        # In Phoenix apps, the line is typically: use MyAppWeb, :live_view
         use Phoenix.LiveView
         ...
 
