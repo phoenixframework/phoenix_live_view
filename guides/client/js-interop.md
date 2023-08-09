@@ -249,28 +249,19 @@ libraries to (re)initialize DOM elements or copy attributes as necessary as Live
 performs its own patch operations. The update operation cannot be cancelled or deferred,
 and the return value is ignored.
 
-For example, the following option could be used to add
-[Alpine.js](https://github.com/alpinejs/alpine) support to your project:
+For example, the following option could be used to guarantee that some attributes set on the client-side are kept intact:
 
-    let liveSocket = new LiveSocket("/live", Socket, {
-      ...,
-      dom: {
-        onBeforeElUpdated(from, to){
-          if(from._x_dataStack){ window.Alpine.clone(from, to) }
-        }
-      },
-    })
-
-You could also use the same approach to guarantee that some attributes set on the client-side are kept intact.
-In the following example, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView:
-
-    onBeforeElUpdated(from, to){
-      for (const attr of from.attributes){
-        if (attr.name.startsWith("data-js-")){
-          to.setAttribute(attr.name, attr.value);
-        }
-      }
+```javascript
+onBeforeElUpdated(from, to){
+  for (const attr of from.attributes){
+    if (attr.name.startsWith("data-js-")){
+      to.setAttribute(attr.name, attr.value);
     }
+  }
+}
+```
+
+In the example above, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView.
 
 ### Client-server communication
 
