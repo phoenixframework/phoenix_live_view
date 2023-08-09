@@ -291,7 +291,7 @@ defmodule Phoenix.LiveView.Router do
         raise ArgumentError, """
         invalid live_session :root_layout
 
-        expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
+        expected a tuple with the view module and template atom name, got #{inspect(bad_layout)}
         """
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
