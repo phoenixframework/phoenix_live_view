@@ -191,9 +191,12 @@ defmodule Phoenix.LiveView.Upload do
   If the `socket` does not have any uploads allowed, or the `ref` is not found, `:error` is returned.
   """
   def get_upload_by_ref(%Socket{} = socket, config_ref) do
-    with {:ok, uploads} <- Map.fetch(socket.assigns, :uploads),
-         {:ok, name} <- Map.fetch(uploads[@refs_to_names], config_ref) do
-      Map.fetch(uploads, name)
+    with %{assigns: %{uploads: uploads}} <- socket,
+         %{@refs_to_names => %{^config_ref => name}} <- uploads,
+         %{^name => value} <- uploads do
+      {:ok, value}
+    else
+      _ -> :error
     end
   end
 
