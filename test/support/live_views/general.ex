@@ -351,7 +351,6 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
     ~H"""
     <.live_component :if={@lc} module={Phoenix.LiveViewTest.AsyncLive.LC} test={@lc} id="lc" />
     <div :if={@data.state == :loading}>data loading...</div>
-    <div :if={@data.state == :canceled}>data canceled</div>
     <div :if={@data.state == :ok && @data.result == nil}>no data found</div>
     <div :if={@data.state == :ok && @data.result}>data: <%= inspect(@data.result) %></div>
     <%= with {kind, reason} when kind in [:error, :exit] <- @data.state do %>
@@ -441,7 +440,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive.LC do
         <:loading>lc_data loading...</:loading>
         <:canceled>lc_data canceled</:canceled>
         <:empty :let={_res}>no lc_data found</:empty>
-        <:error :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:error>
+        <:failed :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:failed>
 
         lc_data: <%= inspect(data) %>
       </AsyncResult.with_state>

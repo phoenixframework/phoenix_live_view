@@ -22,46 +22,74 @@ defmodule Phoenix.LiveView.AsyncResult do
          socket
          |> assign(:foo, "bar")
          |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)} end)
-         |> assign_async(:profile, [:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
+         |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
-  Here we are assigning `:org` and `[:profile, :rank]` asynchronously. If no keys are
-  given (as in the case of `:org`), the keys will default to `[:org]`. The async function
-  must return a `{:ok, assigns}` or `{:error, reason}` tuple where `assigns` is a map of
+  Here we are assigning `:org` and `[:profile, :rank]` asynchronously. The async function
+  must return a `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map of
   the keys passed to `assign_async`. If the function returns other keys or a different
   set of keys, an error is raised.
 
-  The state of the async operation is stored in the socket assigns under the `@async` assign
-  on the socket with the name given to `assign_async/3`. It carries the `:loading?`,
-  `:error`, and `:result` keys. For example, if we wanted to show the loading states
-  in the UI for the `:org`, our template could conditionally render the states:
+  The state of the async operation is stored in the socket assigns within an
+  `%AsyncResult{}`. It carries the loading and error states, as well as the result.
+  For example, if we wanted to show the loading states in the UI for the `:org`,
+  our template could conditionally render the states:
 
   ```heex
-  <div :if={@async.org.loading?}>Loading organization...</div>
-  <div :if={@async.org.error}>there was an error loading the organization</div>
-  <div :if={@async.org.result == nil}}>You don't have an org yet</div>
-  <div :if={org = @async.org.result}}><%= org.name%> loaded!</div>
+  <div :if={@org.state == :loading}>Loading organization...</div>
+  <div :if={org = @org.ok? && @org.result}}><%= org.name %> loaded!</div>
   ```
 
-  The `async_result` function component can also be used to declaratively
+  The `with_state` function component can also be used to declaratively
   render the different states using slots:
 
   ```heex
-  <.async_result :let={org} assign={@async.org}>
+  <AsyncResult.with_state :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
     <:empty>You don't have an organization yet</:error>
-    <:failed>there was an error loading the organization</:failed>
+    <:error :let={{_kind, _reason}}>there was an error loading the organization</:error>
+    <:canceled :let={_reason}>loading canceled</:canceled>
     <%= org.name %>
-  <.async_result>
+  <AsyncResult.with_state>
   ```
 
   Additionally, for async assigns which result in a list of items, you
-  can consume the `@async.<name>` directly, and it will only enumerate
+  can consume the assign directly. It will only enumerate
   the results once the results are loaded. For example:
 
   ```heex
-  <div :for={orgs <- @async.orgs}><%= org.name %></div>
+  <div :for={orgs <- @orgs}><%= org.name %></div>
   ```
+
+  ## Arbitrary async operations
+
+  Sometimes you need lower level control of asynchronous operations, while
+  still receiving process isolation and error handling. For this, you can use
+  `start_async/3` and the `AsyncResult` module directly:
+
+      def mount(%{"id" => id}, _, socket) do
+        {:ok,
+        socket
+        |> assign(:org, AsyncResult.new(:org))
+        |> start_async(:my_task, fn -> fetch_org!(id) end)
+      end
+
+      def handle_async(:org, {:ok, fetched_org}, socket) do
+        %{org: org} = socket.assigns
+        {:noreply, assign(socket, :org, AsyncResult.ok(org, fetched_org))}
+      end
+
+      def handle_async(:org, {:exit, reason}, socket) do
+        %{org: org} = socket.assigns
+        {:noreply, assign(socket, :org, AsyncResult.exit(org, reason))}
+      end
+
+  `start_async/3` is used to fetch the organization asynchronously. The
+  `handle_async/3` callback is called when the task completes or exists,
+  with the results wrapped in either `{:ok, result}` or `{:exit, reason}`.
+  The `AsyncResult` module is used to direclty to update the state of the
+  async operation, but you can also assign any value directly to the socket
+  if you want to handle the state yourself.
   '''
   use Phoenix.Component
 
@@ -76,6 +104,10 @@ defmodule Phoenix.LiveView.AsyncResult do
   @doc """
   TODO
   """
+  def new(name) do
+    new(name, [name])
+  end
+
   def new(name, keys) do
     loading(%AsyncResult{name: name, keys: keys, result: nil, ok?: false})
   end
@@ -90,8 +122,8 @@ defmodule Phoenix.LiveView.AsyncResult do
   @doc """
   TODO
   """
-  def canceled(%AsyncResult{} = result) do
-    %AsyncResult{result | state: :canceled}
+  def canceled(%AsyncResult{} = result, reason) do
+    error(result, {:canceled, reason})
   end
 
   @doc """
@@ -124,27 +156,30 @@ defmodule Phoenix.LiveView.AsyncResult do
   <AsyncResult.with_state :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
     <:empty>You don't have an organization yet</:error>
-    <:error :let={_reason}>there was an error loading the organization</:error>
-    <:canceled :let={_reason}>loading cancled</:canceled>
+    <:error :let={{_kind, _reason}}>there was an error loading the organization</:error>
+    <:canceled :let={_reason}>loading canceled</:canceled>
     <%= org.name %>
   <AsyncResult.with_state>
   ```
   """
   attr :assign, :any, required: true
   slot :loading
+
+  # TODO decide if we want an canceled slot
   slot :canceled
 
+  # TODO decide if we want an empty slot
   slot :empty,
     doc:
       "rendered when the result is loaded and is either nil or an empty list. Receives the result as a :let."
 
-  slot :error,
+  slot :failed,
     doc:
-      "rendered when an error is caught or the function return `{:error, reason}`. Receives the error as a :let."
+      "rendered when an error or exit is caught or assign_async returns `{:error, reason}`. Receives the error as a :let."
 
   def with_state(assigns) do
     case assigns.assign do
-      %AsyncResult{state: :ok, result: result} ->
+      %AsyncResult{state: state, ok?: once_ok?, result: result} when state == :ok or once_ok? ->
         if assigns.empty != [] && result in [nil, []] do
           ~H|<%= render_slot(@empty, @assign.result) %>|
         else
@@ -154,11 +189,16 @@ defmodule Phoenix.LiveView.AsyncResult do
       %AsyncResult{state: :loading} ->
         ~H|<%= render_slot(@loading) %>|
 
-      %AsyncResult{state: :canceled} ->
-        ~H|<%= render_slot(@canceled) %>|
+      %AsyncResult{state: {:error, {:canceled, reason}}} ->
+        if assigns.canceled != [] do
+          assigns = Phoenix.Component.assign(assigns, reason: reason)
+          ~H|<%= render_slot(@canceled, @reason) %>|
+        else
+          ~H|<%= render_slot(@failed, @assign.state) %>|
+        end
 
       %AsyncResult{state: {kind, _reason}} when kind in [:error, :exit] ->
-        ~H|<%= render_slot(@error, @assign.state) %>|
+        ~H|<%= render_slot(@failed, @assign.state) %>|
     end
   end
 
@@ -201,7 +241,13 @@ defmodule Phoenix.LiveView.AsyncResult do
 
     keys
     |> Enum.reduce(socket, fn key, acc ->
-      Phoenix.Component.assign(acc, key, AsyncResult.new(key, keys))
+      async_result =
+        case acc.assigns do
+          %{^key => %AsyncResult{ok?: true} = existing} -> existing
+          %{} -> AsyncResult.new(key, keys)
+        end
+
+      Phoenix.Component.assign(acc, key, async_result)
     end)
     |> run_async_task(keys, wrapped_func, fn new_socket, _component_mod, result ->
       assign_result(new_socket, keys, result)
@@ -242,15 +288,30 @@ defmodule Phoenix.LiveView.AsyncResult do
   end
 
   @doc """
-  Starts an ansynchronous task.
+  Starts an ansynchronous task and invokes callback to handle the result.
 
-  The task is linked to the caller and errors are wrapped.
+  The task is linked to the caller and errors/exits are wrapped.
   The result of the task is sent to the `handle_async/3` callback
   of the caller LiveView or LiveComponent.
 
   ## Examples
 
+      def mount(%{"id" => id}, _, socket) do
+        {:ok,
+        socket
+        |> assign(:org, AsyncResult.new(:org))
+        |> start_async(:my_task, fn -> fetch_org!(id) end)
+      end
 
+      def handle_async(:org, {:ok, fetched_org}, socket) do
+        %{org: org} = socket.assigns
+        {:noreply, assign(socket, :org, AsyncResult.ok(org, fetched_org))}
+      end
+
+      def handle_async(:org, {:exit, reason}, socket) do
+        %{org: org} = socket.assigns
+        {:noreply, assign(socket, :org, AsyncResult.exit(org, reason))}
+      end
   """
   def start_async(%Socket{} = socket, name, func)
       when is_atom(name) and is_function(func, 0) do
@@ -341,19 +402,21 @@ defmodule Phoenix.LiveView.AsyncResult do
         {:noreply, cancel_async(socket, :preview)}
       end
   """
-  def cancel_async(%Socket{} = socket, %AsyncResult{} = result) do
+  def cancel_async(socket, async_or_keys, reason \\ nil)
+
+  def cancel_async(%Socket{} = socket, %AsyncResult{} = result, reason) do
     result.keys
     |> Enum.reduce(socket, fn key, acc ->
-      Phoenix.Component.assign(acc, key, AsyncResult.canceled(result))
+      Phoenix.Component.assign(acc, key, AsyncResult.canceled(result, reason))
     end)
     |> cancel_async(result.keys)
   end
 
-  def cancel_async(%Socket{} = socket, key) when is_atom(key) do
+  def cancel_async(%Socket{} = socket, key, _reason) when is_atom(key) do
     cancel_async(socket, [key])
   end
 
-  def cancel_async(%Socket{} = socket, keys) when is_list(keys) do
+  def cancel_async(%Socket{} = socket, keys, _reason) when is_list(keys) do
     case get_private_async(socket, keys) do
       {_ref, pid} when is_pid(pid) ->
         Process.unlink(pid)

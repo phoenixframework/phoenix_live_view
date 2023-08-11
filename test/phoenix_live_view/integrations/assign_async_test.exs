@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert_receive {:DOWN, ^async_ref, :process, _pid, :killed}
 
-      assert render(lv) =~ "data canceled"
+      assert render(lv) =~ "error: {:canceled, nil}"
 
       send(lv.pid, :renew_canceled)
 
