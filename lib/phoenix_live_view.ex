@@ -667,6 +667,40 @@ defmodule Phoenix.LiveView do
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
   @doc """
+  Puts a new private key and value in the socket.
+
+  Privates are *not change tracked*. This storage is meant to be used by
+  users and libraries to hold state that doesn't require
+  change tracking. The keys should be prefixed with the app/library name.
+
+  ## Examples
+
+  Key values can be placed in private:
+
+      put_private(socket, :myapp_meta, %{foo: "bar"})
+
+  And then retreived:
+
+      socket.private[:myapp_meta]
+  """
+  @reserved_privates ~w(
+    connect_params
+    connect_info
+    assign_new
+    live_layout
+    lifecycle
+    root_view
+    __temp__
+  )a
+  def put_private(%Socket{} = socket, key, value) when key not in @reserved_privates do
+    %Socket{socket | private: Map.put(socket.private, key, value)}
+  end
+
+  def put_private(%Socket{}, bad_key, _value) do
+    raise ArgumentError, "cannot set reserved private key #{inspect(bad_key)}"
+  end
+
+  @doc """
   Adds a flash message to the socket to be displayed.
 
   *Note*: While you can use `put_flash/3` inside a `Phoenix.LiveComponent`,
@@ -690,6 +724,7 @@ defmodule Phoenix.LiveView do
       iex> put_flash(socket, :info, "It worked!")
       iex> put_flash(socket, :error, "You can't access that page")
   """
+
   defdelegate put_flash(socket, kind, msg), to: Phoenix.LiveView.Utils
 
   @doc """

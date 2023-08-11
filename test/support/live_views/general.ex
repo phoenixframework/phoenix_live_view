@@ -339,9 +339,9 @@ end
 
 defmodule Phoenix.LiveViewTest.AsyncLive do
   use Phoenix.LiveView
-  import Phoenix.LiveView.AsyncAssign
+  import Phoenix.LiveView.AsyncResult
 
-  on_mount {__MODULE__, :defaults}
+  on_mount({__MODULE__, :defaults})
 
   def on_mount(:defaults, _params, _session, socket) do
     {:cont, assign(socket, enum: false, lc: false)}
@@ -350,14 +350,15 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
   def render(assigns) do
     ~H"""
     <.live_component :if={@lc} module={Phoenix.LiveViewTest.AsyncLive.LC} test={@lc} id="lc" />
-    <div :if={@async.data.loading?}>data loading...</div>
-    <div :if={@async.data.canceled?}>data canceled</div>
-    <div :if={!@async.data.loading? && @async.data.result == nil}>no data found</div>
-    <div :if={!@async.data.loading? && @async.data.result}>data: <%= inspect(@async.data.result) %></div>
-    <div :if={err = @async.data.error}>error: <%= inspect(err) %></div>
-
+    <div :if={@data.state == :loading}>data loading...</div>
+    <div :if={@data.state == :canceled}>data canceled</div>
+    <div :if={@data.state == :ok && @data.result == nil}>no data found</div>
+    <div :if={@data.state == :ok && @data.result}>data: <%= inspect(@data.result) %></div>
+    <%= with {kind, reason} when kind in [:error, :exit, :throw] <- @data.state do %>
+      <div><%= kind %>: <%= inspect(reason) %></div>
+    <% end %>
     <%= if @enum do %>
-      <div :for={i <- @async.data}><%= i %></div>
+      <div :for={i <- @data}><%= i %></div>
     <% end %>
     """
   end
@@ -412,7 +413,9 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
 
   def handle_info(:boom, _socket), do: exit(:boom)
 
-  def handle_info(:cancel, socket), do: {:noreply, cancel_async(socket, :data)}
+  def handle_info(:cancel, socket) do
+    {:noreply, cancel_async(socket, socket.assigns.data)}
+  end
 
   def handle_info(:renew_canceled, socket) do
     {:noreply,
@@ -425,22 +428,22 @@ end
 
 defmodule Phoenix.LiveViewTest.AsyncLive.LC do
   use Phoenix.LiveComponent
-  import Phoenix.LiveView.AsyncAssign
+  import Phoenix.LiveView.AsyncResult
 
   def render(assigns) do
     ~H"""
     <div>
       <%= if @enum do %>
-        <div :for={i <- @async.lc_data}><%= i %></div>
+        <div :for={i <- @lc_data}><%= i %></div>
       <% end %>
-      <.async_result :let={data} assign={@async.lc_data}>
+      <AsyncResult.with_state :let={data} assign={@lc_data}>
         <:loading>lc_data loading...</:loading>
         <:canceled>lc_data canceled</:canceled>
         <:empty :let={_res}>no lc_data found</:empty>
-        <:error :let={err}>error: <%= inspect(err) %></:error>
+        <:error :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:error>
 
         lc_data: <%= inspect(data) %>
-      </.async_result>
+      </AsyncResult.with_state>
     </div>
     """
   end
@@ -494,7 +497,9 @@ defmodule Phoenix.LiveViewTest.AsyncLive.LC do
 
   def update(%{action: :boom}, _socket), do: exit(:boom)
 
-  def update(%{action: :cancel}, socket), do: {:ok, cancel_async(socket, :lc_data)}
+  def update(%{action: :cancel}, socket) do
+    {:ok, cancel_async(socket, socket.assigns.lc_data)}
+  end
 
   def update(%{action: :renew_canceled}, socket) do
     {:ok,
