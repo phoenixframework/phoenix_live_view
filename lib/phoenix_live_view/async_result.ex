@@ -102,7 +102,9 @@ defmodule Phoenix.LiveView.AsyncResult do
   alias Phoenix.LiveView.{AsyncResult, Socket}
 
   @doc """
-  TODO
+  Defines a new async result.
+
+  By default, the state will be `:loading`.
   """
   def new(name) do
     new(name, [name])
@@ -113,35 +115,38 @@ defmodule Phoenix.LiveView.AsyncResult do
   end
 
   @doc """
-  TODO
+  Updates the state of the result to `:loading`
   """
   def loading(%AsyncResult{} = result) do
     %AsyncResult{result | state: :loading}
   end
 
   @doc """
-  TODO
+  Updates the state of the result to `{:error, {:canceled, reason}}`.
   """
   def canceled(%AsyncResult{} = result, reason) do
     error(result, {:canceled, reason})
   end
 
   @doc """
-  TODO
+  Updates the state of the result to `{:error, reason}`.
   """
   def error(%AsyncResult{} = result, reason) do
     %AsyncResult{result | state: {:error, reason}}
   end
 
   @doc """
-  TODO
+  Updates the state of the result to `{:exit, reason}`.
   """
   def exit(%AsyncResult{} = result, reason) do
     %AsyncResult{result | state: {:exit, reason}}
   end
 
   @doc """
-  TODO
+  Updates the state of the result to `:ok` and sets the result.
+
+  The `:ok?` field will also be set to `true` to indicate this result has
+  completed successfully at least once, regardless of future state changes.
   """
   def ok(%AsyncResult{} = result, value) do
     %AsyncResult{result | state: :ok, ok?: true, result: value}
