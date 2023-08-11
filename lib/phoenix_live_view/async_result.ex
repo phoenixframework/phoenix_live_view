@@ -1,16 +1,16 @@
 defmodule Phoenix.LiveView.AsyncResult do
   @moduledoc ~S'''
-  Adds async_assign functionality to LiveViews and LiveComponents.
+  Adds async functionality to LiveViews and LiveComponents.
 
   Performing asynchronous work is common in LiveViews and LiveComponents.
   It allows the user to get a working UI quicky while the system fetches some
   data in the background or talks to an external service. For async work,
   you also typically need to handle the different states of the async operation,
   such as loading, error, and the successful result. You also want to catch any
-  error and translate it to a meaningful update in the UI rather than crashing
-  the user experience.
+  errors or exits and translate it to a meaningful update in the UI rather than
+  crashing the user experience.
 
-  ## Examples
+  ## Async assigns
 
   The `assign_async/3` function takes a name, a list of keys which will be assigned
   asynchronously, and a function that returns the result of the async operation.
