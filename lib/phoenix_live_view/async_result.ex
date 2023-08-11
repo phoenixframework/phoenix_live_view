@@ -398,14 +398,16 @@ defmodule Phoenix.LiveView.AsyncResult do
   end
 
   @doc """
-  Cancels an async assign.
+  Cancels an async operation.
+
+  Accepts either the `%AsyncResult{}` when using `assign_async/3` or
+  the keys passed to `start_async/3`.
 
   ## Examples
 
-      TODO fix docs
-      def handle_event("cancel_preview", _, socket) do
-        {:noreply, cancel_async(socket, :preview)}
-      end
+      cancel_async(socket, :preview)
+      cancel_async(socket, [:profile, :rank])
+      cancel_async(socket, socket.assigns.preview)
   """
   def cancel_async(socket, async_or_keys, reason \\ nil)
 
