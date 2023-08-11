@@ -354,7 +354,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
     <div :if={@data.state == :canceled}>data canceled</div>
     <div :if={@data.state == :ok && @data.result == nil}>no data found</div>
     <div :if={@data.state == :ok && @data.result}>data: <%= inspect(@data.result) %></div>
-    <%= with {kind, reason} when kind in [:error, :exit, :throw] <- @data.state do %>
+    <%= with {kind, reason} when kind in [:error, :exit] <- @data.state do %>
       <div><%= kind %>: <%= inspect(reason) %></div>
     <% end %>
     <%= if @enum do %>
@@ -428,6 +428,7 @@ end
 
 defmodule Phoenix.LiveViewTest.AsyncLive.LC do
   use Phoenix.LiveComponent
+  alias Phoenix.LiveView.AsyncResult
   import Phoenix.LiveView.AsyncResult
 
   def render(assigns) do

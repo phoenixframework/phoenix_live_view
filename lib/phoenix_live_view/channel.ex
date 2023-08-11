@@ -297,7 +297,7 @@ defmodule Phoenix.LiveView.Channel do
     component_pids =
       state
       |> component_privates()
-      |> get_async_pids()
+      |> Enum.flat_map(fn {_cid, private} -> get_async_pids(private) end)
 
     {:reply, {:ok, lv_pids ++ component_pids}, state}
   end
@@ -1432,7 +1432,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp get_async_pids(private) do
     case private do
-      %{phoenix_async: ref_pids} -> Map.values(ref_pids)
+      %{phoenix_async: ref_pids} -> Enum.flat_map(ref_pids, fn {_key, {_ref, pid}} -> [pid] end)
       %{} -> []
     end
   end

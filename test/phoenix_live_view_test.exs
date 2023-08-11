@@ -292,7 +292,7 @@ defmodule Phoenix.LiveViewUnitTest do
   describe "put_private" do
     test "assigns private keys" do
       assert @socket.private[:hello] == nil
-      assert put_private(@socket, :hello, "world").private[:hello] == "word"
+      assert put_private(@socket, :hello, "world").private[:hello] == "world"
     end
 
     test "disallows reserved keys" do

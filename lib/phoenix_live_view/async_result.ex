@@ -50,7 +50,7 @@ defmodule Phoenix.LiveView.AsyncResult do
   <.async_result :let={org} assign={@async.org}>
     <:loading>Loading organization...</:loading>
     <:empty>You don't have an organization yet</:error>
-    <:error>there was an error loading the organization</:error>
+    <:failed>there was an error loading the organization</:failed>
     <%= org.name %>
   <.async_result>
   ```
@@ -111,13 +111,6 @@ defmodule Phoenix.LiveView.AsyncResult do
   @doc """
   TODO
   """
-  def throw(%AsyncResult{} = result, value) do
-    %AsyncResult{result | state: {:throw, value}}
-  end
-
-  @doc """
-  TODO
-  """
   def ok(%AsyncResult{} = result, value) do
     %AsyncResult{result | state: :ok, ok?: true, result: value}
   end
@@ -164,7 +157,7 @@ defmodule Phoenix.LiveView.AsyncResult do
       %AsyncResult{state: :canceled} ->
         ~H|<%= render_slot(@canceled) %>|
 
-      %AsyncResult{state: {kind, _value}} when kind in [:error, :exit, :throw] ->
+      %AsyncResult{state: {kind, _reason}} when kind in [:error, :exit] ->
         ~H|<%= render_slot(@error, @assign.state) %>|
     end
   end
@@ -182,61 +175,68 @@ defmodule Phoenix.LiveView.AsyncResult do
              is_function(func, 0) do
     keys = List.wrap(key_or_keys)
 
+    # verifies result inside task
+    wrapped_func = fn ->
+      case func.() do
+        {:ok, %{} = assigns} ->
+          if Map.keys(assigns) -- keys == [] do
+            {:ok, assigns}
+          else
+            raise ArgumentError, """
+            expected assign_async to return map of assigns for all keys
+            in #{inspect(keys)}, but got: #{inspect(assigns)}
+            """
+          end
+
+        {:error, reason} ->
+          {:error, reason}
+
+        other ->
+          raise ArgumentError, """
+          expected assign_async to return {:ok, map} of
+          assigns for #{inspect(keys)} or {:error, reason}, got: #{inspect(other)}
+          """
+      end
+    end
+
     keys
     |> Enum.reduce(socket, fn key, acc ->
       Phoenix.Component.assign(acc, key, AsyncResult.new(key, keys))
     end)
-    |> run_async_task(keys, func, fn new_socket, _component_mod, result ->
+    |> run_async_task(keys, wrapped_func, fn new_socket, _component_mod, result ->
       assign_result(new_socket, keys, result)
     end)
   end
 
   defp assign_result(socket, keys, result) do
     case result do
-      {:ok, %{} = values} ->
-        if Map.keys(values) -- keys == [] do
-          Enum.reduce(values, socket, fn {key, val}, acc ->
-            current_async = get_current_async!(acc, key)
-            Phoenix.Component.assign(acc, key, AsyncResult.ok(current_async, val))
-          end)
-        else
-          raise ArgumentError, """
-          expected assign_async to return map of assigns for all keys
-          in #{inspect(keys)}, but got: #{inspect(values)}
-          """
-        end
+      {:ok, {:ok, %{} = assigns}} ->
+        Enum.reduce(assigns, socket, fn {key, val}, acc ->
+          current_async = get_current_async!(acc, key)
+          Phoenix.Component.assign(acc, key, AsyncResult.ok(current_async, val))
+        end)
 
-      {:error, reason} ->
+      {:ok, {:error, reason}} ->
         Enum.reduce(keys, socket, fn key, acc ->
           current_async = get_current_async!(acc, key)
           Phoenix.Component.assign(acc, key, AsyncResult.error(current_async, reason))
         end)
 
-      {:exit, reason} ->
+      {:catch, kind, reason, stack} ->
+        normalized_exit = to_exit(kind, reason, stack)
+
         Enum.reduce(keys, socket, fn key, acc ->
           current_async = get_current_async!(acc, key)
-          Phoenix.Component.assign(acc, key, AsyncResult.exit(current_async, reason))
+          Phoenix.Component.assign(acc, key, AsyncResult.exit(current_async, normalized_exit))
         end)
-
-      {:throw, value} ->
-        Enum.reduce(keys, socket, fn key, acc ->
-          current_async = get_current_async!(acc, key)
-          Phoenix.Component.assign(acc, key, AsyncResult.throw(current_async, value))
-        end)
-
-      other ->
-        raise ArgumentError, """
-        expected assign_async to return {:ok, map} of
-        assigns for #{inspect(keys)} or {:error, reason}, got: #{inspect(other)}
-        """
     end
   end
 
   defp get_current_async!(socket, key) do
     # handle case where assign is temporary and needs to be rebuilt
     case socket.assigns do
-      %{^key => %AsynResult{} = current_async} -> current_async
-      %{^key => _other} -> AsyncResult.new(key, keys)
+      %{^key => %AsyncResult{} = current_async} -> current_async
+      %{^key => _other} -> AsyncResult.new(key, key)
       %{} -> raise ArgumentError, "missing async assign #{inspect(key)}"
     end
   end
@@ -257,20 +257,13 @@ defmodule Phoenix.LiveView.AsyncResult do
     run_async_task(socket, [name], func, fn new_socket, component_mod, result ->
       callback_mod = component_mod || new_socket.view
 
-      case result do
-        {tag, value} when tag in [:ok, :error, :exit, :throw] ->
-          :ok
+      normalized_result =
+        case result do
+          {:ok, result} -> {:ok, result}
+          {:catch, kind, reason, stack} -> {:exit, to_exit(kind, reason, stack)}
+        end
 
-        other ->
-          raise ArgumentError, """
-          expected start_async for #{inspect(name)} in #{inspect(callback_mod)}
-          to return {:ok, result} | {:error, reason}, got:
-
-              #{inspect(other)}
-          """
-      end
-
-      case callback_mod.handle_async(name, result, new_socket) do
+      case callback_mod.handle_async(name, normalized_result, new_socket) do
         {:noreply, %Socket{} = new_socket} ->
           new_socket
 
@@ -292,7 +285,7 @@ defmodule Phoenix.LiveView.AsyncResult do
       cid = cid(socket)
       ref = make_ref()
       {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, ref, keys, func, result_func) end)
-      update_private_async(socket, keys, {ref, pid})
+      update_private_async(socket, &Map.put(&1, keys, {ref, pid}))
     else
       socket
     end
@@ -303,26 +296,31 @@ defmodule Phoenix.LiveView.AsyncResult do
       result = func.()
 
       Phoenix.LiveView.Channel.write_socket(lv_pid, cid, fn socket, component_mod ->
-        handle_current_async(socket, keys, ref, component_mod, result, result_func)
+        handle_current_async(socket, keys, ref, component_mod, {:ok, result}, result_func)
       end)
     catch
       kind, reason ->
         Process.unlink(lv_pid)
+        caught_result = {:catch, kind, reason, __STACKTRACE__}
 
         Phoenix.LiveView.Channel.write_socket(lv_pid, cid, fn socket, component_mod ->
-          handle_current_async(socket, keys, ref, component_mod, {kind, reason}, result_func)
+          handle_current_async(socket, keys, ref, component_mod, caught_result, result_func)
         end)
 
         :erlang.raise(kind, reason, __STACKTRACE__)
     end
   end
 
+  defp to_exit(:throw, reason, stack), do: {{:nocatch, reason}, stack}
+  defp to_exit(:error, reason, stack), do: {reason, stack}
+  defp to_exit(:exit, reason, _stack), do: reason
+
   # handle race of async being canceled and then reassigned
   defp handle_current_async(socket, keys, ref, component_mod, result, result_func)
        when is_function(result_func, 3) do
-    get_private_async(socket, keys) do
-      {^ref, pid} ->
-        new_socket = delete_private_async(socket, keys)
+    case get_private_async(socket, keys) do
+      {^ref, _pid} ->
+        new_socket = update_private_async(socket, &Map.delete(&1, keys))
         result_func.(new_socket, component_mod, result)
 
       {_ref, _pid} ->
@@ -357,46 +355,30 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   def cancel_async(%Socket{} = socket, keys) when is_list(keys) do
     case get_private_async(socket, keys) do
-      {ref, pid} when is_pid(pid) ->
+      {_ref, pid} when is_pid(pid) ->
         Process.unlink(pid)
         Process.exit(pid, :kill)
-        delete_private_async(socket, keys)
+        update_private_async(socket, &Map.delete(&1, keys))
 
       nil ->
         raise ArgumentError, "uknown async assign #{inspect(keys)}"
     end
   end
 
-  defp update_private_async(socket, keys, {ref, pid}) do
-    socket
-    |> ensure_private_async()
-    |> Phoenix.Component.update(:async, fn async_map ->
-      Map.put(async_map, keys, {ref, pid})
-    end)
-  end
-
-  defp delete_private_async(socket, keys) do
-    socket
-    |> ensure_private_async()
-    |> Phoenix.Component.update(:async, fn async_map -> Map.delete(async_map, keys) end)
-  end
-
-  defp ensure_private_async(socket) do
-    case socket.private do
-      %{phoenix_async: _} -> socket
-      %{} -> Phoenix.LiveView.put_private(socket, :phoenix_async, %{})
-    end
+  defp update_private_async(socket, func) do
+    existing = socket.private[:phoenix_async] || %{}
+    Phoenix.LiveView.put_private(socket, :phoenix_async, func.(existing))
   end
 
   defp get_private_async(%Socket{} = socket, keys) do
     socket.private[:phoenix_async][keys]
   end
 
-  defp cancel_existing(socket, keys) when is_list(keys) do
-    if get_private_async(acc, keys) do
-      cancel_async(acc, keys)
+  defp cancel_existing(%Socket{} = socket, keys) when is_list(keys) do
+    if get_private_async(socket, keys) do
+      cancel_async(socket, keys)
     else
-      acc
+      socket
     end
   end
 

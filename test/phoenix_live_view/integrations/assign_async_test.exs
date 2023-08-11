@@ -16,7 +16,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/async?test=bad_return")
 
       assert render_async(lv) =~
-               "error: {:error, %ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:data] or {:error, reason}, got: 123\\n&quot;}}"
+               "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:data] or {:error, reason}, got: 123\\n&quot;}"
 
       assert render(lv)
     end
@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/async?test=bad_ok")
 
       assert render_async(lv) =~
-               "expected assign_async to return map of\\nassigns for all keys in [:data]"
+               "expected assign_async to return map of assigns for all keys\\nin [:data]"
 
       assert render(lv)
     end
@@ -38,14 +38,14 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     test "raise during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=raise")
 
-      assert render_async(lv) =~ "error: {:error, %RuntimeError{message: &quot;boom&quot;}}"
+      assert render_async(lv) =~ "exit: {%RuntimeError{message: &quot;boom&quot;}"
       assert render(lv)
     end
 
     test "exit during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=exit")
 
-      assert render_async(lv) =~ "error: {:exit, :boom}"
+      assert render_async(lv) =~ "exit: :boom"
       assert render(lv)
     end
 
@@ -90,7 +90,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/async?test=lc_bad_return")
 
       assert render_async(lv) =~
-               "error: {:error, %ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:lc_data] or {:error, reason}, got: 123\\n&quot;}}"
+               "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:lc_data] or {:error, reason}, got: 123\\n&quot;}"
 
       assert render(lv)
     end
@@ -99,7 +99,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/async?test=lc_bad_ok")
 
       assert render_async(lv) =~
-               "expected assign_async to return map of\\nassigns for all keys in [:lc_data]"
+               "expected assign_async to return map of assigns for all keys\\nin [:lc_data]"
 
       assert render(lv)
     end
@@ -112,14 +112,14 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     test "raise during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=lc_raise")
 
-      assert render_async(lv) =~ "error: {:error, %RuntimeError{message: &quot;boom&quot;}}"
+      assert render_async(lv) =~ "exit: {%RuntimeError{message: &quot;boom&quot;}"
       assert render(lv)
     end
 
     test "exit during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/async?test=lc_exit")
 
-      assert render_async(lv) =~ "error: {:exit, :boom}"
+      assert render_async(lv) =~ "exit: :boom"
       assert render(lv)
     end
 
