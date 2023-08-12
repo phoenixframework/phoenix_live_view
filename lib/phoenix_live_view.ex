@@ -679,7 +679,7 @@ defmodule Phoenix.LiveView do
 
       put_private(socket, :myapp_meta, %{foo: "bar"})
 
-  And then retreived:
+  And then retrieved:
 
       socket.private[:myapp_meta]
   """
