@@ -1035,7 +1035,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert Enum.find_value(abstract_code, fn
              {:function, line, :fun_doc_false, 1, _} -> line
              _ -> nil
-           end) == 105
+           end) == 114
   end
 
   test "does not override signature of Elixir functions" do
