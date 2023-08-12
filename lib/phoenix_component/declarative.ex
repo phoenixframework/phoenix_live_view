@@ -904,7 +904,6 @@ defmodule Phoenix.Component.Declarative do
 
   defp build_attr_doc_and_default(%{doc: doc, type: :global, opts: opts}, indent) do
     [
-      # always included
       "\n* Global attributes are accepted.",
       if(doc, do: [" ", build_doc(doc, indent, false)], else: []),
       case Keyword.get(opts, :include) do
