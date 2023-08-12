@@ -51,6 +51,15 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr, :global
   def fun_attr_global(assigns), do: ~H[]
 
+  attr :rest, :global, doc: "These are passed to the innner input field"
+  def fun_attr_global_doc(assigns), do: ~H[]
+
+  attr :rest, :global, doc: "These are passed to the innner input field", include: ~w(value)
+  def fun_attr_global_doc_include(assigns), do: ~H[]
+
+  attr :rest, :global, include: ~w(value)
+  def fun_attr_global_include(assigns), do: ~H[]
+
   attr :attr, Struct
   def fun_attr_struct(assigns), do: ~H[]
 

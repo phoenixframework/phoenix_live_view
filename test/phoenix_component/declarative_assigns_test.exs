@@ -867,6 +867,21 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       * Global attributes are accepted.
       """,
+      fun_attr_global_doc_include: """
+      ## Attributes
+
+      * Global attributes are accepted. These are passed to the innner input field. Supports all globals plus: `["value"]`.
+      """,
+      fun_attr_global_doc: """
+      ## Attributes
+
+      * Global attributes are accepted. These are passed to the innner input field.
+      """,
+      fun_attr_global_include: """
+      ## Attributes
+
+      * Global attributes are accepted. Supports all globals plus: `["value"]`.
+      """,
       fun_attr_struct: """
       ## Attributes
 
