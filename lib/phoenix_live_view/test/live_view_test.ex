@@ -922,7 +922,16 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  TODO
+  Awaits all current `assign_async` and `start_async` for a given LiveView or element.
+
+  It renders the LiveView or Element once complete and returns the result.
+  By default, the timeout is 100ms, but a custom time may be passed to override.
+
+  ## Examples
+
+      {:ok, lv, html} = live(conn, "/path")
+      assert html =~ "loading data..."
+      assert render_async(lv) =~ "data loaded!"
   """
   def render_async(view_or_element, timeout \\ 100) do
     pids =
@@ -942,7 +951,7 @@ defmodule Phoenix.LiveViewTest do
         end)
       end)
 
-    case Task.yield(task, timeout) || Task.ignore(task) do
+    case Task.yield(task, timeout) || Task.shutdown(task) do
       {:ok, _} -> :ok
       nil -> raise RuntimeError, "expected async processes to finish within #{timeout}ms"
     end
