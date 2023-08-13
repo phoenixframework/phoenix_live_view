@@ -817,20 +817,21 @@ defmodule Phoenix.Component.Declarative do
   defp build_attrs_docs(attrs) do
     [
       "## Attributes\n",
-      for attr <- attrs, attr.doc != false, into: [] do
-        if attr.type == :global do
-          build_attr_doc_and_default(attr, "  ")
-        else
-          [
-            "\n* ",
-            build_attr_name(attr),
-            build_attr_type(attr),
-            build_attr_required(attr),
-            build_hyphen(attr),
-            build_attr_doc_and_default(attr, "  "),
-            build_attr_values_or_examples(attr)
-          ]
-        end
+      for attr <- attrs, attr.doc != false && attr.type !== :global, into: [] do
+        [
+          "\n* ",
+          build_attr_name(attr),
+          build_attr_type(attr),
+          build_attr_required(attr),
+          build_hyphen(attr),
+          build_attr_doc_and_default(attr, "  "),
+          build_attr_values_or_examples(attr)
+        ]
+      end,
+      # global always goes at the end
+      case Enum.find(attrs, &(&1.type === :global)) do
+        nil -> []
+        attr -> build_attr_doc_and_default(attr, "  ")
       end
     ]
   end
