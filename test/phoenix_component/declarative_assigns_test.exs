@@ -867,6 +867,27 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       * Global attributes are accepted.
       """,
+      fun_attr_global_doc_include: """
+      ## Attributes
+
+      * Global attributes are accepted. These are passed to the inner input field. Supports all globals plus: `["value"]`.
+      """,
+      fun_attr_global_doc: """
+      ## Attributes
+
+      * Global attributes are accepted. These are passed to the inner input field.
+      """,
+      fun_attr_global_include: """
+      ## Attributes
+
+      * Global attributes are accepted. Supports all globals plus: `["value"]`.
+      """,
+      fun_attr_global_and_regular: """
+      ## Attributes
+
+      * `name` (`:string`) - The form input name.
+      * Global attributes are accepted. These are passed to the inner input field.
+      """,
       fun_attr_struct: """
       ## Attributes
 
@@ -1020,7 +1041,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert Enum.find_value(abstract_code, fn
              {:function, line, :fun_doc_false, 1, _} -> line
              _ -> nil
-           end) == 105
+           end) == 118
   end
 
   test "does not override signature of Elixir functions" do

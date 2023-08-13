@@ -817,7 +817,7 @@ defmodule Phoenix.Component.Declarative do
   defp build_attrs_docs(attrs) do
     [
       "## Attributes\n",
-      for attr <- attrs, attr.doc != false, attr.type != :global, into: [] do
+      for attr <- attrs, attr.doc != false and attr.type != :global do
         [
           "\n* ",
           build_attr_name(attr),
@@ -828,10 +828,10 @@ defmodule Phoenix.Component.Declarative do
           build_attr_values_or_examples(attr)
         ]
       end,
-      if Enum.any?(attrs, &(&1.type == :global)) do
-        "\n* Global attributes are accepted."
-      else
-        ""
+      # global always goes at the end
+      case Enum.find(attrs, &(&1.type === :global)) do
+        nil -> []
+        attr -> build_attr_doc_and_default(attr, "  ")
       end
     ]
   end
@@ -904,17 +904,17 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc, type: :global, opts: opts}, indent) do
-    case Keyword.fetch(opts, :include) do
-      {:ok, [_ | _] = inc} ->
-        if doc do
-          [build_doc(doc, indent, true), "Supports all globals plus: ", build_literal(inc), "."]
-        else
-          ["Supports all globals plus: ", build_literal(inc), "."]
-        end
+    [
+      "\n* Global attributes are accepted.",
+      if(doc, do: [" ", build_doc(doc, indent, false)], else: []),
+      case Keyword.get(opts, :include) do
+        inc when is_list(inc) and inc != [] ->
+          [" ", "Supports all globals plus:", " ", build_literal(inc), "."]
 
-      _ ->
-        if doc, do: [build_doc(doc, indent, false)], else: []
-    end
+        _ ->
+          []
+      end
+    ]
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: opts}, indent) do
