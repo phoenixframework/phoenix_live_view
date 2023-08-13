@@ -817,7 +817,7 @@ defmodule Phoenix.Component.Declarative do
   defp build_attrs_docs(attrs) do
     [
       "## Attributes\n",
-      for attr <- attrs, attr.doc != false && attr.type !== :global, into: [] do
+      for attr <- attrs, attr.doc != false && attr.type != :global, into: [] do
         [
           "\n* ",
           build_attr_name(attr),
