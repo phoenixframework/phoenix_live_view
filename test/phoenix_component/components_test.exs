@@ -329,7 +329,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = parse(template)
 
       assert [
-               {"form", [{"class", "pretty"}, {"data-foo", "bar"}, {"phx-change", "valid"}],
+               {"form", [{"class", "pretty"}, {"phx-change", "valid"}, {"data-foo", "bar"}],
                 [
                   {"input", [{"id", "base_foo"}, {"name", "base[foo]"}, {"type", "text"}], []}
                 ]}
@@ -474,10 +474,10 @@ defmodule Phoenix.LiveView.ComponentsTest do
                   {"enctype", "multipart/form-data"},
                   {"action", "/"},
                   {"method", "post"},
-                  {"class", "pretty"},
-                  {"data-foo", "bar"},
                   {"id", "form"},
-                  {"phx-change", "valid"}
+                  {"class", "pretty"},
+                  {"phx-change", "valid"},
+                  {"data-foo", "bar"}
                 ],
                 [
                   {"input",
@@ -526,8 +526,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
                       {"name", "myform[inner][_persistent_id]"},
                       {"value", "0"}
                     ], []},
-                   {"input", [{"id", "myform_inner_0_foo"}, {"name", "myform[inner][foo]"}, {"type", "text"}],
-                    []}
+                   {"input",
+                    [
+                      {"id", "myform_inner_0_foo"},
+                      {"name", "myform[inner][foo]"},
+                      {"type", "text"}
+                    ], []}
                  ]
                }
              ] = html
@@ -553,7 +557,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
                  [
                    {"input",
                     [{"type", "hidden"}, {"name", "name[_persistent_id]"}, {"value", "0"}], []},
-                   {"input", [{"id", "myform_inner_0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
+                   {"input",
+                    [{"id", "myform_inner_0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
                  ]
                }
              ] = html

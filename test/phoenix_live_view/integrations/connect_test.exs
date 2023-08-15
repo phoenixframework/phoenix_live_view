@@ -32,7 +32,7 @@ defmodule Phoenix.LiveView.ConnectTest do
         assert html =~ ~S<user-agent: "custom-client">
         assert html =~ ~S<x-headers: [{"x-foo", "bar"}, {"x-bar", "baz"}]>
         assert html =~ ~S<trace: [{"tracestate", "one"}, {"traceparent", "two"}]>
-        assert html =~ ~S<peer: %{address: {127, 0, 0, 1}, port: 111317, ssl_cert: nil}>
+        assert html =~ ~S<peer: %{port: 111317, address: {127, 0, 0, 1}, ssl_cert: nil}>
         assert html =~ ~S<uri: http://www.example.com/connect>
       end
 

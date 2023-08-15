@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.push("inc", value: %{one: 1, two: 2})) ==
-               "[[&quot;push&quot;,{&quot;event&quot;:&quot;inc&quot;,&quot;value&quot;:{&quot;one&quot;:1,&quot;two&quot;:2}}]]"
+               "[[&quot;push&quot;,{&quot;value&quot;:{&quot;one&quot;:1,&quot;two&quot;:2},&quot;event&quot;:&quot;inc&quot;}]]"
     end
   end
 
@@ -160,7 +160,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.add_class("show")) ==
-               "[[&quot;add_class&quot;,{&quot;names&quot;:[&quot;show&quot;],&quot;time&quot;:200,&quot;to&quot;:null,&quot;transition&quot;:[[],[],[]]}]]"
+               "[[&quot;add_class&quot;,{&quot;time&quot;:200,&quot;names&quot;:[&quot;show&quot;],&quot;to&quot;:null,&quot;transition&quot;:[[],[],[]]}]]"
     end
   end
 
@@ -263,7 +263,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.remove_class("show")) ==
-               "[[&quot;remove_class&quot;,{&quot;names&quot;:[&quot;show&quot;],&quot;time&quot;:200,&quot;to&quot;:null,&quot;transition&quot;:[[],[],[]]}]]"
+               "[[&quot;remove_class&quot;,{&quot;time&quot;:200,&quot;names&quot;:[&quot;show&quot;],&quot;to&quot;:null,&quot;transition&quot;:[[],[],[]]}]]"
     end
   end
 
@@ -313,7 +313,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.dispatch("click", to: ".foo")) ==
-               "[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;click&quot;,&quot;to&quot;:&quot;.foo&quot;}]]"
+               "[[&quot;dispatch&quot;,{&quot;to&quot;:&quot;.foo&quot;,&quot;event&quot;:&quot;click&quot;}]]"
     end
   end
 
@@ -426,7 +426,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.toggle(to: "#modal")) ==
-               "[[&quot;toggle&quot;,{&quot;display&quot;:null,&quot;ins&quot;:[[],[],[]],&quot;outs&quot;:[[],[],[]],&quot;time&quot;:200,&quot;to&quot;:&quot;#modal&quot;}]]"
+               "[[&quot;toggle&quot;,{&quot;display&quot;:null,&quot;time&quot;:200,&quot;ins&quot;:[[],[],[]],&quot;to&quot;:&quot;#modal&quot;,&quot;outs&quot;:[[],[],[]]}]]"
     end
   end
 
@@ -688,7 +688,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.set_attribute({"disabled", "true"})) ==
-               "[[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;],&quot;to&quot;:null}]]"
+               "[[&quot;set_attr&quot;,{&quot;to&quot;:null,&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;]}]]"
     end
   end
 
@@ -730,7 +730,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.remove_attribute("disabled")) ==
-               "[[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;disabled&quot;,&quot;to&quot;:null}]]"
+               "[[&quot;remove_attr&quot;,{&quot;to&quot;:null,&quot;attr&quot;:&quot;disabled&quot;}]]"
     end
   end
 

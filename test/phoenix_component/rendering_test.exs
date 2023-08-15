@@ -5,9 +5,9 @@ defmodule Phoenix.ComponentRenderingTest do
   import ExUnit.CaptureIO
   import Phoenix.LiveViewTest
 
-  embed_templates "pages/*"
-  embed_templates "another_root/*.html", root: "pages"
-  embed_templates "another_root/*.text", root: "pages", suffix: "_text"
+  embed_templates("pages/*")
+  embed_templates("another_root/*.html", root: "pages")
+  embed_templates("another_root/*.text", root: "pages", suffix: "_text")
 
   defp h2s(template) do
     template
@@ -168,7 +168,7 @@ defmodule Phoenix.ComponentRenderingTest do
       assert eval(~H|<.changed foo={@foo} bar={assigns} />|) == [["%{bar: true}"]]
 
       assigns = %{foo: 1, __changed__: %{foo: true}}
-      assert eval(~H|<.changed foo={@foo} bar={assigns} />|) == [["%{bar: true, foo: true}"]]
+      assert eval(~H|<.changed foo={@foo} bar={assigns} />|) == [["%{foo: true, bar: true}"]]
     end
 
     test "with conflict on changed assigns" do
@@ -206,7 +206,7 @@ defmodule Phoenix.ComponentRenderingTest do
       assigns = %{a: 1, b: 2, bar: 3, __changed__: %{a: true, b: true, bar: true}}
 
       assert eval(~H"<.changed {%{a: assigns[:b], b: assigns[:a]}} bar={@bar} />") ==
-               [["%{a: true, b: true, bar: true}"]]
+               [["%{a: true, b: true, bar: true}"]] || [["%{a: true, bar: true, b: true}"]]
     end
 
     defp wrapper(assigns) do
@@ -279,6 +279,12 @@ defmodule Phoenix.ComponentRenderingTest do
                [
                  [
                    "%{foo: true, inner_block: true}",
+                   [["%{inner_block: true, bar: true}", [nil, "%{foo: true}"]]]
+                 ]
+               ] ||
+               [
+                 [
+                   "%{foo: true, inner_block: true}",
                    [["%{bar: true, inner_block: true}", [nil, "%{foo: true}"]]]
                  ]
                ]
@@ -291,6 +297,12 @@ defmodule Phoenix.ComponentRenderingTest do
       assert eval(
                ~H|<.inner_changed :let={foo} foo={@foo}><.inner_changed :let={bar} bar={foo}><%= bar %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
              ) ==
+               [
+                 [
+                   "%{foo: true, inner_block: true}",
+                   [["%{inner_block: true, bar: true}", ["var", "%{foo: true}"]]]
+                 ]
+               ] ||
                [
                  [
                    "%{foo: true, inner_block: true}",

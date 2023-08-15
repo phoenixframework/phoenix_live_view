@@ -151,7 +151,7 @@ export default class Rendered {
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
   templateStatic(part, templates){
-    if(typeof (part) === "number") {
+    if(typeof (part) === "number"){
       return templates[part]
     } else {
       return part
@@ -221,7 +221,6 @@ export default class Rendered {
           if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}` }
           if(skip){
             child.setAttribute(PHX_SKIP, "")
-            child.innerHTML = ""
           }
           return [true, hasComponents]
         } else {
