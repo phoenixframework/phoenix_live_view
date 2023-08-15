@@ -172,6 +172,11 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: 123}, nil) == ["123"]
       assert changed(template, %{foo: 123}, %{}) == [nil]
       assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
+
+      template = "<%= Access.get(assigns, :foo) %>"
+      assert changed(template, %{foo: 123}, nil) == ["123"]
+      assert changed(template, %{foo: 123}, %{}) == [nil]
+      assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
     end
 
     test "renders dynamic if any of the assigns change" do
@@ -335,10 +340,10 @@ defmodule Phoenix.LiveView.EngineTest do
     test "does not render dynamic if it has variables as comprehension generators" do
       template = "<%= for x <- foo do %><%= x %><% end %>"
 
-      rendered = eval(template, %{__changed__: nil}, [foo: [1, 2, 3]])
+      rendered = eval(template, %{__changed__: nil}, foo: [1, 2, 3])
       assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
 
-      rendered = eval(template, %{__changed__: %{}}, [foo: [1, 2, 3]])
+      rendered = eval(template, %{__changed__: %{}}, foo: [1, 2, 3])
       assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
     end
 

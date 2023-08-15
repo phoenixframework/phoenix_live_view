@@ -621,6 +621,10 @@ defmodule Phoenix.LiveView.Engine do
     Enum.reduce(checks, &{:or, [], [&1, &2]})
   end
 
+  defguardp is_access(mod)
+            when mod == Access or
+                   (is_tuple(mod) and elem(mod, 0) == :__aliases__ and elem(mod, 2) == [:Access])
+
   # If we are accessing @foo.bar.baz but in the same place we also pass
   # @foo.bar or @foo, we don't need to check for @foo.bar.baz.
 
@@ -885,24 +889,25 @@ defmodule Phoenix.LiveView.Engine do
 
   # assigns[:name]
   defp analyze_assign(
-         {{:., _, [Access, :get]}, _, [{:assigns, _, nil}, name]} = expr,
+         {{:., _, [access, :get]}, _, [{:assigns, _, nil}, name]} = expr,
          vars,
          assigns,
          _caller,
          nest
        )
-       when is_atom(name) do
+       when is_atom(name) and is_access(access) do
     {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
   # Maybe: assigns.foo[:bar]
   defp analyze_assign(
-         {{:., dot_meta, [Access, :get]}, meta, [left, right]},
+         {{:., dot_meta, [access, :get]}, meta, [left, right]},
          vars,
          assigns,
          caller,
          nest
-       ) do
+       )
+       when is_access(access) do
     {args, vars, assigns} =
       if Macro.quoted_literal?(right) do
         {left, vars, assigns} =
@@ -930,7 +935,8 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Delegates to analyze assign
-  defp analyze({{:., _, [Access, :get]}, _, [_, _]} = expr, vars, assigns, caller) do
+  defp analyze({{:., _, [access, :get]}, _, [_, _]} = expr, vars, assigns, caller)
+       when is_access(access) do
     analyze_assign(expr, vars, assigns, caller, [])
   end
 
