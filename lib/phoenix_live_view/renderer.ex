@@ -2,10 +2,17 @@ defmodule Phoenix.LiveView.Renderer do
   @moduledoc false
 
   defmacro __before_compile__(env) do
+    preload? = Module.defines?(env.module, {:preload, 1})
     render? = Module.defines?(env.module, {:render, 1})
     root = Path.dirname(env.file)
     filename = template_filename(env)
     templates = Phoenix.Template.find_all(root, filename)
+
+    if preload? do
+      IO.warn(
+        "LiveComponent.preload/1 is deprecated (defind in #{inspect(env.module)}). Use LiveComponent.update_many/2 instead."
+      )
+    end
 
     case {render?, templates} do
       {true, [template | _]} ->

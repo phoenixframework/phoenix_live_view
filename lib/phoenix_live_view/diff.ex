@@ -627,44 +627,97 @@ defmodule Phoenix.LiveView.Diff do
 
     {{pending, diffs, components}, seen_ids} =
       Enum.reduce(pending, acc, fn {component, entries}, acc ->
-        entries = maybe_preload_components(component, Enum.reverse(entries))
+        # reverse order so next reduce returns in original order
+        # maybe_preload_components might not touch entries if update_many is
+        # defined, so reverse them before
+        entries = Enum.reverse(entries)
+        entries = maybe_preload_components(component, entries)
 
-        Enum.reduce(entries, acc, fn {cid, id, new?, new_assigns}, {triplet, seen_ids} ->
-          {pending, diffs, components} = triplet
+        {triplet, seen_ids} = acc
+        # {triplet, seen_ids, entries, sockets, list_of_assigns}
+        acc = {triplet, seen_ids, [], [], []}
 
-          if Map.has_key?(seen_ids, [component | id]) do
-            raise "found duplicate ID #{inspect(id)} " <>
-                    "for component #{inspect(component)} when rendering template"
+        # first collect sockets and list of assigns, because of update_many/2
+        {triplet, seen_ids, entries, sockets, list_of_assigns} =
+          Enum.reduce(entries, acc, fn {cid, id, _new?, new_assigns} = entry,
+                                       {triplet, seen_ids, entries, sockets, list_of_assigns} ->
+            {pending, diffs, components} = triplet
+
+            seen_ids = ensure_not_seen!(seen_ids, component, id)
+
+            {socket, components} = ensure_component(socket, component, cids, cid, id, components)
+
+            {
+              {pending, diffs, components},
+              seen_ids,
+              [entry | entries],
+              [socket | sockets],
+              [new_assigns | list_of_assigns]
+            }
+          end)
+
+        # reverse order so next reduce returns in original order
+        entries = Enum.reverse(entries)
+        sockets = Enum.reverse(sockets)
+        list_of_assigns = Enum.reverse(list_of_assigns)
+
+        # execute update/2 or update_many/2
+        sockets =
+          if function_exported?(component, :update_many, 2) do
+            Utils.update_many!(sockets, component, list_of_assigns)
+          else
+            sockets
+            |> Enum.zip(list_of_assigns)
+            |> Enum.map(fn {socket, assigns} ->
+              Utils.maybe_call_update!(socket, component, assigns)
+            end)
           end
 
-          {socket, components} =
-            case cids do
-              %{^cid => {_component, _id, assigns, private, prints}} ->
-                private = Map.delete(private, @marked_for_deletion)
-                {configure_socket_for_component(socket, assigns, private, prints), components}
+        # render components
+        triplet =
+          entries
+          |> Enum.zip(sockets)
+          |> Enum.reduce(triplet, fn {entry, socket}, triplet ->
+            {cid, id, new?, _new_assigns} = entry
+            {pending, diffs, components} = triplet
 
-              %{} ->
-                myself_assigns = %{myself: %Phoenix.LiveComponent.CID{cid: cid}}
+            diffs = maybe_put_events(diffs, socket)
 
-                {mount_component(socket, component, myself_assigns),
-                 put_cid(components, component, id, cid)}
-            end
-
-          socket = Utils.maybe_call_update!(socket, component, new_assigns)
-          diffs = maybe_put_events(diffs, socket)
-
-          triplet =
             render_component(socket, component, id, cid, new?, pending, cids, diffs, components)
+          end)
 
-          {triplet, Map.put(seen_ids, [component | id], true)}
-        end)
+        {triplet, seen_ids}
       end)
 
     render_pending_components(socket, pending, seen_ids, cids, diffs, components)
   end
 
+  defp ensure_component(socket, component, cids, cid, id, components) do
+    case cids do
+      %{^cid => {_component, _id, assigns, private, prints}} ->
+        private = Map.delete(private, @marked_for_deletion)
+        {configure_socket_for_component(socket, assigns, private, prints), components}
+
+      %{} ->
+        myself_assigns = %{myself: %Phoenix.LiveComponent.CID{cid: cid}}
+
+        {mount_component(socket, component, myself_assigns),
+         put_cid(components, component, id, cid)}
+    end
+  end
+
+  defp ensure_not_seen!(seen_ids, component, id) do
+    if Map.has_key?(seen_ids, [component | id]) do
+      raise "found duplicate ID #{inspect(id)} " <>
+              "for component #{inspect(component)} when rendering template"
+    end
+
+    Map.put(seen_ids, [component | id], true)
+  end
+
   defp maybe_preload_components(component, entries) do
-    if function_exported?(component, :preload, 1) do
+    if function_exported?(component, :preload, 1) and
+         not function_exported?(component, :update_many, 2) do
       list_of_assigns = Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
       result = component.preload(list_of_assigns)
       zip_preloads(result, entries, component, result)
@@ -674,7 +727,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp maybe_call_preload!(module, assigns) do
-    if function_exported?(module, :preload, 1) do
+    if function_exported?(module, :preload, 1) and not function_exported?(module, :update_many, 2) do
       [new_assigns] = module.preload([assigns])
       new_assigns
     else

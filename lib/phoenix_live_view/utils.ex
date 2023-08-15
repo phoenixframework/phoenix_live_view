@@ -479,32 +479,52 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Calls the optional `update/2` callback, otherwise update the socket directly.
+  Calls the optional `update/2` or `update_many/2` callback, otherwise update the socket(s) directly.
   """
   def maybe_call_update!(socket, component, assigns) do
-    if function_exported?(component, :update, 2) do
-      socket =
-        case component.update(assigns, socket) do
-          {:ok, %Socket{} = socket} ->
-            socket
+    cond do
+      function_exported?(component, :update_many, 2) ->
+        [socket] = update_many!([socket], component, [assigns])
+        socket
 
-          other ->
-            raise ArgumentError, """
-            invalid result returned from #{inspect(component)}.update/2.
+      function_exported?(component, :update, 2) ->
+        socket =
+          case component.update(assigns, socket) do
+            {:ok, %Socket{} = socket} ->
+              socket
 
-            Expected {:ok, socket}, got: #{inspect(other)}
-            """
+            other ->
+              raise ArgumentError, """
+              invalid result returned from #{inspect(component)}.update/2.
+
+              Expected {:ok, socket}, got: #{inspect(other)}
+              """
+          end
+
+        if socket.redirected do
+          raise "cannot redirect socket on update. Redirect before `update/2` is called" <>
+                  " or use `send/2` and redirect in the `handle_info/2` response"
         end
 
-      if socket.redirected do
-        raise "cannot redirect socket on update. Redirect before `update/2` is called" <>
-                " or use `send/2` and redirect in the `handle_info/2` response"
-      end
+        socket
 
-      socket
-    else
-      Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
+      true ->
+        Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
     end
+  end
+
+  def update_many!(sockets, component, list_of_assigns)
+      when is_list(list_of_assigns) and is_list(sockets) do
+    updated_sockets = component.update_many(list_of_assigns, sockets)
+    got_count = length(updated_sockets)
+
+    if got_count != length(sockets) do
+      raise ArgumentError,
+            "expected #{inspect(component)}.update_many/2 to return the same number of " <>
+              "sockets as the number of given sockets but got: #{inspect(got_count)}"
+    end
+
+    updated_sockets
   end
 
   @doc """
