@@ -507,6 +507,63 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
+  defmodule TreeComponentUpdateMany do
+    use Phoenix.LiveComponent
+
+    def update_many(list_of_assigns, sockets) do
+      send(self(), {:update_many, {list_of_assigns, sockets}})
+
+      Enum.zip_with(list_of_assigns, sockets, fn assigns, socket ->
+        socket |> assign(assigns) |> assign(:update_many_ran?, true)
+      end)
+    end
+
+    def render(assigns) do
+      ~H"""
+      <div>
+        <%= @id %> - <%= @update_many_ran? %>
+        <%= for {component, index} <- Enum.with_index(@children, 0) do %>
+          <%= index %>: <%= component %>
+        <% end %>
+      </div>
+      """
+    end
+  end
+
+  defmodule TreeComponentBoth do
+    use Phoenix.LiveComponent
+
+    # update_many should take precedence
+    def update_many(list_of_assigns, sockets) do
+      send(self(), {:update_many, {list_of_assigns, sockets}})
+
+      Enum.zip_with(list_of_assigns, sockets, fn assigns, socket ->
+        socket |> assign(assigns) |> assign(:update_many_ran?, true)
+      end)
+    end
+
+    def preload(list_of_assigns) do
+      send(self(), {:preload, list_of_assigns})
+      Enum.map(list_of_assigns, &Map.put(&1, :preloaded?, true))
+    end
+
+    def update(assigns, socket) do
+      send(self(), {:update, assigns})
+      {:ok, assign(socket, assigns)}
+    end
+
+    def render(assigns) do
+      ~H"""
+      <div>
+        <%= @id %> - <%= @update_many_ran? %>
+        <%= for {component, index} <- Enum.with_index(@children, 0) do %>
+          <%= index %>: <%= component %>
+        <% end %>
+      </div>
+      """
+    end
+  end
+
   defmodule NestedDynamicComponent do
     use Phoenix.LiveComponent
 
@@ -1119,6 +1176,160 @@ defmodule Phoenix.LiveView.DiffTest do
       for id <- ~w(R A X B C D Y Z) do
         assert_received {:update, %{id: ^id, preloaded?: true}}
       end
+    end
+
+    test "on update_many" do
+      alias Component, as: C
+      alias TreeComponentUpdateMany, as: TC
+
+      tree = %C{
+        component: TC,
+        id: "R",
+        assigns: %{
+          id: "R",
+          children: [
+            %C{
+              component: TC,
+              id: "A",
+              assigns: %{
+                id: "A",
+                children: [
+                  %C{component: TC, id: "B", assigns: %{id: "B", children: []}},
+                  %C{component: TC, id: "C", assigns: %{id: "C", children: []}},
+                  %C{component: TC, id: "D", assigns: %{id: "D", children: []}}
+                ]
+              }
+            },
+            %C{
+              component: TC,
+              id: "X",
+              assigns: %{
+                id: "X",
+                children: [
+                  %C{component: TC, id: "Y", assigns: %{id: "Y", children: []}},
+                  %C{component: TC, id: "Z", assigns: %{id: "Z", children: []}}
+                ]
+              }
+            }
+          ]
+        }
+      }
+
+      rendered = component_template(%{component: tree})
+      {socket, full_render, components} = render(rendered)
+
+      assert %{
+               c: %{
+                 1 => %{0 => "R"},
+                 2 => %{0 => "A"},
+                 3 => %{0 => "X"},
+                 4 => %{0 => "B"},
+                 5 => %{0 => "C"},
+                 6 => %{0 => "D"},
+                 7 => %{0 => "Y"},
+                 8 => %{0 => "Z"}
+               }
+             } = full_render
+
+      assert socket.fingerprints == {rendered.fingerprint, %{}}
+      assert {_, _, 9} = components
+
+      assert_received {:update_many, {[%{id: "R"}], [socket0]}}
+      assert %Socket{assigns: %{myself: %CID{cid: 1}}} = socket0
+
+      assert_received {:update_many, {[%{id: "A"}, %{id: "X"}], [socket0, socket1]}}
+      assert %Socket{assigns: %{myself: %CID{cid: 2}}} = socket0
+      assert %Socket{assigns: %{myself: %CID{cid: 3}}} = socket1
+
+      assert_received {:update_many,
+                       {[%{id: "B"}, %{id: "C"}, %{id: "D"}, %{id: "Y"}, %{id: "Z"}],
+                        [socket0, socket1, socket2, socket3, socket4]}}
+
+      assert %Socket{assigns: %{myself: %CID{cid: 4}}} = socket0
+      assert %Socket{assigns: %{myself: %CID{cid: 5}}} = socket1
+      assert %Socket{assigns: %{myself: %CID{cid: 6}}} = socket2
+      assert %Socket{assigns: %{myself: %CID{cid: 7}}} = socket3
+      assert %Socket{assigns: %{myself: %CID{cid: 8}}} = socket4
+
+      refute_received {:preload, _}
+      refute_received {:update, _}
+    end
+
+    test "on update_many with preload and update callbacks" do
+      alias Component, as: C
+      alias TreeComponentBoth, as: TC
+
+      tree = %C{
+        component: TC,
+        id: "R",
+        assigns: %{
+          id: "R",
+          children: [
+            %C{
+              component: TC,
+              id: "A",
+              assigns: %{
+                id: "A",
+                children: [
+                  %C{component: TC, id: "B", assigns: %{id: "B", children: []}},
+                  %C{component: TC, id: "C", assigns: %{id: "C", children: []}},
+                  %C{component: TC, id: "D", assigns: %{id: "D", children: []}}
+                ]
+              }
+            },
+            %C{
+              component: TC,
+              id: "X",
+              assigns: %{
+                id: "X",
+                children: [
+                  %C{component: TC, id: "Y", assigns: %{id: "Y", children: []}},
+                  %C{component: TC, id: "Z", assigns: %{id: "Z", children: []}}
+                ]
+              }
+            }
+          ]
+        }
+      }
+
+      rendered = component_template(%{component: tree})
+      {socket, full_render, components} = render(rendered)
+
+      assert %{
+               c: %{
+                 1 => %{0 => "R"},
+                 2 => %{0 => "A"},
+                 3 => %{0 => "X"},
+                 4 => %{0 => "B"},
+                 5 => %{0 => "C"},
+                 6 => %{0 => "D"},
+                 7 => %{0 => "Y"},
+                 8 => %{0 => "Z"}
+               }
+             } = full_render
+
+      assert socket.fingerprints == {rendered.fingerprint, %{}}
+      assert {_, _, 9} = components
+
+      assert_received {:update_many, {[%{id: "R"}], [socket0]}}
+      assert %Socket{assigns: %{myself: %CID{cid: 1}}} = socket0
+
+      assert_received {:update_many, {[%{id: "A"}, %{id: "X"}], [socket0, socket1]}}
+      assert %Socket{assigns: %{myself: %CID{cid: 2}}} = socket0
+      assert %Socket{assigns: %{myself: %CID{cid: 3}}} = socket1
+
+      assert_received {:update_many,
+                       {[%{id: "B"}, %{id: "C"}, %{id: "D"}, %{id: "Y"}, %{id: "Z"}],
+                        [socket0, socket1, socket2, socket3, socket4]}}
+
+      assert %Socket{assigns: %{myself: %CID{cid: 4}}} = socket0
+      assert %Socket{assigns: %{myself: %CID{cid: 5}}} = socket1
+      assert %Socket{assigns: %{myself: %CID{cid: 6}}} = socket2
+      assert %Socket{assigns: %{myself: %CID{cid: 7}}} = socket3
+      assert %Socket{assigns: %{myself: %CID{cid: 8}}} = socket4
+
+      refute_received {:preload, _}
+      refute_received {:update, _}
     end
 
     test "on addition" do
