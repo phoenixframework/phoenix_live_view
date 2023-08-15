@@ -119,6 +119,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
 
   attr :attr, :any
   defp private_fun(assigns), do: ~H[]
+  def exposes_private_fun_to_avoid_warnings(assigns), do: private_fun(assigns)
 
   slot :inner_block
   def fun_slot(assigns), do: ~H[]
