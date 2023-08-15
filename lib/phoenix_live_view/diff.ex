@@ -716,23 +716,40 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp maybe_preload_components(component, entries) do
-    if function_exported?(component, :preload, 1) and
-         not function_exported?(component, :update_many, 2) do
-      list_of_assigns = Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
-      result = component.preload(list_of_assigns)
-      zip_preloads(result, entries, component, result)
+    if function_exported?(component, :preload, 1) do
+      warn_preload(component)
+
+      if function_exported?(component, :update_many, 2) do
+        entries
+      else
+        list_of_assigns = Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
+        result = component.preload(list_of_assigns)
+        zip_preloads(result, entries, component, result)
+      end
     else
       entries
     end
   end
 
   defp maybe_call_preload!(module, assigns) do
-    if function_exported?(module, :preload, 1) and not function_exported?(module, :update_many, 2) do
-      [new_assigns] = module.preload([assigns])
-      new_assigns
+    if function_exported?(module, :preload, 1) do
+      warn_preload(module)
+
+      if function_exported?(module, :update_many, 2) do
+        assigns
+      else
+        [new_assigns] = module.preload([assigns])
+        new_assigns
+      end
     else
       assigns
     end
+  end
+
+  defp warn_preload(module) do
+    IO.warn(
+      "LiveComponent.preload/1 is deprecated (defined in #{inspect(module)}). Use LiveComponent.update_many/2 instead."
+    )
   end
 
   defp zip_preloads([new_assigns | assigns], [{cid, id, new?, _} | entries], component, preloaded)
