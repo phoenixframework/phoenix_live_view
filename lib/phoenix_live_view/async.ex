@@ -39,16 +39,16 @@ defmodule Phoenix.LiveView.Async do
       end
     end
 
-    keys
-    |> Enum.reduce(socket, fn key, acc ->
-      async_result =
-        case acc.assigns do
-          %{^key => %AsyncResult{ok?: true} = existing} -> existing
-          %{} -> AsyncResult.new(key, keys)
+    new_assigns =
+      Enum.flat_map(keys, fn key ->
+        case socket.assigns do
+          %{^key => %AsyncResult{ok?: true} = _existing} -> []
+          %{} -> [{key, AsyncResult.new(key, keys)}]
         end
+      end)
 
-      Phoenix.Component.assign(acc, key, async_result)
-    end)
+    socket
+    |> Phoenix.Component.assign(new_assigns)
     |> run_async_task(keys, wrapped_func, :assign)
   end
 
