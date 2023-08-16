@@ -441,7 +441,6 @@ end
 
 defmodule Phoenix.LiveViewTest.AsyncLive.LC do
   use Phoenix.LiveComponent
-  alias Phoenix.LiveView.AsyncResult
 
   def render(assigns) do
     ~H"""
@@ -449,14 +448,14 @@ defmodule Phoenix.LiveViewTest.AsyncLive.LC do
       <%= if @enum do %>
         <div :for={i <- @lc_data}><%= i %></div>
       <% end %>
-      <AsyncResult.with_state :let={data} assign={@lc_data}>
+      <.async_result :let={data} assign={@lc_data}>
         <:loading>lc_data loading...</:loading>
         <:canceled>lc_data canceled</:canceled>
         <:empty :let={_res}>no lc_data found</:empty>
         <:failed :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:failed>
 
         lc_data: <%= inspect(data) %>
-      </AsyncResult.with_state>
+      </.async_result>
     </div>
     """
   end

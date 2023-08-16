@@ -511,7 +511,7 @@ defmodule Phoenix.Component do
 
   ## Functions
 
-  alias Phoenix.LiveView.{Static, Socket}
+  alias Phoenix.LiveView.{Static, Socket, AsyncResult}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
   # Note we allow live_action as it may be passed down to a component, so it is not listed
   @non_assignables [:uploads, :streams, :socket, :myself]
@@ -2867,5 +2867,62 @@ defmodule Phoenix.Component do
       end
     %><% end %>
     """
+  end
+
+  @doc """
+  Renders an async assign with slots for the different loading states.
+
+  ## Examples
+
+  ```heex
+  <.async_result :let={org} assign={@org}>
+    <:loading>Loading organization...</:loading>
+    <:empty>You don't have an organization yet</:error>
+    <:error :let={{_kind, _reason}}>there was an error loading the organization</:error>
+    <:canceled :let={_reason}>loading canceled</:canceled>
+    <%= org.name %>
+  <.async_result>
+  ```
+  """
+  attr.(:assign, :any, required: true)
+  slot.(:loading, doc: "rendered while the assign is loading")
+
+  # TODO decide if we want an canceled slot
+  slot.(:canceled, dock: "rendered when the assign is canceled")
+
+  # TODO decide if we want an empty slot
+  slot.(:empty,
+    doc:
+      "rendered when the result is loaded and is either nil or an empty list. Receives the result as a :let."
+  )
+
+  slot.(:failed,
+    doc:
+      "rendered when an error or exit is caught or assign_async returns `{:error, reason}`. Receives the error as a :let."
+  )
+
+  def async_result(assigns) do
+    case assigns.assign do
+      %AsyncResult{state: state, ok?: once_ok?, result: result} when state == :ok or once_ok? ->
+        if assigns.empty != [] && result in [nil, []] do
+          ~H|<%= render_slot(@empty, @assign.result) %>|
+        else
+          ~H|<%= render_slot(@inner_block, @assign.result) %>|
+        end
+
+      %AsyncResult{state: :loading} ->
+        ~H|<%= render_slot(@loading) %>|
+
+      %AsyncResult{state: {:error, {:canceled, reason}}} ->
+        if assigns.canceled != [] do
+          assigns = Phoenix.Component.assign(assigns, reason: reason)
+          ~H|<%= render_slot(@canceled, @reason) %>|
+        else
+          ~H|<%= render_slot(@failed, @assign.state) %>|
+        end
+
+      %AsyncResult{state: {kind, _reason}} when kind in [:error, :exit] ->
+        ~H|<%= render_slot(@failed, @assign.state) %>|
+    end
   end
 end
