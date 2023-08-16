@@ -1975,6 +1975,18 @@ defmodule Phoenix.LiveView do
   Each key passed to `assign_async/3` will be assigned to
   an `%AsyncResult{}` struct holding the status of the operation
   and the result when completed.
+
+  ## Examples
+
+      def mount(%{"slug" => slug}, _, socket) do
+        {:ok,
+         socket
+         |> assign(:foo, "bar")
+         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)} end)
+         |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
+      end
+
+  See the moduledoc for more information.
   """
   def assign_async(%Socket{} = socket, key_or_keys, func)
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
@@ -1993,9 +2005,9 @@ defmodule Phoenix.LiveView do
 
       def mount(%{"id" => id}, _, socket) do
         {:ok,
-        socket
-        |> assign(:org, AsyncResult.new(:org))
-        |> start_async(:my_task, fn -> fetch_org!(id) end)
+         socket
+         |> assign(:org, AsyncResult.new(:org))
+         |> start_async(:my_task, fn -> fetch_org!(id) end)
       end
 
       def handle_async(:org, {:ok, fetched_org}, socket) do
@@ -2007,6 +2019,8 @@ defmodule Phoenix.LiveView do
         %{org: org} = socket.assigns
         {:noreply, assign(socket, :org, AsyncResult.exit(org, reason))}
       end
+
+  See the moduledoc for more information.
   """
   def start_async(%Socket{} = socket, name, func)
       when is_atom(name) and is_function(func, 0) do
