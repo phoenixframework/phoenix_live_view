@@ -337,7 +337,7 @@ defmodule Phoenix.LiveViewTest.ClassListLive do
   def render(assigns), do: ~H|Some content|
 end
 
-defmodule Phoenix.LiveViewTest.AsyncLive do
+defmodule Phoenix.LiveViewTest.AssignAsyncLive do
   use Phoenix.LiveView
 
   on_mount({__MODULE__, :defaults})
@@ -348,7 +348,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
 
   def render(assigns) do
     ~H"""
-    <.live_component :if={@lc} module={Phoenix.LiveViewTest.AsyncLive.LC} test={@lc} id="lc" />
+    <.live_component :if={@lc} module={Phoenix.LiveViewTest.AssignAsyncLive.LC} test={@lc} id="lc" />
     <div :if={@data.state == :loading}>data loading...</div>
     <div :if={@data.state == :ok && @data.result == nil}>no data found</div>
     <div :if={@data.state == :ok && @data.result}>data: <%= inspect(@data.result) %></div>
@@ -406,6 +406,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
 
   def mount(%{"test" => "trap_exit"}, _session, socket) do
     Process.flag(:trap_exit, true)
+
     {:ok,
      assign_async(socket, :data, fn ->
        spawn_link(fn -> exit(:boom) end)
@@ -439,7 +440,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.AsyncLive.LC do
+defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
   use Phoenix.LiveComponent
 
   def render(assigns) do
@@ -518,5 +519,188 @@ defmodule Phoenix.LiveViewTest.AsyncLive.LC do
        Process.sleep(100)
        {:ok, %{lc_data: 123}}
      end)}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.StartAsyncLive do
+  use Phoenix.LiveView
+
+  on_mount({__MODULE__, :defaults})
+
+  def on_mount(:defaults, _params, _session, socket) do
+    {:cont, assign(socket, lc: false)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <.live_component :if={@lc} module={Phoenix.LiveViewTest.StartAsyncLive.LC} test={@lc} id="lc" />
+    result: <%= inspect(@result) %>
+    """
+  end
+
+  def mount(%{"test" => "lc_" <> lc_test}, _session, socket) do
+    {:ok, assign(socket, lc: lc_test, result: :loading)}
+  end
+
+  def mount(%{"test" => "ok"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn -> :good end)}
+  end
+
+  def mount(%{"test" => "raise"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn -> raise("boom") end)}
+  end
+
+  def mount(%{"test" => "exit"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn -> exit(:boom) end)}
+  end
+
+  def mount(%{"test" => "lv_exit"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
+       Process.register(self(), :start_async_exit)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def mount(%{"test" => "cancel"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
+       Process.register(self(), :start_async_cancel)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def mount(%{"test" => "trap_exit"}, _session, socket) do
+    Process.flag(:trap_exit, true)
+
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> assign_async(:result_task, fn ->
+       spawn_link(fn -> exit(:boom) end)
+       Process.sleep(100)
+       :good
+     end)}
+  end
+
+  def handle_async(:result_task, {:ok, result}, socket) do
+    {:noreply, assign(socket, result: result)}
+  end
+
+  def handle_async(:result_task, {:exit, {error, [_ | _] = _stack}}, socket) do
+    {:noreply, assign(socket, result: {:exit, error})}
+  end
+
+  def handle_async(:result_task, {:exit, reason}, socket) do
+    {:noreply, assign(socket, result: {:exit, reason})}
+  end
+
+  def handle_info(:boom, _socket), do: exit(:boom)
+
+  def handle_info(:cancel, socket) do
+    {:noreply, cancel_async(socket, :result_task, :cancel)}
+  end
+
+  def handle_info(:renew_canceled, socket) do
+    {:noreply,
+     start_async(socket, :result_task, fn ->
+       Process.sleep(100)
+       :renewed
+     end)}
+  end
+
+  def handle_info({:EXIT, pid, reason}, socket) do
+    send(:start_async_trap_exit_test, {:exit, pid, reason})
+    {:noreply, socket}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
+  use Phoenix.LiveComponent
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      lc: <%= inspect(@result) %>
+    </div>
+    """
+  end
+
+  def update(%{test: "ok"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn -> :good end)}
+  end
+
+  def update(%{test: "raise"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn -> raise("boom") end)}
+  end
+
+  def update(%{test: "exit"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn -> exit(:boom) end)}
+  end
+
+  def update(%{test: "lv_exit"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
+       Process.register(self(), :start_async_exit)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def update(%{test: "cancel"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
+       Process.register(self(), :start_async_cancel)
+       Process.sleep(:infinity)
+     end)}
+  end
+
+  def update(%{action: :cancel}, socket) do
+    {:ok, cancel_async(socket, :result_task, :cancel)}
+  end
+
+  def update(%{action: :renew_canceled}, socket) do
+    {:ok,
+     start_async(socket, :result_task, fn ->
+       Process.sleep(100)
+       :renewed
+     end)}
+  end
+
+  def handle_async(:result_task, {:ok, result}, socket) do
+    {:noreply, assign(socket, result: result)}
+  end
+
+  def handle_async(:result_task, {:exit, {error, [_ | _] = _stack}}, socket) do
+    {:noreply, assign(socket, result: {:exit, error})}
+  end
+
+  def handle_async(:result_task, {:exit, reason}, socket) do
+    {:noreply, assign(socket, result: {:exit, reason})}
   end
 end

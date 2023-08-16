@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
   describe "LiveView assign_async" do
     test "bad return", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=bad_return")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=bad_return")
 
       assert render_async(lv) =~
                "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:data] or {:error, reason}, got: 123\\n&quot;}"
@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "missing known key", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=bad_ok")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=bad_ok")
 
       assert render_async(lv) =~
                "expected assign_async to return map of assigns for all keys\\nin [:data]"
@@ -31,26 +31,26 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "valid return", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=ok")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=ok")
       assert render_async(lv) =~ "data: 123"
     end
 
     test "raise during execution", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=raise")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=raise")
 
       assert render_async(lv) =~ "exit: {%RuntimeError{message: &quot;boom&quot;}"
       assert render(lv)
     end
 
     test "exit during execution", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=exit")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=exit")
 
       assert render_async(lv) =~ "exit: :boom"
       assert render(lv)
     end
 
     test "lv exit brings down asyncs", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lv_exit")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lv_exit")
       Process.unlink(lv.pid)
       lv_ref = Process.monitor(lv.pid)
       async_ref = Process.monitor(Process.whereis(:lv_exit))
@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "cancel_async", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=cancel")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=cancel")
       Process.unlink(lv.pid)
       async_ref = Process.monitor(Process.whereis(:cancel))
       send(lv.pid, :cancel)
@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "enum", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=enum")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=enum")
 
       html = render_async(lv, 200)
       assert html =~ "data: [1, 2, 3]"
@@ -86,7 +86,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
     test "trapping exits", %{conn: conn} do
       Process.register(self(), :trap_exit_test)
-      {:ok, lv, _html} = live(conn, "/async?test=trap_exit")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=trap_exit")
 
       assert render_async(lv, 200) =~ "exit: :boom"
       assert render(lv)
@@ -96,7 +96,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
   describe "LiveComponent assign_async" do
     test "bad return", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_bad_return")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_bad_return")
 
       assert render_async(lv) =~
                "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:lc_data] or {:error, reason}, got: 123\\n&quot;}"
@@ -105,7 +105,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "missing known key", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_bad_ok")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_bad_ok")
 
       assert render_async(lv) =~
                "expected assign_async to return map of assigns for all keys\\nin [:lc_data]"
@@ -114,26 +114,26 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "valid return", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_ok")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
       assert render_async(lv) =~ "lc_data: 123"
     end
 
     test "raise during execution", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_raise")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_raise")
 
       assert render_async(lv) =~ "exit: {%RuntimeError{message: &quot;boom&quot;}"
       assert render(lv)
     end
 
     test "exit during execution", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_exit")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_exit")
 
       assert render_async(lv) =~ "exit: :boom"
       assert render(lv)
     end
 
     test "lv exit brings down asyncs", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_lv_exit")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_lv_exit")
       Process.unlink(lv.pid)
       lv_ref = Process.monitor(lv.pid)
       async_ref = Process.monitor(Process.whereis(:lc_exit))
@@ -144,11 +144,11 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "cancel_async", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_cancel")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_cancel")
       Process.unlink(lv.pid)
       async_ref = Process.monitor(Process.whereis(:lc_cancel))
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
         id: "lc",
         action: :cancel
       )
@@ -157,7 +157,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert render(lv) =~ "error: :cancel"
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
         id: "lc",
         action: :renew_canceled
       )
@@ -167,7 +167,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "enum", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/async?test=lc_enum")
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_enum")
 
       html = render_async(lv, 200)
       assert html =~ "lc_data: [4, 5, 6]"
