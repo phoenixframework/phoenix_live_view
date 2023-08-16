@@ -27,7 +27,7 @@ defined in your own application, often encapsulating labelling,
 error handling, and more. Here is a simple version to get started with:
 
     attr :field, Phoenix.HTML.FormField
-    attr :rest, include: ~w(type)
+    attr :rest, :global, include: ~w(type)
     def input(assigns) do
       ~H"""
       <input id={@field.id} name={@field.name} value={@field.value} {@rest} />
