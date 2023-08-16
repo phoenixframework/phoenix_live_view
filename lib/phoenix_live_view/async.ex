@@ -80,10 +80,10 @@ defmodule Phoenix.LiveView.Async do
 
   @doc false
   def cancel_async(%Socket{} = socket, %AsyncResult{} = result, reason) do
-    result.keys
-    |> Enum.reduce(socket, fn key, acc ->
-      Phoenix.Component.assign(acc, key, AsyncResult.error(result, reason))
-    end)
+    new_assigns = for key <- result.keys, do: {key, AsyncResult.error(result, reason)}
+
+    socket
+    |> Phoenix.Component.assign(new_assigns)
     |> cancel_async(result.keys, reason)
   end
 
