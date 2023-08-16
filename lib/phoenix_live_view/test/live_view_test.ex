@@ -933,7 +933,7 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "loading data..."
       assert render_async(lv) =~ "data loaded!"
   """
-  def render_async(view_or_element, timeout \\ 100) do
+  def render_async(view_or_element, timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)) do
     pids =
       case view_or_element do
         %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
