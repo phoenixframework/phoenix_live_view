@@ -375,9 +375,9 @@ defmodule Phoenix.LiveView do
 
       def mount(%{"id" => id}, _, socket) do
         {:ok,
-        socket
-        |> assign(:org, AsyncResult.new(:org))
-        |> start_async(:my_task, fn -> fetch_org!(id) end)
+         socket
+         |> assign(:org, AsyncResult.new(:org))
+         |> start_async(:my_task, fn -> fetch_org!(id) end)}
       end
 
       def handle_async(:org, {:ok, fetched_org}, socket) do
