@@ -3,13 +3,11 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  @doc false
   def start_async(%Socket{} = socket, name, func)
       when is_atom(name) and is_function(func, 0) do
     run_async_task(socket, name, func, :start)
   end
 
-  @doc false
   def assign_async(%Socket{} = socket, key_or_keys, func)
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
              is_function(func, 0) do
@@ -78,7 +76,6 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  @doc false
   def cancel_async(%Socket{} = socket, %AsyncResult{} = result, reason) do
     new_assigns = for key <- result.keys, do: {key, AsyncResult.error(result, reason)}
 
@@ -99,7 +96,6 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  @doc false
   def handle_async(socket, maybe_component, kind, keys, ref, result) do
     case prune_current_async(socket, keys, ref) do
       {:ok, pruned_socket} ->
@@ -110,7 +106,6 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  @doc false
   def handle_trap_exit(socket, maybe_component, kind, keys, ref, reason) do
     {:current_stacktrace, stack} = Process.info(self(), :current_stacktrace)
     trapped_result = {:catch, :exit, reason, stack}
