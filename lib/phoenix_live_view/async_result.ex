@@ -34,13 +34,6 @@ defmodule Phoenix.LiveView.AsyncResult do
   end
 
   @doc """
-  Updates the state of the result to `{:error, {:canceled, reason}}`.
-  """
-  def canceled(%AsyncResult{} = result, reason) do
-    error(result, {:canceled, reason})
-  end
-
-  @doc """
   Updates the state of the result to `{:error, reason}`.
   """
   def error(%AsyncResult{} = result, reason) do

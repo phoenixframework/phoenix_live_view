@@ -422,7 +422,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
   def handle_info(:boom, _socket), do: exit(:boom)
 
   def handle_info(:cancel, socket) do
-    {:noreply, cancel_async(socket, socket.assigns.data)}
+    {:noreply, cancel_async(socket, socket.assigns.data, :cancel)}
   end
 
   def handle_info({:EXIT, pid, reason}, socket) do
@@ -450,7 +450,6 @@ defmodule Phoenix.LiveViewTest.AsyncLive.LC do
       <% end %>
       <.async_result :let={data} assign={@lc_data}>
         <:loading>lc_data loading...</:loading>
-        <:canceled>lc_data canceled</:canceled>
         <:empty :let={_res}>no lc_data found</:empty>
         <:failed :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:failed>
 
@@ -510,7 +509,7 @@ defmodule Phoenix.LiveViewTest.AsyncLive.LC do
   def update(%{action: :boom}, _socket), do: exit(:boom)
 
   def update(%{action: :cancel}, socket) do
-    {:ok, cancel_async(socket, socket.assigns.lc_data)}
+    {:ok, cancel_async(socket, socket.assigns.lc_data, :cancel)}
   end
 
   def update(%{action: :renew_canceled}, socket) do
