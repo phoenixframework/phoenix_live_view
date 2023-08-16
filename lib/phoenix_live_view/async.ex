@@ -19,13 +19,13 @@ defmodule Phoenix.LiveView.Async do
     wrapped_func = fn ->
       case func.() do
         {:ok, %{} = assigns} ->
-          if Map.keys(assigns) -- keys == [] do
-            {:ok, assigns}
-          else
+          if Enum.find(keys, &(not is_map_key(assigns, &1))) do
             raise ArgumentError, """
             expected assign_async to return map of assigns for all keys
             in #{inspect(keys)}, but got: #{inspect(assigns)}
             """
+          else
+            {:ok, assigns}
           end
 
         {:error, reason} ->
@@ -146,24 +146,30 @@ defmodule Phoenix.LiveView.Async do
   defp handle_kind(socket, _maybe_component, :assign, keys, result) do
     case result do
       {:ok, {:ok, %{} = assigns}} ->
-        Enum.reduce(assigns, socket, fn {key, val}, acc ->
-          current_async = get_current_async!(acc, key)
-          Phoenix.Component.assign(acc, key, AsyncResult.ok(current_async, val))
-        end)
+        new_assigns =
+          for {key, val} <- assigns do
+            {key, AsyncResult.ok(get_current_async!(socket, key), val)}
+          end
+
+        Phoenix.Component.assign(socket, new_assigns)
 
       {:ok, {:error, reason}} ->
-        Enum.reduce(keys, socket, fn key, acc ->
-          current_async = get_current_async!(acc, key)
-          Phoenix.Component.assign(acc, key, AsyncResult.error(current_async, reason))
-        end)
+        new_assigns =
+          for key <- keys do
+            {key, AsyncResult.error(get_current_async!(socket, key), reason)}
+          end
+
+        Phoenix.Component.assign(socket, new_assigns)
 
       {:catch, kind, reason, stack} ->
         normalized_exit = to_exit(kind, reason, stack)
 
-        Enum.reduce(keys, socket, fn key, acc ->
-          current_async = get_current_async!(acc, key)
-          Phoenix.Component.assign(acc, key, AsyncResult.exit(current_async, normalized_exit))
-        end)
+        new_assigns =
+          for key <- keys do
+            {key, AsyncResult.exit(get_current_async!(socket, key), normalized_exit)}
+          end
+
+        Phoenix.Component.assign(socket, new_assigns)
     end
   end
 
