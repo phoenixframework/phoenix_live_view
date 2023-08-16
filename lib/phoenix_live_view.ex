@@ -308,7 +308,7 @@ defmodule Phoenix.LiveView do
     * [Uploads (External)](uploads-external.md)
   '''
 
-  alias Phoenix.LiveView.{Socket, LiveStream}
+  alias Phoenix.LiveView.{Socket, LiveStream, Async}
 
   @type unsigned_params :: map
 
@@ -1876,5 +1876,67 @@ defmodule Phoenix.LiveView do
       |> Map.put(name, func.(stream))
       |> Map.update!(:__changed__, &MapSet.put(&1, name))
     end)
+  end
+
+  @doc """
+  Assigns keys asynchronously.
+
+  The task is linked to the caller and errors are wrapped.
+  Each key passed to `assign_async/3` will be assigned to
+  an `%AsyncResult{}` struct holding the status of the operation
+  and the result when completed.
+  """
+  def assign_async(%Socket{} = socket, key_or_keys, func)
+      when (is_atom(key_or_keys) or is_list(key_or_keys)) and
+             is_function(func, 0) do
+    Async.assign_async(socket, key_or_keys, func)
+  end
+
+  @doc """
+  Starts an ansynchronous task and invokes callback to handle the result.
+
+  The task is linked to the caller and errors/exits are wrapped.
+  The result of the task is sent to the `handle_async/3` callback
+  of the caller LiveView or LiveComponent.
+
+  ## Examples
+
+      def mount(%{"id" => id}, _, socket) do
+        {:ok,
+        socket
+        |> assign(:org, AsyncResult.new(:org))
+        |> start_async(:my_task, fn -> fetch_org!(id) end)
+      end
+
+      def handle_async(:org, {:ok, fetched_org}, socket) do
+        %{org: org} = socket.assigns
+        {:noreply, assign(socket, :org, AsyncResult.ok(org, fetched_org))}
+      end
+
+      def handle_async(:org, {:exit, reason}, socket) do
+        %{org: org} = socket.assigns
+        {:noreply, assign(socket, :org, AsyncResult.exit(org, reason))}
+      end
+  """
+  def start_async(%Socket{} = socket, name, func)
+      when is_atom(name) and is_function(func, 0) do
+    Async.start_async(socket, name, func)
+  end
+
+  @doc """
+  Cancels an async operation.
+
+  Accepts either the `%AsyncResult{}` when using `assign_async/3` or
+  the keys passed to `start_async/3`.
+
+  ## Examples
+
+      cancel_async(socket, :preview)
+      cancel_async(socket, :preview, :my_reason)
+      cancel_async(socket, [:profile, :rank])
+      cancel_async(socket, socket.assigns.preview)
+  """
+  def cancel_async(socket, async_or_keys, reason \\ nil) do
+    Async.cancel_async(socket, async_or_keys, reason)
   end
 end

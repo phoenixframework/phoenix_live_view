@@ -83,6 +83,15 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert html =~ "data: [1, 2, 3]"
       assert html =~ "<div>1</div><div>2</div><div>3</div>"
     end
+
+    test "trapping exits", %{conn: conn} do
+      Process.register(self(), :trap_exit_test)
+      {:ok, lv, _html} = live(conn, "/async?test=trap_exit")
+
+      assert render_async(lv, 200) =~ "exit: :boom"
+      assert render(lv)
+      assert_receive {:exit, _pid, :boom}, 500
+    end
   end
 
   describe "LiveComponent assign_async" do

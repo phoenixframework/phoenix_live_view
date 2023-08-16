@@ -4,7 +4,18 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Upload, UploadConfig, Route, Session, Lifecycle}
+  alias Phoenix.LiveView.{
+    Socket,
+    Utils,
+    Diff,
+    Upload,
+    UploadConfig,
+    Route,
+    Session,
+    Lifecycle,
+    Async
+  }
+
   alias Phoenix.Socket.{Broadcast, Message}
 
   @prefix :phoenix
@@ -30,8 +41,9 @@ defmodule Phoenix.LiveView.Channel do
     )
   end
 
-  def write_socket(lv_pid, cid, func) when is_function(func, 2) do
-    GenServer.call(lv_pid, {@prefix, :write_socket, cid, func})
+  def report_async_result(lv_pid, kind, ref, cid, keys, result)
+      when is_pid(lv_pid) and kind in [:assign, :start] and is_reference(ref) do
+    send(lv_pid, {@prefix, :async_result, {kind, {ref, cid, keys, result}}})
   end
 
   def async_pids(lv_pid) do
@@ -68,6 +80,24 @@ defmodule Phoenix.LiveView.Channel do
   rescue
     # Normalize exceptions for better client debugging
     e -> reraise(e, __STACKTRACE__)
+  end
+
+  def handle_info({:EXIT, pid, reason} = msg, state) do
+    case Map.fetch(all_asyncs(state), pid) do
+      {:ok, {keys, ref, cid, kind}} ->
+        new_state =
+          write_socket(state, cid, nil, fn socket, component ->
+            new_socket = Async.handle_trap_exit(socket, component, kind, keys, ref, reason)
+            {new_socket, {:ok, nil, state}}
+          end)
+
+        msg
+        |> view_handle_info(new_state.socket)
+        |> handle_result({:handle_info, 2, nil}, new_state)
+
+      :error ->
+        {:noreply, state}
+    end
   end
 
   def handle_info({:DOWN, ref, _, _, _reason}, ref) do
@@ -231,6 +261,18 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  def handle_info({@prefix, :async_result, {kind, info}}, state) do
+    {ref, cid, keys, result} = info
+
+    new_state =
+      write_socket(state, cid, nil, fn socket, maybe_component ->
+        new_socket = Async.handle_async(socket, maybe_component, kind, keys, ref, result)
+        {new_socket, {:ok, nil, state}}
+      end)
+
+    {:noreply, new_state}
+  end
+
   def handle_info({@prefix, :drop_upload_entries, info}, state) do
     %{ref: ref, cid: cid, entry_refs: entry_refs} = info
 
@@ -291,25 +333,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call({@prefix, :async_pids}, _from, state) do
-    %{socket: socket} = state
-    lv_pids = get_async_pids(socket.private)
-
-    component_pids =
-      state
-      |> component_privates()
-      |> Enum.flat_map(fn {_cid, private} -> get_async_pids(private) end)
-
-    {:reply, {:ok, lv_pids ++ component_pids}, state}
-  end
-
-  def handle_call({@prefix, :write_socket, cid, func}, _from, state) do
-    new_state =
-      write_socket(state, cid, nil, fn socket, maybe_component ->
-        %Phoenix.LiveView.Socket{} = new_socket = func.(socket, maybe_component)
-        {new_socket, {:ok, nil, state}}
-      end)
-
-    {:reply, :ok, new_state}
+    pids = state |> all_asyncs() |> Map.keys()
+    {:reply, {:ok, pids}, state}
   end
 
   def handle_call({@prefix, :fetch_upload_config, name, cid}, _from, state) do
@@ -1422,18 +1447,29 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_subscribe_to_live_reload(response), do: response
 
-  defp component_privates(state) do
+  defp component_asyncs(state) do
     %{components: {components, _ids, _}} = state
 
-    Enum.into(components, %{}, fn {cid, {_mod, _id, _assigns, private, _prints}} ->
-      {cid, private}
+    Enum.reduce(components, %{}, fn {cid, {_mod, _id, _assigns, private, _prints}}, acc ->
+      Map.merge(acc, socket_asyncs(private, cid))
     end)
   end
 
-  defp get_async_pids(private) do
+  defp all_asyncs(state) do
+    %{socket: socket} = state
+
+    socket.private
+    |> socket_asyncs(nil)
+    |> Map.merge(component_asyncs(state))
+  end
+
+  defp socket_asyncs(private, cid) do
     case private do
-      %{phoenix_async: ref_pids} -> Enum.flat_map(ref_pids, fn {_key, {_ref, pid}} -> [pid] end)
-      %{} -> []
+      %{phoenix_async: ref_pids} ->
+        Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
+
+      %{} ->
+        %{}
     end
   end
 end

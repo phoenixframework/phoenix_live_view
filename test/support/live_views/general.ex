@@ -339,7 +339,6 @@ end
 
 defmodule Phoenix.LiveViewTest.AsyncLive do
   use Phoenix.LiveView
-  import Phoenix.LiveView.AsyncResult
 
   on_mount({__MODULE__, :defaults})
 
@@ -405,6 +404,16 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
      end)}
   end
 
+  def mount(%{"test" => "trap_exit"}, _session, socket) do
+    Process.flag(:trap_exit, true)
+    {:ok,
+     assign_async(socket, :data, fn ->
+       spawn_link(fn -> exit(:boom) end)
+       Process.sleep(100)
+       {:ok, %{data: 0}}
+     end)}
+  end
+
   def mount(%{"test" => "enum"}, _session, socket) do
     {:ok,
      socket |> assign(enum: true) |> assign_async(:data, fn -> {:ok, %{data: [1, 2, 3]}} end)}
@@ -414,6 +423,11 @@ defmodule Phoenix.LiveViewTest.AsyncLive do
 
   def handle_info(:cancel, socket) do
     {:noreply, cancel_async(socket, socket.assigns.data)}
+  end
+
+  def handle_info({:EXIT, pid, reason}, socket) do
+    send(:trap_exit_test, {:exit, pid, reason})
+    {:noreply, socket}
   end
 
   def handle_info(:renew_canceled, socket) do
@@ -428,7 +442,6 @@ end
 defmodule Phoenix.LiveViewTest.AsyncLive.LC do
   use Phoenix.LiveComponent
   alias Phoenix.LiveView.AsyncResult
-  import Phoenix.LiveView.AsyncResult
 
   def render(assigns) do
     ~H"""
