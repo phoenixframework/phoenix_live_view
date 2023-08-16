@@ -152,7 +152,8 @@ defmodule Phoenix.LiveView.MixProject do
       ],
       "Upload structures": [
         Phoenix.LiveView.UploadConfig,
-        Phoenix.LiveView.UploadEntry
+        Phoenix.LiveView.UploadEntry,
+        Phoenix.LiveView.UploadWriter
       ],
       "Plugin API": [
         Phoenix.LiveComponent.CID,
