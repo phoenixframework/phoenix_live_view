@@ -38,10 +38,10 @@ defmodule Phoenix.LiveView.Async do
     end
 
     new_assigns =
-      Enum.flat_map(keys, fn key ->
+      Enum.map(keys, fn key ->
         case socket.assigns do
-          %{^key => %AsyncResult{ok?: true} = _existing} -> []
-          %{} -> [{key, AsyncResult.new(keys)}]
+          %{^key => %AsyncResult{ok?: true} = existing} -> {key, AsyncResult.loading(existing, keys)}
+          %{} -> {key, AsyncResult.new(keys)}
         end
       end)
 

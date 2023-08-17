@@ -353,7 +353,7 @@ defmodule Phoenix.LiveView do
   ```heex
   <.async_result :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
-    <:empty>You don't have an organization yet</:error>
+    <:empty>You don't have an organization yet</:empty>
     <:error :let={{_kind, _reason}}>there was an error loading the organization</:error>
     <%= org.name %>
   <.async_result>
