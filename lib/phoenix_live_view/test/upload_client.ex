@@ -147,10 +147,10 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   end
 
   defp progress_stats(entry, percent) do
-    chunk_size = trunc(entry.size * (percent / 100))
+    chunk_size = round(entry.size * (percent / 100))
     start = entry.chunk_start
     new_start = start + chunk_size
-    new_percent = trunc(new_start / entry.size * 100)
+    new_percent = round(new_start / entry.size * 100)
 
     %{chunk_size: chunk_size, start: start, new_start: new_start, new_percent: new_percent}
   end
