@@ -55,24 +55,29 @@ defmodule Phoenix.LiveView.Async do
       socket = cancel_existing(socket, keys)
       lv_pid = self()
       cid = cid(socket)
-      ref = make_ref()
-      {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, ref, keys, func, kind) end)
+      {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, keys, func, kind) end)
+      ref = :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, keys, cid, kind})
+      send(pid, {:context, ref})
+
       update_private_async(socket, &Map.put(&1, keys, {ref, pid, kind}))
     else
       socket
     end
   end
 
-  defp do_async(lv_pid, cid, ref, keys, func, async_kind) do
-    try do
-      result = func.()
-      Channel.report_async_result(lv_pid, async_kind, ref, cid, keys, {:ok, result})
-    catch
-      catch_kind, reason ->
-        Process.unlink(lv_pid)
-        caught_result = {:catch, catch_kind, reason, __STACKTRACE__}
-        Channel.report_async_result(lv_pid, async_kind, ref, cid, keys, caught_result)
-        :erlang.raise(catch_kind, reason, __STACKTRACE__)
+  defp do_async(lv_pid, cid, keys, func, async_kind) do
+    receive do
+      {:context, ref} ->
+        try do
+          result = func.()
+          Channel.report_async_result(ref, async_kind, ref, cid, keys, {:ok, result})
+        catch
+          catch_kind, reason ->
+            Process.unlink(lv_pid)
+            caught_result = {:catch, catch_kind, reason, __STACKTRACE__}
+            Channel.report_async_result(ref, async_kind, ref, cid, keys, caught_result)
+            :erlang.raise(catch_kind, reason, __STACKTRACE__)
+        end
     end
   end
 

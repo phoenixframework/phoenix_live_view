@@ -41,9 +41,9 @@ defmodule Phoenix.LiveView.Channel do
     )
   end
 
-  def report_async_result(lv_pid, kind, ref, cid, keys, result)
-      when is_pid(lv_pid) and kind in [:assign, :start] and is_reference(ref) do
-    send(lv_pid, {@prefix, :async_result, {kind, {ref, cid, keys, result}}})
+  def report_async_result(lv_pid_or_ref, kind, ref, cid, keys, result)
+      when kind in [:assign, :start] and is_reference(ref) do
+    send(lv_pid_or_ref, {@prefix, :async_result, {kind, {ref, cid, keys, result}}})
   end
 
   def async_pids(lv_pid) do
@@ -82,22 +82,10 @@ defmodule Phoenix.LiveView.Channel do
     e -> reraise(e, __STACKTRACE__)
   end
 
-  def handle_info({:EXIT, pid, reason} = msg, state) do
-    case Map.fetch(all_asyncs(state), pid) do
-      {:ok, {keys, ref, cid, kind}} ->
-        new_state =
-          write_socket(state, cid, nil, fn socket, component ->
-            new_socket = Async.handle_trap_exit(socket, component, kind, keys, ref, reason)
-            {new_socket, {:ok, nil, state}}
-          end)
-
-        msg
-        |> view_handle_info(new_state.socket)
-        |> handle_result({:handle_info, 2, nil}, new_state)
-
-      :error ->
-        {:noreply, state}
-    end
+  def handle_info({:EXIT, _pid, _reason} = msg, state) do
+    msg
+    |> view_handle_info(state.socket)
+    |> handle_result({:handle_info, 2, nil}, state)
   end
 
   def handle_info({:DOWN, ref, _, _, _reason}, ref) do
@@ -308,6 +296,16 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info({@prefix, :redirect, command, flash}, state) do
     handle_redirect(state, command, flash, nil)
+  end
+
+  def handle_info({{Phoenix.LiveView.Async, keys, cid, kind}, ref, :process, _pid, reason}, state) do
+    new_state =
+      write_socket(state, cid, nil, fn socket, component ->
+        new_socket = Async.handle_trap_exit(socket, component, kind, keys, ref, reason)
+        {new_socket, {:ok, nil, state}}
+      end)
+
+    {:noreply, new_state}
   end
 
   def handle_info({:phoenix_live_reload, _topic, _changed_file}, %{socket: socket} = state) do
