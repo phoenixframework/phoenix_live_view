@@ -41,9 +41,9 @@ defmodule Phoenix.LiveView.Channel do
     )
   end
 
-  def report_async_result(lv_pid_or_ref, kind, ref, cid, keys, result)
-      when kind in [:assign, :start] and is_reference(ref) do
-    send(lv_pid_or_ref, {@prefix, :async_result, {kind, {ref, cid, keys, result}}})
+  def report_async_result(monitor_ref, kind, ref, cid, keys, result)
+      when is_reference(monitor_ref) and kind in [:assign, :start] and is_reference(ref) do
+    send(monitor_ref, {@prefix, :async_result, {kind, {ref, cid, keys, result}}})
   end
 
   def async_pids(lv_pid) do

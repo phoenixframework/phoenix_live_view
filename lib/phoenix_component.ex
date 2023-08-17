@@ -2899,18 +2899,18 @@ defmodule Phoenix.Component do
 
   def async_result(assigns) do
     case assigns.assign do
-      %AsyncResult{state: state, ok?: once_ok?, result: result} when state == :ok or once_ok? ->
+      %AsyncResult{status: status, ok?: once_ok?, result: result} when status == :ok or once_ok? ->
         if assigns.empty != [] && result in [nil, []] do
           ~H|<%= render_slot(@empty, @assign.result) %>|
         else
           ~H|<%= render_slot(@inner_block, @assign.result) %>|
         end
 
-      %AsyncResult{state: :loading} ->
-        ~H|<%= render_slot(@loading) %>|
+      %AsyncResult{status: :loading} ->
+        ~H|<%= render_slot(@loading, @assign.state) %>|
 
-      %AsyncResult{state: {kind, _reason}} when kind in [:error, :exit] ->
-        ~H|<%= render_slot(@failed, @assign.state) %>|
+      %AsyncResult{status: kind} when kind in [:error, :exit] ->
+        ~H|<%= render_slot(@failed, {@assign.status, @assign.state}) %>|
     end
   end
 end

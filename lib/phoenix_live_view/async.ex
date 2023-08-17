@@ -41,7 +41,7 @@ defmodule Phoenix.LiveView.Async do
       Enum.flat_map(keys, fn key ->
         case socket.assigns do
           %{^key => %AsyncResult{ok?: true} = _existing} -> []
-          %{} -> [{key, AsyncResult.new(key, keys)}]
+          %{} -> [{key, AsyncResult.new(keys)}]
         end
       end)
 
@@ -56,7 +56,10 @@ defmodule Phoenix.LiveView.Async do
       lv_pid = self()
       cid = cid(socket)
       {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, keys, func, kind) end)
-      ref = :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, keys, cid, kind})
+
+      ref =
+        :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, keys, cid, kind})
+
       send(pid, {:context, ref})
 
       update_private_async(socket, &Map.put(&1, keys, {ref, pid, kind}))
@@ -82,11 +85,17 @@ defmodule Phoenix.LiveView.Async do
   end
 
   def cancel_async(%Socket{} = socket, %AsyncResult{} = result, reason) do
-    new_assigns = for key <- result.keys, do: {key, AsyncResult.error(result, reason)}
+    case result do
+      %AsyncResult{status: :loading, state: keys} ->
+        new_assigns = for key <- keys, do: {key, AsyncResult.error(result, reason)}
 
-    socket
-    |> Phoenix.Component.assign(new_assigns)
-    |> cancel_async(result.keys, reason)
+        socket
+        |> Phoenix.Component.assign(new_assigns)
+        |> cancel_async(keys, reason)
+
+      %AsyncResult{} ->
+        socket
+    end
   end
 
   def cancel_async(%Socket{} = socket, keys, _reason) do
@@ -191,7 +200,7 @@ defmodule Phoenix.LiveView.Async do
     # handle case where assign is temporary and needs to be rebuilt
     case socket.assigns do
       %{^key => %AsyncResult{} = current_async} -> current_async
-      %{^key => _other} -> AsyncResult.new(key, key)
+      %{^key => _other} -> AsyncResult.new(key)
       %{} -> raise ArgumentError, "missing async assign #{inspect(key)}"
     end
   end

@@ -349,12 +349,10 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
   def render(assigns) do
     ~H"""
     <.live_component :if={@lc} module={Phoenix.LiveViewTest.AssignAsyncLive.LC} test={@lc} id="lc" />
-    <div :if={@data.state == :loading}>data loading...</div>
-    <div :if={@data.state == :ok && @data.result == nil}>no data found</div>
-    <div :if={@data.state == :ok && @data.result}>data: <%= inspect(@data.result) %></div>
-    <%= with {kind, reason} when kind in [:error, :exit] <- @data.state do %>
-      <div><%= kind %>: <%= inspect(reason) %></div>
-    <% end %>
+    <div :if={@data.status == :loading}>data loading...</div>
+    <div :if={@data.status == :ok && @data.result == nil}>no data found</div>
+    <div :if={@data.status == :ok && @data.result}>data: <%= inspect(@data.result) %></div>
+    <div :if={@data.status in [:error, :exit]}><%= @data.status %>: <%= inspect(@data.state) %></div>
     <%= if @enum do %>
       <div :for={i <- @data}><%= i %></div>
     <% end %>

@@ -343,7 +343,7 @@ defmodule Phoenix.LiveView do
   our template could conditionally render the states:
 
   ```heex
-  <div :if={@org.state == :loading}>Loading organization...</div>
+  <div :if={@org.status == :loading}>Loading organization...</div>
   <div :if={org = @org.ok? && @org.result}}><%= org.name %> loaded!</div>
   ```
 
@@ -376,7 +376,7 @@ defmodule Phoenix.LiveView do
       def mount(%{"id" => id}, _, socket) do
         {:ok,
          socket
-         |> assign(:org, AsyncResult.new(:org))
+         |> assign(:org, AsyncResult.new())
          |> start_async(:my_task, fn -> fetch_org!(id) end)}
       end
 
@@ -2006,7 +2006,7 @@ defmodule Phoenix.LiveView do
       def mount(%{"id" => id}, _, socket) do
         {:ok,
          socket
-         |> assign(:org, AsyncResult.new(:org))
+         |> assign(:org, AsyncResult.new())
          |> start_async(:my_task, fn -> fetch_org!(id) end)
       end
 
