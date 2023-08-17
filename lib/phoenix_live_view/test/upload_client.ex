@@ -202,7 +202,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   defp chunk_upload(state, from, entry_name, percent, proxy_pid, element) do
     entry = get_entry!(state, entry_name)
 
-    if entry.new_percent >= 100 do
+    if entry.chunk_percent >= 100 do
       state
     else
       do_chunk(state, from, entry, proxy_pid, element, percent)
