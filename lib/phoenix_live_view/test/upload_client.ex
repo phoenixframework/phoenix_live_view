@@ -155,10 +155,10 @@ defmodule Phoenix.LiveViewTest.UploadClient do
         x, {prev_perc, prev_bytes} ->
           bytes = ceil(entry.size * x / 100)
 
-          cond do
-            x == 100 -> {{x, bytes}, {x, bytes}}
-            bytes == prev_bytes -> {{x, {prev_perc, prev_bytes}}, {prev_perc, prev_bytes}}
-            true -> {{x, bytes}, {x, bytes}}
+          if bytes == prev_bytes do
+            {{x, {prev_perc, prev_bytes}}, {prev_perc, prev_bytes}}
+          else
+            {{x, bytes}, {x, bytes}}
           end
       end)
 
