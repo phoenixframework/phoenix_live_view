@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveViewTest.UploadClient do
   @moduledoc false
   use GenServer
+  require Logger
   require Phoenix.ChannelTest
 
   alias Phoenix.LiveViewTest.{Upload, ClientProxy}
@@ -151,6 +152,10 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     start = entry.chunk_start
     new_start = start + chunk_size
     new_percent = round(new_start / entry.size * 100)
+
+    if percent != new_percent do
+      Logger.warning("Unsuccessfully attempting to chunk #{entry.size} bytes to #{percent}%. Closest chunkable percentage is #{new_percent}%.")
+    end
 
     %{chunk_size: chunk_size, start: start, new_start: new_start, new_percent: new_percent}
   end
