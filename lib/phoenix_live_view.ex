@@ -533,6 +533,39 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
+  Returns true if the socket is connected.
+
+  `is_connected?/1` is a guard where `connected?/2` ss a function.
+
+  `is_connected?/1` enables splitting `mount/3` callbacks into connected and disconnected function heads:
+
+  ```elixir
+  defmodule DemoWeb.ClockLive do
+    use Phoenix.LiveView
+
+    def mount(_params, _session, socket) when is_connected?(socket) do
+      # Socket is connected, perform stateful work
+      :timer.send_interval(1000, self(), :tick)
+
+      {:ok, assign(socket, date: :calendar.local_time())}
+    end
+
+    def mount(_params, _session, socket) do
+      # Socket is disconnected
+      {:ok, socket}
+    end
+
+    def handle_info(:tick, socket) do
+      {:noreply, assign(socket, date: :calendar.local_time())}
+    end
+  end
+  ```
+
+  Like `connected?/2`, use `is_connected?/1` to conditionally perform stateful work, such as subscribing to PubSub topics, sending messages, etc.
+  """
+  defguard is_connected?(socket) when socket.transport_id != nil
+
+  @doc """
   Declares a module callback to be invoked on the LiveView's mount.
 
   The function within the given module, which must be named `on_mount`,
