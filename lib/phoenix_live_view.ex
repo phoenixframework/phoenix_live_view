@@ -535,7 +535,7 @@ defmodule Phoenix.LiveView do
   @doc """
   Returns true if the socket is connected.
 
-  `is_connected?/1` is a guard where `connected?/1` ss a function.
+  `is_connected?/1` is a guard where `connected?/1` is a function.
 
   `is_connected?/1` enables splitting `mount/3` callbacks into connected and disconnected function heads:
 
