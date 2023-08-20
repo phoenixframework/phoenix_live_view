@@ -2900,7 +2900,7 @@ defmodule Phoenix.Component do
   def async_result(assigns) do
     case assigns.assign do
       %AsyncResult{status: status, ok?: once_ok?, result: result} when status == :ok or once_ok? ->
-        if assigns.empty != [] && result in [nil, []] do
+        if assigns.empty != [] and (result == nil or Enum.empty?(result)) do
           ~H|<%= render_slot(@empty, @assign.result) %>|
         else
           ~H|<%= render_slot(@inner_block, @assign.result) %>|
