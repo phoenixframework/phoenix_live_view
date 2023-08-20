@@ -129,7 +129,7 @@ For example, your `MyAppWeb.CoreComponents` may use this function:
           ]}
           {@rest}
         />
-        <.error :for={msg <- @errors}><%%= msg %></.error>
+        <.error :for={msg <- @errors}><%= msg %></.error>
       </div>
       """
     end
