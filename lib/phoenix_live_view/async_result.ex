@@ -3,6 +3,13 @@ defmodule Phoenix.LiveView.AsyncResult do
   Provides a datastructure for tracking the state of an async assign.
 
   See the `Async Operations` section of the `Phoenix.LiveView` docs for more information.
+
+  ## Fields
+
+    * `:ok?` - When true, indicates the `:result` has been set successfully at least once.
+    * `:loading` - The current loading state
+    * `:failed` - The current failed state
+    * `:result` - The successful result of the async task
   '''
 
   defstruct ok?: false,
@@ -13,7 +20,13 @@ defmodule Phoenix.LiveView.AsyncResult do
   alias Phoenix.LiveView.AsyncResult
 
   @doc """
-  Updates the status of the result to `:loading`
+  Updates the loading state.
+
+  ## Examples
+
+      AsyncResult.loading()
+      AsyncResult.loading(my_async)
+      AsyncResult.loading(my_async, %{my: :loading_state})
   """
   def loading do
     %AsyncResult{loading: true}
@@ -33,17 +46,26 @@ defmodule Phoenix.LiveView.AsyncResult do
 
 
   @doc """
-  Updates the status of the result to `:error` and state to `reason`.
+  Updates the failed state.
+
+  ## Examples
+
+      AsyncResult.failed(my_async, {:exit, :boom})
+      AsyncResult.failed(my_async, {:error, reason})
   """
   def failed(%AsyncResult{} = result, reason) do
     %AsyncResult{result | failed: reason, loading: nil}
   end
 
   @doc """
-  Updates the status of the result to `:ok` and sets the result.
+  Updates the successful result.
 
   The `:ok?` field will also be set to `true` to indicate this result has
   completed successfully at least once, regardless of future state changes.
+
+  ## Examples
+
+      AsyncResult.ok(my_async, my_result)
   """
   def ok(%AsyncResult{} = result, value) do
     %AsyncResult{result | failed: nil, loading: nil, ok?: true, result: value}
