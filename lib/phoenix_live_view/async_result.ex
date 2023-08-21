@@ -22,6 +22,8 @@ defmodule Phoenix.LiveView.AsyncResult do
   @doc """
   Updates the loading state.
 
+  When loading, the failed state will be reset to `nil`.
+
   ## Examples
 
       AsyncResult.loading()
@@ -48,6 +50,8 @@ defmodule Phoenix.LiveView.AsyncResult do
   @doc """
   Updates the failed state.
 
+  When failed, the loading state will be reset to `nil`.
+
   ## Examples
 
       AsyncResult.failed(my_async, {:exit, :boom})
@@ -62,6 +66,8 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   The `:ok?` field will also be set to `true` to indicate this result has
   completed successfully at least once, regardless of future state changes.
+
+  When ok'd, the loading and failed state will be reset to `nil`.
 
   ## Examples
 
