@@ -358,7 +358,7 @@ defmodule Phoenix.LiveView do
   <.async_result>
   ```
 
-  Additionally, for async assigns which result in a list of items, you
+  Additionally, for async assigns which result in a collection of items, you
   can consume the assign directly. It will only enumerate
   the results once the results are loaded. For example:
 
