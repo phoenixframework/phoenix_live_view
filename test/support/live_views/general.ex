@@ -349,10 +349,12 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
   def render(assigns) do
     ~H"""
     <.live_component :if={@lc} module={Phoenix.LiveViewTest.AssignAsyncLive.LC} test={@lc} id="lc" />
-    <div :if={@data.status == :loading}>data loading...</div>
-    <div :if={@data.status == :ok && @data.result == nil}>no data found</div>
-    <div :if={@data.status == :ok && @data.result}>data: <%= inspect(@data.result) %></div>
-    <div :if={@data.status in [:error, :exit]}><%= @data.status %>: <%= inspect(@data.state) %></div>
+
+    <div :if={@data.loading}>data loading...</div>
+    <div :if={@data.ok? && @data.result == nil}>no data found</div>
+    <div :if={@data.ok? && @data.result}>data: <%= inspect(@data.result) %></div>
+    <div :if={@data.failed}><%= inspect(@data.failed) %></div>
+
     <%= if @enum do %>
       <div :for={i <- @data}><%= i %></div>
     <% end %>
@@ -449,7 +451,6 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
       <% end %>
       <.async_result :let={data} assign={@lc_data}>
         <:loading>lc_data loading...</:loading>
-        <:empty :let={_res}>no lc_data found</:empty>
         <:failed :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:failed>
 
         lc_data: <%= inspect(data) %>

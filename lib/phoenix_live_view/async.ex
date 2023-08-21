@@ -41,7 +41,7 @@ defmodule Phoenix.LiveView.Async do
       Enum.map(keys, fn key ->
         case socket.assigns do
           %{^key => %AsyncResult{ok?: true} = existing} -> {key, AsyncResult.loading(existing, keys)}
-          %{} -> {key, AsyncResult.new(keys)}
+          %{} -> {key, AsyncResult.loading(keys)}
         end
       end)
 
@@ -86,8 +86,8 @@ defmodule Phoenix.LiveView.Async do
 
   def cancel_async(%Socket{} = socket, %AsyncResult{} = result, reason) do
     case result do
-      %AsyncResult{status: :loading, state: keys} ->
-        new_assigns = for key <- keys, do: {key, AsyncResult.error(result, reason)}
+      %AsyncResult{loading: keys} when not is_nil(keys) ->
+        new_assigns = for key <- keys, do: {key, AsyncResult.failed(result, {:exit, reason})}
 
         socket
         |> Phoenix.Component.assign(new_assigns)
@@ -161,7 +161,7 @@ defmodule Phoenix.LiveView.Async do
       {:ok, {:error, reason}} ->
         new_assigns =
           for key <- keys do
-            {key, AsyncResult.error(get_current_async!(socket, key), reason)}
+            {key, AsyncResult.failed(get_current_async!(socket, key), {:error, reason})}
           end
 
         Phoenix.Component.assign(socket, new_assigns)
@@ -171,7 +171,7 @@ defmodule Phoenix.LiveView.Async do
 
         new_assigns =
           for key <- keys do
-            {key, AsyncResult.exit(get_current_async!(socket, key), normalized_exit)}
+            {key, AsyncResult.failed(get_current_async!(socket, key), {:exit, normalized_exit})}
           end
 
         Phoenix.Component.assign(socket, new_assigns)
@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.Async do
     # handle case where assign is temporary and needs to be rebuilt
     case socket.assigns do
       %{^key => %AsyncResult{} = current_async} -> current_async
-      %{^key => _other} -> AsyncResult.new(key)
+      %{^key => _other} -> AsyncResult.loading(key)
       %{} -> raise ArgumentError, "missing async assign #{inspect(key)}"
     end
   end

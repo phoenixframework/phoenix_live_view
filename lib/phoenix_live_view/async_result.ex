@@ -6,40 +6,37 @@ defmodule Phoenix.LiveView.AsyncResult do
   '''
 
   defstruct ok?: false,
-            state: nil,
-            status: nil,
+            loading: nil,
+            failed: nil,
             result: nil
 
   alias Phoenix.LiveView.AsyncResult
 
   @doc """
-  Defines a new async result.
-
-  By default, the state will be `{:loading, []}`.
-  """
-  def new(keys \\ []) do
-    loading(%AsyncResult{result: nil, ok?: false}, keys)
-  end
-
-  @doc """
   Updates the status of the result to `:loading`
   """
-  def loading(%AsyncResult{} = result, keys \\ []) do
-    %AsyncResult{result | status: :loading, state: keys}
+  def loading do
+    %AsyncResult{loading: true}
   end
+
+  def loading(%AsyncResult{} = result) do
+    %AsyncResult{result | loading: true, failed: nil}
+  end
+
+  def loading(loading_state) do
+    %AsyncResult{loading: loading_state, failed: nil}
+  end
+
+  def loading(%AsyncResult{} = result, loading_state) do
+    %AsyncResult{result | loading: loading_state, failed: nil}
+  end
+
 
   @doc """
   Updates the status of the result to `:error` and state to `reason`.
   """
-  def error(%AsyncResult{} = result, reason) do
-    %AsyncResult{result | status: :error, state: reason}
-  end
-
-  @doc """
-  Updates the status of the result to `:exit` and state to `reason`.
-  """
-  def exit(%AsyncResult{} = result, reason) do
-    %AsyncResult{result | status: :exit, state: reason}
+  def failed(%AsyncResult{} = result, reason) do
+    %AsyncResult{result | failed: reason, loading: nil}
   end
 
   @doc """
@@ -49,18 +46,18 @@ defmodule Phoenix.LiveView.AsyncResult do
   completed successfully at least once, regardless of future state changes.
   """
   def ok(%AsyncResult{} = result, value) do
-    %AsyncResult{result | status: :ok, state: nil, ok?: true, result: value}
+    %AsyncResult{result | failed: nil, loading: nil, ok?: true, result: value}
   end
 
   defimpl Enumerable, for: Phoenix.LiveView.AsyncResult do
     alias Phoenix.LiveView.AsyncResult
 
-    def count(%AsyncResult{result: result, status: :ok}),
+    def count(%AsyncResult{result: result, ok?: true}),
       do: Enum.count(result)
 
     def count(%AsyncResult{}), do: 0
 
-    def member?(%AsyncResult{result: result, status: :ok}, item) do
+    def member?(%AsyncResult{result: result, ok?: true}, item) do
       Enum.member?(result, item)
     end
 
@@ -69,7 +66,7 @@ defmodule Phoenix.LiveView.AsyncResult do
     end
 
     def reduce(
-          %AsyncResult{result: result, status: :ok},
+          %AsyncResult{result: result, ok?: true},
           acc,
           fun
         ) do
@@ -86,7 +83,7 @@ defmodule Phoenix.LiveView.AsyncResult do
       do_reduce(tail, fun.(item, acc), fun)
     end
 
-    def slice(%AsyncResult{result: result, status: :ok}) do
+    def slice(%AsyncResult{result: result, ok?: true}) do
       fn start, length, step -> Enum.slice(result, start..(start + length - 1)//step) end
     end
 

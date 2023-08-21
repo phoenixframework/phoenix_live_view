@@ -2877,40 +2877,35 @@ defmodule Phoenix.Component do
   ```heex
   <.async_result :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
-    <:empty>You don't have an organization yet</:error>
-    <:error :let={{_kind, _reason}}>there was an error loading the organization</:error>
-    <%= org.name %>
+    <:failed :let={reason}>there was an error loading the organization</:failed>
+    <%= if org do %>
+      You don't have an organization yet.
+    <% else %>
+      <%= org.name %>
+    <% end %>
   <.async_result>
   ```
   """
-  attr.(:assign, :any, required: true)
+  attr.(:assign, AsyncResult, required: true)
   slot.(:loading, doc: "rendered while the assign is loading")
-
-  # TODO decide if we want an empty slot
-  slot.(:empty,
-    doc:
-      "rendered when the result is loaded and is either nil or an empty list. Receives the result as a :let."
-  )
 
   slot.(:failed,
     doc:
       "rendered when an error or exit is caught or assign_async returns `{:error, reason}`. Receives the error as a :let."
   )
 
-  def async_result(assigns) do
-    case assigns.assign do
-      %AsyncResult{status: status, ok?: once_ok?, result: result} when status == :ok or once_ok? ->
-        if assigns.empty != [] and (result == nil or Enum.empty?(result)) do
-          ~H|<%= render_slot(@empty, @assign.result) %>|
-        else
-          ~H|<%= render_slot(@inner_block, @assign.result) %>|
-        end
+  slot.(:inner_block, doc: "rendered when the assign is loaded successfully via AsyncResult.ok/2")
 
-      %AsyncResult{status: :loading} ->
-        ~H|<%= render_slot(@loading, @assign.state) %>|
+  def async_result(%{assign: async_assign} = assigns) do
+    cond do
+      async_assign.ok? ->
+        ~H|<%= render_slot(@inner_block, @assign.result) %>|
 
-      %AsyncResult{status: kind} when kind in [:error, :exit] ->
-        ~H|<%= render_slot(@failed, {@assign.status, @assign.state}) %>|
+      async_assign.loading ->
+        ~H|<%= render_slot(@loading, @assign.loading) %>|
+
+      async_assign.failed ->
+        ~H|<%= render_slot(@failed, @assign.failed) %>|
     end
   end
 end

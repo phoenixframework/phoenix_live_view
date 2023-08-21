@@ -16,7 +16,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/assign_async?test=bad_return")
 
       assert render_async(lv) =~
-               "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:data] or {:error, reason}, got: 123\\n&quot;}"
+               "{:exit, {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:data] or {:error, reason}, got: 123\\n&quot;}"
 
       assert render(lv)
     end
@@ -38,14 +38,14 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     test "raise during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=raise")
 
-      assert render_async(lv) =~ "exit: {%RuntimeError{message: &quot;boom&quot;}"
+      assert render_async(lv) =~ "{:exit, {%RuntimeError{message: &quot;boom&quot;}"
       assert render(lv)
     end
 
     test "exit during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=exit")
 
-      assert render_async(lv) =~ "exit: :boom"
+      assert render_async(lv) =~ "{:exit, :boom}"
       assert render(lv)
     end
 
@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert_receive {:DOWN, ^async_ref, :process, _pid, :killed}
 
-      assert render(lv) =~ "error: :cancel"
+      assert render(lv) =~ ":cancel"
 
       send(lv.pid, :renew_canceled)
 
@@ -88,7 +88,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       Process.register(self(), :trap_exit_test)
       {:ok, lv, _html} = live(conn, "/assign_async?test=trap_exit")
 
-      assert render_async(lv, 200) =~ "exit: :boom"
+      assert render_async(lv, 200) =~ "{:exit, :boom}"
       assert render(lv)
       assert_receive {:exit, _pid, :boom}, 500
     end
@@ -155,7 +155,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert_receive {:DOWN, ^async_ref, :process, _pid, :killed}
 
-      assert render(lv) =~ "error: :cancel"
+      assert render(lv) =~ "exit: :cancel"
 
       Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
         id: "lc",

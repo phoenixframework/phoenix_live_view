@@ -343,7 +343,7 @@ defmodule Phoenix.LiveView do
   our template could conditionally render the states:
 
   ```heex
-  <div :if={@org.status == :loading}>Loading organization...</div>
+  <div :if={@org.loading}>Loading organization...</div>
   <div :if={org = @org.ok? && @org.result}}><%= org.name %> loaded!</div>
   ```
 
@@ -353,8 +353,7 @@ defmodule Phoenix.LiveView do
   ```heex
   <.async_result :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
-    <:empty>You don't have an organization yet</:empty>
-    <:error :let={{_kind, _reason}}>there was an error loading the organization</:error>
+    <:failed :let={_reason}>there was an error loading the organization</:failed>
     <%= org.name %>
   <.async_result>
   ```
@@ -376,7 +375,7 @@ defmodule Phoenix.LiveView do
       def mount(%{"id" => id}, _, socket) do
         {:ok,
          socket
-         |> assign(:org, AsyncResult.new())
+         |> assign(:org, AsyncResult.loading())
          |> start_async(:my_task, fn -> fetch_org!(id) end)}
       end
 
@@ -387,7 +386,7 @@ defmodule Phoenix.LiveView do
 
       def handle_async(:org, {:exit, reason}, socket) do
         %{org: org} = socket.assigns
-        {:noreply, assign(socket, :org, AsyncResult.exit(org, reason))}
+        {:noreply, assign(socket, :org, AsyncResult.failed(org, {:exit, reason}))}
       end
 
   `start_async/3` is used to fetch the organization asynchronously. The
@@ -1978,7 +1977,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      def mount(%{"slug" => slug}, _, socket) do
+      }def mount(%{"slug" => slug}, _, socket) do
         {:ok,
          socket
          |> assign(:foo, "bar")
@@ -2006,7 +2005,7 @@ defmodule Phoenix.LiveView do
       def mount(%{"id" => id}, _, socket) do
         {:ok,
          socket
-         |> assign(:org, AsyncResult.new())
+         |> assign(:org, AsyncResult.loading())
          |> start_async(:my_task, fn -> fetch_org!(id) end)
       end
 
@@ -2017,7 +2016,7 @@ defmodule Phoenix.LiveView do
 
       def handle_async(:org, {:exit, reason}, socket) do
         %{org: org} = socket.assigns
-        {:noreply, assign(socket, :org, AsyncResult.exit(org, reason))}
+        {:noreply, assign(socket, :org, AsyncResult.failed(org, {:exit, reason}))}
       end
 
   See the moduledoc for more information.
