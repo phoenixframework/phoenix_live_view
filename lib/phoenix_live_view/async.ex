@@ -3,9 +3,9 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  def start_async(%Socket{} = socket, name, func)
-      when is_atom(name) and is_function(func, 0) do
-    run_async_task(socket, name, func, :start)
+  def start_async(%Socket{} = socket, key, func)
+      when is_atom(key) and is_function(func, 0) do
+    run_async_task(socket, key, func, :start)
   end
 
   def assign_async(%Socket{} = socket, key_or_keys, func)
@@ -50,35 +50,35 @@ defmodule Phoenix.LiveView.Async do
     |> run_async_task(keys, wrapped_func, :assign)
   end
 
-  defp run_async_task(%Socket{} = socket, keys, func, kind) do
+  defp run_async_task(%Socket{} = socket, key, func, kind) do
     if Phoenix.LiveView.connected?(socket) do
-      socket = cancel_existing(socket, keys)
+      socket = cancel_existing(socket, key)
       lv_pid = self()
       cid = cid(socket)
-      {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, keys, func, kind) end)
+      {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
 
       ref =
-        :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, keys, cid, kind})
+        :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, key, cid, kind})
 
       send(pid, {:context, ref})
 
-      update_private_async(socket, &Map.put(&1, keys, {ref, pid, kind}))
+      update_private_async(socket, &Map.put(&1, key, {ref, pid, kind}))
     else
       socket
     end
   end
 
-  defp do_async(lv_pid, cid, keys, func, async_kind) do
+  defp do_async(lv_pid, cid, key, func, async_kind) do
     receive do
       {:context, ref} ->
         try do
           result = func.()
-          Channel.report_async_result(ref, async_kind, ref, cid, keys, {:ok, result})
+          Channel.report_async_result(ref, async_kind, ref, cid, key, {:ok, result})
         catch
           catch_kind, reason ->
             Process.unlink(lv_pid)
             caught_result = to_exit(catch_kind, reason, __STACKTRACE__)
-            Channel.report_async_result(ref, async_kind, ref, cid, keys, caught_result)
+            Channel.report_async_result(ref, async_kind, ref, cid, key, caught_result)
             :erlang.raise(catch_kind, reason, __STACKTRACE__)
         end
     end
@@ -86,7 +86,7 @@ defmodule Phoenix.LiveView.Async do
 
   def cancel_async(%Socket{} = socket, %AsyncResult{} = result, reason) do
     case result do
-      %AsyncResult{loading: keys} when not is_nil(keys) ->
+      %AsyncResult{loading: keys} when is_list(keys) ->
         new_assigns = for key <- keys, do: {key, AsyncResult.failed(result, {:exit, reason})}
 
         socket
@@ -98,36 +98,36 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  def cancel_async(%Socket{} = socket, keys, _reason) do
-    case get_private_async(socket, keys) do
+  def cancel_async(%Socket{} = socket, key, _reason) do
+    case get_private_async(socket, key) do
       {_ref, pid, _kind} when is_pid(pid) ->
         Process.unlink(pid)
         Process.exit(pid, :kill)
-        update_private_async(socket, &Map.delete(&1, keys))
+        update_private_async(socket, &Map.delete(&1, key))
 
       nil ->
-        raise ArgumentError, "unknown async assign #{inspect(keys)}"
+        raise ArgumentError, "unknown async assign #{inspect(key)}"
     end
   end
 
-  def handle_async(socket, maybe_component, kind, keys, ref, result) do
-    case prune_current_async(socket, keys, ref) do
+  def handle_async(socket, maybe_component, kind, key, ref, result) do
+    case prune_current_async(socket, key, ref) do
       {:ok, pruned_socket} ->
-        handle_kind(pruned_socket, maybe_component, kind, keys, result)
+        handle_kind(pruned_socket, maybe_component, kind, key, result)
 
       :error ->
         socket
     end
   end
 
-  def handle_trap_exit(socket, maybe_component, kind, keys, ref, reason) do
-    handle_async(socket, maybe_component, kind, keys, ref, {:exit, reason})
+  def handle_trap_exit(socket, maybe_component, kind, key, ref, reason) do
+    handle_async(socket, maybe_component, kind, key, ref, {:exit, reason})
   end
 
-  defp handle_kind(socket, maybe_component, :start, keys, result) do
+  defp handle_kind(socket, maybe_component, :start, key, result) do
     callback_mod = maybe_component || socket.view
 
-    case callback_mod.handle_async(keys, result, socket) do
+    case callback_mod.handle_async(key, result, socket) do
       {:noreply, %Socket{} = new_socket} ->
         new_socket
 
@@ -169,9 +169,9 @@ defmodule Phoenix.LiveView.Async do
   end
 
   # handle race of async being canceled and then reassigned
-  defp prune_current_async(socket, keys, ref) do
-    case get_private_async(socket, keys) do
-      {^ref, _pid, _kind} -> {:ok, update_private_async(socket, &Map.delete(&1, keys))}
+  defp prune_current_async(socket, key, ref) do
+    case get_private_async(socket, key) do
+      {^ref, _pid, _kind} -> {:ok, update_private_async(socket, &Map.delete(&1, key))}
       {_ref, _pid, _kind} -> :error
       nil -> :error
     end
