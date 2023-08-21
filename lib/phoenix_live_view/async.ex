@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.Async do
         catch
           catch_kind, reason ->
             Process.unlink(lv_pid)
-            caught_result = {:catch, catch_kind, reason, __STACKTRACE__}
+            caught_result = to_exit(catch_kind, reason, __STACKTRACE__)
             Channel.report_async_result(ref, async_kind, ref, cid, keys, caught_result)
             :erlang.raise(catch_kind, reason, __STACKTRACE__)
         end
@@ -121,21 +121,13 @@ defmodule Phoenix.LiveView.Async do
   end
 
   def handle_trap_exit(socket, maybe_component, kind, keys, ref, reason) do
-    {:current_stacktrace, stack} = Process.info(self(), :current_stacktrace)
-    trapped_result = {:catch, :exit, reason, stack}
-    handle_async(socket, maybe_component, kind, keys, ref, trapped_result)
+    handle_async(socket, maybe_component, kind, keys, ref, {:exit, reason})
   end
 
   defp handle_kind(socket, maybe_component, :start, keys, result) do
     callback_mod = maybe_component || socket.view
 
-    normalized_result =
-      case result do
-        {:ok, result} -> {:ok, result}
-        {:catch, kind, reason, stack} -> {:exit, to_exit(kind, reason, stack)}
-      end
-
-    case callback_mod.handle_async(keys, normalized_result, socket) do
+    case callback_mod.handle_async(keys, result, socket) do
       {:noreply, %Socket{} = new_socket} ->
         new_socket
 
@@ -166,12 +158,10 @@ defmodule Phoenix.LiveView.Async do
 
         Phoenix.Component.assign(socket, new_assigns)
 
-      {:catch, kind, reason, stack} ->
-        normalized_exit = to_exit(kind, reason, stack)
-
+      {:exit, _reason} = normalized_exit ->
         new_assigns =
           for key <- keys do
-            {key, AsyncResult.failed(get_current_async!(socket, key), {:exit, normalized_exit})}
+            {key, AsyncResult.failed(get_current_async!(socket, key), normalized_exit)}
           end
 
         Phoenix.Component.assign(socket, new_assigns)
@@ -205,9 +195,9 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  defp to_exit(:throw, reason, stack), do: {{:nocatch, reason}, stack}
-  defp to_exit(:error, reason, stack), do: {reason, stack}
-  defp to_exit(:exit, reason, _stack), do: reason
+  defp to_exit(:throw, reason, stack), do: {:exit, {{:nocatch, reason}, stack}}
+  defp to_exit(:error, reason, stack), do: {:exit, {reason, stack}}
+  defp to_exit(:exit, reason, _stack), do: {:exit, reason}
 
   defp cancel_existing(%Socket{} = socket, key) do
     if get_private_async(socket, key) do

@@ -338,7 +338,7 @@ defmodule Phoenix.LiveView do
   set of keys, an error is raised.
 
   The state of the async operation is stored in the socket assigns within an
-  `%AsyncResult{}`. It carries the loading and error states, as well as the result.
+  `%AsyncResult{}`. It carries the loading and failed states, as well as the result.
   For example, if we wanted to show the loading states in the UI for the `:org`,
   our template could conditionally render the states:
 
