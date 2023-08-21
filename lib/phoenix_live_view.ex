@@ -390,7 +390,7 @@ defmodule Phoenix.LiveView do
       end
 
   `start_async/3` is used to fetch the organization asynchronously. The
-  `handle_async/3` callback is called when the task completes or exists,
+  `handle_async/3` callback is called when the task completes or exits,
   with the results wrapped in either `{:ok, result}` or `{:exit, reason}`.
   The `AsyncResult` module is used to direclty to update the state of the
   async operation, but you can also assign any value directly to the socket
