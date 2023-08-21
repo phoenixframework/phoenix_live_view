@@ -2009,7 +2009,7 @@ defmodule Phoenix.LiveView do
          |> start_async(:my_task, fn -> fetch_org!(id) end)
       end
 
-      def handle_async(:org, {:ok, fetched_org}, socket) do
+      def handle_async(:my_task, {:ok, fetched_org}, socket) do
         %{org: org} = socket.assigns
         {:noreply, assign(socket, :org, AsyncResult.ok(org, fetched_org))}
       end
