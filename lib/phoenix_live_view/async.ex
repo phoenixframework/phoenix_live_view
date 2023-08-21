@@ -40,8 +40,11 @@ defmodule Phoenix.LiveView.Async do
     new_assigns =
       Enum.map(keys, fn key ->
         case socket.assigns do
-          %{^key => %AsyncResult{ok?: true} = existing} -> {key, AsyncResult.loading(existing, keys)}
-          %{} -> {key, AsyncResult.loading(keys)}
+          %{^key => %AsyncResult{ok?: true} = existing} ->
+            {key, AsyncResult.loading(existing, keys)}
+
+          %{} ->
+            {key, AsyncResult.loading(keys)}
         end
       end)
 
@@ -52,7 +55,6 @@ defmodule Phoenix.LiveView.Async do
 
   defp run_async_task(%Socket{} = socket, key, func, kind) do
     if Phoenix.LiveView.connected?(socket) do
-      socket = cancel_existing(socket, key)
       lv_pid = self()
       cid = cid(socket)
       {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
@@ -107,6 +109,14 @@ defmodule Phoenix.LiveView.Async do
 
       nil ->
         raise ArgumentError, "unknown async assign #{inspect(key)}"
+    end
+  end
+
+  def cancel_existing_async(%Socket{} = socket, key, reason) do
+    if get_private_async(socket, key) do
+      Phoenix.LiveView.cancel_async(socket, key, reason)
+    else
+      socket
     end
   end
 
@@ -198,14 +208,6 @@ defmodule Phoenix.LiveView.Async do
   defp to_exit(:throw, reason, stack), do: {:exit, {{:nocatch, reason}, stack}}
   defp to_exit(:error, reason, stack), do: {:exit, {reason, stack}}
   defp to_exit(:exit, reason, _stack), do: {:exit, reason}
-
-  defp cancel_existing(%Socket{} = socket, key) do
-    if get_private_async(socket, key) do
-      Phoenix.LiveView.cancel_async(socket, key)
-    else
-      socket
-    end
-  end
 
   defp cid(%Socket{} = socket) do
     if myself = socket.assigns[:myself], do: myself.cid

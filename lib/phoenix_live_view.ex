@@ -2032,6 +2032,8 @@ defmodule Phoenix.LiveView do
   Accepts either the `%AsyncResult{}` when using `assign_async/3` or
   the keys passed to `start_async/3`.
 
+  Returns the `%Phoenix.LiveView.Socket{}`.
+
   ## Examples
 
       cancel_async(socket, :preview)
@@ -2039,7 +2041,24 @@ defmodule Phoenix.LiveView do
       cancel_async(socket, [:profile, :rank])
       cancel_async(socket, socket.assigns.preview)
   """
-  def cancel_async(socket, async_or_keys, reason \\ nil) do
+  def cancel_async(socket, async_or_keys, reason \\ :cancel) do
     Async.cancel_async(socket, async_or_keys, reason)
+  end
+
+  @doc """
+  Cancels an async operation if one exists.
+
+  Accepts either the `%AsyncResult{}` when using `assign_async/3` or
+  the keys passed to `start_async/3`.
+
+  Returns the `%Phoenix.LiveView.Socket{}`.
+
+  ## Examples
+
+      cancel_existing_async(socket, :preview)
+      cancel_existing_async(socket, socket.assigns.preview)
+  """
+  def cancel_existing_async(socket, async_or_keys, reason \\ :cancel) do
+    Async.cancel_existing_async(socket, async_or_keys, reason)
   end
 end
