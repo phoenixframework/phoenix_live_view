@@ -311,11 +311,11 @@ defmodule Phoenix.LiveView do
 
   Performing asynchronous work is common in LiveViews and LiveComponents.
   It allows the user to get a working UI quicky while the system fetches some
-  data in the background or talks to an external service, without blocking the render or event handling. For async work,
-  you also typically need to handle the different states of the async operation,
-  such as loading, error, and the successful result. You also want to catch any
-  errors or exits and translate it to a meaningful update in the UI rather than
-  crashing the user experience.
+  data in the background or talks to an external service, without blocking the
+  render or event handling. For async work, you also typically need to handle
+  the different states of the async operation, such as loading, error, and the
+  successful result. You also want to catch any errors or exits and translate it
+  to a meaningful update in the UI rather than crashing the user experience.
 
   ### Async assigns
 
