@@ -2879,9 +2879,9 @@ defmodule Phoenix.Component do
     <:loading>Loading organization...</:loading>
     <:failed :let={reason}>there was an error loading the organization</:failed>
     <%= if org do %>
-      You don't have an organization yet.
-    <% else %>
       <%= org.name %>
+    <% else %>
+      You don't have an organization yet.
     <% end %>
   <.async_result>
   ```
