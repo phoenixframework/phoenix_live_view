@@ -1977,7 +1977,7 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      }def mount(%{"slug" => slug}, _, socket) do
+      def mount(%{"slug" => slug}, _, socket) do
         {:ok,
          socket
          |> assign(:foo, "bar")
