@@ -123,6 +123,8 @@ defmodule Phoenix.LiveView.HooksTest do
       {:halt, %{}, socket}
     end)
 
+    Process.unlink(lv.pid)
+
     assert ExUnit.CaptureLog.capture_log(fn ->
              send(lv.pid, :boom)
              ref = Process.monitor(lv.pid)
