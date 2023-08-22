@@ -2242,7 +2242,7 @@ defmodule Phoenix.Component do
   association. To cast the user input from a nested form, one simply needs to configure
   the options:
 
-      schema "lists" do
+      schema "mailing_lists" do
         field :title, :string
 
         embeds_many :emails, EmailNotification, on_replace: :delete do
@@ -2274,38 +2274,38 @@ defmodule Phoenix.Component do
 
   ```heex
   <.inputs_for :let={ef} field={@form[:emails]}>
-    <input type="hidden" name="list[emails_sort][]" value={ef.index} />
+    <input type="hidden" name="mailing_list[emails_sort][]" value={ef.index} />
     <.input type="text" field={ef[:email]} placeholder="email" />
     <.input type="text" field={ef[:name]} placeholder="name" />
     <label>
-      <input type="checkbox" name="list[emails_drop][]" value={ef.index} class="hidden" />
+      <input type="checkbox" name="mailing_list[emails_drop][]" value={ef.index} class="hidden" />
       <.icon name="hero-x-mark" class="w-6 h-6 relative top-2" />
     </label>
   </.inputs_for>
 
   <label class="block cursor-pointer">
-    <input type="checkbox" name="list[emails_sort][]" class="hidden" />
+    <input type="checkbox" name="mailing_list[emails_sort][]" class="hidden" />
     add more
   </label>
 
-  <input type="hidden" name="list[emails_drop][]" />
+  <input type="hidden" name="mailing_list[emails_drop][]" />
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
   contains an email address and name input for each child. Within the nested inputs,
-  we render a hidden `list[emails_sort][]` input, which is set to the index of the
+  we render a hidden `mailing_list[emails_sort][]` input, which is set to the index of the
   given child. This tells Ecto's cast operation how to sort existing children, or
   where to insert new children. Next, we render the email and name inputs as usual.
   Then we render a label containing the "delete" text and a hidden checkbox input
-  with the name `list[emails_drop][]`, containing the index of the child as its value.
+  with the name `mailing_list[emails_drop][]`, containing the index of the child as its value.
   Like before, this tells Ecto to delete the child at this index when the checkbox is
   checked. Wrapping the checkbox and textual content in a label makes any clicked content
   within the label check and uncheck the checkbox.
 
   Finally, outside the `inputs_for`, we render another label with a value-less
-  `list[emails_sort][]` checkbox with accompanied "add more" text. Ecto will
+  `mailing_list[emails_sort][]` checkbox with accompanied "add more" text. Ecto will
   treat unknown sort params as new children and build a new child. We also render an
-  empty `list[emails_drop][]` to ensure that all children are deleted when saving our
+  empty `mailing_list[emails_drop][]` to ensure that all children are deleted when saving our
   form in the event that the user dropped all the inputs.
   """
   @doc type: :component
