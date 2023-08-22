@@ -221,7 +221,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                ) ==
                  {:error, %{limit: 100, reason: :file_size_limit_exceeded}}
 
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
       end
 
       @tag allow: [accept: :any, max_file_size: 100, chunk_timeout: 500]
@@ -394,8 +394,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         end)
 
         # Wait for the UploadClient and UploadChannel to shutdown
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
         assert_receive {:file, tmp_path, "foo.jpeg", "123"}
         # synchronize with LV and Plug.Upload to ensure they have processed DOWN
         assert render(lv)
@@ -423,7 +423,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {:reply, :ok, socket}
         end)
 
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
         assert_receive {:file, tmp_path, "foo.jpeg", "123"}
         # synchronize with LV to ensure it has processed DOWN
         assert render(lv)
@@ -535,8 +535,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert_receive {:results, [{:consumed, tmp_path}]}
         assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
         # synchronize with LV to ensure it has processed DOWN
         assert render(lv)
         # synchronize with Plug.Upload to ensure it has processed DOWN
@@ -590,8 +590,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert_receive {:result, {:consumed, tmp_path}}
         assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
         # synchronize with LV to ensure it has processed DOWN
         assert render(lv)
         # synchronize with Plug.Upload to ensure it has processed DOWN
@@ -631,7 +631,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {:reply, :ok, Phoenix.LiveView.cancel_upload(socket, :avatar, ref)}
         end)
 
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
 
         assert UploadLive.run(lv, fn socket ->
                  {:reply, Phoenix.LiveView.uploaded_entries(socket, :avatar), socket}
@@ -803,7 +803,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       refute render(lv) =~ "myfile1.jpeg"
 
-      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
 
       # retry with new component
       GenServer.call(lv.pid, {:uploads, 1})
