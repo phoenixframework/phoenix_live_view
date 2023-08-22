@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView do
   @moduledoc ~S'''
   A LiveView is a process that receives events, updates
-  its state, and render updates to a page as diffs.
+  its state, and renders updates to a page as diffs.
 
   The LiveView programming model is declarative: instead of
   saying "once event X happens, change Y on the page",
