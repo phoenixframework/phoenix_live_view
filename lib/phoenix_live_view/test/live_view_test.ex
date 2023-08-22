@@ -933,27 +933,37 @@ defmodule Phoenix.LiveViewTest do
       assert html =~ "loading data..."
       assert render_async(lv) =~ "data loaded!"
   """
-  def render_async(view_or_element, timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)) do
+  def render_async(
+        view_or_element,
+        timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+      ) do
     pids =
       case view_or_element do
         %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
         %Element{} = element -> call(element, {:async_pids, element})
       end
 
-    task =
-      Task.async(fn ->
-        pids
-        |> Enum.map(&Process.monitor(&1))
-        |> Enum.each(fn ref ->
-          receive do
-            {:DOWN, ^ref, :process, _pid, _reason} -> :ok
-          end
-        end)
-      end)
+    timeout_ref = make_ref()
+    Process.send_after(self(), {timeout_ref, :timeout}, timeout)
 
-    case Task.yield(task, timeout) || Task.shutdown(task) do
-      {:ok, _} -> :ok
-      nil -> raise RuntimeError, "expected async processes to finish within #{timeout}ms"
+    pids
+    |> Enum.map(&Process.monitor(&1))
+    |> Enum.each(fn ref ->
+      receive do
+        {^timeout_ref, :timeout} ->
+          raise RuntimeError, "expected async processes to finish within #{timeout}ms"
+
+        {:DOWN, ^ref, :process, _pid, _reason} ->
+          :ok
+      end
+    end)
+
+    unless Process.cancel_timer(timeout_ref) do
+      receive do
+        {^timeout_ref, :timeout} -> :noop
+      after
+        0 -> :noop
+      end
     end
 
     render(view_or_element)
