@@ -86,12 +86,10 @@ defmodule Phoenix.LiveView.AsyncResult do
     def count(%AsyncResult{}), do: 0
 
     def member?(%AsyncResult{result: result, ok?: true}, item) do
-      do: Enumerable.member?(result, item)
+      Enumerable.member?(result, item)
     end
 
-    def member?(%AsyncResult{}, _item) do
-      raise RuntimeError, "cannot lookup member? without an ok result"
-    end
+    def member?(%AsyncResult{}, _item), do: false
 
     def reduce(
           %AsyncResult{result: result, ok?: true},
@@ -102,14 +100,6 @@ defmodule Phoenix.LiveView.AsyncResult do
     end
 
     def reduce(%AsyncResult{}, {_, acc}, _fun), do: {:done, acc}
-
-    defp do_reduce(_list, {:halt, acc}, _fun), do: {:halted, acc}
-    defp do_reduce(list, {:suspend, acc}, fun), do: {:suspended, acc, &do_reduce(list, &1, fun)}
-    defp do_reduce([], {:cont, acc}, _fun), do: {:done, acc}
-
-    defp do_reduce([item | tail], {:cont, acc}, fun) do
-      do_reduce(tail, fun.(item, acc), fun)
-    end
 
     def slice(%AsyncResult{result: result, ok?: true}) do
       Enumerable.slice(result)
