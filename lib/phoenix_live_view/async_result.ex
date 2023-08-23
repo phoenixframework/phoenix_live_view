@@ -98,7 +98,7 @@ defmodule Phoenix.LiveView.AsyncResult do
           acc,
           fun
         ) do
-      do_reduce(result, acc, fun)
+      Enumerable.reduce(result, acc, fun)
     end
 
     def reduce(%AsyncResult{}, {_, acc}, _fun), do: {:done, acc}
