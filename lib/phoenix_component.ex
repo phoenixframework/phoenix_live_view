@@ -2872,6 +2872,10 @@ defmodule Phoenix.Component do
   @doc """
   Renders an async assign with slots for the different loading states.
 
+  *Note*: The inner block receives the result of the async assign as a :let.
+  The let is only accessible to the inner block and is not in scope to the
+  other slots.
+
   ## Examples
 
   ```heex
@@ -2894,7 +2898,10 @@ defmodule Phoenix.Component do
       "rendered when an error or exit is caught or assign_async returns `{:error, reason}`. Receives the error as a :let."
   )
 
-  slot.(:inner_block, doc: "rendered when the assign is loaded successfully via AsyncResult.ok/2")
+  slot.(:inner_block,
+    doc:
+      "rendered when the assign is loaded successfully via AsyncResult.ok/2. Receives the result as a :let"
+  )
 
   def async_result(%{assign: async_assign} = assigns) do
     cond do
