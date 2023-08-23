@@ -86,7 +86,7 @@ defmodule Phoenix.LiveView.AsyncResult do
     def count(%AsyncResult{}), do: 0
 
     def member?(%AsyncResult{result: result, ok?: true}, item) do
-      Enum.member?(result, item)
+      do: Enumerable.member?(result, item)
     end
 
     def member?(%AsyncResult{}, _item) do
