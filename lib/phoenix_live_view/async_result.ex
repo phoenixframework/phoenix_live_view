@@ -81,7 +81,7 @@ defmodule Phoenix.LiveView.AsyncResult do
     alias Phoenix.LiveView.AsyncResult
 
     def count(%AsyncResult{result: result, ok?: true}),
-      do: Enum.count(result)
+      do: Enumerable.count(result)
 
     def count(%AsyncResult{}), do: 0
 
