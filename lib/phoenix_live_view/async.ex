@@ -100,23 +100,15 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  def cancel_async(%Socket{} = socket, key, _reason) do
+  def cancel_async(%Socket{} = socket, key, reason) do
     case get_private_async(socket, key) do
       {_ref, pid, _kind} when is_pid(pid) ->
         Process.unlink(pid)
-        Process.exit(pid, :kill)
+        Process.exit(pid, reason)
         update_private_async(socket, &Map.delete(&1, key))
 
       nil ->
-        raise ArgumentError, "unknown async assign #{inspect(key)}"
-    end
-  end
-
-  def cancel_existing_async(%Socket{} = socket, key, reason) do
-    if get_private_async(socket, key) do
-      Phoenix.LiveView.cancel_async(socket, key, reason)
-    else
-      socket
+        socket
     end
   end
 

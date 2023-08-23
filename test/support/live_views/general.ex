@@ -423,7 +423,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
   def handle_info(:boom, _socket), do: exit(:boom)
 
   def handle_info(:cancel, socket) do
-    {:noreply, cancel_async(socket, socket.assigns.data, :cancel)}
+    {:noreply, cancel_async(socket, socket.assigns.data)}
   end
 
   def handle_info({:EXIT, pid, reason}, socket) do
@@ -509,7 +509,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
   def update(%{action: :boom}, _socket), do: exit(:boom)
 
   def update(%{action: :cancel}, socket) do
-    {:ok, cancel_async(socket, socket.assigns.lc_data, :cancel)}
+    {:ok, cancel_async(socket, socket.assigns.lc_data)}
   end
 
   def update(%{action: :renew_canceled}, socket) do
@@ -610,7 +610,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
   def handle_info(:boom, _socket), do: exit(:boom)
 
   def handle_info(:cancel, socket) do
-    {:noreply, cancel_async(socket, :result_task, :cancel)}
+    {:noreply, cancel_async(socket, :result_task)}
   end
 
   def handle_info(:renew_canceled, socket) do
@@ -680,7 +680,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
   end
 
   def update(%{action: :cancel}, socket) do
-    {:ok, cancel_async(socket, :result_task, :cancel)}
+    {:ok, cancel_async(socket, :result_task)}
   end
 
   def update(%{action: :renew_canceled}, socket) do

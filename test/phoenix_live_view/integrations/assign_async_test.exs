@@ -66,7 +66,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       async_ref = Process.monitor(Process.whereis(:cancel))
       send(lv.pid, :cancel)
 
-      assert_receive {:DOWN, ^async_ref, :process, _pid, :killed}, 1000
+      assert_receive {:DOWN, ^async_ref, :process, _pid, {:shutdown, :cancel}}, 1000
 
       assert render(lv) =~ ":cancel"
 
@@ -153,9 +153,9 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
         action: :cancel
       )
 
-      assert_receive {:DOWN, ^async_ref, :process, _pid, :killed}, 1000
+      assert_receive {:DOWN, ^async_ref, :process, _pid, {:shutdown, :cancel}}, 1000
 
-      assert render(lv) =~ "exit: :cancel"
+      assert render(lv) =~ "exit: {:shutdown, :cancel}"
 
       Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
         id: "lc",

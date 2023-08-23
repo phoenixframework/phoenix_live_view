@@ -2027,10 +2027,16 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Cancels an async operation.
+  Cancels an async operation if one exists.
 
   Accepts either the `%AsyncResult{}` when using `assign_async/3` or
   the keys passed to `start_async/3`.
+
+  The underlying process will be killed with the provided reason, or
+  {:shutdown, :cancel}`. if no reason is passed. For `assign_async/3`
+  operations, the `:failed` field will be set to `{:exit, reason}`.
+  For `start_async/3`, the `handle_async/3` callback will receive
+  `{:exit, reason}` as the result.
 
   Returns the `%Phoenix.LiveView.Socket{}`.
 
@@ -2041,24 +2047,7 @@ defmodule Phoenix.LiveView do
       cancel_async(socket, [:profile, :rank])
       cancel_async(socket, socket.assigns.preview)
   """
-  def cancel_async(socket, async_or_keys, reason \\ :cancel) do
+  def cancel_async(socket, async_or_keys, reason \\ {:shutdown, :cancel}) do
     Async.cancel_async(socket, async_or_keys, reason)
-  end
-
-  @doc """
-  Cancels an async operation if one exists.
-
-  Accepts either the `%AsyncResult{}` when using `assign_async/3` or
-  the keys passed to `start_async/3`.
-
-  Returns the `%Phoenix.LiveView.Socket{}`.
-
-  ## Examples
-
-      cancel_existing_async(socket, :preview)
-      cancel_existing_async(socket, socket.assigns.preview)
-  """
-  def cancel_existing_async(socket, async_or_keys, reason \\ :cancel) do
-    Async.cancel_existing_async(socket, async_or_keys, reason)
   end
 end
