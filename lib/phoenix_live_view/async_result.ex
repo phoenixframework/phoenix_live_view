@@ -101,7 +101,7 @@ defmodule Phoenix.LiveView.AsyncResult do
       do_reduce(result, acc, fun)
     end
 
-    def reduce(%AsyncResult{}, acc, _fun), do: acc
+    def reduce(%AsyncResult{}, {_, acc}, _fun), do: {:done, acc}
 
     defp do_reduce(_list, {:halt, acc}, _fun), do: {:halted, acc}
     defp do_reduce(list, {:suspend, acc}, fun), do: {:suspended, acc, &do_reduce(list, &1, fun)}
