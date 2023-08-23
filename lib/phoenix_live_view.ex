@@ -2030,7 +2030,7 @@ defmodule Phoenix.LiveView do
   Cancels an async operation if one exists.
 
   Accepts either the `%AsyncResult{}` when using `assign_async/3` or
-  the keys passed to `start_async/3`.
+  the key passed to `start_async/3`.
 
   The underlying process will be killed with the provided reason, or
   {:shutdown, :cancel}`. if no reason is passed. For `assign_async/3`
@@ -2044,7 +2044,6 @@ defmodule Phoenix.LiveView do
 
       cancel_async(socket, :preview)
       cancel_async(socket, :preview, :my_reason)
-      cancel_async(socket, [:profile, :rank])
       cancel_async(socket, socket.assigns.preview)
   """
   def cancel_async(socket, async_or_keys, reason \\ {:shutdown, :cancel}) do
