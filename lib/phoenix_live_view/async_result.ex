@@ -112,7 +112,7 @@ defmodule Phoenix.LiveView.AsyncResult do
     end
 
     def slice(%AsyncResult{result: result, ok?: true}) do
-      fn start, length, step -> Enum.slice(result, start..(start + length - 1)//step) end
+      Enumerable.slice(result)
     end
 
     def slice(%AsyncResult{}) do
