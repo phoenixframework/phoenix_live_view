@@ -53,4 +53,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   def void?(_), do: false
+
+  @impl true
+  def annotate_root_tag(%Macro.Env{} = caller) do
+    %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
+    line = if line == 0, do: 1, else: line
+    file = Path.relative_to_cwd(file)
+    begin = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
+    "<!-- #{begin} -->"
+  end
 end

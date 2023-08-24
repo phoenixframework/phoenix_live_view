@@ -224,6 +224,8 @@ export default class Rendered {
             child.innerHTML = ""
           }
           return [true, hasComponents]
+        } else if(child.nodeType === Node.COMMENT_NODE){
+          return [hasNodes, hasComponents]
         } else {
           if(child.nodeValue.trim() !== ""){
             logError("only HTML element tags are allowed at the root of components.\n\n" +

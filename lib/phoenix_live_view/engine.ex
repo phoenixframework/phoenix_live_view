@@ -390,6 +390,16 @@ defmodule Phoenix.LiveView.Engine do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
 
+      static =
+        if anno = opts[:root_tag_annotation] do
+          case static do
+            [] -> [anno]
+            [first | rest] -> [anno <> first | rest]
+          end
+        else
+          static
+        end
+
       changed =
         quote generated: true do
           case unquote(@assigns_var) do

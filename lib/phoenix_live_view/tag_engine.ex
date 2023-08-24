@@ -40,6 +40,8 @@ defmodule Phoenix.LiveView.TagEngine do
   """
   @callback void?(name :: binary()) :: boolean()
 
+  @callback annotate_root_tag(Macro.Env.t()) :: binary()
+
   @doc """
   Renders a component defined by the given function.
 
@@ -166,7 +168,8 @@ defmodule Phoenix.LiveView.TagEngine do
       caller: Keyword.fetch!(opts, :caller),
       previous_token_slot?: false,
       source: Keyword.fetch!(opts, :source),
-      tag_handler: Keyword.fetch!(opts, :tag_handler)
+      tag_handler: Keyword.fetch!(opts, :tag_handler),
+      has_tags?: false
     }
   end
 
@@ -182,7 +185,10 @@ defmodule Phoenix.LiveView.TagEngine do
       |> handle_tokens(tokens)
       |> validate_unclosed_tags!("template")
 
-    opts = [root: token_state.root || false]
+    annotation =
+      state.has_tags? && state.caller && state.tag_handler.annotate_root_tag(state.caller)
+
+    opts = [root: token_state.root || false, root_tag_annotation: annotation]
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
     quote do
@@ -253,8 +259,17 @@ defmodule Phoenix.LiveView.TagEngine do
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont, source: source} = state
     tokenizer_state = Tokenizer.init(indentation, file, source, state.tag_handler)
-    {tokens, cont} = Tokenizer.tokenize(text, meta, tokens, cont, tokenizer_state)
-    %{state | tokens: tokens, cont: cont, source: state.source}
+
+    {tokens, cont, new_tokenizer_state} =
+      Tokenizer.tokenize(text, meta, tokens, cont, tokenizer_state)
+
+    %{
+      state
+      | tokens: tokens,
+        cont: cont,
+        source: state.source,
+        has_tags?: new_tokenizer_state.has_tags?
+    }
   end
 
   @impl true

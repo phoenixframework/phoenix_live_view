@@ -80,7 +80,8 @@ defmodule Phoenix.LiveView.Tokenizer do
       context: [],
       source: source,
       indentation: indentation,
-      tag_handler: tag_handler
+      tag_handler: tag_handler,
+      has_tags?: false
     }
   end
 
@@ -149,7 +150,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   defp handle_text("<" <> rest, line, column, buffer, acc, state) do
     text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
-    handle_tag_open(rest, line, column + 1, text_to_acc, %{state | context: []})
+    handle_tag_open(rest, line, column + 1, text_to_acc, %{state | context: [], has_tags?: true})
   end
 
   defp handle_text(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
@@ -157,7 +158,7 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp handle_text(<<>>, line, column, buffer, acc, state) do
-    ok(text_to_acc(buffer, acc, line, column, state.context), :text)
+    ok(text_to_acc(buffer, acc, line, column, state.context), :text, state)
   end
 
   ## handle_doctype
@@ -201,8 +202,8 @@ defmodule Phoenix.LiveView.Tokenizer do
     handle_script(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
-  defp handle_script(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column, []), :script)
+  defp handle_script(<<>>, line, column, buffer, acc, state) do
+    ok(text_to_acc(buffer, acc, line, column, []), :script, state)
   end
 
   ## handle_style
@@ -228,8 +229,8 @@ defmodule Phoenix.LiveView.Tokenizer do
     handle_style(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
-  defp handle_style(<<>>, line, column, buffer, acc, _state) do
-    ok(text_to_acc(buffer, acc, line, column, []), :style)
+  defp handle_style(<<>>, line, column, buffer, acc, state) do
+    ok(text_to_acc(buffer, acc, line, column, []), :style, state)
   end
 
   ## handle_comment
@@ -243,7 +244,7 @@ defmodule Phoenix.LiveView.Tokenizer do
       {:ok, line_end, column_end, buffer} ->
         acc = text_to_acc(buffer, acc, line_end, column_end, state.context)
         # We do column - 4 to point to the opening <!--
-        ok(acc, {:comment, line, column - 4})
+        ok(acc, {:comment, line, column - 4}, state)
     end
   end
 
@@ -632,8 +633,8 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   ## helpers
 
-  @compile {:inline, ok: 2, char_or_bin: 1}
-  defp ok(acc, cont), do: {acc, cont}
+  @compile {:inline, ok: 3, char_or_bin: 1}
+  defp ok(acc, cont, state), do: {acc, cont, state}
 
   defp char_or_bin(c) when c <= 127, do: c
   defp char_or_bin(c), do: <<c::utf8>>
