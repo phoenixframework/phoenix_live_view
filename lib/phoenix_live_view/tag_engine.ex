@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.TagEngine do
   """
   @callback void?(name :: binary()) :: boolean()
 
-  @callback annotate_root_tag(Macro.Env.t()) :: binary()
+  @callback annotate_root_tag(Macro.Env.t()) :: binary() | nil
 
   @doc """
   Renders a component defined by the given function.
@@ -268,7 +268,7 @@ defmodule Phoenix.LiveView.TagEngine do
       | tokens: tokens,
         cont: cont,
         source: state.source,
-        has_tags?: new_tokenizer_state.has_tags?
+        has_tags?: state.has_tags? || new_tokenizer_state.has_tags?
     }
   end
 
