@@ -40,7 +40,8 @@ defmodule Phoenix.LiveView.TagEngine do
   """
   @callback void?(name :: binary()) :: boolean()
 
-  @callback annotate_root_tag(Macro.Env.t()) :: binary() | nil
+  @callback annotate_root_tag(Macro.Env.t()) ::
+              {anno_before :: binary() | nil, anno_after :: binary() | nil}
 
   @doc """
   Renders a component defined by the given function.
@@ -185,10 +186,15 @@ defmodule Phoenix.LiveView.TagEngine do
       |> handle_tokens(tokens)
       |> validate_unclosed_tags!("template")
 
-    annotation =
-      state.has_tags? && state.caller && state.tag_handler.annotate_root_tag(state.caller)
+    opts = [root: token_state.root || false]
 
-    opts = [root: token_state.root || false, root_tag_annotation: annotation]
+    opts =
+      if state.has_tags? && state.caller do
+        Keyword.put(opts, :root_tag_annotation, state.tag_handler.annotate_root_tag(state.caller))
+      else
+        opts
+      end
+
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
     quote do

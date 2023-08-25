@@ -391,13 +391,21 @@ defmodule Phoenix.LiveView.Engine do
         analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
 
       static =
-        if anno = opts[:root_tag_annotation] do
-          case static do
-            [] -> [anno]
-            [first | rest] -> [anno <> first | rest]
-          end
-        else
-          static
+        case Keyword.fetch(opts, :root_tag_annotation) do
+          {:ok, {nil = _before, nil = _aft}} ->
+            static
+
+          {:ok, {before, aft}} ->
+            case static do
+              [] ->
+                ["#{before}#{aft}"]
+
+              [first | rest] ->
+                List.update_at([to_string(before) <> first | rest], -1, &(&1 <> to_string(aft)))
+            end
+
+          :error ->
+            static
         end
 
       changed =

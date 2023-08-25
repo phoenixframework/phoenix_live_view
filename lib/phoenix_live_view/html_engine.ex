@@ -59,11 +59,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
     if Application.get_env(:phoenix, :heex_debug_annotations, false) do
       %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
       line = if line == 0, do: 1, else: line
-      file = Path.relative_to_cwd(file)
-      begin = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
-      "<!-- #{begin} -->"
+      # file = Path.relative_to_cwd(file)
+      before = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
+      aft = "</#{inspect(mod)}.#{func}>"
+      {"<!-- #{before} -->", "<!-- #{aft} -->"}
     else
-      nil
+      {nil, nil}
     end
   end
 end
