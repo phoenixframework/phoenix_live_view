@@ -82,12 +82,6 @@ defmodule Phoenix.LiveView.Channel do
     e -> reraise(e, __STACKTRACE__)
   end
 
-  def handle_info({:EXIT, _pid, _reason} = msg, state) do
-    msg
-    |> view_handle_info(state.socket)
-    |> handle_result({:handle_info, 2, nil}, state)
-  end
-
   def handle_info({:DOWN, ref, _, _, _reason}, ref) do
     {:stop, {:shutdown, :closed}, ref}
   end
