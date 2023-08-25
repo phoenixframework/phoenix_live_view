@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
       file =
         if String.contains?(file, deps_path) do
-          Path.relative_to(file, deps_path)
+          Path.join("deps", Path.relative_to(file, deps_path))
         else
           Path.relative_to_cwd(file)
         end
