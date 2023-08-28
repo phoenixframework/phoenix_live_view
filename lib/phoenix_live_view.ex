@@ -1573,7 +1573,8 @@ defmodule Phoenix.LiveView do
   Once a stream is defined, a new `@streams` assign is available containing
   the name of the defined streams. For example, in the above definition, the
   stream may be referenced as `@streams.songs` in your template. Stream items
-  are temporary and freed from socket state as soon as they are rendered.
+  are temporary and freed from socket state immediately after the `render/1`
+  function is invoked (or a template is rendered from disk).
 
   By default, calling `stream/4` on an existing stream will bulk insert the new items
   on the client while leaving the existing items in place. Streams may also be reset
