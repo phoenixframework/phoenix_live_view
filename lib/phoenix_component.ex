@@ -2794,7 +2794,7 @@ defmodule Phoenix.Component do
 
   defp join_refs(entries), do: Enum.join(entries, ",")
 
-  defp valid_upload?(%{entries: [_ | _], errors: []}), do: true
+  defp valid_upload?(%{entries: [_ | _]}), do: true
   defp valid_upload?(%{}), do: false
 
   @doc """
