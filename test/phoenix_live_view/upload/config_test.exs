@@ -254,12 +254,12 @@ defmodule Phoenix.LiveView.UploadConfigTest do
     test "returns error when entry with greater than max_file_size provided" do
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any)
       entry = build_client_entry(:avatar, %{"size" => 8_000_001})
-      assert {:error, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry])
+      assert {:ok, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry])
       assert avatar.errors == [{entry["ref"], :too_large}]
 
       socket = LiveView.allow_upload(build_socket(), :avatar, accept: :any, max_file_size: 1024)
       entry = build_client_entry(:avatar, %{"size" => 2048})
-      assert {:error, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry])
+      assert {:ok, avatar} = UploadConfig.put_entries(socket.assigns.uploads.avatar, [entry])
       assert avatar.errors == [{entry["ref"], :too_large}]
     end
 
@@ -312,7 +312,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "file.gif"})
 
-      assert {:error, %UploadConfig{} = hero_config} =
+      {:ok, %UploadConfig{} = hero_config} =
                UploadConfig.put_entries(hero_config, [entry])
 
       assert hero_config.errors == [{entry["ref"], :not_accepted}]
@@ -320,7 +320,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       hero_config = drop_entry(hero_config, entry["ref"])
       entry = build_client_entry(:avatar, %{"name" => "file.gif", "type" => "image/png"})
 
-      assert {:error, %UploadConfig{} = hero_config} =
+      assert {:ok, %UploadConfig{} = hero_config} =
                UploadConfig.put_entries(hero_config, [entry])
 
       assert hero_config.errors == [{entry["ref"], :not_accepted}]
@@ -328,7 +328,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       hero_config = drop_entry(hero_config, entry["ref"])
       entry = build_client_entry(:avatar, %{"name" => "file", "type" => "image/png"})
 
-      assert {:error, %UploadConfig{} = hero_config} =
+      assert {:ok, %UploadConfig{} = hero_config} =
                UploadConfig.put_entries(hero_config, [entry])
 
       assert hero_config.errors == [{entry["ref"], :not_accepted}]
@@ -353,7 +353,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
       hero_config = socket.assigns.uploads.hero
       entry = build_client_entry(:avatar, %{"name" => "photo", "type" => "image/gif"})
-      assert {:error, hero_config} = UploadConfig.put_entries(hero_config, [entry])
+      assert {:ok, hero_config} = UploadConfig.put_entries(hero_config, [entry])
       assert hero_config.errors == [{entry["ref"], :not_accepted}]
 
       hero_config = drop_entry(hero_config, entry["ref"])
@@ -361,7 +361,7 @@ defmodule Phoenix.LiveView.UploadConfigTest do
       entry =
         build_client_entry(:avatar, %{"name" => "photo.jpg", "type" => "application/x-httpd-php"})
 
-      assert {:error, hero_config} = UploadConfig.put_entries(hero_config, [entry])
+      assert {:ok, hero_config} = UploadConfig.put_entries(hero_config, [entry])
       assert hero_config.errors == [{entry["ref"], :not_accepted}]
     end
 
