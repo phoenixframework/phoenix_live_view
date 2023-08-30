@@ -507,13 +507,7 @@ defmodule Phoenix.LiveView.UploadConfig do
     if too_many_files?(new_conf) do
       {:error, put_error(new_conf, new_conf.ref, @too_many_files)}
     else
-      case new_conf do
-        %UploadConfig{errors: []} = new_conf ->
-          {:ok, new_conf}
-
-        %UploadConfig{errors: [_ | _]} = new_conf ->
-          {:error, new_conf}
-      end
+      {:ok, new_conf }
     end
   end
 
