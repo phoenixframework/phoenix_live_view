@@ -56,7 +56,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @impl true
   def annotate_root_tag(%Macro.Env{} = caller) do
-    if Application.get_env(:phoenix, :heex_debug_annotations, false) do
+    if Application.get_env(:phoenix_live_view, :heex_debug_annotations, false) do
       %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
       line = if line == 0, do: 1, else: line
       deps_path = Mix.Project.deps_path()
