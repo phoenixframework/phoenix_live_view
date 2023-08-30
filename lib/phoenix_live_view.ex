@@ -930,6 +930,12 @@ defmodule Phoenix.LiveView do
     * `:to` - the path to redirect to. It must always be a local path
     * `:external` - an external path to redirect to. Either a string
       or `{scheme, url}` to redirect to a custom scheme
+
+  ## Examples
+
+      {:noreply, redirect(socket, to: "/")}
+      {:noreply, redirect(socket, external: "https://example.com")}
+
   """
   def redirect(socket, opts \\ [])
 
