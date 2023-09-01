@@ -2890,7 +2890,7 @@ defmodule Phoenix.Component do
     <% else %>
       You don't have an organization yet.
     <% end %>
-  <.async_result>
+  </.async_result>
   ```
   """
   attr.(:assign, AsyncResult, required: true)

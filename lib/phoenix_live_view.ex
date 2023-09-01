@@ -356,7 +356,7 @@ defmodule Phoenix.LiveView do
     <:loading>Loading organization...</:loading>
     <:failed :let={_reason}>there was an error loading the organization</:failed>
     <%= org.name %>
-  <.async_result>
+  </.async_result>
   ```
 
   Additionally, for async assigns which result in a collection of items, you
