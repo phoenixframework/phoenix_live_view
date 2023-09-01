@@ -343,7 +343,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
   on_mount({__MODULE__, :defaults})
 
   def on_mount(:defaults, _params, _session, socket) do
-    {:cont, assign(socket, enum: false, lc: false)}
+    {:cont, assign(socket, lc: false)}
   end
 
   def render(assigns) do
@@ -354,10 +354,6 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
     <div :if={@data.ok? && @data.result == nil}>no data found</div>
     <div :if={@data.ok? && @data.result}>data: <%= inspect(@data.result) %></div>
     <div :if={@data.failed}><%= inspect(@data.failed) %></div>
-
-    <%= if @enum do %>
-      <div :for={i <- @data}><%= i %></div>
-    <% end %>
     """
   end
 
@@ -415,11 +411,6 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
      end)}
   end
 
-  def mount(%{"test" => "enum"}, _session, socket) do
-    {:ok,
-     socket |> assign(enum: true) |> assign_async(:data, fn -> {:ok, %{data: [1, 2, 3]}} end)}
-  end
-
   def handle_info(:boom, _socket), do: exit(:boom)
 
   def handle_info(:cancel, socket) do
@@ -446,9 +437,6 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
   def render(assigns) do
     ~H"""
     <div>
-      <%= if @enum do %>
-        <div :for={i <- @lc_data}><%= i %></div>
-      <% end %>
       <.async_result :let={data} assign={@lc_data}>
         <:loading>lc_data loading...</:loading>
         <:failed :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:failed>
@@ -457,10 +445,6 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
       </.async_result>
     </div>
     """
-  end
-
-  def mount(socket) do
-    {:ok, assign(socket, enum: false)}
   end
 
   def update(%{test: "bad_return"}, socket) do
@@ -497,13 +481,6 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
        Process.register(self(), :lc_cancel)
        Process.sleep(:infinity)
      end)}
-  end
-
-  def update(%{test: "enum"}, socket) do
-    {:ok,
-     socket
-     |> assign(enum: true)
-     |> assign_async(:lc_data, fn -> {:ok, %{lc_data: [4, 5, 6]}} end)}
   end
 
   def update(%{action: :boom}, _socket), do: exit(:boom)

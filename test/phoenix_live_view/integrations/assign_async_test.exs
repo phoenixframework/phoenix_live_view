@@ -76,14 +76,6 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv, 200) =~ "data: 123"
     end
 
-    test "enum", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/assign_async?test=enum")
-
-      html = render_async(lv, 200)
-      assert html =~ "data: [1, 2, 3]"
-      assert html =~ "<div>1</div><div>2</div><div>3</div>"
-    end
-
     test "trapping exits", %{conn: conn} do
       Process.register(self(), :trap_exit_test)
       {:ok, lv, _html} = live(conn, "/assign_async?test=trap_exit")
@@ -164,14 +156,6 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert render(lv) =~ "lc_data loading..."
       assert render_async(lv, 200) =~ "lc_data: 123"
-    end
-
-    test "enum", %{conn: conn} do
-      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_enum")
-
-      html = render_async(lv, 200)
-      assert html =~ "lc_data: [4, 5, 6]"
-      assert html =~ "<div>4</div><div>5</div><div>6</div>"
     end
   end
 end
