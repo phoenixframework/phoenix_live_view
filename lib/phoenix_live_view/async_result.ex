@@ -76,37 +76,4 @@ defmodule Phoenix.LiveView.AsyncResult do
   def ok(%AsyncResult{} = result, value) do
     %AsyncResult{result | failed: nil, loading: nil, ok?: true, result: value}
   end
-
-  defimpl Enumerable, for: Phoenix.LiveView.AsyncResult do
-    alias Phoenix.LiveView.AsyncResult
-
-    def count(%AsyncResult{result: result, ok?: true}),
-      do: Enumerable.count(result)
-
-    def count(%AsyncResult{}), do: 0
-
-    def member?(%AsyncResult{result: result, ok?: true}, item) do
-      Enumerable.member?(result, item)
-    end
-
-    def member?(%AsyncResult{}, _item), do: false
-
-    def reduce(
-          %AsyncResult{result: result, ok?: true},
-          acc,
-          fun
-        ) do
-      Enumerable.reduce(result, acc, fun)
-    end
-
-    def reduce(%AsyncResult{}, {_, acc}, _fun), do: {:done, acc}
-
-    def slice(%AsyncResult{result: result, ok?: true}) do
-      Enumerable.slice(result)
-    end
-
-    def slice(%AsyncResult{}) do
-      fn _start, _length, _step -> [] end
-    end
-  end
 end
