@@ -2127,6 +2127,7 @@ defmodule Phoenix.Component do
     The HTTP method.
     It is only used if an `:action` is given. If the method is not `get` nor `post`,
     an input tag with name `_method` is generated alongside the form tag.
+    If an `:action` is given with no method, the method will default to `post`.
     """
   )
 
