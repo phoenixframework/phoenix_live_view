@@ -2264,8 +2264,8 @@ defmodule Phoenix.Component do
 
   Here we see the `:sort_param` and `:drop_param` options in action.
 
-  *Note: `on_replace: :delete` on the `has_many` and `embeds_many` is required when using
-  these options.
+  > Note: `on_replace: :delete` on the `has_many` and `embeds_many` is required
+  > when using these options.
 
   When Ecto sees the specified sort or drop parameter from the form, it will sort
   the children based on the order they appear in the form, add new children it hasn't
@@ -2284,12 +2284,12 @@ defmodule Phoenix.Component do
     </label>
   </.inputs_for>
 
+  <input type="hidden" name="mailing_list[emails_drop][]" />
+
   <label class="block cursor-pointer">
     <input type="checkbox" name="mailing_list[emails_sort][]" class="hidden" />
     add more
   </label>
-
-  <input type="hidden" name="mailing_list[emails_drop][]" />
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
@@ -2303,11 +2303,15 @@ defmodule Phoenix.Component do
   checked. Wrapping the checkbox and textual content in a label makes any clicked content
   within the label check and uncheck the checkbox.
 
-  Finally, outside the `inputs_for`, we render another label with a value-less
-  `mailing_list[emails_sort][]` checkbox with accompanied "add more" text. Ecto will
-  treat unknown sort params as new children and build a new child. We also render an
-  empty `mailing_list[emails_drop][]` to ensure that all children are deleted when saving our
-  form in the event that the user dropped all the inputs.
+  Outside the `inputs_for`, we render an empty `mailing_list[emails_drop][]`,
+  to ensure that all children are deleted when saving a form where the user
+  dropped all entries. This checkbox is required whenever dropping associations.
+
+  Finally, we also render another label with a value-less `mailing_list[emails_sort][]`
+  checkbox with accompanied "add more" text. Ecto will treat unknown sort params
+  as new children and build a new child. This checkbox is optional and only necessary
+  if you want to dyamically add entries. You can optionally add a similar checkbox
+  before the `<.inputs_for>`, in the case you want to prepend entries.
   """
   @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
