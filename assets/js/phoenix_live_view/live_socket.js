@@ -849,8 +849,10 @@ export default class LiveSocket {
         let currentIterations = iterations
         iterations++
         let {at: at, type: lastType} = DOM.private(input, "prev-iteration") || {}
-        // detect dup because some browsers dispatch both "input" and "change"
-        if(at === currentIterations - 1 && type !== lastType){ return }
+        // Browsers should always fire at least one "input" event before every "change"
+        // Ignore "change" events, unless there was no prior "input" event.
+        // This could happen if user code triggers a "change" event, or if the browser is non-conforming.
+        if(at === currentIterations - 1 && type === "change" && lastType === "input"){ return }
 
         DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
 
