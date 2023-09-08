@@ -1705,7 +1705,7 @@ defmodule Phoenix.LiveViewTest do
 
     url =
       case Keyword.fetch!(opts, :to) do
-        "/" <> path -> URI.merge(root.uri, path)
+        "/" <> _ = path -> URI.merge(root.uri, path)
         url -> url
       end
 
