@@ -127,6 +127,9 @@ available options can be found on
 [MDN](https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/key/Key_Values)
 or via the [Key Event Viewer](https://w3c.github.io/uievents/tools/key-event-viewer.html).
 
+*Note*: `phx-keyup` and `phx-keydown` are not supported on inputs.
+Instead use form bindings, such as `phx-change`, `phx-submit`, etc.
+
 *Note*: it is possible for certain browser features like autofill to trigger key events
 with no `"key"` field present in the value map sent to the server. For this reason, we
 recommend always having a fallback catch-all event handler for LiveView key bindings.

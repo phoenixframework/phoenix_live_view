@@ -541,7 +541,9 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
-    * `:container` - configures the container the `LiveView` will be wrapped in
+    * `:container` - an optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
+      See `Phoenix.Component.live_render/3` for more information and examples.
 
     * `:global_prefixes` - the global prefixes to use for components. See
       `Global Attributes` in `Phoenix.Component` for more information.

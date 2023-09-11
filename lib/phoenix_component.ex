@@ -883,6 +883,10 @@ defmodule Phoenix.Component do
 
   If you don't want the container to affect layout, you can use the CSS property
   `display: contents` or a class that applies it, like Tailwind's `.contents`.
+
+  Beware if you set this to `:body`, as any content injected inside the body
+  (such as `Phoenix.LiveReload` features) will be discarded once the LiveView
+  connects
   """
   def live_render(conn_or_socket, view, opts \\ [])
 
