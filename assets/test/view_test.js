@@ -231,6 +231,13 @@ describe("View + DOM", function(){
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
+
+    html = "<form id='my-form' phx-change='[[\"push\",{\"event\":\"update\",\"target\":1}]]'><input name=\"foo\" /></form>"
+    view = new View(liveViewDOM(html), liveSocket)
+    view.joinCount = 1
+    const newForms = view.formsForRecovery(html)
+    expect(newForms.length).toBe(1)
+    expect(newForms[0][0].getAttribute('phx-change')).toBe('[[\"push\",{\"event\":\"update\",\"target\":1}]]')
   })
 
   describe("submitForm", function(){
