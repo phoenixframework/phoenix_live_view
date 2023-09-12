@@ -3584,7 +3584,8 @@ var View = class {
     let template = document.createElement("template");
     template.innerHTML = html;
     return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id && this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").map((form) => {
-      let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${form.getAttribute(phxChange)}"]`);
+      const phxChangeValue = form.getAttribute(phxChange).replaceAll(/([\[\]"])/g, "\\$1");
+      let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${phxChangeValue}"]`);
       if (newForm) {
         return [form, newForm, this.targetComponentID(newForm)];
       } else {
@@ -4373,7 +4374,7 @@ var LiveSocket = class {
         let currentIterations = iterations;
         iterations++;
         let { at, type: lastType } = dom_default.private(input, "prev-iteration") || {};
-        if (at === currentIterations - 1 && type !== lastType) {
+        if (at === currentIterations - 1 && type === "change" && lastType === "input") {
           return;
         }
         dom_default.putPrivate(input, "prev-iteration", { at: currentIterations, type });
