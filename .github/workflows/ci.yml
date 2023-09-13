@@ -20,6 +20,10 @@ jobs:
             otp: 25.3
             lint: lint
 
+          - elixir: 1.15.5
+            otp: 26.0
+            lint: lint
+
     runs-on: ubuntu-latest
 
     steps:

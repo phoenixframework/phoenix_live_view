@@ -6,7 +6,7 @@ defmodule Phoenix.LiveViewTest.ConnectLive do
     params: <%= inspect(@params) %>
     uri: <%= URI.to_string(@uri) %>
     trace: <%= inspect(@trace) %>
-    peer: <%= inspect(@peer) %>
+    peer: <%= inspect(@peer, custom_options: [sort_maps: true]) %>
     x-headers: <%= inspect(@x_headers) %>
     user-agent: <%= inspect(@user_agent) %>
     """

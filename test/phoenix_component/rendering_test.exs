@@ -5,9 +5,9 @@ defmodule Phoenix.ComponentRenderingTest do
   import ExUnit.CaptureIO
   import Phoenix.LiveViewTest
 
-  embed_templates "pages/*"
-  embed_templates "another_root/*.html", root: "pages"
-  embed_templates "another_root/*.text", root: "pages", suffix: "_text"
+  embed_templates("pages/*")
+  embed_templates("another_root/*.html", root: "pages")
+  embed_templates("another_root/*.text", root: "pages", suffix: "_text")
 
   defp h2s(template) do
     template
@@ -65,7 +65,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
     def changed(assigns) do
       ~H"""
-      <%= inspect(Map.get(assigns, :__changed__)) %>
+      <%= inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true]) %>
       """
     end
 
@@ -217,7 +217,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
     defp inner_changed(assigns) do
       ~H"""
-      <%= inspect(Map.get(assigns, :__changed__)) %>
+      <%= inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true]) %>
       <%= render_slot(@inner_block, "var") %>
       """
     end

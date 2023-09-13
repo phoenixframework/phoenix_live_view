@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
   import Phoenix.HTML.Form
   import Phoenix.Component
+  require EasyHTML
 
   defp render(template) do
     template
@@ -14,6 +15,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
     template
     |> render()
     |> Phoenix.LiveViewTest.DOM.parse()
+  end
+
+  defp t2h(template) do
+    template
+    |> render()
+    |> EasyHTML.parse!()
   end
 
   describe "link patch" do
@@ -326,14 +333,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {"form", [{"class", "pretty"}, {"data-foo", "bar"}, {"phx-change", "valid"}],
-                [
-                  {"input", [{"id", "base_foo"}, {"name", "base[foo]"}, {"type", "text"}], []}
-                ]}
-             ] = html
+      assert t2h(template) ==
+               EasyHTML.parse!("""
+               <form data-foo="bar" class="pretty" phx-change="valid">
+                 <input id="base_foo" name=base[foo] type="text"/>
+               </form>
+               """)
     end
 
     test "generates form with prebuilt form and errors" do
@@ -466,38 +471,24 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
+      assert t2h(template) ==
+               EasyHTML.parse!("""
+               <form 
+                 id="form"
+                 action="/"
+                 method="post"
+                 enctype="multipart/form-data" 
+                 data-foo="bar"
+                 class="pretty"
+                 phx-change="valid"
+               >
+                 <input name="_method" type="hidden" hidden="hidden" value="put">
+                 <input name="_csrf_token" type="hidden" hidden="hidden" value="123">
+                 <input id="form_foo" name="user[foo]" type="text">
+                 [name: "can't be blank"]
 
-      assert [
-               {"form",
-                [
-                  {"enctype", "multipart/form-data"},
-                  {"action", "/"},
-                  {"method", "post"},
-                  {"class", "pretty"},
-                  {"data-foo", "bar"},
-                  {"id", "form"},
-                  {"phx-change", "valid"}
-                ],
-                [
-                  {"input",
-                   [
-                     {"name", "_method"},
-                     {"type", "hidden"},
-                     {"hidden", "hidden"},
-                     {"value", "put"}
-                   ], []},
-                  {"input",
-                   [
-                     {"name", "_csrf_token"},
-                     {"type", "hidden"},
-                     {"hidden", "hidden"},
-                     {"value", "123"}
-                   ], []},
-                  {"input", [{"id", "form_foo"}, {"name", "user[foo]"}, {"type", "text"}], []},
-                  "\n  [name: \"can't be blank\"]\n\n"
-                ]}
-             ] = html
+               </form>
+               """)
     end
   end
 
@@ -526,8 +517,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
                       {"name", "myform[inner][_persistent_id]"},
                       {"value", "0"}
                     ], []},
-                   {"input", [{"id", "myform_inner_0_foo"}, {"name", "myform[inner][foo]"}, {"type", "text"}],
-                    []}
+                   {"input",
+                    [
+                      {"id", "myform_inner_0_foo"},
+                      {"name", "myform[inner][foo]"},
+                      {"type", "text"}
+                    ], []}
                  ]
                }
              ] = html
@@ -553,7 +548,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
                  [
                    {"input",
                     [{"type", "hidden"}, {"name", "name[_persistent_id]"}, {"value", "0"}], []},
-                   {"input", [{"id", "myform_inner_0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
+                   {"input",
+                    [{"id", "myform_inner_0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
                  ]
                }
              ] = html
