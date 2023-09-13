@@ -364,7 +364,7 @@ defmodule Phoenix.LiveView do
   the results once the results are loaded. For example:
 
   ```heex
-  <div :for={orgs <- @orgs}><%= org.name %></div>
+  <div :for={org <- @orgs}><%= org.name %></div>
   ```
 
   ### Arbitrary async operations
