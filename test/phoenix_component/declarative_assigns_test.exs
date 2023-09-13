@@ -2,20 +2,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
-  require EasyHTML
+  import Phoenix.LiveView.HtmlTestHelpers
   use Phoenix.Component
 
-  defp render(mod, func, assigns) do
-    mod
-    |> apply(func, [Map.put(assigns, :__changed__, %{})])
-    |> t2h()
+  defp render_template(mod, func, assigns) do
+    apply(mod, func, [Map.put(assigns, :__changed__, %{})])
   end
 
-  defp t2h(template) do
-    template
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
-    |> EasyHTML.parse!()
+  defp render_string(mod, func, assigns) do
+    render_template(mod, func, assigns) |> rendered_to_string()
+  end
+
+  defp render_html(mod, func, assigns) do
+    render_template(mod, func, assigns) |> t2h()
   end
 
   test "__global__?" do
@@ -102,24 +101,22 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "merges globals" do
-    assert render(FunctionComponentWithAttrs, :with_global, %{}) ==
-             EasyHTML.parse!(~s[<button id="container" aria-hidden="true" class="btn"></button>])
+    assert render_html(FunctionComponentWithAttrs, :with_global, %{}) ==
+             ~X[<button id="container" aria-hidden="true" class="btn"></button>]
   end
 
   test "merges globals with defaults" do
     assigns = %{id: "btn", style: "display: none;"}
 
-    assert render(FunctionComponentWithAttrs, :button_with_defaults, assigns) ==
-             EasyHTML.parse!(
-               ~s[<button class="primary" id="btn" style="display: none;"></button>]
-             )
+    assert render_html(FunctionComponentWithAttrs, :button_with_defaults, assigns) ==
+             ~X[<button class="primary" id="btn" style="display: none;"></button>]
 
-    assert render(FunctionComponentWithAttrs, :button_with_defaults, %{class: "hidden"}) ==
-             EasyHTML.parse!(~s[<button class="hidden"></button>])
+    assert render_html(FunctionComponentWithAttrs, :button_with_defaults, %{class: "hidden"}) ==
+             ~X[<button class="hidden"></button>]
 
     # caller passes no globals
-    assert render(FunctionComponentWithAttrs, :button_with_defaults, %{}) ==
-             EasyHTML.parse!(~s[<button class="primary"></button>])
+    assert render_html(FunctionComponentWithAttrs, :button_with_defaults, %{}) ==
+             ~X[<button class="primary"></button>]
   end
 
   test "stores attributes definitions" do
@@ -586,29 +583,6 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert StructTypes.example(%{other: 2, uri: uri}) == "two"
   end
 
-  @tag skip: """
-       Fail!
-       1) test provides attr defaults (Phoenix.ComponentDeclarativeAssignsTest)
-          test/phoenix_component/declarative_assigns_test.exs:587
-          ** (FunctionClauseError) no function clause matching in EasyHTML.mapify_attributes/1
-
-          The following arguments were given to EasyHTML.mapify_attributes/1:
-          
-              # 1
-              ["3"]
-          
-          Attempted function clauses (showing 2 out of 2):
-          
-              defp mapify_attributes([{tag, attrs, inner} | rest])
-              defp mapify_attributes([])
-          
-          code: assert render(AttrDefaults, :add, %{}) == "3"
-          stacktrace:
-            (easyhtml 0.3.0) lib/easyhtml.ex:47: EasyHTML.mapify_attributes/1
-            (easyhtml 0.3.0) lib/easyhtml.ex:29: EasyHTML.parse!/1
-            test/phoenix_component/declarative_assigns_test.exs:613: (test)
-       """
-
   test "provides attr defaults" do
     defmodule AttrDefaults do
       use Phoenix.Component
@@ -635,12 +609,12 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       end
     end
 
-    assert render(AttrDefaults, :add, %{}) == "3"
-    assert render(AttrDefaults, :example, %{}) == "nil"
-    assert render(AttrDefaults, :no_default, %{value: 123}) == "123"
+    assert render_string(AttrDefaults, :add, %{}) == "3"
+    assert render_string(AttrDefaults, :example, %{}) == "nil"
+    assert render_string(AttrDefaults, :no_default, %{value: 123}) == "123"
 
     assert_raise KeyError, ~r":value not found", fn ->
-      render(AttrDefaults, :no_default, %{})
+      render_string(AttrDefaults, :no_default, %{})
     end
 
     assigns = AttrDefaults.assigned_with_same_default(%{__changed__: %{}})
@@ -698,14 +672,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     """
 
     assert t2h(template) ==
-             EasyHTML.parse!("""
+             ~X"""
              <div class="my-class">
                
                block
                
                col1,col2,
              </div>
-             """)
+             """
   end
 
   defp lookup(_key \\ :one)
