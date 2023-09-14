@@ -359,7 +359,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         <%= for row <- @rows do %>
           <tr>
             <%= for col <- @col do %>
-              <td><%= render_slot col, row %></td>
+              <td><%= render_slot(col, row) %></td>
             <% end %>
           </tr>
         <% end %>
@@ -632,10 +632,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       use Phoenix.Component
 
       slot :inner_block
-      def func(assigns), do: ~H[<%= render_slot @inner_block %>]
+      def func(assigns), do: ~H[<%= render_slot(@inner_block) %>]
 
       slot :inner_block, required: true
-      def func_required(assigns), do: ~H[<%= render_slot @inner_block %>]
+      def func_required(assigns), do: ~H[<%= render_slot(@inner_block) %>]
     end
 
     assigns = %{}
@@ -654,8 +654,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       def test(assigns) do
         ~H"""
         <div {@rest}>
-          <%= render_slot @inner_block %>
-          <%= for col <- @col do %><%= render_slot col %>,<% end %>
+          <%= render_slot(@inner_block) %>
+          <%= for col <- @col do %><%= render_slot(col) %>,<% end %>
         </div>
         """
       end
