@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
   import Phoenix.HTML.Form
   import Phoenix.Component
-  import Phoenix.LiveView.HtmlTestHelpers
+  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
 
   defp render(template) do
     template
@@ -99,14 +99,10 @@ defmodule Phoenix.LiveView.ComponentsTest do
       csrf = Plug.CSRFProtection.get_csrf_token_for("/users")
 
       assert t2h(~H|<.link href="/users" method="delete">delete</.link>|) ==
-               EasyHTML.parse!(
-                 ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
-               )
+               ~x|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
 
       assert t2h(~H|<.link href="/users" method="delete" csrf_token={true}>delete</.link>|) ==
-               EasyHTML.parse!(
-                 ~s|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
-               )
+               ~x|<a href="/users" data-method="delete" data-csrf="#{csrf}" data-to="/users">delete</a>|
 
       assert t2h(~H|<.link href="/users" method="delete" csrf_token={false}>delete</.link>|) ==
                ~X|<a href="/users" data-method="delete" data-to="/users">delete</a>|

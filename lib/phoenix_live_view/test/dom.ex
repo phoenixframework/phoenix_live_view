@@ -7,6 +7,8 @@ defmodule Phoenix.LiveViewTest.DOM do
   @components :c
   @stream_id :stream
 
+  require EasyHTML
+
   def ensure_loaded! do
     unless Code.ensure_loaded?(Floki) do
       raise """
@@ -568,5 +570,21 @@ defmodule Phoenix.LiveViewTest.DOM do
       |> Kernel.++([{name, val}])
 
     {tag, new_attrs, children}
+  end
+
+  defmacro sigil_X({:<<>>, _, [binary]}, []) when is_binary(binary) do
+    Macro.escape(EasyHTML.parse!(binary))
+  end
+
+  defmacro sigil_x(term, []) do
+    quote bind_quoted: [term: term] do
+      EasyHTML.parse!(term)
+    end
+  end
+
+  def t2h(template) do
+    template
+    |> Phoenix.LiveViewTest.rendered_to_string()
+    |> EasyHTML.parse!()
   end
 end
