@@ -101,10 +101,10 @@ jobs:
       - name: Install dependencies
         run: mix deps.get --only test
 
-      - name: Set up Node.js 12.x
+      - name: Set up Node.js 18.x
         uses: actions/setup-node@v1
         with:
-          node-version: 12.x
+          node-version: 18.x
 
       - name: Restore npm cache
         uses: actions/cache@v2
