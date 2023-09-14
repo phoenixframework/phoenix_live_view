@@ -48,6 +48,8 @@ let DOM = {
 
   isUploadInput(el){ return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null },
 
+  isAutoUpload(inputEl){ return inputEl.hasAttribute("data-phx-auto-upload") },
+
   findUploadInputs(node){ return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`) },
 
   findComponentNodeList(node, cid){

@@ -359,14 +359,14 @@ defmodule Phoenix.LiveView.UploadConfig do
 
     new_conf = %UploadConfig{
       conf
-      | entries: for(entry <- conf.entries, do: %UploadEntry{entry | preflighted?: true})
+      | entries: for(entry <- conf.entries, do: %UploadEntry{entry | preflighted?: entry.valid?})
     }
 
     {new_conf, for(ref <- refs_awaiting, do: get_entry_by_ref(new_conf, ref))}
   end
 
   defp refs_awaiting_preflight(%UploadConfig{} = conf) do
-    for entry <- conf.entries, not entry.preflighted?, do: entry.ref
+    for entry <- conf.entries, entry.valid? && not entry.preflighted?, do: entry.ref
   end
 
   @doc false
@@ -504,16 +504,18 @@ defmodule Phoenix.LiveView.UploadConfig do
         end
       end)
 
-    if too_many_files?(new_conf) do
-      {:error, put_error(new_conf, new_conf.ref, @too_many_files)}
-    else
-      case new_conf do
-        %UploadConfig{errors: []} = new_conf ->
-          {:ok, new_conf}
+    cond do
+      too_many_files?(new_conf) ->
+        {:error, put_error(new_conf, new_conf.ref, @too_many_files)}
 
-        %UploadConfig{errors: [_ | _]} = new_conf ->
-          {:error, new_conf}
-      end
+      new_conf.auto_upload? ->
+        {:ok, new_conf}
+
+      new_conf.errors == [] ->
+        {:ok, new_conf}
+
+      true ->
+        {:error, new_conf}
     end
   end
 
