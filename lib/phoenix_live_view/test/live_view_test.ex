@@ -1863,19 +1863,38 @@ defmodule Phoenix.LiveViewTest do
   you will need to call `render_submit/1`.
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
-    if UploadClient.allow_acknowledged?(upload) do
-      render_chunk(upload, entry_name, percent)
-    else
-      case preflight_upload(upload) do
-        {:ok, %{ref: ref, config: config, entries: entries_resp}} ->
-          case UploadClient.allowed_ack(upload, ref, config, entries_resp) do
-            :ok -> render_chunk(upload, entry_name, percent)
-            {:error, reason} -> {:error, reason}
-          end
+    entry_ref =
+      Enum.find_value(upload.entries, fn
+        %{"name" => ^entry_name, "ref" => ref} -> ref
+        %{} -> nil
+      end)
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+    unless entry_name do
+      raise ArgumentError, "no such entry with name #{inspect(entry_name)}"
+    end
+
+    case UploadClient.fetch_allow_acknowledged(upload, entry_name) do
+      {:ok, false} ->
+        {:error, :not_allowed}
+
+      {:ok, _token} ->
+        render_chunk(upload, entry_name, percent)
+
+      :error ->
+        case preflight_upload(upload) do
+          {:ok, %{ref: ref, config: config, entries: entries_resp} = resp} ->
+            if errors = resp[:errors][entry_ref] do
+              {:error, for(reason <- errors, do: [entry_ref, reason])}
+            else
+              case UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp) do
+                :ok -> render_chunk(upload, entry_name, percent)
+                {:error, reason} -> {:error, reason}
+              end
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
     end
   end
 
