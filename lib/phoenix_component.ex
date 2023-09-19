@@ -2805,7 +2805,7 @@ defmodule Phoenix.Component do
 
   defp join_refs(entries), do: Enum.join(entries, ",")
 
-  @doc """
+  @doc ~S"""
   Generates an image preview on the client for a selected file.
 
   [INSERT LVATTRDOCS]
@@ -2817,15 +2817,14 @@ defmodule Phoenix.Component do
     <.live_img_preview entry={entry} width="75" />
   <% end %>
   ```
-  
+
   When you need to use it multiple times, make sure that they have distinct ids
-  
+
   ```heex
   <%= for entry <- @uploads.avatar.entries do %>
     <.live_img_preview entry={entry} width="75" />
   <% end %>
-  
-  
+
   <%= for entry <- @uploads.avatar.entries do %>
     <.live_img_preview id={"modal-#{entry.ref}"} entry={entry} width="500" />
   <% end %>
@@ -2837,7 +2836,13 @@ defmodule Phoenix.Component do
     required: true,
     doc: "The `Phoenix.LiveView.UploadEntry` struct"
   )
-  attr.(:id, :string, default: nil, doc: "Override the id if using live_img_preview more than once in the template")
+
+  attr.(:id, :string,
+    default: nil,
+    doc:
+      "the id of the img tag. Derived by default from the entry ref, but can be overridden as needed if you need to render a preview of the same entry multiple times on the same page"
+  )
+
   attr.(:rest, :global, [])
 
   def live_img_preview(assigns) do
