@@ -331,6 +331,13 @@ defmodule Phoenix.LiveView.ParamsTest do
       assert_receive {:handle_params, "http://www.example.com/counter/123?from=rehandled_params",
                       %{val: 1}, %{"from" => "rehandled_params", "id" => "123"}}
     end
+
+    test "remove fragment from query", %{conn: conn} do
+      {:ok, counter_live, _html} = live(conn, "/counter/123")
+
+      send(counter_live.pid, {:push_patch, "/counter/123?query=value#fragment"})
+      assert render(counter_live) =~ rendered_to_string(~s|%{"id" => "123", "query" => "value"}|)
+    end
   end
 
   describe "push_navigate" do

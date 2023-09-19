@@ -838,7 +838,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp patch_params_and_action!(socket, %{to: to}) do
-    destructure [path, query], :binary.split(to, "?")
+    destructure [path, query], :binary.split(to, ["?", "#"], [:global])
     to = %{socket.host_uri | path: path, query: query}
 
     case Route.live_link_info!(socket, socket.private.root_view, to) do
