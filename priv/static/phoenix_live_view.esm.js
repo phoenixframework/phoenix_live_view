@@ -3124,10 +3124,16 @@ var View = class {
   onJoinError(resp) {
     if (resp.reason === "reload") {
       this.log("error", () => [`failed mount with ${resp.status}. Falling back to page request`, resp]);
-      return this.onRedirect({ to: this.href });
+      if (this.isMain()) {
+        this.onRedirect({ to: this.href });
+      }
+      return;
     } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
       this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp]);
-      return this.onRedirect({ to: this.href });
+      if (this.isMain()) {
+        this.onRedirect({ to: this.href });
+      }
+      return;
     }
     if (resp.redirect || resp.live_redirect) {
       this.joinPending = false;
