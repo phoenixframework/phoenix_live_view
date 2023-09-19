@@ -113,12 +113,13 @@ defmodule Phoenix.LiveView.UploadExternalTest do
         %{name: "foo2.jpeg", content: String.duplicate("ok", 100)}
       ])
 
-    html = lv
-           |> form("form", user: %{})
-           |> render_change(avatar)
+    html =
+      lv
+      |> form("form", user: %{})
+      |> render_change(avatar)
 
     assert html =~ "foo1.jpeg:0%"
-    refute html =~ "foo2.jpeg"
+    assert html =~ "foo2.jpeg:0%"
 
     assert render_upload(avatar, "foo1.jpeg", 1) =~ "foo1.jpeg:1%"
     assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
@@ -155,6 +156,26 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     assert {:error, [[ref, %{reason: "bad name"}]]} = render_upload(avatar, "bad.jpeg", 1)
     assert {:error, [[^ref, %{reason: "bad name"}]]} = render_upload(avatar, "foo.jpeg", 1)
     assert render(lv) =~ "bad name"
+  end
+
+  @tag allow: [
+         max_entries: 2,
+         chunk_size: 20,
+         auto_upload: true,
+         accept: :any,
+         external: :error_preflight
+       ]
+  test "preflight with auto_upload with error return", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo.jpeg", content: String.duplicate("ok", 100)},
+        %{name: "bad.jpeg", content: String.duplicate("ok", 100)}
+      ])
+
+    assert {:error, [[_, %{reason: "bad name"}]]} = render_upload(avatar, "bad.jpeg", 1)
+    html = render_upload(avatar, "foo.jpeg", 1)
+    assert html =~ "foo.jpeg:1%"
+    assert html =~ "bad.jpeg:0%"
   end
 
   @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]

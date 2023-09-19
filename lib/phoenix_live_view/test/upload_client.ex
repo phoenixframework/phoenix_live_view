@@ -31,8 +31,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     GenServer.call(pid, {:simulate_attacker_chunk, name, chunk})
   end
 
-  def allowed_ack(%Upload{pid: pid, entries: entries}, ref, config, name, entries_resp) do
-    GenServer.call(pid, {:allowed_ack, ref, config, entries, name, entries_resp})
+  def allowed_ack(%Upload{pid: pid, entries: entries}, ref, config, name, entries_resp, errors) do
+    GenServer.call(pid, {:allowed_ack, ref, config, name, entries, entries_resp, errors})
   end
 
   def start_link(opts) do
@@ -48,29 +48,35 @@ defmodule Phoenix.LiveViewTest.UploadClient do
 
   def handle_call({:fetch_allow_acknowledged, entry_name}, _from, state) do
     case Map.fetch(state.entries, entry_name) do
-      {:ok, false} -> {:reply, {:ok, false}, state}
+      {:ok, {:error, reason}} -> {:reply, {:error, reason}, state}
       {:ok, token} -> {:reply, {:ok, token}, state}
-      :error -> {:reply, :error, state}
+      :error -> {:reply, {:error, :nopreflight}, state}
     end
   end
 
-  def handle_call({:allowed_ack, upload_ref, config, entries, name, entries_resp}, _from, state) do
-    entries =
-      for client_entry <- entries,
-          %{"ref" => ref, "name" => name} = client_entry,
-          into: %{} do
-
+  def handle_call(
+        {:allowed_ack, upload_ref, config, name, entries, entries_resp, errors},
+        _from,
+        state
+      ) do
+    new_entries =
+      Enum.reduce(entries, state.entries, fn %{"ref" => ref, "name" => name} = client_entry,
+                                             acc ->
         case Map.fetch(entries_resp, ref) do
-          {:ok, token} -> {name, build_and_join_entry(state, client_entry, token)}
-          :error -> {name, false}
+          {:ok, token} ->
+            Map.put(acc, name, build_and_join_entry(state, client_entry, token))
+
+          :error ->
+            Map.put(acc, name, {:error, Map.get(errors, ref, :not_allowed)})
         end
-      end
+      end)
 
-    new_state = %{state | upload_ref: upload_ref, config: config, entries: entries}
+    new_state = %{state | upload_ref: upload_ref, config: config, entries: new_entries}
 
-    case entries do
-      %{^name => false} -> {:reply, {:error, :invalid}, new_state}
-      %{} -> {:reply, :ok, new_state}
+    case new_entries do
+      %{^name => {:error, reason}} -> {:reply, {:error, reason}, new_state}
+      %{^name => _} -> {:reply, :ok, new_state}
+      %{} -> raise_unknown_entry!(state, name)
     end
   end
 
@@ -228,8 +234,12 @@ defmodule Phoenix.LiveViewTest.UploadClient do
   defp get_entry!(state, name) do
     case Map.fetch(state.entries, name) do
       {:ok, entry} -> entry
-      :error -> raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
+      :error -> raise_unknown_entry!(state, name)
     end
+  end
+
+  defp raise_unknown_entry!(state, name) do
+    raise "no file input with name \"#{name}\" found in #{inspect(state.entries)}"
   end
 
   defp get_chunk_timeout(state) do

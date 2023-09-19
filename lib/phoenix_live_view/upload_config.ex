@@ -357,16 +357,20 @@ defmodule Phoenix.LiveView.UploadConfig do
   def mark_preflighted(%UploadConfig{} = conf) do
     refs_awaiting = refs_awaiting_preflight(conf)
 
-    new_conf = %UploadConfig{
-      conf
-      | entries: for(entry <- conf.entries, do: %UploadEntry{entry | preflighted?: true})
-    }
+    new_entries =
+      for entry <- conf.entries do
+        %UploadEntry{entry | preflighted?: entry.preflighted? || entry.ref in refs_awaiting}
+      end
+
+    new_conf = %UploadConfig{conf | entries: new_entries}
 
     {new_conf, for(ref <- refs_awaiting, do: get_entry_by_ref(new_conf, ref))}
   end
 
   defp refs_awaiting_preflight(%UploadConfig{} = conf) do
-    for entry <- conf.entries, not entry.preflighted?, do: entry.ref
+    for {entry, i} <- Enum.with_index(conf.entries),
+        i < conf.max_entries && not entry.preflighted?,
+        do: entry.ref
   end
 
   @doc false
@@ -505,18 +509,23 @@ defmodule Phoenix.LiveView.UploadConfig do
         end
       end)
 
+    too_many? = too_many_files?(new_conf)
+
     cond do
-      too_many_files?(new_conf) ->
+      too_many? && new_conf.auto_upload? ->
+        {:ok, put_error(new_conf, new_conf.ref, @too_many_files)}
+
+      too_many? ->
         {:error, put_error(new_conf, new_conf.ref, @too_many_files)}
 
       new_conf.auto_upload? ->
         {:ok, new_conf}
 
-      new_conf.errors == [] ->
-        {:ok, new_conf}
+      new_conf.errors != [] ->
+        {:error, new_conf}
 
       true ->
-        {:error, new_conf}
+        {:ok, new_conf}
     end
   end
 
@@ -565,39 +574,31 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   defp put_valid_entry(conf, entry) do
-    if conf.auto_upload? && length(conf.entries) + 1 > conf.max_entries do
-      put_error(conf, conf.ref, @too_many_files)
-    else
-      entry = %UploadEntry{entry | valid?: true, uuid: generate_uuid()}
-      new_pids = Map.put(conf.entry_refs_to_pids, entry.ref, @unregistered)
-      new_metas = Map.put(conf.entry_refs_to_metas, entry.ref, %{})
+    entry = %UploadEntry{entry | valid?: true, uuid: generate_uuid()}
+    new_pids = Map.put(conf.entry_refs_to_pids, entry.ref, @unregistered)
+    new_metas = Map.put(conf.entry_refs_to_metas, entry.ref, %{})
 
-      %UploadConfig{
-        conf
-        | entries: conf.entries ++ [entry],
-          entry_refs_to_pids: new_pids,
-          entry_refs_to_metas: new_metas
-      }
-    end
+    %UploadConfig{
+      conf
+      | entries: conf.entries ++ [entry],
+        entry_refs_to_pids: new_pids,
+        entry_refs_to_metas: new_metas
+    }
   end
 
   defp put_invalid_entry(conf, entry, reason) do
-    if conf.auto_upload? && length(conf.entries) + 1 > conf.max_entries do
-      put_error(conf, conf.ref, @too_many_files)
-    else
-      entry = %UploadEntry{entry | valid?: false}
-      new_pids = Map.put(conf.entry_refs_to_pids, entry.ref, @invalid)
-      new_metas = Map.put(conf.entry_refs_to_metas, entry.ref, %{})
+    entry = %UploadEntry{entry | valid?: false}
+    new_pids = Map.put(conf.entry_refs_to_pids, entry.ref, @invalid)
+    new_metas = Map.put(conf.entry_refs_to_metas, entry.ref, %{})
 
-      new_conf = %UploadConfig{
-        conf
-        | entries: conf.entries ++ [entry],
-          entry_refs_to_pids: new_pids,
-          entry_refs_to_metas: new_metas
-      }
+    new_conf = %UploadConfig{
+      conf
+      | entries: conf.entries ++ [entry],
+        entry_refs_to_pids: new_pids,
+        entry_refs_to_metas: new_metas
+    }
 
-      put_error(new_conf, entry.ref, reason)
-    end
+    put_error(new_conf, entry.ref, reason)
   end
 
   defp validate_max_file_size({:ok, %UploadEntry{client_size: size}}, %UploadConfig{

@@ -362,7 +362,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert html =~ "config_error::too_many_files"
         assert html =~ "foo1.jpeg:0%"
-        refute html =~ "foo2.jpeg"
+        assert html =~ "foo2.jpeg:0%"
 
         assert render_upload(avatar, "foo1.jpeg") =~ "foo1.jpeg:100%"
         assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg")

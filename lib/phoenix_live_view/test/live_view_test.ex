@@ -1874,19 +1874,17 @@ defmodule Phoenix.LiveViewTest do
     end
 
     case UploadClient.fetch_allow_acknowledged(upload, entry_name) do
-      {:ok, false} ->
-        {:error, :not_allowed}
-
       {:ok, _token} ->
         render_chunk(upload, entry_name, percent)
 
-      :error ->
+      {:error, :nopreflight} ->
         case preflight_upload(upload) do
-          {:ok, %{ref: ref, config: config, entries: entries_resp} = resp} ->
-            if errors = resp[:errors][entry_ref] do
-              {:error, for(reason <- errors, do: [entry_ref, reason])}
+          {:ok, %{ref: ref, config: config, entries: entries_resp, errors: errors}} ->
+            if entry_errors = errors[entry_ref] do
+              UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp, errors)
+              {:error, for(reason <- entry_errors , do: [entry_ref, reason])}
             else
-              case UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp) do
+              case UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp, errors) do
                 :ok -> render_chunk(upload, entry_name, percent)
                 {:error, reason} -> {:error, reason}
               end
@@ -1895,6 +1893,9 @@ defmodule Phoenix.LiveViewTest do
           {:error, reason} ->
             {:error, reason}
         end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
