@@ -911,7 +911,7 @@ export default class View {
     }
     this.pushWithReply(refGenerator, "event", event, resp => {
       DOM.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR))
-      if(DOM.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null){
+      if(DOM.isUploadInput(inputEl) && DOM.isAutoUpload(inputEl)){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
           let [ref, _els] = refGenerator()
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
@@ -1073,7 +1073,10 @@ export default class View {
       let inputs = Array.from(form.elements).filter(el => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange))
       if(inputs.length === 0){ return }
 
+      // we must clear tracked uploads before recovery as they no longer have valid refs
+      inputs.forEach(input => input.hasAttribute(PHX_UPLOAD_REF) && LiveUploader.clearFiles(input))
       let input = inputs.find(el => el.type !== "hidden") || inputs[0]
+
       let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
       JS.exec("change", phxEvent, view, input, ["push", {_target: input.name, newCid: newCid, callback: callback}])
     })

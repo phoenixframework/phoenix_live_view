@@ -2797,16 +2797,13 @@ defmodule Phoenix.Component do
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
       data-phx-preflighted-refs={join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))}
-      data-phx-auto-upload={valid_upload?(@upload) and @upload.auto_upload?}
+      data-phx-auto-upload={@upload.auto_upload?}
       {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
     />
     """
   end
 
   defp join_refs(entries), do: Enum.join(entries, ",")
-
-  defp valid_upload?(%{entries: [_ | _], errors: []}), do: true
-  defp valid_upload?(%{}), do: false
 
   @doc """
   Generates an image preview on the client for a selected file.

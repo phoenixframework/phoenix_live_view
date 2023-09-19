@@ -347,6 +347,47 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
       end
 
+      @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, auto_upload: true]
+      test "render_upload too many files with auto_upload", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo1.jpeg", content: "bytes"},
+            %{name: "foo2.jpeg", content: "bytes"}
+          ])
+
+        html =
+          lv
+          |> form("form", user: %{})
+          |> render_change(avatar)
+
+        assert html =~ "config_error::too_many_files"
+        assert html =~ "foo1.jpeg:0%"
+        assert html =~ "foo2.jpeg:0%"
+
+        assert render_upload(avatar, "foo1.jpeg") =~ "foo1.jpeg:100%"
+        assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg")
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 20,
+             accept: :any,
+             max_file_size: 1,
+             auto_upload: true
+           ]
+      test "render_upload invalid with auto_upload", %{lv: lv} do
+        avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "overmax"}])
+
+        html = lv
+               |> form("form", user: %{})
+               |> render_change(avatar)
+
+        assert html =~ "entry_error::too_large"
+        assert html =~ "foo.jpeg:0%"
+
+        assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
+      end
+
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "render_change success with upload", %{lv: lv} do
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "ok"}])

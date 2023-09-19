@@ -291,6 +291,9 @@ var DOM = {
   isUploadInput(el) {
     return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null;
   },
+  isAutoUpload(inputEl) {
+    return inputEl.hasAttribute("data-phx-auto-upload");
+  },
   findUploadInputs(node) {
     return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`);
   },
@@ -780,7 +783,9 @@ var UploadEntry = class {
   error(reason = "failed") {
     this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
     this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
-    LiveUploader.clearFiles(this.fileEl);
+    if (!dom_default.isAutoUpload(this.fileEl)) {
+      LiveUploader.clearFiles(this.fileEl);
+    }
   }
   onDone(callback) {
     this._onDone = () => {
@@ -3392,7 +3397,7 @@ var View = class {
     };
     this.pushWithReply(refGenerator, "event", event, (resp) => {
       dom_default.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR));
-      if (dom_default.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null) {
+      if (dom_default.isUploadInput(inputEl) && dom_default.isAutoUpload(inputEl)) {
         if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
           let [ref, _els] = refGenerator();
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {

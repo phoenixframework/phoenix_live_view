@@ -120,6 +120,7 @@ export default class LiveUploader {
       })
 
     let groupedEntries = this._entries.reduce((acc, entry) => {
+      if(!entry.meta){ return acc }
       let {name, callback} = entry.uploader(liveSocket.uploaders)
       acc[name] = acc[name] || {callback: callback, entries: []}
       acc[name].entries.push(entry)
