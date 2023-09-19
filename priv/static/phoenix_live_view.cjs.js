@@ -334,6 +334,9 @@ var DOM = {
     if (href.startsWith("mailto:") || href.startsWith("tel:")) {
       return false;
     }
+    if (e.target.isContentEditable) {
+      return false;
+    }
     try {
       url = new URL(href);
     } catch (e2) {
