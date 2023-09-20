@@ -485,20 +485,25 @@ defmodule Phoenix.LiveView.DiffTest do
   defmodule TreeComponent do
     use Phoenix.LiveComponent
 
-    def preload(list_of_assigns) do
-      send(self(), {:preload, list_of_assigns})
-      Enum.map(list_of_assigns, &Map.put(&1, :preloaded?, true))
+    @impl true
+    def update_many(assigns_sockets) do
+      send(self(), {:update_many, assigns_sockets})
+
+      Enum.map(assigns_sockets, fn {assigns, socket} ->
+        socket |> assign(assigns) |> assign(:update_many_ran?, true)
+      end)
     end
 
-    def update(assigns, socket) do
-      send(self(), {:update, assigns})
-      {:ok, assign(socket, assigns)}
+    @impl true
+    def update(_assigns, _socket) do
+      raise "this won't be invoked"
     end
 
+    @impl true
     def render(assigns) do
       ~H"""
       <div>
-        <%= @id %> - <%= @preloaded? %>
+        <%= @id %> - <%= @update_many_ran? %>
         <%= for {component, index} <- Enum.with_index(@children, 0) do %>
           <%= index %>: <%= component %>
         <% end %>
@@ -863,7 +868,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
-  describe "stateful components" do
+  describe "live components" do
     test "on mount" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})
@@ -1028,64 +1033,36 @@ defmodule Phoenix.LiveView.DiffTest do
       refute_received _
     end
 
-    test "on update with stateless/stateful swap" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {socket, diff, components} = render(rendered)
-
-      assert diff == %{
-               0 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
-               :s => ["<div>\n  ", "\n</div>"]
-             }
-
-      assert {root_prints, %{0 => {_, %{}}}} = socket.fingerprints
-      assert {_, _, 1} = components
-
-      component = %Component{id: "hello", assigns: %{from: :rerender}, component: MyComponent}
-      rendered = component_template(%{component: component})
-
-      {socket, diff, components} = render(rendered, socket.fingerprints, components)
-
-      assert diff == %{
-               0 => 1,
-               :c => %{
-                 1 => %{0 => "rerender", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
-               }
-             }
-
-      assert socket.fingerprints == {root_prints, %{}}
-      assert {_, _, 2} = components
-    end
-
-    test "on preload" do
+    test "on update_many" do
       alias Component, as: C
+      alias TreeComponent, as: TC
 
       tree = %C{
-        component: TreeComponent,
+        component: TC,
         id: "R",
         assigns: %{
           id: "R",
           children: [
             %C{
-              component: TreeComponent,
+              component: TC,
               id: "A",
               assigns: %{
                 id: "A",
                 children: [
-                  %C{component: TreeComponent, id: "B", assigns: %{id: "B", children: []}},
-                  %C{component: TreeComponent, id: "C", assigns: %{id: "C", children: []}},
-                  %C{component: TreeComponent, id: "D", assigns: %{id: "D", children: []}}
+                  %C{component: TC, id: "B", assigns: %{id: "B", children: []}},
+                  %C{component: TC, id: "C", assigns: %{id: "C", children: []}},
+                  %C{component: TC, id: "D", assigns: %{id: "D", children: []}}
                 ]
               }
             },
             %C{
-              component: TreeComponent,
+              component: TC,
               id: "X",
               assigns: %{
                 id: "X",
                 children: [
-                  %C{component: TreeComponent, id: "Y", assigns: %{id: "Y", children: []}},
-                  %C{component: TreeComponent, id: "Z", assigns: %{id: "Z", children: []}}
+                  %C{component: TC, id: "Y", assigns: %{id: "Y", children: []}},
+                  %C{component: TC, id: "Z", assigns: %{id: "Z", children: []}}
                 ]
               }
             }
@@ -1112,13 +1089,24 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == {rendered.fingerprint, %{}}
       assert {_, _, 9} = components
 
-      assert_received {:preload, [%{id: "R"}]}
-      assert_received {:preload, [%{id: "A"}, %{id: "X"}]}
-      assert_received {:preload, [%{id: "B"}, %{id: "C"}, %{id: "D"}, %{id: "Y"}, %{id: "Z"}]}
+      assert_received {:update_many, [{%{id: "R"}, socket0}]}
+      assert %Socket{assigns: %{myself: %CID{cid: 1}}} = socket0
 
-      for id <- ~w(R A X B C D Y Z) do
-        assert_received {:update, %{id: ^id, preloaded?: true}}
-      end
+      assert_received {:update_many, [{%{id: "A"}, socket0}, {%{id: "X"}, socket1}]}
+      assert %Socket{assigns: %{myself: %CID{cid: 2}}} = socket0
+      assert %Socket{assigns: %{myself: %CID{cid: 3}}} = socket1
+
+      assert_received {:update_many,
+                       [
+                         {%{id: "B"}, %Socket{assigns: %{myself: %CID{cid: 4}}}},
+                         {%{id: "C"}, %Socket{assigns: %{myself: %CID{cid: 5}}}},
+                         {%{id: "D"}, %Socket{assigns: %{myself: %CID{cid: 6}}}},
+                         {%{id: "Y"}, %Socket{assigns: %{myself: %CID{cid: 7}}}},
+                         {%{id: "Z"}, %Socket{assigns: %{myself: %CID{cid: 8}}}}
+                       ]}
+
+      refute_received {:preload, _}
+      refute_received {:update, _}
     end
 
     test "on addition" do

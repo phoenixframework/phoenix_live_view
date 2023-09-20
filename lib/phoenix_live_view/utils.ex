@@ -479,31 +479,43 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Calls the optional `update/2` callback, otherwise update the socket directly.
+  Calls the optional `update/2` or `update_many/2` callback, otherwise update the socket(s) directly.
   """
   def maybe_call_update!(socket, component, assigns) do
-    if function_exported?(component, :update, 2) do
-      socket =
-        case component.update(assigns, socket) do
-          {:ok, %Socket{} = socket} ->
+    cond do
+      function_exported?(component, :update_many, 1) ->
+        case component.update_many([{assigns, socket}]) do
+          [%Socket{} = socket] ->
             socket
 
           other ->
-            raise ArgumentError, """
-            invalid result returned from #{inspect(component)}.update/2.
-
-            Expected {:ok, socket}, got: #{inspect(other)}
-            """
+            raise "#{inspect(component)}.update_many/1 must return a list of Phoenix.LiveView.Socket " <>
+                    "of the same length as the input list, got: #{inspect(other)}"
         end
 
-      if socket.redirected do
-        raise "cannot redirect socket on update. Redirect before `update/2` is called" <>
-                " or use `send/2` and redirect in the `handle_info/2` response"
-      end
+      function_exported?(component, :update, 2) ->
+        socket =
+          case component.update(assigns, socket) do
+            {:ok, %Socket{} = socket} ->
+              socket
 
-      socket
-    else
-      Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
+            other ->
+              raise ArgumentError, """
+              invalid result returned from #{inspect(component)}.update/2.
+
+              Expected {:ok, socket}, got: #{inspect(other)}
+              """
+          end
+
+        if socket.redirected do
+          raise "cannot redirect socket on update. Redirect before `update/2` is called" <>
+                  " or use `send/2` and redirect in the `handle_info/2` response"
+        end
+
+        socket
+
+      true ->
+        Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
     end
   end
 
