@@ -81,8 +81,9 @@ defmodule Phoenix.LiveView.Router do
       callback. This can be used to customize a LiveView which may be invoked from
       different routes.
 
-    * `:private` - an optional map of private data to put in the plug connection,
-      for example: `%{route_name: :foo, access: :user}`.
+    * `:private` - an optional map of private data to put in the *plug connection*,
+      for example: `%{route_name: :foo, access: :user}`. The data will be available
+      during *disconnected* mounts via `socket.private.connect_info.private`.
 
   ## Examples
 
