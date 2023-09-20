@@ -1105,7 +1105,6 @@ defmodule Phoenix.LiveView.DiffTest do
                          {%{id: "Z"}, %Socket{assigns: %{myself: %CID{cid: 8}}}}
                        ]}
 
-      refute_received {:preload, _}
       refute_received {:update, _}
     end
 
