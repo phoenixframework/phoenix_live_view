@@ -43,8 +43,8 @@ defmodule Phoenix.LiveComponent do
 
   ### Mount and update
 
-  Stateful components are identified by the component module and their ID.
-  Therefore, two stateful components with the same module and ID are treated
+  Live components are identified by the component module and their ID.
+  Therefore, two live components with the same module and ID are treated
   as the same component. We often tie the component ID to some application based ID:
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
@@ -85,7 +85,7 @@ defmodule Phoenix.LiveComponent do
 
   ### Events
 
-  Stateful components can also implement the `c:handle_event/3` callback
+  LiveComponents can also implement the `c:handle_event/3` callback
   that works exactly the same as in LiveView. For a client event to
   reach a component, the tag must be annotated with a `phx-target`.
   If you want to send the event to yourself, you can simply use the
@@ -121,23 +121,15 @@ defmodule Phoenix.LiveComponent do
         Dismiss
       </a>
 
-  ### Preloading and update
+  ### Update many
 
-  Stateful components also support an optional `c:preload/1` callback.
-  The `c:preload/1` callback is useful when multiple components of the
-  same type are rendered on the page and you want to preload or augment
-  their data in batches.
-
-  Once a LiveView renders a LiveComponent, the optional `c:preload/1` and
-  `c:update/2` callbacks are called before `c:render/1`.
-
-  So on first render, the following callbacks will be invoked:
-
-      preload(list_of_assigns) -> mount(socket) -> update(assigns, socket) -> render(assigns)
-
-  On subsequent renders, these callbacks will be invoked:
-
-      preload(list_of_assigns) -> update(assigns, socket) -> render(assigns)
+  Live components also support an optional `c:update_many/1` callback
+  as an alternative to `c:update/2`. While `c:update/2` is called for
+  each component individially, `c:update_many/1` is called with all
+  LiveComponents of the same module being currently rendered/updated.
+  The advantage is that you can preload data from the database using
+  a single query for all components, instead of running one query per
+  component.
 
   To provide a more complete understanding of why both callbacks are necessary,
   let's see an example. Imagine you are implementing a component and the component
@@ -155,30 +147,30 @@ defmodule Phoenix.LiveComponent do
 
   However, the issue with said approach is that, if you are rendering
   multiple user components in the same page, you have a N+1 query problem.
-  The `c:preload/1` callback helps address this problem as it is invoked
-  with a list of assigns for all components of the same type. For example,
-  instead of implementing `c:update/2` as above, one could implement:
+  By using `c:update_many/1` instead of `c:update/2` , we receive a list
+  of all assigns and sockets, allowing us to update many at once:
 
-      def preload(list_of_assigns) do
-        list_of_ids = Enum.map(list_of_assigns, & &1.id)
+      def update_many(assigns_sockets) do
+        list_of_ids = Enum.map(assigns_sockets, fn {assigns, _sockets} -> assigns.id end)
 
         users =
           from(u in User, where: u.id in ^list_of_ids, select: {u.id, u})
           |> Repo.all()
           |> Map.new()
 
-        Enum.map(list_of_assigns, fn assigns ->
-          Map.put(assigns, :user, users[assigns.id])
+        Enum.map(assigns_sockets, fn {assigns, sockets} ->
+          assign(socket, :user, users[assigns.id])
         end)
       end
 
   Now only a single query to the database will be made. In fact, the
-  preloading algorithm is a breadth-first tree traversal, which means
+  `update_many/2` algorithm is a breadth-first tree traversal, which means
   that even for nested components, the amount of queries are kept to
   a minimum.
 
-  Finally, note that `c:preload/1` must return an updated `list_of_assigns`,
-  keeping the assigns in the same order as they were given.
+  Finally, note that `c:update_many/1` must return an updated list of
+  sockets in the same order as they are given. If `c:update_many/1` is
+  defined, `c:update/2` is not invoked.
 
   ### Summary
 
@@ -189,36 +181,38 @@ defmodule Phoenix.LiveComponent do
 
   ```mermaid
   flowchart LR
-    *((start)):::event-.->P
-    WE([wait for<br>parent changes]):::event-.->P
-    W([wait for<br>events]):::event-.->H
+      *((start)):::event-.->M
+      WE([wait for<br>parent changes]):::event-.->M
+      W([wait for<br>events]):::event-.->H
 
-    subgraph j__transparent[" "]
+      subgraph j__transparent[" "]
 
-      subgraph i[" "]
-        direction TB
-        P(preload/1):::callback-->M(mount/1)
-        M(mount/1<br><em>only once</em>):::callback-->U
+        subgraph i[" "]
+          direction TB
+          M(mount/1<br><em>only once</em>):::callback
+          M-->U
+          M-->UM
+        end
+
+        U(update/2):::callback-->A
+        UM(update_many/1):::callback-->A
+
+        subgraph j[" "]
+          direction TB
+          A --> |yes| R
+          H(handle_event/3):::callback-->A{any<br>changes?}:::diamond
+        end
+
+        A --> |no| W
+
       end
 
-      U(update/2):::callback-->A
+      R(render/1):::callback_req-->W
 
-      subgraph j[" "]
-        direction TB
-        A --> |yes| R
-        H(handle_event/3):::callback-->A{any<br>changes?}:::diamond
-      end
-
-      A --> |no| W
-
-    end
-
-    R(render/1):::callback_req-->W
-
-    classDef event fill:#fff,color:#000,stroke:#000
-    classDef diamond fill:#FFC28C,color:#000,stroke:#000
-    classDef callback fill:#B7ADFF,color:#000,stroke-width:0
-    classDef callback_req fill:#B7ADFF,color:#000,stroke-width:0,text-decoration:underline
+      classDef event fill:#fff,color:#000,stroke:#000
+      classDef diamond fill:#FFC28C,color:#000,stroke:#000
+      classDef callback fill:#B7ADFF,color:#000,stroke-width:0
+      classDef callback_req fill:#B7ADFF,color:#000,stroke-width:0,text-decoration:underline
   ```
 
   ## Slots
@@ -252,7 +246,7 @@ defmodule Phoenix.LiveComponent do
   the two different approaches in detail.
 
   Imagine a scenario where a LiveView represents a board with each card
-  in it as a separate stateful LiveComponent. Each card has a form to
+  in it as a separate LiveComponent. Each card has a form to
   allow update of the card title directly in the component, as follows:
 
       defmodule CardComponent do
@@ -375,9 +369,9 @@ defmodule Phoenix.LiveComponent do
   will be invoked, triggering both preload and update callbacks, which will
   load the most up to date data from the database.
 
-  ## Cost of stateful components
+  ## Cost of live components
 
-  The internal infrastructure LiveView uses to keep track of stateful
+  The internal infrastructure LiveView uses to keep track of live
   components is very lightweight. However, be aware that in order to
   provide change tracking and to send diffs over the wire, all of the
   components' assigns are kept in memory - exactly as it is done in
@@ -398,7 +392,7 @@ defmodule Phoenix.LiveComponent do
   in the code above, the view and the component will share the same copies
   of the `@user` and `@org` assigns.
 
-  You should also avoid using stateful components to provide abstract DOM
+  You should also avoid using live components to provide abstract DOM
   components. As a guideline, a good LiveComponent encapsulates
   application concerns and not DOM functionality. For example, if you
   have a page that shows products for sale, you can encapsulate the
@@ -436,7 +430,7 @@ defmodule Phoenix.LiveComponent do
 
   If you keep components mostly as an application concern with
   only the necessary assigns, it is unlikely you will run into
-  issues related to stateful components.
+  issues related to live components.
 
   ## Limitations
 
@@ -470,7 +464,7 @@ defmodule Phoenix.LiveComponent do
   defmodule CID do
     @moduledoc """
     The struct representing an internal unique reference to the component instance,
-    available as the `@myself` assign in stateful components.
+    available as the `@myself` assign in live components.
 
     Read more about the uses of `@myself` in the `Phoenix.LiveComponent` docs.
     """
@@ -515,14 +509,9 @@ defmodule Phoenix.LiveComponent do
   @callback mount(socket :: Socket.t()) ::
               {:ok, Socket.t()} | {:ok, Socket.t(), keyword()}
 
-  @callback update_many(list_of_assigns :: [Socket.assigns()], sockets :: [Socket.t()]) ::
-              [Socket.t()]
+  @callback update(assigns :: Socket.assigns(), socket :: Socket.t()) :: {:ok, Socket.t()}
 
-  @callback preload(list_of_assigns :: [Socket.assigns()]) ::
-              list_of_assigns :: [Socket.assigns()]
-
-  @callback update(assigns :: Socket.assigns(), socket :: Socket.t()) ::
-              {:ok, Socket.t()}
+  @callback update_many([{Socket.assigns(), Socket.t()}]) :: [Socket.t()]
 
   @callback render(assigns :: Socket.assigns()) :: Phoenix.LiveView.Rendered.t()
 
@@ -533,5 +522,5 @@ defmodule Phoenix.LiveComponent do
             ) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
-  @optional_callbacks mount: 1, update_many: 2, preload: 1, update: 2, handle_event: 3
+  @optional_callbacks mount: 1, update_many: 1, update: 2, handle_event: 3
 end

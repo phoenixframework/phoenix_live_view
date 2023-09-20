@@ -485,73 +485,21 @@ defmodule Phoenix.LiveView.DiffTest do
   defmodule TreeComponent do
     use Phoenix.LiveComponent
 
-    def preload(list_of_assigns) do
-      send(self(), {:preload, list_of_assigns})
-      Enum.map(list_of_assigns, &Map.put(&1, :preloaded?, true))
-    end
+    @impl true
+    def update_many(assigns_sockets) do
+      send(self(), {:update_many, assigns_sockets})
 
-    def update(assigns, socket) do
-      send(self(), {:update, assigns})
-      {:ok, assign(socket, assigns)}
-    end
-
-    def render(assigns) do
-      ~H"""
-      <div>
-        <%= @id %> - <%= @preloaded? %>
-        <%= for {component, index} <- Enum.with_index(@children, 0) do %>
-          <%= index %>: <%= component %>
-        <% end %>
-      </div>
-      """
-    end
-  end
-
-  defmodule TreeComponentUpdateMany do
-    use Phoenix.LiveComponent
-
-    def update_many(list_of_assigns, sockets) do
-      send(self(), {:update_many, {list_of_assigns, sockets}})
-
-      Enum.zip_with(list_of_assigns, sockets, fn assigns, socket ->
+      Enum.map(assigns_sockets, fn {assigns, socket} ->
         socket |> assign(assigns) |> assign(:update_many_ran?, true)
       end)
     end
 
-    def render(assigns) do
-      ~H"""
-      <div>
-        <%= @id %> - <%= @update_many_ran? %>
-        <%= for {component, index} <- Enum.with_index(@children, 0) do %>
-          <%= index %>: <%= component %>
-        <% end %>
-      </div>
-      """
-    end
-  end
-
-  defmodule TreeComponentBoth do
-    use Phoenix.LiveComponent
-
-    # update_many should take precedence
-    def update_many(list_of_assigns, sockets) do
-      send(self(), {:update_many, {list_of_assigns, sockets}})
-
-      Enum.zip_with(list_of_assigns, sockets, fn assigns, socket ->
-        socket |> assign(assigns) |> assign(:update_many_ran?, true)
-      end)
+    @impl true
+    def update(_assigns, _socket) do
+      raise "this won't be invoked"
     end
 
-    def preload(list_of_assigns) do
-      send(self(), {:preload, list_of_assigns})
-      Enum.map(list_of_assigns, &Map.put(&1, :preloaded?, true))
-    end
-
-    def update(assigns, socket) do
-      send(self(), {:update, assigns})
-      {:ok, assign(socket, assigns)}
-    end
-
+    @impl true
     def render(assigns) do
       ~H"""
       <div>
@@ -920,7 +868,7 @@ defmodule Phoenix.LiveView.DiffTest do
     end
   end
 
-  describe "stateful components" do
+  describe "live components" do
     test "on mount" do
       component = %Component{id: "hello", assigns: %{from: :component}, component: MyComponent}
       rendered = component_template(%{component: component})
@@ -1085,102 +1033,9 @@ defmodule Phoenix.LiveView.DiffTest do
       refute_received _
     end
 
-    test "on update with stateless/stateful swap" do
-      component = %Component{assigns: %{from: :component}, component: MyComponent}
-      rendered = component_template(%{component: component})
-      {socket, diff, components} = render(rendered)
-
-      assert diff == %{
-               0 => %{0 => "component", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]},
-               :s => ["<div>\n  ", "\n</div>"]
-             }
-
-      assert {root_prints, %{0 => {_, %{}}}} = socket.fingerprints
-      assert {_, _, 1} = components
-
-      component = %Component{id: "hello", assigns: %{from: :rerender}, component: MyComponent}
-      rendered = component_template(%{component: component})
-
-      {socket, diff, components} = render(rendered, socket.fingerprints, components)
-
-      assert diff == %{
-               0 => 1,
-               :c => %{
-                 1 => %{0 => "rerender", 1 => "world", :s => ["<div>FROM ", " ", "</div>"]}
-               }
-             }
-
-      assert socket.fingerprints == {root_prints, %{}}
-      assert {_, _, 2} = components
-    end
-
-    test "on preload" do
-      alias Component, as: C
-
-      tree = %C{
-        component: TreeComponent,
-        id: "R",
-        assigns: %{
-          id: "R",
-          children: [
-            %C{
-              component: TreeComponent,
-              id: "A",
-              assigns: %{
-                id: "A",
-                children: [
-                  %C{component: TreeComponent, id: "B", assigns: %{id: "B", children: []}},
-                  %C{component: TreeComponent, id: "C", assigns: %{id: "C", children: []}},
-                  %C{component: TreeComponent, id: "D", assigns: %{id: "D", children: []}}
-                ]
-              }
-            },
-            %C{
-              component: TreeComponent,
-              id: "X",
-              assigns: %{
-                id: "X",
-                children: [
-                  %C{component: TreeComponent, id: "Y", assigns: %{id: "Y", children: []}},
-                  %C{component: TreeComponent, id: "Z", assigns: %{id: "Z", children: []}}
-                ]
-              }
-            }
-          ]
-        }
-      }
-
-      rendered = component_template(%{component: tree})
-      {socket, full_render, components} = render(rendered)
-
-      assert %{
-               c: %{
-                 1 => %{0 => "R"},
-                 2 => %{0 => "A"},
-                 3 => %{0 => "X"},
-                 4 => %{0 => "B"},
-                 5 => %{0 => "C"},
-                 6 => %{0 => "D"},
-                 7 => %{0 => "Y"},
-                 8 => %{0 => "Z"}
-               }
-             } = full_render
-
-      assert socket.fingerprints == {rendered.fingerprint, %{}}
-      assert {_, _, 9} = components
-
-      assert_received {:preload, [%{id: "R"}]}
-      assert_received {:preload, [%{id: "A"}, %{id: "X"}]}
-      assert_received {:preload, [%{id: "B"}, %{id: "C"}, %{id: "D"}, %{id: "Y"}, %{id: "Z"}]}
-
-      for id <- ~w(R A X B C D Y Z) do
-        assert_received {:update, %{id: ^id, preloaded?: true}}
-      end
-    end
-
     test "on update_many" do
       alias Component, as: C
-      alias TreeComponentUpdateMany, as: TC
+      alias TreeComponent, as: TC
 
       tree = %C{
         component: TC,
@@ -1234,99 +1089,21 @@ defmodule Phoenix.LiveView.DiffTest do
       assert socket.fingerprints == {rendered.fingerprint, %{}}
       assert {_, _, 9} = components
 
-      assert_received {:update_many, {[%{id: "R"}], [socket0]}}
+      assert_received {:update_many, [{%{id: "R"}, socket0}]}
       assert %Socket{assigns: %{myself: %CID{cid: 1}}} = socket0
 
-      assert_received {:update_many, {[%{id: "A"}, %{id: "X"}], [socket0, socket1]}}
+      assert_received {:update_many, [{%{id: "A"}, socket0}, {%{id: "X"}, socket1}]}
       assert %Socket{assigns: %{myself: %CID{cid: 2}}} = socket0
       assert %Socket{assigns: %{myself: %CID{cid: 3}}} = socket1
 
       assert_received {:update_many,
-                       {[%{id: "B"}, %{id: "C"}, %{id: "D"}, %{id: "Y"}, %{id: "Z"}],
-                        [socket0, socket1, socket2, socket3, socket4]}}
-
-      assert %Socket{assigns: %{myself: %CID{cid: 4}}} = socket0
-      assert %Socket{assigns: %{myself: %CID{cid: 5}}} = socket1
-      assert %Socket{assigns: %{myself: %CID{cid: 6}}} = socket2
-      assert %Socket{assigns: %{myself: %CID{cid: 7}}} = socket3
-      assert %Socket{assigns: %{myself: %CID{cid: 8}}} = socket4
-
-      refute_received {:preload, _}
-      refute_received {:update, _}
-    end
-
-    test "on update_many with preload and update callbacks" do
-      alias Component, as: C
-      alias TreeComponentBoth, as: TC
-
-      tree = %C{
-        component: TC,
-        id: "R",
-        assigns: %{
-          id: "R",
-          children: [
-            %C{
-              component: TC,
-              id: "A",
-              assigns: %{
-                id: "A",
-                children: [
-                  %C{component: TC, id: "B", assigns: %{id: "B", children: []}},
-                  %C{component: TC, id: "C", assigns: %{id: "C", children: []}},
-                  %C{component: TC, id: "D", assigns: %{id: "D", children: []}}
-                ]
-              }
-            },
-            %C{
-              component: TC,
-              id: "X",
-              assigns: %{
-                id: "X",
-                children: [
-                  %C{component: TC, id: "Y", assigns: %{id: "Y", children: []}},
-                  %C{component: TC, id: "Z", assigns: %{id: "Z", children: []}}
-                ]
-              }
-            }
-          ]
-        }
-      }
-
-      rendered = component_template(%{component: tree})
-      {socket, full_render, components} = render(rendered)
-
-      assert %{
-               c: %{
-                 1 => %{0 => "R"},
-                 2 => %{0 => "A"},
-                 3 => %{0 => "X"},
-                 4 => %{0 => "B"},
-                 5 => %{0 => "C"},
-                 6 => %{0 => "D"},
-                 7 => %{0 => "Y"},
-                 8 => %{0 => "Z"}
-               }
-             } = full_render
-
-      assert socket.fingerprints == {rendered.fingerprint, %{}}
-      assert {_, _, 9} = components
-
-      assert_received {:update_many, {[%{id: "R"}], [socket0]}}
-      assert %Socket{assigns: %{myself: %CID{cid: 1}}} = socket0
-
-      assert_received {:update_many, {[%{id: "A"}, %{id: "X"}], [socket0, socket1]}}
-      assert %Socket{assigns: %{myself: %CID{cid: 2}}} = socket0
-      assert %Socket{assigns: %{myself: %CID{cid: 3}}} = socket1
-
-      assert_received {:update_many,
-                       {[%{id: "B"}, %{id: "C"}, %{id: "D"}, %{id: "Y"}, %{id: "Z"}],
-                        [socket0, socket1, socket2, socket3, socket4]}}
-
-      assert %Socket{assigns: %{myself: %CID{cid: 4}}} = socket0
-      assert %Socket{assigns: %{myself: %CID{cid: 5}}} = socket1
-      assert %Socket{assigns: %{myself: %CID{cid: 6}}} = socket2
-      assert %Socket{assigns: %{myself: %CID{cid: 7}}} = socket3
-      assert %Socket{assigns: %{myself: %CID{cid: 8}}} = socket4
+                       [
+                         {%{id: "B"}, %Socket{assigns: %{myself: %CID{cid: 4}}}},
+                         {%{id: "C"}, %Socket{assigns: %{myself: %CID{cid: 5}}}},
+                         {%{id: "D"}, %Socket{assigns: %{myself: %CID{cid: 6}}}},
+                         {%{id: "Y"}, %Socket{assigns: %{myself: %CID{cid: 7}}}},
+                         {%{id: "Z"}, %Socket{assigns: %{myself: %CID{cid: 8}}}}
+                       ]}
 
       refute_received {:preload, _}
       refute_received {:update, _}

@@ -483,9 +483,15 @@ defmodule Phoenix.LiveView.Utils do
   """
   def maybe_call_update!(socket, component, assigns) do
     cond do
-      function_exported?(component, :update_many, 2) ->
-        [socket] = update_many!([socket], component, [assigns])
-        socket
+      function_exported?(component, :update_many, 1) ->
+        case component.update_many([{assigns, socket}]) do
+          [%Socket{} = socket] ->
+            socket
+
+          other ->
+            raise "#{inspect(component)}.update_many/1 must return a list of Phoenix.LiveView.Socket " <>
+                    "of the same length as the input list, got: #{inspect(other)}"
+        end
 
       function_exported?(component, :update, 2) ->
         socket =
@@ -511,20 +517,6 @@ defmodule Phoenix.LiveView.Utils do
       true ->
         Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
     end
-  end
-
-  def update_many!(sockets, component, list_of_assigns)
-      when is_list(list_of_assigns) and is_list(sockets) do
-    updated_sockets = component.update_many(list_of_assigns, sockets)
-    got_count = length(updated_sockets)
-
-    if got_count != length(sockets) do
-      raise ArgumentError,
-            "expected #{inspect(component)}.update_many/2 to return the same number of " <>
-              "sockets as the number of given sockets but got: #{inspect(got_count)}"
-    end
-
-    updated_sockets
   end
 
   @doc """
