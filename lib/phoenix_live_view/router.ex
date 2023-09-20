@@ -83,7 +83,8 @@ defmodule Phoenix.LiveView.Router do
 
     * `:private` - an optional map of private data to put in the *plug connection*,
       for example: `%{route_name: :foo, access: :user}`. The data will be available
-      during *disconnected* mounts via `socket.private.connect_info.private`.
+      during *disconnected* mounts via `socket.private.connect_info.private`
+      and `conn.private` in plug functions.
 
   ## Examples
 
