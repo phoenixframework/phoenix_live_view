@@ -13,7 +13,7 @@ defmodule Phoenix.LiveView.Helpers do
       {:safe, ["Hello ", "world", "\\n"]}
 
   """
-  @doc deprecated: "Use ~H instead"
+  @deprecated "Use ~H instead"
   defmacro sigil_L({:<<>>, meta, [expr]}, []) do
     options = [
       engine: Phoenix.LiveView.Engine,
@@ -25,12 +25,12 @@ defmodule Phoenix.LiveView.Helpers do
     EEx.compile_string(expr, options)
   end
 
-  @doc deprecated: "Use link/1 instead"
+  @deprecated "Use link/1 instead"
   def live_patch(opts) when is_list(opts) do
     live_link("patch", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
 
-  @doc deprecated: "Use <.link> instead"
+  @deprecated "Use <.link> instead"
   def live_patch(text, opts)
 
   def live_patch(%Socket{}, _) do
@@ -50,12 +50,12 @@ defmodule Phoenix.LiveView.Helpers do
     live_link("patch", text, opts)
   end
 
-  @doc deprecated: "Use <.link> instead"
+  @deprecated "Use <.link> instead"
   def live_redirect(opts) when is_list(opts) do
     live_link("redirect", Keyword.fetch!(opts, :do), Keyword.delete(opts, :do))
   end
 
-  @doc deprecated: "Use <.link> instead"
+  @deprecated "Use <.link> instead"
   def live_redirect(text, opts)
 
   def live_redirect(%Socket{}, _) do
@@ -93,39 +93,8 @@ defmodule Phoenix.LiveView.Helpers do
     ~H|<a {@opts}><%= @content %></a>|
   end
 
-  @doc """
-  Deprecated API for rendering `LiveComponent`.
-
-  ## Upgrading
-
-  In order to migrate from `<%= live_component ... %>` to `<.live_component>`,
-  you must first:
-
-    1. Migrate from `~L` sigil and `.leex` templates to
-      `~H` sigil and `.heex` templates
-
-    2. Then instead of:
-
-       ```
-       <%= live_component MyModule, id: "hello" do %>
-       ...
-       <% end %>
-       ```
-
-       You should do:
-
-       ```
-       <.live_component module={MyModule} id="hello">
-       ...
-       </.live_component>
-       ```
-
-    3. If your component is using `render_block/2`, replace
-       it by `render_slot/2`
-
-  """
   # TODO: Remove live_component arity checks from Engine
-  @doc deprecated: "Use .live_component (live_component/1) instead"
+  @deprecated "Use .live_component (live_component/1) instead"
   defmacro live_component(component, assigns, do_block \\ []) do
     if is_assign?(:socket, component) do
       IO.warn(
@@ -181,7 +150,9 @@ defmodule Phoenix.LiveView.Helpers do
 
     # TODO: Remove logic from Diff once stateless components are removed.
     if is_nil(id) do
-      IO.warn("stateless LiveComponent are deprecated, please pass an :id or use the new function component instead")
+      IO.warn(
+        "stateless LiveComponent are deprecated, please pass an :id or use the new function component instead"
+      )
     end
 
     %Component{id: id, assigns: assigns, component: component}
@@ -202,50 +173,7 @@ defmodule Phoenix.LiveView.Helpers do
     end
   end
 
-  @doc """
-  Renders the `@inner_block` assign of a component with the given `argument`.
-
-      <%= render_block(@inner_block, value: @value)
-
-  This function is deprecated for function components. Use `render_slot/2`
-  instead.
-  """
-  @deprecated "Use render_slot/2 instead"
-  defmacro render_block(inner_block, argument \\ []) do
-    quote do
-      unquote(__MODULE__).__render_block__(unquote(inner_block)).(
-        var!(changed, Phoenix.LiveView.Engine),
-        unquote(argument)
-      )
-    end
-  end
-
-  @doc false
-  def __render_block__([%{inner_block: fun}]), do: fun
-  def __render_block__(fun), do: fun
-
-  @deprecated "Use <.live_img_preview /> instead"
-  def live_img_preview(entry, opts) do
-    live_img_preview(Enum.into(opts, %{entry: entry}))
-  end
-
-  @deprecated "Use <.live_file_input /> instead"
-  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf, opts) when is_list(opts) do
-    require Phoenix.LiveViewTest
-    assigns = Enum.into(opts, %{upload: conf})
-    {:safe, Phoenix.LiveViewTest.render_component(&live_file_input/1, assigns)}
-  end
-
-  @doc """
-  Renders a title tag with automatic prefix/suffix on `@page_title` updates.
-
-  ## Examples
-
-      <%= live_title_tag assigns[:page_title] || "Welcome", prefix: "MyApp – " %>
-
-      <%= live_title_tag assigns[:page_title] || "Welcome", suffix: " – MyApp" %>
-  """
-  @doc deprecated: "Use <.live_title> instead"
+  @deprecated "Use <.live_title> instead"
   def live_title_tag(title, opts \\ []) do
     assigns = %{title: title, prefix: opts[:prefix], suffix: opts[:suffix]}
 

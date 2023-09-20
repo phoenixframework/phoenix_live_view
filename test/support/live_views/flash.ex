@@ -6,7 +6,7 @@ defmodule Phoenix.LiveViewTest.FlashLive do
     uri[<%= @uri %>]
     root[<%= live_flash(@flash, :info) %>]:info
     root[<%= live_flash(@flash, :error) %>]:error
-    <%= live_component Phoenix.LiveViewTest.FlashComponent, id: "flash-component" %>
+    <.live_component module={Phoenix.LiveViewTest.FlashComponent} id="flash-component" />
     child[<%= live_render @socket, Phoenix.LiveViewTest.FlashChildLive, id: "flash-child" %>]
     """
   end

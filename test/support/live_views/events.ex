@@ -117,8 +117,8 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
 
   def render(assigns) do
     ~H"""
-    <%= live_component Child, id: :child_1 %>
-    <%= live_component Child, id: :child_2 %>
+    <.live_component module={Child} id={:child_1} />
+    <.live_component module={Child} id={:child_2} />
     root count: <%= @count %>
     """
   end
@@ -209,7 +209,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
   end
 
   def render(assigns) do
-    ~H"<%= live_component Child, id: :child_live, count: @count %>"
+    ~H"<.live_component module={Child} id={:child_live} count={@count} />"
   end
 
   def mount(_params, _session, socket) do

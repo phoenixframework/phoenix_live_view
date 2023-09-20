@@ -103,6 +103,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc false
+  # TODO: Make me private once Phoenix.LiveView.Helpers are removed
   def __inner_block__([{:->, meta, _} | _] = do_block, key) do
     inner_fun = {:fn, meta, do_block}
 

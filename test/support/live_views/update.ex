@@ -28,10 +28,10 @@ defmodule Phoenix.LiveViewTest.AppendLive do
   use Phoenix.LiveView
 
   def render(assigns) do
-    ~L"""
-    <div <%= @id && {:safe, "id=#{inspect(@id)}"} %> phx-update="<%= @update_type %>">
+    ~H"""
+    <div id={@id} phx-update={@update_type}>
       <%= for %{id: id, name: name} <- @time_zones do %>
-        <h1 <%= id && {:safe, "id=title-#{id}"} %>><%= name %></h1>
+        <h1 id={id && "title-#{id}"}><%= name %></h1>
         <%= live_render(@socket, Phoenix.LiveViewTest.TZLive, id: "tz-#{id}", session: %{"name" => name}) %>
       <% end %>
     </div>

@@ -149,7 +149,7 @@ defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
     <div>
       <%= if @uploads_count > 0 do %>
         <%= for i <- 0..@uploads_count do %>
-          <%= live_component Phoenix.LiveViewTest.UploadComponent, id: "upload#{i}" %>
+          <.live_component module={Phoenix.LiveViewTest.UploadComponent} id={"upload#{i}"} />
         <% end %>
       <% end %>
     </div>

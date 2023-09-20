@@ -211,7 +211,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
     ~H"""
     <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
       <%= @name %> says hi
-      <%= if @dup_name, do: live_component(__MODULE__, id: @dup_name, name: @dup_name) %>
+      <.live_component :if={@dup_name} module={__MODULE__} id={@dup_name} name={@dup_name} />
     </div>
     """
   end
@@ -258,8 +258,8 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     ~H"""
     Redirect: <%= @redirect %>
     <%= for name <- @names do %>
-      <%= live_component Phoenix.LiveViewTest.StatefulComponent,
-            id: name, name: name, from: @from, disabled: name in @disabled, parent_id: nil  %>
+      <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
+          id={name} name={name} from={@from} disabled={name in @disabled} parent_id={nil} />
     <% end %>
     """
   end
@@ -309,12 +309,12 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   end
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <div id="parent_id" class="parent">
       <%= @message %>
       <%= for name <- @names do %>
-        <%= live_component Phoenix.LiveViewTest.StatefulComponent,
-              id: name, name: name, from: @from, disabled: name in @disabled, parent_id: @parent_selector %>
+        <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
+            id={name} name={name} from={@from} disabled={name in @disabled} parent_id={@parent_selector} />
       <% end %>
     </div>
     """
