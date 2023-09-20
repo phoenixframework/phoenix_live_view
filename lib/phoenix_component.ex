@@ -1081,7 +1081,7 @@ defmodule Phoenix.Component do
   Imagine you have a function component that accepts a color:
 
   ```heex
-  <.my_component color="red" />
+  <.my_component bg_color="red" />
   ```
 
   The color is also optional, so you can skip it:
