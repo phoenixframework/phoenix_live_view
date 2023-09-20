@@ -43,9 +43,9 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
     <a href="/" id="redirect-a">Regular Link</a>
-    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-a" %>
-    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-replace-a", replace: true %>
-    <%= live_patch "Live patch", to: "/elements?from=uri", id: "live-patch-a" %>
+    <.link navigate="/example" id="live-redirect-a">Live redirect</.link>
+    <.link navigate="/example" id="live-redirect-replace-a" replace>Live redirect</.link>
+    <.link patch="/elements?from=uri" id="live-patch-a">Live patch</.link>
 
     <%# hooks %>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
