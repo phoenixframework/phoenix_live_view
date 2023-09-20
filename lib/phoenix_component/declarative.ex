@@ -1131,7 +1131,6 @@ defmodule Phoenix.Component.Declarative do
 
           # slot with attributes
           _ ->
-            has_global? = Enum.any?(attrs, &(&1.type == :global))
             slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
             required_attrs = for {attr_name, %{required: true}} <- slot_attr_defs, do: attr_name
 
@@ -1183,8 +1182,7 @@ defmodule Phoenix.Component.Declarative do
 
                 # undefined slot attr
                 %{} ->
-                  if attr_name == :inner_block or
-                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
+                  if attr_name == :inner_block do
                     :ok
                   else
                     message =
