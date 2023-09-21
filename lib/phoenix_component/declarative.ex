@@ -203,8 +203,8 @@ defmodule Phoenix.Component.Declarative do
     {debug_annotations, invalid_opts} =
       Keyword.pop(
         opts,
-        :debug_annotations,
-        Application.get_env(:phoenix_live_view, :debug_annotations, false)
+        :debug_heex_annotations,
+        Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
       )
 
     prefix_matches =

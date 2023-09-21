@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveViewTest.DebugAnno do
-  use Phoenix.Component, debug_annotations: true
+  use Phoenix.Component, debug_heex_annotations: true
 
   def remote(assigns) do
     ~H"REMOTE COMPONENT: Value: <%= @value %>"
