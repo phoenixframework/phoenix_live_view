@@ -267,7 +267,7 @@ defmodule Phoenix.LiveView.TagEngine do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont, source: source} = state
     tokenizer_state = Tokenizer.init(indentation, file, source, state.tag_handler)
 
-    {tokens, cont, new_tokenizer_state} =
+    {tokens, cont, tokenizer_has_tags?} =
       Tokenizer.tokenize(text, meta, tokens, cont, tokenizer_state)
 
     %{
@@ -275,7 +275,7 @@ defmodule Phoenix.LiveView.TagEngine do
       | tokens: tokens,
         cont: cont,
         source: state.source,
-        has_tags?: state.has_tags? || new_tokenizer_state.has_tags?
+        has_tags?: state.has_tags? || tokenizer_has_tags?
     }
   end
 
