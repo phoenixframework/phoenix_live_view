@@ -348,15 +348,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render("<div attr='1'/>") == "<div attr='1'></div>"
   end
 
-  defmacrop debug(string) do
-    quote do
-      render(unquote(string), %{},
-        annotate_root_tag: &HTMLEngine.annotate_root_tag/1,
-        env: __ENV__
-      )
-    end
-  end
-
   describe "debug annotations" do
     alias Phoenix.LiveViewTest.DebugAnno
     import Phoenix.LiveViewTest.DebugAnno

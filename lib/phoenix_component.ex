@@ -509,6 +509,41 @@ defmodule Phoenix.Component do
 
   See `embed_templates/1` for more information, including declarative
   assigns support for embedded templates.
+
+  ## Debug Annotations
+
+  HEEx templates support debug annotations, which are special HTML comments
+  that wrap around rendered components to help you identify where markup
+  in your HTML document is rendered within your function component tree.
+
+  For example, imagine the following HEEx template:
+
+  ```heex
+  <.header>
+    <.button>Click</.button>
+  </.header>
+  ```
+
+  The HTML document would receive the following comments when debug annotations
+  are enabled:
+
+  ```html
+  <!-- <AppWeb.Components.header> lib/app_web/core_components.ex:123 -->
+  <header class="p-5">
+    <!-- <AppWeb.Components.button> lib/app_web/core_components.ex:456 -->
+    <button class="px-2 bg-indigo-500 text-white">Click</button>
+    <!-- </AppWeb.Components.button> -->
+  </header>
+  <!-- </AppWeb.Components.header> -->
+  ```
+
+  Debug annotations work across any `~H` or `.html.heex` template.
+  They can be enabled globally with the following configuration in your
+  `config/dev.exs` file:
+
+      config :phoenix_live_view, debug_annotations: true
+
+  Changing this configuration will require `mix clean` and a full recompile.
   '''
 
   ## Functions
