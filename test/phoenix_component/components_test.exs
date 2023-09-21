@@ -5,18 +5,6 @@ defmodule Phoenix.LiveView.ComponentsTest do
   import Phoenix.Component
   import Phoenix.LiveViewTest.HTML
 
-  defp render(template) do
-    template
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
-  end
-
-  defp parse(template) do
-    template
-    |> render()
-    |> Phoenix.LiveViewTest.DOM.parse()
-  end
-
   describe "link patch" do
     test "basic usage" do
       assigns = %{}
@@ -266,7 +254,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      assert parse(template)
+      assert t2h(template) == ~X[<form><input id="foo" name="foo" type="text"></input></form>]
     end
 
     test "generates form with prebuilt form" do
@@ -278,14 +266,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {"form", [],
-                [
-                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
-                ]}
-             ] = html
+      assert t2h(template) == ~X[<form><input id="foo" name="foo" type="text"></input></form>]
     end
 
     test "generates form with prebuilt form and :as" do
@@ -297,14 +278,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {"form", [],
-                [
-                  {"input", [{"id", "data_foo"}, {"name", "data[foo]"}, {"type", "text"}], []}
-                ]}
-             ] = html
+      assert t2h(template) ==
+               ~X{<form><input id="data_foo" name="data[foo]" type="text"></input></form>}
     end
 
     test "generates form with prebuilt form and options" do
@@ -333,11 +308,16 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 
+                 
+                 
+                 [name: "can't be blank"]
 
-      assert [
-               {"form", [], ["\n  \n  \n  \n  [name: \"can't be blank\"]\n\n"]}
-             ] = html
+               </form>
+               """
     end
 
     test "generates form with form data" do
@@ -349,14 +329,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {"form", [],
-                [
-                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
-                ]}
-             ] = html
+      assert t2h(template) ==
+               ~X{<form><input id="foo" name="foo" type="text"></input></form>}
     end
 
     test "does not raise when action is given and method is missing" do
@@ -367,8 +341,10 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
-      assert [{"form", [{"action", "/"}, {"method", "post"}], _}] = html
+      csrf_token = Plug.CSRFProtection.get_csrf_token_for("/")
+
+      assert t2h(template) ==
+               ~x{<form action="/" method="post"><input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf_token}"></input></form>}
     end
 
     test "generates a csrf_token if if an action is set" do
@@ -380,22 +356,15 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
       csrf_token = Plug.CSRFProtection.get_csrf_token_for("/")
 
-      assert [
-               {"form", [{"action", "/"}, {"method", "post"}],
-                [
-                  {"input",
-                   [
-                     {"name", "_csrf_token"},
-                     {"type", "hidden"},
-                     {"hidden", "hidden"},
-                     {"value", ^csrf_token}
-                   ], []},
-                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
-                ]}
-             ] = html
+      assert t2h(template) ==
+               ~x"""
+               <form action="/" method="post">
+                 <input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf_token}"></input>
+                 <input id="foo" name="foo" type="text"></input>
+               </form>
+               """
     end
 
     test "does not generate csrf_token if method is not post or if no action" do
@@ -407,14 +376,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {"form", [{"action", "/"}, {"method", "get"}],
-                [
-                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
-                ]}
-             ] = html
+      assert t2h(template) ==
+               ~X"""
+               <form action="/" method="get">
+                 <input id="foo" name="foo" type="text"></input>
+               </form>
+               """
 
       template = ~H"""
       <.form :let={f} for={%{}}>
@@ -422,14 +389,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
       </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {"form", [],
-                [
-                  {"input", [{"id", "foo"}, {"name", "foo"}, {"type", "text"}], []}
-                ]}
-             ] = html
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input id="foo" name="foo" type="text"></input>
+               </form>
+               """
     end
 
     test "generates form with available options and custom attributes" do
@@ -487,28 +452,13 @@ defmodule Phoenix.LiveView.ComponentsTest do
         </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {
-                 "form",
-                 [],
-                 [
-                   {"input",
-                    [
-                      {"type", "hidden"},
-                      {"name", "myform[inner][_persistent_id]"},
-                      {"value", "0"}
-                    ], []},
-                   {"input",
-                    [
-                      {"id", "myform_inner_0_foo"},
-                      {"name", "myform[inner][foo]"},
-                      {"type", "text"}
-                    ], []}
-                 ]
-               }
-             ] = html
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input type="hidden" name="myform[inner][_persistent_id]" value="0"> </input>
+                 <input id="myform_inner_0_foo" name="myform[inner][foo]" type="text"></input>
+               </form>
+               """
     end
 
     test "with naming options" do
@@ -522,20 +472,13 @@ defmodule Phoenix.LiveView.ComponentsTest do
         </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {
-                 "form",
-                 [],
-                 [
-                   {"input",
-                    [{"type", "hidden"}, {"name", "name[_persistent_id]"}, {"value", "0"}], []},
-                   {"input",
-                    [{"id", "myform_inner_0_foo"}, {"name", "name[foo]"}, {"type", "text"}], []}
-                 ]
-               }
-             ] = html
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input type="hidden" name="name[_persistent_id]" value="0"> </input>
+                 <input id="myform_inner_0_foo" name="name[foo]" type="text"></input>
+               </form>
+               """
     end
 
     test "with default map option" do
@@ -549,29 +492,13 @@ defmodule Phoenix.LiveView.ComponentsTest do
         </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {
-                 "form",
-                 [],
-                 [
-                   {"input",
-                    [
-                      {"type", "hidden"},
-                      {"name", "myform[inner][_persistent_id]"},
-                      {"value", "0"}
-                    ], []},
-                   {"input",
-                    [
-                      {"id", "myform_inner_0_foo"},
-                      {"name", "myform[inner][foo]"},
-                      {"type", "text"},
-                      {"value", "123"}
-                    ], []}
-                 ]
-               }
-             ] = html
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input type="hidden" name="myform[inner][_persistent_id]" value="0"> </input>
+                 <input id="myform_inner_0_foo" name="myform[inner][foo]" type="text" value="123"></input>
+               </form>
+               """
     end
 
     test "with default list and list related options" do
@@ -591,55 +518,17 @@ defmodule Phoenix.LiveView.ComponentsTest do
         </.form>
       """
 
-      html = parse(template)
-
-      assert [
-               {
-                 "form",
-                 [],
-                 [
-                   {"input",
-                    [
-                      {"type", "hidden"},
-                      {"name", "myform[inner][0][_persistent_id]"},
-                      {"value", "0"}
-                    ], []},
-                   {"input",
-                    [
-                      {"id", "myform_inner_0_foo"},
-                      {"name", "myform[inner][0][foo]"},
-                      {"type", "text"},
-                      {"value", "123"}
-                    ], []},
-                   {"input",
-                    [
-                      {"type", "hidden"},
-                      {"name", "myform[inner][1][_persistent_id]"},
-                      {"value", "1"}
-                    ], []},
-                   {"input",
-                    [
-                      {"id", "myform_inner_1_foo"},
-                      {"name", "myform[inner][1][foo]"},
-                      {"type", "text"},
-                      {"value", "456"}
-                    ], []},
-                   {"input",
-                    [
-                      {"type", "hidden"},
-                      {"name", "myform[inner][2][_persistent_id]"},
-                      {"value", "2"}
-                    ], []},
-                   {"input",
-                    [
-                      {"id", "myform_inner_2_foo"},
-                      {"name", "myform[inner][2][foo]"},
-                      {"type", "text"},
-                      {"value", "789"}
-                    ], []}
-                 ]
-               }
-             ] = html
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input type="hidden" name="myform[inner][0][_persistent_id]" value="0"></input>
+                 <input id="myform_inner_0_foo" name="myform[inner][0][foo]" type="text" value="123"></input>
+                 <input type="hidden" name="myform[inner][1][_persistent_id]" value="1"></input>
+                 <input id="myform_inner_1_foo" name="myform[inner][1][foo]" type="text" value="456"></input>
+                 <input type="hidden" name="myform[inner][2][_persistent_id]" value="2"></input>
+                 <input id="myform_inner_2_foo" name="myform[inner][2][foo]" type="text" value="789"></input>
+               </form>
+               """
     end
   end
 
