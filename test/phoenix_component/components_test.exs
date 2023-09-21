@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
   import Phoenix.HTML.Form
   import Phoenix.Component
-  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
+  import Phoenix.LiveViewTest.HTML
 
   defp render(template) do
     template
@@ -456,11 +456,11 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       assert t2h(template) ==
                ~X"""
-               <form 
+               <form
                  id="form"
                  action="/"
                  method="post"
-                 enctype="multipart/form-data" 
+                 enctype="multipart/form-data"
                  data-foo="bar"
                  class="pretty"
                  phx-change="valid"

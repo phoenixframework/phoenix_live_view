@@ -2,7 +2,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
-  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2]
+  import Phoenix.LiveViewTest.HTML
   use Phoenix.Component
 
   defp render_template(mod, func, assigns) do
@@ -32,7 +32,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     use Phoenix.Component
 
     attr :id, :any, required: true
-    slot :inner_block
+    slot(:inner_block)
     def remote(assigns), do: ~H[]
   end
 
@@ -44,7 +44,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     def func1_line, do: __ENV__.line
     attr :id, :any, required: true
     attr :email, :string, default: nil
-    slot :inner_block
+    slot(:inner_block)
     def func1(assigns), do: ~H[]
 
     def func2_line, do: __ENV__.line
@@ -323,13 +323,13 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
     def fun_with_slot_line, do: __ENV__.line + 3
 
-    slot :inner_block
+    slot(:inner_block)
     def fun_with_slot(assigns), do: ~H[]
 
     def fun_with_named_slots_line, do: __ENV__.line + 4
 
-    slot :header
-    slot :footer
+    slot(:header)
+    slot(:footer)
     def fun_with_named_slots(assigns), do: ~H[]
 
     def fun_with_slot_attrs_line, do: __ENV__.line + 6
@@ -522,7 +522,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       def example2_line, do: __ENV__.line + 2
 
-      slot :slot
+      slot(:slot)
       def example2(assigns)
 
       def example2(_assigns) do
@@ -631,10 +631,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     defmodule SlotDefaults do
       use Phoenix.Component
 
-      slot :inner_block
+      slot(:inner_block)
       def func(assigns), do: ~H[<%= render_slot(@inner_block) %>]
 
-      slot :inner_block, required: true
+      slot(:inner_block, required: true)
       def func_required(assigns), do: ~H[<%= render_slot(@inner_block) %>]
     end
 
@@ -648,8 +648,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       use Phoenix.Component
 
       attr :rest, :global
-      slot :inner_block, required: true
-      slot :col, required: true
+      slot(:inner_block, required: true)
+      slot(:col, required: true)
 
       def test(assigns) do
         ~H"""
@@ -663,23 +663,17 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
     assigns = %{}
 
-    template = ~H"""
-    <SlotWithGlobal.test class="my-class">
-      block
-      <:col>col1</:col>
-      <:col>col2</:col>
-    </SlotWithGlobal.test>
-    """
+    template =
+      ~H"""
+      <SlotWithGlobal.test class="my-class">
+        block
+        <:col>col1</:col>
+        <:col>col2</:col>
+      </SlotWithGlobal.test>
+      """
 
-    assert t2h(template) ==
-             ~X"""
-             <div class="my-class">
-               
-               block
-               
-               col1,col2,
-             </div>
-             """
+    assert Phoenix.LiveViewTest.rendered_to_string(template) ==
+             ~s|<div class="my-class">\n  \n  block\n  \n  col1,col2,\n</div>|
   end
 
   defp lookup(_key \\ :one)
@@ -1088,7 +1082,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       defmodule Phoenix.ComponentTest.SlotDocsInvalidType do
         use Elixir.Phoenix.Component
 
-        slot :invalid, doc: :foo
+        slot(:invalid, doc: :foo)
         def func(assigns), do: ~H[]
       end
     end
@@ -1119,7 +1113,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       defmodule Phoenix.ComponentTest.SlotMacroInvalidName do
         use Elixir.Phoenix.Component
 
-        slot "not an atom"
+        slot("not an atom")
         def func(assigns), do: ~H[]
       end
     end
@@ -1128,7 +1122,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       defmodule Phoenix.ComponentTest.SlotMacroInvalidOpts do
         use Elixir.Phoenix.Component
 
-        slot :slot, "not a list"
+        slot(:slot, "not a list")
         def func(assigns), do: ~H[]
       end
     end
@@ -1158,11 +1152,11 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       defmodule Phoenix.ComponentTest.MultiClauseWrong do
         use Elixir.Phoenix.Component
 
-        slot :inner_block
+        slot(:inner_block)
         def func(assigns = %{foo: _}), do: ~H[]
         def func(assigns = %{bar: _}), do: ~H[]
 
-        slot :named
+        slot(:named)
         def func(assigns = %{baz: _}), do: ~H[]
       end
     end
@@ -1190,7 +1184,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       defmodule Phoenix.ComponentTest.SlotOnInvalidFunction do
         use Elixir.Phoenix.Component
 
-        slot :inner_block
+        slot(:inner_block)
         def func(a, b), do: a + b
       end
     end
@@ -1219,7 +1213,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         def func(assigns = %{baz: _}), do: ~H[]
 
-        slot :inner_block
+        slot(:inner_block)
       end
     end
   end
@@ -1489,8 +1483,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       defmodule Phoenix.ComponentTest.SlotDup do
         use Elixir.Phoenix.Component
 
-        slot :foo
-        slot :foo
+        slot(:foo)
+        slot(:foo)
         def func(assigns), do: ~H[]
       end
     end
@@ -1520,7 +1514,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       defmodule SlotAttrNameConflict do
         use Elixir.Phoenix.Component
 
-        slot :named
+        slot(:named)
         attr :named, :any
 
         def func(assigns), do: ~H[]
@@ -1532,7 +1526,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :named, :any
-        slot :named
+        slot(:named)
 
         def func(assigns), do: ~H[]
       end
