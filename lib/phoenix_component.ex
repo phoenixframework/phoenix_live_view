@@ -541,7 +541,7 @@ defmodule Phoenix.Component do
   They can be enabled globally with the following configuration in your
   `config/dev.exs` file:
 
-      config :phoenix_live_view, debug_annotations: true
+      config :phoenix_live_view, debug_heex_annotations: true
 
   Changing this configuration will require `mix clean` and a full recompile.
   '''
