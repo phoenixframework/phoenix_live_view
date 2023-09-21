@@ -787,9 +787,7 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
-    annotate_root? =
-      Module.get_attribute(__CALLER__.module, :__debug_annotations__) ||
-        Application.get_env(:phoenix_live_view, :debug_annotations, false)
+    annotate_root? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
 
     options = [
       engine: Phoenix.LiveView.TagEngine,

@@ -3,7 +3,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   import Phoenix.Component
 
-  alias Phoenix.LiveView.HTMLEngine
   alias Phoenix.LiveView.Tokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do

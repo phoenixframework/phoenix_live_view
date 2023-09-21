@@ -199,7 +199,13 @@ defmodule Phoenix.Component.Declarative do
   @valid_opts [:global_prefixes]
   def __setup__(module, opts) do
     {prefixes, opts} = Keyword.pop(opts, :global_prefixes, [])
-    {debug_annotations, invalid_opts} = Keyword.pop(opts, :debug_annotations, false)
+
+    {debug_annotations, invalid_opts} =
+      Keyword.pop(
+        opts,
+        :debug_annotations,
+        Application.get_env(:phoenix_live_view, :debug_annotations, false)
+      )
 
     prefix_matches =
       for prefix <- prefixes do
