@@ -637,7 +637,7 @@ defmodule Phoenix.LiveView.Tokenizer do
   ## helpers
 
   @compile {:inline, ok: 3, char_or_bin: 1}
-  defp ok(acc, cont, state), do: {acc, cont, state}
+  defp ok(acc, cont, state), do: {acc, cont, state.has_tags?}
 
   defp char_or_bin(c) when c <= 127, do: c
   defp char_or_bin(c), do: <<c::utf8>>
