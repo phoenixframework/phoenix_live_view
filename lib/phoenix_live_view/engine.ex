@@ -392,9 +392,6 @@ defmodule Phoenix.LiveView.Engine do
 
       static =
         case Keyword.fetch(opts, :root_annotation) do
-          {:ok, {nil = _before, nil = _aft}} ->
-            static
-
           {:ok, {before, aft}} ->
             case static do
               [] ->
@@ -403,10 +400,6 @@ defmodule Phoenix.LiveView.Engine do
               [first | rest] ->
                 List.update_at([to_string(before) <> first | rest], -1, &(&1 <> to_string(aft)))
             end
-
-          {:ok, other} ->
-            raise ArgumentError,
-                  "expected :annotate_root_tag function to return tuple of {anno_before, anno_after}, got: #{inspect(other)}"
 
           :error ->
             static
