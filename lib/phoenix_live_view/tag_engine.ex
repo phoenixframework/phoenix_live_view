@@ -155,6 +155,7 @@ defmodule Phoenix.LiveView.TagEngine do
   @impl true
   def init(opts) do
     {subengine, opts} = Keyword.pop(opts, :subengine, Phoenix.LiveView.Engine)
+    tag_handler = Keyword.fetch!(opts, :tag_handler)
 
     %{
       cont: :text,
@@ -166,7 +167,9 @@ defmodule Phoenix.LiveView.TagEngine do
       caller: Keyword.fetch!(opts, :caller),
       previous_token_slot?: false,
       source: Keyword.fetch!(opts, :source),
-      tag_handler: Keyword.fetch!(opts, :tag_handler)
+      tag_handler: tag_handler,
+      annotate_root_tag: Keyword.get(opts, :annotate_root_tag),
+      has_tags?: false
     }
   end
 
@@ -183,6 +186,14 @@ defmodule Phoenix.LiveView.TagEngine do
       |> validate_unclosed_tags!("template")
 
     opts = [root: token_state.root || false]
+
+    opts =
+      if anno_func = state.has_tags? && state.caller && state.annotate_root_tag do
+        Keyword.put(opts, :root_annotation, anno_func.(state.caller))
+      else
+        opts
+      end
+
     ast = invoke_subengine(token_state, :handle_body, [opts])
 
     quote do
@@ -218,7 +229,8 @@ defmodule Phoenix.LiveView.TagEngine do
            caller: caller,
            source: source,
            indentation: indentation,
-           tag_handler: tag_handler
+           tag_handler: tag_handler,
+           annotate_root_tag: annotate_root_tag
          },
          root
        ) do
@@ -234,7 +246,8 @@ defmodule Phoenix.LiveView.TagEngine do
       root: root,
       previous_token_slot?: false,
       indentation: indentation,
-      tag_handler: tag_handler
+      tag_handler: tag_handler,
+      annotate_root_tag: annotate_root_tag,
     }
   end
 
@@ -253,8 +266,17 @@ defmodule Phoenix.LiveView.TagEngine do
   def handle_text(state, meta, text) do
     %{file: file, indentation: indentation, tokens: tokens, cont: cont, source: source} = state
     tokenizer_state = Tokenizer.init(indentation, file, source, state.tag_handler)
-    {tokens, cont} = Tokenizer.tokenize(text, meta, tokens, cont, tokenizer_state)
-    %{state | tokens: tokens, cont: cont, source: state.source}
+
+    {tokens, cont, new_tokenizer_state} =
+      Tokenizer.tokenize(text, meta, tokens, cont, tokenizer_state)
+
+    %{
+      state
+      | tokens: tokens,
+        cont: cont,
+        source: state.source,
+        has_tags?: state.has_tags? || new_tokenizer_state.has_tags?
+    }
   end
 
   @impl true

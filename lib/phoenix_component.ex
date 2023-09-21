@@ -752,6 +752,10 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
+    annotate_root? =
+      Module.get_attribute(__CALLER__.module, :__debug_annotations__) ||
+        Application.get_env(:phoenix_live_view, :debug_annotations, false)
+
     options = [
       engine: Phoenix.LiveView.TagEngine,
       file: __CALLER__.file,
@@ -759,7 +763,8 @@ defmodule Phoenix.Component do
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
       source: expr,
-      tag_handler: Phoenix.LiveView.HTMLEngine
+      tag_handler: Phoenix.LiveView.HTMLEngine,
+      annotate_root_tag: annotate_root? && (&Phoenix.LiveView.HTMLEngine.annotate_root_tag/1)
     ]
 
     EEx.compile_string(expr, options)

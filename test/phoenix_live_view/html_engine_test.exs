@@ -2,6 +2,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
   import Phoenix.Component
+
+  alias Phoenix.LiveView.HTMLEngine
   alias Phoenix.LiveView.Tokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
@@ -18,13 +20,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       )
 
     quoted = EEx.compile_string(string, opts)
+
     {result, _} = Code.eval_quoted(quoted, [assigns: assigns], env)
     result
   end
 
-  defp render(string, assigns \\ %{}) do
+  defp render(string, assigns \\ %{}, opts \\ []) do
     string
-    |> eval(assigns)
+    |> eval(assigns, opts)
     |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
   end
@@ -343,6 +346,43 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   test "handle self close elements with attributes" do
     assert render("<div attr='1'/>") == "<div attr='1'></div>"
+  end
+
+  defmacrop debug(string) do
+    quote do
+      render(unquote(string), %{},
+        annotate_root_tag: &HTMLEngine.annotate_root_tag/1,
+        env: __ENV__
+      )
+    end
+  end
+
+  describe "debug annotations" do
+    alias Phoenix.LiveViewTest.DebugAnno
+    import Phoenix.LiveViewTest.DebugAnno
+
+    test "without root tag" do
+      assigns = %{}
+      assert compile("<DebugAnno.remote value='1'/>") == "REMOTE COMPONENT: Value: 1"
+      assert compile("<.local value='1'/>") == "LOCAL COMPONENT: Value: 1"
+    end
+
+    test "with root tag" do
+      assigns = %{}
+
+      assert compile("<DebugAnno.remote_with_root value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.remote_with_root> test/support/live_views/debug_anno.ex:9 --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.remote_with_root> -->"
+
+      assert compile("<.local_with_root value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->"
+    end
+
+    test "nesting" do
+      assigns = %{}
+
+      assert compile("<DebugAnno.nested value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.nested> test/support/live_views/debug_anno.ex:21 --><div>\n  <!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.DebugAnno.nested> -->"
+    end
   end
 
   describe "handle function components" do

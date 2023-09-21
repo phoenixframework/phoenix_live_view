@@ -20,6 +20,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   defmacro compile(path) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
+    annotate_root? = Application.get_env(:phoenix_live_view, :debug_annotations, false)
     source = File.read!(path)
 
     EEx.compile_string(source,
@@ -29,7 +30,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
       trim: trim,
       caller: __CALLER__,
       source: source,
-      tag_handler: __MODULE__
+      tag_handler: __MODULE__,
+      annotate_root_tag: annotate_root? && &annotate_root_tag/1
     )
   end
 
@@ -53,4 +55,22 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   def void?(_), do: false
+
+  @doc false
+  def annotate_root_tag(%Macro.Env{} = caller) do
+    %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
+    line = if line == 0, do: 1, else: line
+    deps_path = Mix.Project.deps_path()
+
+    file =
+      if String.contains?(file, deps_path) do
+        Path.join("deps", Path.relative_to(file, deps_path))
+      else
+        Path.relative_to_cwd(file)
+      end
+
+    before = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
+    aft = "</#{inspect(mod)}.#{func}>"
+    {"<!-- #{before} -->", "<!-- #{aft} -->"}
+  end
 end
