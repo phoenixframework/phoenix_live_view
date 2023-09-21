@@ -198,7 +198,14 @@ defmodule Phoenix.Component.Declarative do
   @doc false
   @valid_opts [:global_prefixes]
   def __setup__(module, opts) do
-    {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
+    {prefixes, opts} = Keyword.pop(opts, :global_prefixes, [])
+
+    {debug_annotations, invalid_opts} =
+      Keyword.pop(
+        opts,
+        :debug_heex_annotations,
+        Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
+      )
 
     prefix_matches =
       for prefix <- prefixes do
@@ -224,6 +231,7 @@ defmodule Phoenix.Component.Declarative do
     Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
+    Module.put_attribute(module, :__debug_annotations__, debug_annotations)
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
 

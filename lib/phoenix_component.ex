@@ -509,6 +509,41 @@ defmodule Phoenix.Component do
 
   See `embed_templates/1` for more information, including declarative
   assigns support for embedded templates.
+
+  ## Debug Annotations
+
+  HEEx templates support debug annotations, which are special HTML comments
+  that wrap around rendered components to help you identify where markup
+  in your HTML document is rendered within your function component tree.
+
+  For example, imagine the following HEEx template:
+
+  ```heex
+  <.header>
+    <.button>Click</.button>
+  </.header>
+  ```
+
+  The HTML document would receive the following comments when debug annotations
+  are enabled:
+
+  ```html
+  <!-- <AppWeb.CoreComponents.header> lib/app_web/core_components.ex:123 -->
+  <header class="p-5">
+    <!-- <AppWeb.CoreComponents.button> lib/app_web/core_components.ex:456 -->
+    <button class="px-2 bg-indigo-500 text-white">Click</button>
+    <!-- </AppWeb.CoreComponents.button> -->
+  </header>
+  <!-- </AppWeb.CoreComponents.header> -->
+  ```
+
+  Debug annotations work across any `~H` or `.html.heex` template.
+  They can be enabled globally with the following configuration in your
+  `config/dev.exs` file:
+
+      config :phoenix_live_view, debug_heex_annotations: true
+
+  Changing this configuration will require `mix clean` and a full recompile.
   '''
 
   ## Functions
@@ -752,6 +787,8 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
+    annotate_root? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
+
     options = [
       engine: Phoenix.LiveView.TagEngine,
       file: __CALLER__.file,
@@ -759,7 +796,8 @@ defmodule Phoenix.Component do
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
       source: expr,
-      tag_handler: Phoenix.LiveView.HTMLEngine
+      tag_handler: Phoenix.LiveView.HTMLEngine,
+      annotate_root_tag: annotate_root? && (&Phoenix.LiveView.HTMLEngine.annotate_root_tag/1)
     ]
 
     EEx.compile_string(expr, options)

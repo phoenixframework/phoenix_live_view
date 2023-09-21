@@ -390,6 +390,21 @@ defmodule Phoenix.LiveView.Engine do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
 
+      static =
+        case Keyword.fetch(opts, :root_annotation) do
+          {:ok, {before, aft}} ->
+            case static do
+              [] ->
+                ["#{before}#{aft}"]
+
+              [first | rest] ->
+                List.update_at([to_string(before) <> first | rest], -1, &(&1 <> to_string(aft)))
+            end
+
+          :error ->
+            static
+        end
+
       changed =
         quote generated: true do
           case unquote(@assigns_var) do
