@@ -20,7 +20,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   defmacro compile(path) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
-    annotate_root? = Application.get_env(:phoenix_live_view, :debug_annotations, false)
+    annotate_root? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
     source = File.read!(path)
 
     EEx.compile_string(source,
