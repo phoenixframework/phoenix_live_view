@@ -843,7 +843,23 @@ defmodule Phoenix.LiveView.JSTest do
 
   defp js_to_string(%JS{} = js) do
     js
+    |> Map.update!(:ops, &order_ops_map_keys/1)
     |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
+  end
+
+  defp order_ops_map_keys(ops) when is_list(ops) do
+    Enum.map(ops, &order_ops_map_keys/1)
+  end
+
+  defp order_ops_map_keys(ops) when is_map(ops) do
+    ops
+    |> Enum.map(&order_ops_map_keys/1)
+    |> Enum.sort_by(fn {k, _v} -> k end)
+    |> Jason.OrderedObject.new()
+  end
+
+  defp order_ops_map_keys(ops) do
+    ops
   end
 end

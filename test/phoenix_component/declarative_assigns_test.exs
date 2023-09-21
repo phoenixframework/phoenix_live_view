@@ -2,18 +2,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2]
   use Phoenix.Component
 
-  defp render(mod, func, assigns) do
-    mod
-    |> apply(func, [Map.put(assigns, :__changed__, %{})])
-    |> h2s()
+  defp render_template(mod, func, assigns) do
+    apply(mod, func, [Map.put(assigns, :__changed__, %{})])
   end
 
-  defp h2s(template) do
-    template
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
+  defp render_string(mod, func, assigns) do
+    render_template(mod, func, assigns) |> rendered_to_string()
+  end
+
+  defp render_html(mod, func, assigns) do
+    render_template(mod, func, assigns) |> t2h()
   end
 
   test "__global__?" do
@@ -100,22 +101,22 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "merges globals" do
-    assert render(FunctionComponentWithAttrs, :with_global, %{}) ==
-             "<button id=\"container\" aria-hidden=\"true\" class=\"btn\"></button>"
+    assert render_html(FunctionComponentWithAttrs, :with_global, %{}) ==
+             ~X[<button id="container" aria-hidden="true" class="btn"></button>]
   end
 
   test "merges globals with defaults" do
     assigns = %{id: "btn", style: "display: none;"}
 
-    assert render(FunctionComponentWithAttrs, :button_with_defaults, assigns) ==
-             "<button class=\"primary\" id=\"btn\" style=\"display: none;\"></button>"
+    assert render_html(FunctionComponentWithAttrs, :button_with_defaults, assigns) ==
+             ~X[<button class="primary" id="btn" style="display: none;"></button>]
 
-    assert render(FunctionComponentWithAttrs, :button_with_defaults, %{class: "hidden"}) ==
-             "<button class=\"hidden\"></button>"
+    assert render_html(FunctionComponentWithAttrs, :button_with_defaults, %{class: "hidden"}) ==
+             ~X[<button class="hidden"></button>]
 
     # caller passes no globals
-    assert render(FunctionComponentWithAttrs, :button_with_defaults, %{}) ==
-             "<button class=\"primary\"></button>"
+    assert render_html(FunctionComponentWithAttrs, :button_with_defaults, %{}) ==
+             ~X[<button class="primary"></button>]
   end
 
   test "stores attributes definitions" do
@@ -166,7 +167,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    required: false
                  }
                ],
-               line: func1_line + 4,
+               line: func1_line + 4
              },
              func2: %{
                kind: :def,
@@ -248,7 +249,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                  }
                ],
                slots: [],
-               line: with_global_line + 6,
+               line: with_global_line + 6
              },
              button_with_values: %{
                kind: :def,
@@ -264,7 +265,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                  }
                ],
                slots: [],
-               line: button_with_values_line + 2,
+               line: button_with_values_line + 2
              },
              button_with_values_and_default_1: %{
                kind: :def,
@@ -280,7 +281,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                  }
                ],
                slots: [],
-               line: button_with_values_and_default_1_line + 2,
+               line: button_with_values_and_default_1_line + 2
              },
              button_with_values_and_default_2: %{
                kind: :def,
@@ -296,7 +297,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                  }
                ],
                slots: [],
-               line: button_with_values_and_default_2_line + 2,
+               line: button_with_values_and_default_2_line + 2
              },
              button_with_examples: %{
                kind: :def,
@@ -418,7 +419,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    required: false
                  }
                ],
-               line: FunctionComponentWithSlots.fun_with_slot_line(),
+               line: FunctionComponentWithSlots.fun_with_slot_line()
              },
              fun_with_named_slots: %{
                attrs: [],
@@ -466,7 +467,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    required: true
                  }
                ],
-               line: FunctionComponentWithSlots.fun_with_slot_attrs_line(),
+               line: FunctionComponentWithSlots.fun_with_slot_attrs_line()
              },
              table: %{
                attrs: [
@@ -559,7 +560,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    required: false
                  }
                ],
-               line: Bodyless.example2_line() + 1,
+               line: Bodyless.example2_line() + 1
              }
            }
   end
@@ -602,17 +603,18 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       attr :id, :any
       attr :errors, :list, default: []
+
       def assigned_with_same_default(assigns) do
         assign(assigns, errors: [])
       end
     end
 
-    assert render(AttrDefaults, :add, %{}) == "3"
-    assert render(AttrDefaults, :example, %{}) == "nil"
-    assert render(AttrDefaults, :no_default, %{value: 123}) == "123"
+    assert render_string(AttrDefaults, :add, %{}) == "3"
+    assert render_string(AttrDefaults, :example, %{}) == "nil"
+    assert render_string(AttrDefaults, :no_default, %{value: 123}) == "123"
 
     assert_raise KeyError, ~r":value not found", fn ->
-      render(AttrDefaults, :no_default, %{})
+      render_string(AttrDefaults, :no_default, %{})
     end
 
     assigns = AttrDefaults.assigned_with_same_default(%{__changed__: %{}})
@@ -669,7 +671,15 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     </SlotWithGlobal.test>
     """
 
-    assert h2s(template) == ~s|<div class="my-class">\n  \n  block\n  \n  col1,col2,\n</div>|
+    assert t2h(template) ==
+             ~X"""
+             <div class="my-class">
+               
+               block
+               
+               col1,col2,
+             </div>
+             """
   end
 
   defp lookup(_key \\ :one)
@@ -787,7 +797,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                ],
                kind: :def,
                slots: [],
-               line: line + 23,
+               line: line + 23
              },
              func_with_slot_docs: %{
                attrs: [],
@@ -812,7 +822,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    required: false
                  }
                ],
-               line: line + 29,
+               line: line + 29
              }
            }
   end
