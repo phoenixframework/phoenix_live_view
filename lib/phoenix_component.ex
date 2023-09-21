@@ -528,13 +528,13 @@ defmodule Phoenix.Component do
   are enabled:
 
   ```html
-  <!-- <AppWeb.Components.header> lib/app_web/core_components.ex:123 -->
+  <!-- <AppWeb.CoreComponents.header> lib/app_web/core_components.ex:123 -->
   <header class="p-5">
-    <!-- <AppWeb.Components.button> lib/app_web/core_components.ex:456 -->
+    <!-- <AppWeb.CoreComponents.button> lib/app_web/core_components.ex:456 -->
     <button class="px-2 bg-indigo-500 text-white">Click</button>
-    <!-- </AppWeb.Components.button> -->
+    <!-- </AppWeb.CoreComponents.button> -->
   </header>
-  <!-- </AppWeb.Components.header> -->
+  <!-- </AppWeb.CoreComponents.header> -->
   ```
 
   Debug annotations work across any `~H` or `.html.heex` template.
