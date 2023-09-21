@@ -60,14 +60,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def annotate_root_tag(%Macro.Env{} = caller) do
     %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
     line = if line == 0, do: 1, else: line
-    deps_path = Mix.Project.deps_path()
-
-    file =
-      if String.contains?(file, deps_path) do
-        Path.join("deps", Path.relative_to(file, deps_path))
-      else
-        Path.relative_to_cwd(file)
-      end
+    file = Path.relative_to_cwd(file)
 
     before = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
     aft = "</#{inspect(mod)}.#{func}>"
