@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveViewTest.UploadClient do
   @moduledoc false
   use GenServer
+  require Logger
   require Phoenix.ChannelTest
 
   alias Phoenix.LiveViewTest.{Upload, ClientProxy}
@@ -118,8 +119,9 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       type: type,
       ref: ref,
       token: token,
-      chunk_start: 0
+      chunk_percent: 0
     }
+    |> with_chunk_boundaries()
   end
 
   defp build_and_join_entry(state, client_entry, token) do
@@ -142,23 +144,65 @@ defmodule Phoenix.LiveViewTest.UploadClient do
       socket: entry_socket,
       ref: ref,
       token: token,
-      chunk_start: 0
+      chunk_percent: 0
     }
+    |> with_chunk_boundaries()
   end
 
-  defp progress_stats(entry, percent) do
-    chunk_size = trunc(entry.size * (percent / 100))
-    start = entry.chunk_start
-    new_start = start + chunk_size
+  def with_chunk_boundaries(entry) do
+    {boundaries, _} =
+      Enum.map_reduce(99..1//-1, {100, entry.size}, fn
+        x, {prev_perc, prev_bytes} ->
+          bytes = ceil(entry.size * x / 100)
+
+          if bytes == prev_bytes do
+            {{x, {prev_perc, prev_bytes}}, {prev_perc, prev_bytes}}
+          else
+            {{x, bytes}, {x, bytes}}
+          end
+      end)
+
+    Map.put(
+      entry,
+      :chunk_boundaries,
+      boundaries |> Map.new() |> Map.merge(%{0 => 0, 100 => entry.size})
+    )
+  end
+
+  defp progress_stats(entry, percent) when percent in 0..100 do
+    start =
+      case Map.fetch!(entry.chunk_boundaries, entry.chunk_percent) do
+        bytes when is_integer(bytes) -> bytes
+      end
+
+    new_start =
+      case Map.fetch!(entry.chunk_boundaries, entry.chunk_percent + percent) do
+        {result_percent, bytes} ->
+          Logger.warning(
+            "Filesize cannot be chunked to #{percent}%. #{result_percent - entry.chunk_percent}% will be uploaded."
+          )
+
+          bytes
+
+        bytes ->
+          bytes
+      end
+
+    chunk_size = new_start - start
     new_percent = trunc(new_start / entry.size * 100)
 
-    %{chunk_size: chunk_size, start: start, new_start: new_start, new_percent: new_percent}
+    %{
+      chunk_size: chunk_size,
+      start: start,
+      new_start: new_start,
+      new_percent: new_percent
+    }
   end
 
   defp chunk_upload(state, from, entry_name, percent, proxy_pid, element) do
     entry = get_entry!(state, entry_name)
 
-    if entry.chunk_start >= entry.size do
+    if entry.chunk_percent >= 100 do
       state
     else
       do_chunk(state, from, entry, proxy_pid, element, percent)
@@ -178,7 +222,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
         cid
       )
 
-    update_entry_start(state, entry, stats.new_start)
+    update_entry_percent(state, entry, stats.new_percent)
   end
 
   defp do_chunk(state, from, entry, proxy_pid, element, percent) do
@@ -205,7 +249,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
             state.cid
           )
 
-        update_entry_start(state, entry, stats.new_start)
+        update_entry_percent(state, entry, stats.new_percent)
 
       %Phoenix.Socket.Reply{ref: ^ref, status: :error} ->
         :ok =
@@ -218,15 +262,15 @@ defmodule Phoenix.LiveViewTest.UploadClient do
             state.cid
           )
 
-        update_entry_start(state, entry, stats.new_start)
+        update_entry_percent(state, entry, stats.new_percent)
     after
       get_chunk_timeout(state) -> exit(:timeout)
     end
   end
 
-  defp update_entry_start(state, entry, new_start) do
+  defp update_entry_percent(state, entry, new_percent) do
     new_entries =
-      Map.update!(state.entries, entry.name, fn entry -> %{entry | chunk_start: new_start} end)
+      Map.update!(state.entries, entry.name, fn entry -> %{entry | chunk_percent: new_percent} end)
 
     %{state | entries: new_entries}
   end
