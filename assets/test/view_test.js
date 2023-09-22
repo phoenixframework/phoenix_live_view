@@ -371,7 +371,7 @@ describe("View + DOM", function(){
       expect(view.el.innerHTML).toBe(html)
 
       let formEl = document.getElementById("form")
-      formEl.submit = () => done()
+      Object.getPrototypeOf(formEl).submit = done
       let updatedHtml = "<form id=\"form\" phx-submit=\"submit\" phx-trigger-action><input type=\"text\"></form>"
       view.update({s: [updatedHtml]}, [])
 
