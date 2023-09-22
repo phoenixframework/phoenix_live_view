@@ -27,7 +27,7 @@
 
 ### Enhancements
   * Add heex debug annotations via `config :phoenix_live_view, :debug_heex_annotations: true`, which provides special HTML comments that wrap around rendered components to help you identify where markup in your HTML document is rendered within your function component tree
-  * Add `assync_async`, `start_async`, `<.async_result>` and, `AsyncResult` for declaratively handling async operations in a LiveView or LiveComponent.
+  * Add `assign_async`, `start_async`, `<.async_result>` and, `AsyncResult` for declaratively handling async operations in a LiveView or LiveComponent.
   * Supporting passing `@myself` for `Phoenix.LiveView.send_update/3`
   * Support change tracking on Access.get
   * Allow overriding `id` of `<.live_img_preview>`
