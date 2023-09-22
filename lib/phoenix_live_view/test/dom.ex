@@ -569,4 +569,37 @@ defmodule Phoenix.LiveViewTest.DOM do
 
     {tag, new_attrs, children}
   end
+
+  defmacro sigil_X({:<<>>, _, [binary]}, []) when is_binary(binary) do
+    Macro.escape(parse_sorted!(binary))
+  end
+
+  defmacro sigil_x(term, []) do
+    quote do
+      unquote(__MODULE__).parse_sorted!(unquote(term))
+    end
+  end
+
+  def t2h(template) do
+    template
+    |> Phoenix.LiveViewTest.rendered_to_string()
+    |> parse_sorted!()
+  end
+
+  @doc"""
+  Parses HTML into Floki format with sorted attributes.
+  """
+  def parse_sorted!(value) do
+    value
+    |> Floki.parse_fragment!()
+    |> Enum.map(&normalize_attribute_order/1)
+  end
+
+  defp normalize_attribute_order({node_type, attributes, content}),
+    do: {node_type, Enum.sort(attributes), Enum.map(content, &normalize_attribute_order/1)}
+
+  defp normalize_attribute_order(values) when is_list(values),
+    do: Enum.map(values, &normalize_attribute_order/1)
+
+  defp normalize_attribute_order(value), do: value
 end

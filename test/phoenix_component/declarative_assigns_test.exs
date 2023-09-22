@@ -2,7 +2,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
-  import Phoenix.LiveViewTest.HTML
+  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2]
   use Phoenix.Component
 
   defp render_template(mod, func, assigns) do
