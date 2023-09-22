@@ -110,6 +110,11 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv) =~ "lc_data: 123"
     end
 
+    test "valid return", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=supervised")
+      assert render_async(lv) =~ "lc_data: 123"
+    end
+
     test "raise during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_raise")
 
