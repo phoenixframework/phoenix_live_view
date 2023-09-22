@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20-dev
+## 0.20.0 (2023-09-22)
 
 ### Deprecations
   * Deprecate the `~L` sigil in favor of `~H`
@@ -14,6 +14,23 @@
   * Remove previously deprecated `render_block/2` in favor of `render_slot/2`
   * Remove previously deprecated `live_img_preview/2` in favor of `<.live_img_preview />`
   * Remove previously deprecated `live_file_input/2` in favor of `<.live_file_input />`
+
+### Bug fixes
+  * Fix uploads with `auto_upload: true` failing to propegate errors when any individual entry is invalid
+  * Fix uploads with `auto_upload: true` failing to auto upload valid entries errors when any individual entry is invalid
+  * Fix error on form recovery with `auto_upload: true`
+  * Fix issue on form recovery where hidden inputs would be selected by mistake
+  * Fix form recovery when phx-change is a JS command
+  * Fix stream reset on nested live components with nested streams.
+  * Fix window location resetting to null when using nested LiveView on connection error
+  * Fix anchors within contenteditable causing LiveSocket disconnects
+
+### Enhancements
+  * Add heex debug annotations via `config :phoenix_live_view, :debug_heex_annotations: true`, which provides special HTML comments that wrap around rendered components to help you identify where markup in your HTML document is rendered within your function component tree
+  * Add `assync_async`, `start_async`, `<.async_result>` and, `AsyncResult` for declaratively handling async operations in a LiveView or LiveComponent.
+  * Supporting passing `@myself` for `Phoenix.LiveView.send_update/3`
+  * Support change tracking on Access.get
+  * Allow overriding `id` of `<.live_img_preview>`
 
 ## 0.19.5 (2023-07-19)
 

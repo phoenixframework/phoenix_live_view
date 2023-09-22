@@ -352,7 +352,12 @@ var LiveView = (() => {
       return wantsNewTab || isTargetBlank || isDownload;
     },
     isUnloadableFormSubmit(e) {
-      return !e.defaultPrevented && !this.wantsNewTab(e);
+      let isDialogSubmit = e.target && e.target.getAttribute("method") === "dialog" || e.submitter && e.submitter.getAttribute("formmethod") === "dialog";
+      if (isDialogSubmit) {
+        return false;
+      } else {
+        return !e.defaultPrevented && !this.wantsNewTab(e);
+      }
     },
     isNewPageClick(e, currentLocation) {
       let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null;
@@ -1982,7 +1987,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.transitionPendingRemoves();
       if (externalFormTriggered) {
         liveSocket.unload();
-        externalFormTriggered.submit();
+        Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered);
       }
       return true;
     }
@@ -2204,7 +2209,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return merged;
     }
     componentToString(cid) {
-      let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid);
+      let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null, false);
       return [str, streams];
     }
     pruneCIDs(cids) {
@@ -2265,7 +2270,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         output.buffer += rendered;
       }
     }
-    recursiveCIDToString(components, cid, onlyCids) {
+    recursiveCIDToString(components, cid, onlyCids, allowRootComments = true) {
       let component = components[cid] || logError(`no component for CID ${cid}`, components);
       let template = document.createElement("template");
       let [html, streams] = this.recursiveToString(component, components, onlyCids);
@@ -2286,6 +2291,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             child.innerHTML = "";
           }
           return [true, hasComponents];
+        } else if (child.nodeType === Node.COMMENT_NODE) {
+          if (!allowRootComments) {
+            child.remove();
+          }
+          return [hasNodes, hasComponents];
         } else {
           if (child.nodeValue.trim() !== "") {
             logError(`only HTML element tags are allowed at the root of components.
@@ -2565,10 +2575,16 @@ within:
       }
     },
     addOrRemoveClasses(el, adds, removes, transition, time, view) {
-      let [transition_run, transition_start, transition_end] = transition || [[], [], []];
-      if (transition_run.length > 0) {
-        let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(transition_run), []);
-        let onDone = () => this.addOrRemoveClasses(el, adds.concat(transition_end), removes.concat(transition_run).concat(transition_start));
+      let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []];
+      if (transitionRun.length > 0) {
+        let onStart = () => {
+          this.addOrRemoveClasses(el, transitionStart, [].concat(transitionRun).concat(transitionEnd));
+          window.requestAnimationFrame(() => {
+            this.addOrRemoveClasses(el, transitionRun, []);
+            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, transitionEnd, transitionStart));
+          });
+        };
+        let onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart));
         return view.transition(time, onStart, onDone);
       }
       window.requestAnimationFrame(() => {

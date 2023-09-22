@@ -1456,7 +1456,7 @@ defmodule Phoenix.LiveView do
         ...
         pid = self()
 
-        Task.start(fn ->
+        Task.Supervisor.start_child(MyTaskSup, fn ->
           # Do something asynchronously
           send_update(pid, Cart, id: "cart", status: "cancelled")
         end)
