@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
   import Phoenix.HTML.Form
   import Phoenix.Component
-  import Phoenix.LiveViewTest.HTML
+  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
 
   describe "link patch" do
     test "basic usage" do
