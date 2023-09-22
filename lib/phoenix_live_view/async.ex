@@ -3,12 +3,12 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  def start_async(%Socket{} = socket, key, func)
+  def start_async(%Socket{} = socket, key, func, opts \\ [])
       when is_atom(key) and is_function(func, 0) do
-    run_async_task(socket, key, func, :start)
+    run_async_task(socket, key, func, :start, opts)
   end
 
-  def assign_async(%Socket{} = socket, key_or_keys, func)
+  def assign_async(%Socket{} = socket, key_or_keys, func, opts \\ [])
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
              is_function(func, 0) do
     keys = List.wrap(key_or_keys)
@@ -50,14 +50,20 @@ defmodule Phoenix.LiveView.Async do
 
     socket
     |> Phoenix.Component.assign(new_assigns)
-    |> run_async_task(keys, wrapped_func, :assign)
+    |> run_async_task(keys, wrapped_func, :assign, opts)
   end
 
-  defp run_async_task(%Socket{} = socket, key, func, kind) do
+  defp run_async_task(%Socket{} = socket, key, func, kind, opts) do
     if Phoenix.LiveView.connected?(socket) do
       lv_pid = self()
       cid = cid(socket)
-      {:ok, pid} = Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
+      {:ok, pid} = if supervisor = Keyword.get(opts, :supervisor) do
+        {:ok, pid} = Task.Supervisor.start_child(supervisor, fn -> do_async(lv_pid, cid, key, func, kind) end)
+        Process.link(pid)
+        {:ok, pid}
+      else
+        Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
+      end
 
       ref =
         :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, key, cid, kind})

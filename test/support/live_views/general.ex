@@ -376,7 +376,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
     {:ok, assign_async(socket, :data, fn -> {:ok, %{data: 123}} end)}
   end
 
-  def mount(%{"test" => "supervised"}, _session, socket) do
+  def mount(%{"test" => "sup_ok"}, _session, socket) do
     {:ok, assign_async(socket, :data, fn -> {:ok, %{data: 123}} end, supervisor: TestAsyncSupervisor)}
   end
 
@@ -384,8 +384,16 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
     {:ok, assign_async(socket, :data, fn -> raise("boom") end)}
   end
 
+  def mount(%{"test" => "sup_raise"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> raise("boom") end, supervisor: TestAsyncSupervisor)}
+  end
+
   def mount(%{"test" => "exit"}, _session, socket) do
     {:ok, assign_async(socket, :data, fn -> exit(:boom) end)}
+  end
+
+  def mount(%{"test" => "sup_exit"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> exit(:boom) end, supervisor: TestAsyncSupervisor)}
   end
 
   def mount(%{"test" => "lv_exit"}, _session, socket) do
