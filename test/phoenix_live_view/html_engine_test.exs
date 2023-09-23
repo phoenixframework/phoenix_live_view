@@ -1711,10 +1711,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe "handle errors in expressions" do
     test "inside attribute values" do
-      assert_raise(
-        SyntaxError,
-        ~r"test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','",
-        fn ->
+      exception =
+        assert_raise SyntaxError, fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1727,14 +1725,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             opts
           )
         end
-      )
+
+      message = Exception.message(exception)
+      assert message =~ "test/phoenix_live_view/html_engine_test.exs:12:22:"
+      assert message =~ "syntax error before: ','"
     end
 
     test "inside root attribute value" do
-      assert_raise(
-        SyntaxError,
-        ~r"test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','",
-        fn ->
+      exception =
+        assert_raise SyntaxError, fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1747,7 +1746,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             opts
           )
         end
-      )
+
+      message = Exception.message(exception)
+      assert message =~ "test/phoenix_live_view/html_engine_test.exs:12:16:"
+      assert message =~ "syntax error before: ','"
     end
   end
 
