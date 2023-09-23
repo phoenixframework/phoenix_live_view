@@ -82,7 +82,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       <div>
       """
 
-      {first_tokens, cont, _} =
+      {first_tokens, cont} =
         Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
@@ -94,7 +94,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </div>
       """
 
-      {tokens, :text, _} =
+      {tokens, :text} =
         Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       assert Enum.reverse(tokens) == [
@@ -124,7 +124,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       <%= "Hello" %>
       """
 
-      {first_tokens, cont, _} =
+      {first_tokens, cont} =
         Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       <p><%= "World"</p>
       """
 
-      {second_tokens, cont, _} =
+      {second_tokens, cont} =
         Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       third_part = """
@@ -143,7 +143,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </p>
       """
 
-      {tokens, :text, _} =
+      {tokens, :text} =
         Tokenizer.tokenize(third_part, [], second_tokens, cont, tokenizer_state(third_part))
 
       assert Enum.reverse(tokens) == [
