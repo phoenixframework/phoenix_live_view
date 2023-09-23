@@ -31,14 +31,16 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ """
            missing required attribute "email" for component \
            Phoenix.ComponentVerifyTest.RequiredAttrs.func/1
-             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
 
     assert warnings =~ """
            missing required attribute "name" for component \
            Phoenix.ComponentVerifyTest.RequiredAttrs.func/1
-             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
   end
 
   test "validate undefined attributes" do
@@ -65,14 +67,16 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ """
            undefined attribute "size" for component \
            Phoenix.ComponentVerifyTest.UndefinedAttrs.func/1
-             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
 
     assert warnings =~ """
            undefined attribute "width" for component \
            Phoenix.ComponentVerifyTest.UndefinedAttrs.func/1
-             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
   end
 
   test "validates attrs and slots for external function components" do
@@ -109,14 +113,16 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ """
            missing required attribute "id" for component \
            Phoenix.ComponentVerifyTest.External.render/1
-             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
 
     assert warnings =~ """
            missing required attribute "attr" in slot "named" for component \
            Phoenix.ComponentVerifyTest.External.render/1
-             test/phoenix_component/verify_test.exs:#{line + 1}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 1}: (file)"
   end
 
   test "validate literal types" do
@@ -274,8 +280,9 @@ defmodule Phoenix.ComponentVerifyTest do
            global attribute "global" in component \
            Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
            may not be provided directly
-             test/phoenix_component/verify_test.exs:#{line}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
 
     line = get_line(__MODULE__.TypeAttrs, :render_string_line)
 
@@ -292,8 +299,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "string" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :string, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.TypeAttrs, :render_atom_line)
@@ -309,8 +317,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "atom" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be an :atom, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.TypeAttrs, :render_boolean_line)
@@ -328,8 +337,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "boolean" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :boolean, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.TypeAttrs, :render_integer_line)
@@ -347,8 +357,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "integer" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be an :integer, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.TypeAttrs, :render_float_line)
@@ -366,8 +377,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "float" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :float, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.TypeAttrs, :render_map_line)
@@ -385,8 +397,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "map" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :map, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.TypeAttrs, :render_list_line)
@@ -404,8 +417,9 @@ defmodule Phoenix.ComponentVerifyTest do
              attribute "list" in component \
              Phoenix.ComponentVerifyTest.TypeAttrs.func/1 \
              must be a :list, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
   end
 
@@ -437,8 +451,9 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ """
            attribute "uri" in component Phoenix.ComponentVerifyTest.SlotStruct.func/1 \
            must be a URI struct, got: 123
-             test/phoenix_component/verify_test.exs:#{line + 2}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 2}: (file)"
   end
 
   test "validates attr values" do
@@ -482,22 +497,25 @@ defmodule Phoenix.ComponentVerifyTest do
            attribute "attr" in component \
            Phoenix.ComponentVerifyTest.AttrValues.func_string/1 \
            must be one of ["foo", "bar", "baz"], got: "boom"
-             test/phoenix_component/verify_test.exs:#{line + 2}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 2}: (file)"
 
     assert warnings =~ """
            attribute "attr" in component \
            Phoenix.ComponentVerifyTest.AttrValues.func_atom/1 \
            must be one of [:foo, :bar, :baz], got: :boom
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
 
     assert warnings =~ """
            attribute "attr" in component \
            Phoenix.ComponentVerifyTest.AttrValues.func_integer/1 \
            must be one of 1..10, got: 11
-             test/phoenix_component/verify_test.exs:#{line + 4}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 4}: (file)"
   end
 
   test "validates slot attr values" do
@@ -536,22 +554,25 @@ defmodule Phoenix.ComponentVerifyTest do
            attribute "string" in slot "named" for component \
            Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
            must be one of ["foo", "bar", "baz"], got: "boom"
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
 
     assert warnings =~ """
            attribute "atom" in slot "named" for component \
            Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
            must be one of [:foo, :bar, :baz], got: :boom
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
 
     assert warnings =~ """
            attribute "integer" in slot "named" for component \
            Phoenix.ComponentVerifyTest.SlotAttrValues.func/1 \
            must be one of 1..10, got: 11
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
   end
 
   test "validate required slots" do
@@ -560,11 +581,11 @@ defmodule Phoenix.ComponentVerifyTest do
         defmodule RequiredSlots do
           use Phoenix.Component
 
-          slot :inner_block, required: true
+          slot(:inner_block, required: true)
 
           def func(assigns), do: ~H[]
 
-          slot :named, required: true
+          slot(:named, required: true)
 
           def func_named_slot(assigns), do: ~H[]
 
@@ -615,14 +636,16 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ """
            missing required slot "inner_block" for component \
            Phoenix.ComponentVerifyTest.RequiredSlots.func/1
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
 
     assert warnings =~ """
            missing required slot "named" for component \
            Phoenix.ComponentVerifyTest.RequiredSlots.func_named_slot/1
-             test/phoenix_component/verify_test.exs:#{line + 12}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 12}: (file)"
   end
 
   test "validate slot attr types" do
@@ -772,8 +795,9 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :string, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.SlotAttrs, :render_atom_line)
@@ -789,8 +813,9 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be an :atom, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.SlotAttrs, :render_boolean_line)
@@ -808,8 +833,9 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :boolean, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.SlotAttrs, :render_integer_line)
@@ -827,8 +853,9 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be an :integer, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.SlotAttrs, :render_float_line)
@@ -846,8 +873,9 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :float, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
 
     line = get_line(__MODULE__.SlotAttrs, :render_list_line)
@@ -865,8 +893,9 @@ defmodule Phoenix.ComponentVerifyTest do
              in slot \"slot\" \
              for component Phoenix.ComponentVerifyTest.SlotAttrs.func/1 \
              must be a :list, got: #{inspect(value)}
-               test/phoenix_component/verify_test.exs:#{line + offset}: (file)
              """
+
+      assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + offset}: (file)"
     end
   end
 
@@ -915,16 +944,18 @@ defmodule Phoenix.ComponentVerifyTest do
            in slot "slot" \
            for component \
            Phoenix.ComponentVerifyTest.RequiredSlotAttrs.func/1
-             test/phoenix_component/verify_test.exs:#{line + 1}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 1}: (file)"
 
     assert warnings =~ """
            missing required attribute "attr" \
            in slot "slot" \
            for component \
            Phoenix.ComponentVerifyTest.RequiredSlotAttrs.func/1
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
   end
 
   test "validates undefined slots" do
@@ -937,11 +968,11 @@ defmodule Phoenix.ComponentVerifyTest do
 
           def fun_no_slots(assigns), do: ~H[]
 
-          slot :inner_block
+          slot(:inner_block)
 
           def func(assigns), do: ~H[]
 
-          slot :named
+          slot(:named)
 
           def func_undefined_slot_attrs(assigns), do: ~H[]
 
@@ -974,30 +1005,34 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ """
            undefined slot "inner_block" for component \
            Phoenix.ComponentVerifyTest.UndefinedSlots.fun_no_slots/1
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
 
     assert warnings =~ """
            undefined slot "undefined" for component \
            Phoenix.ComponentVerifyTest.UndefinedSlots.func/1
-             test/phoenix_component/verify_test.exs:#{line + 9}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 9}: (file)"
 
     assert warnings =~ """
            undefined attribute "undefined" \
            in slot "named" \
            for component \
            Phoenix.ComponentVerifyTest.UndefinedSlots.func_undefined_slot_attrs/1
-             test/phoenix_component/verify_test.exs:#{line + 14}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 14}: (file)"
 
     assert warnings =~ """
            undefined attribute "undefined" \
            in slot "named" \
            for component \
            Phoenix.ComponentVerifyTest.UndefinedSlots.func_undefined_slot_attrs/1
-             test/phoenix_component/verify_test.exs:#{line + 15}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 15}: (file)"
   end
 
   test "validates calls for locally defined components" do
@@ -1039,15 +1074,17 @@ defmodule Phoenix.ComponentVerifyTest do
            missing required attribute "attr" \
            for component \
            Phoenix.ComponentVerifyTest.LocalComponents.public/1
-             test/phoenix_component/verify_test.exs:#{line + 2}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 2}: (file)"
 
     assert warnings =~ """
            missing required attribute "attr" \
            for component \
            Phoenix.ComponentVerifyTest.LocalComponents.private/1
-             test/phoenix_component/verify_test.exs:#{line + 3}: (file)
            """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
   end
 
   test "global includes" do
