@@ -746,21 +746,20 @@ defmodule Phoenix.LiveView.TagEngine do
   #   pop_special_attrs!(state, ":for", attrs, %{}, state)
   #   => {%{}, []}
   defp pop_special_attrs!(attrs, tag_meta, state) do
-    Enum.reduce([:for, :if], {tag_meta, attrs}, fn attr, {meta_acc, attrs_acc} ->
-      string_attr = ":#{attr}"
+    Enum.reduce([for: ":for", if: ":if"], {tag_meta, attrs}, fn
+      {attr, string_attr}, {meta_acc, attrs_acc} ->
+        attrs_acc
+        |> List.keytake(string_attr, 0)
+        |> raise_if_duplicated_special_attr!(state)
+        |> case do
+          {{^string_attr, expr, meta}, attrs} ->
+            parsed_expr = parse_expr!(expr, state.file)
+            validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
+            {Map.put(meta_acc, attr, parsed_expr), attrs}
 
-      attrs_acc
-      |> List.keytake(string_attr, 0)
-      |> raise_if_duplicated_special_attr!(state)
-      |> case do
-        {{^string_attr, expr, meta}, attrs} ->
-          parsed_expr = parse_expr!(expr, state.file)
-          validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
-          {Map.put(meta_acc, attr, parsed_expr), attrs}
-
-        nil ->
-          {meta_acc, attrs_acc}
-      end
+          nil ->
+            {meta_acc, attrs_acc}
+        end
     end)
   end
 
