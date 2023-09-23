@@ -1,8 +1,8 @@
 defmodule Phoenix.LiveView.Tokenizer do
   @moduledoc false
-  @space_chars '\s\t\f'
-  @quote_chars '"\''
-  @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
+  @space_chars ~c"\s\t\f"
+  @quote_chars ~c"\"'"
+  @stop_chars ~c">/=\r\n" ++ @quote_chars ++ @space_chars
 
   defmodule ParseError do
     @moduledoc false
@@ -655,20 +655,17 @@ defmodule Phoenix.LiveView.Tokenizer do
     meta = %{line_end: line, column_end: column}
 
     meta =
-      if context = get_context(context) do
-        Map.put(meta, :context, trim_context(context))
-      else
+      if context == [] do
         meta
+      else
+        Map.put(meta, :context, trim_context(context))
       end
 
     [{:text, buffer_to_string(buffer), meta} | acc]
   end
 
-  defp trim_context([:comment_start, :comment_end | [_ | _] = rest]), do: trim_context(rest)
-  defp trim_context(rest), do: rest
-
-  defp get_context([]), do: nil
-  defp get_context(context), do: Enum.reverse(context)
+  defp trim_context([:comment_end, :comment_start | [_ | _] = rest]), do: trim_context(rest)
+  defp trim_context(rest), do: Enum.reverse(rest)
 
   defp put_attr([{type, name, attrs, meta} | acc], attr, attr_meta, value \\ nil) do
     attrs = [{attr, value, attr_meta} | attrs]
