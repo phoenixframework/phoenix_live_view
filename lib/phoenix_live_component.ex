@@ -237,7 +237,7 @@ defmodule Phoenix.LiveComponent do
   ## Managing state
 
   Now that we have learned how to define and use components, as well as
-  how to use `c:preload/1` as a data loading optimization, it is important
+  how to use `c:update_many/2` as a data loading optimization, it is important
   to talk about how to manage state in components.
 
   Generally speaking, you want to avoid both the parent LiveView and the
@@ -347,7 +347,7 @@ defmodule Phoenix.LiveComponent do
 
   Now, each CardComponent will load its own card. Of course, doing so
   per card could be expensive and lead to N queries, where N is the
-  number of cards, so we can use the `c:preload/1` callback to make it
+  number of cards, so we can use the `c:update_many/2` callback to make it
   efficient.
 
   Once the card components are started, they can each manage their own
@@ -366,7 +366,7 @@ defmodule Phoenix.LiveComponent do
       end
 
   With `Phoenix.LiveView.send_update/3`, the `CardComponent` given by `id`
-  will be invoked, triggering both preload and update callbacks, which will
+  will be invoked, triggering the update or update_many callback, which will
   load the most up to date data from the database.
 
   ## Cost of live components
