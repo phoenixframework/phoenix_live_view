@@ -303,6 +303,7 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()}
 
   @optional_callbacks mount: 3,
+                      render: 1,
                       terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
@@ -541,6 +542,32 @@ defmodule Phoenix.LiveView do
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
   @doc """
+  Configures which function to use to render a LiveView/LiveComponent.
+
+  By default, LiveView invokes the `render/1` function in the same module
+  the LiveView/LiveComponent is defined, passing `assigns` as its sole
+  argument. This function allows you to set a different rendering function.
+
+  One possible use case for this function is to set a different template
+  on disconnected render. When the user first accesses a LiveView, we will
+  perform a disconnected render to send to the browser. This is useful for
+  several reasons, such as reducing the time to first paint and for search
+  engine indexing.
+
+  However, when LiveView is gated behind an authentication page, it may be
+  useful to render a placeholder on disconnected render and perform the
+  full render once the WebSocket connects. This can be achieved with
+  `render_with/2` and is particularly useful on complex pages (such as
+  dashboards and reports).
+
+  To do so, you must simply invoke `render_with(socket, &some_function_component/1)`,
+  configuring your socket with a new rendering function.
+  """
+  def render_with(%Socket{} = socket, component) when is_function(component, 1) do
+    put_in(socket.private[:render_with], component)
+  end
+
+  @doc """
   Puts a new private key and value in the socket.
 
   Privates are *not change tracked*. This storage is meant to be used by
@@ -565,6 +592,7 @@ defmodule Phoenix.LiveView do
     live_layout
     live_temp
     lifecycle
+    render_with
     root_view
   )a
   def put_private(%Socket{} = socket, key, value) when key not in @reserved_privates do

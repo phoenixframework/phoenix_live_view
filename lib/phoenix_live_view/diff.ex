@@ -334,7 +334,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp component_to_rendered(socket, component, id) do
-    rendered = Utils.to_rendered(socket, component)
+    rendered = Phoenix.LiveView.Renderer.to_rendered(socket, component)
 
     if rendered.root != true and id != nil do
       reason =

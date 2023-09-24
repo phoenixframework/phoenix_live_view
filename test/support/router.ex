@@ -33,6 +33,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/elements", ElementsLive
     live "/inner_block", InnerLive
 
+    live "/render-with", RenderWithLive
     live "/same-child", SameChildLive
     live "/root", RootLive
     live "/opts", OptsLive
