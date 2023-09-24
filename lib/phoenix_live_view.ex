@@ -1429,14 +1429,15 @@ defmodule Phoenix.LiveView do
   the live component. If you pass the module, then the `:id` that identifies
   the component must be passed as part of the assigns.
 
-  When the component receives the update, first the optional
-  [`preload/1`](`c:Phoenix.LiveComponent.preload/1`) then
-  [`update/2`](`c:Phoenix.LiveComponent.update/2`) is invoked with the new assigns.
-  If [`update/2`](`c:Phoenix.LiveComponent.update/2`) is not defined
-  all assigns are simply merged into the socket. The assigns received as the
-  first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`)
-  callback will only include the _new_ assigns passed from this function.
-  Pre-existing assigns may be found in `socket.assigns`.
+  When the component receives the update,
+  [`update_many/2`](`c:Phoenix.LiveComponent.update_many/2`) will be invoked if
+  it is defined, otherwise [`update/2`](`c:Phoenix.LiveComponent.update/2`) is
+  invoked with the new assigns.  If
+  [`update/2`](`c:Phoenix.LiveComponent.update/2`) is not defined all assigns
+  are simply merged into the socket. The assigns received as the first argument
+  of the [`update/2`](`c:Phoenix.LiveComponent.update/2`) callback will only
+  include the _new_ assigns passed from this function.  Pre-existing assigns may
+  be found in `socket.assigns`.
 
   While a component may always be updated from the parent by updating some
   parent assigns which will re-render the child, thus invoking
