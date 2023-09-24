@@ -779,10 +779,11 @@ defmodule Phoenix.LiveView do
     connect_params
     connect_info
     assign_new
+    live_async
     live_layout
+    live_temp
     lifecycle
     root_view
-    __temp__
   )a
   def put_private(%Socket{} = socket, key, value) when key not in @reserved_privates do
     %Socket{socket | private: Map.put(socket.private, key, value)}

@@ -847,7 +847,7 @@ defmodule Phoenix.LiveView.Diff do
     private =
       socket.private
       |> Map.take([:conn_session, :root_view])
-      |> Map.put(:__temp__, %{})
+      |> Map.put(:live_temp, %{})
       |> Map.put(:lifecycle, %Phoenix.LiveView.Lifecycle{})
 
     socket =

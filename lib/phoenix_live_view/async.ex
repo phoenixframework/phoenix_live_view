@@ -179,13 +179,13 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  defp update_private_async(socket, func) do
-    existing = socket.private[:phoenix_async] || %{}
-    Phoenix.LiveView.put_private(socket, :phoenix_async, func.(existing))
+  defp update_private_async(%{private: private} = socket, func) do
+    existing = Map.get(private, :live_async, %{})
+    %{socket | private: Map.put(private, :live_async, func.(existing))}
   end
 
   defp get_private_async(%Socket{} = socket, key) do
-    socket.private[:phoenix_async][key]
+    socket.private[:live_async][key]
   end
 
   defp get_current_async!(socket, key) do

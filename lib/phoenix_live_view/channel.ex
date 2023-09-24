@@ -1198,7 +1198,7 @@ defmodule Phoenix.LiveView.Channel do
        assign_new: {%{}, assign_new},
        lifecycle: lifecycle,
        root_view: root_view,
-       __temp__: %{}
+       live_temp: %{}
      }}
   end
 
@@ -1214,7 +1214,7 @@ defmodule Phoenix.LiveView.Channel do
            live_layout: false,
            lifecycle: lifecycle,
            root_view: root_view,
-           __temp__: %{}
+           live_temp: %{}
          }}
 
       {:error, :noproc} ->
@@ -1496,7 +1496,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp socket_asyncs(private, cid) do
     case private do
-      %{phoenix_async: ref_pids} ->
+      %{live_async: ref_pids} ->
         Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
 
       %{} ->
