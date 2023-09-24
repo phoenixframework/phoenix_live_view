@@ -177,7 +177,10 @@ defmodule Phoenix.LiveView.TagEngine do
 
   @impl true
   def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
-    tokens = Tokenizer.finalize(tokens, file, cont, state.source)
+    tokens =
+      tokens
+      |> Tokenizer.finalize(file, cont, state.source)
+      |> collapse_static_tags()
 
     token_state =
       state
@@ -703,6 +706,14 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   # HTML element
+
+  defp handle_token({:static_tag, _name, _attrs, tag_meta, _content} = token, state) do
+    text = IO.iodata_to_binary(render_static_tag(token, state))
+
+    state
+    |> set_root_on_tag()
+    |> update_subengine(:handle_static_tag, [to_location(tag_meta), text])
+  end
 
   defp handle_token({:tag, name, attrs, tag_meta} = token, state) do
     validate_phx_attrs!(attrs, tag_meta, state)
@@ -1284,6 +1295,99 @@ defmodule Phoenix.LiveView.TagEngine do
   defp attr_type(value) when is_boolean(value), do: {:boolean, value}
   defp attr_type(value) when is_atom(value), do: {:atom, value}
   defp attr_type(_value), do: :any
+
+  ## Collapse static tags
+
+  # The goal of this code is to find and collapse the largest
+  # static only tags. This will be forwarded to later passes
+  # which can encode this information to the client.
+  defp collapse_static_tags(tokens) do
+    collapse_static_tags(tokens, [], [], [])
+  end
+
+  defp collapse_static_tags([{:tag, name, attrs, meta} = token | rest], stack, buffer, acc) do
+    cond do
+      has_dynamic_attr?(attrs) ->
+        collapse_static_tags(rest, [], [], [token | acc])
+
+      is_map_key(meta, :self_close) ->
+        collapse_static_tags(rest, stack, [token | buffer], [token | acc])
+
+      true ->
+        collapse_static_tags(rest, [{name, attrs, meta, buffer, acc} | stack], [], [token | acc])
+    end
+  end
+
+  defp collapse_static_tags(
+         [{:close, :tag, name, _} = token | rest],
+         [{name, attrs, tag_meta, outer_buffer, outer_acc} | stack],
+         buffer,
+         acc
+       ) do
+    static_tag = {:static_tag, name, attrs, tag_meta, buffer}
+
+    if collapse_static_tag?(attrs, buffer) do
+      collapse_static_tags(rest, stack, [static_tag | outer_buffer], [static_tag | outer_acc])
+    else
+      collapse_static_tags(rest, stack, [static_tag | outer_buffer], [token | acc])
+    end
+  end
+
+  defp collapse_static_tags([{:text, _text, _meta} = token | rest], stack, buffer, acc) do
+    collapse_static_tags(rest, stack, [token | buffer], [token | acc])
+  end
+
+  defp collapse_static_tags([token | rest], _stack, _buffer, acc) do
+    collapse_static_tags(rest, [], [], [token | acc])
+  end
+
+  defp collapse_static_tags([], _stack, _buffer, acc) do
+    Enum.reverse(acc)
+  end
+
+  # If we have fewer than 3 attributes and the text content is less than 64 bytes,
+  # we don't collapse.
+  defp collapse_static_tag?([_, _, _ | _], _buffer), do: true
+  defp collapse_static_tag?(_, []), do: false
+  defp collapse_static_tag?(_, [{:text, text, _meta}]), do: byte_size(text) >= 64
+  defp collapse_static_tag?(_, _), do: true
+
+  defp has_dynamic_attr?(attrs) do
+    Enum.any?(attrs, fn
+      {_name, {:string, _, _}, _meta} -> false
+      {_name, nil, _meta} -> false
+      _ -> true
+    end)
+  end
+
+  defp render_static_tag({:static_tag, name, attrs, meta, inner}, state) do
+    inner = Enum.reduce(inner, [], &[render_static_tag(&1, state) | &2])
+    [?<, name, render_static_attrs(attrs, meta, state), ?>, inner, ?<, ?/, name, ?>]
+  end
+
+  defp render_static_tag({:tag, name, attrs, meta}, state) do
+    if state.tag_handler.void?(name) do
+      [?<, name, render_static_attrs(attrs, meta, state), ?>]
+    else
+      [?<, name, render_static_attrs(attrs, meta, state), ?>, ?<, ?/, name, ?>]
+    end
+  end
+
+  defp render_static_tag({:text, text, _meta}, _state), do: text
+
+  defp render_static_attrs(attrs, meta, state) do
+    validate_phx_attrs!(attrs, meta, state)
+
+    attrs
+    |> remove_phx_no_break()
+    |> Enum.map(fn
+      {name, {:string, value, %{delimiter: delimiter}}, _attr_meta} ->
+        [?\s, name, ?=, delimiter, value, delimiter]
+
+      {name, nil, _attr_meta} ->
+        [?\s, name]
+    end)
+  end
 
   ## Helpers
 

@@ -356,10 +356,21 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
+  def handle_static_tag(state, _meta, current) do
+    update_in(state.static, fn
+      [text | static] when is_binary(text) -> [["", current, text] | static]
+      [tag | static] when is_list(tag) -> [["", current | tag] | static]
+      rest -> [["", current, ""] | rest]
+    end)
+  end
+
   @impl true
-  def handle_text(state, _meta, text) do
-    %{static: static} = state
-    %{state | static: [text | static]}
+  def handle_text(state, _meta, current) do
+    update_in(state.static, fn
+      [text | static] when is_binary(text) -> [text <> current | static]
+      [[post | tag] | static] when is_list(tag) -> [[post <> current | tag] | static]
+      rest -> [current | rest]
+    end)
   end
 
   @impl true
@@ -458,7 +469,7 @@ defmodule Phoenix.LiveView.Engine do
           {ast, vars}
       end)
 
-    {static, dynamic} = bins_and_vars(static)
+    {static, dynamic} = ios_and_vars(static)
     {block, static, dynamic, fingerprint(block, static)}
   end
 
@@ -838,25 +849,28 @@ defmodule Phoenix.LiveView.Engine do
     other
   end
 
-  ## Extracts binaries and variable from iodata
+  ## Extracts binaries/lists and variable from mixed list
 
-  defp bins_and_vars(acc),
-    do: bins_and_vars(acc, [], [])
+  defp ios_and_vars(acc),
+    do: ios_and_vars(acc, [], [])
 
-  defp bins_and_vars([bin1, bin2 | acc], bins, vars) when is_binary(bin1) and is_binary(bin2),
-    do: bins_and_vars([bin1 <> bin2 | acc], bins, vars)
+  defp ios_and_vars([io, var | acc], ios, vars) when is_binary(io) and is_tuple(var),
+    do: ios_and_vars(acc, [io | ios], [var | vars])
 
-  defp bins_and_vars([bin, var | acc], bins, vars) when is_binary(bin) and is_tuple(var),
-    do: bins_and_vars(acc, [bin | bins], [var | vars])
+  defp ios_and_vars([io, var | acc], ios, vars) when is_list(io) and is_tuple(var),
+    do: ios_and_vars(acc, [Enum.reverse(io) | ios], [var | vars])
 
-  defp bins_and_vars([var | acc], bins, vars) when is_tuple(var),
-    do: bins_and_vars(acc, ["" | bins], [var | vars])
+  defp ios_and_vars([var | acc], ios, vars) when is_tuple(var),
+    do: ios_and_vars(acc, ["" | ios], [var | vars])
 
-  defp bins_and_vars([bin], bins, vars) when is_binary(bin),
-    do: {Enum.reverse([bin | bins]), Enum.reverse(vars)}
+  defp ios_and_vars([io], ios, vars) when is_binary(io),
+    do: {Enum.reverse([io | ios]), Enum.reverse(vars)}
 
-  defp bins_and_vars([], bins, vars),
-    do: {Enum.reverse(["" | bins]), Enum.reverse(vars)}
+  defp ios_and_vars([io], ios, vars) when is_list(io),
+    do: {Enum.reverse([Enum.reverse(io) | ios]), Enum.reverse(vars)}
+
+  defp ios_and_vars([], ios, vars),
+    do: {Enum.reverse(["" | ios]), Enum.reverse(vars)}
 
   ## Assigns tracking
 

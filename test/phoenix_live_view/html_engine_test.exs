@@ -170,6 +170,23 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              eval(template, assigns)
   end
 
+  test "optimizes static tags" do
+    template = """
+    <div some="attribute" another='attribute' bool>with <span>some</span> children</div>
+    """
+
+    assert %Phoenix.LiveView.Rendered{
+             static: [
+               [
+                 "",
+                 ~S|<div some="attribute" another='attribute' bool>with <span>some</span> children</div>|,
+                 ""
+               ]
+             ]
+           } =
+             eval(template, %{})
+  end
+
   test "optimizes attributes with literal string values" do
     assigns = %{unsafe: "<foo>", safe: {:safe, "<foo>"}}
 
