@@ -377,13 +377,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp push_tag(state, token) do
-    # If we have a void tag, we don't actually push it into the stack.
-    with {:tag, name, _attrs, _meta} <- token,
-         true <- state.tag_handler.void?(name) do
-      state
-    else
-      _ -> %{state | tags: [token | state.tags]}
-    end
+    %{state | tags: [token | state.tags]}
   end
 
   defp pop_tag!(
@@ -397,17 +391,28 @@ defmodule Phoenix.LiveView.TagEngine do
          %{tags: [{type, tag_open_name, _attrs, tag_open_meta} | _]} = state,
          {:close, type, tag_close_name, tag_close_meta}
        ) do
+    hint = closing_void_hint(tag_close_name, state)
+
     message = """
     unmatched closing tag. Expected </#{tag_open_name}> for <#{tag_open_name}> \
-    at line #{tag_open_meta.line}, got: </#{tag_close_name}>\
+    at line #{tag_open_meta.line}, got: </#{tag_close_name}>#{hint}\
     """
 
     raise_syntax_error!(message, tag_close_meta, state)
   end
 
   defp pop_tag!(state, {:close, _type, tag_name, tag_meta}) do
-    message = "missing opening tag for </#{tag_name}>"
+    hint = closing_void_hint(tag_name, state)
+    message = "missing opening tag for </#{tag_name}>#{hint}"
     raise_syntax_error!(message, tag_meta, state)
+  end
+
+  defp closing_void_hint(tag_name, state) do
+    if state.tag_handler.void?(tag_name) do
+      " (note <#{tag_name}> is a void tag and cannot have any content)"
+    else
+      ""
+    end
   end
 
   ## handle_token
@@ -437,7 +442,7 @@ defmodule Phoenix.LiveView.TagEngine do
   # Remote function component (self close)
 
   defp handle_token(
-         {:remote_component, name, attrs, %{self_close: true} = tag_meta},
+         {:remote_component, name, attrs, %{closing: :self} = tag_meta},
          state
        ) do
     attrs = remove_phx_no_break(attrs)
@@ -537,7 +542,7 @@ defmodule Phoenix.LiveView.TagEngine do
   # Slot (self close)
 
   defp handle_token(
-         {:slot, slot_name, attrs, %{self_close: true} = tag_meta},
+         {:slot, slot_name, attrs, %{closing: :self} = tag_meta},
          state
        ) do
     slot_name = String.to_atom(slot_name)
@@ -592,7 +597,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # Local function component (self close)
 
-  defp handle_token({:local_component, name, attrs, %{self_close: true} = tag_meta}, state) do
+  defp handle_token({:local_component, name, attrs, %{closing: :self} = tag_meta}, state) do
     fun = String.to_atom(name)
     %{line: line, column: column} = tag_meta
     attrs = remove_phx_no_break(attrs)
@@ -684,8 +689,8 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # HTML element (self close)
 
-  defp handle_token({:tag, name, attrs, %{self_close: true} = tag_meta}, state) do
-    suffix = if state.tag_handler.void?(name), do: ">", else: "></#{name}>"
+  defp handle_token({:tag, name, attrs, %{closing: closing} = tag_meta}, state) do
+    suffix = if closing == :void, do: ">", else: "></#{name}>"
     attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
 
@@ -1310,7 +1315,7 @@ defmodule Phoenix.LiveView.TagEngine do
       has_dynamic_attr?(attrs) ->
         collapse_static_tags(rest, [], [], [token | acc])
 
-      is_map_key(meta, :self_close) ->
+      is_map_key(meta, :closing) ->
         collapse_static_tags(rest, stack, [token | buffer], [token | acc])
 
       true ->
@@ -1365,8 +1370,8 @@ defmodule Phoenix.LiveView.TagEngine do
     [?<, name, render_static_attrs(attrs, meta, state), ?>, inner, ?<, ?/, name, ?>]
   end
 
-  defp render_static_tag({:tag, name, attrs, meta}, state) do
-    if state.tag_handler.void?(name) do
+  defp render_static_tag({:tag, name, attrs, %{closing: closing} = meta}, state) do
+    if closing == :void do
       [?<, name, render_static_attrs(attrs, meta, state), ?>]
     else
       [?<, name, render_static_attrs(attrs, meta, state), ?>, ?<, ?/, name, ?>]

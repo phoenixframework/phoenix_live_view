@@ -462,13 +462,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
-  @void_tags ~w(area base br col hr img input link meta param command keygen source)
-  defp to_tree([{:tag, name, attrs, meta} | tokens], buffer, stack, source)
-       when name in @void_tags do
-    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
-  end
-
-  defp to_tree([{type, _name, attrs, %{self_close: true} = meta} | tokens], buffer, stack, source)
+  defp to_tree([{type, _name, attrs, %{closing: _} = meta} | tokens], buffer, stack, source)
        when is_tag_open(type) do
     to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
   end
