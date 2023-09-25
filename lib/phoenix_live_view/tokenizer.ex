@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.Tokenizer do
       iex> Tokenizer.tokenize(state)
       {[
          {:close, :tag, "section", %{column: 16, line: 1}},
-         {:tag, "div", [], %{column: 10, line: 1, self_close: true}},
+         {:tag, "div", [], %{column: 10, line: 1, closing: :self}},
          {:tag, "section", [], %{column: 1, line: 1}}
        ], :text}
   """
@@ -368,12 +368,12 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp handle_maybe_tag_open_end("/>" <> rest, line, column, acc, state) do
-    acc = reverse_attrs(acc, line, column + 2)
-    handle_text(rest, line, column + 2, [], put_self_close(acc), state)
+    acc = normalize_tag(acc, line, column + 2, true, state)
+    handle_text(rest, line, column + 2, [], acc, state)
   end
 
   defp handle_maybe_tag_open_end(">" <> rest, line, column, acc, state) do
-    case reverse_attrs(acc, line, column + 1) do
+    case normalize_tag(acc, line, column + 1, false, state) do
       [{:tag, "script", _, _} | _] = acc ->
         handle_script(rest, line, column + 1, [], acc, state)
 
@@ -676,14 +676,17 @@ defmodule Phoenix.LiveView.Tokenizer do
     [{type, name, attrs, meta} | acc]
   end
 
-  defp reverse_attrs([{type, name, attrs, meta} | acc], line, column) do
+  defp normalize_tag([{type, name, attrs, meta} | acc], line, column, self_close?, state) do
     attrs = Enum.reverse(attrs)
     meta = %{meta | inner_location: {line, column}}
-    [{type, name, attrs, meta} | acc]
-  end
 
-  defp put_self_close([{type, name, attrs, meta} | acc]) do
-    meta = Map.put(meta, :self_close, true)
+    meta =
+      cond do
+        type == :tag and state.tag_handler.void?(name) -> Map.put(meta, :closing, :void)
+        self_close? -> Map.put(meta, :closing, :self)
+        true -> meta
+      end
+
     [{type, name, attrs, meta} | acc]
   end
 

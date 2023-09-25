@@ -1402,6 +1402,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "unmatched open/close tags with void tags" do
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:16: unmatched closing tag. Expected </div> for <div> at line 1, got: </link> (note <link> is a void tag and cannot have any content)
+        |
+      1 | <div><link>Text</link></div>
+        |                ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("<div><link>Text</link></div>")
+      end)
+    end
+
     test "invalid remote tag" do
       message = """
       test/phoenix_live_view/html_engine_test.exs:1:1: invalid tag <Foo>
@@ -1431,6 +1444,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         text
           </span>
         """)
+      end)
+    end
+
+    test "missing open tag with void tag" do
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:11: missing opening tag for </link> (note <link> is a void tag and cannot have any content)
+        |
+      1 | <link>Text</link>
+        |           ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("<link>Text</link>")
       end)
     end
 
