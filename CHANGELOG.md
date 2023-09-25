@@ -4,7 +4,7 @@
 
 ### Deprecations
   * Deprecate the `~L` sigil in favor of `~H`
-  * Deprecate `preload/1` in LiveComponent in favor of `update_many/2`
+  * Deprecate `preload/1` in LiveComponent in favor of `update_many/1`
   * Deprecate `live_component/2-3` in favor of `<.live_component />`
   * Deprecate `live_patch` in favor of `<.link patch={...} />`
   * Deprecate `live_redirect` in favor of `<.link navigate={...} />`
