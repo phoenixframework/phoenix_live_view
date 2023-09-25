@@ -164,7 +164,7 @@ defmodule Phoenix.LiveComponent do
       end
 
   Now only a single query to the database will be made. In fact, the
-  `update_many/2` algorithm is a breadth-first tree traversal, which means
+  `update_many/1` algorithm is a breadth-first tree traversal, which means
   that even for nested components, the amount of queries are kept to
   a minimum.
 
@@ -237,7 +237,7 @@ defmodule Phoenix.LiveComponent do
   ## Managing state
 
   Now that we have learned how to define and use components, as well as
-  how to use `c:update_many/2` as a data loading optimization, it is important
+  how to use `c:update_many/1` as a data loading optimization, it is important
   to talk about how to manage state in components.
 
   Generally speaking, you want to avoid both the parent LiveView and the
@@ -347,7 +347,7 @@ defmodule Phoenix.LiveComponent do
 
   Now, each CardComponent will load its own card. Of course, doing so
   per card could be expensive and lead to N queries, where N is the
-  number of cards, so we can use the `c:update_many/2` callback to make it
+  number of cards, so we can use the `c:update_many/1` callback to make it
   efficient.
 
   Once the card components are started, they can each manage their own

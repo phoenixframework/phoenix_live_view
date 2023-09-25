@@ -1431,7 +1431,7 @@ defmodule Phoenix.LiveView do
   the component must be passed as part of the assigns.
 
   When the component receives the update,
-  [`update_many/2`](`c:Phoenix.LiveComponent.update_many/2`) will be invoked if
+  [`update_many/1`](`c:Phoenix.LiveComponent.update_many/1`) will be invoked if
   it is defined, otherwise [`update/2`](`c:Phoenix.LiveComponent.update/2`) is
   invoked with the new assigns.  If
   [`update/2`](`c:Phoenix.LiveComponent.update/2`) is not defined all assigns

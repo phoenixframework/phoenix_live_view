@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Calls the optional `update/2` or `update_many/2` callback, otherwise update the socket(s) directly.
+  Calls the optional `update/2` or `update_many/1` callback, otherwise update the socket(s) directly.
   """
   def maybe_call_update!(socket, component, assigns) do
     cond do
