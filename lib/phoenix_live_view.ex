@@ -329,7 +329,7 @@ defmodule Phoenix.LiveView do
         {:ok,
          socket
          |> assign(:foo, "bar")
-         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)} end)
+         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)
          |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
@@ -345,7 +345,7 @@ defmodule Phoenix.LiveView do
 
   ```heex
   <div :if={@org.loading}>Loading organization...</div>
-  <div :if={org = @org.ok? && @org.result}}><%= org.name %> loaded!</div>
+  <div :if={org = @org.ok? && @org.result}><%= org.name %> loaded!</div>
   ```
 
   The `Phoenix.Component.async_result/1` function component can also be used to
@@ -2022,7 +2022,7 @@ defmodule Phoenix.LiveView do
         {:ok,
          socket
          |> assign(:foo, "bar")
-         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)} end)
+         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)
          |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
@@ -2047,7 +2047,7 @@ defmodule Phoenix.LiveView do
         {:ok,
          socket
          |> assign(:org, AsyncResult.loading())
-         |> start_async(:my_task, fn -> fetch_org!(id) end)
+         |> start_async(:my_task, fn -> fetch_org!(id) end)}
       end
 
       def handle_async(:my_task, {:ok, fetched_org}, socket) do
