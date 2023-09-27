@@ -16,7 +16,7 @@
   * Remove previously deprecated `live_file_input/2` in favor of `<.live_file_input />`
 
 ### Bug fixes
-  * Fix uploads with `auto_upload: true` failing to propegate errors when any individual entry is invalid
+  * Fix uploads with `auto_upload: true` failing to propagate errors when any individual entry is invalid
   * Fix uploads with `auto_upload: true` failing to auto upload valid entries errors when any individual entry is invalid
   * Fix error on form recovery with `auto_upload: true`
   * Fix issue on form recovery where hidden inputs would be selected by mistake
