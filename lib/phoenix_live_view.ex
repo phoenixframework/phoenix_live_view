@@ -2024,11 +2024,12 @@ defmodule Phoenix.LiveView do
          |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
+  See the moduledoc for more information.
+
   ## Options
 
-  * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
+    * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
 
-  See the moduledoc for more information.
   """
   def assign_async(%Socket{} = socket, key_or_keys, func, opts \\ [])
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
