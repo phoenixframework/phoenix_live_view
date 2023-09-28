@@ -2464,7 +2464,11 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Generates a link for live and href navigation.
+  Generates a link to a given route.
+
+  To navigate across pages, using traditional browser navigation, use
+  the `href` attribute. To patch the current LiveView or navigate
+  across LiveViews, use `patch` and `navigate` respectively.
 
   [INSERT LVATTRDOCS]
 
