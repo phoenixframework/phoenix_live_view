@@ -69,7 +69,7 @@ defmodule Phoenix.LiveView.Tokenizer do
   * `indentation` - An integer that indicates the current indentation.
   * `file` - Can be either a file or a string "nofile".
   * `source` - The contents of the file as binary used to be tokenized.
-  * `tag_handler` - Tag handler to classify the tags. See `Phoenix.LiveView.TagHandler`
+  * `tag_handler` - Tag handler to classify the tags. See `Phoenix.LiveView.TagEngine`
     behaviour.
   """
   def init(indentation, file, source, tag_handler) do
