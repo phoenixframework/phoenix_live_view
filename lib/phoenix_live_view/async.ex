@@ -58,9 +58,10 @@ defmodule Phoenix.LiveView.Async do
       lv_pid = self()
       cid = cid(socket)
       {:ok, pid} = if supervisor = Keyword.get(opts, :supervisor) do
-        {:ok, pid} = Task.Supervisor.start_child(supervisor, fn -> do_async(lv_pid, cid, key, func, kind) end)
-        Process.link(pid)
-        {:ok, pid}
+        Task.Supervisor.start_child(supervisor, fn ->
+          Process.link(lv_pid)
+          do_async(lv_pid, cid, key, func, kind)
+        end)
       else
         Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
       end
