@@ -17,6 +17,60 @@ import {
   isCid,
 } from "./utils"
 
+export let stripRootComments = (html) => {
+  let tagNameMatch = html.match(/<([a-zA-Z][^>\s]*)/)
+  if(!tagNameMatch) return [html, null, null]
+
+  let tagName = tagNameMatch[1]
+  let regex = new RegExp(`(?:<!--[\\s\\S]*?-->)|(?:<${tagName}[\\s\\S]*?>.*<\\/${tagName}>[\\s\\S]*?)`, "g")
+
+  let cleanedHTML = html.match(regex)
+  if(!cleanedHTML){ return [html, null, null] }
+
+  return cleanedHTML.reduce(([html, start, end], commentOrTag) => {
+    let isComment = commentOrTag.startsWith("<!--")
+    if(!isComment){
+      return [commentOrTag, start, end]
+    } else if(!html && !start){
+      return [html, commentOrTag, end]
+    } else if(!html && start && !end){
+      return [html, start + commentOrTag, end]
+    } else if(!end){
+      return [html, start, commentOrTag]
+    } else if(isComment){
+      return [html, start, end + commentOrTag]
+    } else {
+      return [html, start, end]
+    }
+  }, [null, null, null])
+}
+
+export let modifyRoot = (html, attrs, innerHTML) => {
+  html = html.trim()
+  let rootEndsAt = html.indexOf(">")
+  let isSelfClosing = html.charAt(rootEndsAt - 1) === "/"
+  let rootContent = html.slice(0, isSelfClosing ? rootEndsAt - 1: rootEndsAt)
+  let newAttrs = []
+  Object.keys(attrs).forEach(attr => {
+    if(!rootContent.includes(`${attr}="`)){ newAttrs.push([attr, attrs[attr]]) }
+  })
+  if(newAttrs.length === 0){ return html }
+
+  let rootTag = rootContent.slice(1, rootContent.indexOf(" "))
+  let rest
+  if(isSelfClosing){
+    rest = "/>"
+  } else {
+    if(typeof(innerHTML) === "string"){
+      rest = ">" + innerHTML + `</${rootTag}>`
+    } else {
+      rest = ">" + html.slice(rootEndsAt + 1)
+    }
+  }
+
+  return `${rootContent} ${newAttrs.map(([attr, val]) => `${attr}="${val}"`).join(" ")}${rest}`
+}
+
 export default class Rendered {
   static extract(diff){
     let {[REPLY]: reply, [EVENTS]: events, [TITLE]: title} = diff
@@ -205,55 +259,15 @@ export default class Rendered {
 
   recursiveCIDToString(components, cid, onlyCids, allowRootComments = true){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
-    let template = document.createElement("template")
     let [html, streams] = this.recursiveToString(component, components, onlyCids)
-    template.innerHTML = html
-    let container = template.content
     let skip = onlyCids && !onlyCids.has(cid)
+    let [strippedHTML, commentBefore, commentAfter] = stripRootComments(html)
+    let attrs = {[PHX_COMPONENT]: cid, id: `${this.parentViewId()}-${cid}`}
+    if(skip){ attrs[PHX_SKIP] = ""}
+    let newHTML = modifyRoot(strippedHTML, attrs, skip ? "" : null)
+    if(allowRootComments){ newHTML = `${commentBefore || ""}${newHTML}${commentAfter || ""}` }
 
-    let [hasChildNodes, hasChildComponents] =
-      Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
-        if(child.nodeType === Node.ELEMENT_NODE){
-          if(child.getAttribute(PHX_COMPONENT)){
-            return [hasNodes, true]
-          }
-          child.setAttribute(PHX_COMPONENT, cid)
-          if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}` }
-          if(skip){
-            child.setAttribute(PHX_SKIP, "")
-            child.innerHTML = ""
-          }
-          return [true, hasComponents]
-        } else if(child.nodeType === Node.COMMENT_NODE){
-          // we have to strip root comments when rendering a component directly
-          // for patching because the morphdom target must be exactly the root entrypoint
-          if(!allowRootComments){ child.remove() }
-          return [hasNodes, hasComponents]
-        } else {
-          if(child.nodeValue.trim() !== ""){
-            logError("only HTML element tags are allowed at the root of components.\n\n" +
-              `got: "${child.nodeValue.trim()}"\n\n` +
-              "within:\n", template.innerHTML.trim())
-            child.replaceWith(this.createSpan(child.nodeValue, cid))
-            return [true, hasComponents]
-          } else {
-            child.remove()
-            return [hasNodes, hasComponents]
-          }
-        }
-      }, [false, false])
-
-    if(!hasChildNodes && !hasChildComponents){
-      logError("expected at least one HTML element tag inside a component, but the component is empty:\n",
-        template.innerHTML.trim())
-      return [this.createSpan("", cid).outerHTML, streams]
-    } else if(!hasChildNodes && hasChildComponents){
-      logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.",
-        template.innerHTML.trim())
-      return [template.innerHTML, streams]
-    } else {
-      return [template.innerHTML, streams]
-    }
+    return [newHTML, streams]
   }
 
   createSpan(text, cid){

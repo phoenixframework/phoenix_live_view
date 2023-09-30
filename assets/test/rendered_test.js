@@ -1,4 +1,4 @@
-import Rendered from "phoenix_live_view/rendered"
+import Rendered, {modifyRoot, stripRootComments} from "phoenix_live_view/rendered"
 
 const STATIC = "s"
 const DYNAMICS = "d"
@@ -234,14 +234,69 @@ describe("Rendered", () => {
         `<div>
   <p>
     foo
-    <span>0: <b data-phx-component="1" id="123-1-0">FROM index_1 world</b></span><span>1: <b data-phx-component="2" id="123-2-0">FROM index_2 world</b></span>
+    <span>0: <b data-phx-component="1" id="123-1">FROM index_1 world</b></span><span>1: <b data-phx-component="2" id="123-2">FROM index_2 world</b></span>
   </p>
 
   <p>
     bar
-    <span>0: <b data-phx-component="3" id="123-3-0">FROM index_1 world</b></span><span>1: <b data-phx-component="4" id="123-4-0">FROM index_2 world</b></span>
+    <span>0: <b data-phx-component="3" id="123-3">FROM index_1 world</b></span><span>1: <b data-phx-component="4" id="123-4">FROM index_2 world</b></span>
   </p>
 </div>`.trim())
+    })
+  })
+  describe("stripComments", () => {
+    test("starting comments", () => {
+      // starting comments
+      let html = `
+<!-- start -->
+<!-- start2 -->
+<div class="px-5"><!-- MENU --><div id="menu">MENU</div></div>
+`
+      let [strippedHTML, commentBefore, commentAfter] = stripRootComments(html)
+      expect(strippedHTML).toEqual("<div class=\"px-5\"><!-- MENU --><div id=\"menu\">MENU</div></div>")
+      expect(commentBefore).toEqual("<!-- start --><!-- start2 -->")
+      expect(commentAfter).toEqual(null)
+    })
+
+    test("ending comments", () => {
+      let html = `
+<div class="px-5"><!-- MENU --><div id="menu">MENU</div></div>
+<!-- ending -->
+`
+      let [strippedHTML, commentBefore, commentAfter] = stripRootComments(html)
+      expect(strippedHTML).toEqual("<div class=\"px-5\"><!-- MENU --><div id=\"menu\">MENU</div></div>")
+      expect(commentBefore).toEqual(null)
+      expect(commentAfter).toEqual("<!-- ending -->")
+    })
+
+    test("staring and ending comments", () => {
+      let html = `
+<!-- starting -->
+<div class="px-5"><!-- MENU --><div id="menu">MENU</div></div>
+<!-- ending -->
+`
+      let [strippedHTML, commentBefore, commentAfter] = stripRootComments(html)
+      expect(strippedHTML).toEqual("<div class=\"px-5\"><!-- MENU --><div id=\"menu\">MENU</div></div>")
+      expect(commentBefore).toEqual("<!-- starting -->")
+      expect(commentAfter).toEqual("<!-- ending -->")
+    })
+  })
+
+  describe("modifyRoot", () => {
+    test("merges new attrs", () => {
+      let html = `
+      <div class="px-5"><div id="menu">MENU</div></div>
+      `
+      expect(modifyRoot(html, {id: 123})).toEqual(`<div class="px-5" id="123"><div id="menu">MENU</div></div>`)
+      expect(modifyRoot(html, {id: 123, class: ""})).toEqual(`<div class="px-5" id="123"><div id="menu">MENU</div></div>`)
+      expect(modifyRoot(html, {id: 123, another: ""})).toEqual(`<div class="px-5" id="123" another=""><div id="menu">MENU</div></div>`)
+      // clearing innerHTML
+      expect(modifyRoot(html, {id: 123, another: ""}, "")).toEqual(`<div class="px-5" id="123" another=""></div>`)
+      // self closing
+      let selfClose = `
+      <input class="px-5"/>
+      `
+      expect(modifyRoot(selfClose, {id: 123, another: ""})).toEqual(`<input class="px-5" id="123" another=""/>`)
     })
   })
 })
