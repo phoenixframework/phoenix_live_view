@@ -400,7 +400,7 @@ export default class LiveSocket {
 
     this.main = this.newRootView(newMainEl, flash, liveReferer)
     this.main.setRedirect(href)
-    this.transitionRemoves()
+    this.transitionRemoves(null, true)
     this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
@@ -414,9 +414,14 @@ export default class LiveSocket {
     })
   }
 
-  transitionRemoves(elements){
+  transitionRemoves(elements, skipSticky){
     let removeAttr = this.binding("remove")
     elements = elements || DOM.all(document, `[${removeAttr}]`)
+
+    if(skipSticky){
+      const stickies = DOM.findPhxSticky(document) || []
+      elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
+    }
     elements.forEach(el => {
       this.execJS(el, el.getAttribute(removeAttr), "remove")
     })

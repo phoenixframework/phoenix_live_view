@@ -324,6 +324,10 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_STICKY) !== null
   },
 
+  isChildOfAny(el, nodes){
+    return !!nodes.find(node => node.contains(el))
+  },
+
   firstPhxChild(el){
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0]
   },
