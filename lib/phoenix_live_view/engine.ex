@@ -391,7 +391,7 @@ defmodule Phoenix.LiveView.Engine do
         analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
 
       static =
-        case Keyword.fetch(opts, :root_annotation) do
+        case Keyword.fetch(opts, :body_annotation) do
           {:ok, {before, aft}} ->
             case static do
               [] ->

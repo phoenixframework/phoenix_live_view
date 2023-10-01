@@ -1326,6 +1326,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert eval("<Kernel.to_string />").root == false
       assert eval("<Kernel.to_string></Kernel.to_string>").root == false
       assert eval("<div :for={item <- @items}><%= item %></div>").root == false
+      assert eval("<!-- comment --><div></div>").root == false
+      assert eval("<div></div><!-- comment -->").root == false
     end
   end
 

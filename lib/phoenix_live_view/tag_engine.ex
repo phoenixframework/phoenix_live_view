@@ -169,7 +169,7 @@ defmodule Phoenix.LiveView.TagEngine do
       previous_token_slot?: false,
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler,
-      annotate_root_tag: Keyword.get(opts, :annotate_root_tag)
+      annotate_tagged_content: Keyword.get(opts, :annotate_tagged_content)
     }
   end
 
@@ -186,11 +186,11 @@ defmodule Phoenix.LiveView.TagEngine do
       |> validate_unclosed_tags!("template")
 
     opts = [root: token_state.root || false]
-    %{caller: caller, annotate_root_tag: annotate_root_tag} = state
+    %{caller: caller, annotate_tagged_content: annotate_tagged_content} = state
 
     opts =
-      if annotate_root_tag && caller && has_tags?(tokens) do
-        [root_annotation: annotate_root_tag.(caller)] ++ opts
+      if annotate_tagged_content && caller && has_tags?(tokens) do
+        [body_annotation: annotate_tagged_content.(caller)] ++ opts
       else
         opts
       end
@@ -239,7 +239,7 @@ defmodule Phoenix.LiveView.TagEngine do
            source: source,
            indentation: indentation,
            tag_handler: tag_handler,
-           annotate_root_tag: annotate_root_tag
+           annotate_tagged_content: annotate_tagged_content
          },
          root
        ) do
@@ -256,7 +256,7 @@ defmodule Phoenix.LiveView.TagEngine do
       previous_token_slot?: false,
       indentation: indentation,
       tag_handler: tag_handler,
-      annotate_root_tag: annotate_root_tag
+      annotate_tagged_content: annotate_tagged_content
     }
   end
 
