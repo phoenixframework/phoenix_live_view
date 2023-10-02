@@ -17,58 +17,60 @@ import {
   isCid,
 } from "./utils"
 
-export let stripRootComments = (html) => {
-  let tagNameMatch = html.match(/<([a-zA-Z][^>\s]*)/)
-  if(!tagNameMatch) return [html, null, null]
-
-  let tagName = tagNameMatch[1]
-  let regex = new RegExp(`(?:<!--[\\s\\S]*?-->)|(?:<${tagName}[\\s\\S]*?>.*<\\/${tagName}>[\\s\\S]*?)`, "g")
-
-  let cleanedHTML = html.match(regex)
-  if(!cleanedHTML){ return [html, null, null] }
-
-  return cleanedHTML.reduce(([html, start, end], commentOrTag) => {
-    let isComment = commentOrTag.startsWith("<!--")
-    if(!isComment){
-      return [commentOrTag, start, end]
-    } else if(!html && !start){
-      return [html, commentOrTag, end]
-    } else if(!html && start && !end){
-      return [html, start + commentOrTag, end]
-    } else if(!end){
-      return [html, start, commentOrTag]
-    } else if(isComment){
-      return [html, start, end + commentOrTag]
-    } else {
-      return [html, start, end]
-    }
-  }, [null, null, null])
-}
-
 export let modifyRoot = (html, attrs, innerHTML) => {
-  html = html.trim()
-  let rootEndsAt = html.indexOf(">")
-  let isSelfClosing = html.charAt(rootEndsAt - 1) === "/"
-  let rootContent = html.slice(0, isSelfClosing ? rootEndsAt - 1: rootEndsAt)
-  let newAttrs = []
-  Object.keys(attrs).forEach(attr => {
-    if(!rootContent.includes(`${attr}="`)){ newAttrs.push([attr, attrs[attr]]) }
-  })
-  if(newAttrs.length === 0){ return html }
-
-  let rootTag = rootContent.slice(1, rootContent.indexOf(" "))
-  let rest
-  if(isSelfClosing){
-    rest = "/>"
-  } else {
-    if(typeof(innerHTML) === "string"){
-      rest = ">" + innerHTML + `</${rootTag}>`
-    } else {
-      rest = ">" + html.slice(rootEndsAt + 1)
+  html = html.trimStart()
+  let tagStartsAt = null
+  let pos = 0
+  while(pos < html.length){
+    let maybeStart = html.indexOf("<", pos)
+    if(maybeStart === -1){ break }
+    if(maybeStart >= 0 && html.charAt(maybeStart + 1) !== "!"){
+      tagStartsAt = maybeStart
+      break
     }
+    pos += html.indexOf("-->", pos)
   }
 
-  return `${rootContent} ${newAttrs.map(([attr, val]) => `${attr}="${val}"`).join(" ")}${rest}`
+  let commentBefore = tagStartsAt === 0 ? null : html.slice(0, tagStartsAt).trim()
+  let contentAfter = null
+  html = html.slice(tagStartsAt).trimStart()
+  let tagNameMaybeEndsSpace = html.indexOf(" ")
+  let tagNameMaybeEndsClose = html.indexOf(">")
+  let tagNamesEndsAt = tagNameMaybeEndsSpace !== -1 ?
+    Math.min(tagNameMaybeEndsSpace, tagNameMaybeEndsClose) : tagNameMaybeEndsClose
+
+  let tag = html.slice(1, tagNamesEndsAt)
+  let tagOpenEndsAt = html.indexOf(">")
+  let tagInnerHTML
+  let closingTag
+  let isVoid = html.charAt(tagOpenEndsAt - 1) === "/"
+  let tagOpenContent = isVoid ? html.slice(0, tagOpenEndsAt - 1) : html.slice(0, tagOpenEndsAt)
+  if(isVoid){
+    contentAfter = html.slice(tagOpenEndsAt + 1) || null
+  } else {
+    closingTag = `</${tag}>`
+    let tagInnerEndsAt = html.lastIndexOf(closingTag)
+    tagInnerHTML = html.slice(tagOpenEndsAt + 1, tagInnerEndsAt)
+    contentAfter = html.slice(tagInnerEndsAt + closingTag.length)
+  }
+
+  let newAttrs = []
+  Object.keys(attrs).forEach(attr => {
+    if(!tagOpenContent.includes(`${attr}="`)){ newAttrs.push([attr, attrs[attr]]) }
+  })
+
+  if(newAttrs.length > 0){
+    tagOpenContent = `${tagOpenContent} ${newAttrs.map(([attr, val]) => `${attr}="${val}"`).join(" ")}`
+  }
+  let closingContent
+  if(isVoid){
+    closingContent = "/>"
+  } else {
+    closingContent = `>${typeof(innerHTML) === "string" ? innerHTML : tagInnerHTML}${closingTag}`
+  }
+  let newHTML = tagOpenContent + closingContent
+  let commentAfter = contentAfter.indexOf("<!--") >= 0 ? contentAfter.trim() : null
+  return [newHTML, commentBefore, commentAfter]
 }
 
 export default class Rendered {
@@ -261,10 +263,9 @@ export default class Rendered {
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let [html, streams] = this.recursiveToString(component, components, onlyCids)
     let skip = onlyCids && !onlyCids.has(cid)
-    let [strippedHTML, commentBefore, commentAfter] = stripRootComments(html)
     let attrs = {[PHX_COMPONENT]: cid, id: `${this.parentViewId()}-${cid}`}
     if(skip){ attrs[PHX_SKIP] = ""}
-    let newHTML = modifyRoot(strippedHTML, attrs, skip ? "" : null)
+    let [newHTML, commentBefore, commentAfter] = modifyRoot(html, attrs, skip ? "" : null)
     if(allowRootComments){ newHTML = `${commentBefore || ""}${newHTML}${commentAfter || ""}` }
 
     return [newHTML, streams]
