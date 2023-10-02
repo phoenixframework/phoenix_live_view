@@ -34,10 +34,14 @@ export let modifyRoot = (html, attrs, innerHTML) => {
   let commentBefore = tagStartsAt === 0 ? null : html.slice(0, tagStartsAt).trim()
   let contentAfter = null
   html = html.slice(tagStartsAt).trimStart()
-  let tagNameMaybeEndsSpace = html.indexOf(" ")
-  let tagNameMaybeEndsClose = html.indexOf(">")
-  let tagNamesEndsAt = tagNameMaybeEndsSpace !== -1 ?
-    Math.min(tagNameMaybeEndsSpace, tagNameMaybeEndsClose) : tagNameMaybeEndsClose
+  let tagNamesEndsAt
+  for(let i = 1; i < html.length; i++){
+    let char = html.charAt(i)
+    if([">", " ", "\n", "\t", "\r"].indexOf(char) >= 0 || (char === "!" && html.charAt(i + 1) === ">")){
+      tagNamesEndsAt = i
+      break
+    }
+  }
 
   let tag = html.slice(1, tagNamesEndsAt)
   let tagOpenEndsAt = html.indexOf(">")
@@ -69,7 +73,7 @@ export let modifyRoot = (html, attrs, innerHTML) => {
     closingContent = `>${typeof(innerHTML) === "string" ? innerHTML : tagInnerHTML}${closingTag}`
   }
   let newHTML = tagOpenContent + closingContent
-  let commentAfter = contentAfter.indexOf("<!--") >= 0 ? contentAfter.trim() : null
+  let commentAfter = contentAfter && contentAfter.indexOf("<!--") >= 0 ? contentAfter.trim() : null
   return [newHTML, commentBefore, commentAfter]
 }
 
