@@ -9,6 +9,7 @@ import {
   STATIC,
   TITLE,
   STREAM,
+  ROOT,
 } from "./constants"
 
 import {
@@ -18,7 +19,7 @@ import {
 } from "./utils"
 
 export let modifyRoot = (html, attrs, innerHTML) => {
-  html = html.trimStart()
+  html = html.trim()
   let tagStartsAt = null
   let pos = 0
   while(pos < html.length){
@@ -34,7 +35,7 @@ export let modifyRoot = (html, attrs, innerHTML) => {
   let commentBefore = tagStartsAt === 0 ? null : html.slice(0, tagStartsAt).trim()
   let contentAfter = null
   html = html.slice(tagStartsAt).trimStart()
-  let tagNamesEndsAt
+  let tagNamesEndsAt = html.length
   for(let i = 1; i < html.length; i++){
     let char = html.charAt(i)
     if([">", " ", "\n", "\t", "\r"].indexOf(char) >= 0 || (char === "!" && html.charAt(i + 1) === ">")){
@@ -45,36 +46,45 @@ export let modifyRoot = (html, attrs, innerHTML) => {
 
   let tag = html.slice(1, tagNamesEndsAt)
   let tagOpenEndsAt = html.indexOf(">")
+  let isUnclosed = tagOpenEndsAt === -1
+  if(isUnclosed){ tagOpenEndsAt = html.length }
+
   let tagInnerHTML
   let closingTag
   let isVoid = html.charAt(tagOpenEndsAt - 1) === "/"
-  let tagOpenContent = isVoid ? html.slice(0, tagOpenEndsAt - 1) : html.slice(0, tagOpenEndsAt)
+  let tagOpenContent = isVoid ? html.slice(tagNamesEndsAt, tagOpenEndsAt - 1) : html.slice(tagNamesEndsAt, tagOpenEndsAt)
+
   if(isVoid){
     contentAfter = html.slice(tagOpenEndsAt + 1) || null
-  } else {
+  } else if(!isUnclosed){
     closingTag = `</${tag}>`
     let tagInnerEndsAt = html.lastIndexOf(closingTag)
     tagInnerHTML = html.slice(tagOpenEndsAt + 1, tagInnerEndsAt)
     contentAfter = html.slice(tagInnerEndsAt + closingTag.length)
   }
 
-  let newAttrs = []
-  Object.keys(attrs).forEach(attr => {
-    if(!tagOpenContent.includes(`${attr}="`)){ newAttrs.push([attr, attrs[attr]]) }
-  })
-
-  if(newAttrs.length > 0){
-    tagOpenContent = `${tagOpenContent} ${newAttrs.map(([attr, val]) => `${attr}="${val}"`).join(" ")}`
+  let attrsStr = Object.keys(attrs).map(attr => `${attr}="${attrs[attr]}"`).join(" ")
+  if(innerHTML === ""){
+    tagOpenContent = ` ${attrsStr}`
+  } else {
+    tagOpenContent = ` ${attrsStr}${tagOpenContent}`
   }
+
+  if(isUnclosed){
+    return [`<${tag}${tagOpenContent}`, commentBefore || "", ""]
+  } else if(tagOpenEndsAt === html.length - 1){
+    return [`<${tag}${tagOpenContent}${isVoid ? "/" : ""}>`, commentBefore || "", ""]
+  }
+
   let closingContent
   if(isVoid){
     closingContent = "/>"
   } else {
     closingContent = `>${typeof(innerHTML) === "string" ? innerHTML : tagInnerHTML}${closingTag}`
   }
-  let newHTML = tagOpenContent + closingContent
+  let newHTML = `<${tag}` + tagOpenContent + closingContent
   let commentAfter = contentAfter && contentAfter.indexOf("<!--") >= 0 ? contentAfter.trim() : null
-  return [newHTML, commentBefore, commentAfter]
+  return [newHTML, commentBefore || "", commentAfter || ""]
 }
 
 export default class Rendered {
@@ -89,19 +99,20 @@ export default class Rendered {
   constructor(viewId, rendered){
     this.viewId = viewId
     this.rendered = {}
+    this.magicId = 0
     this.mergeDiff(rendered)
   }
 
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, false)
     return [str, streams]
   }
 
-  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids){
+  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, insideComponent){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
+    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set(), insideComponent}
     this.toOutputBuffer(rendered, null, output)
     return [output.buffer, output.streams]
   }
@@ -181,6 +192,11 @@ export default class Rendered {
         target[key] = val
       }
     }
+    if(target[ROOT]){
+      target.changed = true
+      // let [newRoot, commentBefore, commentAfter] = modifyRoot(target[STATIC][0], {"phx-magic-id": 123})
+      // target[STATIC][0] = `${commentBefore}${newRoot}${commentAfter}`
+    }
   }
 
   cloneMerge(target, source){
@@ -218,16 +234,52 @@ export default class Rendered {
     }
   }
 
+  nextMagicID(){
+    this.magicId++
+    return `phx-m-${this.magicId}`
+  }
+
   toOutputBuffer(rendered, templates, output){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
     statics = this.templateStatic(statics, templates)
+    let currentOut = {buffer: "", components: output.components, onlyCids: output.onlyCids, streams: output.streams}
+    let firstRootRender = false
+    let isRoot = rendered[ROOT] && !output.insideComponent
 
-    output.buffer += statics[0]
-    for(let i = 1; i < statics.length; i++){
-      this.dynamicToBuffer(rendered[i - 1], templates, output)
-      output.buffer += statics[i]
+    if(isRoot && !rendered.magicId){
+      firstRootRender = true
+      rendered.magicId = this.nextMagicID()
+      let [newRoot, commentBefore] = modifyRoot(statics[0], {"phx-magic-id": rendered.magicId})
+      // if(newRoot.indexOf("img") >= 0){
+        console.log("before", statics[0])
+        console.log("after", `${commentBefore}${newRoot}`)
+      // }
+      statics[0] = `${commentBefore}${newRoot}`
     }
+
+    // output.buffer += statics[0]
+    currentOut.buffer += statics[0]
+    for(let i = 1; i < statics.length; i++){
+      this.dynamicToBuffer(rendered[i - 1], templates, currentOut)
+      currentOut.buffer += statics[i]
+    }
+
+    if(isRoot && !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size){
+      let attrs = {"phx-magic-id": rendered.magicId, [PHX_SKIP]: true}
+      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, "")
+      if(newRoot.indexOf("img") >= 0){
+        console.log("before", currentOut.buffer)
+        console.log("after", `${commentBefore}${newRoot}`)
+      }
+      currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`
+    }
+    if(isRoot){ rendered.changed = false }
+
+    output.buffer += currentOut.buffer
+    output.components = currentOut.components
+    output.onlyCids = currentOut.onlyCids
+    output.streams = currentOut.streams
   }
 
   comprehensionToBuffer(rendered, templates, output){
@@ -265,7 +317,7 @@ export default class Rendered {
 
   recursiveCIDToString(components, cid, onlyCids, allowRootComments = true){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
-    let [html, streams] = this.recursiveToString(component, components, onlyCids)
+    let [html, streams] = this.recursiveToString(component, components, onlyCids, true)
     let skip = onlyCids && !onlyCids.has(cid)
     let attrs = {[PHX_COMPONENT]: cid, id: `${this.parentViewId()}-${cid}`}
     if(skip){ attrs[PHX_SKIP] = ""}

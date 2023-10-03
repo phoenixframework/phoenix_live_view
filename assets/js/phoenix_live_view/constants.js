@@ -79,6 +79,7 @@ export const DEFAULTS = {
 // Rendered
 export const DYNAMICS = "d"
 export const STATIC = "s"
+export const ROOT = "r"
 export const COMPONENTS = "c"
 export const EVENTS = "e"
 export const REPLY = "r"
