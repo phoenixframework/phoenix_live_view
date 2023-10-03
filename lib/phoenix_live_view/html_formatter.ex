@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          source
        ) do
     {mode, block} =
-      if (tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
+      if tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs) do
         content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
         {:preserve, [{:text, content, %{newlines: 0}}]}
       else
