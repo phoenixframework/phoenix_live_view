@@ -2071,6 +2071,65 @@ var DOMPatch = class {
 };
 
 // js/phoenix_live_view/rendered.js
+var modifyRoot = (html, attrs, innerHTML) => {
+  html = html.trimStart();
+  let tagStartsAt = null;
+  let pos = 0;
+  while (pos < html.length) {
+    let maybeStart = html.indexOf("<", pos);
+    if (maybeStart === -1) {
+      break;
+    }
+    if (maybeStart >= 0 && html.charAt(maybeStart + 1) !== "!") {
+      tagStartsAt = maybeStart;
+      break;
+    }
+    pos += html.indexOf("-->", pos);
+  }
+  let commentBefore = tagStartsAt === 0 ? null : html.slice(0, tagStartsAt).trim();
+  let contentAfter = null;
+  html = html.slice(tagStartsAt).trimStart();
+  let tagNamesEndsAt;
+  for (let i = 1; i < html.length; i++) {
+    let char = html.charAt(i);
+    if ([">", " ", "\n", "	", "\r"].indexOf(char) >= 0 || char === "!" && html.charAt(i + 1) === ">") {
+      tagNamesEndsAt = i;
+      break;
+    }
+  }
+  let tag = html.slice(1, tagNamesEndsAt);
+  let tagOpenEndsAt = html.indexOf(">");
+  let tagInnerHTML;
+  let closingTag;
+  let isVoid = html.charAt(tagOpenEndsAt - 1) === "/";
+  let tagOpenContent = isVoid ? html.slice(0, tagOpenEndsAt - 1) : html.slice(0, tagOpenEndsAt);
+  if (isVoid) {
+    contentAfter = html.slice(tagOpenEndsAt + 1) || null;
+  } else {
+    closingTag = `</${tag}>`;
+    let tagInnerEndsAt = html.lastIndexOf(closingTag);
+    tagInnerHTML = html.slice(tagOpenEndsAt + 1, tagInnerEndsAt);
+    contentAfter = html.slice(tagInnerEndsAt + closingTag.length);
+  }
+  let newAttrs = [];
+  Object.keys(attrs).forEach((attr) => {
+    if (!tagOpenContent.includes(`${attr}="`)) {
+      newAttrs.push([attr, attrs[attr]]);
+    }
+  });
+  if (newAttrs.length > 0) {
+    tagOpenContent = `${tagOpenContent} ${newAttrs.map(([attr, val]) => `${attr}="${val}"`).join(" ")}`;
+  }
+  let closingContent;
+  if (isVoid) {
+    closingContent = "/>";
+  } else {
+    closingContent = `>${typeof innerHTML === "string" ? innerHTML : tagInnerHTML}${closingTag}`;
+  }
+  let newHTML = tagOpenContent + closingContent;
+  let commentAfter = contentAfter && contentAfter.indexOf("<!--") >= 0 ? contentAfter.trim() : null;
+  return [newHTML, commentBefore, commentAfter];
+};
 var Rendered = class {
   static extract(diff) {
     let { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;
@@ -2243,55 +2302,17 @@ var Rendered = class {
   }
   recursiveCIDToString(components, cid, onlyCids, allowRootComments = true) {
     let component = components[cid] || logError(`no component for CID ${cid}`, components);
-    let template = document.createElement("template");
     let [html, streams] = this.recursiveToString(component, components, onlyCids);
-    template.innerHTML = html;
-    let container = template.content;
     let skip = onlyCids && !onlyCids.has(cid);
-    let [hasChildNodes, hasChildComponents] = Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
-      if (child.nodeType === Node.ELEMENT_NODE) {
-        if (child.getAttribute(PHX_COMPONENT)) {
-          return [hasNodes, true];
-        }
-        child.setAttribute(PHX_COMPONENT, cid);
-        if (!child.id) {
-          child.id = `${this.parentViewId()}-${cid}-${i}`;
-        }
-        if (skip) {
-          child.setAttribute(PHX_SKIP, "");
-          child.innerHTML = "";
-        }
-        return [true, hasComponents];
-      } else if (child.nodeType === Node.COMMENT_NODE) {
-        if (!allowRootComments) {
-          child.remove();
-        }
-        return [hasNodes, hasComponents];
-      } else {
-        if (child.nodeValue.trim() !== "") {
-          logError(`only HTML element tags are allowed at the root of components.
-
-got: "${child.nodeValue.trim()}"
-
-within:
-`, template.innerHTML.trim());
-          child.replaceWith(this.createSpan(child.nodeValue, cid));
-          return [true, hasComponents];
-        } else {
-          child.remove();
-          return [hasNodes, hasComponents];
-        }
-      }
-    }, [false, false]);
-    if (!hasChildNodes && !hasChildComponents) {
-      logError("expected at least one HTML element tag inside a component, but the component is empty:\n", template.innerHTML.trim());
-      return [this.createSpan("", cid).outerHTML, streams];
-    } else if (!hasChildNodes && hasChildComponents) {
-      logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.", template.innerHTML.trim());
-      return [template.innerHTML, streams];
-    } else {
-      return [template.innerHTML, streams];
+    let attrs = { [PHX_COMPONENT]: cid, id: `${this.parentViewId()}-${cid}` };
+    if (skip) {
+      attrs[PHX_SKIP] = "";
     }
+    let [newHTML, commentBefore, commentAfter] = modifyRoot(html, attrs, skip ? "" : null);
+    if (allowRootComments) {
+      newHTML = `${commentBefore || ""}${newHTML}${commentAfter || ""}`;
+    }
+    return [newHTML, streams];
   }
   createSpan(text, cid) {
     let span = document.createElement("span");
