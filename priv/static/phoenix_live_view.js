@@ -914,6 +914,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         entry.relative_path = file.webkitRelativePath;
         entry.type = file.type;
         entry.size = file.size;
+        if (typeof file.meta === "function") {
+          entry.meta = file.meta();
+        }
         fileData[uploadRef].push(entry);
       });
       return fileData;
