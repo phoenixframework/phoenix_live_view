@@ -332,10 +332,10 @@ export default class Rendered {
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let [html, streams] = this.recursiveToString(component, components, onlyCids, true)
     let skip = onlyCids && !onlyCids.has(cid)
-    let attrs = {[PHX_COMPONENT]: cid, id: `${this.parentViewId()}-${cid}`}
-    if(skip){ attrs[PHX_SKIP] = ""}
-    let [newHTML, commentBefore, commentAfter] = modifyRoot(html, attrs, skip ? "" : null)
-    if(allowRootComments){ newHTML = `${commentBefore || ""}${newHTML}${commentAfter || ""}` }
+    let attrs = {[PHX_COMPONENT]: cid, [PHX_MAGIC_ID]: `${this.parentViewId()}-${cid}`}
+    if(skip){ attrs[PHX_SKIP] = true }
+    let [newHTML, commentBefore, commentAfter] = modifyRoot(html, attrs, skip)
+    if(allowRootComments){ newHTML = `${commentBefore}${newHTML}${commentAfter}` }
 
     return [newHTML, streams]
   }

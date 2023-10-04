@@ -97,7 +97,6 @@ export default class DOMPatch {
 
     let externalFormTriggered = null
 
-    // console.log(html)
     let diffHTML = liveSocket.time("premorph container prep", () => {
       return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
     })
@@ -127,7 +126,7 @@ export default class DOMPatch {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
           if(DOM.isPhxDestroyed(node)){ return null }
-          return node.getAttribute ? node.getAttribute(PHX_MAGIC_ID) : node.id
+          return (node.getAttribute && node.getAttribute(PHX_MAGIC_ID)) || node.id
         },
         // skip indexing from children when container is stream
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM},
@@ -400,7 +399,10 @@ export default class DOMPatch {
       rest.forEach(el => el.remove())
       Array.from(diffContainer.childNodes).forEach(child => {
         // we can only skip trackable nodes with an ID
-        if(child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
+        if(child.nodeType === Node.ELEMENT_NODE &&
+           child.hasAttribute(PHX_MAGIC_ID) &&
+           child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
+
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
         }
