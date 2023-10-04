@@ -63,7 +63,12 @@ export let modifyRoot = (html, attrs, innerHTML) => {
     contentAfter = html.slice(tagInnerEndsAt + closingTag.length)
   }
 
-  let attrsStr = Object.keys(attrs).map(attr => `${attr}="${attrs[attr]}"`).join(" ")
+  let attrsStr =
+    Object.keys(attrs)
+    .filter(attr => tagOpenContent.indexOf(`${attr}=`) === -1)
+    .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
+    .join(" ")
+
   if(innerHTML === ""){
     tagOpenContent = ` ${attrsStr}`
   } else {
@@ -194,8 +199,6 @@ export default class Rendered {
     }
     if(target[ROOT]){
       target.changed = true
-      // let [newRoot, commentBefore, commentAfter] = modifyRoot(target[STATIC][0], {"phx-magic-id": 123})
-      // target[STATIC][0] = `${commentBefore}${newRoot}${commentAfter}`
     }
   }
 
@@ -236,26 +239,26 @@ export default class Rendered {
 
   nextMagicID(){
     this.magicId++
-    return `phx-m-${this.magicId}`
+    return this.magicId
   }
 
   toOutputBuffer(rendered, templates, output){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
     statics = this.templateStatic(statics, templates)
-    let currentOut = {buffer: "", components: output.components, onlyCids: output.onlyCids, streams: output.streams}
+    let currentOut = {
+      buffer: "",
+      components: output.components,
+      onlyCids: output.onlyCids,
+      streams: output.streams,
+      insideComponent: output.insideComponent
+    }
     let firstRootRender = false
     let isRoot = rendered[ROOT] && !output.insideComponent
 
     if(isRoot && !rendered.magicId){
       firstRootRender = true
       rendered.magicId = this.nextMagicID()
-      let [newRoot, commentBefore] = modifyRoot(statics[0], {"phx-magic-id": rendered.magicId})
-      // if(newRoot.indexOf("img") >= 0){
-        console.log("before", statics[0])
-        console.log("after", `${commentBefore}${newRoot}`)
-      // }
-      statics[0] = `${commentBefore}${newRoot}`
     }
 
     // output.buffer += statics[0]
@@ -265,19 +268,18 @@ export default class Rendered {
       currentOut.buffer += statics[i]
     }
 
-    if(isRoot && !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size){
-      let attrs = {"phx-magic-id": rendered.magicId, [PHX_SKIP]: true}
-      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, "")
-      if(newRoot.indexOf("img") >= 0){
-        console.log("before", currentOut.buffer)
-        console.log("after", `${commentBefore}${newRoot}`)
-      }
+    if(isRoot){
+      let skip = !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size
+      let attrs = {"phx-id": rendered.magicId}
+      if(skip){ attrs[PHX_SKIP] = true }
+      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip ? "" : null)
+      rendered.changed = false
       currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`
     }
-    if(isRoot){ rendered.changed = false }
 
     output.buffer += currentOut.buffer
     output.components = currentOut.components
+    output.insideComponent = currentOut.insideComponent
     output.onlyCids = currentOut.onlyCids
     output.streams = currentOut.streams
   }
