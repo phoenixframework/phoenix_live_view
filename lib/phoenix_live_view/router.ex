@@ -128,6 +128,8 @@ defmodule Phoenix.LiveView.Router do
   `live_redirect` from the client with navigation purely over the existing
   websocket connection. This allows live routes defined in the router to
   mount a new root LiveView without additional HTTP requests to the server.
+  For backwards compatibility reasons, all live routes defined outside
+  of any live session are considered part of an unnamed live session.
 
   ## Security Considerations
 
