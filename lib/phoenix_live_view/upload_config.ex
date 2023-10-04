@@ -18,7 +18,8 @@ defmodule Phoenix.LiveView.UploadEntry do
             client_relative_path: nil,
             client_size: nil,
             client_type: nil,
-            client_last_modified: nil
+            client_last_modified: nil,
+            client_meta: nil
 
   @type t :: %__MODULE__{
           progress: integer(),
@@ -33,7 +34,8 @@ defmodule Phoenix.LiveView.UploadEntry do
           client_relative_path: String.t() | nil,
           client_size: integer() | nil,
           client_type: String.t() | nil,
-          client_last_modified: integer() | nil
+          client_last_modified: integer() | nil,
+          client_meta: map() | nil
         }
 
   @doc false
@@ -558,7 +560,8 @@ defmodule Phoenix.LiveView.UploadConfig do
       client_relative_path: Map.get(client_entry, "relative_path"),
       client_size: Map.fetch!(client_entry, "size"),
       client_type: Map.fetch!(client_entry, "type"),
-      client_last_modified: Map.get(client_entry, "last_modified")
+      client_last_modified: Map.get(client_entry, "last_modified"),
+      client_meta: Map.get(client_entry, "meta"),
     }
 
     {:ok, entry}

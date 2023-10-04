@@ -1174,6 +1174,7 @@ defmodule Phoenix.LiveViewTest do
     * `:size` - the byte size of the content
     * `:type` - the MIME type of the file
     * `:relative_path` - for simulating webkitdirectory metadata
+    * `:meta` - optional metadata sent by the client
 
   ## Examples
 

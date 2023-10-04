@@ -856,7 +856,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         relative_path: this.file.webkitRelativePath,
         size: this.file.size,
         type: this.file.type,
-        ref: this.ref
+        ref: this.ref,
+        meta: typeof this.file.meta === "function" ? this.file.meta() : void 0
       };
     }
     uploader(uploaders) {
