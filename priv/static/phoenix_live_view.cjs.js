@@ -1549,7 +1549,7 @@ function morphdomFactory(morphAttrs2) {
       }
     }
     function morphChildren(fromEl, toEl) {
-      var skipFrom = skipFromChildren(fromEl);
+      var skipFrom = skipFromChildren(fromEl, toEl);
       var curToNodeChild = toEl.firstChild;
       var curFromNodeChild = fromEl.firstChild;
       var curToNodeKey;
@@ -2674,9 +2674,10 @@ var View = class {
     this.children = this.parent ? null : {};
     this.root.children[this.id] = {};
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
+      let url = this.href && this.expandURL(this.href);
       return {
-        redirect: this.redirect ? this.href : void 0,
-        url: this.redirect ? void 0 : this.href || void 0,
+        redirect: this.redirect ? url : void 0,
+        url: this.redirect ? void 0 : url || void 0,
         params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),

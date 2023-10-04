@@ -115,9 +115,10 @@ export default class View {
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
+      let url = this.href && this.expandURL(this.href)
       return {
-        redirect: this.redirect ? this.href : undefined,
-        url: this.redirect ? undefined : this.href || undefined,
+        redirect: this.redirect ? url : undefined,
+        url: this.redirect ? undefined : url || undefined,
         params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
