@@ -129,7 +129,7 @@ export default class DOMPatch {
           return (node.getAttribute && node.getAttribute(PHX_MAGIC_ID)) || node.id
         },
         // skip indexing from children when container is stream
-        skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM},
+        skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
           let {ref, streamAt, limit} = this.getStreamInsert(child)
