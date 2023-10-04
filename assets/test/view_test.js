@@ -1128,10 +1128,10 @@ describe("View + Component", function(){
     }
 
     view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe("<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0\">Menu</div><h2>2</h2>")
+    expect(view.el.innerHTML.trim()).toBe("<div data-phx-component=\"0\" id=\"container-0\" phx-click=\"show-rect\">Menu</div><h2>2</h2>")
 
     view.update(updateDiff, [])
-    expect(view.el.innerHTML.trim().replace("\n", "")).toBe("<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0\">Menu</div><h2>2</h2>")
+    expect(view.el.innerHTML.trim().replace("\n", "")).toBe("<h1>1</h1><div data-phx-component=\"0\" id=\"container-0\" phx-click=\"show-rect\">Menu</div><h2>2</h2>")
   })
 
   test("respects nested components", () => {
