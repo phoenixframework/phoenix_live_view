@@ -6,6 +6,7 @@ import {
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_SKIP,
+  PHX_MAGIC_ID,
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
@@ -124,10 +125,11 @@ export default class DOMPatch {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
-          return DOM.isPhxDestroyed(node) ? null : node.id
+          if(DOM.isPhxDestroyed(node)){ return null }
+          return (node.getAttribute && node.getAttribute(PHX_MAGIC_ID)) || node.id
         },
         // skip indexing from children when container is stream
-        skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
+        skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM},
         // tell morphdom how to add a child
         addChild: (parent, child) => {
           let {ref, streamAt, limit} = this.getStreamInsert(child)
@@ -363,7 +365,7 @@ export default class DOMPatch {
   isCIDPatch(){ return this.cidPatch }
 
   skipCIDSibling(el){
-    return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null
+    return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP)
   }
 
   targetCIDContainer(html){
@@ -397,7 +399,10 @@ export default class DOMPatch {
       rest.forEach(el => el.remove())
       Array.from(diffContainer.childNodes).forEach(child => {
         // we can only skip trackable nodes with an ID
-        if(child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
+        if(child.nodeType === Node.ELEMENT_NODE &&
+           child.hasAttribute(PHX_MAGIC_ID) &&
+           child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
+
           child.setAttribute(PHX_SKIP, "")
           child.innerHTML = ""
         }

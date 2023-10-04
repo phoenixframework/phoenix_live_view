@@ -391,6 +391,7 @@ defmodule Phoenix.LiveView.Diff do
         changed?
       )
 
+    diff = if rendered.root, do: Map.put(diff, :r, 1), else: diff
     {diff, template} = maybe_template_static(diff, fingerprint, static, template)
     {diff, {fingerprint, children}, pending, components, template}
   end

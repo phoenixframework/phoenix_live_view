@@ -5,10 +5,12 @@ import {
   EVENTS,
   PHX_COMPONENT,
   PHX_SKIP,
+  PHX_MAGIC_ID,
   REPLY,
   STATIC,
   TITLE,
   STREAM,
+  ROOT,
 } from "./constants"
 
 import {
@@ -16,6 +18,90 @@ import {
   logError,
   isCid,
 } from "./utils"
+
+const VOID_TAGS = [
+  "area",
+  "base",
+  "br",
+  "col",
+  "command",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "keygen",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr"
+]
+
+export let modifyRoot = (html, attrs, clearInnerHTML) => {
+  let i =0
+  let insideComment = false
+  let insideTag = false
+  let tag
+  let beforeTagBuff = []
+  while(i < html.length){
+    let char = html.charAt(i)
+    if(insideComment){
+      if(char === "-" && html.slice(i, i + 3) === "-->"){
+        insideComment = false
+        beforeTagBuff.push("-->")
+        i += 3
+      } else {
+        beforeTagBuff.push(char)
+        i++
+      }
+    } else if(char === "<" && html.slice(i, i + 4) === "<!--"){
+      insideComment = true
+      beforeTagBuff.push("<!--")
+      i += 4
+    } else if(char === "<"){
+      insideTag = true
+      let iAtOpen = i
+      for(i; i < html.length; i++){
+        if([">", " ", "\n", "\t", "\r"].indexOf(html.charAt(i)) >= 0){ break }
+      }
+      tag = html.slice(iAtOpen + 1, i)
+      break
+    } else if(!insideComment && !insideTag){
+      beforeTagBuff.push(char)
+      i++
+    }
+  }
+  if(!tag){ throw new Error(`malformed html ${html}`) }
+
+  let attrsStr =
+    Object.keys(attrs)
+    .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
+    .join(" ")
+
+  let isVoid = VOID_TAGS.indexOf(tag) >= 0
+  let closeTag = `</${tag}>`
+  let newHTML
+  let beforeTag = beforeTagBuff.join("")
+  let afterTag
+  if(isVoid){
+    afterTag = html.slice(html.lastIndexOf(`/>`) + 2)
+  } else {
+    afterTag = html.slice(html.lastIndexOf(closeTag) + closeTag.length)
+  }
+  if(clearInnerHTML){
+    if(isVoid){
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`
+    } else {
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}>${closeTag}`
+    }
+  } else {
+    let rest = html.slice(i, html.length - afterTag.length)
+    newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`
+  }
+
+  return [newHTML, beforeTag, afterTag]
+}
 
 export default class Rendered {
   static extract(diff){
@@ -29,19 +115,20 @@ export default class Rendered {
   constructor(viewId, rendered){
     this.viewId = viewId
     this.rendered = {}
+    this.magicId = 0
     this.mergeDiff(rendered)
   }
 
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids)
+    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, false)
     return [str, streams]
   }
 
-  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids){
+  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, insideComponent){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
+    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set(), insideComponent}
     this.toOutputBuffer(rendered, null, output)
     return [output.buffer, output.streams]
   }
@@ -121,6 +208,9 @@ export default class Rendered {
         target[key] = val
       }
     }
+    if(target[ROOT]){
+      target.changed = true
+    }
   }
 
   cloneMerge(target, source){
@@ -158,16 +248,51 @@ export default class Rendered {
     }
   }
 
+  nextMagicID(){
+    this.magicId++
+    return `phx-${this.magicId}`
+  }
+
   toOutputBuffer(rendered, templates, output){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
     statics = this.templateStatic(statics, templates)
-
-    output.buffer += statics[0]
-    for(let i = 1; i < statics.length; i++){
-      this.dynamicToBuffer(rendered[i - 1], templates, output)
-      output.buffer += statics[i]
+    let currentOut = {
+      buffer: "",
+      components: output.components,
+      onlyCids: output.onlyCids,
+      streams: output.streams,
+      insideComponent: output.insideComponent
     }
+    let firstRootRender = false
+    let isRoot = rendered[ROOT] && !output.insideComponent
+
+    if(isRoot && !rendered.magicId){
+      firstRootRender = true
+      rendered.magicId = this.nextMagicID()
+    }
+
+    // output.buffer += statics[0]
+    currentOut.buffer += statics[0]
+    for(let i = 1; i < statics.length; i++){
+      this.dynamicToBuffer(rendered[i - 1], templates, currentOut)
+      currentOut.buffer += statics[i]
+    }
+
+    if(isRoot){
+      let skip = !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size
+      let attrs = {[PHX_MAGIC_ID]: rendered.magicId}
+      if(skip){ attrs[PHX_SKIP] = true }
+      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip)
+      rendered.changed = false
+      currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`
+    }
+
+    output.buffer += currentOut.buffer
+    output.components = currentOut.components
+    output.insideComponent = currentOut.insideComponent
+    output.onlyCids = currentOut.onlyCids
+    output.streams = currentOut.streams
   }
 
   comprehensionToBuffer(rendered, templates, output){
@@ -205,55 +330,14 @@ export default class Rendered {
 
   recursiveCIDToString(components, cid, onlyCids, allowRootComments = true){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
-    let template = document.createElement("template")
-    let [html, streams] = this.recursiveToString(component, components, onlyCids)
-    template.innerHTML = html
-    let container = template.content
+    let [html, streams] = this.recursiveToString(component, components, onlyCids, true)
     let skip = onlyCids && !onlyCids.has(cid)
+    let attrs = {[PHX_COMPONENT]: cid, [PHX_MAGIC_ID]: `${this.parentViewId()}-${cid}`}
+    if(skip){ attrs[PHX_SKIP] = true }
+    let [newHTML, commentBefore, commentAfter] = modifyRoot(html, attrs, skip)
+    if(allowRootComments){ newHTML = `${commentBefore}${newHTML}${commentAfter}` }
 
-    let [hasChildNodes, hasChildComponents] =
-      Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
-        if(child.nodeType === Node.ELEMENT_NODE){
-          if(child.getAttribute(PHX_COMPONENT)){
-            return [hasNodes, true]
-          }
-          child.setAttribute(PHX_COMPONENT, cid)
-          if(!child.id){ child.id = `${this.parentViewId()}-${cid}-${i}` }
-          if(skip){
-            child.setAttribute(PHX_SKIP, "")
-            child.innerHTML = ""
-          }
-          return [true, hasComponents]
-        } else if(child.nodeType === Node.COMMENT_NODE){
-          // we have to strip root comments when rendering a component directly
-          // for patching because the morphdom target must be exactly the root entrypoint
-          if(!allowRootComments){ child.remove() }
-          return [hasNodes, hasComponents]
-        } else {
-          if(child.nodeValue.trim() !== ""){
-            logError("only HTML element tags are allowed at the root of components.\n\n" +
-              `got: "${child.nodeValue.trim()}"\n\n` +
-              "within:\n", template.innerHTML.trim())
-            child.replaceWith(this.createSpan(child.nodeValue, cid))
-            return [true, hasComponents]
-          } else {
-            child.remove()
-            return [hasNodes, hasComponents]
-          }
-        }
-      }, [false, false])
-
-    if(!hasChildNodes && !hasChildComponents){
-      logError("expected at least one HTML element tag inside a component, but the component is empty:\n",
-        template.innerHTML.trim())
-      return [this.createSpan("", cid).outerHTML, streams]
-    } else if(!hasChildNodes && hasChildComponents){
-      logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.",
-        template.innerHTML.trim())
-      return [template.innerHTML, streams]
-    } else {
-      return [template.innerHTML, streams]
-    }
+    return [newHTML, streams]
   }
 
   createSpan(text, cid){

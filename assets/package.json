@@ -10,7 +10,7 @@
     "test.watch": "jest --watch"
   },
   "dependencies": {
-    "morphdom": "2.7.0"
+    "morphdom": "2.7.1"
   },
   "devDependencies": {
     "@babel/cli": "7.14.3",
