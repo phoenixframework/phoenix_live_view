@@ -96,7 +96,7 @@ export default class DOMPatch {
 
     let externalFormTriggered = null
 
-    // console.log(html.length)
+    console.log(html)
     let diffHTML = liveSocket.time("premorph container prep", () => {
       return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
     })
@@ -125,10 +125,10 @@ export default class DOMPatch {
       morphdom(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
-          return DOM.isPhxDestroyed(node) ? null : (node.getAttribute && node.getAttribute("phx-id")) || node.id
+          return DOM.isPhxDestroyed(node) ? null : node.id
         },
         // skip indexing from children when container is stream
-        skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
+        skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM},
         // tell morphdom how to add a child
         addChild: (parent, child) => {
           let {ref, streamAt, limit} = this.getStreamInsert(child)

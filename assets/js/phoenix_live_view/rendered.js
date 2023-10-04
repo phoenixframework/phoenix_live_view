@@ -230,7 +230,7 @@ export default class Rendered {
 
   nextMagicID(){
     this.magicId++
-    return this.magicId
+    return `phx-${this.magicId}`
   }
 
   toOutputBuffer(rendered, templates, output){
@@ -261,7 +261,7 @@ export default class Rendered {
 
     if(isRoot){
       let skip = !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size
-      let attrs = {"phx-id": rendered.magicId}
+      let attrs = {id: rendered.magicId}
       if(skip){ attrs[PHX_SKIP] = true }
       let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip ? "" : null)
       rendered.changed = false
