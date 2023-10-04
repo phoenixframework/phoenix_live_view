@@ -272,7 +272,6 @@ export default class Rendered {
       rendered.magicId = this.nextMagicID()
     }
 
-    // output.buffer += statics[0]
     currentOut.buffer += statics[0]
     for(let i = 1; i < statics.length; i++){
       this.dynamicToBuffer(rendered[i - 1], templates, currentOut)
