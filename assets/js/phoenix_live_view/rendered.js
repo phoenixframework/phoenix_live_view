@@ -5,6 +5,7 @@ import {
   EVENTS,
   PHX_COMPONENT,
   PHX_SKIP,
+  PHX_MAGIC_ID,
   REPLY,
   STATIC,
   TITLE,
@@ -18,69 +19,88 @@ import {
   isCid,
 } from "./utils"
 
-export let modifyRoot = (html, attrs, innerHTML) => {
-  html = html.trimStart()
-  let tagStartsAt = null
-  let pos = 0
-  while(pos < html.length){
-    let maybeStart = html.indexOf("<", pos)
-    if(maybeStart === -1){ break }
-    if(maybeStart >= 0 && html.charAt(maybeStart + 1) !== "!"){
-      tagStartsAt = maybeStart
-      break
-    }
-    pos += html.indexOf("-->", pos)
-  }
+const VOID_TAGS = [
+  "area",
+  "base",
+  "br",
+  "col",
+  "command",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "keygen",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr"
+]
 
-  let commentBefore = tagStartsAt === 0 ? null : html.slice(0, tagStartsAt).trim()
-  let contentAfter = null
-  html = html.slice(tagStartsAt).trimStart()
-  let tagNamesEndsAt = html.length
-  for(let i = 1; i < html.length; i++){
+export let modifyRoot = (html, attrs, clearInnerHTML) => {
+  let i =0
+  let insideComment = false
+  let insideTag = false
+  let tag
+  let beforeTagBuff = []
+  while(i < html.length){
     let char = html.charAt(i)
-    if([">", " ", "\n", "\t", "\r"].indexOf(char) >= 0 || (char === "!" && html.charAt(i + 1) === ">")){
-      tagNamesEndsAt = i
+    if(insideComment){
+      if(char === "-" && html.slice(i, i + 3) === "-->"){
+        insideComment = false
+        beforeTagBuff.push("-->")
+        i += 3
+      } else {
+        beforeTagBuff.push(char)
+        i++
+      }
+    } else if(char === "<" && html.slice(i, i + 4) === "<!--"){
+      insideComment = true
+      beforeTagBuff.push("<!--")
+      i += 4
+    } else if(char === "<"){
+      insideTag = true
+      let iAtOpen = i
+      for(i; i < html.length; i++){
+        if([">", " ", "\n", "\t", "\r"].indexOf(html.charAt(i)) >= 0){ break }
+      }
+      tag = html.slice(iAtOpen + 1, i)
       break
+    } else if(!insideComment && !insideTag){
+      beforeTagBuff.push(char)
+      i++
     }
   }
-
-  let tag = html.slice(1, tagNamesEndsAt)
-  let tagOpenEndsAt = html.indexOf(">")
-  let tagInnerHTML
-  let closingTag
-  let isVoid = html.charAt(tagOpenEndsAt - 1) === "/"
-  let tagOpenContent = isVoid ? html.slice(tagNamesEndsAt, tagOpenEndsAt - 1) : html.slice(tagNamesEndsAt, tagOpenEndsAt)
-
-  if(isVoid){
-    contentAfter = html.slice(tagOpenEndsAt + 1) || null
-  } else {
-    closingTag = `</${tag}>`
-    let tagInnerEndsAt = html.lastIndexOf(closingTag)
-    tagInnerHTML = html.slice(tagOpenEndsAt + 1, tagInnerEndsAt)
-    contentAfter = html.slice(tagInnerEndsAt + closingTag.length)
-  }
+  if(!tag){ throw new Error(`malformed html ${html}`) }
 
   let attrsStr =
     Object.keys(attrs)
-    .filter(attr => tagOpenContent.indexOf(`${attr}=`) === -1)
     .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
     .join(" ")
 
-  if(innerHTML === ""){
-    tagOpenContent = attrsStr === "" ? "" : ` ${attrsStr}`
+  let isVoid = VOID_TAGS.indexOf(tag) >= 0
+  let closeTag = `</${tag}>`
+  let newHTML
+  let beforeTag = beforeTagBuff.join("")
+  let afterTag
+  if(isVoid){
+    afterTag = html.slice(html.lastIndexOf(`/>`) + 2)
   } else {
-    tagOpenContent = attrsStr === "" ? tagOpenContent : ` ${attrsStr}${tagOpenContent}`
+    afterTag = html.slice(html.lastIndexOf(closeTag) + closeTag.length)
+  }
+  if(clearInnerHTML){
+    if(isVoid){
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`
+    } else {
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}>${closeTag}`
+    }
+  } else {
+    let rest = html.slice(i, html.length - afterTag.length)
+    newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`
   }
 
-  let closingContent
-  if(isVoid){
-    closingContent = "/>"
-  } else {
-    closingContent = `>${typeof(innerHTML) === "string" ? innerHTML : tagInnerHTML}${closingTag}`
-  }
-  let newHTML = `<${tag}` + tagOpenContent + closingContent
-  let commentAfter = contentAfter && contentAfter.indexOf("<!--") >= 0 ? contentAfter.trim() : null
-  return [newHTML, commentBefore || "", commentAfter || ""]
+  return [newHTML, beforeTag, afterTag]
 }
 
 export default class Rendered {
@@ -261,9 +281,9 @@ export default class Rendered {
 
     if(isRoot){
       let skip = !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size
-      let attrs = {id: rendered.magicId}
+      let attrs = {[PHX_MAGIC_ID]: rendered.magicId}
       if(skip){ attrs[PHX_SKIP] = true }
-      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip ? "" : null)
+      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip)
       rendered.changed = false
       currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`
     }
