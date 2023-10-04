@@ -2399,10 +2399,12 @@ within:
       this.__listeners.delete(callbackRef);
     }
     upload(name, files) {
-      return this.__view.dispatchUploads(name, files);
+      return this.__view.dispatchUploads(null, name, files);
     }
     uploadTo(phxTarget, name, files) {
-      return this.__view.withinTargets(phxTarget, (view) => view.dispatchUploads(name, files));
+      return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+        view.dispatchUploads(targetCtx, name, files);
+      });
     }
     __cleanup__() {
       this.__listeners.forEach((callbackRef) => this.removeHandleEvent(callbackRef));
@@ -3610,14 +3612,25 @@ within:
         });
       });
     }
-    dispatchUploads(name, filesOrBlobs) {
-      let inputs = dom_default.findUploadInputs(this.el).filter((el) => el.name === name);
+    dispatchUploads(targetCtx, name, filesOrBlobs) {
+      let targetElement = this.targetCtxElement(targetCtx) || this.el;
+      let inputs = dom_default.findUploadInputs(targetElement).filter((el) => el.name === name);
       if (inputs.length === 0) {
         logError(`no live file inputs found matching the name "${name}"`);
       } else if (inputs.length > 1) {
         logError(`duplicate live file inputs found matching the name "${name}"`);
       } else {
         dom_default.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, { detail: { files: filesOrBlobs } });
+      }
+    }
+    targetCtxElement(targetCtx) {
+      if (isCid(targetCtx)) {
+        let [target] = dom_default.findComponentNodeList(this.el, targetCtx);
+        return target;
+      } else if (targetCtx) {
+        return targetCtx;
+      } else {
+        return null;
       }
     }
     pushFormRecovery(form, newCid, callback) {
