@@ -19,7 +19,7 @@ import {
 } from "./utils"
 
 export let modifyRoot = (html, attrs, innerHTML) => {
-  html = html.trim()
+  html = html.trimStart()
   let tagStartsAt = null
   let pos = 0
   while(pos < html.length){
@@ -46,9 +46,6 @@ export let modifyRoot = (html, attrs, innerHTML) => {
 
   let tag = html.slice(1, tagNamesEndsAt)
   let tagOpenEndsAt = html.indexOf(">")
-  let isUnclosed = tagOpenEndsAt === -1
-  if(isUnclosed){ tagOpenEndsAt = html.length }
-
   let tagInnerHTML
   let closingTag
   let isVoid = html.charAt(tagOpenEndsAt - 1) === "/"
@@ -56,7 +53,7 @@ export let modifyRoot = (html, attrs, innerHTML) => {
 
   if(isVoid){
     contentAfter = html.slice(tagOpenEndsAt + 1) || null
-  } else if(!isUnclosed){
+  } else {
     closingTag = `</${tag}>`
     let tagInnerEndsAt = html.lastIndexOf(closingTag)
     tagInnerHTML = html.slice(tagOpenEndsAt + 1, tagInnerEndsAt)
@@ -70,15 +67,9 @@ export let modifyRoot = (html, attrs, innerHTML) => {
     .join(" ")
 
   if(innerHTML === ""){
-    tagOpenContent = ` ${attrsStr}`
+    tagOpenContent = attrsStr === "" ? "" : ` ${attrsStr}`
   } else {
-    tagOpenContent = ` ${attrsStr}${tagOpenContent}`
-  }
-
-  if(isUnclosed){
-    return [`<${tag}${tagOpenContent}`, commentBefore || "", ""]
-  } else if(tagOpenEndsAt === html.length - 1){
-    return [`<${tag}${tagOpenContent}${isVoid ? "/" : ""}>`, commentBefore || "", ""]
+    tagOpenContent = attrsStr === "" ? tagOpenContent : ` ${attrsStr}${tagOpenContent}`
   }
 
   let closingContent

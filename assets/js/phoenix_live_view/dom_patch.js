@@ -96,7 +96,7 @@ export default class DOMPatch {
 
     let externalFormTriggered = null
 
-    console.log(html.length)
+    // console.log(html.length)
     let diffHTML = liveSocket.time("premorph container prep", () => {
       return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
     })

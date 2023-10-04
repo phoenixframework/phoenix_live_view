@@ -72,31 +72,8 @@ ${"\t"}class="px-5"><div id="menu">MENU</div></div>`)
     expect(modifyRoot(selfClose, {id: 123, another: ""})[0]).toEqual(`<input id="123" another=""${"\t\r\n"}class="px-5"/>`)
   })
 
-  test("unclosed or self closed", () => {
-    let html = `<a`
-    expect(modifyRoot(html, {id: 123})[0]).toEqual(`<a id="123"`)
-
-    html = `<div class="`
-    expect(modifyRoot(html, {id: 123})[0]).toEqual(`<div id="123" class="`)
-
-    let [newHTML, commentBefore, commentAfter] = modifyRoot('<!-- <comment> --><div class="', {id: 123})
-    expect(newHTML).toEqual(`<div id="123" class="`)
-    expect(commentBefore).toEqual(`<!-- <comment> -->`)
-
-    html = `<div>`
-    expect(modifyRoot(html, {id: 123})[0]).toEqual(`<div id="123">`)
-
-    let [newHTML2, commentBefore2, commentAfter2] = modifyRoot('<!-- <comment> --><div>', {id: 123})
-    expect(newHTML2).toEqual(`<div id="123">`)
-    expect(commentBefore2).toEqual(`<!-- <comment> -->`)
-
-    html = `<!-- <comment> --><div>`
-    expect(modifyRoot(html, {id: 123})[0]).toEqual(`<div id="123">`)
-
-    html = `<input class="text-sm"/>`
+  test("self closed", () => {
+    let html = `<input class="text-sm"/>`
     expect(modifyRoot(html, {id: 123})[0]).toEqual(`<input id="123" class="text-sm"/>`)
-
-    html = `<div id="flash-group">\n `
-    expect(modifyRoot(html, {})[0]).toEqual(`<div id="flash-group">`)
   })
 })
