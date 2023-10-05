@@ -130,14 +130,14 @@ export default class Rendered {
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, false)
+    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, true, {})
     return [str, streams]
   }
 
-  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, insideComponent){
+  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set(), insideComponent}
-    this.toOutputBuffer(rendered, null, output)
+    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
+    this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs)
     return [output.buffer, output.streams]
   }
 
@@ -217,7 +217,7 @@ export default class Rendered {
       }
     }
     if(target[ROOT]){
-      target.changed = true
+      target.newRender = true
     }
   }
 
@@ -230,12 +230,15 @@ export default class Rendered {
         merged[key] = this.cloneMerge(targetVal, val)
       }
     }
+    if(target.magicId){ merged.magicId = target.magicId }
+    merged.newRender = true
     return merged
   }
 
   componentToString(cid){
-    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null, false)
-    return [str, streams]
+    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null, true)
+    let [strippedHTML, _before, _after] = modifyRoot(str, {})
+    return [strippedHTML, streams]
   }
 
   pruneCIDs(cids){
@@ -258,48 +261,48 @@ export default class Rendered {
 
   nextMagicID(){
     this.magicId++
-    return `${this.viewId}-${this.magicId}`
+    return `${this.parentViewId()}-${this.magicId}`
   }
 
-  toOutputBuffer(rendered, templates, output){
+  toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
     statics = this.templateStatic(statics, templates)
-    let currentOut = {
-      buffer: "",
-      components: output.components,
-      onlyCids: output.onlyCids,
-      streams: output.streams,
-      insideComponent: output.insideComponent
-    }
-    let firstRootRender = false
-    let isRoot = rendered[ROOT] && !output.insideComponent
+    let currentOut = {...output, buffer: ""}
+    let isRoot = rendered[ROOT]
 
-    if(isRoot && !rendered.magicId){
-      firstRootRender = true
+    if(changeTracking && isRoot && !rendered.magicId){
+      rendered.newRender = true
       rendered.magicId = this.nextMagicID()
     }
 
     currentOut.buffer += statics[0]
     for(let i = 1; i < statics.length; i++){
-      this.dynamicToBuffer(rendered[i - 1], templates, currentOut)
+      this.dynamicToBuffer(rendered[i - 1], templates, currentOut, changeTracking)
       currentOut.buffer += statics[i]
     }
 
+    let isCid = Object.keys(rootAttrs).length > 0
+
     if(isRoot){
-      let skip = !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size
-      let attrs = {[PHX_MAGIC_ID]: rendered.magicId}
-      if(skip){ attrs[PHX_SKIP] = true }
+      let skip = false
+      let attrs
+      if(changeTracking || isCid){
+        skip = !rendered.newRender
+        attrs = {[PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs}
+      } else {
+        attrs = rootAttrs
+      }
+      if(skip){ attrs[PHX_SKIP] = true}
       let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip)
-      rendered.changed = false
+      rendered.newRender = false
       currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`
     }
 
     output.buffer += currentOut.buffer
     output.components = currentOut.components
-    output.insideComponent = currentOut.insideComponent
     output.onlyCids = currentOut.onlyCids
-    output.streams = currentOut.streams
+    output.streams = currentOut.streams // todo kill streams out of buffer
   }
 
   comprehensionToBuffer(rendered, templates, output){
@@ -311,7 +314,7 @@ export default class Rendered {
       let dynamic = dynamics[d]
       output.buffer += statics[0]
       for(let i = 1; i < statics.length; i++){
-        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output)
+        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, false)
         output.buffer += statics[i]
       }
     }
@@ -323,28 +326,27 @@ export default class Rendered {
     }
   }
 
-  dynamicToBuffer(rendered, templates, output){
+  dynamicToBuffer(rendered, templates, output, changeTracking){
     if(typeof (rendered) === "number"){
-      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids, changeTracking)
       output.buffer += str
       output.streams = new Set([...output.streams, ...streams])
     } else if(isObject(rendered)){
-      this.toOutputBuffer(rendered, templates, output)
+      this.toOutputBuffer(rendered, templates, output, changeTracking, {})
     } else {
       output.buffer += rendered
     }
   }
 
-  recursiveCIDToString(components, cid, onlyCids, allowRootComments = true){
+  recursiveCIDToString(components, cid, onlyCids, changeTracking){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
-    let [html, streams] = this.recursiveToString(component, components, onlyCids, true)
+    let attrs = {[PHX_COMPONENT]: cid}
     let skip = onlyCids && !onlyCids.has(cid)
-    let attrs = {[PHX_COMPONENT]: cid, [PHX_MAGIC_ID]: `${this.parentViewId()}-${cid}`}
-    if(skip){ attrs[PHX_SKIP] = true }
-    let [newHTML, commentBefore, commentAfter] = modifyRoot(html, attrs, skip)
-    if(allowRootComments){ newHTML = `${commentBefore}${newHTML}${commentAfter}` }
+    component.newRender = !skip
+    component.magicId = `${this.parentViewId()}-c-${cid}`
+    let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
 
-    return [newHTML, streams]
+    return [html, streams]
   }
 
   createSpan(text, cid){

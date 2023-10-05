@@ -118,6 +118,7 @@ export default class DOMPatch {
         })
       })
 
+      console.log(html)
       morphdom(targetContainer, html, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {

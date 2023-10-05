@@ -10,7 +10,7 @@ describe("Rendered", () => {
     test("recursively merges two diffs", () => {
       let simple = new Rendered("123", simpleDiff1)
       simple.mergeDiff(simpleDiff2)
-      expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}})
+      expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}, changed: true})
 
       let deep = new Rendered("123", deepDiff1)
       deep.mergeDiff(deepDiff2)
@@ -38,19 +38,19 @@ describe("Rendered", () => {
       const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: 1}}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: ["c"]}}})
+      expect(rendered.get()).toEqual({[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {changed: true, [STATIC]: ["c"]}}})
     })
 
     test("merges components considering old and new links", () => {
       const diff1 = {[COMPONENTS]: {1: {[STATIC]: ["old"]}}}
-      const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["new"]}, 2: {[STATIC]: -1}, 3: {[STATIC]: 1}}}
+      const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["new"]}, 2: {changed: true, [STATIC]: -1}, 3: {changed: true, [STATIC]: 1}}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({
         [COMPONENTS]: {
           1: {[STATIC]: ["new"]},
-          2: {[STATIC]: ["old"]},
-          3: {[STATIC]: ["new"]}
+          2: {[STATIC]: ["old"], changed: true},
+          3: {[STATIC]: ["new"], changed: true}
         }
       })
     })
@@ -73,10 +73,10 @@ describe("Rendered", () => {
       expect(rendered1.get()).toEqual({
         [COMPONENTS]: {
           1: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
-          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
-          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
-          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
-          5: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"], changed: true},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"], changed: true},
+          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"], changed: true},
+          5: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"], changed: true},
         }
       })
 
@@ -95,10 +95,10 @@ describe("Rendered", () => {
       expect(rendered2.get()).toEqual({
         [COMPONENTS]: {
           1: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"]},
-          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
-          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
-          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
-          5: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"]},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"], changed: true},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"], changed: true},
+          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"], changed: true},
+          5: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"], changed: true},
         }
       })
     })
@@ -219,7 +219,7 @@ describe("Rendered", () => {
       let rendered = new Rendered("123", simpleDiffResult)
       let [str, streams] = rendered.toString()
       expect(str.trim()).toEqual(
-        `<div class="thermostat">
+        `<div data-phx-id="123-1" class="thermostat">
   <div class="bar cooling">
     <a href="#" phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
@@ -231,15 +231,15 @@ describe("Rendered", () => {
       let rendered = new Rendered("123", staticReuseDiff)
       let [str, streams] = rendered.toString()
       expect(str.trim()).toEqual(
-        `<div>
+        `<div data-phx-id="123-1">
   <p>
     foo
-    <span>0: <b data-phx-component="1" data-phx-id="123-1">FROM index_1 world</b></span><span>1: <b data-phx-component="2" data-phx-id="123-2">FROM index_2 world</b></span>
+    <span>0: <b data-phx-id="123-c-1" data-phx-component="1">FROM index_1 world</b></span><span>1: <b data-phx-id="123-c-2" data-phx-component="2">FROM index_2 world</b></span>
   </p>
 
   <p>
     bar
-    <span>0: <b data-phx-component="3" data-phx-id="123-3">FROM index_1 world</b></span><span>1: <b data-phx-component="4" data-phx-id="123-4">FROM index_2 world</b></span>
+    <span>0: <b data-phx-id="123-c-3" data-phx-component="3">FROM index_1 world</b></span><span>1: <b data-phx-id="123-c-4" data-phx-component="4">FROM index_2 world</b></span>
   </p>
 </div>`.trim())
     })
@@ -255,7 +255,8 @@ const simpleDiff1 = {
     "\">\n    <a href=\"#\" phx-click=\"toggle-mode\">",
     "</a>\n    <span>",
     "</span>\n  </div>\n</div>\n",
-  ]
+  ],
+  "r": 1
 }
 
 const simpleDiff2 = {
@@ -271,7 +272,8 @@ const simpleDiffResult = {
     "\">\n    <a href=\"#\" phx-click=\"toggle-mode\">",
     "</a>\n    <span>",
     "</span>\n  </div>\n</div>\n",
-  ]
+  ],
+  "r": 1
 }
 
 const deepDiff1 = {
@@ -279,11 +281,13 @@ const deepDiff1 = {
     "0": {
       [DYNAMICS]: [["user1058", "1"], ["user99", "1"]],
       [STATIC]: ["        <tr>\n          <td>", " (", ")</td>\n        </tr>\n"],
+      "r": 1
     },
     [STATIC]: [
       "  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n",
       "    </tbody>\n  </table>\n",
     ],
+    "r": 1
   },
   "1": {
     [DYNAMICS]: [
@@ -305,6 +309,7 @@ const deepDiff1 = {
       "\n",
       "      </td>\n    </tr>\n",
     ],
+    "r": 1
   }
 }
 
@@ -319,13 +324,17 @@ const deepDiff2 = {
 const deepDiffResult = {
   "0": {
     "0": {
+      changed: true,
       [DYNAMICS]: [["user1058", "2"]],
       [STATIC]: ["        <tr>\n          <td>", " (", ")</td>\n        </tr>\n"],
+      "r": 1
     },
     [STATIC]: [
       "  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n",
       "    </tbody>\n  </table>\n",
     ],
+    changed: true,
+    "r": 1,
   },
   "1": {
     [DYNAMICS]: [
@@ -347,6 +356,7 @@ const deepDiffResult = {
       "\n",
       "      </td>\n    </tr>\n",
     ],
+    "r": 1
   }
 }
 
@@ -357,13 +367,15 @@ const staticReuseDiff = {
       ["bar", {[DYNAMICS]: [["0", 3], ["1", 4]], [STATIC]: 0}]
     ],
     [STATIC]: ["\n  <p>\n    ", "\n    ", "\n  </p>\n"],
+    "r": 1,
     [TEMPLATES]: {"0": ["<span>", ": ", "</span>"]}
   },
   [COMPONENTS]: {
-    "1": {"0": "index_1", "1": "world", [STATIC]: ["<b>FROM ", " ", "</b>"]},
-    "2": {"0": "index_2", "1": "world", [STATIC]: 1},
-    "3": {"0": "index_1", "1": "world", [STATIC]: 1},
-    "4": {"0": "index_2", "1": "world", [STATIC]: 3}
+    "1": {"0": "index_1", "1": "world", [STATIC]: ["<b>FROM ", " ", "</b>"], "r": 1},
+    "2": {"0": "index_2", "1": "world", [STATIC]: 1, "r": 1},
+    "3": {"0": "index_1", "1": "world", [STATIC]: 1, "r": 1},
+    "4": {"0": "index_2", "1": "world", [STATIC]: 3, "r": 1}
   },
-  [STATIC]: ["<div>", "</div>"]
+  [STATIC]: ["<div>", "</div>"],
+  "r": 1
 }
