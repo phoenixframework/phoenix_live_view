@@ -42,8 +42,7 @@ const endingTagNameChars = new Set([">", "/", " ", "\n", "\t", "\r"])
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0
   let insideComment = false
-  let beforeTag
-  let tag
+  let beforeTag, afterTag, tag, tagNameEndsAt, newHTML
   while(i < html.length){
     let char = html.charAt(i)
     if(insideComment){
@@ -62,7 +61,8 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
       for(i; i < html.length; i++){
         if(endingTagNameChars.has(html.charAt(i))){ break }
       }
-      tag = html.slice(iAtOpen + 1, i)
+      tagNameEndsAt = i
+      tag = html.slice(iAtOpen + 1, tagNameEndsAt)
       break
     } else {
       i++
@@ -90,24 +90,21 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
       closeAt -= 1
     }
   }
-  let afterTag = html.slice(closeAt + 1, html.length)
+  afterTag = html.slice(closeAt + 1, html.length)
 
   let attrsStr =
     Object.keys(attrs)
     .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
     .join(" ")
 
-  let isVoid = VOID_TAGS.has(tag)
-  let closeTag = `</${tag}>`
-  let newHTML
   if(clearInnerHTML){
-    if(isVoid){
+    if(VOID_TAGS.has(tag)){
       newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`
     } else {
-      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}>${closeTag}`
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`
     }
   } else {
-    let rest = html.slice(i, closeAt + 1)
+    let rest = html.slice(tagNameEndsAt, closeAt + 1)
     newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`
   }
 
