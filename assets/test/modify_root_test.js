@@ -32,7 +32,7 @@ describe("modifyRoot stripping comments", () => {
     `)
   })
 
-  test("staring and ending comments", () => {
+  test("starting and ending comments", () => {
     let html = `
     <!-- starting -->
     <div class="px-53"><!-- MENU --><div id="menu">MENU</div></div>
