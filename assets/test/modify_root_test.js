@@ -77,17 +77,32 @@ ${"\t"}class="px-5"><div id="menu">MENU</div></div>`)
   })
 
   test("self closed", () => {
-    // self closing
     let html = `<input${"\t\r\n"}class="px-5"/>`
     expect(modifyRoot(html, {id: 123, another: ""})[0]).toEqual(`<input id="123" another=""${"\t\r\n"}class="px-5"/>`)
 
     html = `<input class="text-sm"/>`
     expect(modifyRoot(html, {id: 123})[0]).toEqual(`<input id="123" class="text-sm"/>`)
 
+    html = `<img/>`
+    expect(modifyRoot(html, {id: 123})[0]).toEqual(`<img id="123"/>`)
+
+    html = `<img>`
+    expect(modifyRoot(html, {id: 123})[0]).toEqual(`<img id="123">`)
+
     html = `<!-- before --><!-- <> --><input class="text-sm"/><!-- after -->`
     let result = modifyRoot(html, {id: 123})
     expect(result[0]).toEqual(`<input id="123" class="text-sm"/>`)
     expect(result[1]).toEqual(`<!-- before --><!-- <> -->`)
     expect(result[2]).toEqual(`<!-- after -->`)
+
+    // unclosed self closed
+    html = `<img class="px-5">`
+    expect(modifyRoot(html, {id: 123})[0]).toEqual(`<img id="123" class="px-5">`)
+
+    html = `<!-- <before> --><img class="px-5"><!-- <after> --><!-- <after2> -->`
+    result = modifyRoot(html, {id: 123})
+    expect(result[0]).toEqual(`<img id="123" class="px-5">`)
+    expect(result[1]).toEqual(`<!-- <before> -->`)
+    expect(result[2]).toEqual(`<!-- <after> --><!-- <after2> -->`)
   })
 })

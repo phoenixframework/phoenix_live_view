@@ -37,43 +37,60 @@ const VOID_TAGS = new Set([
   "track",
   "wbr"
 ])
-const endingTagNameChars = new Set([">", " ", "\n", "\t", "\r"])
+const endingTagNameChars = new Set([">", "/", " ", "\n", "\t", "\r"])
 
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
-  let i =0
+  let i = 0
   let insideComment = false
-  let insideTag = false
+  let beforeTag
   let tag
-  let beforeTagBuff = []
   while(i < html.length){
     let char = html.charAt(i)
     if(insideComment){
       if(char === "-" && html.slice(i, i + 3) === "-->"){
         insideComment = false
-        beforeTagBuff.push("-->")
         i += 3
       } else {
-        beforeTagBuff.push(char)
         i++
       }
     } else if(char === "<" && html.slice(i, i + 4) === "<!--"){
       insideComment = true
-      beforeTagBuff.push("<!--")
       i += 4
     } else if(char === "<"){
-      insideTag = true
+      beforeTag = html.slice(0, i)
       let iAtOpen = i
       for(i; i < html.length; i++){
         if(endingTagNameChars.has(html.charAt(i))){ break }
       }
       tag = html.slice(iAtOpen + 1, i)
       break
-    } else if(!insideComment && !insideTag){
-      beforeTagBuff.push(char)
+    } else {
       i++
     }
   }
   if(!tag){ throw new Error(`malformed html ${html}`) }
+
+  let closeAt = html.length - 1
+  insideComment = false
+  while(closeAt >= beforeTag.length + tag.length){
+    let char = html.charAt(closeAt)
+    if(insideComment){
+      if(char === "-" && html.slice(closeAt - 3, closeAt) === "<!-"){
+        insideComment = false
+        closeAt -= 4
+      } else {
+        closeAt -= 1
+      }
+    } else if(char === ">" && html.slice(closeAt - 2, closeAt) === "--"){
+      insideComment = true
+      closeAt -= 3
+    } else if(char === ">"){
+      break
+    } else {
+      closeAt -= 1
+    }
+  }
+  let afterTag = html.slice(closeAt + 1, html.length)
 
   let attrsStr =
     Object.keys(attrs)
@@ -83,13 +100,6 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let isVoid = VOID_TAGS.has(tag)
   let closeTag = `</${tag}>`
   let newHTML
-  let beforeTag = beforeTagBuff.join("")
-  let afterTag
-  if(isVoid){
-    afterTag = html.slice(html.lastIndexOf(`/>`) + 2)
-  } else {
-    afterTag = html.slice(html.lastIndexOf(closeTag) + closeTag.length)
-  }
   if(clearInnerHTML){
     if(isVoid){
       newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`
@@ -97,7 +107,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
       newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}>${closeTag}`
     }
   } else {
-    let rest = html.slice(i, html.length - afterTag.length)
+    let rest = html.slice(i, closeAt + 1)
     newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`
   }
 
