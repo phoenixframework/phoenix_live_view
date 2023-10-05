@@ -19,7 +19,7 @@ import {
   isCid,
 } from "./utils"
 
-const VOID_TAGS = [
+const VOID_TAGS = new Set([
   "area",
   "base",
   "br",
@@ -36,7 +36,8 @@ const VOID_TAGS = [
   "source",
   "track",
   "wbr"
-]
+])
+const endingTagNameChars = new Set([">", " ", "\n", "\t", "\r"])
 
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let i =0
@@ -63,7 +64,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
       insideTag = true
       let iAtOpen = i
       for(i; i < html.length; i++){
-        if([">", " ", "\n", "\t", "\r"].indexOf(html.charAt(i)) >= 0){ break }
+        if(endingTagNameChars.has(html.charAt(i))){ break }
       }
       tag = html.slice(iAtOpen + 1, i)
       break
@@ -79,7 +80,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
     .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
     .join(" ")
 
-  let isVoid = VOID_TAGS.indexOf(tag) >= 0
+  let isVoid = VOID_TAGS.has(tag)
   let closeTag = `</${tag}>`
   let newHTML
   let beforeTag = beforeTagBuff.join("")
