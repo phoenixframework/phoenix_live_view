@@ -220,9 +220,6 @@ defmodule Phoenix.LiveView.UploadChannel do
   # we are trapping exits and may enter terminate before joining is complete
   defp maybe_cancel_writer(socket) do
     case socket.assigns do
-      %{writer_closed?: true} ->
-        socket
-
       %{writer_closed?: false} ->
         case close_writer(socket, :cancel) do
           {:ok, new_socket} -> new_socket
