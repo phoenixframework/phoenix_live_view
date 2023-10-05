@@ -1806,9 +1806,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let updates = [];
       let appendPrependUpdates = [];
       let externalFormTriggered = null;
-      let diffHTML = liveSocket.time("premorph container prep", () => {
-        return this.buildDiffHTML(container, html, phxUpdate, targetContainer);
-      });
       this.trackBefore("added", container);
       this.trackBefore("updated", container, container);
       liveSocket.time("morphdom", () => {
@@ -1830,7 +1827,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           });
         });
-        morphdom_esm_default(targetContainer, diffHTML, {
+        morphdom_esm_default(targetContainer, html, {
           childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
           getNodeKey: (node) => {
             if (dom_default.isPhxDestroyed(node)) {
@@ -2080,29 +2077,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return first && first.parentNode;
       }
     }
-    buildDiffHTML(container, html, phxUpdate, targetContainer) {
-      let isCIDPatch = this.isCIDPatch();
-      let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString();
-      if (!isCIDPatch || isCIDWithSingleRoot) {
-        return html;
-      } else {
-        let diffContainer = null;
-        let template = document.createElement("template");
-        diffContainer = dom_default.cloneNode(targetContainer);
-        let [firstComponent, ...rest] = dom_default.findComponentNodeList(diffContainer, this.targetCID);
-        template.innerHTML = html;
-        rest.forEach((el) => el.remove());
-        Array.from(diffContainer.childNodes).forEach((child) => {
-          if (child.nodeType === Node.ELEMENT_NODE && child.hasAttribute(PHX_MAGIC_ID) && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()) {
-            child.setAttribute(PHX_SKIP, "");
-            child.innerHTML = "";
-          }
-        });
-        Array.from(template.content.childNodes).forEach((el) => diffContainer.insertBefore(el, firstComponent));
-        firstComponent.remove();
-        return diffContainer.outerHTML;
-      }
-    }
     indexOf(parent, child) {
       return Array.from(parent.children).indexOf(child);
     }
@@ -2127,65 +2101,71 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     "track",
     "wbr"
   ]);
-  var endingTagNameChars = new Set([">", " ", "\n", "	", "\r"]);
+  var endingTagNameChars = new Set([">", "/", " ", "\n", "	", "\r"]);
   var modifyRoot = (html, attrs, clearInnerHTML) => {
     let i = 0;
     let insideComment = false;
-    let insideTag = false;
-    let tag;
-    let beforeTagBuff = [];
+    let beforeTag, afterTag, tag, tagNameEndsAt, newHTML;
     while (i < html.length) {
       let char = html.charAt(i);
       if (insideComment) {
         if (char === "-" && html.slice(i, i + 3) === "-->") {
           insideComment = false;
-          beforeTagBuff.push("-->");
           i += 3;
         } else {
-          beforeTagBuff.push(char);
           i++;
         }
       } else if (char === "<" && html.slice(i, i + 4) === "<!--") {
         insideComment = true;
-        beforeTagBuff.push("<!--");
         i += 4;
       } else if (char === "<") {
-        insideTag = true;
+        beforeTag = html.slice(0, i);
         let iAtOpen = i;
         for (i; i < html.length; i++) {
           if (endingTagNameChars.has(html.charAt(i))) {
             break;
           }
         }
-        tag = html.slice(iAtOpen + 1, i);
+        tagNameEndsAt = i;
+        tag = html.slice(iAtOpen + 1, tagNameEndsAt);
         break;
-      } else if (!insideComment && !insideTag) {
-        beforeTagBuff.push(char);
+      } else {
         i++;
       }
     }
     if (!tag) {
       throw new Error(`malformed html ${html}`);
     }
-    let attrsStr = Object.keys(attrs).map((attr) => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`).join(" ");
-    let isVoid = VOID_TAGS.has(tag);
-    let closeTag = `</${tag}>`;
-    let newHTML;
-    let beforeTag = beforeTagBuff.join("");
-    let afterTag;
-    if (isVoid) {
-      afterTag = html.slice(html.lastIndexOf(`/>`) + 2);
-    } else {
-      afterTag = html.slice(html.lastIndexOf(closeTag) + closeTag.length);
+    let closeAt = html.length - 1;
+    insideComment = false;
+    while (closeAt >= beforeTag.length + tag.length) {
+      let char = html.charAt(closeAt);
+      if (insideComment) {
+        if (char === "-" && html.slice(closeAt - 3, closeAt) === "<!-") {
+          insideComment = false;
+          closeAt -= 4;
+        } else {
+          closeAt -= 1;
+        }
+      } else if (char === ">" && html.slice(closeAt - 2, closeAt) === "--") {
+        insideComment = true;
+        closeAt -= 3;
+      } else if (char === ">") {
+        break;
+      } else {
+        closeAt -= 1;
+      }
     }
+    afterTag = html.slice(closeAt + 1, html.length);
+    let attrsStr = Object.keys(attrs).map((attr) => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`).join(" ");
     if (clearInnerHTML) {
-      if (isVoid) {
+      if (VOID_TAGS.has(tag)) {
         newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`;
       } else {
-        newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}>${closeTag}`;
+        newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`;
       }
     } else {
-      let rest = html.slice(i, html.length - afterTag.length);
+      let rest = html.slice(tagNameEndsAt, closeAt + 1);
       newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`;
     }
     return [newHTML, beforeTag, afterTag];
