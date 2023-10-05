@@ -2282,7 +2282,7 @@ var Rendered = class {
   }
   nextMagicID() {
     this.magicId++;
-    return `phx-${this.magicId}`;
+    return `${this.viewId}-${this.magicId}`;
   }
   toOutputBuffer(rendered, templates, output) {
     if (rendered[DYNAMICS]) {

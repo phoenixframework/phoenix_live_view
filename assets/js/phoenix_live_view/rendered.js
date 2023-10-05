@@ -251,7 +251,7 @@ export default class Rendered {
 
   nextMagicID(){
     this.magicId++
-    return `phx-${this.magicId}`
+    return `${this.viewId}-${this.magicId}`
   }
 
   toOutputBuffer(rendered, templates, output){
