@@ -230,8 +230,8 @@ export default class Rendered {
         merged[key] = this.cloneMerge(targetVal, val)
       }
     }
-    if(target.magicId){ merged.magicId = target.magicId }
-    merged.newRender = true
+    delete merged.magicId
+    delete merged.newRender
     return merged
   }
 

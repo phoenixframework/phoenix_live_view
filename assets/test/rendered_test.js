@@ -10,7 +10,7 @@ describe("Rendered", () => {
     test("recursively merges two diffs", () => {
       let simple = new Rendered("123", simpleDiff1)
       simple.mergeDiff(simpleDiff2)
-      expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}, changed: true})
+      expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}, newRender: true})
 
       let deep = new Rendered("123", deepDiff1)
       deep.mergeDiff(deepDiff2)
@@ -38,19 +38,19 @@ describe("Rendered", () => {
       const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: 1}}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {changed: true, [STATIC]: ["c"]}}})
+      expect(rendered.get()).toEqual({[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: ["c"]}}})
     })
 
     test("merges components considering old and new links", () => {
       const diff1 = {[COMPONENTS]: {1: {[STATIC]: ["old"]}}}
-      const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["new"]}, 2: {changed: true, [STATIC]: -1}, 3: {changed: true, [STATIC]: 1}}}
+      const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["new"]}, 2: {newRender: true, [STATIC]: -1}, 3: {newRender: true, [STATIC]: 1}}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({
         [COMPONENTS]: {
           1: {[STATIC]: ["new"]},
-          2: {[STATIC]: ["old"], changed: true},
-          3: {[STATIC]: ["new"], changed: true}
+          2: {[STATIC]: ["old"]},
+          3: {[STATIC]: ["new"]}
         }
       })
     })
@@ -73,16 +73,16 @@ describe("Rendered", () => {
       expect(rendered1.get()).toEqual({
         [COMPONENTS]: {
           1: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
-          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"], changed: true},
-          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"], changed: true},
-          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"], changed: true},
-          5: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"], changed: true},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
+          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
+          5: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
         }
       })
 
       const diff3 = {
         [COMPONENTS]: {
-          1: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"]},
+          1: {0: {[STATIC]: ["newRender"]}, [STATIC]: ["new"]},
           2: {0: {[STATIC]: ["replaced"]}, [STATIC]: -1},
           3: {0: {[STATIC]: ["replaced"]}, [STATIC]: 1},
           4: {[STATIC]: -1},
@@ -94,11 +94,11 @@ describe("Rendered", () => {
       rendered2.mergeDiff(diff3)
       expect(rendered2.get()).toEqual({
         [COMPONENTS]: {
-          1: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"]},
-          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"], changed: true},
-          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"], changed: true},
-          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"], changed: true},
-          5: {0: {[STATIC]: ["changed"]}, [STATIC]: ["new"], changed: true},
+          1: {0: {[STATIC]: ["newRender"]}, [STATIC]: ["new"]},
+          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
+          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
+          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
+          5: {0: {[STATIC]: ["newRender"]}, [STATIC]: ["new"]},
         }
       })
     })
@@ -324,7 +324,7 @@ const deepDiff2 = {
 const deepDiffResult = {
   "0": {
     "0": {
-      changed: true,
+      newRender: true,
       [DYNAMICS]: [["user1058", "2"]],
       [STATIC]: ["        <tr>\n          <td>", " (", ")</td>\n        </tr>\n"],
       "r": 1
@@ -333,7 +333,7 @@ const deepDiffResult = {
       "  <table>\n    <thead>\n      <tr>\n        <th>Username</th>\n        <th></th>\n      </tr>\n    </thead>\n    <tbody>\n",
       "    </tbody>\n  </table>\n",
     ],
-    changed: true,
+    newRender: true,
     "r": 1,
   },
   "1": {
