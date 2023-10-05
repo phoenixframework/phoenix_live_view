@@ -40,6 +40,7 @@ var PHX_DROP_TARGET = "drop-target";
 var PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs";
 var PHX_LIVE_FILE_UPDATED = "phx:live-file:updated";
 var PHX_SKIP = "data-phx-skip";
+var PHX_MAGIC_ID = "data-phx-id";
 var PHX_PRUNE = "data-phx-prune";
 var PHX_PAGE_LOADING = "page-loading";
 var PHX_CONNECTED_CLASS = "phx-connected";
@@ -94,6 +95,7 @@ var DEFAULTS = {
 };
 var DYNAMICS = "d";
 var STATIC = "s";
+var ROOT = "r";
 var COMPONENTS = "c";
 var EVENTS = "e";
 var REPLY = "r";
@@ -1802,7 +1804,10 @@ var DOMPatch = class {
       morphdom_esm_default(targetContainer, diffHTML, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
-          return dom_default.isPhxDestroyed(node) ? null : node.id;
+          if (dom_default.isPhxDestroyed(node)) {
+            return null;
+          }
+          return node.getAttribute && node.getAttribute(PHX_MAGIC_ID) || node.id;
         },
         skipFromChildren: (from) => {
           return from.getAttribute(phxUpdate) === PHX_STREAM;
@@ -2033,7 +2038,7 @@ var DOMPatch = class {
     return this.cidPatch;
   }
   skipCIDSibling(el) {
-    return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null;
+    return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP);
   }
   targetCIDContainer(html) {
     if (!this.isCIDPatch()) {
@@ -2059,7 +2064,7 @@ var DOMPatch = class {
       template.innerHTML = html;
       rest.forEach((el) => el.remove());
       Array.from(diffContainer.childNodes).forEach((child) => {
-        if (child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()) {
+        if (child.nodeType === Node.ELEMENT_NODE && child.hasAttribute(PHX_MAGIC_ID) && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()) {
           child.setAttribute(PHX_SKIP, "");
           child.innerHTML = "";
         }
@@ -2075,6 +2080,87 @@ var DOMPatch = class {
 };
 
 // js/phoenix_live_view/rendered.js
+var VOID_TAGS = new Set([
+  "area",
+  "base",
+  "br",
+  "col",
+  "command",
+  "embed",
+  "hr",
+  "img",
+  "input",
+  "keygen",
+  "link",
+  "meta",
+  "param",
+  "source",
+  "track",
+  "wbr"
+]);
+var endingTagNameChars = new Set([">", " ", "\n", "	", "\r"]);
+var modifyRoot = (html, attrs, clearInnerHTML) => {
+  let i = 0;
+  let insideComment = false;
+  let insideTag = false;
+  let tag;
+  let beforeTagBuff = [];
+  while (i < html.length) {
+    let char = html.charAt(i);
+    if (insideComment) {
+      if (char === "-" && html.slice(i, i + 3) === "-->") {
+        insideComment = false;
+        beforeTagBuff.push("-->");
+        i += 3;
+      } else {
+        beforeTagBuff.push(char);
+        i++;
+      }
+    } else if (char === "<" && html.slice(i, i + 4) === "<!--") {
+      insideComment = true;
+      beforeTagBuff.push("<!--");
+      i += 4;
+    } else if (char === "<") {
+      insideTag = true;
+      let iAtOpen = i;
+      for (i; i < html.length; i++) {
+        if (endingTagNameChars.has(html.charAt(i))) {
+          break;
+        }
+      }
+      tag = html.slice(iAtOpen + 1, i);
+      break;
+    } else if (!insideComment && !insideTag) {
+      beforeTagBuff.push(char);
+      i++;
+    }
+  }
+  if (!tag) {
+    throw new Error(`malformed html ${html}`);
+  }
+  let attrsStr = Object.keys(attrs).map((attr) => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`).join(" ");
+  let isVoid = VOID_TAGS.has(tag);
+  let closeTag = `</${tag}>`;
+  let newHTML;
+  let beforeTag = beforeTagBuff.join("");
+  let afterTag;
+  if (isVoid) {
+    afterTag = html.slice(html.lastIndexOf(`/>`) + 2);
+  } else {
+    afterTag = html.slice(html.lastIndexOf(closeTag) + closeTag.length);
+  }
+  if (clearInnerHTML) {
+    if (isVoid) {
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`;
+    } else {
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}>${closeTag}`;
+    }
+  } else {
+    let rest = html.slice(i, html.length - afterTag.length);
+    newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`;
+  }
+  return [newHTML, beforeTag, afterTag];
+};
 var Rendered = class {
   static extract(diff) {
     let { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;
@@ -2086,18 +2172,19 @@ var Rendered = class {
   constructor(viewId, rendered) {
     this.viewId = viewId;
     this.rendered = {};
+    this.magicId = 0;
     this.mergeDiff(rendered);
   }
   parentViewId() {
     return this.viewId;
   }
   toString(onlyCids) {
-    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids);
+    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, false);
     return [str, streams];
   }
-  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids) {
+  recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, insideComponent) {
     onlyCids = onlyCids ? new Set(onlyCids) : null;
-    let output = { buffer: "", components, onlyCids, streams: new Set() };
+    let output = { buffer: "", components, onlyCids, streams: new Set(), insideComponent };
     this.toOutputBuffer(rendered, null, output);
     return [output.buffer, output.streams];
   }
@@ -2171,6 +2258,9 @@ var Rendered = class {
         target[key] = val;
       }
     }
+    if (target[ROOT]) {
+      target.changed = true;
+    }
   }
   cloneMerge(target, source) {
     let merged = { ...target, ...source };
@@ -2203,17 +2293,49 @@ var Rendered = class {
       return part;
     }
   }
+  nextMagicID() {
+    this.magicId++;
+    return `phx-${this.magicId}`;
+  }
   toOutputBuffer(rendered, templates, output) {
     if (rendered[DYNAMICS]) {
       return this.comprehensionToBuffer(rendered, templates, output);
     }
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
-    output.buffer += statics[0];
-    for (let i = 1; i < statics.length; i++) {
-      this.dynamicToBuffer(rendered[i - 1], templates, output);
-      output.buffer += statics[i];
+    let currentOut = {
+      buffer: "",
+      components: output.components,
+      onlyCids: output.onlyCids,
+      streams: output.streams,
+      insideComponent: output.insideComponent
+    };
+    let firstRootRender = false;
+    let isRoot = rendered[ROOT] && !output.insideComponent;
+    if (isRoot && !rendered.magicId) {
+      firstRootRender = true;
+      rendered.magicId = this.nextMagicID();
     }
+    currentOut.buffer += statics[0];
+    for (let i = 1; i < statics.length; i++) {
+      this.dynamicToBuffer(rendered[i - 1], templates, currentOut);
+      currentOut.buffer += statics[i];
+    }
+    if (isRoot) {
+      let skip = !rendered.changed && !firstRootRender && currentOut.streams.size === output.streams.size;
+      let attrs = { [PHX_MAGIC_ID]: rendered.magicId };
+      if (skip) {
+        attrs[PHX_SKIP] = true;
+      }
+      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip);
+      rendered.changed = false;
+      currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`;
+    }
+    output.buffer += currentOut.buffer;
+    output.components = currentOut.components;
+    output.insideComponent = currentOut.insideComponent;
+    output.onlyCids = currentOut.onlyCids;
+    output.streams = currentOut.streams;
   }
   comprehensionToBuffer(rendered, templates, output) {
     let { [DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream } = rendered;
@@ -2247,55 +2369,17 @@ var Rendered = class {
   }
   recursiveCIDToString(components, cid, onlyCids, allowRootComments = true) {
     let component = components[cid] || logError(`no component for CID ${cid}`, components);
-    let template = document.createElement("template");
-    let [html, streams] = this.recursiveToString(component, components, onlyCids);
-    template.innerHTML = html;
-    let container = template.content;
+    let [html, streams] = this.recursiveToString(component, components, onlyCids, true);
     let skip = onlyCids && !onlyCids.has(cid);
-    let [hasChildNodes, hasChildComponents] = Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
-      if (child.nodeType === Node.ELEMENT_NODE) {
-        if (child.getAttribute(PHX_COMPONENT)) {
-          return [hasNodes, true];
-        }
-        child.setAttribute(PHX_COMPONENT, cid);
-        if (!child.id) {
-          child.id = `${this.parentViewId()}-${cid}-${i}`;
-        }
-        if (skip) {
-          child.setAttribute(PHX_SKIP, "");
-          child.innerHTML = "";
-        }
-        return [true, hasComponents];
-      } else if (child.nodeType === Node.COMMENT_NODE) {
-        if (!allowRootComments) {
-          child.remove();
-        }
-        return [hasNodes, hasComponents];
-      } else {
-        if (child.nodeValue.trim() !== "") {
-          logError(`only HTML element tags are allowed at the root of components.
-
-got: "${child.nodeValue.trim()}"
-
-within:
-`, template.innerHTML.trim());
-          child.replaceWith(this.createSpan(child.nodeValue, cid));
-          return [true, hasComponents];
-        } else {
-          child.remove();
-          return [hasNodes, hasComponents];
-        }
-      }
-    }, [false, false]);
-    if (!hasChildNodes && !hasChildComponents) {
-      logError("expected at least one HTML element tag inside a component, but the component is empty:\n", template.innerHTML.trim());
-      return [this.createSpan("", cid).outerHTML, streams];
-    } else if (!hasChildNodes && hasChildComponents) {
-      logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.", template.innerHTML.trim());
-      return [template.innerHTML, streams];
-    } else {
-      return [template.innerHTML, streams];
+    let attrs = { [PHX_COMPONENT]: cid, [PHX_MAGIC_ID]: `${this.parentViewId()}-${cid}` };
+    if (skip) {
+      attrs[PHX_SKIP] = true;
     }
+    let [newHTML, commentBefore, commentAfter] = modifyRoot(html, attrs, skip);
+    if (allowRootComments) {
+      newHTML = `${commentBefore}${newHTML}${commentAfter}`;
+    }
+    return [newHTML, streams];
   }
   createSpan(text, cid) {
     let span = document.createElement("span");
