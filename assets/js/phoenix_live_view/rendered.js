@@ -268,24 +268,24 @@ export default class Rendered {
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
     statics = this.templateStatic(statics, templates)
-    let currentOut = {...output, buffer: ""}
     let isRoot = rendered[ROOT]
+    let prevBuffer = output.buffer
+    if(isRoot){ output.buffer = "" }
 
     if(changeTracking && isRoot && !rendered.magicId){
       rendered.newRender = true
       rendered.magicId = this.nextMagicID()
     }
 
-    currentOut.buffer += statics[0]
+    output.buffer += statics[0]
     for(let i = 1; i < statics.length; i++){
-      this.dynamicToBuffer(rendered[i - 1], templates, currentOut, changeTracking)
-      currentOut.buffer += statics[i]
+      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking)
+      output.buffer += statics[i]
     }
-
-    let isCid = Object.keys(rootAttrs).length > 0
 
     if(isRoot){
       let skip = false
+      let isCid = Object.keys(rootAttrs).length > 0
       let attrs
       if(changeTracking || isCid){
         skip = !rendered.newRender
@@ -294,15 +294,10 @@ export default class Rendered {
         attrs = rootAttrs
       }
       if(skip){ attrs[PHX_SKIP] = true}
-      let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip)
+      let [newRoot, commentBefore, commentAfter] = modifyRoot(output.buffer, attrs, skip)
       rendered.newRender = false
-      currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`
+      output.buffer = prevBuffer + commentBefore + newRoot + commentAfter
     }
-
-    output.buffer += currentOut.buffer
-    output.components = currentOut.components
-    output.onlyCids = currentOut.onlyCids
-    output.streams = currentOut.streams // todo kill streams out of buffer
   }
 
   comprehensionToBuffer(rendered, templates, output){
