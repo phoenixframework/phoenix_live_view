@@ -139,6 +139,32 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
   end
 
+  @tag allow: [
+         max_entries: 1,
+         max_file_size: 1,
+         auto_upload: true,
+         accept: :any,
+         external: :preflight
+       ]
+  test "external auto upload with exceeded max file size", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo1.jpeg", content: String.duplicate("ok", 100)},
+        %{name: "foo2.jpeg", content: String.duplicate("ok", 100)}
+      ])
+
+    html =
+      lv
+      |> form("form", user: %{})
+      |> render_change(avatar)
+
+    assert html =~ "foo1.jpeg:0%"
+    assert html =~ "foo2.jpeg:0%"
+
+    assert {:error, [[_, %{reason: :too_large}]]} = render_upload(avatar, "foo1.jpeg", 1)
+    assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
+  end
+
   def bad_preflight(%LiveView.UploadEntry{} = _entry, socket), do: {:ok, %{}, socket}
 
   @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, external: :bad_preflight]

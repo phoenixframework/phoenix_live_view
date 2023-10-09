@@ -383,7 +383,10 @@ defmodule Phoenix.LiveView.Upload do
       end
 
     errors =
-      for entry <- entries, not entry.valid?, into: %{}, do: {entry.ref, entry_errors(conf, entry)}
+      for entry <- entries,
+          not entry.valid?,
+          into: %{},
+          do: {entry.ref, entry_errors(conf, entry)}
 
     reply = %{ref: conf.ref, config: client_config_meta, entries: reply_entries, errors: errors}
     {:ok, reply, socket}
@@ -397,7 +400,8 @@ defmodule Phoenix.LiveView.Upload do
     reply_entries =
       Enum.reduce_while(entries, {:ok, %{}, %{}, socket}, fn entry, {:ok, metas, errors, acc} ->
         if conf.auto_upload? and not entry.valid? do
-          new_errors = Map.put(errors, entry.ref, entry.errors)
+          reasons = for {ref, reason} <- conf.errors, ref == entry.ref, do: %{reason: reason}
+          new_errors = Map.put(errors, entry.ref, reasons)
           {:cont, {:ok, metas, new_errors, acc}}
         else
           case conf.external.(entry, acc) do
