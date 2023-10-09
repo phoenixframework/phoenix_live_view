@@ -61,15 +61,15 @@ defmodule Phoenix.LiveViewTest.UploadClient do
         state
       ) do
     new_entries =
-      Enum.reduce(entries, state.entries, fn %{"ref" => ref, "name" => name} = client_entry,
-                                             acc ->
-        case Map.fetch(entries_resp, ref) do
-          {:ok, token} ->
-            Map.put(acc, name, build_and_join_entry(state, client_entry, token))
+      Enum.reduce(entries, state.entries, fn
+        %{"ref" => ref, "name" => name} = client_entry, acc ->
+          case entries_resp do
+            %{^ref => token} ->
+              Map.put(acc, name, build_and_join_entry(state, client_entry, token))
 
-          :error ->
-            Map.put(acc, name, {:error, Map.get(errors, ref, :not_allowed)})
-        end
+            %{} ->
+              Map.put(acc, name, {:error, Map.get(errors, ref, :not_allowed)})
+          end
       end)
 
     new_state = %{state | upload_ref: upload_ref, config: config, entries: new_entries}
