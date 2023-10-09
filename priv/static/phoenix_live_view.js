@@ -1582,7 +1582,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       }
       function morphChildren(fromEl, toEl) {
-        var skipFrom = skipFromChildren(fromEl, toEl);
+        var skipFrom = skipFromChildren(fromEl);
         var curToNodeChild = toEl.firstChild;
         var curFromNodeChild = fromEl.firstChild;
         var curToNodeKey;
