@@ -7,6 +7,7 @@ defmodule Phoenix.Component do
   [the `~H` sigil](`sigil_H/2`):
 
       defmodule MyComponent do
+        # In Phoenix apps, the line is typically: use MyAppWeb, :html
         use Phoenix.Component
 
         def greet(assigns) do
@@ -15,6 +16,12 @@ defmodule Phoenix.Component do
           """
         end
       end
+
+  This function uses the `~H` sigil to return a rendered template.
+  `~H` stands for HEEx (HTML + EEx). HEEx is a template language for
+  writing HTML mixed with Elixir interpolation. We can write Elixir
+  code inside HEEx using `<%= ... %>` tags and we use `@name` to
+  access the key `name` defined inside `assigns`.
 
   When invoked within a `~H` sigil or HEEx template file:
 
@@ -49,9 +56,8 @@ defmodule Phoenix.Component do
   </.card>
   ```
 
-  Note how the `name` attribute automatically becomes the `@name` assign inside
-  function components. This can be further leveraged by using two higher-level
-  abstractions for us: attributes and slots.
+  In this module we will learn how to build rich and composable components to
+  use in our applications.
 
   ## Attributes
 
@@ -130,6 +136,7 @@ defmodule Phoenix.Component do
   `<Component.heading>` requires a `title`, but *does not* require a `name`.
 
       defmodule Components do
+        # In Phoenix apps, the line is typically: use MyAppWeb, :html
         use Phoenix.Component
 
         attr :title, :string, required: true
@@ -246,6 +253,16 @@ defmodule Phoenix.Component do
   `use Phoenix.Component`:
 
       use Phoenix.Component, global_prefixes: ~w(x-)
+
+  In your Phoenix application, this is typically done in your
+  `lib/my_app_web.ex` file, inside the `def html` definition:
+
+      def html do
+        quote do
+          use Phoenix.Component, global_prefixes: ~w(x-)
+          # ...
+        end
+      end
 
   Now all function components invoked by this module will accept any number of attributes
   prefixed with `x-`, in addition to the default global prefixes.
@@ -492,11 +509,46 @@ defmodule Phoenix.Component do
 
   See `embed_templates/1` for more information, including declarative
   assigns support for embedded templates.
+
+  ## Debug Annotations
+
+  HEEx templates support debug annotations, which are special HTML comments
+  that wrap around rendered components to help you identify where markup
+  in your HTML document is rendered within your function component tree.
+
+  For example, imagine the following HEEx template:
+
+  ```heex
+  <.header>
+    <.button>Click</.button>
+  </.header>
+  ```
+
+  The HTML document would receive the following comments when debug annotations
+  are enabled:
+
+  ```html
+  <!-- <AppWeb.CoreComponents.header> lib/app_web/core_components.ex:123 -->
+  <header class="p-5">
+    <!-- <AppWeb.CoreComponents.button> lib/app_web/core_components.ex:456 -->
+    <button class="px-2 bg-indigo-500 text-white">Click</button>
+    <!-- </AppWeb.CoreComponents.button> -->
+  </header>
+  <!-- </AppWeb.CoreComponents.header> -->
+  ```
+
+  Debug annotations work across any `~H` or `.html.heex` template.
+  They can be enabled globally with the following configuration in your
+  `config/dev.exs` file:
+
+      config :phoenix_live_view, debug_heex_annotations: true
+
+  Changing this configuration will require `mix clean` and a full recompile.
   '''
 
   ## Functions
 
-  alias Phoenix.LiveView.{Static, Socket}
+  alias Phoenix.LiveView.{Static, Socket, AsyncResult}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
   # Note we allow live_action as it may be passed down to a component, so it is not listed
   @non_assignables [:uploads, :streams, :socket, :myself]
@@ -735,6 +787,8 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
+    debug_annotations? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
+
     options = [
       engine: Phoenix.LiveView.TagEngine,
       file: __CALLER__.file,
@@ -742,7 +796,9 @@ defmodule Phoenix.Component do
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
       source: expr,
-      tag_handler: Phoenix.LiveView.HTMLEngine
+      tag_handler: Phoenix.LiveView.HTMLEngine,
+      annotate_tagged_content:
+        debug_annotations? && (&Phoenix.LiveView.HTMLEngine.annotate_tagged_content/1)
     ]
 
     EEx.compile_string(expr, options)
@@ -866,6 +922,10 @@ defmodule Phoenix.Component do
 
   If you don't want the container to affect layout, you can use the CSS property
   `display: contents` or a class that applies it, like Tailwind's `.contents`.
+
+  Beware if you set this to `:body`, as any content injected inside the body
+  (such as `Phoenix.LiveReload` features) will be discarded once the LiveView
+  connects
   """
   def live_render(conn_or_socket, view, opts \\ [])
 
@@ -991,7 +1051,10 @@ defmodule Phoenix.Component do
   def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
 
   @doc """
-  Returns the entry errors for an upload.
+  Returns the errors for an upload.
+
+  Note this function returns errors that apply to the allowed upload as a whole. For errors that
+  apply to a specific uploaded entry, use `upload_errors/2`.
 
   The following error may be returned:
 
@@ -999,14 +1062,12 @@ defmodule Phoenix.Component do
 
   ## Examples
 
-      def error_to_string(:too_many_files), do: "You have selected too many files"
+      def upload_error_to_string(:too_many_files), do: "You have selected too many files"
 
   ```heex
-  <%= for err <- upload_errors(@uploads.avatar) do %>
-    <div class="alert alert-danger">
-      <%= error_to_string(err) %>
-    </div>
-  <% end %>
+  <div :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger">
+    <%= upload_error_to_string(err) %>
+  </div>
   ```
   """
   def upload_errors(%Phoenix.LiveView.UploadConfig{} = conf) do
@@ -1020,19 +1081,22 @@ defmodule Phoenix.Component do
 
   * `:too_large` - The entry exceeds the `:max_file_size` constraint
   * `:not_accepted` - The entry does not match the `:accept` MIME types
+  * `:external_client_failure` - When external upload fails
+  * `{:writer_failure, reason}` - When the custom writer fails with `reason`
 
   ## Examples
 
-      def error_to_string(:too_large), do: "Too large"
-      def error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
+  ```elixir
+  defp upload_error_to_string(:too_large), do: "The file is too large"
+  defp upload_error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
+  defp upload_error_to_string(:external_client_failure), do: "Something went terribly wrong"
+  ```
 
   ```heex
   <%= for entry <- @uploads.avatar.entries do %>
-    <%= for err <- upload_errors(@uploads.avatar, entry) do %>
-      <div class="alert alert-danger">
-        <%= error_to_string(err) %>
-      </div>
-    <% end %>
+    <div :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">
+      <%= upload_error_to_string(err) %>
+    </div>
   <% end %>
   ```
   """
@@ -1056,7 +1120,7 @@ defmodule Phoenix.Component do
   Imagine you have a function component that accepts a color:
 
   ```heex
-  <.my_component color="red" />
+  <.my_component bg_color="red" />
   ```
 
   The color is also optional, so you can skip it:
@@ -1249,7 +1313,11 @@ defmodule Phoenix.Component do
           "#{inspect(assign)} is a reserved assign by LiveView and it cannot be set directly"
   end
 
-  defp validate_assign_key!(_key), do: :ok
+  defp validate_assign_key!(key) when is_atom(key), do: :ok
+
+  defp validate_assign_key!(key) do
+    raise ArgumentError, "assigns in LiveView must be atoms, got: #{inspect(key)}"
+  end
 
   @doc """
   Updates an existing `key` with `fun` in the given `socket_or_assigns`.
@@ -1268,8 +1336,8 @@ defmodule Phoenix.Component do
       iex> update(socket, :count, fn count -> count + 1 end)
       iex> update(socket, :count, &(&1 + 1))
       iex> update(socket, :max_users_this_session, fn current_max, %{users: users} ->
-             max(current_max, length(users))
-           end)
+      ...>   max(current_max, length(users))
+      ...> end)
   """
   def update(socket_or_assigns, key, fun)
 
@@ -1362,14 +1430,14 @@ defmodule Phoenix.Component do
         end
       end
 
-  And then you create a changeset which you pass to `to_form`:
+  And then you create a changeset that you pass to `to_form`:
 
-      %MyApp.Blog.Post{}
+      %MyApp.Users.User{}
       |> Ecto.Changeset.change()
       |> to_form()
 
   In this case, once the form is submitted, the parameters will
-  be available under `%{"post" => post_params}`.
+  be available under `%{"user" => user_params}`.
 
   ## Options
 
@@ -1383,12 +1451,16 @@ defmodule Phoenix.Component do
   changesets. `:errors` a keyword of tuples in the shape
   of `{error_message, options_list}`. Here is an example:
 
-      to_form(%{"search" => nil}, errors: [search: [{"Can't be blank", []}]])
+      to_form(%{"search" => nil}, errors: [search: {"Can't be blank", []}])
 
   If an existing `Phoenix.HTML.Form` struct is given, the
   options above will override its existing values if given.
   Then the remaining options are merged with the existing
   form options.
+
+  Errors in a form are only displayed if the changeset's `action`
+  field is set (and it is not set to `:ignore`). Refer to
+  [a note on :errors for more information](#form/1-a-note-on-errors).
   """
   def to_form(data_or_params, options \\ [])
 
@@ -1789,6 +1861,7 @@ defmodule Phoenix.Component do
   '''
   @doc type: :macro
   defmacro attr(name, type, opts \\ []) do
+    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
     type =
       if Macro.quoted_literal?(type) do
         Macro.prewalk(type, &expand_alias(&1, __CALLER__))
@@ -1881,15 +1954,6 @@ defmodule Phoenix.Component do
       %{kind: kind} ->
         raise ArgumentError, "expected #{inspect(module)} to be a component, but it is a #{kind}"
     end
-  end
-
-  def live_component(component) when is_atom(component) do
-    IO.warn(
-      "<%= live_component Component %> is deprecated, " <>
-        "please use <.live_component module={Component} id=\"hello\" /> inside HEEx templates instead"
-    )
-
-    Phoenix.LiveView.Helpers.__live_component__(component.__live__(), %{}, nil)
   end
 
   @doc """
@@ -2106,6 +2170,7 @@ defmodule Phoenix.Component do
     The HTTP method.
     It is only used if an `:action` is given. If the method is not `get` nor `post`,
     an input tag with name `_method` is generated alongside the form tag.
+    If an `:action` is given with no method, the method will default to `post`.
     """
   )
 
@@ -2210,6 +2275,86 @@ defmodule Phoenix.Component do
     </.inputs_for>
   </.form>
   ```
+
+  ## Dynamically adding and removing inputs
+
+  Dynamically adding and removing inputs is supported by rendering
+  checkboxes for inserts and removals. Libraries such as Ecto, or custom param
+  filtering can then inspect the parameters and handle the added or removed fields.
+  This can be combined with `Ecto.Changeset.cast/3`'s `:sort_param` and `:drop_param`
+  options. For example, imagine a parent with an `:emails` `has_many` or `embeds_many`
+  association. To cast the user input from a nested form, one simply needs to configure
+  the options:
+
+      schema "mailing_lists" do
+        field :title, :string
+
+        embeds_many :emails, EmailNotification, on_replace: :delete do
+          field :email, :string
+          field :name, :string
+        end
+      end
+
+      def changeset(list, attrs) do
+        list
+        |> cast(attrs, [:title])
+        |> cast_embed(:emails,
+          with: &email_changeset/2,
+          sort_param: :emails_sort,
+          drop_param: :emails_drop
+        )
+      end
+
+  Here we see the `:sort_param` and `:drop_param` options in action.
+
+  > Note: `on_replace: :delete` on the `has_many` and `embeds_many` is required
+  > when using these options.
+
+  When Ecto sees the specified sort or drop parameter from the form, it will sort
+  the children based on the order they appear in the form, add new children it hasn't
+  seen, or drop children if the parameter instructs it to do so.
+
+  The markup for such a schema and association would look like this:
+
+  ```heex
+  <.inputs_for :let={ef} field={@form[:emails]}>
+    <input type="hidden" name="mailing_list[emails_sort][]" value={ef.index} />
+    <.input type="text" field={ef[:email]} placeholder="email" />
+    <.input type="text" field={ef[:name]} placeholder="name" />
+    <label>
+      <input type="checkbox" name="mailing_list[emails_drop][]" value={ef.index} class="hidden" />
+      <.icon name="hero-x-mark" class="w-6 h-6 relative top-2" />
+    </label>
+  </.inputs_for>
+
+  <input type="hidden" name="mailing_list[emails_drop][]" />
+
+  <label class="block cursor-pointer">
+    <input type="checkbox" name="mailing_list[emails_sort][]" class="hidden" />
+    add more
+  </label>
+  ```
+
+  We used `inputs_for` to render inputs for the `:emails` association, which
+  contains an email address and name input for each child. Within the nested inputs,
+  we render a hidden `mailing_list[emails_sort][]` input, which is set to the index of the
+  given child. This tells Ecto's cast operation how to sort existing children, or
+  where to insert new children. Next, we render the email and name inputs as usual.
+  Then we render a label containing the "delete" text and a hidden checkbox input
+  with the name `mailing_list[emails_drop][]`, containing the index of the child as its value.
+  Like before, this tells Ecto to delete the child at this index when the checkbox is
+  checked. Wrapping the checkbox and textual content in a label makes any clicked content
+  within the label check and uncheck the checkbox.
+
+  Outside the `inputs_for`, we render an empty `mailing_list[emails_drop][]`,
+  to ensure that all children are deleted when saving a form where the user
+  dropped all entries. This checkbox is required whenever dropping associations.
+
+  Finally, we also render another label with a value-less `mailing_list[emails_sort][]`
+  checkbox with accompanied "add more" text. Ecto will treat unknown sort params
+  as new children and build a new child. This checkbox is optional and only necessary
+  if you want to dyamically add entries. You can optionally add a similar checkbox
+  before the `<.inputs_for>`, in the case you want to prepend entries.
   """
   @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
@@ -2257,16 +2402,35 @@ defmodule Phoenix.Component do
 
   slot.(:inner_block, required: true, doc: "The content rendered for each nested form.")
 
+  @persistent_id "_persistent_id"
   def inputs_for(assigns) do
-    %Phoenix.HTML.FormField{field: field_name, form: form} = assigns.field
+    %Phoenix.HTML.FormField{field: field_name, form: parent_form} = assigns.field
     options = assigns |> Map.take([:id, :as, :default, :append, :prepend]) |> Keyword.new()
 
     options =
-      form.options
+      parent_form.options
       |> Keyword.take([:multipart])
       |> Keyword.merge(options)
 
-    assigns = assign(assigns, :forms, form.impl.to_form(form.source, form, field_name, options))
+    forms = parent_form.impl.to_form(parent_form.source, parent_form, field_name, options)
+    seen_ids = for f <- forms, vid = f.params[@persistent_id], into: %{}, do: {vid, true}
+
+    {forms, _} =
+      Enum.map_reduce(forms, seen_ids, fn %Phoenix.HTML.Form{params: params} = form, seen_ids ->
+        id =
+          case params do
+            %{@persistent_id => id} -> id
+            %{} -> next_id(map_size(seen_ids), seen_ids)
+          end
+
+        form_id = "#{parent_form.id}_#{field_name}_#{id}"
+        new_params = Map.put(params, @persistent_id, id)
+        new_hidden = [{@persistent_id, id} | form.hidden]
+        new_form = %Phoenix.HTML.Form{form | id: form_id, params: new_params, hidden: new_hidden}
+        {new_form, Map.put(seen_ids, id, true)}
+      end)
+
+    assigns = assign(assigns, :forms, forms)
 
     ~H"""
     <%= for finner <- @forms do %>
@@ -2282,6 +2446,16 @@ defmodule Phoenix.Component do
     """
   end
 
+  defp next_id(idx, %{} = seen_ids) do
+    id_str = to_string(idx)
+
+    if Map.has_key?(seen_ids, id_str) do
+      next_id(idx + 1, seen_ids)
+    else
+      id_str
+    end
+  end
+
   defp name_for_value_or_values(form, field, values) when is_list(values) do
     Phoenix.HTML.Form.input_name(form, field) <> "[]"
   end
@@ -2291,7 +2465,11 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Generates a link for live and href navigation.
+  Generates a link to a given route.
+
+  To navigate across pages, using traditional browser navigation, use
+  the `href` attribute. To patch the current LiveView or navigate
+  across LiveViews, use `patch` and `navigate` respectively.
 
   [INSERT LVATTRDOCS]
 
@@ -2603,17 +2781,13 @@ defmodule Phoenix.Component do
   @doc """
   Builds a file input tag for a LiveView upload.
 
-  ## Attributes
-
-  * `:upload` - The `%Phoenix.LiveView.UploadConfig{}` struct.
-
-  Arbitrary attributes may be passed to be applied to the file input tag.
+  [INSERT LVATTRDOCS]
 
   ## Drag and Drop
 
   Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
-  attribute pointing to the DOM `id` of the file input. By default, the file input `id` is the
-  upload `ref`, so the following markup is all that is required for drag and drop support:
+  attribute pointing to the UploadConfig `ref`, so the following markup is all that is required
+  for drag and drop support:
 
   ```heex
   <div class="container" phx-drop-target={@uploads.avatar.ref}>
@@ -2624,70 +2798,60 @@ defmodule Phoenix.Component do
 
   ## Examples
 
+  Rendering a file input:
+
   ```heex
+  <.live_file_input upload={@uploads.avatar} />
+  ```
+
+  Rendering a file input with a label:
+
+  ```heex
+  <label for={@uploads.avatar.ref}>Avatar</label>
   <.live_file_input upload={@uploads.avatar} />
   ```
   """
   @doc type: :component
-  def live_file_input(assigns)
 
-  def live_file_input(%Phoenix.LiveView.UploadConfig{} = conf) do
-    IO.warn(
-      "live_file_input(upload) is deprecated, please use <.live_file_input upload={upload} /> instead"
-    )
+  attr.(:upload, Phoenix.LiveView.UploadConfig,
+    required: true,
+    doc: "The `Phoenix.LiveView.UploadConfig` struct"
+  )
 
-    Phoenix.LiveView.Helpers.live_file_input(conf, [])
-  end
+  attr.(:accept, :string,
+    doc:
+      "the optional override for the accept attribute. Defaults to :accept specified by allow_upload"
+  )
 
-  # TODO: Use attr when the backwards compatibility clause above is removed.
-  # attr :upload, Phoenix.LiveView.UploadConfig, required: true
-  # attr :rest, :global
-  def live_file_input(%{} = assigns) do
-    conf =
-      case assigns do
-        %{id: _} -> raise ArgumentError, "the :id cannot be overridden on a live_file_input"
-        %{upload: %Phoenix.LiveView.UploadConfig{} = conf} -> conf
-        %{} -> raise ArgumentError, "missing required :upload attribute to <.live_file_input/>"
-      end
+  attr.(:rest, :global, include: ~w(webkitdirectory required disabled))
 
-    rest = assigns_to_attributes(assigns, [:upload])
-
-    rest =
-      if conf.max_entries > 1 do
-        Keyword.put(rest, :multiple, true)
-      else
-        rest
-      end
-
-    assigns =
-      assign(assigns,
-        conf: conf,
-        rest: rest,
-        valid?: Enum.any?(conf.entries) && Enum.empty?(conf.errors),
-        done_entries: for(entry <- conf.entries, entry.done?, do: entry),
-        preflighted_entries: for(entry <- conf.entries, entry.preflighted?, do: entry)
-      )
+  def live_file_input(%{upload: upload} = assigns) do
+    assigns = assign_new(assigns, :accept, fn -> upload.accept != :any && upload.accept end)
 
     ~H"""
     <input
       id={@upload.ref}
       type="file"
       name={@upload.name}
-      accept={@upload.accept != :any && @upload.accept}
+      accept={@accept}
       data-phx-hook="Phoenix.LiveFileUpload"
       data-phx-update="ignore"
-      data-phx-upload-ref={@conf.ref}
-      data-phx-active-refs={Enum.map_join(@conf.entries, ",", & &1.ref)}
-      data-phx-done-refs={Enum.map_join(@done_entries, ",", & &1.ref)}
-      data-phx-preflighted-refs={Enum.map_join(@preflighted_entries, ",", & &1.ref)}
-      data-phx-auto-upload={@valid? && @conf.auto_upload?}
-      {@rest}
+      data-phx-upload-ref={@upload.ref}
+      data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
+      data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
+      data-phx-preflighted-refs={join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))}
+      data-phx-auto-upload={@upload.auto_upload?}
+      {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
     />
     """
   end
 
-  @doc """
+  defp join_refs(entries), do: Enum.join(entries, ",")
+
+  @doc ~S"""
   Generates an image preview on the client for a selected file.
+
+  [INSERT LVATTRDOCS]
 
   ## Examples
 
@@ -2696,41 +2860,44 @@ defmodule Phoenix.Component do
     <.live_img_preview entry={entry} width="75" />
   <% end %>
   ```
+
+  When you need to use it multiple times, make sure that they have distinct ids
+
+  ```heex
+  <%= for entry <- @uploads.avatar.entries do %>
+    <.live_img_preview entry={entry} width="75" />
+  <% end %>
+
+  <%= for entry <- @uploads.avatar.entries do %>
+    <.live_img_preview id={"modal-#{entry.ref}"} entry={entry} width="500" />
+  <% end %>
+  ```
   """
   @doc type: :component
-  def live_img_preview(assigns)
 
-  def live_img_preview(%Phoenix.LiveView.UploadEntry{} = entry) do
-    IO.warn("""
-    live_img_preview(entry) is deprecated, please use <.live_img_preview entry={entry} /> instead
-    """)
+  attr.(:entry, Phoenix.LiveView.UploadEntry,
+    required: true,
+    doc: "The `Phoenix.LiveView.UploadEntry` struct"
+  )
 
-    live_img_preview(%{entry: entry})
-  end
+  attr.(:id, :string,
+    default: nil,
+    doc:
+      "the id of the img tag. Derived by default from the entry ref, but can be overridden as needed if you need to render a preview of the same entry multiple times on the same page"
+  )
 
-  # TODO: Use attr when the backwards compatibility clause above is removed.
-  # attr :entry, Phoenix.LiveView.UploadEntry, required: true
-  # attr :rest, :global
-  def live_img_preview(%{entry: %Phoenix.LiveView.UploadEntry{ref: ref} = entry} = assigns) do
-    rest =
-      assigns
-      |> assigns_to_attributes([:entry])
-      |> Keyword.put_new_lazy(:id, fn -> "phx-preview-#{ref}" end)
+  attr.(:rest, :global, [])
 
-    assigns = assign(assigns, entry: entry, ref: ref, rest: rest)
-
+  def live_img_preview(assigns) do
     ~H"""
     <img
+      id={@id || "phx-preview-#{@entry.ref}"}
       data-phx-upload-ref={@entry.upload_ref}
-      data-phx-entry-ref={@ref}
+      data-phx-entry-ref={@entry.ref}
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
       {@rest} />
     """
-  end
-
-  def live_img_preview(_assigns) do
-    raise ArgumentError, "missing required :entry attribute to <.live_img_preview/>"
   end
 
   @doc """
@@ -2762,13 +2929,60 @@ defmodule Phoenix.Component do
 
   def intersperse(assigns) do
     ~H"""
-    <%= for item <- Enum.intersperse(@enum, :separator) do %>
-      <%= if item == :separator do %>
-        <%= render_slot(@separator) %>
-      <% else %>
-        <%= render_slot(@inner_block, item) %>
-      <% end %>
-    <% end %>
+    <%= for item <- Enum.intersperse(@enum, :separator) do %><%=
+      if item == :separator do
+        render_slot(@separator)
+      else
+        render_slot(@inner_block, item)
+      end
+    %><% end %>
     """
+  end
+
+  @doc """
+  Renders an async assign with slots for the different loading states.
+
+  *Note*: The inner block receives the result of the async assign as a :let.
+  The let is only accessible to the inner block and is not in scope to the
+  other slots.
+
+  ## Examples
+
+  ```heex
+  <.async_result :let={org} assign={@org}>
+    <:loading>Loading organization...</:loading>
+    <:failed :let={reason}>there was an error loading the organization</:failed>
+    <%= if org do %>
+      <%= org.name %>
+    <% else %>
+      You don't have an organization yet.
+    <% end %>
+  </.async_result>
+  ```
+  """
+  attr.(:assign, AsyncResult, required: true)
+  slot.(:loading, doc: "rendered while the assign is loading")
+
+  slot.(:failed,
+    doc:
+      "rendered when an error or exit is caught or assign_async returns `{:error, reason}`. Receives the error as a :let."
+  )
+
+  slot.(:inner_block,
+    doc:
+      "rendered when the assign is loaded successfully via AsyncResult.ok/2. Receives the result as a :let"
+  )
+
+  def async_result(%{assign: async_assign} = assigns) do
+    cond do
+      async_assign.ok? ->
+        ~H|<%= render_slot(@inner_block, @assign.result) %>|
+
+      async_assign.loading ->
+        ~H|<%= render_slot(@loading, @assign.loading) %>|
+
+      async_assign.failed ->
+        ~H|<%= render_slot(@failed, @assign.failed) %>|
+    end
   end
 end

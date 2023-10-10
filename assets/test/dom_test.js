@@ -1,53 +1,83 @@
 import DOM from "phoenix_live_view/dom"
 import {appendTitle, tag} from "./test_helpers"
 
+let e = (href) => {
+  let event = {}
+  let anchor = document.createElement("a")
+  anchor.setAttribute("href", href)
+  event.target = anchor
+  event.defaultPrevented = false
+  return event
+}
+
 describe("DOM", () => {
   beforeEach(() => {
     let curTitle = document.querySelector("title")
     curTitle && curTitle.remove()
   })
 
-  describe("isNewPageHref", () => {
+  describe ("wantsNewTab", () => {
+    test("case insensitive target", () => {
+      let event = e("https://test.local")
+      expect(DOM.wantsNewTab(event)).toBe(false)
+      // lowercase
+      event.target.setAttribute("target", "_blank")
+      expect(DOM.wantsNewTab(event)).toBe(true)
+      // uppercase
+      event.target.setAttribute("target", "_BLANK")
+      expect(DOM.wantsNewTab(event)).toBe(true)
+    })
+  })
+
+  describe("isNewPageClick", () => {
     test("identical locations", () => {
       let currentLoc
       currentLoc = new URL("https://test.local/foo")
-      expect(DOM.isNewPageHref("/foo", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("https://test.local/foo", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("//test.local/foo", currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("/foo"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("https://test.local/foo"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("//test.local/foo"), currentLoc)).toBe(true)
       // with hash
-      expect(DOM.isNewPageHref("/foo#hash", currentLoc)).toBe(false)
-      expect(DOM.isNewPageHref("https://test.local/foo#hash", currentLoc)).toBe(false)
-      expect(DOM.isNewPageHref("//test.local/foo#hash", currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("/foo#hash"), currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("https://test.local/foo#hash"), currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("//test.local/foo#hash"), currentLoc)).toBe(false)
       // different paths
-      expect(DOM.isNewPageHref("/foo2#hash", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("https://test.local/foo2#hash", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("//test.local/foo2#hash", currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("/foo2#hash"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("https://test.local/foo2#hash"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("//test.local/foo2#hash"), currentLoc)).toBe(true)
     })
 
     test("identical locations with query", () => {
       let currentLoc
       currentLoc = new URL("https://test.local/foo?query=1")
-      expect(DOM.isNewPageHref("/foo", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("https://test.local/foo?query=1", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("//test.local/foo?query=1", currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("/foo"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("https://test.local/foo?query=1"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("//test.local/foo?query=1"), currentLoc)).toBe(true)
       // with hash
-      expect(DOM.isNewPageHref("/foo?query=1#hash", currentLoc)).toBe(false)
-      expect(DOM.isNewPageHref("https://test.local/foo?query=1#hash", currentLoc)).toBe(false)
-      expect(DOM.isNewPageHref("//test.local/foo?query=1#hash", currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("/foo?query=1#hash"), currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("https://test.local/foo?query=1#hash"), currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("//test.local/foo?query=1#hash"), currentLoc)).toBe(false)
       // different query
-      expect(DOM.isNewPageHref("/foo?query=2#hash", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("https://test.local/foo?query=2#hash", currentLoc)).toBe(true)
-      expect(DOM.isNewPageHref("//test.local/foo?query=2#hash", currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("/foo?query=2#hash"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("https://test.local/foo?query=2#hash"), currentLoc)).toBe(true)
+      expect(DOM.isNewPageClick(e("//test.local/foo?query=2#hash"), currentLoc)).toBe(true)
     })
 
     test("empty hash href", () => {
       let currentLoc = new URL("https://test.local/foo")
-      expect(DOM.isNewPageHref("#", currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("#"), currentLoc)).toBe(false)
     })
 
     test("local hash", () => {
       let currentLoc = new URL("https://test.local/foo")
-      expect(DOM.isNewPageHref("#foo", currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(e("#foo"), currentLoc)).toBe(false)
+    })
+
+    test("with defaultPrevented return sfalse", () => {
+      let currentLoc
+      currentLoc = new URL("https://test.local/foo")
+      let event = e("/foo")
+      event.defaultPrevented = true
+      expect(DOM.isNewPageClick(e, currentLoc)).toBe(false)
     })
   })
 

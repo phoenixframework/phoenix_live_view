@@ -1,4 +1,4 @@
-# Using Gettext for internationalization
+# Gettext for internationalization
 
 For internationalization with [gettext](https://hexdocs.pm/gettext/Gettext.html),
 you must call `Gettext.put_locale/2` on the LiveView mount callback to instruct

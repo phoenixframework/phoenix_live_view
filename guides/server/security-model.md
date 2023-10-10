@@ -1,4 +1,4 @@
-# Security considerations of the LiveView model
+# Security considerations
 
 LiveView begins its life-cycle as a regular HTTP request. Then a stateful
 connection is established. Both the HTTP request and the stateful connection
@@ -41,7 +41,7 @@ The [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
 the initial HTTP mount and when LiveView is connected. Therefore, any
 authentication performed during mount will cover all scenarios.
 
-If you perform user authentication and confirmation exclusively on HTTP
+However, if you perform user authentication and confirmation exclusively on HTTP
 requests via Plugs, such as this:
 
     plug :ensure_user_authenticated
@@ -90,7 +90,14 @@ We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
 convenience to avoid fetching the `current_user` multiple times across
 LiveViews.
 
-Now we can use the hook whenever relevant:
+Now we can use the hook whenever relevant. One option is to specify
+the hook in your router under `live_session`:
+
+    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
+      # Your routes
+    end
+
+Alternatively, you can either specify the hook directly in the LiveView:
 
     defmodule MyAppWeb.PageLive do
       use MyAppWeb, :live_view
@@ -175,7 +182,7 @@ the topic:
     MyAppWeb.Endpoint.broadcast("users_socket:#{user.id}", "disconnect", %{})
 
 > Note: If you use `mix phx.gen.auth` to generate your authentication system,
-> lines to that effect are already present in the generated code.  The generated
+> lines to that effect are already present in the generated code. The generated
 > code uses a `user_token` instead of referring to the `user_id`.
 
 Once a LiveView is disconnected, the client will attempt to reestablish
@@ -234,11 +241,11 @@ using `on_mount` hooks.
 a different root layout, since layouts are not updated between live
 redirects:
 
-    live_session :default, root_layout: {LayoutView, "app.html"} do
+    live_session :default, root_layout: {LayoutView, :root} do
       ...
     end
 
-    live_session :admin, root_layout: {LayoutView, "admin.html"} do
+    live_session :admin, root_layout: {LayoutView, :admin} do
       ...
     end
 
@@ -273,13 +280,17 @@ regular request. If there are no regular web requests defined under
 a live session, then the `pipe_through` checks are not necessary.
 
 Declaring the `on_mount` on `live_session` is exactly the same as
-declaring it in each LiveView inside the `live_session`. It will be
-executed every time a LiveView is mounted, even after `live_redirect`s.
+declaring it in each LiveView. It will be executed every time a
+LiveView is mounted, even after `live_redirect`s.
+
+## Summing up
+
 The important concepts to keep in mind are:
 
-  * If you have both LiveViews and regular web requests, then you
-    must always authorize and authenticate your LiveViews (using
-    on mount hooks) and your web requests (using plugs)
+  * If you have both LiveViews and regular web requests, then any
+    logic in your plugs must be replicated in your LiveView. Code
+    that executes on the `mount` callback always runs on both live
+    and regular web requests to that LiveView
 
   * All actions (events) must also be explicitly authorized by
     checking permissions. Those permissions are often domain/business

@@ -1,5 +1,116 @@
 # Changelog
 
+## 0.20.1 (2023-10-09)
+
+### Bug fixes
+  * Fix error with live uploads `auto_upload: true` when a file fails to preflight
+  * Fix error with live uploads where an early exit can cause a map key error
+  * Fix match error on live navigation when reconnecting from client
+
+### Enhancements
+  * Support new `meta()` method on File/Blob sublcasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
+  * Improve void tagging and error messages
+
+## 0.20.0 (2023-09-22)
+
+### Deprecations
+  * Deprecate the `~L` sigil in favor of `~H`
+  * Deprecate `preload/1` in LiveComponent in favor of `update_many/1`
+  * Deprecate `live_component/2-3` in favor of `<.live_component />`
+  * Deprecate `live_patch` in favor of `<.link patch={...} />`
+  * Deprecate `live_redirect` in favor of `<.link navigate={...} />`
+  * Deprecate `live_title_tag` in favor of `<.live_title />`
+
+### Backwards incompatible changes
+  * Remove previously deprecated `render_block/2` in favor of `render_slot/2`
+  * Remove previously deprecated `live_img_preview/2` in favor of `<.live_img_preview />`
+  * Remove previously deprecated `live_file_input/2` in favor of `<.live_file_input />`
+
+### Bug fixes
+  * Fix uploads with `auto_upload: true` failing to propagate errors when any individual entry is invalid
+  * Fix uploads with `auto_upload: true` failing to auto upload valid entries errors when any individual entry is invalid
+  * Fix error on form recovery with `auto_upload: true`
+  * Fix issue on form recovery where hidden inputs would be selected by mistake
+  * Fix form recovery when phx-change is a JS command
+  * Fix stream reset on nested live components with nested streams.
+  * Fix window location resetting to null when using nested LiveView on connection error
+  * Fix anchors within contenteditable causing LiveSocket disconnects
+
+### Enhancements
+  * Add heex debug annotations via `config :phoenix_live_view, debug_heex_annotations: true`, which provides special HTML comments that wrap around rendered components to help you identify where markup in your HTML document is rendered within your function component tree
+  * Add `assign_async`, `start_async`, `<.async_result>` and, `AsyncResult` for declaratively handling async operations in a LiveView or LiveComponent.
+  * Supporting passing `@myself` for `Phoenix.LiveView.send_update/3`
+  * Support change tracking on Access.get
+  * Allow overriding `id` of `<.live_img_preview>`
+
+## 0.19.5 (2023-07-19)
+
+### Backwards incompatible changes
+  * The `close/1` callback of `Phoenix.LiveView.UploadWriter` is now `close/2` with the close reason passed as the second argument.
+  * The `write_chunk` callback of `Phoenix.LiveView.UploadWriter` must now return the updated
+    writer state when an error occurs. Instead of `{:error, reason}`, return `{:error, reason, new_state}`.
+
+### Enhancements
+  * Pass close reason to `Phoenix.LiveView.UploadWriter` close.
+  * Dispatch `phx:navigate` window events when LiveView changes the history state
+
+### Bug fixes
+  * Call `Phoenix.LiveView.UploadWriter` close callback when LiveView goes down or connection is lost
+  * Fix JS.patch to a Phoenix router scope with `:host` causing errors
+  * Fix immediate navigation after patch not updating URL
+  * Fix stream reset on nested streams inside live components causing nested stream children to be removed
+
+## 0.19.4 (2023-07-10)
+
+### Enhancements
+  * Introduce `Phoenix.LiveView.UploadWriter`
+
+## 0.19.3 (2023-06-21)
+
+### Bug fixes
+  * Fix `push_event` inside component update not being sent in some cases
+  * Bring back accidentally deprecated `upload_errors/1`
+
+## 0.19.2 (2023-06-12)
+
+### Bug fixes
+  * Fix issue when `<input name="value" />` is used
+
+## 0.19.1 (2023-06-06)
+
+### Enhancements
+  * Allow `accept` attribute on `<.live_file_input>` to override default values
+
+### Bug fixes
+  * Fix issue causing anchor clicks to disconnect LV when they were already handled via `preventDefault()` by other scripts
+
+## 0.19.0 (2023-05-29)
+
+### Backwards incompatible changes
+  * Drop support for passing an id to the `phx-feedback-for` attribute. An input name must be passed instead.
+  * Remove previously deprecated `let` attribute. Use `:let` instead
+  * Remove previously deprecated `<%= live_img_preview(entry) %>`. Use `<.live_img_preview entry={entry} />` instead
+  * Remove previously deprecated `<%= live_file_input(upload) %>`. Use `<.live_file_input upload={upload} />` instead
+  * Remove previously deprecated `<%= live_component(Component) %>`. Use `<.live_component module={Component} id=\"hello\" />` instead
+
+### Enhancements
+  * Support stream resets with bulk insert operations
+  * Support ordered inputs within `inputs_for`, to pair with Ecto's new `sort_param` and `drop_param` casting
+  * Send form phx-value's on form events
+
+### Deprecations
+  * Deprecate passing `:dom_id` to `stream/4` in favor of `stream_configure/3`
+  * Deprecate `render_block/2` in favor of `render_slot/2`
+  * Deprecate `<%= live_img_preview(entry, opts) %>`. Use `<.live_img_preview entry={entry} {opts} />`
+  * Deprecate `<%= live_file_input(upload, opts) %>`. Use `<.live_file_input upload={upload} {opts} />`
+  * Deprecate stateless LiveComponent in favor of function components or in favor of `<.live_component id={...} />` (note the `id` is required)
+
+### Bug fixes
+  * Fix LiveView disconnects when clicking a `download` link
+  * Fix stream deletes not being sent on nested for comprehensions
+  * Fix `phx-disconnected` bindings not firing on mount failures
+  * Support form recovery on forms with only hidden inputs
+
 ## 0.18.18 (2023-03-16)
 
 ### Bug fixes

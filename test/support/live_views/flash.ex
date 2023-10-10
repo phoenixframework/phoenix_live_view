@@ -6,9 +6,8 @@ defmodule Phoenix.LiveViewTest.FlashLive do
     uri[<%= @uri %>]
     root[<%= live_flash(@flash, :info) %>]:info
     root[<%= live_flash(@flash, :error) %>]:error
-    <%= live_component Phoenix.LiveViewTest.FlashComponent, id: "flash-component" %>
+    <.live_component module={Phoenix.LiveViewTest.FlashComponent} id="flash-component" />
     child[<%= live_render @socket, Phoenix.LiveViewTest.FlashChildLive, id: "flash-child" %>]
-    <%= live_component Phoenix.LiveViewTest.StatelessFlashComponent, flash: @flash %>
     """
   end
 
@@ -74,20 +73,6 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
 
   def handle_event("click", %{"type" => "put_flash", "error" => value}, socket) do
     {:noreply, socket |> put_flash(:error, value)}
-  end
-end
-
-defmodule Phoenix.LiveViewTest.StatelessFlashComponent do
-  use Phoenix.LiveComponent
-
-  @spec render(any) :: Phoenix.LiveView.Rendered.t()
-  def render(assigns) do
-    ~H"""
-    <div id={@id}>
-    stateless_component[<%= live_flash(@flash, :info) %>]:info
-    stateless_component[<%= live_flash(@flash, :error) %>]:error
-    </div>
-    """
   end
 end
 

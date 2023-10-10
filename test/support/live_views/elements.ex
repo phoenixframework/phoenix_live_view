@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <div id="last-event"><%= @event %></div>
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
-    <div id="child-component"><%= live_component Phoenix.LiveViewTest.ElementsComponent, id: 1 %></div>
+    <div id="child-component"><.live_component module={Phoenix.LiveViewTest.ElementsComponent} id={1} /></div>
 
     <%# basic render_* %>
     <span id="span-no-attr">This is a span</span>
@@ -43,9 +43,9 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
     <a href="/" id="redirect-a">Regular Link</a>
-    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-a" %>
-    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-replace-a", replace: true %>
-    <%= live_patch "Live patch", to: "/elements?from=uri", id: "live-patch-a" %>
+    <.link navigate="/example" id="live-redirect-a">Live redirect</.link>
+    <.link navigate="/example" id="live-redirect-replace-a" replace>Live redirect</.link>
+    <.link patch="/elements?from=uri" id="live-patch-a">Live patch</.link>
 
     <%# hooks %>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
@@ -131,6 +131,19 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <input name="hello[individual]" type="text" phx-change="individual-changed"/>
     </form>
 
+    <form id="submitter-form" phx-submit="form-submit">
+      <input name="data[a]" type="hidden" value="b">
+      <input name="input" type="submit" value="yes">
+      <input name="input_disabled" type="submit" value="yes" disabled>
+      <input name="data[nested]" id="data-nested" type="submit" value="yes">
+      <input id="input_no_name" type="submit" value="yes">
+      <button name="button" type="submit" value="yes">button</button>
+      <button name="button_disabled" type="submit" value="yes" disabled />
+      <button name="button_no_submit" type="button" value="this_value_should_never_appear">button_no_submit</button>
+      <button name="button_no_type" value="yes">button_no_type</button>
+      <button name="button_no_value">Button No Value</button>
+    </form>
+
     <form id="trigger-form-default" phx-submit="form-submit-trigger"
           phx-trigger-action={@trigger_action}>
     </form>
@@ -140,6 +153,9 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <form id="trigger-form-value" action="/not_found" method="POST" phx-submit="form-submit-trigger"
           phx-trigger-action={@trigger_action}>
     </form>
+
+    <%# @page_title assign is unique %>
+    <svg><title>SVG with title</title></svg>
     """
   end
 

@@ -468,8 +468,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
 
-    assigns =
-      Map.new(assigns)
+    assigns = Map.new(assigns)
 
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
@@ -571,6 +570,37 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Puts the submitter `element_or_selector` on the given `form` element.
+
+  A submitter is an element that initiates the form's submit event on the client. When a submitter
+  is put on an element created with `form/3` and then the form is submitted via `render_submit/2`,
+  the name/value pair of the submitter will be included in the submit event payload.
+
+  The given element or selector must exist within the form and match one of the following:
+
+  - A `button` or `input` element with `type="submit"`.
+
+  - A `button` element without a `type` attribute.
+
+  ## Examples
+
+      form = view |> form("#my-form")
+
+      assert form
+             |> put_submitter("button[name=example]")
+             |> render_submit() =~ "Submitted example"
+  """
+  def put_submitter(form, element_or_selector)
+
+  def put_submitter(%Element{proxy: proxy} = form, submitter) when is_binary(submitter) do
+    put_submitter(form, %Element{proxy: proxy, selector: submitter})
+  end
+
+  def put_submitter(%Element{} = form, %Element{} = submitter) do
+    %{form | meta: Map.put(form.meta, :submitter, submitter)}
+  end
+
+  @doc """
   Sends a form submit event given by `element` and returns the rendered result.
 
   The `element` is created with `element/3` and must point to a single
@@ -594,8 +624,15 @@ defmodule Phoenix.LiveViewTest do
   To submit a form along with some with hidden input values:
 
       assert view
-            |> form("#term", user: %{name: "hello"})
-            |> render_submit(%{user: %{"hidden_field" => "example"}}) =~ "Name updated"
+             |> form("#term", user: %{name: "hello"})
+             |> render_submit(%{user: %{"hidden_field" => "example"}}) =~ "Name updated"
+
+  To submit a form by a specific submit element via `put_submitter/2`:
+
+      assert view
+             |> form("#term", user: %{name: "hello"})
+             |> put_submitter("button[name=example_action]")
+             |> render_submit() =~ "Action taken"
 
   """
   def render_submit(element, value \\ %{})
@@ -885,6 +922,54 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Awaits all current `assign_async` and `start_async` for a given LiveView or element.
+
+  It renders the LiveView or Element once complete and returns the result.
+  By default, the timeout is 100ms, but a custom time may be passed to override.
+
+  ## Examples
+
+      {:ok, lv, html} = live(conn, "/path")
+      assert html =~ "loading data..."
+      assert render_async(lv) =~ "data loaded!"
+  """
+  def render_async(
+        view_or_element,
+        timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+      ) do
+    pids =
+      case view_or_element do
+        %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
+        %Element{} = element -> call(element, {:async_pids, element})
+      end
+
+    timeout_ref = make_ref()
+    Process.send_after(self(), {timeout_ref, :timeout}, timeout)
+
+    pids
+    |> Enum.map(&Process.monitor(&1))
+    |> Enum.each(fn ref ->
+      receive do
+        {^timeout_ref, :timeout} ->
+          raise RuntimeError, "expected async processes to finish within #{timeout}ms"
+
+        {:DOWN, ^ref, :process, _pid, _reason} ->
+          :ok
+      end
+    end)
+
+    unless Process.cancel_timer(timeout_ref) do
+      receive do
+        {^timeout_ref, :timeout} -> :noop
+      after
+        0 -> :noop
+      end
+    end
+
+    render(view_or_element)
+  end
+
+  @doc """
   Simulates a `live_patch` to the given `path` and returns the rendered result.
   """
   def render_patch(%View{} = view, path) when is_binary(path) do
@@ -1037,7 +1122,7 @@ defmodule Phoenix.LiveViewTest do
   a single element.
 
       assert view
-            |> element("#term a:first-child", "Increment")
+            |> element("#term > :first-child", "Increment")
             |> render() =~ "Increment</a>"
 
   Attribute selectors are also supported, and may be used on special cases
@@ -1088,6 +1173,8 @@ defmodule Phoenix.LiveViewTest do
     * `:content` - the binary content of the file
     * `:size` - the byte size of the content
     * `:type` - the MIME type of the file
+    * `:relative_path` - for simulating webkitdirectory metadata
+    * `:meta` - optional metadata sent by the client
 
   ## Examples
 
@@ -1104,7 +1191,7 @@ defmodule Phoenix.LiveViewTest do
   defmacro file_input(view, form_selector, name, entries) do
     quote bind_quoted: [view: view, selector: form_selector, name: name, entries: entries] do
       require Phoenix.ChannelTest
-      builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{}) end
+      builder = fn -> Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}) end
       Phoenix.LiveViewTest.__file_input__(view, selector, name, entries, builder)
     end
   end
@@ -1163,8 +1250,9 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Asserts a live patch will happen within `timeout` milliseconds. The default
-  `timeout` is 100.
+  Asserts a live patch will happen within `timeout` milliseconds.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns the new path.
 
@@ -1183,7 +1271,7 @@ defmodule Phoenix.LiveViewTest do
       path = assert_patch view
       assert path =~ ~r/path/\d+/
   """
-  def assert_patch(view, timeout \\ 100)
+  def assert_patch(view, timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout))
 
   def assert_patch(view, timeout) when is_integer(timeout) do
     {path, _flash} = assert_navigation(view, :patch, nil, timeout)
@@ -1233,7 +1321,8 @@ defmodule Phoenix.LiveViewTest do
 
   @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
-  The default `timeout` is 100.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns a tuple containing the new path and the flash messages from said
   redirect, if any. Note the flash will contain string keys.
@@ -1248,13 +1337,15 @@ defmodule Phoenix.LiveViewTest do
       render_click(view, :event_that_triggers_redirect)
       assert_redirect view, 30
   """
-  def assert_redirect(view, timeout \\ 100)
+  def assert_redirect(view, timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout))
 
   def assert_redirect(view, timeout) when is_integer(timeout) do
     assert_navigation(view, :redirect, nil, timeout)
   end
 
-  def assert_redirect(view, to) when is_binary(to), do: assert_redirect(view, to, 100)
+  def assert_redirect(view, to) when is_binary(to) do
+    assert_redirect(view, to, Application.fetch_env!(:ex_unit, :assert_receive_timeout))
+  end
 
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
@@ -1311,8 +1402,11 @@ defmodule Phoenix.LiveViewTest do
           end
 
         case flush_navigation(ref, topic, nil) do
-          nil -> raise ArgumentError, message <> "but got none"
-          {kind, to} -> raise ArgumentError, message <> "but got a #{kind} to #{inspect(to)}"
+          {new_kind, new_to} when new_to != to ->
+            raise ArgumentError, message <> "but got a #{new_kind} to #{inspect(new_to)}"
+
+          _ ->
+            raise ArgumentError, message <> "but got none"
         end
     end
   end
@@ -1362,7 +1456,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       view
-      |> element("#term a:first-child", "Increment")
+      |> element("#term > :first-child", "Increment")
       |> open_browser()
 
       assert view
@@ -1446,24 +1540,40 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp open_with_system_cmd(path) do
-    cmd =
+    {cmd, args} =
       case :os.type() do
-        {:unix, :darwin} -> "open"
-        {:unix, _} -> "xdg-open"
-        {:win32, _} -> "start"
+        {:win32, _} ->
+          {"cmd", ["/c", "start", path]}
+
+        {:unix, :darwin} ->
+          {"open", [path]}
+
+        {:unix, _} ->
+          if System.find_executable("cmd.exe") do
+            {"cmd.exe", ["/c", "start", path]}
+          else
+            {"xdg-open", [path]}
+          end
       end
 
-    System.cmd(cmd, [path])
+    System.cmd(cmd, args)
   end
 
   @doc """
   Asserts an event will be pushed within `timeout`.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   ## Examples
 
       assert_push_event view, "scores", %{points: 100, user: "josé"}
   """
-  defmacro assert_push_event(view, event, payload, timeout \\ 100) do
+  defmacro assert_push_event(
+             view,
+             event,
+             payload,
+             timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+           ) do
     quote do
       %{proxy: {ref, _topic, _}} = unquote(view)
 
@@ -1474,11 +1584,18 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a hook reply was returned from a `handle_event` callback.
 
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
+
   ## Examples
 
       assert_reply view, %{result: "ok", transaction_id: _}
   """
-  defmacro assert_reply(view, payload, timeout \\ 100) do
+  defmacro assert_reply(
+             view,
+             payload,
+             timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+           ) do
     quote do
       %{proxy: {ref, _topic, _}} = unquote(view)
 
@@ -1589,7 +1706,7 @@ defmodule Phoenix.LiveViewTest do
 
     url =
       case Keyword.fetch!(opts, :to) do
-        "/" <> path -> URI.merge(root.uri, path)
+        "/" <> _ = path -> URI.merge(root.uri, path)
         url -> url
       end
 
@@ -1747,19 +1864,39 @@ defmodule Phoenix.LiveViewTest do
   you will need to call `render_submit/1`.
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
-    if UploadClient.allow_acknowledged?(upload) do
-      render_chunk(upload, entry_name, percent)
-    else
-      case preflight_upload(upload) do
-        {:ok, %{ref: ref, config: config, entries: entries_resp}} ->
-          case UploadClient.allowed_ack(upload, ref, config, entries_resp) do
-            :ok -> render_chunk(upload, entry_name, percent)
-            {:error, reason} -> {:error, reason}
-          end
+    entry_ref =
+      Enum.find_value(upload.entries, fn
+        %{"name" => ^entry_name, "ref" => ref} -> ref
+        %{} -> nil
+      end)
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+    unless entry_name do
+      raise ArgumentError, "no such entry with name #{inspect(entry_name)}"
+    end
+
+    case UploadClient.fetch_allow_acknowledged(upload, entry_name) do
+      {:ok, _token} ->
+        render_chunk(upload, entry_name, percent)
+
+      {:error, :nopreflight} ->
+        case preflight_upload(upload) do
+          {:ok, %{ref: ref, config: config, entries: entries_resp, errors: errors}} ->
+            if entry_errors = errors[entry_ref] do
+              UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp, errors)
+              {:error, for(reason <- entry_errors, do: [entry_ref, reason])}
+            else
+              case UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp, errors) do
+                :ok -> render_chunk(upload, entry_name, percent)
+                {:error, reason} -> {:error, reason}
+              end
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

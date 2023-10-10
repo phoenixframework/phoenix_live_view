@@ -30,12 +30,12 @@ export default class ViewHook {
   }
 
   pushEvent(event, payload = {}, onReply = function (){ }){
-    return this.__view.pushHookEvent(null, event, payload, onReply)
+    return this.__view.pushHookEvent(this.el, null, event, payload, onReply)
   }
 
   pushEventTo(phxTarget, event, payload = {}, onReply = function (){ }){
     return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
-      return view.pushHookEvent(targetCtx, event, payload, onReply)
+      return view.pushHookEvent(this.el, targetCtx, event, payload, onReply)
     })
   }
 
@@ -53,11 +53,13 @@ export default class ViewHook {
   }
 
   upload(name, files){
-    return this.__view.dispatchUploads(name, files)
+    return this.__view.dispatchUploads(null, name, files)
   }
 
   uploadTo(phxTarget, name, files){
-    return this.__view.withinTargets(phxTarget, view => view.dispatchUploads(name, files))
+    return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+      view.dispatchUploads(targetCtx, name, files)
+    })
   }
 
   __cleanup__(){

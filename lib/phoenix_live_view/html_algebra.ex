@@ -391,9 +391,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> group()
   end
 
-  # TODO: Remove let from this list
   @attrs_order %{
-    "let" => 1,
     ":let" => 1,
     ":for" => 2,
     ":if" => 3
@@ -428,13 +426,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp render_attribute({attr, {:string, value, _meta}, _}, _opts), do: ~s(#{attr}="#{value}")
 
   defp render_attribute({attr, {:expr, value, meta}, _}, opts) do
-    # TODO: remove me when "let" is not supported anymore.
-    attr =
-      case attr do
-        "let" -> ":let"
-        attr -> attr
-      end
-
     case expr_to_quoted(value, meta) do
       {{:__block__, meta, [string]} = block, []} when is_binary(string) ->
         case Keyword.get(meta, :delimiter) do

@@ -51,6 +51,19 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   attr :attr, :global
   def fun_attr_global(assigns), do: ~H[]
 
+  attr :rest, :global, doc: "These are passed to the inner input field"
+  def fun_attr_global_doc(assigns), do: ~H[]
+
+  attr :rest, :global, doc: "These are passed to the inner input field", include: ~w(value)
+  def fun_attr_global_doc_include(assigns), do: ~H[]
+
+  attr :rest, :global, include: ~w(value)
+  def fun_attr_global_include(assigns), do: ~H[]
+
+  attr :name, :string, doc: "The form input name"
+  attr :rest, :global, doc: "These are passed to the inner input field"
+  def fun_attr_global_and_regular(assigns), do: ~H[]
+
   attr :attr, Struct
   def fun_attr_struct(assigns), do: ~H[]
 
@@ -106,14 +119,15 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
 
   attr :attr, :any
   defp private_fun(assigns), do: ~H[]
+  def exposes_private_fun_to_avoid_warnings(assigns), do: private_fun(assigns)
 
-  slot :inner_block
+  slot(:inner_block)
   def fun_slot(assigns), do: ~H[]
 
-  slot :inner_block, doc: "slot docs"
+  slot(:inner_block, doc: "slot docs")
   def fun_slot_doc(assigns), do: ~H[]
 
-  slot :inner_block, required: true
+  slot(:inner_block, required: true)
   def fun_slot_required(assigns), do: ~H[]
 
   slot :named, required: true, doc: "a named slot" do
@@ -178,18 +192,11 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
 
   def update(assigns, socket) do
     if from = assigns[:from] do
-      send(from, {:updated, assigns})
+      sent_assigns = Map.merge(assigns, %{id: socket.assigns[:id], myself: socket.assigns.myself})
+      send(from, {:updated, sent_assigns})
     end
 
     {:ok, assign(socket, assigns)}
-  end
-
-  def preload([assigns | _] = lists_of_assigns) do
-    if from = assigns[:from] do
-      send(from, {:preload, lists_of_assigns})
-    end
-
-    lists_of_assigns
   end
 
   def render(%{disabled: true} = assigns) do
@@ -204,7 +211,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
     ~H"""
     <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
       <%= @name %> says hi
-      <%= if @dup_name, do: live_component(__MODULE__, id: @dup_name, name: @dup_name) %>
+      <.live_component :if={@dup_name} module={__MODULE__} id={@dup_name} name={@dup_name} />
     </div>
     """
   end
@@ -251,8 +258,8 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     ~H"""
     Redirect: <%= @redirect %>
     <%= for name <- @names do %>
-      <%= live_component Phoenix.LiveViewTest.StatefulComponent,
-            id: name, name: name, from: @from, disabled: name in @disabled, parent_id: nil  %>
+      <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
+          id={name} name={name} from={@from} disabled={name in @disabled} parent_id={nil} />
     <% end %>
     """
   end
@@ -302,12 +309,12 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   end
 
   def render(assigns) do
-    ~L"""
+    ~H"""
     <div id="parent_id" class="parent">
       <%= @message %>
       <%= for name <- @names do %>
-        <%= live_component Phoenix.LiveViewTest.StatefulComponent,
-              id: name, name: name, from: @from, disabled: name in @disabled, parent_id: @parent_selector %>
+        <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
+            id={name} name={name} from={@from} disabled={name in @disabled} parent_id={@parent_selector} />
       <% end %>
     </div>
     """

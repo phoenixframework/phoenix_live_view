@@ -10,6 +10,9 @@ import {
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
   PHX_STREAM,
+  PHX_STREAM_REF,
+  PHX_VIEWPORT_TOP,
+  PHX_VIEWPORT_BOTTOM,
 } from "./constants"
 
 import {
@@ -83,8 +86,11 @@ export default class DOMPatch {
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
+    let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
+    let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
+    let trackedInputs = []
     let updates = []
     let appendPrependUpdates = []
 
@@ -98,16 +104,20 @@ export default class DOMPatch {
     this.trackBefore("updated", container, container)
 
     liveSocket.time("morphdom", () => {
-      this.streams.forEach(([inserts, deleteIds]) => {
-        this.streamInserts = Object.assign(this.streamInserts, inserts)
+      this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
+        Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
+          this.streamInserts[key] = {ref, streamAt, limit}
+        })
+        if(reset !== undefined){
+          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
+            if(!inserts[child.id]){
+              this.removeStreamChildElement(child)
+            }
+          })
+        }
         deleteIds.forEach(id => {
           let child = container.querySelector(`[id="${id}"]`)
-          if(child){
-            if(!this.maybePendingRemove(child)){
-              child.remove()
-              this.onNodeDiscarded(child)
-            }
-          }
+          if(child){ this.removeStreamChildElement(child) }
         })
       })
 
@@ -120,8 +130,10 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let streamAt = child.id ? this.streamInserts[child.id] : undefined
-          if(streamAt === undefined) { return parent.appendChild(child) }
+          let {ref, streamAt, limit} = this.getStreamInsert(child)
+          if(ref === undefined) { return parent.appendChild(child) }
+
+          DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
           // streaming
           if(streamAt === 0){
@@ -132,12 +144,28 @@ export default class DOMPatch {
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
           }
+          let children = limit !== null && Array.from(parent.children)
+          let childrenToRemove = []
+          if(limit && limit < 0 && children.length > limit * -1){
+            childrenToRemove = children.slice(0, children.length + limit)
+          } else if(limit && limit >= 0 && children.length > limit){
+            childrenToRemove = children.slice(limit)
+          }
+          childrenToRemove.forEach(removeChild => {
+            // do not remove child as part of limit if we are re-adding it
+            if(!this.streamInserts[removeChild.id]){
+              this.removeStreamChildElement(removeChild)
+            }
+          })
         },
         onBeforeNodeAdded: (el) => {
+          DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
           this.trackBefore("added", el)
           return el
         },
         onNodeAdded: (el) => {
+          if(el.getAttribute){ this.maybeReOrderStream(el) }
+
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
             el.srcset = el.srcset
@@ -147,8 +175,10 @@ export default class DOMPatch {
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
-          //input handling
-          DOM.discardError(targetContainer, el, phxFeedbackFor)
+
+          if(el.getAttribute && el.getAttribute("name") && DOM.isFormInput(el)){
+            trackedInputs.push(el)
+          }
           // nested view handling
           if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
             this.trackAfter("phxChildAdded", el)
@@ -159,7 +189,7 @@ export default class DOMPatch {
         onBeforeNodeDiscarded: (el) => {
           if(el.getAttribute && el.getAttribute(PHX_PRUNE) !== null){ return true }
           if(el.parentElement !== null && el.id &&
-             DOM.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])){
+            DOM.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])){
             return false
           }
           if(this.maybePendingRemove(el)){ return false }
@@ -175,6 +205,7 @@ export default class DOMPatch {
           this.maybeReOrderStream(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){ return false }
           if(DOM.isPhxSticky(fromEl)){ return false }
@@ -207,7 +238,6 @@ export default class DOMPatch {
 
           // input handling
           DOM.copyPrivates(toEl, fromEl)
-          DOM.discardError(targetContainer, toEl, phxFeedbackFor)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           if(isFocusedFormEl && fromEl.type !== "hidden"){
@@ -216,13 +246,18 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
+            trackedInputs.push(fromEl)
             return false
           } else {
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
               appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
+
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
+            if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){
+              trackedInputs.push(toEl)
+            }
             this.trackBefore("updated", fromEl, toEl)
             return true
           }
@@ -238,6 +273,10 @@ export default class DOMPatch {
       })
     }
 
+    trackedInputs.forEach(input => {
+      DOM.maybeHideFeedback(targetContainer, input, phxFeedbackFor)
+    })
+
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
     added.forEach(el => this.trackAfter("added", el))
@@ -247,7 +286,9 @@ export default class DOMPatch {
 
     if(externalFormTriggered){
       liveSocket.unload()
-      externalFormTriggered.submit()
+      // use prototype's submit in case there's a form control with name or id of "submit"
+      // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
+      Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered)
     }
     return true
   }
@@ -267,9 +308,24 @@ export default class DOMPatch {
     }
   }
 
+  removeStreamChildElement(child){
+    if(!this.maybePendingRemove(child)){
+      child.remove()
+      this.onNodeDiscarded(child)
+    }
+  }
+
+  getStreamInsert(el){
+    let insert = el.id ? this.streamInserts[el.id] : {}
+    return insert || {}
+  }
+
   maybeReOrderStream(el){
-    let streamAt = el.id ? this.streamInserts[el.id] : undefined
+    let {ref, streamAt, limit} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
+
+    // we need to the PHX_STREAM_REF here as well as addChild is invoked only for parents
+    DOM.putSticky(el, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
     if(streamAt === 0){
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild)

@@ -76,9 +76,22 @@ defmodule Phoenix.LiveView.Comprehension do
         }
 
   @doc false
+  def __mark_consumable__(%Phoenix.LiveView.LiveStream{} = stream) do
+    %Phoenix.LiveView.LiveStream{stream | consumable?: true}
+  end
+
+  def __mark_consumable__(collection), do: collection
+
+  @doc false
   def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
-    inserts = for {id, at, _item} <- stream.inserts, into: %{}, do: {id, at}
-    Map.put(comprehension, :stream, [inserts, stream.deletes])
+    inserts = for {id, at, _item, limit} <- stream.inserts, into: %{}, do: {id, [at, limit]}
+    data = [stream.ref, inserts, stream.deletes]
+
+    if stream.reset? do
+      Map.put(comprehension, :stream, data ++ [true])
+    else
+      Map.put(comprehension, :stream, data)
+    end
   end
 
   def __annotate__(comprehension, _collection), do: comprehension
@@ -377,6 +390,21 @@ defmodule Phoenix.LiveView.Engine do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
 
+      static =
+        case Keyword.fetch(opts, :body_annotation) do
+          {:ok, {before, aft}} ->
+            case static do
+              [] ->
+                ["#{before}#{aft}"]
+
+              [first | rest] ->
+                List.update_at([to_string(before) <> first | rest], -1, &(&1 <> to_string(aft)))
+            end
+
+          :error ->
+            static
+        end
+
       changed =
         quote generated: true do
           case unquote(@assigns_var) do
@@ -445,7 +473,13 @@ defmodule Phoenix.LiveView.Engine do
 
       gen_var = Macro.unique_var(:for, __MODULE__)
       {:<-, gen_meta, [gen_pattern, gen_collection]} = gen
-      gen_collection = quote(do: unquote(gen_var) = unquote(gen_collection))
+
+      gen_collection =
+        quote do
+          unquote(gen_var) =
+            Phoenix.LiveView.Comprehension.__mark_consumable__(unquote(gen_collection))
+        end
+
       gen = {:<-, gen_meta, [gen_pattern, gen_var]}
       for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
 
@@ -601,6 +635,10 @@ defmodule Phoenix.LiveView.Engine do
 
     Enum.reduce(checks, &{:or, [], [&1, &2]})
   end
+
+  defguardp is_access(mod)
+            when mod == Access or
+                   (is_tuple(mod) and elem(mod, 0) == :__aliases__ and elem(mod, 2) == [:Access])
 
   # If we are accessing @foo.bar.baz but in the same place we also pass
   # @foo.bar or @foo, we don't need to check for @foo.bar.baz.
@@ -866,24 +904,25 @@ defmodule Phoenix.LiveView.Engine do
 
   # assigns[:name]
   defp analyze_assign(
-         {{:., _, [Access, :get]}, _, [{:assigns, _, nil}, name]} = expr,
+         {{:., _, [access, :get]}, _, [{:assigns, _, nil}, name]} = expr,
          vars,
          assigns,
          _caller,
          nest
        )
-       when is_atom(name) do
+       when is_atom(name) and is_access(access) do
     {expr, vars, Map.put(assigns, [name | nest], true)}
   end
 
   # Maybe: assigns.foo[:bar]
   defp analyze_assign(
-         {{:., dot_meta, [Access, :get]}, meta, [left, right]},
+         {{:., dot_meta, [access, :get]}, meta, [left, right]},
          vars,
          assigns,
          caller,
          nest
-       ) do
+       )
+       when is_access(access) do
     {args, vars, assigns} =
       if Macro.quoted_literal?(right) do
         {left, vars, assigns} =
@@ -911,7 +950,8 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Delegates to analyze assign
-  defp analyze({{:., _, [Access, :get]}, _, [_, _]} = expr, vars, assigns, caller) do
+  defp analyze({{:., _, [access, :get]}, _, [_, _]} = expr, vars, assigns, caller)
+       when is_access(access) do
     analyze_assign(expr, vars, assigns, caller, [])
   end
 

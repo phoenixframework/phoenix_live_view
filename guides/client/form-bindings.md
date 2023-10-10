@@ -27,7 +27,7 @@ defined in your own application, often encapsulating labelling,
 error handling, and more. Here is a simple version to get started with:
 
     attr :field, Phoenix.HTML.FormField
-    attr :rest, include: ~w(type)
+    attr :rest, :global, include: ~w(type)
     def input(assigns) do
       ~H"""
       <input id={@field.id} name={@field.name} value={@field.value} {@rest} />
@@ -46,7 +46,7 @@ callbacks, to validate and attempt to save the parameter accordingly:
     def render(assigns) ...
 
     def mount(_params, _session, socket) do
-      {:ok, assign(socket, form: to_form(Accounts.change_user(%User{}))}
+      {:ok, assign(socket, form: to_form(Accounts.change_user(%User{})))}
     end
 
     def handle_event("validate", %{"user" => params}, socket) do
@@ -129,7 +129,7 @@ For example, your `MyAppWeb.CoreComponents` may use this function:
           ]}
           {@rest}
         />
-        <.error :for={msg <- @errors}><%%= msg %></.error>
+        <.error :for={msg <- @errors}><%= msg %></.error>
       </div>
       """
     end
@@ -287,7 +287,7 @@ To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
 To reset a LiveView form, you can use the standard `type="reset"` on a
 form button or input. When clicked, the form inputs will be reset to their
-original values, and Phoenix will hide errors for `phx-fedback-for` elements.
+original values, and Phoenix will hide errors for `phx-feedback-for` elements.
 After the form is reset, a `phx-change` event is emitted with the `_target` param
 containing the reset `name`. For example, the following element:
 

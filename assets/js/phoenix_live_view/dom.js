@@ -48,6 +48,8 @@ let DOM = {
 
   isUploadInput(el){ return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null },
 
+  isAutoUpload(inputEl){ return inputEl.hasAttribute("data-phx-auto-upload") },
+
   findUploadInputs(node){ return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`) },
 
   findComponentNodeList(node, cid){
@@ -60,17 +62,32 @@ let DOM = {
 
   wantsNewTab(e){
     let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
-    return wantsNewTab || e.target.getAttribute("target") === "_blank"
+    let isDownload = (e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download"))
+    let isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank"
+    return wantsNewTab || isTargetBlank || isDownload
   },
 
   isUnloadableFormSubmit(e){
-    return !e.defaultPrevented && !this.wantsNewTab(e)
+    // Ignore form submissions intended to close a native <dialog> element
+    // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog#usage_notes
+    let isDialogSubmit = (e.target && e.target.getAttribute("method") === "dialog") ||
+      (e.submitter && e.submitter.getAttribute("formmethod") === "dialog")
+
+    if(isDialogSubmit){
+      return false
+    } else {
+      return !e.defaultPrevented && !this.wantsNewTab(e)
+    }
   },
 
-  isNewPageHref(href, currentLocation){
-    if(href.startsWith("mailto:") || href.startsWith("tel:")){ return false }
-
+  isNewPageClick(e, currentLocation){
+    let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
     let url
+
+    if(e.defaultPrevented || href === null || this.wantsNewTab(e)){ return false }
+    if(href.startsWith("mailto:") || href.startsWith("tel:")){ return false }
+    if(e.target.isContentEditable){ return false }
+
     try {
       url = new URL(href)
     } catch(e) {
@@ -87,7 +104,7 @@ let DOM = {
         return url.hash === "" && !url.href.endsWith("#")
       }
     }
-    return true
+    return url.protocol.startsWith("http")
   },
 
   markPhxChildDestroyed(el){
@@ -183,6 +200,7 @@ let DOM = {
   debounce(el, event, phxDebounce, defaultDebounce, phxThrottle, defaultThrottle, asyncFilter, callback){
     let debounce = el.getAttribute(phxDebounce)
     let throttle = el.getAttribute(phxThrottle)
+
     if(debounce === ""){ debounce = defaultDebounce }
     if(throttle === ""){ throttle = defaultThrottle }
     let value = debounce || throttle
@@ -261,14 +279,18 @@ let DOM = {
     return currentCycle
   },
 
-  discardError(container, el, phxFeedbackFor){
-    let field = el.getAttribute && el.getAttribute(phxFeedbackFor)
-    // TODO: Remove id lookup after we update Phoenix to use input_name instead of input_id
-    let input = field && container.querySelector(`[id="${field}"], [name="${field}"], [name="${field}[]"]`)
-    if(!input){ return }
+  maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom){
+    if(el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))){
+      el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
+    }
+  },
 
+  maybeHideFeedback(container, input, phxFeedbackFor){
     if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
-      el.classList.add(PHX_NO_FEEDBACK_CLASS)
+      let feedbacks = [input.name]
+      if(input.name.endsWith("[]")){ feedbacks.push(input.name.slice(0, -2)) }
+      let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
+      DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
     }
   },
 

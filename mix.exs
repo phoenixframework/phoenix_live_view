@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.18.18"
+  @version "0.20.1"
 
   def project do
     [
@@ -15,7 +15,7 @@ defmodule Phoenix.LiveView.MixProject do
       xref: [exclude: [Floki]],
       deps: deps(),
       aliases: aliases(),
-      docs: docs(),
+      docs: &docs/0,
       name: "Phoenix LiveView",
       homepage_url: "http://www.phoenixframework.org",
       description: """
@@ -37,6 +37,7 @@ defmodule Phoenix.LiveView.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.6.15 or ~> 1.7.0"},
+      {:plug, "~> 1.15"},
       {:phoenix_view, "~> 2.0", optional: true},
       {:phoenix_template, "~> 1.0"},
       {:phoenix_html, "~> 3.3"},
@@ -46,6 +47,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:floki, "~> 0.30.0", only: :test},
       {:ex_doc, "~> 0.29", only: :docs},
       {:makeup_eex, ">= 0.1.1", only: :docs},
+      {:makeup_diff, "~> 0.1", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4.1", only: :test}
     ]
@@ -53,7 +55,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp docs do
     [
-      main: "Phoenix.Component",
+      main: "welcome",
       source_ref: "v#{@version}",
       source_url: "https://github.com/phoenixframework/phoenix_live_view",
       extra_section: "GUIDES",
@@ -117,23 +119,7 @@ defmodule Phoenix.LiveView.MixProject do
   defp before_closing_body_tag(_), do: ""
 
   defp extras do
-    [
-      "CHANGELOG.md",
-      "guides/introduction/installation.md",
-      "guides/client/bindings.md",
-      "guides/client/form-bindings.md",
-      "guides/client/dom-patching.md",
-      "guides/client/js-interop.md",
-      "guides/client/uploads-external.md",
-      "guides/server/assigns-eex.md",
-      "guides/server/error-handling.md",
-      "guides/server/live-layouts.md",
-      "guides/server/live-navigation.md",
-      "guides/server/security-model.md",
-      "guides/server/telemetry.md",
-      "guides/server/uploads.md",
-      "guides/server/using-gettext.md"
-    ]
+    ["CHANGELOG.md"] ++ Path.wildcard("guides/*/*.md")
   end
 
   defp groups_for_extras do
@@ -168,7 +154,8 @@ defmodule Phoenix.LiveView.MixProject do
       ],
       "Upload structures": [
         Phoenix.LiveView.UploadConfig,
-        Phoenix.LiveView.UploadEntry
+        Phoenix.LiveView.UploadEntry,
+        Phoenix.LiveView.UploadWriter
       ],
       "Plugin API": [
         Phoenix.LiveComponent.CID,

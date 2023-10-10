@@ -136,7 +136,7 @@ export default class Rendered {
   }
 
   componentToString(cid){
-    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid)
+    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null, false)
     return [str, streams]
   }
 
@@ -172,7 +172,7 @@ export default class Rendered {
 
   comprehensionToBuffer(rendered, templates, output){
     let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream} = rendered
-    let [_inserts, deleteIds] = stream || [{}, []]
+    let [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null]
     statics = this.templateStatic(statics, templates)
     let compTemplates = templates || rendered[TEMPLATES]
     for(let d = 0; d < dynamics.length; d++){
@@ -184,7 +184,8 @@ export default class Rendered {
       }
     }
 
-    if(stream !== undefined && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0)){
+    if(stream !== undefined && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0 || reset)){
+      delete rendered[STREAM]
       rendered[DYNAMICS] = []
       output.streams.add(stream)
     }
@@ -202,7 +203,7 @@ export default class Rendered {
     }
   }
 
-  recursiveCIDToString(components, cid, onlyCids){
+  recursiveCIDToString(components, cid, onlyCids, allowRootComments = true){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let template = document.createElement("template")
     let [html, streams] = this.recursiveToString(component, components, onlyCids)
@@ -223,6 +224,11 @@ export default class Rendered {
             child.innerHTML = ""
           }
           return [true, hasComponents]
+        } else if(child.nodeType === Node.COMMENT_NODE){
+          // we have to strip root comments when rendering a component directly
+          // for patching because the morphdom target must be exactly the root entrypoint
+          if(!allowRootComments){ child.remove() }
+          return [hasNodes, hasComponents]
         } else {
           if(child.nodeValue.trim() !== ""){
             logError("only HTML element tags are allowed at the root of components.\n\n" +

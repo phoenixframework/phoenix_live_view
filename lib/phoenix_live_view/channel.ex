@@ -4,7 +4,18 @@ defmodule Phoenix.LiveView.Channel do
 
   require Logger
 
-  alias Phoenix.LiveView.{Socket, Utils, Diff, Upload, UploadConfig, Route, Session, Lifecycle}
+  alias Phoenix.LiveView.{
+    Socket,
+    Utils,
+    Diff,
+    Upload,
+    UploadConfig,
+    Route,
+    Session,
+    Lifecycle,
+    Async
+  }
+
   alias Phoenix.Socket.{Broadcast, Message}
 
   @prefix :phoenix
@@ -17,17 +28,26 @@ defmodule Phoenix.LiveView.Channel do
     GenServer.start_link(__MODULE__, from, opts)
   end
 
-  def send_update(pid \\ self(), module, id, assigns) do
-    send(pid, {@prefix, :send_update, {module, id, assigns}})
+  def send_update(pid, ref, assigns) do
+    send(pid, {@prefix, :send_update, {ref, assigns}})
   end
 
-  def send_update_after(pid \\ self(), module, id, assigns, time_in_milliseconds)
+  def send_update_after(pid, ref, assigns, time_in_milliseconds)
       when is_integer(time_in_milliseconds) do
     Process.send_after(
       pid,
-      {@prefix, :send_update, {module, id, assigns}},
+      {@prefix, :send_update, {ref, assigns}},
       time_in_milliseconds
     )
+  end
+
+  def report_async_result(monitor_ref, kind, ref, cid, keys, result)
+      when is_reference(monitor_ref) and kind in [:assign, :start] and is_reference(ref) do
+    send(monitor_ref, {@prefix, :async_result, {kind, {ref, cid, keys, result}}})
+  end
+
+  def async_pids(lv_pid) do
+    GenServer.call(lv_pid, {@prefix, :async_pids})
   end
 
   def ping(pid) do
@@ -46,6 +66,11 @@ defmodule Phoenix.LiveView.Channel do
   def drop_upload_entries(%UploadConfig{} = conf, entry_refs) do
     info = %{ref: conf.ref, entry_refs: entry_refs, cid: conf.cid}
     send(self(), {@prefix, :drop_upload_entries, info})
+  end
+
+  def report_writer_error(pid, reason) do
+    channel_pid = self()
+    send(pid, {@prefix, :report_writer_error, channel_pid, reason})
   end
 
   @impl true
@@ -223,6 +248,18 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  def handle_info({@prefix, :async_result, {kind, info}}, state) do
+    {ref, cid, keys, result} = info
+
+    new_state =
+      write_socket(state, cid, nil, fn socket, maybe_component ->
+        new_socket = Async.handle_async(socket, maybe_component, kind, keys, ref, result)
+        {new_socket, {:ok, nil, state}}
+      end)
+
+    {:noreply, new_state}
+  end
+
   def handle_info({@prefix, :drop_upload_entries, info}, state) do
     %{ref: ref, cid: cid, entry_refs: entry_refs} = info
 
@@ -235,22 +272,38 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, new_state}
   end
 
+  def handle_info({@prefix, :report_writer_error, channel_pid, reason}, state) do
+    case state.upload_pids do
+      %{^channel_pid => {ref, entry_ref, cid}} ->
+        new_state =
+          write_socket(state, cid, nil, fn socket, _ ->
+            upload_config = Upload.get_upload_by_ref!(socket, ref)
+
+            new_socket =
+              Upload.put_upload_error(
+                socket,
+                upload_config.name,
+                entry_ref,
+                {:writer_failure, reason}
+              )
+
+            {new_socket, {:ok, nil, state}}
+          end)
+
+        {:noreply, new_state}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
   def handle_info({@prefix, :send_update, update}, state) do
     case Diff.update_component(state.socket, state.components, update) do
       {diff, new_components} ->
         {:noreply, push_diff(%{state | components: new_components}, diff, nil)}
 
       :noop ->
-        {module, id, _} = update
-
-        if exported?(module, :__info__, 1) do
-          # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
-          Logger.debug(
-            "send_update failed because component #{inspect(module)} with ID #{inspect(id)} does not exist or it has been removed"
-          )
-        else
-          raise ArgumentError, "send_update failed (module #{inspect(module)} is not available)"
-        end
+        handle_noop(update)
 
         {:noreply, state}
     end
@@ -258,6 +311,16 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info({@prefix, :redirect, command, flash}, state) do
     handle_redirect(state, command, flash, nil)
+  end
+
+  def handle_info({{Phoenix.LiveView.Async, keys, cid, kind}, ref, :process, _pid, reason}, state) do
+    new_state =
+      write_socket(state, cid, nil, fn socket, component ->
+        new_socket = Async.handle_trap_exit(socket, component, kind, keys, ref, reason)
+        {new_socket, {:ok, nil, state}}
+      end)
+
+    {:noreply, new_state}
   end
 
   def handle_info({:phoenix_live_reload, _topic, _changed_file}, %{socket: socket} = state) do
@@ -277,9 +340,32 @@ defmodule Phoenix.LiveView.Channel do
     |> handle_result({:handle_info, 2, nil}, state)
   end
 
+  defp handle_noop({%Phoenix.LiveComponent.CID{cid: cid}, _}) do
+    # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
+    Logger.debug(
+      "send_update failed because component with CID #{inspect(cid)} does not exist or it has been removed"
+    )
+  end
+
+  defp handle_noop({{module, id}, _}) do
+    if exported?(module, :__info__, 1) do
+      # Only a warning, because there can be race conditions where a component is removed before a `send_update` happens.
+      Logger.debug(
+        "send_update failed because component #{inspect(module)} with ID #{inspect(id)} does not exist or it has been removed"
+      )
+    else
+      raise ArgumentError, "send_update failed (module #{inspect(module)} is not available)"
+    end
+  end
+
   @impl true
   def handle_call({@prefix, :ping}, _from, state) do
     {:reply, :ok, state}
+  end
+
+  def handle_call({@prefix, :async_pids}, _from, state) do
+    pids = state |> all_asyncs() |> Map.keys()
+    {:reply, {:ok, pids}, state}
   end
 
   def handle_call({@prefix, :fetch_upload_config, name, cid}, _from, state) do
@@ -752,7 +838,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp patch_params_and_action!(socket, %{to: to}) do
-    destructure [path, query], :binary.split(to, "?")
+    destructure [path, query], :binary.split(to, ["?", "#"], [:global])
     to = %{socket.host_uri | path: path, query: query}
 
     case Route.live_link_info!(socket, socket.private.root_view, to) do
@@ -830,18 +916,20 @@ defmodule Phoenix.LiveView.Channel do
     {socket, diff, components} =
       if force? or Utils.changed?(socket) do
         rendered = Utils.to_rendered(socket, socket.view)
-        Diff.render(socket, rendered, state.components)
+        {socket, diff, components} = Diff.render(socket, rendered, state.components)
+
+        socket =
+          socket
+          |> Lifecycle.after_render()
+          |> Utils.clear_changed()
+
+        {socket, diff, components}
       else
         {socket, %{}, state.components}
       end
 
     diff = Diff.render_private(socket, diff)
-
-    new_socket =
-      socket
-      |> Lifecycle.after_render()
-      |> Utils.clear_changed()
-
+    new_socket = Utils.clear_temp(socket)
     {:diff, diff, %{state | socket: new_socket, components: components}}
   end
 
@@ -988,6 +1076,13 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: transport_pid
     } = phx_socket
 
+    Process.put(:"$initial_call", {view, :mount, 3})
+
+    case params do
+      %{"caller" => {pid, _}} when is_pid(pid) -> Process.put(:"$callers", [pid])
+      _ -> Process.put(:"$callers", [transport_pid])
+    end
+
     # Optional parameter handling
     connect_params = params["params"]
 
@@ -999,11 +1094,6 @@ defmodule Phoenix.LiveView.Channel do
 
     Process.monitor(transport_pid)
     load_csrf_token(endpoint, socket_session)
-
-    case params do
-      %{"caller" => {pid, _}} when is_pid(pid) -> Process.put(:"$callers", [pid])
-      _ -> Process.put(:"$callers", [transport_pid])
-    end
 
     socket = %Socket{
       endpoint: endpoint,
@@ -1042,6 +1132,7 @@ defmodule Phoenix.LiveView.Channel do
         rescue
           exception ->
             status = Plug.Exception.status(exception)
+
             if status >= 400 and status < 500 do
               GenServer.reply(from, {:error, %{reason: "reload", status: status}})
               {:stop, :shutdown, :no_state}
@@ -1107,7 +1198,7 @@ defmodule Phoenix.LiveView.Channel do
        assign_new: {%{}, assign_new},
        lifecycle: lifecycle,
        root_view: root_view,
-       __changed__: %{}
+       live_temp: %{}
      }}
   end
 
@@ -1123,7 +1214,7 @@ defmodule Phoenix.LiveView.Channel do
            live_layout: false,
            lifecycle: lifecycle,
            root_view: root_view,
-           __changed__: %{}
+           live_temp: %{}
          }}
 
       {:error, :noproc} ->
@@ -1229,7 +1320,12 @@ defmodule Phoenix.LiveView.Channel do
 
       case Upload.register_entry_upload(socket, conf, pid, entry_ref) do
         {:ok, new_socket, entry} ->
-          reply = %{max_file_size: entry.client_size, chunk_timeout: conf.chunk_timeout}
+          reply = %{
+            max_file_size: entry.client_size,
+            chunk_timeout: conf.chunk_timeout,
+            writer: writer!(socket, conf.name, entry, conf.writer)
+          }
+
           GenServer.reply(from, {:ok, reply})
           new_state = put_upload_pid(state, pid, ref, entry_ref, cid)
           {new_socket, {:ok, nil, new_state}}
@@ -1239,6 +1335,18 @@ defmodule Phoenix.LiveView.Channel do
           {socket, :error}
       end
     end)
+  end
+
+  defp writer!(socket, name, entry, writer) do
+    case writer.(name, entry, socket) do
+      {mod, opts} when is_atom(mod) ->
+        {mod, opts}
+
+      other ->
+        raise """
+        expected :writer function to return a tuple of {module, opts}, got: #{inspect(other)}
+        """
+    end
   end
 
   defp read_socket(state, nil = _cid, func) do
@@ -1369,4 +1477,30 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_subscribe_to_live_reload(response), do: response
+
+  defp component_asyncs(state) do
+    %{components: {components, _ids, _}} = state
+
+    Enum.reduce(components, %{}, fn {cid, {_mod, _id, _assigns, private, _prints}}, acc ->
+      Map.merge(acc, socket_asyncs(private, cid))
+    end)
+  end
+
+  defp all_asyncs(state) do
+    %{socket: socket} = state
+
+    socket.private
+    |> socket_asyncs(nil)
+    |> Map.merge(component_asyncs(state))
+  end
+
+  defp socket_asyncs(private, cid) do
+    case private do
+      %{live_async: ref_pids} ->
+        Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
+
+      %{} ->
+        %{}
+    end
+  end
 end

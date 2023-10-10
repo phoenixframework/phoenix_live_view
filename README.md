@@ -2,11 +2,10 @@
 
 [![Actions Status](https://github.com/phoenixframework/phoenix_live_view/workflows/CI/badge.svg)](https://github.com/phoenixframework/phoenix_live_view/actions?query=workflow%3ACI) [![Hex.pm](https://img.shields.io/hexpm/v/phoenix_live_view.svg)](https://hex.pm/packages/phoenix_live_view) [![Documentation](https://img.shields.io/badge/documentation-gray)](https://hexdocs.pm/phoenix_live_view)
 
-Phoenix LiveView enables rich, real-time user experiences
-with server-rendered HTML.
+Phoenix LiveView enables rich, real-time user experiences with server-rendered HTML.
 
-Visit the [https://livebeats.fly.dev](https://livebeats.fly.dev/) demo to see the kinds of applications
-you can build, or see a sneak peek below:
+Visit the [https://livebeats.fly.dev](https://livebeats.fly.dev/) demo to see
+the kinds of applications you can build, or see a sneak peek below:
 
 https://user-images.githubusercontent.com/576796/162234098-31b580fe-e424-47e6-b01d-cd2cfcf823a9.mp4
 
@@ -20,6 +19,11 @@ steps:
     $ mix phx.new demo
 
 ## Feature highlights
+
+LiveView brings a unified experience to building web applications. You no longer
+have to split work between client and server, across different toolings, layers, and
+abstractions. Instead, LiveView enriches the server with a declarative and powerful
+model while keeping your code closer to your data (and ultimately your source of truth):
 
   * **Declarative rendering:** Render HTML on the server over WebSockets with a declarative model, including an optional LongPolling fallback.
 
@@ -59,11 +63,9 @@ See our existing comprehensive [docs](https://hexdocs.pm/phoenix_live_view) and 
 
 ## Installation
 
-There are currently two methods for installing LiveView. For projects that
-require more stability, it is recommended that you install using the
-[installation guide on HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html).
-If you want to use the latest features, you should follow the instructions
-given in the markdown file [here](guides/introduction/installation.md).
+LiveView is included by default in all new Phoenix v1.6+ applications and
+later. If you have an older existing Phoenix app and you wish to add
+LiveView, see [the installation guide on HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html).
 
 ## What makes LiveView unique?
 
@@ -102,7 +104,7 @@ anywhere else:
     the system. Do you want to notify a user that their best friend
     just connected? This is easily done without a single line of
     custom JavaScript and with no extra external dependencies
-    (no extra databases, no extra message queues, etc.).
+    (no extra databases, no Redis, no extra message queues, etc.).
 
   * LiveView performs change tracking: whenever you change a value on
     the server, LiveView will send to the client only the values that

@@ -17,6 +17,11 @@ defmodule Phoenix.LiveView.Router do
 
       live_path(@socket, ThermostatLive)
 
+  > #### HTTP requests {: .info}
+  >
+  > The HTTP request method that a route defined by the `live/4` macro
+  > responds to is `GET`.
+
   ## Actions and live navigation
 
   It is common for a LiveView to have multiple states and multiple URLs.
@@ -71,10 +76,14 @@ defmodule Phoenix.LiveView.Router do
       actions.
 
     * `:metadata` - a map to optional feed metadata used on telemetry events and route info,
-      for example: `%{route_name: :foo, access: :user}`.
+      for example: `%{route_name: :foo, access: :user}`. This data can be retrieved by
+      calling `Phoenix.Router.route_info/4` with the `uri` from the `handle_params`
+      callback. This can be used to customize a LiveView which may be invoked from
+      different routes.
 
-    * `:private` - an optional map of private data to put in the plug connection.
-      for example: `%{route_name: :foo, access: :user}`.
+    * `:private` - an optional map of private data to put in the *plug connection*,
+      for example: `%{route_name: :foo, access: :user}`. The data will be available
+      inside `conn.private` in plug functions.
 
   ## Examples
 
@@ -96,6 +105,14 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
+    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
+    live_view =
+      if Macro.quoted_literal?(live_view) do
+        Macro.prewalk(live_view, &expand_alias(&1, __CALLER__))
+      else
+        live_view
+      end
+
     quote bind_quoted: binding() do
       {action, router_options} =
         Phoenix.LiveView.Router.__live__(__MODULE__, live_view, action, opts)
@@ -111,6 +128,8 @@ defmodule Phoenix.LiveView.Router do
   `live_redirect` from the client with navigation purely over the existing
   websocket connection. This allows live routes defined in the router to
   mount a new root LiveView without additional HTTP requests to the server.
+  For backwards compatibility reasons, all live routes defined outside
+  of any live session are considered part of an unnamed live session.
 
   ## Security Considerations
 
@@ -275,7 +294,7 @@ defmodule Phoenix.LiveView.Router do
         raise ArgumentError, """
         invalid live_session :root_layout
 
-        expected a tuple with the view module and template string or atom name, got #{inspect(bad_layout)}
+        expected a tuple with the view module and template atom name, got #{inspect(bad_layout)}
         """
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->

@@ -80,6 +80,17 @@ defmodule Phoenix.LiveView.JS do
         |> JS.add_class("warmer", to: ".thermo")
       }>+</button>
 
+  Any `phx-value-*` attributes will also be included in the payload, their
+  values will be overwritten by values given directly to `push/1`. Any
+  `phx-target` attribute will also be used, and overwritten.
+
+      <button
+        phx-click={JS.push("inc", value: %{limit: 40})}
+        phx-value-room="bedroom"
+        phx-value-limit="this value will be 40"
+        phx-target={@myself}
+      >+</button>
+
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
   `dispatch/1` can be used to dispatch custom JavaScript events to
@@ -135,11 +146,14 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:target` - The selector or component ID to push to
-    * `:loading` - The selector to apply the phx loading classes to
+    * `:target` - The selector or component ID to push to. This value will
+      overwrite any `phx-target` attribute present on the element.
+    * `:loading` - The selector to apply the phx loading classes to.
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
-      phx:page-loading-stop events for this push. Defaults to `false`
-    * `:value` - The map of values to send to the server
+      phx:page-loading-stop events for this push. Defaults to `false`.
+    * `:value` - The map of values to send to the server. These values will be
+      merged over any `phx-value-*` attributes that are present on the element.
+      All keys will be treated as strings when merging.
 
   ## Examples
 
@@ -363,7 +377,7 @@ defmodule Phoenix.LiveView.JS do
     * `:transition` - The string of classes to apply before hiding or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
-      `{"ease-out duration-300", "opacity-0", "opacity-100"}`
+      `{"ease-out duration-300", "opacity-100", "opacity-0"}`
     * `:time` - The time to apply the transition from `:transition`.
       Defaults #{@default_transition_time}
 
@@ -617,9 +631,11 @@ defmodule Phoenix.LiveView.JS do
 
       JS.focus(to: "main")
   """
-  def focus(), do: focus(%JS{}, [])
+  def focus(opts \\ [])
   def focus(%JS{} = js), do: focus(js, [])
   def focus(opts) when is_list(opts), do: focus(%JS{}, opts)
+
+  @doc "See `focus/1`."
   def focus(%JS{} = js, opts) when is_list(opts) do
     opts = validate_keys(opts, :focus, [:to])
     put_op(js, "focus", %{to: opts[:to]})
@@ -637,9 +653,11 @@ defmodule Phoenix.LiveView.JS do
 
       JS.focus_first(to: "#modal")
   """
-  def focus_first(), do: focus_first(%JS{}, [])
+  def focus_first(opts \\ [])
   def focus_first(%JS{} = js), do: focus_first(js, [])
   def focus_first(opts) when is_list(opts), do: focus_first(%JS{}, opts)
+
+  @doc "See `focus_first/1`."
   def focus_first(%JS{} = js, opts) when is_list(opts) do
     opts = validate_keys(opts, :focus_first, [:to])
     put_op(js, "focus_first", %{to: opts[:to]})
@@ -658,9 +676,11 @@ defmodule Phoenix.LiveView.JS do
       JS.push_focus()
       JS.push_focus(to: "#my-button")
   """
-  def push_focus(), do: push_focus(%JS{}, [])
+  def push_focus(opts \\ [])
   def push_focus(%JS{} = js), do: push_focus(js, [])
   def push_focus(opts) when is_list(opts), do: push_focus(%JS{}, opts)
+
+  @doc "See `push_focus/1`."
   def push_focus(%JS{} = js, opts) when is_list(opts) do
     opts = validate_keys(opts, :push_focus, [:to])
     put_op(js, "push_focus", %{to: opts[:to]})
@@ -673,8 +693,7 @@ defmodule Phoenix.LiveView.JS do
 
       JS.pop_focus()
   """
-  def pop_focus(), do: pop_focus(%JS{})
-  def pop_focus(%JS{} = js) do
+  def pop_focus(%JS{} = js \\ %JS{}) do
     put_op(js, "pop_focus", %{})
   end
 
@@ -692,12 +711,17 @@ defmodule Phoenix.LiveView.JS do
   def navigate(href) when is_binary(href) do
     navigate(%JS{}, href, [])
   end
+
+  @doc "See `navigate/1`."
   def navigate(href, opts) when is_binary(href) and is_list(opts) do
     navigate(%JS{}, href, opts)
   end
+
   def navigate(%JS{} = js, href) when is_binary(href) do
     navigate(js, href, [])
   end
+
+  @doc "See `navigate/1`."
   def navigate(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
     opts = validate_keys(opts, :navigate, [:replace])
     put_op(js, "navigate", %{href: href, replace: !!opts[:replace]})
@@ -717,12 +741,17 @@ defmodule Phoenix.LiveView.JS do
   def patch(href) when is_binary(href) do
     patch(%JS{}, href, [])
   end
+
+  @doc "See `patch/1`."
   def patch(href, opts) when is_binary(href) and is_list(opts) do
     patch(%JS{}, href, opts)
   end
+
   def patch(%JS{} = js, href) when is_binary(href) do
     patch(js, href, [])
   end
+
+  @doc "See `patch/1`."
   def patch(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
     opts = validate_keys(opts, :patch, [:replace])
     put_op(js, "patch", %{href: href, replace: !!opts[:replace]})

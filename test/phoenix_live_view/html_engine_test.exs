@@ -2,6 +2,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
   import Phoenix.Component
+
   alias Phoenix.LiveView.Tokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
@@ -18,13 +19,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       )
 
     quoted = EEx.compile_string(string, opts)
+
     {result, _} = Code.eval_quoted(quoted, [assigns: assigns], env)
     result
   end
 
-  defp render(string, assigns \\ %{}) do
+  defp render(string, assigns \\ %{}, opts \\ []) do
     string
-    |> eval(assigns)
+    |> eval(assigns, opts)
     |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
   end
@@ -343,6 +345,34 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   test "handle self close elements with attributes" do
     assert render("<div attr='1'/>") == "<div attr='1'></div>"
+  end
+
+  describe "debug annotations" do
+    alias Phoenix.LiveViewTest.DebugAnno
+    import Phoenix.LiveViewTest.DebugAnno
+
+    test "without root tag" do
+      assigns = %{}
+      assert compile("<DebugAnno.remote value='1'/>") == "REMOTE COMPONENT: Value: 1"
+      assert compile("<.local value='1'/>") == "LOCAL COMPONENT: Value: 1"
+    end
+
+    test "with root tag" do
+      assigns = %{}
+
+      assert compile("<DebugAnno.remote_with_root value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.remote_with_root> test/support/live_views/debug_anno.ex:9 --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.remote_with_root> -->"
+
+      assert compile("<.local_with_root value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->"
+    end
+
+    test "nesting" do
+      assigns = %{}
+
+      assert compile("<DebugAnno.nested value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.nested> test/support/live_views/debug_anno.ex:21 --><div>\n  <!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.DebugAnno.nested> -->"
+    end
   end
 
   describe "handle function components" do
@@ -1296,6 +1326,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert eval("<Kernel.to_string />").root == false
       assert eval("<Kernel.to_string></Kernel.to_string>").root == false
       assert eval("<div :for={item <- @items}><%= item %></div>").root == false
+      assert eval("<!-- comment --><div></div>").root == false
+      assert eval("<div></div><!-- comment -->").root == false
     end
   end
 
@@ -1372,6 +1404,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "unmatched open/close tags with void tags" do
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:16: unmatched closing tag. Expected </div> for <div> at line 1, got: </link> (note <link> is a void tag and cannot have any content)
+        |
+      1 | <div><link>Text</link></div>
+        |                ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("<div><link>Text</link></div>")
+      end)
+    end
+
     test "invalid remote tag" do
       message = """
       test/phoenix_live_view/html_engine_test.exs:1:1: invalid tag <Foo>
@@ -1401,6 +1446,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         text
           </span>
         """)
+      end)
+    end
+
+    test "missing open tag with void tag" do
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:11: missing opening tag for </link> (note <link> is a void tag and cannot have any content)
+        |
+      1 | <link>Text</link>
+        |           ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("<link>Text</link>")
       end)
     end
 
@@ -1681,10 +1739,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe "handle errors in expressions" do
     test "inside attribute values" do
-      assert_raise(
-        SyntaxError,
-        ~r"test/phoenix_live_view/html_engine_test.exs:12:22: syntax error before: ','",
-        fn ->
+      exception =
+        assert_raise SyntaxError, fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1697,14 +1753,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             opts
           )
         end
-      )
+
+      message = Exception.message(exception)
+      assert message =~ "test/phoenix_live_view/html_engine_test.exs:12:22:"
+      assert message =~ "syntax error before: ','"
     end
 
     test "inside root attribute value" do
-      assert_raise(
-        SyntaxError,
-        ~r"test/phoenix_live_view/html_engine_test.exs:12:16: syntax error before: ','",
-        fn ->
+      exception =
+        assert_raise SyntaxError, fn ->
           opts = [line: 10, indentation: 8]
 
           eval(
@@ -1717,7 +1774,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
             opts
           )
         end
-      )
+
+      message = Exception.message(exception)
+      assert message =~ "test/phoenix_live_view/html_engine_test.exs:12:16:"
+      assert message =~ "syntax error before: ','"
     end
   end
 

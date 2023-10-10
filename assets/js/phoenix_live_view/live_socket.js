@@ -98,6 +98,7 @@ import {
   PHX_FEEDBACK_FOR,
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
+  PHX_REF,
 } from "./constants"
 
 import {
@@ -238,6 +239,12 @@ export default class LiveSocket {
   }
 
   // private
+
+  execJSHookPush(el, phxEvent, data, callback){
+    this.withinOwners(el, view => {
+      JS.exec("hook", phxEvent, view, el, ["push", {data, callback}])
+    })
+  }
 
   unload(){
     if(this.unloaded){ return }
@@ -400,7 +407,7 @@ export default class LiveSocket {
           DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
           this.outgoingMainEl.replaceWith(newMainEl)
           this.outgoingMainEl = null
-          callback && requestAnimationFrame(callback)
+          callback && requestAnimationFrame(() => callback(linkRef))
           onDone()
         })
       }
@@ -411,9 +418,7 @@ export default class LiveSocket {
     let removeAttr = this.binding("remove")
     elements = elements || DOM.all(document, `[${removeAttr}]`)
     elements.forEach(el => {
-      if(document.body.contains(el)){ // skip children already removed
-        this.execJS(el, el.getAttribute(removeAttr), "remove")
-      }
+      this.execJS(el, el.getAttribute(removeAttr), "remove")
     })
   }
 
@@ -503,8 +508,6 @@ export default class LiveSocket {
     this.boundTopLevelEvents = true
     // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
     this.socket.onClose(event => {
-      // unload when navigating href or form submit (such as for firefox)
-      if(event && event.code === 1001){ return this.unload() }
       // failsafe reload if normal closure and we still have a main LV
       if(event && event.code === 1000 && this.main){ return this.reloadWithJitter(this.main) }
     })
@@ -635,13 +638,14 @@ export default class LiveSocket {
       }
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
-        let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
-        if(!capture && href !== null && !DOM.wantsNewTab(e) && DOM.isNewPageHref(href, window.location)){
-          this.unload()
-        }
+        if(!capture && DOM.isNewPageClick(e, window.location)){ this.unload() }
         return
       }
+
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
+
+      // noop if we are in the middle of awaiting an ack for this el already
+      if(target.hasAttribute(PHX_REF)){ return }
 
       this.debounce(target, e, "click", () => {
         this.withinOwners(target, view => {
@@ -680,6 +684,7 @@ export default class LiveSocket {
       let {type, id, root, scroll} = event.state || {}
       let href = window.location.href
 
+      DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true}})
       this.requestDOMUpdate(() => {
         if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
           this.main.pushLinkPatch(href, null, () => {
@@ -757,6 +762,7 @@ export default class LiveSocket {
     if(!this.commitPendingLink(linkRef)){ return }
 
     Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
+    DOM.dispatchEvent(window, "phx:navigate", {detail: {patch: true, href, pop: false}})
     this.registerNewLocation(window.location)
   }
 
@@ -769,9 +775,12 @@ export default class LiveSocket {
     }
     let scroll = window.scrollY
     this.withPageLoading({to: href, kind: "redirect"}, done => {
-      this.replaceMain(href, flash, () => {
-        Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
-        this.registerNewLocation(window.location)
+      this.replaceMain(href, flash, (linkRef) => {
+        if(linkRef === this.linkRef){
+          Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
+          DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
+          this.registerNewLocation(window.location)
+        }
         done()
       })
     })
@@ -840,8 +849,10 @@ export default class LiveSocket {
         let currentIterations = iterations
         iterations++
         let {at: at, type: lastType} = DOM.private(input, "prev-iteration") || {}
-        // detect dup because some browsers dispatch both "input" and "change"
-        if(at === currentIterations - 1 && type !== lastType){ return }
+        // Browsers should always fire at least one "input" event before every "change"
+        // Ignore "change" events, unless there was no prior "input" event.
+        // This could happen if user code triggers a "change" event, or if the browser is non-conforming.
+        if(at === currentIterations - 1 && type === "change" && lastType === "input"){ return }
 
         DOM.putPrivate(input, "prev-iteration", {at: currentIterations, type: type})
 

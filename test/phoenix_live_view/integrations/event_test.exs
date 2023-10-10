@@ -121,6 +121,54 @@ defmodule Phoenix.LiveView.EventTest do
       |> render_click(%{reply: "123"})
 
       assert_reply(view, %{"comp-reply" => %{"reply" => "123"}})
+
+      view
+      |> element("#comp-noreply")
+      |> render_click(%{reply: "123"})
+
+      refute_received _
+    end
+  end
+
+  describe "LiveViewTest supports multiple JS.push events" do
+    test "from one click", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-multi-js")
+
+      assert element(view, "#add-one-and-ten")
+             |> render_click() =~ "count: 11"
+    end
+
+    test "with repiles", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-multi-js")
+
+      assert element(view, "#reply-values")
+             |> render_click()
+
+      assert_reply(view, %{value: 1})
+      assert_reply(view, %{value: 2})
+    end
+
+    test "from a component to itself", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-multi-js-in-component")
+
+      html =
+        element(view, "#child_1 #push-to-self")
+        |> render_click()
+
+      assert html =~ "child_1 count: 11"
+      assert html =~ "child_2 count: 0"
+    end
+
+    test "from a component to other targets", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events-multi-js-in-component")
+
+      html =
+        element(view, "#child_1 #push-to-other-targets")
+        |> render_click()
+
+      assert html =~ "child_1 count: 1"
+      assert html =~ "child_2 count: 2"
+      assert html =~ "root count: -1"
     end
   end
 end

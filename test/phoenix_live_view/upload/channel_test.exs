@@ -9,6 +9,42 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   @endpoint Phoenix.LiveViewTest.Endpoint
 
+  defmodule TestWriter do
+    @behaviour Phoenix.LiveView.UploadWriter
+
+    @impl true
+    def init(test_name) do
+      send(test_name, :init)
+      {:ok, test_name}
+    end
+
+    @impl true
+    def meta(test_name) do
+      send(test_name, :meta)
+      test_name
+    end
+
+    @impl true
+    def write_chunk("error", test_name) do
+      {:error, :custom_error, test_name}
+    end
+
+    def write_chunk(data, test_name) do
+      send(test_name, {:write_chunk, data})
+      {:ok, test_name}
+    end
+
+    @impl true
+    def close(test_name, reason) do
+      send(test_name, {:close, reason})
+      {:ok, test_name}
+    end
+  end
+
+  def build_writer(_name, %Phoenix.LiveView.UploadEntry{}, %Phoenix.LiveView.Socket{}) do
+    {TestWriter, :test_writer}
+  end
+
   def valid_token(lv_pid, ref) do
     LiveView.Static.sign_token(@endpoint, %{pid: lv_pid, ref: ref})
   end
@@ -189,7 +225,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                ) ==
                  {:error, %{limit: 100, reason: :file_size_limit_exceeded}}
 
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
       end
 
       @tag allow: [accept: :any, max_file_size: 100, chunk_timeout: 500]
@@ -224,6 +260,11 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       @tag allow: [max_entries: 1, accept: :any]
       test "too many entries over max", %{lv: lv} do
         avatar = file_input(lv, "form", :avatar, build_entries(2))
+
+        assert lv
+               |> form("form", user: %{})
+               |> render_change(avatar) =~ "config_error::too_many_files"
+
         assert {:error, [[_ref, :too_many_files]]} = render_upload(avatar, "myfile1.jpeg", 1)
       end
 
@@ -301,7 +342,49 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert lv
                |> form("form", user: %{})
-               |> render_change(avatar) =~ "error::too_large"
+               |> render_change(avatar) =~ "entry_error::too_large"
+
+        assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
+      end
+
+      @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, auto_upload: true]
+      test "render_upload too many files with auto_upload", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo1.jpeg", content: "bytes"},
+            %{name: "foo2.jpeg", content: "bytes"}
+          ])
+
+        html =
+          lv
+          |> form("form", user: %{})
+          |> render_change(avatar)
+
+        assert html =~ "config_error::too_many_files"
+        assert html =~ "foo1.jpeg:0%"
+        assert html =~ "foo2.jpeg:0%"
+
+        assert render_upload(avatar, "foo1.jpeg") =~ "foo1.jpeg:100%"
+        assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg")
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 20,
+             accept: :any,
+             max_file_size: 1,
+             auto_upload: true
+           ]
+      test "render_upload invalid with auto_upload", %{lv: lv} do
+        avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "overmax"}])
+
+        html =
+          lv
+          |> form("form", user: %{})
+          |> render_change(avatar)
+
+        assert html =~ "entry_error::too_large"
+        assert html =~ "foo.jpeg:0%"
 
         assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
       end
@@ -356,9 +439,9 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {:reply, :ok, socket}
         end)
 
-        # Wait for the the UploadClient and UploadChannel to shutdown
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        # Wait for the UploadClient and UploadChannel to shutdown
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
         assert_receive {:file, tmp_path, "foo.jpeg", "123"}
         # synchronize with LV and Plug.Upload to ensure they have processed DOWN
         assert render(lv)
@@ -386,7 +469,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {:reply, :ok, socket}
         end)
 
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
         assert_receive {:file, tmp_path, "foo.jpeg", "123"}
         # synchronize with LV to ensure it has processed DOWN
         assert render(lv)
@@ -498,8 +581,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert_receive {:results, [{:consumed, tmp_path}]}
         assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
         # synchronize with LV to ensure it has processed DOWN
         assert render(lv)
         # synchronize with Plug.Upload to ensure it has processed DOWN
@@ -553,8 +636,8 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
         assert_receive {:result, {:consumed, tmp_path}}
         assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
-        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
         # synchronize with LV to ensure it has processed DOWN
         assert render(lv)
         # synchronize with Plug.Upload to ensure it has processed DOWN
@@ -594,7 +677,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           {:reply, :ok, Phoenix.LiveView.cancel_upload(socket, :avatar, ref)}
         end)
 
-        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+        assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
 
         assert UploadLive.run(lv, fn socket ->
                  {:reply, Phoenix.LiveView.uploaded_entries(socket, :avatar), socket}
@@ -639,6 +722,96 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                  end)
                end) =~ "cannot allow_upload on an existing upload with active entries"
       end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 50,
+             accept: :any,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "writer can be configured", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        content = String.duplicate("0", 100)
+
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: content}
+          ])
+
+        assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:50%"
+        assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:100%"
+
+        metas =
+          UploadLive.run(lv, fn socket ->
+            results =
+              Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn meta, _entry ->
+                {:ok, meta}
+              end)
+
+            {:reply, results, socket}
+          end)
+
+        assert metas == [:test_writer]
+        assert_receive :init
+        assert_receive :meta
+        assert_receive {:write_chunk, chunk1}
+        assert_receive {:write_chunk, chunk2}
+        refute_receive {:write_chunk, _}
+        assert chunk1 <> chunk2 == content
+        assert_receive {:close, :done}
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 50,
+             accept: :any,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "writer with LiveView exit", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        content = String.duplicate("0", 100)
+
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: content}
+          ])
+
+        assert render_upload(avatar, "foo.jpeg", 50) =~ "#{@context}:foo.jpeg:50%"
+
+        assert %{"foo.jpeg" => channel_pid} = UploadClient.channel_pids(avatar)
+
+        unlink(channel_pid, lv, avatar)
+        Process.monitor(channel_pid)
+        Process.exit(lv.pid, :kill)
+
+        assert_receive {:write_chunk, _chunk1}
+        refute_receive {:write_chunk, _}
+        assert_receive {:close, :cancel}
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 50,
+             accept: :any,
+             writer: &__MODULE__.build_writer/3
+           ]
+      test "writer with error", %{lv: lv} do
+        Process.register(self(), :test_writer)
+
+        content = "error"
+
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "foo.jpeg", content: content}
+          ])
+
+        assert render_upload(avatar, "foo.jpeg") =~
+                 ~s/entry_error:{:writer_failure, :custom_error}/
+
+        assert_receive {:close, {:error, :custom_error}}
+      end
     end
   end
 
@@ -650,7 +823,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       avatar = file_input(lv, "#upload0", :avatar, build_entries(1))
       assert render_upload(avatar, "myfile1.jpeg", 1) =~ "component:myfile1.jpeg:1%"
 
-      GenServer.call(lv.pid, {:setup, fn socket -> Component.assign(socket, uploads_count: 2) end})
+      GenServer.call(
+        lv.pid,
+        {:setup, fn socket -> Component.assign(socket, uploads_count: 2) end}
+      )
 
       GenServer.call(
         lv.pid,
@@ -693,7 +869,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
       refute render(lv) =~ "myfile1.jpeg"
 
-      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}
+      assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
 
       # retry with new component
       GenServer.call(lv.pid, {:uploads, 1})
@@ -738,7 +914,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
     @tag allow: [accept: :any]
     test "get allowed uploads from the form's target cid", %{lv: lv} do
-      GenServer.call(lv.pid, {:setup, fn socket -> Component.assign(socket, uploads_count: 2) end})
+      GenServer.call(
+        lv.pid,
+        {:setup, fn socket -> Component.assign(socket, uploads_count: 2) end}
+      )
 
       GenServer.call(
         lv.pid,

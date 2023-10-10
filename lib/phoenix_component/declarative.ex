@@ -33,6 +33,7 @@ defmodule Phoenix.Component.Declarative do
     height
     hidden
     id
+    inert
     inputmode
     is
     itemid
@@ -122,8 +123,8 @@ defmodule Phoenix.Component.Declarative do
   )
 
   @doc false
-  def __global__?(module, name, global_attr \\ nil) when is_atom(module) and is_binary(name) do
-    includes = global_attr && Keyword.get(global_attr.opts, :include, [])
+  def __global__?(module, name, global_attr) when is_atom(module) and is_binary(name) do
+    includes = Keyword.get(global_attr.opts, :include, [])
 
     if function_exported?(module, :__global__?, 1) do
       module.__global__?(name) or __global__?(name) or name in includes
@@ -197,7 +198,14 @@ defmodule Phoenix.Component.Declarative do
   @doc false
   @valid_opts [:global_prefixes]
   def __setup__(module, opts) do
-    {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
+    {prefixes, opts} = Keyword.pop(opts, :global_prefixes, [])
+
+    {debug_annotations, invalid_opts} =
+      Keyword.pop(
+        opts,
+        :debug_heex_annotations,
+        Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
+      )
 
     prefix_matches =
       for prefix <- prefixes do
@@ -223,6 +231,7 @@ defmodule Phoenix.Component.Declarative do
     Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
+    Module.put_attribute(module, :__debug_annotations__, debug_annotations)
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
 
@@ -607,7 +616,7 @@ defmodule Phoenix.Component.Declarative do
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
 
     names_and_defs =
-      for {name, %{kind: kind, attrs: attrs, slots: slots}} <- components do
+      for {name, %{kind: kind, attrs: attrs, slots: slots, line: line}} <- components do
         attr_defaults =
           for %{name: name, required: false, opts: opts} <- attrs,
               Keyword.has_key?(opts, :default),
@@ -660,7 +669,7 @@ defmodule Phoenix.Component.Declarative do
           end
 
         merge =
-          quote do
+          quote line: line do
             Kernel.unquote(kind)(unquote(name)(assigns)) do
               unquote(def_body)
             end
@@ -723,7 +732,8 @@ defmodule Phoenix.Component.Declarative do
           |> Map.put(name, %{
             kind: kind,
             attrs: Enum.sort_by(attrs, & &1.name),
-            slots: Enum.sort_by(slots, & &1.name)
+            slots: Enum.sort_by(slots, & &1.name),
+            line: env.line
           })
 
         Module.put_attribute(env.module, :__components__, components)
@@ -815,7 +825,7 @@ defmodule Phoenix.Component.Declarative do
   defp build_attrs_docs(attrs) do
     [
       "## Attributes\n",
-      for attr <- attrs, attr.doc != false, attr.type != :global, into: [] do
+      for attr <- attrs, attr.doc != false and attr.type != :global do
         [
           "\n* ",
           build_attr_name(attr),
@@ -826,10 +836,10 @@ defmodule Phoenix.Component.Declarative do
           build_attr_values_or_examples(attr)
         ]
       end,
-      if Enum.any?(attrs, &(&1.type == :global)) do
-        "\nGlobal attributes are accepted."
-      else
-        ""
+      # global always goes at the end
+      case Enum.find(attrs, &(&1.type === :global)) do
+        nil -> []
+        attr -> build_attr_doc_and_default(attr, "  ")
       end
     ]
   end
@@ -902,17 +912,17 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp build_attr_doc_and_default(%{doc: doc, type: :global, opts: opts}, indent) do
-    case Keyword.fetch(opts, :include) do
-      {:ok, [_ | _] = inc} ->
-        if doc do
-          [build_doc(doc, indent, true), "Supports all globals plus: ", build_literal(inc), "."]
-        else
-          ["Supports all globals plus: ", build_literal(inc), "."]
-        end
+    [
+      "\n* Global attributes are accepted.",
+      if(doc, do: [" ", build_doc(doc, indent, false)], else: []),
+      case Keyword.get(opts, :include) do
+        inc when is_list(inc) and inc != [] ->
+          [" ", "Supports all globals plus:", " ", build_literal(inc), "."]
 
-      _ ->
-        if doc, do: [build_doc(doc, indent, false)], else: []
-    end
+        _ ->
+          []
+      end
+    ]
   end
 
   defp build_attr_doc_and_default(%{doc: doc, opts: opts}, indent) do
@@ -1129,7 +1139,6 @@ defmodule Phoenix.Component.Declarative do
 
           # slot with attributes
           _ ->
-            has_global? = Enum.any?(attrs, &(&1.type == :global))
             slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
             required_attrs = for {attr_name, %{required: true}} <- slot_attr_defs, do: attr_name
 
@@ -1181,8 +1190,7 @@ defmodule Phoenix.Component.Declarative do
 
                 # undefined slot attr
                 %{} ->
-                  if attr_name == :inner_block or
-                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
+                  if attr_name == :inner_block do
                     :ok
                   else
                     message =
@@ -1216,6 +1224,7 @@ defmodule Phoenix.Component.Declarative do
   defp type_mismatch(_type, :any), do: nil
   defp type_mismatch(type, {type, _value}), do: nil
   defp type_mismatch(:atom, {:boolean, _value}), do: nil
+  defp type_mismatch({:struct, _}, {:map, {:%{}, _, [{:|, _, [_, _]}]}}), do: nil
   defp type_mismatch(_type, {_, value}), do: Macro.to_string(value)
 
   defp component_fa(%{component: {mod, fun}}) do
@@ -1224,6 +1233,7 @@ defmodule Phoenix.Component.Declarative do
 
   ## Shared helpers
 
+  defp type_with_article({:struct, struct}), do: "a #{inspect(struct)} struct"
   defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
   defp type_with_article(type), do: "a #{inspect(type)}"
 

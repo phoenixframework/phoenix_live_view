@@ -81,8 +81,7 @@ defmodule Phoenix.LiveView.Static do
     * `:router` - the router the live view was built at
     * `:action` - the router action
     * `:session` - the required map of session data
-    * `:container` - the optional tuple for the HTML tag and DOM attributes to
-      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`
+    * `:container` - the optional tuple for the HTML tag and DOM attributes
   """
   def render(%Plug.Conn{} = conn, view, opts) do
     conn_session = maybe_get_session(conn)
@@ -108,7 +107,7 @@ defmodule Phoenix.LiveView.Static do
           conn_session: conn_session,
           lifecycle: lifecycle,
           root_view: view,
-          __changed__: %{}
+          live_temp: %{}
         }
         |> maybe_put_live_layout(live_session),
         action,
@@ -181,7 +180,7 @@ defmodule Phoenix.LiveView.Static do
           lifecycle: config.lifecycle,
           live_layout: false,
           root_view: if(sticky?, do: view, else: parent.private.root_view),
-          __changed__: %{}
+          live_temp: %{}
         },
         nil,
         %{},

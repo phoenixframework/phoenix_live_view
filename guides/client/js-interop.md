@@ -2,7 +2,7 @@
 
 To enable LiveView client/server interaction, we instantiate a LiveSocket. For example:
 
-```
+```javascript
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 
@@ -57,7 +57,7 @@ the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disable
 functions which apply throughout the current browser session. The `enableLatencySim` function
 accepts an integer in milliseconds for the round-trip-time to the server. For example:
 
-```
+```javascript
 // app.js
 let liveSocket = new LiveSocket(...)
 liveSocket.connect()
@@ -104,6 +104,15 @@ key in the info metadata pointing to the href associated with the page load.
 In the case of an `"element"` page loading event, the info will contain a
 `"target"` key containing the DOM element which triggered the page loading
 state.
+
+A lower level `phx:navigate` event is also triggered any time the browser's URL bar
+is programmatically changed by Phoenix or the user navigation forward or back. The
+`info.detail` will contain the following information:
+
+  - `"href"` - the location the URL bar was navigated to.
+  - `"patch"` - the boolean flag indicating this was a patch navigation.
+  - `"pop"` - the boolean flag indication this was a navigation via `popstate`
+    from a user navigation forward or back in history.
 
 ### Handling server-pushed events
 
@@ -207,24 +216,28 @@ The above life-cycle callbacks have in-scope access to the following attributes:
 For example, the markup for a controlled input for phone-number formatting could be written
 like this:
 
-    <input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber" />
+```heex
+<input type="text" name="user[phone_number]" id="user-phone-number" phx-hook="PhoneNumber" />
+```
 
 Then a hook callback object could be defined and passed to the socket:
 
-    let Hooks = {}
-    Hooks.PhoneNumber = {
-      mounted() {
-        this.el.addEventListener("input", e => {
-          let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
-          if(match) {
-            this.el.value = `${match[1]}-${match[2]}-${match[3]}`
-          }
-        })
+```javascript
+let Hooks = {}
+Hooks.PhoneNumber = {
+  mounted() {
+    this.el.addEventListener("input", e => {
+      let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
+      if(match) {
+        this.el.value = `${match[1]}-${match[2]}-${match[3]}`
       }
-    }
+    })
+  }
+}
 
-    let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
-    ...
+let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+...
+```
 
 *Note*: when using `phx-hook`, a unique DOM ID must always be set.
 
@@ -236,28 +249,19 @@ libraries to (re)initialize DOM elements or copy attributes as necessary as Live
 performs its own patch operations. The update operation cannot be cancelled or deferred,
 and the return value is ignored.
 
-For example, the following option could be used to add
-[Alpine.js](https://github.com/alpinejs/alpine) support to your project:
+For example, the following option could be used to guarantee that some attributes set on the client-side are kept intact:
 
-    let liveSocket = new LiveSocket("/live", Socket, {
-      ...,
-      dom: {
-        onBeforeElUpdated(from, to){
-          if(from._x_dataStack){ window.Alpine.clone(from, to) }
-        }
-      },
-    })
-
-You could also use the same approach to guarantee that some attributes set on the client-side are kept intact.
-In the following example, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView:
-
-    onBeforeElUpdated(from, to){
-      for (const attr of from.attributes){
-        if (attr.name.startsWith("data-js-")){
-          to.setAttribute(attr.name, attr.value);
-        }
-      }
+```javascript
+onBeforeElUpdated(from, to){
+  for (const attr of from.attributes){
+    if (attr.name.startsWith("data-js-")){
+      to.setAttribute(attr.name, attr.value);
     }
+  }
+}
+```
+
+In the example above, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView.
 
 ### Client-server communication
 
@@ -270,23 +274,27 @@ hook element or by using `Phoenix.LiveView.push_event/3` on the server and `hand
 
 For example, to implement infinite scrolling, one can pass the current page using data attributes:
 
-    <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page={@page}>
+```heex
+<div id="infinite-scroll" phx-hook="InfiniteScroll" data-page={@page}>
+```
 
 And then in the client:
 
-    Hooks.InfiniteScroll = {
-      page() { return this.el.dataset.page },
-      mounted(){
-        this.pending = this.page()
-        window.addEventListener("scroll", e => {
-          if(this.pending == this.page() && scrollAt() > 90){
-            this.pending = this.page() + 1
-            this.pushEvent("load-more", {})
-          }
-        })
-      },
-      updated(){ this.pending = this.page() }
-    }
+```javascript
+Hooks.InfiniteScroll = {
+  page() { return this.el.dataset.page },
+  mounted(){
+    this.pending = this.page()
+    window.addEventListener("scroll", e => {
+      if(this.pending == this.page() && scrollAt() > 90){
+        this.pending = this.page() + 1
+        this.pushEvent("load-more", {})
+      }
+    })
+  },
+  updated(){ this.pending = this.page() }
+}
+```
 
 However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
@@ -295,11 +303,13 @@ However, the data attribute approach is not a good approach if you need to frequ
 
 And then on the client:
 
-    Hooks.Chart = {
-      mounted(){
-        this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
-      }
-    }
+```javascript
+Hooks.Chart = {
+  mounted(){
+    this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
+  }
+}
+```
 
 *Note*: remember events pushed from the server via `push_event` are global and will be dispatched
 to all active hooks on the client who are handling that event.

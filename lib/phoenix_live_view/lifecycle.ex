@@ -196,11 +196,8 @@ defmodule Phoenix.LiveView.Lifecycle do
     {:cont, new_socket} =
       reduce_socket(lifecycle.after_render, socket, fn hook, acc ->
         case hook.function.(acc) do
-          ^socket ->
-            {:cont, socket}
-
           %Socket{} = new_socket ->
-            {:cont, Utils.clear_changed(new_socket)}
+            {:cont, new_socket}
 
           other ->
             raise ArgumentError,

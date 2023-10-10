@@ -114,12 +114,9 @@ defmodule Phoenix.LiveView.Diff do
   Render information stored in private changed.
   """
   def render_private(socket, diff) do
-    {_, diff} =
-      diff
-      |> maybe_put_reply(socket)
-      |> maybe_put_events(socket)
-
     diff
+    |> maybe_put_reply(socket)
+    |> maybe_put_events(socket)
   end
 
   @doc """
@@ -166,8 +163,8 @@ defmodule Phoenix.LiveView.Diff do
 
   defp maybe_put_events(diff, socket) do
     case Utils.get_push_events(socket) do
-      [_ | _] = events -> {true, Map.update(diff, @events, events, &(&1 ++ events))}
-      [] -> {false, diff}
+      [_ | _] = events -> Map.update(diff, @events, events, &(&1 ++ events))
+      [] -> diff
     end
   end
 
@@ -197,32 +194,23 @@ defmodule Phoenix.LiveView.Diff do
   """
   def write_component(socket, cid, components, fun) when is_integer(cid) do
     # We need to extract the original cid_to_component for maybe_reuse_static later
-    {cid_to_component, _, _} = components
+    {cids, _, _} = components
 
-    case cid_to_component do
+    case cids do
       %{^cid => {component, id, assigns, private, fingerprints}} ->
-        {component_socket, extra} =
+        {csocket, extra} =
           socket
           |> configure_socket_for_component(assigns, private, fingerprints)
           |> fun.(component)
 
+        diff = render_private(csocket, %{})
+
         {pending, cdiffs, components} =
-          render_component(
-            component_socket,
-            component,
-            id,
-            cid,
-            false,
-            %{},
-            cid_to_component,
-            %{},
-            components
-          )
+          render_component(csocket, component, id, cid, false, %{}, cids, %{}, components)
 
         {cdiffs, components} =
-          render_pending_components(socket, pending, %{}, cid_to_component, cdiffs, components)
+          render_pending_components(socket, pending, cids, cdiffs, components)
 
-        diff = maybe_put_reply(%{}, component_socket)
         {diff, cdiffs} = extract_events({diff, cdiffs})
         {Map.put(diff, @components, cdiffs), components, extra}
 
@@ -265,9 +253,9 @@ defmodule Phoenix.LiveView.Diff do
 
       {diff, new_components} = Diff.update_component(socket, state.components, update)
   """
-  def update_component(socket, components, {module, id, updated_assigns}) do
-    case fetch_cid(module, id, components) do
-      {:ok, cid} ->
+  def update_component(socket, components, {ref, updated_assigns}) do
+    case fetch_cid(ref, components) do
+      {:ok, {cid, module}} ->
         updated_assigns = maybe_call_preload!(module, updated_assigns)
 
         {diff, new_components, :noop} =
@@ -459,15 +447,21 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          _socket,
-         %Comprehension{dynamics: []},
+         %Comprehension{dynamics: [], stream: stream},
          _,
          pending,
          components,
          template,
          _changed?
        ) do
-    # The comprehension has no elements and it was not rendered yet, so we skip it.
-    {"", nil, pending, components, template}
+    # The comprehension has no elements and it was not rendered yet, so we skip it,
+    # but if there is a stream delete, we send it
+    if stream do
+      diff = %{@dynamics => [], @static => []}
+      {maybe_add_stream_id(diff, stream), nil, pending, components, template}
+    else
+      {"", nil, pending, components, template}
+    end
   end
 
   defp traverse(
@@ -633,43 +627,82 @@ defmodule Phoenix.LiveView.Diff do
 
     {{pending, diffs, components}, seen_ids} =
       Enum.reduce(pending, acc, fn {component, entries}, acc ->
+        {{pending, diffs, components}, seen_ids} = acc
+        update_many? = function_exported?(component, :update_many, 1)
         entries = maybe_preload_components(component, Enum.reverse(entries))
 
-        Enum.reduce(entries, acc, fn {cid, id, new?, new_assigns}, {triplet, seen_ids} ->
-          {pending, diffs, components} = triplet
+        {assigns_sockets, metadata, components, seen_ids} =
+          Enum.reduce(entries, {[], [], components, seen_ids}, fn
+            {cid, id, new?, new_assigns}, {assigns_sockets, metadata, components, seen_ids} ->
+              if Map.has_key?(seen_ids, [component | id]) do
+                raise "found duplicate ID #{inspect(id)} " <>
+                        "for component #{inspect(component)} when rendering template"
+              end
 
-          if Map.has_key?(seen_ids, [component | id]) do
-            raise "found duplicate ID #{inspect(id)} " <>
-                    "for component #{inspect(component)} when rendering template"
+              {socket, components} =
+                case cids do
+                  %{^cid => {_component, _id, assigns, private, prints}} ->
+                    private = Map.delete(private, @marked_for_deletion)
+                    {configure_socket_for_component(socket, assigns, private, prints), components}
+
+                  %{} ->
+                    myself_assigns = %{myself: %Phoenix.LiveComponent.CID{cid: cid}}
+
+                    {mount_component(socket, component, myself_assigns),
+                     put_cid(components, component, id, cid)}
+                end
+
+              assigns_sockets =
+                if update_many? do
+                  [{new_assigns, socket} | assigns_sockets]
+                else
+                  [Utils.maybe_call_update!(socket, component, new_assigns) | assigns_sockets]
+                end
+
+              metadata = [{cid, id, new?} | metadata]
+              seen_ids = Map.put(seen_ids, [component | id], true)
+              {assigns_sockets, metadata, components, seen_ids}
+          end)
+
+        sockets =
+          if update_many? do
+            component.update_many(Enum.reverse(assigns_sockets))
+          else
+            Enum.reverse(assigns_sockets)
           end
 
-          {socket, components} =
-            case cids do
-              %{^cid => {_component, _id, assigns, private, prints}} ->
-                private = Map.delete(private, @marked_for_deletion)
-                {configure_socket_for_component(socket, assigns, private, prints), components}
-
-              %{} ->
-                myself_assigns = %{myself: %Phoenix.LiveComponent.CID{cid: cid}}
-
-                {mount_component(socket, component, myself_assigns),
-                 put_cid(components, component, id, cid)}
-            end
-
-          triplet =
-            socket
-            |> Utils.maybe_call_update!(component, new_assigns)
-            |> render_component(component, id, cid, new?, pending, cids, diffs, components)
-
-          {triplet, Map.put(seen_ids, [component | id], true)}
-        end)
+        metadata = Enum.reverse(metadata)
+        triplet = zip_components(sockets, metadata, component, cids, {pending, diffs, components})
+        {triplet, seen_ids}
       end)
 
     render_pending_components(socket, pending, seen_ids, cids, diffs, components)
   end
 
+  defp zip_components(
+         [%{__struct__: Phoenix.LiveView.Socket} = socket | sockets],
+         [{cid, id, new?} | metadata],
+         component,
+         cids,
+         {pending, diffs, components}
+       ) do
+    diffs = maybe_put_events(diffs, socket)
+    acc = render_component(socket, component, id, cid, new?, pending, cids, diffs, components)
+    zip_components(sockets, metadata, component, cids, acc)
+  end
+
+  defp zip_components([], [], _component, _cids, acc) do
+    acc
+  end
+
+  defp zip_components(_sockets, _metadata, component, _cids, _acc) do
+    raise "#{inspect(component)}.update_many/1 must return a list of Phoenix.LiveView.Socket " <>
+            "of the same length as the input list, got mismatched return type"
+  end
+
   defp maybe_preload_components(component, entries) do
     if function_exported?(component, :preload, 1) do
+      IO.warn("#{inspect(component)}.preload/1 is deprecated, use update_many/1 instead")
       list_of_assigns = Enum.map(entries, fn {_cid, _id, _new?, new_assigns} -> new_assigns end)
       result = component.preload(list_of_assigns)
       zip_preloads(result, entries, component, result)
@@ -680,6 +713,7 @@ defmodule Phoenix.LiveView.Diff do
 
   defp maybe_call_preload!(module, assigns) do
     if function_exported?(module, :preload, 1) do
+      IO.warn("#{inspect(module)}.preload/1 is deprecated, use update_many/1 instead")
       [new_assigns] = module.preload([assigns])
       new_assigns
     else
@@ -703,7 +737,6 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp render_component(socket, component, id, cid, new?, pending, cids, diffs, components) do
-    {events?, diffs} = maybe_put_events(diffs, socket)
     changed? = new? or Utils.changed?(socket)
 
     {socket, pending, diff, {cid_to_component, id_to_cid, uuids}} =
@@ -717,18 +750,15 @@ defmodule Phoenix.LiveView.Diff do
           traverse(socket, rendered, prints, pending, components, nil, changed?)
 
         diff = if linked_cid, do: Map.put(diff, @static, linked_cid), else: diff
-        {%{socket | fingerprints: component_prints}, pending, diff, components}
+
+        socket =
+          %{socket | fingerprints: component_prints}
+          |> Lifecycle.after_render()
+          |> Utils.clear_changed()
+
+        {socket, pending, diff, components}
       else
         {socket, pending, %{}, components}
-      end
-
-    socket =
-      if changed? or events? do
-        socket
-        |> Lifecycle.after_render()
-        |> Utils.clear_changed()
-      else
-        socket
       end
 
     diffs =
@@ -738,11 +768,13 @@ defmodule Phoenix.LiveView.Diff do
         diffs
       end
 
+    socket = Utils.clear_temp(socket)
     cid_to_component = Map.put(cid_to_component, cid, dump_component(socket, component, id))
     {pending, diffs, {cid_to_component, id_to_cid, uuids}}
   end
 
-  @attempts 3
+  # 32 is one bucket from large maps
+  @attempts 32
 
   # If the component is new or is getting a new static root, we search if another
   # component has the same tree root. If so, we will point to the whole existing
@@ -794,9 +826,19 @@ defmodule Phoenix.LiveView.Diff do
     {id_to_components, Map.put(id_to_cid, component, Map.put(inner, id, cid)), uuids}
   end
 
-  defp fetch_cid(component, id, {_cid_to_components, id_to_cid, _} = _components) do
+  defp fetch_cid(
+         %Phoenix.LiveComponent.CID{cid: cid},
+         {cid_to_components, _id_to_cid, _} = _components
+       ) do
+    case cid_to_components do
+      %{^cid => {component, _id, _assigns, _private, _fingerprints}} -> {:ok, {cid, component}}
+      %{} -> :error
+    end
+  end
+
+  defp fetch_cid({component, id}, {_cid_to_components, id_to_cid, _} = _components) do
     case id_to_cid do
-      %{^component => %{^id => cid}} -> {:ok, cid}
+      %{^component => %{^id => cid}} -> {:ok, {cid, component}}
       %{} -> :error
     end
   end
@@ -805,7 +847,7 @@ defmodule Phoenix.LiveView.Diff do
     private =
       socket.private
       |> Map.take([:conn_session, :root_view])
-      |> Map.put(:__changed__, %{})
+      |> Map.put(:live_temp, %{})
       |> Map.put(:lifecycle, %Phoenix.LiveView.Lifecycle{})
 
     socket =

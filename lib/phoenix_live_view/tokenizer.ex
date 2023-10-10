@@ -1,8 +1,8 @@
 defmodule Phoenix.LiveView.Tokenizer do
   @moduledoc false
-  @space_chars '\s\t\f'
-  @quote_chars '"\''
-  @stop_chars '>/=\r\n' ++ @quote_chars ++ @space_chars
+  @space_chars ~c"\s\t\f"
+  @quote_chars ~c"\"'"
+  @stop_chars ~c">/=\r\n" ++ @quote_chars ++ @space_chars
 
   defmodule ParseError do
     @moduledoc false
@@ -69,8 +69,8 @@ defmodule Phoenix.LiveView.Tokenizer do
   * `indentation` - An integer that indicates the current indentation.
   * `file` - Can be either a file or a string "nofile".
   * `source` - The contents of the file as binary used to be tokenized.
-  * `tag_handler` - Tag handler to classify the tags. See `Phoenex.LiveView.TagHandler`
-    behavivour.
+  * `tag_handler` - Tag handler to classify the tags. See `Phoenix.LiveView.TagEngine`
+    behaviour.
   """
   def init(indentation, file, source, tag_handler) do
     %{
@@ -94,16 +94,19 @@ defmodule Phoenix.LiveView.Tokenizer do
   * `tokens` - A list of tokens.
   * `cont` - An atom that is `:text`, `:style`, or `:script`, or a tuple
     {:comment, line, column}.
-  * `state` - The tokenizer state that must be initiated by `Tokenizer.init/3`
+  * `state` - The tokenizer state that must be initiated by `Tokenizer.init/4`
 
   ### Examples
 
       iex> alias Phoenix.LiveView.Tokenizer
-      iex> state = Tokenizer.init(text: "<section><div/></section>", cont: :text)
+
+      iex> state =
+        Tokenizer.init(indent, file, [text: "<section><div/></section>"], HTMLEngine)
+
       iex> Tokenizer.tokenize(state)
       {[
          {:close, :tag, "section", %{column: 16, line: 1}},
-         {:tag, "div", [], %{column: 10, line: 1, self_close: true}},
+         {:tag, "div", [], %{column: 10, line: 1, closing: :self}},
          {:tag, "section", [], %{column: 1, line: 1}}
        ], :text}
   """
@@ -365,12 +368,12 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp handle_maybe_tag_open_end("/>" <> rest, line, column, acc, state) do
-    acc = reverse_attrs(acc, line, column + 2)
-    handle_text(rest, line, column + 2, [], put_self_close(acc), state)
+    acc = normalize_tag(acc, line, column + 2, true, state)
+    handle_text(rest, line, column + 2, [], acc, state)
   end
 
   defp handle_maybe_tag_open_end(">" <> rest, line, column, acc, state) do
-    case reverse_attrs(acc, line, column + 1) do
+    case normalize_tag(acc, line, column + 1, false, state) do
       [{:tag, "script", _, _} | _] = acc ->
         handle_script(rest, line, column + 1, [], acc, state)
 
@@ -651,20 +654,17 @@ defmodule Phoenix.LiveView.Tokenizer do
     meta = %{line_end: line, column_end: column}
 
     meta =
-      if context = get_context(context) do
-        Map.put(meta, :context, trim_context(context))
-      else
+      if context == [] do
         meta
+      else
+        Map.put(meta, :context, trim_context(context))
       end
 
     [{:text, buffer_to_string(buffer), meta} | acc]
   end
 
-  defp trim_context([:comment_start, :comment_end | [_ | _] = rest]), do: trim_context(rest)
-  defp trim_context(rest), do: rest
-
-  defp get_context([]), do: nil
-  defp get_context(context), do: Enum.reverse(context)
+  defp trim_context([:comment_end, :comment_start | [_ | _] = rest]), do: trim_context(rest)
+  defp trim_context(rest), do: Enum.reverse(rest)
 
   defp put_attr([{type, name, attrs, meta} | acc], attr, attr_meta, value \\ nil) do
     attrs = [{attr, value, attr_meta} | attrs]
@@ -676,14 +676,17 @@ defmodule Phoenix.LiveView.Tokenizer do
     [{type, name, attrs, meta} | acc]
   end
 
-  defp reverse_attrs([{type, name, attrs, meta} | acc], line, column) do
+  defp normalize_tag([{type, name, attrs, meta} | acc], line, column, self_close?, state) do
     attrs = Enum.reverse(attrs)
     meta = %{meta | inner_location: {line, column}}
-    [{type, name, attrs, meta} | acc]
-  end
 
-  defp put_self_close([{type, name, attrs, meta} | acc]) do
-    meta = Map.put(meta, :self_close, true)
+    meta =
+      cond do
+        type == :tag and state.tag_handler.void?(name) -> Map.put(meta, :closing, :void)
+        self_close? -> Map.put(meta, :closing, :self)
+        true -> meta
+      end
+
     [{type, name, attrs, meta} | acc]
   end
 

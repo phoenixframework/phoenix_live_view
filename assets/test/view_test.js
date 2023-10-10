@@ -3,6 +3,12 @@ import LiveSocket from "phoenix_live_view/live_socket"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
+import {
+  PHX_LOADING_CLASS,
+  PHX_ERROR_CLASS,
+  PHX_SERVER_ERROR_CLASS
+} from "phoenix_live_view/constants"
+
 import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
 
 describe("View + DOM", function(){
@@ -225,6 +231,13 @@ describe("View + DOM", function(){
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
     expect(view.formsForRecovery().length).toBe(0)
+
+    html = "<form id='my-form' phx-change='[[\"push\",{\"event\":\"update\",\"target\":1}]]'><input name=\"foo\" /></form>"
+    view = new View(liveViewDOM(html), liveSocket)
+    view.joinCount = 1
+    const newForms = view.formsForRecovery(html)
+    expect(newForms.length).toBe(1)
+    expect(newForms[0][0].getAttribute('phx-change')).toBe('[[\"push\",{\"event\":\"update\",\"target\":1}]]')
   })
 
   describe("submitForm", function(){
@@ -358,7 +371,7 @@ describe("View + DOM", function(){
       expect(view.el.innerHTML).toBe(html)
 
       let formEl = document.getElementById("form")
-      formEl.submit = () => done()
+      Object.getPrototypeOf(formEl).submit = done
       let updatedHtml = "<form id=\"form\" phx-submit=\"submit\" phx-trigger-action><input type=\"text\"></form>"
       view.update({s: [updatedHtml]}, [])
 
@@ -647,7 +660,7 @@ describe("View", function(){
     let view = simulateJoinedView(el, liveSocket)
 
     expect(status.style.display).toBe("none")
-    view.displayError()
+    view.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
     expect(el.classList.contains("phx-loading")).toBeTruthy()
     expect(el.classList.contains("phx-error")).toBeTruthy()
     expect(el.classList.contains("phx-connected")).toBeFalsy()
