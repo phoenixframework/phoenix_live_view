@@ -57,14 +57,16 @@ defmodule Phoenix.LiveViewTest.HooksLive do
     last_on_mount:<%= inspect(assigns[:last_on_mount]) %>
     params_hook:<%= assigns[:params_hook_ref] %>
     count:<%= @count %>
+    task:<%= @task %>
     <button id="dec" phx-click="dec">-</button>
     <button id="inc" phx-click="inc">+</button>
     <button id="patch" phx-click="patch">?</button>
+    <button id="async" phx-click="async">=</button>
     """
   end
 
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, count: 0)}
+    {:ok, assign(socket, count: 0, task: "")}
   end
 
   def handle_event("inc", _, socket), do: {:noreply, update(socket, :count, &(&1 + 1))}
@@ -73,6 +75,14 @@ defmodule Phoenix.LiveViewTest.HooksLive do
   def handle_event("patch", _, socket) do
     ref = socket.assigns[:params_hook_ref] || 0
     {:noreply, push_patch(socket, to: "/lifecycle?ref=#{ref}")}
+  end
+
+  def handle_event("async", _, socket) do
+    {:noreply, start_async(socket, :task, fn -> true end)}
+  end
+
+  def handle_async(:task, {:ok, true}, socket) do
+    {:noreply, update(socket, :task, &(&1 <> "."))}
   end
 
   def handle_call({:run, func}, _, socket), do: func.(socket)
@@ -119,6 +129,11 @@ defmodule Phoenix.LiveViewTest.HooksLive do
     catch
       :exit, {{%mod{message: msg}, _}, _} when mod == kind -> msg
     end
+  end
+
+  def unlink_and_monitor(lv) do
+    Process.unlink(proxy_pid(lv))
+    Process.monitor(proxy_pid(lv))
   end
 
   def run(lv, func) do
