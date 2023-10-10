@@ -654,7 +654,7 @@ var LiveView = (() => {
     hasSelectionRange(el) {
       return el.setSelectionRange && (el.type === "text" || el.type === "textarea");
     },
-    restoreFocus(focused, selectionStart, selectionEnd) {
+    restoreFocus(focused, selectionStart, selectionEnd, selectionDirection) {
       if (!DOM.isTextualInput(focused)) {
         return;
       }
@@ -666,7 +666,7 @@ var LiveView = (() => {
         focused.focus();
       }
       if (this.hasSelectionRange(focused)) {
-        focused.setSelectionRange(selectionStart, selectionEnd);
+        focused.setSelectionRange(selectionStart, selectionEnd, selectionDirection);
       }
     },
     isFormInput(el) {
@@ -1792,7 +1792,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return;
       }
       let focused = liveSocket.getActiveElement();
-      let { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
+      let { selectionStart, selectionEnd, selectionDirection } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
       let phxUpdate = liveSocket.binding(PHX_UPDATE);
       let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR);
       let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
@@ -1984,7 +1984,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       trackedInputs.forEach((input) => {
         dom_default.maybeHideFeedback(targetContainer, input, phxFeedbackFor);
       });
-      liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
+      liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd, selectionDirection));
       dom_default.dispatchEvent(document, "phx:update");
       added.forEach((el) => this.trackAfter("added", el));
       updates.forEach((el) => this.trackAfter("updated", el));

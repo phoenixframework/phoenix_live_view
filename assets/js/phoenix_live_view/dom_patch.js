@@ -277,7 +277,7 @@ export default class DOMPatch {
       DOM.maybeHideFeedback(targetContainer, input, phxFeedbackFor)
     })
 
-    liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
+    liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd, selectionDirection))
     DOM.dispatchEvent(document, "phx:update")
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))

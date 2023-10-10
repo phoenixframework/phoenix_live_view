@@ -379,13 +379,13 @@ let DOM = {
     return el.setSelectionRange && (el.type === "text" || el.type === "textarea")
   },
 
-  restoreFocus(focused, selectionStart, selectionEnd){
+  restoreFocus(focused, selectionStart, selectionEnd, selectionDirection){
     if(!DOM.isTextualInput(focused)){ return }
     let wasFocused = focused.matches(":focus")
     if(focused.readOnly){ focused.blur() }
     if(!wasFocused){ focused.focus() }
     if(this.hasSelectionRange(focused)){
-      focused.setSelectionRange(selectionStart, selectionEnd)
+      focused.setSelectionRange(selectionStart, selectionEnd, selectionDirection)
     }
   },
 
