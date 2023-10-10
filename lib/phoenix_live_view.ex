@@ -359,14 +359,6 @@ defmodule Phoenix.LiveView do
   </.async_result>
   ```
 
-  Additionally, for async assigns which result in a collection of items, you
-  can enumerate the assign directly. It will only enumerate
-  the results once the results are loaded. For example:
-
-  ```heex
-  <div :for={org <- @orgs}><%= org.name %></div>
-  ```
-
   ### Arbitrary async operations
 
   Sometimes you need lower level control of asynchronous operations, while
