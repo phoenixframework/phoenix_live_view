@@ -222,6 +222,13 @@ export default class Rendered {
     }
   }
 
+  // Merges cid trees together, copying statics from source tree.
+  //
+  // The `pruneMagicId` is passed to control pruning the magicId of the
+  // target. We can only prune the magicId if we are merging into a target
+  // the first time, otherwise we need to maintain the magicId and set newRender
+  // to true so the next render won't be skipped.
+  //
   cloneMerge(target, source, pruneMagicId){
     let merged = {...target, ...source}
     for(let key in merged){
@@ -269,6 +276,11 @@ export default class Rendered {
     return `${this.parentViewId()}-${this.magicId}`
   }
 
+  // Converts rendered tree to output buffer.
+  //
+  // changeTracking controls if we can apply the PHX_SKIP optimization.
+  // It is disabled for comprehensions since we must re-render the entire collection
+  // and no invidial element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
@@ -288,11 +300,14 @@ export default class Rendered {
       output.buffer += statics[i]
     }
 
+    // Applies the root tag "skip" optimization if supported, which clears
+    // the root tag attributes and innerHTML, and only maintains the magicId.
+    // We can only skip when changeTracking is supported (outside of a comprehension),
+    // and when the root element hasn't experienced an unrendered merge (newRender true).
     if(isRoot){
       let skip = false
-      let isCid = Object.keys(rootAttrs).length > 0
       let attrs
-      if(changeTracking || isCid){
+      if(changeTracking || Object.keys(rootAttrs).length > 0){
         skip = !rendered.newRender
         attrs = {[PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs}
       } else {
@@ -314,7 +329,8 @@ export default class Rendered {
       let dynamic = dynamics[d]
       output.buffer += statics[0]
       for(let i = 1; i < statics.length; i++){
-        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, false)
+        let changeTracking = false
+        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, changeTracking)
         output.buffer += statics[i]
       }
     }
@@ -342,17 +358,24 @@ export default class Rendered {
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let attrs = {[PHX_COMPONENT]: cid}
     let skip = onlyCids && !onlyCids.has(cid)
+    // Two optimization paths apply here:
+    //
+    //   1. The onlyCids optimization works by the server diff telling us only specific
+    //     cid's have changed. This allows us to skip rendering any component that hasn't changed,
+    //     which ultimately sets PHX_SKIP root attribute and avoids rendering the innerHTML.
+    //
+    //   2. The root PHX_SKIP optimization generalizes to all HEEx function components, and
+    //     works in the same PHX_SKIP attribute fashion as 1, but the newRender tracking is done
+    //     at the general diff merge level. If we merge a diff with new dynamics, we necessariy have
+    //     experienced a change which must be a newRender, and thus we can't skip the render.
+    //
+    // Both optimization flows apply here. newRender is set based on the onlyCids optimization, and
+    // we track a deterministic magicId based on the cid.
     component.newRender = !skip
     component.magicId = `${this.parentViewId()}-c-${cid}`
-    let [html, streams] = this.recursiveToString(component, components, onlyCids, true, attrs)
+    let changeTracking = true
+    let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
 
     return [html, streams]
-  }
-
-  createSpan(text, cid){
-    let span = document.createElement("span")
-    span.innerText = text
-    span.setAttribute(PHX_COMPONENT, cid)
-    return span
   }
 }

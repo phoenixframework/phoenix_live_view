@@ -2306,9 +2306,8 @@ var Rendered = class {
     }
     if (isRoot) {
       let skip = false;
-      let isCid2 = Object.keys(rootAttrs).length > 0;
       let attrs;
-      if (changeTracking || isCid2) {
+      if (changeTracking || Object.keys(rootAttrs).length > 0) {
         skip = !rendered.newRender;
         attrs = { [PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs };
       } else {
@@ -2331,7 +2330,8 @@ var Rendered = class {
       let dynamic = dynamics[d];
       output.buffer += statics[0];
       for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, false);
+        let changeTracking = false;
+        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, changeTracking);
         output.buffer += statics[i];
       }
     }
@@ -2358,14 +2358,9 @@ var Rendered = class {
     let skip = onlyCids && !onlyCids.has(cid);
     component.newRender = !skip;
     component.magicId = `${this.parentViewId()}-c-${cid}`;
-    let [html, streams] = this.recursiveToString(component, components, onlyCids, true, attrs);
+    let changeTracking = true;
+    let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs);
     return [html, streams];
-  }
-  createSpan(text, cid) {
-    let span = document.createElement("span");
-    span.innerText = text;
-    span.setAttribute(PHX_COMPONENT, cid);
-    return span;
   }
 };
 
