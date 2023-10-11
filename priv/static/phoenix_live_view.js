@@ -1,7 +1,5 @@
 var LiveView = (() => {
   var __defProp = Object.defineProperty;
-  var __defProps = Object.defineProperties;
-  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
   var __getOwnPropSymbols = Object.getOwnPropertySymbols;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __propIsEnum = Object.prototype.propertyIsEnumerable;
@@ -17,7 +15,6 @@ var LiveView = (() => {
       }
     return a;
   };
-  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
   var __objRest = (source, exclude) => {
     var target = {};
@@ -1587,7 +1584,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       }
       function morphChildren(fromEl, toEl) {
-        var skipFrom = skipFromChildren(fromEl, toEl);
+        var skipFrom = skipFromChildren(fromEl);
         var curToNodeChild = toEl.firstChild;
         var curFromNodeChild = fromEl.firstChild;
         var curToNodeKey;
@@ -2242,10 +2239,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             tdiff = oldc[-scid];
           }
           stat = tdiff[STATIC];
-          ndiff = this.cloneMerge(tdiff, cdiff);
+          ndiff = this.cloneMerge(tdiff, cdiff, true);
           ndiff[STATIC] = stat;
         } else {
-          ndiff = cdiff[STATIC] !== void 0 ? cdiff : this.cloneMerge(oldc[cid] || {}, cdiff);
+          ndiff = cdiff[STATIC] !== void 0 || oldc[cid] === void 0 ? cdiff : this.cloneMerge(oldc[cid], cdiff, false);
         }
         cache[cid] = ndiff;
         return ndiff;
@@ -2274,21 +2271,25 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         target.newRender = true;
       }
     }
-    cloneMerge(target, source) {
+    cloneMerge(target, source, pruneMagicId) {
       let merged = __spreadValues(__spreadValues({}, target), source);
       for (let key in merged) {
         let val = source[key];
         let targetVal = target[key];
         if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
-          merged[key] = this.cloneMerge(targetVal, val);
+          merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
         }
       }
-      delete merged.magicId;
-      delete merged.newRender;
+      if (pruneMagicId) {
+        delete merged.magicId;
+        delete merged.newRender;
+      } else if (target[ROOT]) {
+        merged.newRender = true;
+      }
       return merged;
     }
     componentToString(cid) {
-      let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null, true);
+      let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null);
       let [strippedHTML, _before, _after] = modifyRoot(str, {});
       return [strippedHTML, streams];
     }
@@ -2318,20 +2319,23 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       let { [STATIC]: statics } = rendered;
       statics = this.templateStatic(statics, templates);
-      let currentOut = __spreadProps(__spreadValues({}, output), { buffer: "" });
       let isRoot = rendered[ROOT];
+      let prevBuffer = output.buffer;
+      if (isRoot) {
+        output.buffer = "";
+      }
       if (changeTracking && isRoot && !rendered.magicId) {
         rendered.newRender = true;
         rendered.magicId = this.nextMagicID();
       }
-      currentOut.buffer += statics[0];
+      output.buffer += statics[0];
       for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(rendered[i - 1], templates, currentOut, changeTracking);
-        currentOut.buffer += statics[i];
+        this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
+        output.buffer += statics[i];
       }
-      let isCid2 = Object.keys(rootAttrs).length > 0;
       if (isRoot) {
         let skip = false;
+        let isCid2 = Object.keys(rootAttrs).length > 0;
         let attrs;
         if (changeTracking || isCid2) {
           skip = !rendered.newRender;
@@ -2342,14 +2346,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (skip) {
           attrs[PHX_SKIP] = true;
         }
-        let [newRoot, commentBefore, commentAfter] = modifyRoot(currentOut.buffer, attrs, skip);
+        let [newRoot, commentBefore, commentAfter] = modifyRoot(output.buffer, attrs, skip);
         rendered.newRender = false;
-        currentOut.buffer = `${commentBefore}${newRoot}${commentAfter}`;
+        output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
       }
-      output.buffer += currentOut.buffer;
-      output.components = currentOut.components;
-      output.onlyCids = currentOut.onlyCids;
-      output.streams = currentOut.streams;
     }
     comprehensionToBuffer(rendered, templates, output) {
       let { [DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream } = rendered;
@@ -2372,7 +2372,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     dynamicToBuffer(rendered, templates, output, changeTracking) {
       if (typeof rendered === "number") {
-        let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids, changeTracking);
+        let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids);
         output.buffer += str;
         output.streams = new Set([...output.streams, ...streams]);
       } else if (isObject(rendered)) {
@@ -2381,13 +2381,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         output.buffer += rendered;
       }
     }
-    recursiveCIDToString(components, cid, onlyCids, changeTracking) {
+    recursiveCIDToString(components, cid, onlyCids) {
       let component = components[cid] || logError(`no component for CID ${cid}`, components);
       let attrs = { [PHX_COMPONENT]: cid };
       let skip = onlyCids && !onlyCids.has(cid);
       component.newRender = !skip;
       component.magicId = `${this.parentViewId()}-c-${cid}`;
-      let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs);
+      let [html, streams] = this.recursiveToString(component, components, onlyCids, true, attrs);
       return [html, streams];
     }
     createSpan(text, cid) {

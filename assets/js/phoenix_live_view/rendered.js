@@ -185,10 +185,11 @@ export default class Rendered {
         }
 
         stat = tdiff[STATIC]
-        ndiff = this.cloneMerge(tdiff, cdiff)
+        ndiff = this.cloneMerge(tdiff, cdiff, true)
         ndiff[STATIC] = stat
       } else {
-        ndiff = cdiff[STATIC] !== undefined ? cdiff : this.cloneMerge(oldc[cid] || {}, cdiff)
+        ndiff = cdiff[STATIC] !== undefined || oldc[cid] === undefined ?
+          cdiff : this.cloneMerge(oldc[cid], cdiff, false)
       }
 
       cache[cid] = ndiff
@@ -221,22 +222,26 @@ export default class Rendered {
     }
   }
 
-  cloneMerge(target, source){
+  cloneMerge(target, source, pruneMagicId){
     let merged = {...target, ...source}
     for(let key in merged){
       let val = source[key]
       let targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
-        merged[key] = this.cloneMerge(targetVal, val)
+        merged[key] = this.cloneMerge(targetVal, val, pruneMagicId)
       }
     }
-    delete merged.magicId
-    delete merged.newRender
+    if(pruneMagicId){
+      delete merged.magicId
+      delete merged.newRender
+    } else if(target[ROOT]){
+      merged.newRender = true
+    }
     return merged
   }
 
   componentToString(cid){
-    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null, true)
+    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null)
     let [strippedHTML, _before, _after] = modifyRoot(str, {})
     return [strippedHTML, streams]
   }
@@ -323,7 +328,7 @@ export default class Rendered {
 
   dynamicToBuffer(rendered, templates, output, changeTracking){
     if(typeof (rendered) === "number"){
-      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids, changeTracking)
+      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
       output.buffer += str
       output.streams = new Set([...output.streams, ...streams])
     } else if(isObject(rendered)){
@@ -333,13 +338,13 @@ export default class Rendered {
     }
   }
 
-  recursiveCIDToString(components, cid, onlyCids, changeTracking){
+  recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let attrs = {[PHX_COMPONENT]: cid}
     let skip = onlyCids && !onlyCids.has(cid)
     component.newRender = !skip
     component.magicId = `${this.parentViewId()}-c-${cid}`
-    let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
+    let [html, streams] = this.recursiveToString(component, components, onlyCids, true, attrs)
 
     return [html, streams]
   }
