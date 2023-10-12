@@ -110,9 +110,7 @@ export default class DOMPatch {
         })
         if(reset !== undefined){
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
-            if(!inserts[child.id]){
-              this.removeStreamChildElement(child)
-            }
+            this.removeStreamChildElement(child)
           })
         }
         deleteIds.forEach(id => {
