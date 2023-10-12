@@ -2936,6 +2936,8 @@ defmodule Phoenix.Component do
 
   @doc """
   Renders an async assign with slots for the different loading states.
+  The result state takes precedence over subsequent loading and failed
+  states.
 
   *Note*: The inner block receives the result of the async assign as a :let.
   The let is only accessible to the inner block and is not in scope to the
@@ -2954,18 +2956,28 @@ defmodule Phoenix.Component do
     <% end %>
   </.async_result>
   ```
+
+  To display loading and failed states again on subsequent `assign_async` calls,
+  reset the assign to a result-free `%AsyncResult{}`:
+
+  ```elixir
+  {:noreply,
+    socket
+    |> assign_async(:page, :data, &reload_data/0)
+    |> assign(:page, AsyncResult.loading())}
+  ```
   """
   attr.(:assign, AsyncResult, required: true)
-  slot.(:loading, doc: "rendered while the assign is loading")
+  slot.(:loading, doc: "rendered while the assign is loading for the first time")
 
   slot.(:failed,
     doc:
-      "rendered when an error or exit is caught or assign_async returns `{:error, reason}`. Receives the error as a :let."
+      "rendered when an error or exit is caught or assign_async returns `{:error, reason}` for the first time. Receives the error as a `:let`"
   )
 
   slot.(:inner_block,
     doc:
-      "rendered when the assign is loaded successfully via AsyncResult.ok/2. Receives the result as a :let"
+      "rendered when the assign is loaded successfully via `AsyncResult.ok/2`. Receives the result as a `:let`"
   )
 
   def async_result(%{assign: async_assign} = assigns) do
