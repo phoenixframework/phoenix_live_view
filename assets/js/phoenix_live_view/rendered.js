@@ -225,9 +225,10 @@ export default class Rendered {
   // Merges cid trees together, copying statics from source tree.
   //
   // The `pruneMagicId` is passed to control pruning the magicId of the
-  // target. We can only prune the magicId if we are merging into a target
-  // the first time, otherwise we need to maintain the magicId and set newRender
-  // to true so the next render won't be skipped.
+  // target. We must always prune the magicId when we are sharing statics
+  // from another component. If not pruning, we replicate the logic from
+  // mutableMerge, where we set newRender to true if there is a root
+  // (effectively forcing the new version to be rendered instead of skipped)
   //
   cloneMerge(target, source, pruneMagicId){
     let merged = {...target, ...source}
