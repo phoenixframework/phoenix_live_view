@@ -6,6 +6,7 @@ import {
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_SKIP,
+  PHX_MAGIC_ID,
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
@@ -96,10 +97,6 @@ export default class DOMPatch {
 
     let externalFormTriggered = null
 
-    let diffHTML = liveSocket.time("premorph container prep", () => {
-      return this.buildDiffHTML(container, html, phxUpdate, targetContainer)
-    })
-
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
 
@@ -121,10 +118,11 @@ export default class DOMPatch {
         })
       })
 
-      morphdom(targetContainer, diffHTML, {
+      morphdom(targetContainer, html, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
-          return DOM.isPhxDestroyed(node) ? null : node.id
+          if(DOM.isPhxDestroyed(node)){ return null }
+          return (node.getAttribute && node.getAttribute(PHX_MAGIC_ID)) || node.id
         },
         // skip indexing from children when container is stream
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
@@ -363,7 +361,7 @@ export default class DOMPatch {
   isCIDPatch(){ return this.cidPatch }
 
   skipCIDSibling(el){
-    return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null
+    return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP)
   }
 
   targetCIDContainer(html){
@@ -373,38 +371,6 @@ export default class DOMPatch {
       return first
     } else {
       return first && first.parentNode
-    }
-  }
-
-  // builds HTML for morphdom patch
-  // - for full patches of LiveView or a component with a single
-  //   root node, simply returns the HTML
-  // - for patches of a component with multiple root nodes, the
-  //   parent node becomes the target container and non-component
-  //   siblings are marked as skip.
-  buildDiffHTML(container, html, phxUpdate, targetContainer){
-    let isCIDPatch = this.isCIDPatch()
-    let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString()
-    if(!isCIDPatch || isCIDWithSingleRoot){
-      return html
-    } else {
-      // component patch with multiple CID roots
-      let diffContainer = null
-      let template = document.createElement("template")
-      diffContainer = DOM.cloneNode(targetContainer)
-      let [firstComponent, ...rest] = DOM.findComponentNodeList(diffContainer, this.targetCID)
-      template.innerHTML = html
-      rest.forEach(el => el.remove())
-      Array.from(diffContainer.childNodes).forEach(child => {
-        // we can only skip trackable nodes with an ID
-        if(child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()){
-          child.setAttribute(PHX_SKIP, "")
-          child.innerHTML = ""
-        }
-      })
-      Array.from(template.content.childNodes).forEach(el => diffContainer.insertBefore(el, firstComponent))
-      firstComponent.remove()
-      return diffContainer.outerHTML
     }
   }
 
