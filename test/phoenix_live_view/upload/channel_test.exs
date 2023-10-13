@@ -378,9 +378,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       test "render_upload invalid with auto_upload", %{lv: lv} do
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "overmax"}])
 
-        html = lv
-               |> form("form", user: %{})
-               |> render_change(avatar)
+        html =
+          lv
+          |> form("form", user: %{})
+          |> render_change(avatar)
 
         assert html =~ "entry_error::too_large"
         assert html =~ "foo.jpeg:0%"
@@ -728,7 +729,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              accept: :any,
              writer: &__MODULE__.build_writer/3
            ]
-
       test "writer can be configured", %{lv: lv} do
         Process.register(self(), :test_writer)
 
@@ -768,7 +768,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              accept: :any,
              writer: &__MODULE__.build_writer/3
            ]
-
       test "writer with LiveView exit", %{lv: lv} do
         Process.register(self(), :test_writer)
 
@@ -798,7 +797,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              accept: :any,
              writer: &__MODULE__.build_writer/3
            ]
-
       test "writer with error", %{lv: lv} do
         Process.register(self(), :test_writer)
 

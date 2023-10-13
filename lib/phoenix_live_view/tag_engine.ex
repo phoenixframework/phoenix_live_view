@@ -1342,13 +1342,25 @@ defmodule Phoenix.LiveView.TagEngine do
          _attr,
          id?
        ) do
-    if value in ~w(ignore stream append prepend replace) do
-      validate_phx_attrs!(t, meta, state, "phx-update", id?)
-    else
-      message =
-        "the value of the attribute \"phx-update\" must be: ignore, stream, append, prepend, or replace"
+    cond do
+      value in ~w(ignore stream replace) ->
+        validate_phx_attrs!(t, meta, state, "phx-update", id?)
 
-      raise_syntax_error!(message, attr_meta, state)
+      value in ~w(append prepend) ->
+        line = meta[:line] || state.caller.line
+
+        IO.warn(
+          "phx-update=\"#{value}\" is deprecated, please use streams instead",
+          Macro.Env.stacktrace(%{state.caller | line: line})
+        )
+
+        validate_phx_attrs!(t, meta, state, "phx-update", id?)
+
+      true ->
+        message =
+          "the value of the attribute \"phx-update\" must be: ignore, stream, append, prepend, or replace"
+
+        raise_syntax_error!(message, attr_meta, state)
     end
   end
 

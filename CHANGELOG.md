@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.20.1 (2023-10-09)
+
+### Bug fixes
+  * Fix error with live uploads `auto_upload: true` when a file fails to preflight
+  * Fix error with live uploads where an early exit can cause a map key error
+  * Fix match error on live navigation when reconnecting from client
+
+### Enhancements
+  * Support new `meta()` method on File/Blob sublcasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
+  * Improve void tagging and error messages
+
 ## 0.20.0 (2023-09-22)
 
 ### Deprecations

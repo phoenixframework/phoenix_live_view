@@ -359,14 +359,6 @@ defmodule Phoenix.LiveView do
   </.async_result>
   ```
 
-  Additionally, for async assigns which result in a collection of items, you
-  can enumerate the assign directly. It will only enumerate
-  the results once the results are loaded. For example:
-
-  ```heex
-  <div :for={org <- @orgs}><%= org.name %></div>
-  ```
-
   ### Arbitrary async operations
 
   Sometimes you need lower level control of asynchronous operations, while
@@ -391,9 +383,9 @@ defmodule Phoenix.LiveView do
       end
 
   `start_async/3` is used to fetch the organization asynchronously. The
-  `handle_async/3` callback is called when the task completes or exits,
+  `c:handle_async/3` callback is called when the task completes or exits,
   with the results wrapped in either `{:ok, result}` or `{:exit, reason}`.
-  The `AsyncResult` module is used to direclty to update the state of the
+  The `AsyncResult` module is used to directly to update the state of the
   async operation, but you can also assign any value directly to the socket
   if you want to handle the state yourself.
   '''
@@ -522,13 +514,27 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
+  @doc """
+  Invoked when the result of an `start_async/3` operation is available.
+
+  For a deeper understanding of using this callback,
+  refer to the ["Arbitrary async operations"](#module-arbitrary-async-operations) section.
+  """
+  @callback handle_async(
+              name :: atom,
+              async_fun_result :: {:ok, term} | {:exit, term},
+              socket :: Socket.t()
+            ) ::
+              {:noreply, Socket.t()}
+
   @optional_callbacks mount: 3,
                       terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
                       handle_call: 3,
                       handle_info: 2,
-                      handle_cast: 2
+                      handle_cast: 2,
+                      handle_async: 3
 
   @doc """
   Uses LiveView in the current module to mark it a LiveView.
@@ -557,6 +563,7 @@ defmodule Phoenix.LiveView do
     * `:namespace` - configures the namespace the `LiveView` is in
 
   """
+
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
     opts =
@@ -2038,7 +2045,7 @@ defmodule Phoenix.LiveView do
   Starts an ansynchronous task and invokes callback to handle the result.
 
   The task is linked to the caller and errors/exits are wrapped.
-  The result of the task is sent to the `handle_async/3` callback
+  The result of the task is sent to the `c:handle_async/3` callback
   of the caller LiveView or LiveComponent.
 
   ## Examples
@@ -2074,9 +2081,9 @@ defmodule Phoenix.LiveView do
   the key passed to `start_async/3`.
 
   The underlying process will be killed with the provided reason, or
-  {:shutdown, :cancel}`. if no reason is passed. For `assign_async/3`
+  `{:shutdown, :cancel}`. if no reason is passed. For `assign_async/3`
   operations, the `:failed` field will be set to `{:exit, reason}`.
-  For `start_async/3`, the `handle_async/3` callback will receive
+  For `start_async/3`, the `c:handle_async/3` callback will receive
   `{:exit, reason}` as the result.
 
   Returns the `%Phoenix.LiveView.Socket{}`.

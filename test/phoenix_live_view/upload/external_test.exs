@@ -68,6 +68,20 @@ defmodule Phoenix.LiveView.UploadExternalTest do
   end
 
   @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
+  test "external with relative path from file_input/4 helper", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{
+          name: "foo1.jpeg",
+          content: String.duplicate("ok", 100),
+          relative_path: "some/path/to/foo1.jpeg"
+        }
+      ])
+
+    assert render_upload(avatar, "foo1.jpeg", 1) =~ "relative path:some/path/to/foo1.jpeg"
+  end
+
+  @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
   test "external upload invokes preflight per entry", %{lv: lv} do
     avatar =
       file_input(lv, "form", :avatar, [
@@ -122,6 +136,32 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     assert html =~ "foo2.jpeg:0%"
 
     assert render_upload(avatar, "foo1.jpeg", 1) =~ "foo1.jpeg:1%"
+    assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
+  end
+
+  @tag allow: [
+         max_entries: 1,
+         max_file_size: 1,
+         auto_upload: true,
+         accept: :any,
+         external: :preflight
+       ]
+  test "external auto upload with exceeded max file size", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo1.jpeg", content: String.duplicate("ok", 100)},
+        %{name: "foo2.jpeg", content: String.duplicate("ok", 100)}
+      ])
+
+    html =
+      lv
+      |> form("form", user: %{})
+      |> render_change(avatar)
+
+    assert html =~ "foo1.jpeg:0%"
+    assert html =~ "foo2.jpeg:0%"
+
+    assert {:error, [[_, %{reason: :too_large}]]} = render_upload(avatar, "foo1.jpeg", 1)
     assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
   end
 
