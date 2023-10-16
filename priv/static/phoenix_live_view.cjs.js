@@ -1782,11 +1782,13 @@ var DOMPatch = class {
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
         Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
-          this.streamInserts[key] = { ref, streamAt, limit };
+          this.streamInserts[key] = { ref, streamAt, limit, resetKept: false };
         });
         if (reset !== void 0) {
           dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
-            if (!inserts[child.id]) {
+            if (inserts[child.id]) {
+              this.streamInserts[child.id].resetKept = true;
+            } else {
               this.removeStreamChildElement(child);
             }
           });
@@ -1860,6 +1862,25 @@ var DOMPatch = class {
             this.trackAfter("phxChildAdded", el);
           }
           added.push(el);
+        },
+        onBeforeElChildrenUpdated: (fromEl, toEl) => {
+          if (fromEl.getAttribute(phxUpdate) === PHX_STREAM) {
+            let toIds = Array.from(toEl.children).map((child) => child.id);
+            Array.from(fromEl.children).filter((child) => {
+              let { resetKept } = this.getStreamInsert(child);
+              return resetKept;
+            }).sort((a, b) => {
+              let aIdx = toIds.indexOf(a.id);
+              let bIdx = toIds.indexOf(b.id);
+              if (aIdx === bIdx) {
+                return 0;
+              } else if (aIdx < bIdx) {
+                return -1;
+              } else {
+                return 1;
+              }
+            }).forEach((child) => fromEl.appendChild(child));
+          }
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
