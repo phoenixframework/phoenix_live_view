@@ -2960,6 +2960,7 @@ defmodule Phoenix.Component do
   </.async_result>
   ```
   """
+  @doc type: :component
   attr.(:assign, AsyncResult, required: true)
   slot.(:loading, doc: "rendered while the assign is loading")
 
