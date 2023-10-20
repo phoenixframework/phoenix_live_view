@@ -122,6 +122,16 @@ defmodule Phoenix.LiveView do
   After the client connects, `c:mount/3` will be invoked inside a spawned
   LiveView process.
 
+  ## Generators
+
+  Phoenix v1.6 and later includes code generators. If you want to see
+  an example of how to structure your application, from the codebase
+  all the way up to LiveViews, run the following:
+
+      mix phx.gen.live Blog Post posts title:string body:text
+
+  For more information, run `mix help phx.gen.live`.
+
   ## Collocating templates
 
   In the example above, we have placed the template directly inside the
