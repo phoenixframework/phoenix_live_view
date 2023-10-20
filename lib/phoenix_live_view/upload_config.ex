@@ -123,7 +123,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           ref: String.t(),
           auto_upload?: boolean(),
           writer:
-            (name :: atom() | String.t(), UploadEntry.t(), Socket.t() -> {Module.t(), term()}),
+            (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() -> {module(), term()}),
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
