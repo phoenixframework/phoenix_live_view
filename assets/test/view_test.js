@@ -1116,22 +1116,22 @@ describe("View + Component", function(){
     let joinDiff = {
       "0": {"0": "", "1": 0, "s": ["", "", "<h2>2</h2>\n"]},
       "c": {
-        "0": {"s": ["<div phx-click=\"show-rect\">Menu</div>\n"]}
+        "0": {"s": ["<div phx-click=\"show-rect\">Menu</div>\n"], "r": 1}
       },
       "s": ["", ""]
     }
 
     let updateDiff = {
       "0": {
-        "0": {"s": ["  <h1>1</h1>\n"]}
+        "0": {"s": ["  <h1>1</h1>\n"], "r": 1}
       }
     }
 
     view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe("<div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>")
+    expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"container-c-0\" data-phx-component=\"0\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
 
     view.update(updateDiff, [])
-    expect(view.el.innerHTML.trim().replace("\n", "")).toBe("<h1>1</h1><div phx-click=\"show-rect\" data-phx-component=\"0\" id=\"container-0-0\">Menu</div><h2>2</h2>")
+    expect(view.el.innerHTML.trim().replace("\n", "")).toBe("<h1 data-phx-id=\"container-1\">1</h1><div data-phx-id=\"container-c-0\" data-phx-component=\"0\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
   })
 
   test("respects nested components", () => {
@@ -1144,50 +1144,14 @@ describe("View + Component", function(){
     let joinDiff = {
       "0": 0,
       "c": {
-        "0": {"0": 1, "s": ["<div>Hello</div>", ""]},
-        "1": {"s": ["<div>World</div>"]}
+        "0": {"0": 1, "s": ["<div>Hello</div>", ""], "r": 1},
+        "1": {"s": ["<div>World</div>"], "r": 1}
       },
       "s": ["", ""]
     }
 
     view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe("<div data-phx-component=\"0\" id=\"container-0-0\">Hello</div><div data-phx-component=\"1\" id=\"container-1-0\">World</div>")
-  })
-
-  test("wraps non-empty text nodes in span tags", () => {
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM()
-    let view = simulateJoinedView(el, liveSocket)
-
-    stubChannel(view)
-
-    let joinDiff = {
-      "0": 0,
-      "c": {"0": {"s": ["Hello<div>World</div>\n"]}},
-      "s": ["", ""]
-    }
-
-    jest.spyOn(console, "error").mockImplementation(() => { })
-    view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe("<span data-phx-component=\"0\"></span><div data-phx-component=\"0\" id=\"container-0-1\">World</div>")
-  })
-
-  test("wraps empty component in a single span tag", () => {
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM()
-    let view = simulateJoinedView(el, liveSocket)
-
-    stubChannel(view)
-
-    let joinDiff = {
-      "0": 0,
-      "c": {"0": {"s": ["\n"]}},
-      "s": ["", ""]
-    }
-
-    jest.spyOn(console, "error").mockImplementation(() => { })
-    view.onJoin({rendered: joinDiff})
-    expect(view.el.innerHTML.trim()).toBe("<span data-phx-component=\"0\"></span>")
+    expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"container-c-0\" data-phx-component=\"0\">Hello</div><div data-phx-id=\"container-c-1\" data-phx-component=\"1\">World</div>")
   })
 
   test("destroys children when they are removed by an update", () => {

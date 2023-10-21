@@ -316,7 +316,7 @@ defmodule Phoenix.Component do
   ### The default slot
 
   The example above uses the default slot, accessible as an assign named `@inner_block`, to render
-  HEEx content via the `render_slot/2` function.
+  HEEx content via the `render_slot/1` function.
 
   If the values rendered in the slot need to be dynamic, you can pass a second value back to the
   HEEx content by calling `render_slot/2`:
@@ -2960,6 +2960,7 @@ defmodule Phoenix.Component do
   </.async_result>
   ```
   """
+  @doc type: :component
   attr.(:assign, AsyncResult, required: true)
   slot.(:loading, doc: "rendered while the assign is loading")
 

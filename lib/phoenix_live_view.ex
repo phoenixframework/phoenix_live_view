@@ -69,7 +69,8 @@ defmodule Phoenix.LiveView do
   ## Example
 
   A LiveView is a module that requires two callbacks: `c:mount/3` and
-  `c:render/1`:
+  `c:render/1`. In a Phoenix application, it'd typically go inside the
+  `lib/my_app_web/live/thermostat_live.ex` file:
 
       defmodule MyAppWeb.ThermostatLive do
         # In Phoenix apps, the line is typically: use MyAppWeb, :live_view
@@ -108,20 +109,6 @@ defmodule Phoenix.LiveView do
         end
       end
 
-  *Note:* the above assumes there is `plug :put_root_layout` call
-  in your router that configures the LiveView layout. This call is
-  automatically included in Phoenix v1.6 apps and described in
-  [the installation guide](installation.md#layouts).
-
-  Alternatively, you can `live_render` from any template. In your view:
-
-      import Phoenix.Component
-
-  Then in your template:
-
-      <h1>Temperature Control</h1>
-      <%= live_render(@conn, MyAppWeb.ThermostatLive) %>
-
   Once the LiveView is rendered, a regular HTML response is sent. In your
   app.js file, you should find the following:
 
@@ -133,44 +120,21 @@ defmodule Phoenix.LiveView do
       liveSocket.connect()
 
   After the client connects, `c:mount/3` will be invoked inside a spawned
-  LiveView process. At this point, you can use `connected?/1` to
-  conditionally perform stateful work, such as subscribing to pubsub topics,
-  sending messages, etc. For example, you can periodically update a LiveView
-  with a timer:
+  LiveView process.
 
-      defmodule DemoWeb.ThermostatLive do
-        # In Phoenix apps, the line is typically: use MyAppWeb, :live_view
-        use Phoenix.LiveView
-        ...
+  ## Generators
 
-        def mount(_params, %{"current_user_id" => user_id}, socket) do
-          if connected?(socket), do: Process.send_after(self(), :update, 30000)
+  Phoenix v1.6 and later includes code generators. If you want to see
+  an example of how to structure your application, from the codebase
+  all the way up to LiveViews, run the following:
 
-          case Thermostat.get_user_reading(user_id) do
-            {:ok, temperature} ->
-              {:ok, assign(socket, temperature: temperature, user_id: user_id)}
+      mix phx.gen.live Blog Post posts title:string body:text
 
-            {:error, _reason} ->
-              {:ok, redirect(socket, to: "/error")}
-          end
-        end
+  For more information, run `mix help phx.gen.live`.
 
-        def handle_info(:update, socket) do
-          Process.send_after(self(), :update, 30000)
-          {:ok, temperature} = Thermostat.get_reading(socket.assigns.user_id)
-          {:noreply, assign(socket, :temperature, temperature)}
-        end
-      end
+  ## Collocating templates
 
-  We used `connected?(socket)` on mount to send our view a message every 30s if
-  the socket is in a connected state. We receive the `:update` message in the
-  `c:handle_info/2` callback, just like in an Elixir `GenServer`, and update our
-  socket assigns. Whenever a socket's assigns change, `c:render/1` is automatically
-  invoked, and the updates are sent to the client.
-
-  ## Colocating templates
-
-  In the examples above, we have placed the template directly inside the
+  In the example above, we have placed the template directly inside the
   LiveView:
 
       defmodule MyAppWeb.ThermostatLive do
@@ -202,7 +166,7 @@ defmodule Phoenix.LiveView do
   callback, for example:
 
       def handle_event("inc_temperature", _value, socket) do
-        {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.id)
+        {:ok, new_temp} = Thermostat.inc_temperature(socket.assigns.temperate)
         {:noreply, assign(socket, :temperature, new_temp)}
       end
 
@@ -211,6 +175,76 @@ defmodule Phoenix.LiveView do
   execute directly on the client without reaching the server. To learn more,
   see [our bindings page](bindings.md) for a complete list of all LiveView
   bindings as well as our [JavaScript interoperability guide](js-interop.md).
+
+  ## Connected check
+
+  Sometimes you may want to execute different code depending if the LiveView
+  is in its initial rendering stage (over the HTTP connection) or inside the
+  LiveView process (over WebScokets).
+
+  You can use `connected?/1` to conditionally perform stateful work, such as
+  subscribing to pubsub topics, sending messages, etc. For example, you can
+  periodically update a LiveView with a timer:
+
+      defmodule DemoWeb.ThermostatLive do
+        # In Phoenix apps, the line is typically: use MyAppWeb, :live_view
+        use Phoenix.LiveView
+        ...
+
+        def mount(_params, %{"current_user_id" => user_id}, socket) do
+          if connected?(socket), do: Process.send_after(self(), :update, 30000)
+
+          case Thermostat.get_user_reading(user_id) do
+            {:ok, temperature} ->
+              {:ok, assign(socket, temperature: temperature, user_id: user_id)}
+
+            {:error, _reason} ->
+              {:ok, redirect(socket, to: "/error")}
+          end
+        end
+
+        def handle_info(:update, socket) do
+          Process.send_after(self(), :update, 30000)
+          {:ok, temperature} = Thermostat.get_reading(socket.assigns.user_id)
+          {:noreply, assign(socket, :temperature, temperature)}
+        end
+      end
+
+  We used `connected?(socket)` on mount to send our view a message every 30s if
+  the socket is in a connected state. We receive the `:update` message in the
+  `c:handle_info/2` callback, just like in an Elixir `GenServer`, and update our
+  socket assigns. Whenever a socket's assigns change, `c:render/1` is automatically
+  invoked, and the updates are sent to the client.
+
+  ## Live forms
+
+  LiveView has built-in support for forms, including uploads and association
+  management. See `form/1` as a starting point and `inputs_for/1` for working
+  with associations. The [Uploads](uploads.md) and [Form bindings](form-bindings.md)
+  guides provide more information about advanced features.
+
+  ## Live navigation
+
+  LiveView provides functionality to allow page navigation using the
+  [browser's pushState API](https://developer.mozilla.org/en-US/docs/Web/API/History_API).
+  With live navigation, the page is updated without a full page reload.
+
+  You can either *patch* the current LiveView, updating its URL, or
+  *navigate* to a new LiveView. You can learn more about them in the
+  [Live Navigation](live-navigation.md) guide.
+
+  ## LiveView embedding
+
+  In the example above we have embedded the LiveView in our router.
+  That's the preferred approach. However, it is also possible to render
+  a LiveView inside HTML rendered through a `Phoenix.Controller`.
+  You do so by calling `live_render` in your template:
+
+        <h1>Temperature Control</h1>
+        <%= live_render(@conn, MyAppWeb.ThermostatLive) %>
+
+  Keep in mind that some LiveView functionality, such as
+  Live navigation, do not work on embedded LiveViews.
 
   ## Compartmentalize state, markup, and events in LiveView
 
@@ -269,45 +303,6 @@ defmodule Phoenix.LiveView do
     * use `Phoenix.LiveComponent` to compartmentalize state, markup, and events
     * use nested `Phoenix.LiveView` to compartmentalize state, markup, events, and error isolation
 
-  ## Endpoint configuration
-
-  LiveView accepts the following configuration in your endpoint under
-  the `:live_view` key:
-
-    * `:signing_salt` (required) - the salt used to sign data sent
-      to the client
-
-    * `:hibernate_after` (optional) - the idle time in milliseconds allowed in
-    the LiveView before compressing its own memory and state.
-    Defaults to 15000ms (15 seconds)
-
-  ## Guides
-
-  LiveView has many guides to help you on your journey.
-
-  ### Server-side
-
-  These guides focus on server-side functionality:
-
-    * [Assigns and HEEx templates](assigns-eex.md)
-    * [Error and exception handling](error-handling.md)
-    * [Live Layouts](live-layouts.md)
-    * [Live Navigation](live-navigation.md)
-    * [Security considerations of the LiveView model](security-model.md)
-    * [Telemetry](telemetry.md)
-    * [Uploads](uploads.md)
-    * [Using Gettext for internationalization](using-gettext.md)
-
-  ### Client-side
-
-  These guides focus on LiveView bindings and client-side integration:
-
-    * [Bindings](bindings.md)
-    * [Form bindings](form-bindings.md)
-    * [DOM patching and temporary assigns](dom-patching.md)
-    * [JavaScript interoperability](js-interop.md)
-    * [Uploads (External)](uploads-external.md)
-
   ## Async Operations
 
   Performing asynchronous work is common in LiveViews and LiveComponents.
@@ -359,14 +354,6 @@ defmodule Phoenix.LiveView do
   </.async_result>
   ```
 
-  Additionally, for async assigns which result in a collection of items, you
-  can enumerate the assign directly. It will only enumerate
-  the results once the results are loaded. For example:
-
-  ```heex
-  <div :for={org <- @orgs}><%= org.name %></div>
-  ```
-
   ### Arbitrary async operations
 
   Sometimes you need lower level control of asynchronous operations, while
@@ -391,11 +378,51 @@ defmodule Phoenix.LiveView do
       end
 
   `start_async/3` is used to fetch the organization asynchronously. The
-  `handle_async/3` callback is called when the task completes or exits,
+  `c:handle_async/3` callback is called when the task completes or exits,
   with the results wrapped in either `{:ok, result}` or `{:exit, reason}`.
-  The `AsyncResult` module is used to direclty to update the state of the
+  The `AsyncResult` module is used to directly to update the state of the
   async operation, but you can also assign any value directly to the socket
   if you want to handle the state yourself.
+
+  ## Endpoint configuration
+
+  LiveView accepts the following configuration in your endpoint under
+  the `:live_view` key:
+
+    * `:signing_salt` (required) - the salt used to sign data sent
+      to the client
+
+    * `:hibernate_after` (optional) - the idle time in milliseconds allowed in
+    the LiveView before compressing its own memory and state.
+    Defaults to 15000ms (15 seconds)
+
+  ## Guides
+
+  LiveView has many guides to help you on your journey.
+
+  ### Server-side
+
+  These guides focus on server-side functionality:
+
+    * [Assigns and HEEx templates](assigns-eex.md)
+    * [Error and exception handling](error-handling.md)
+    * [Live Layouts](live-layouts.md)
+    * [Live Navigation](live-navigation.md)
+    * [Security considerations of the LiveView model](security-model.md)
+    * [Telemetry](telemetry.md)
+    * [Uploads](uploads.md)
+    * [Using Gettext for internationalization](using-gettext.md)
+
+  ### Client-side
+
+  These guides focus on LiveView bindings and client-side integration:
+
+    * [Bindings](bindings.md)
+    * [Form bindings](form-bindings.md)
+    * [DOM patching and temporary assigns](dom-patching.md)
+    * [JavaScript interoperability](js-interop.md)
+    * [Uploads (External)](uploads-external.md)
+
   '''
 
   alias Phoenix.LiveView.{Socket, LiveStream, Async}
@@ -522,13 +549,27 @@ defmodule Phoenix.LiveView do
   @callback handle_info(msg :: term, socket :: Socket.t()) ::
               {:noreply, Socket.t()}
 
+  @doc """
+  Invoked when the result of an `start_async/3` operation is available.
+
+  For a deeper understanding of using this callback,
+  refer to the ["Arbitrary async operations"](#module-arbitrary-async-operations) section.
+  """
+  @callback handle_async(
+              name :: atom,
+              async_fun_result :: {:ok, term} | {:exit, term},
+              socket :: Socket.t()
+            ) ::
+              {:noreply, Socket.t()}
+
   @optional_callbacks mount: 3,
                       terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
                       handle_call: 3,
                       handle_info: 2,
-                      handle_cast: 2
+                      handle_cast: 2,
+                      handle_async: 3
 
   @doc """
   Uses LiveView in the current module to mark it a LiveView.
@@ -557,6 +598,7 @@ defmodule Phoenix.LiveView do
     * `:namespace` - configures the namespace the `LiveView` is in
 
   """
+
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
     opts =
@@ -2038,7 +2080,7 @@ defmodule Phoenix.LiveView do
   Starts an ansynchronous task and invokes callback to handle the result.
 
   The task is linked to the caller and errors/exits are wrapped.
-  The result of the task is sent to the `handle_async/3` callback
+  The result of the task is sent to the `c:handle_async/3` callback
   of the caller LiveView or LiveComponent.
 
   ## Examples
@@ -2074,9 +2116,9 @@ defmodule Phoenix.LiveView do
   the key passed to `start_async/3`.
 
   The underlying process will be killed with the provided reason, or
-  {:shutdown, :cancel}`. if no reason is passed. For `assign_async/3`
+  `{:shutdown, :cancel}`. if no reason is passed. For `assign_async/3`
   operations, the `:failed` field will be set to `{:exit, reason}`.
-  For `start_async/3`, the `handle_async/3` callback will receive
+  For `start_async/3`, the `c:handle_async/3` callback will receive
   `{:exit, reason}` as the result.
 
   Returns the `%Phoenix.LiveView.Socket{}`.

@@ -63,7 +63,7 @@ should execute those same verifications:
       {:ok, socket}
     end
 
-LiveView v0.17 includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
+Beginning with v0.17, LiveView includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
 which allows you to encapsulate this logic and execute it on every mount,
 as you would with plug:
 

@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.20.2
+
+### Bug fixes
+  * Fix javascript error when submitting a form that has in progress uploads
+  * Fix JS command `:target` failing to work when used as phx-submit or phx-change with a selector-based target
+
+### Enhancements
+  * Speed up DOM patching performance 3-30x 🔥
+
 ## 0.20.1 (2023-10-09)
 
 ### Bug fixes

@@ -809,7 +809,7 @@ export default class View {
   targetComponentID(target, targetCtx, opts = {}){
     if(isCid(targetCtx)){ return targetCtx }
 
-    let cidOrSelector = target.getAttribute(this.binding("target"))
+    let cidOrSelector = opts.target || target.getAttribute(this.binding("target"))
     if(isCid(cidOrSelector)){
       return parseInt(cidOrSelector)
     } else if(targetCtx && (cidOrSelector !== null || opts.target)){
@@ -891,7 +891,7 @@ export default class View {
 
   pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback){
     let uploads
-    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
+    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
     let formData
     let meta  = this.extractMeta(inputEl.form)
@@ -995,7 +995,7 @@ export default class View {
     let cid = this.targetComponentID(formEl, targetCtx)
     if(LiveUploader.hasUploadsInProgress(formEl)){
       let [ref, _els] = refGenerator()
-      let push = () => this.pushFormSubmit(formEl, submitter, targetCtx, phxEvent, opts, onReply)
+      let push = () => this.pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply)
       return this.scheduleSubmit(formEl, ref, opts, push)
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()

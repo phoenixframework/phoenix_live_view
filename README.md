@@ -29,10 +29,10 @@ model while keeping your code closer to your data (and ultimately your source of
 
   * **Rich templating language:** Enjoy HEEx: a templating language that supports function components, slots, HTML validation, verified routes, and more.
 
-  * **Small payloads:** LiveView is smart enough to track changes so it only sends what the client needs, making LiveView payloads much smaller than server-rendered HTML.
+  * **Diffs over the wire:** Instead of sending "HTML over the wire", LiveView knows exactly which parts of your templates change, sending minimal diffs over the wire after the initial render, reducing latency and bandwidth usage. The client leverages this information and optimizes the browser with 5-10x faster updates, compared to solutions that replace whole HTML fragments.
 
   * **Live form validation:** LiveView supports real-time form validation out of the box. Create rich user interfaces with features like uploads, nested inputs, and [specialized recovery](https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects).
-  
+
   * **File uploads:** Real-time file uploads with progress indicators and image previews. Process your uploads on the fly or submit them to your desired cloud service.
 
   * **Rich integration API:** Use the rich integration API to interact with the client, with `phx-click`, `phx-focus`, `phx-blur`, `phx-submit`, and `phx-hook` included for cases where you have to write JavaScript.
