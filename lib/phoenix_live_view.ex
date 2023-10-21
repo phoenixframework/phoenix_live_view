@@ -1667,6 +1667,9 @@ defmodule Phoenix.LiveView do
   Replying to a client event:
 
       # JavaScript:
+      # /**
+      #  * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+      #  */
       # let Hooks = {}
       # Hooks.ClientHook = {
       #   mounted() {
