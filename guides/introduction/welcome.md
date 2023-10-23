@@ -161,7 +161,7 @@ example, to react to a click on a button, you would render the element:
 
     <button phx-click="inc_temperature">+</button>
 
-Then on the server, all LiveView bindings are handled with the `c:handle_event/3`
+Then on the server, all LiveView bindings are handled with the `handle_event/3`
 callback, for example:
 
     def handle_event("inc_temperature", _value, socket) do
@@ -231,7 +231,7 @@ LiveView to a separate module. For these cases, LiveView provides
 
     <.live_component module={UserComponent} id={user.id} user={user} />
 
-Components have their own `c:mount/3` and `c:handle_event/3` callbacks, as
+Components have their own `mount/3` and `handle_event/3` callbacks, as
 well as their own state with change tracking support. Components are also
 lightweight as they "run" in the same process as the parent `LiveView`.
 However, this means an error in a component would cause the whole view to
