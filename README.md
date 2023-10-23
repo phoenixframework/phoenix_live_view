@@ -65,7 +65,7 @@ See our existing comprehensive [docs](https://hexdocs.pm/phoenix_live_view) and 
 
 LiveView is included by default in all new Phoenix v1.6+ applications and
 later. If you have an older existing Phoenix app and you wish to add
-LiveView, see [the installation guide on HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html).
+LiveView, see [the previous installation guide](https://github.com/phoenixframework/phoenix_live_view/blob/v0.20.1/guides/introduction/installation.md).
 
 ## What makes LiveView unique?
 
