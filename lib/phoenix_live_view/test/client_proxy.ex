@@ -1020,7 +1020,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp maybe_js_event("[" <> _ = encoded_js) do
-    js = encoded_js |> DOM.parse() |> Phoenix.json_library().decode!()
+    js = Phoenix.json_library().decode!(encoded_js)
     op = Enum.filter(js, fn [kind, _args] -> kind == "push" end)
 
     case op do
@@ -1374,7 +1374,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp root_page_title(root_html) do
     case DOM.maybe_one(root_html, "head > title") do
-      {:ok, {"title", _, [text]}} -> text
+      {:ok, {"title", _, text}} -> IO.iodata_to_binary(text)
       {:error, _kind, _desc} -> nil
     end
   end
