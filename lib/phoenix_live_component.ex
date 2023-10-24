@@ -158,7 +158,7 @@ defmodule Phoenix.LiveComponent do
           |> Repo.all()
           |> Map.new()
 
-        Enum.map(assigns_sockets, fn {assigns, sockets} ->
+        Enum.map(assigns_sockets, fn {assigns, socket} ->
           assign(socket, :user, users[assigns.id])
         end)
       end
