@@ -59,7 +59,7 @@ defmodule MyAppWeb.ThermostatLive do
   end
 
   def handle_event("inc_temperature", _params, socket) do
-    {:ok, update(socket, :temperature, &(&1 + 1))}
+    {:noreply, update(socket, :temperature, &(&1 + 1))}
   end
 end
 ```
@@ -79,16 +79,23 @@ The data used on rendering comes from the `mount` callback. The
 can access the request parameters, read information stored in the
 session (typically information which identifies who is the current
 user), and a socket. The socket is where we keep all state, including
-assigns. `mount` proceeds to read the thermostat temperature for the
-user and store its value in the assigns. After `mount`, LiveView will
-render the page with the values from `assigns`.
+assigns. `mount` proceeds to assign a default temperature to the socket.
+Because Elixir data structures are immutable, LiveView APIs often
+receive the socket and return an updated socket. Then we return
+`{:ok, socket}` to signal that we were able to mount the LiveView
+successfully. After `mount`, LiveView will render the page with the
+values from `assigns` and sent it to the client.
 
 If you look at the HTML rendered, you will notice there is a button
 with a `phx-click` attribute. When the button is clicked, a
 "inc_temperature" event is sent to the server, which is matched and
-handled by the `handle_event` callback. The callback updates the state
-which causes the page to be updated. LiveView then computes diffs and
-sends them to client.
+handled by the `handle_event` callback. This callback updates the socket
+and returns `{:noreply, socket}` with the updated socket.
+`handle_*` callbacks in LiveView (and in Elixir in general) are
+invoked based on some action, in this case, the user clicking a button.
+The `{:noreply, socket}` return means there is no additional replies
+sent to the browser, only that a new version of the page is rendered.
+LiveView then computes diffs and sends them to client.
 
 Now we are ready to render our LiveView. You can serve the LiveView
 directly from your router:
