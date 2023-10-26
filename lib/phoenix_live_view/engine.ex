@@ -969,11 +969,6 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, taint_assigns(assigns)}
   end
 
-  # Our own vars are ignored. They appear from nested do/end in EEx templates.
-  defp analyze({_, _, __MODULE__} = expr, vars, assigns, _caller) do
-    {expr, vars, assigns}
-  end
-
   # Ignore underscore
   defp analyze({:_, _, context} = expr, vars, assigns, _caller) when is_atom(context) do
     {expr, vars, assigns}
@@ -986,20 +981,25 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Vars always taint unless we are in restricted mode.
-  defp analyze({name, meta, context} = expr, {:restricted, map}, assigns, caller)
-       when is_atom(name) and is_atom(context) do
-    if Map.has_key?(map, {name, context}) do
-      maybe_warn_taint(name, meta, context, caller)
+  defp analyze({name, meta, nil} = expr, {:restricted, map}, assigns, caller)
+       when is_atom(name) do
+    if Map.has_key?(map, name) do
+      maybe_warn_taint(name, meta, caller)
       {expr, {:tainted, map}, assigns}
     else
       {expr, {:restricted, map}, assigns}
     end
   end
 
-  defp analyze({name, meta, context} = expr, {_, map}, assigns, caller)
+  defp analyze({name, meta, nil} = expr, {_, map}, assigns, caller) when is_atom(name) do
+    maybe_warn_taint(name, meta, caller)
+    {expr, {:tainted, Map.put(map, name, true)}, assigns}
+  end
+
+  # Quoted vars are ignored as they come from engine code.
+  defp analyze({name, _meta, context} = expr, vars, assigns, _caller)
        when is_atom(name) and is_atom(context) do
-    maybe_warn_taint(name, meta, context, caller)
-    {expr, {:tainted, Map.put(map, {name, context}, true)}, assigns}
+    {expr, vars, assigns}
   end
 
   # Ignore binary modifiers
@@ -1120,8 +1120,8 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Callbacks
 
-  defp maybe_warn_taint(name, meta, context, caller) do
-    if caller && Macro.Env.has_var?(caller, {name, context}) do
+  defp maybe_warn_taint(name, meta, caller) do
+    if caller && Macro.Env.has_var?(caller, {name, nil}) do
       message = """
       you are accessing the variable \"#{name}\" inside a LiveView template.
 
