@@ -464,12 +464,12 @@ defmodule Phoenix.LiveView.TagEngine do
       end
 
     case pop_special_attrs!(attrs, tag_meta, state) do
-      {^tag_meta, _attrs} ->
+      {false, _tag_meta, _attrs} ->
         state
         |> set_root_on_not_tag()
         |> update_subengine(:handle_expr, ["=", ast])
 
-      {new_meta, _new_attrs} ->
+      {true, new_meta, _new_attrs} ->
         state
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
@@ -486,7 +486,7 @@ defmodule Phoenix.LiveView.TagEngine do
     tag_meta = Map.put(tag_meta, :mod_fun, mod_fun)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
-      {^tag_meta, _attrs} ->
+      {false, tag_meta, attrs} ->
         state
         |> set_root_on_not_tag()
         |> push_tag({:remote_component, name, attrs, tag_meta})
@@ -494,7 +494,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
 
-      {new_meta, new_attrs} ->
+      {true, new_meta, new_attrs} ->
         state
         |> set_root_on_not_tag()
         |> push_tag({:remote_component, name, new_attrs, new_meta})
@@ -616,12 +616,12 @@ defmodule Phoenix.LiveView.TagEngine do
       end
 
     case pop_special_attrs!(attrs, tag_meta, state) do
-      {^tag_meta, _attrs} ->
+      {false, _tag_meta, _attrs} ->
         state
         |> set_root_on_not_tag()
         |> update_subengine(:handle_expr, ["=", ast])
 
-      {new_meta, _new_attrs} ->
+      {true, new_meta, _new_attrs} ->
         state
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
@@ -635,7 +635,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_token({:local_component, name, attrs, tag_meta} = token, state) do
     case pop_special_attrs!(attrs, tag_meta, state) do
-      {^tag_meta, _attrs} ->
+      {false, _tag_meta, _attrs} ->
         state
         |> set_root_on_not_tag()
         |> push_tag(token)
@@ -643,7 +643,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
 
-      {new_meta, new_attrs} ->
+      {true, new_meta, new_attrs} ->
         state
         |> set_root_on_not_tag()
         |> push_tag({:local_component, name, new_attrs, new_meta})
@@ -692,12 +692,12 @@ defmodule Phoenix.LiveView.TagEngine do
     validate_phx_attrs!(attrs, tag_meta, state)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
-      {^tag_meta, attrs} ->
+      {false, tag_meta, attrs} ->
         state
         |> set_root_on_tag()
         |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
 
-      {new_meta, new_attrs} ->
+      {true, new_meta, new_attrs} ->
         state
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
@@ -714,13 +714,13 @@ defmodule Phoenix.LiveView.TagEngine do
     attrs = remove_phx_no_break(attrs)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
-      {^tag_meta, attrs} ->
+      {false, tag_meta, attrs} ->
         state
         |> set_root_on_tag()
         |> push_tag(token)
         |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
 
-      {new_meta, new_attrs} ->
+      {true, new_meta, new_attrs} ->
         state
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
@@ -751,8 +751,8 @@ defmodule Phoenix.LiveView.TagEngine do
   #   pop_special_attrs!(state, ":for", attrs, %{}, state)
   #   => {%{}, []}
   defp pop_special_attrs!(attrs, tag_meta, state) do
-    Enum.reduce([for: ":for", if: ":if"], {tag_meta, attrs}, fn
-      {attr, string_attr}, {meta_acc, attrs_acc} ->
+    Enum.reduce([for: ":for", if: ":if"], {false, tag_meta, attrs}, fn
+      {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
         attrs_acc
         |> List.keytake(string_attr, 0)
         |> raise_if_duplicated_special_attr!(state)
@@ -760,10 +760,10 @@ defmodule Phoenix.LiveView.TagEngine do
           {{^string_attr, expr, meta}, attrs} ->
             parsed_expr = parse_expr!(expr, state.file)
             validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
-            {Map.put(meta_acc, attr, parsed_expr), attrs}
+            {true, Map.put(meta_acc, attr, parsed_expr), attrs}
 
           nil ->
-            {meta_acc, attrs_acc}
+            {special_acc, meta_acc, attrs_acc}
         end
     end)
   end
