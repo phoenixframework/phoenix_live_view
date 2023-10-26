@@ -178,7 +178,7 @@ Then on the server, all LiveView bindings are handled with the `handle_event/3`
 callback, for example:
 
     def handle_event("inc_temperature", _value, socket) do
-      {:ok, update(socket, :temperature, &(&1 + 1))}
+      {:noreply, update(socket, :temperature, &(&1 + 1))}
     end
 
 To update UI state, for example, to open and close dropdowns, switch tabs,
