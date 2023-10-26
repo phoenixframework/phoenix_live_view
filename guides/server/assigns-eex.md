@@ -43,7 +43,6 @@ nothing is sent.
 Change tracking also works when accessing map/struct fields.
 Take this template:
 
-
 ```heex
 <div id={"user_#{@user.id}"}>
   <%= @user.name %>
@@ -56,7 +55,6 @@ at all.
 
 The change tracking also works when rendering other templates as
 long as they are also `.heex` templates:
-
 
 ```heex
 <%= render "child_template.html", assigns %>
@@ -122,7 +120,7 @@ The next pitfall is related to variables. Due to the scope of variables,
 LiveView has to disable change tracking whenever variables are used in the
 template, with the exception of variables introduced by Elixir basic `case`,
 `for`, and other block constructs. Therefore, you **must avoid** code like
-this in your LiveView templates:
+this in your `HEEx` templates:
 
 ```heex
 <% some_var = @x + @y %>
@@ -135,7 +133,8 @@ Instead, use a function:
 <%= sum(@x, @y) %>
 ```
 
-Similarly, **do not** define variables at the top of your `render` function:
+Similarly, **do not** define variables at the top of your `render` function
+for LiveViews or LiveComponents:
 
     def render(assigns) do
       sum = assigns.x + assigns.y
@@ -145,11 +144,24 @@ Similarly, **do not** define variables at the top of your `render` function:
       """
     end
 
-Instead explicitly precompute the assign in your LiveView, outside of render:
+Instead explicitly precompute the assign outside of render:
 
     assign(socket, sum: socket.assigns.x + socket.assigns.y)
 
-Generally speaking, avoid accessing variables inside LiveViews, as code that
+Unlike LiveView, a `Phoenix.Component` function can modify the assigns it receives.
+Therefore, you can assign the computed values before declaring your template:
+
+    attr :x, :integer, required: true
+    attr :y, :integer, required: true
+    def sum_component(assigns) do
+      assigns = assign(assigns, sum: assigns.x + assigns.y)
+
+      ~H"""
+      <%= @sum %>
+      """
+    end
+
+Generally speaking, avoid accessing variables inside `HEEx` templates, as code that
 access variables is always executed on every render. This also applies to the
 `assigns` variable. The exception are variables introduced by Elixir's block
 constructs. For example, accessing the `post` variable defined by the comprehension
