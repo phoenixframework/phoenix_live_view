@@ -797,8 +797,30 @@ defmodule Phoenix.LiveView.TagEngine do
             handle_tag_and_attrs(state, name, [attr | attrs], suffix, meta)
 
           nil ->
-            # TODO: Check if we have root and handle it accordingly
-            handle_tag_and_attrs(state, name, attrs, suffix, meta)
+            case List.keyfind(attrs, :root, 0) do
+              {:root, {:expr, _, _} = expr, attr_meta} ->
+                id = quote(do: id)
+                root = quote(do: root)
+                attrs = List.keyreplace(attrs, :root, 0, {:root, {:quoted, root}, attr_meta})
+
+                ast =
+                  quote line: meta[:line] do
+                    {unquote(id), unquote(root)} =
+                      unquote(__MODULE__).root_attributes_escape(
+                        unquote(parse_expr!(expr, state.file))
+                      )
+                  end
+
+                state
+                |> update_subengine(:handle_expr, ["", ast])
+                |> update_subengine(:handle_text, [meta, "<#{name}"])
+                |> update_subengine(:handle_expr, ["=", id])
+                |> handle_tag_attrs(meta, attrs)
+                |> update_subengine(:handle_text, [meta, suffix])
+
+              _ ->
+                handle_tag_and_attrs(state, name, attrs, suffix, meta)
+            end
         end
 
       %{root: true, tags: []} ->
@@ -820,6 +842,9 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
+      {:root, {:quoted, ast}, _attr_meta}, state ->
+        update_subengine(state, :handle_expr, ["=", ast])
+
       {:root, {:expr, _, _} = expr, _attr_meta}, state ->
         handle_attrs_escape(state, meta, parse_expr!(expr, state.file))
 
@@ -934,13 +959,35 @@ defmodule Phoenix.LiveView.TagEngine do
   def attributes_escape(attrs) do
     # We don't want to dasherize keys, which Phoenix.HTML does for atoms,
     # so we convert those to strings
-
     attrs
     |> Enum.map(fn
       {key, value} when is_atom(key) -> {Atom.to_string(key), value}
       other -> other
     end)
     |> Phoenix.HTML.attributes_escape()
+  end
+
+  @doc false
+  def root_attributes_escape(attrs) do
+    attrs
+    |> Enum.reverse()
+    |> root_attributes_escape([], [])
+  end
+
+  defp root_attributes_escape([{:id, _} = head | rest], _id, acc),
+    do: root_attributes_escape(rest, [head], acc)
+
+  defp root_attributes_escape([{"id", _} = head | rest], _id, acc),
+    do: root_attributes_escape(rest, [head], acc)
+
+  defp root_attributes_escape([{key, value} | rest], id, acc) when is_atom(key),
+    do: root_attributes_escape(rest, id, [{Atom.to_string(key), value} | acc])
+
+  defp root_attributes_escape([head | rest], id, acc),
+    do: root_attributes_escape(rest, id, [head | acc])
+
+  defp root_attributes_escape([], id, acc) do
+    {Phoenix.HTML.attributes_escape(id), Phoenix.HTML.attributes_escape(acc)}
   end
 
   defp extract_compile_attr("class", [head | tail]) when is_binary(head) do
