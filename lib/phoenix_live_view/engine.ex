@@ -1002,6 +1002,13 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, assigns}
   end
 
+  # Ignore right side of |> if a variable
+  defp analyze({:|>, meta, [left, {_, _, context} = right]}, vars, assigns, caller)
+       when is_atom(context) do
+    {left, vars, assigns} = analyze(left, vars, assigns, caller)
+    {{:|>, meta, [left, right]}, vars, assigns}
+  end
+
   # Ignore binary modifiers
   defp analyze({:"::", meta, [left, right]}, vars, assigns, caller) do
     {left, vars, assigns} = analyze(left, vars, assigns, caller)
