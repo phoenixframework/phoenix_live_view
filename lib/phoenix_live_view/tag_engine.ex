@@ -694,8 +694,7 @@ defmodule Phoenix.LiveView.TagEngine do
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
         state
-        |> set_root_on_tag()
-        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+        |> maybe_root_handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
 
       {true, new_meta, new_attrs} ->
         state
@@ -716,9 +715,8 @@ defmodule Phoenix.LiveView.TagEngine do
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
         state
-        |> set_root_on_tag()
+        |> maybe_root_handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
         |> push_tag(token)
-        |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
 
       {true, new_meta, new_attrs} ->
         state
@@ -753,11 +751,9 @@ defmodule Phoenix.LiveView.TagEngine do
   defp pop_special_attrs!(attrs, tag_meta, state) do
     Enum.reduce([for: ":for", if: ":if"], {false, tag_meta, attrs}, fn
       {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
-        attrs_acc
-        |> List.keytake(string_attr, 0)
-        |> raise_if_duplicated_special_attr!(state)
-        |> case do
+        case List.keytake(attrs_acc, string_attr, 0) do
           {{^string_attr, expr, meta}, attrs} ->
+            raise_if_duplicate_attr!(string_attr, attrs, state)
             parsed_expr = parse_expr!(expr, state.file)
             validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
             {true, Map.put(meta_acc, attr, parsed_expr), attrs}
@@ -768,20 +764,17 @@ defmodule Phoenix.LiveView.TagEngine do
     end)
   end
 
-  defp raise_if_duplicated_special_attr!({{attr, _expr, _meta}, attrs} = result, state) do
-    case List.keytake(attrs, attr, 0) do
-      {{attr, _expr, meta}, _attrs} ->
-        message =
-          "cannot define multiple #{inspect(attr)} attributes. Another #{inspect(attr)} has already been defined at line #{meta.line}"
+  defp raise_if_duplicate_attr!(attr, attrs, state) do
+    with {^attr, _expr, meta} <- List.keyfind(attrs, attr, 0) do
+      message =
+        "cannot define multiple #{inspect(attr)} attributes. " <>
+          "Another #{inspect(attr)} has already been defined at line #{meta.line}"
 
-        raise_syntax_error!(message, meta, state)
-
-      nil ->
-        result
+      raise_syntax_error!(message, meta, state)
     end
-  end
 
-  defp raise_if_duplicated_special_attr!(nil, _state), do: nil
+    :ok
+  end
 
   # Root tracking
   defp set_root_on_not_tag(%{root: root, tags: tags} = state) do
@@ -792,11 +785,49 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp set_root_on_tag(state) do
+  defp maybe_root_handle_tag_and_attrs(state, name, attrs, suffix, meta) do
     case state do
-      %{root: nil, tags: []} -> %{state | root: true}
-      %{root: true, tags: []} -> %{state | root: false}
-      %{root: bool} when is_boolean(bool) -> state
+      %{root: nil, tags: []} ->
+        state = %{state | root: true}
+
+        case List.keytake(attrs, "id", 0) do
+          # If we have a root, we need to guarantee the ID comes first.
+          {{"id", _, _} = attr, attrs} ->
+            raise_if_duplicate_attr!("id", attrs, state)
+            handle_tag_and_attrs(state, name, [attr | attrs], suffix, meta)
+
+          nil ->
+            case List.keyfind(attrs, :root, 0) do
+              {:root, {:expr, _, _} = expr, attr_meta} ->
+                id = quote(do: id)
+                root = quote(do: root)
+                attrs = List.keyreplace(attrs, :root, 0, {:root, {:quoted, root}, attr_meta})
+
+                ast =
+                  quote line: meta[:line] do
+                    {unquote(id), unquote(root)} =
+                      unquote(__MODULE__).root_attributes_escape(
+                        unquote(parse_expr!(expr, state.file))
+                      )
+                  end
+
+                state
+                |> update_subengine(:handle_expr, ["", ast])
+                |> update_subengine(:handle_text, [meta, "<#{name}"])
+                |> update_subengine(:handle_expr, ["=", id])
+                |> handle_tag_attrs(meta, attrs)
+                |> update_subengine(:handle_text, [meta, suffix])
+
+              _ ->
+                handle_tag_and_attrs(state, name, attrs, suffix, meta)
+            end
+        end
+
+      %{root: true, tags: []} ->
+        handle_tag_and_attrs(%{state | root: false}, name, attrs, suffix, meta)
+
+      %{root: bool} when is_boolean(bool) ->
+        handle_tag_and_attrs(state, name, attrs, suffix, meta)
     end
   end
 
@@ -811,6 +842,9 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
+      {:root, {:quoted, ast}, _attr_meta}, state ->
+        update_subengine(state, :handle_expr, ["=", ast])
+
       {:root, {:expr, _, _} = expr, _attr_meta}, state ->
         handle_attrs_escape(state, meta, parse_expr!(expr, state.file))
 
@@ -925,13 +959,35 @@ defmodule Phoenix.LiveView.TagEngine do
   def attributes_escape(attrs) do
     # We don't want to dasherize keys, which Phoenix.HTML does for atoms,
     # so we convert those to strings
-
     attrs
     |> Enum.map(fn
       {key, value} when is_atom(key) -> {Atom.to_string(key), value}
       other -> other
     end)
     |> Phoenix.HTML.attributes_escape()
+  end
+
+  @doc false
+  def root_attributes_escape(attrs) do
+    attrs
+    |> Enum.reverse()
+    |> root_attributes_escape([], [])
+  end
+
+  defp root_attributes_escape([{:id, _} = head | rest], _id, acc),
+    do: root_attributes_escape(rest, [head], acc)
+
+  defp root_attributes_escape([{"id", _} = head | rest], _id, acc),
+    do: root_attributes_escape(rest, [head], acc)
+
+  defp root_attributes_escape([{key, value} | rest], id, acc) when is_atom(key),
+    do: root_attributes_escape(rest, id, [{Atom.to_string(key), value} | acc])
+
+  defp root_attributes_escape([head | rest], id, acc),
+    do: root_attributes_escape(rest, id, [head | acc])
+
+  defp root_attributes_escape([], id, acc) do
+    {Phoenix.HTML.attributes_escape(id), Phoenix.HTML.attributes_escape(acc)}
   end
 
   defp extract_compile_attr("class", [head | tail]) when is_binary(head) do

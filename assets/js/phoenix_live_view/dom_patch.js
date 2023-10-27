@@ -124,7 +124,7 @@ export default class DOMPatch {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
           if(DOM.isPhxDestroyed(node)){ return null }
-          return (node.getAttribute && node.getAttribute(PHX_MAGIC_ID)) || node.id
+          return node.id || (node.getAttribute && node.getAttribute(PHX_MAGIC_ID))
         },
         // skip indexing from children when container is stream
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
