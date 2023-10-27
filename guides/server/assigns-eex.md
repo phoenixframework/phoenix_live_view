@@ -148,7 +148,8 @@ Instead explicitly precompute the assign outside of render:
 
     assign(socket, sum: socket.assigns.x + socket.assigns.y)
 
-Unlike LiveView, a `Phoenix.Component` function can modify the assigns it receives.
+Unlike LiveView, a `Phoenix.Component` function can modify the assigns it receives
+via the `assign/2`, `assign/3`, `assign_new/3`, and `update/3` functions.
 Therefore, you can assign the computed values before declaring your template:
 
     attr :x, :integer, required: true
