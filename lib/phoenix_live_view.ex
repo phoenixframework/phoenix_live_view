@@ -1538,12 +1538,12 @@ defmodule Phoenix.LiveView do
       items to maintain the limit. For example, to limit the stream to the last 10 items
       in the UI while appending new items, pass a negative value:
 
-          stream(socket, :posts, posts, at: -1, limit: -10)
+          stream(socket, :songs, songs, at: -1, limit: -10)
 
       Likewise, to limit the stream to the first 10 items, while prepending new items,
       pass a positive value:
 
-          stream(socket, :posts, posts, at: 0, limit: 10)
+          stream(socket, :songs, songs, at: 0, limit: 10)
 
   Once a stream is defined, a new `@streams` assign is available containing
   the name of the defined streams. For example, in the above definition, the
