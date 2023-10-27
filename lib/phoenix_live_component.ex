@@ -491,31 +491,8 @@ defmodule Phoenix.LiveComponent do
 
   ## Limitations
 
-  ### Live Components require a single HTML tag at the root
-
   Live Components require a single HTML tag at the root. It is not possible
   to have components that render only text or multiple tags.
-
-  ### SVG support
-
-  Given components compartmentalize markup on the server, they are also
-  rendered in isolation on the client, which provides great performance
-  benefits on the client too.
-
-  However, when rendering components on the client, the client needs to
-  choose the mime type of the component contents, which defaults to HTML.
-  This is the best default but in some cases it may lead to unexpected
-  results.
-
-  For example, if you are rendering SVG, the SVG will be interpreted as
-  HTML. This may work just fine for most components but you may run into
-  corner cases. For example, the `<image>` SVG tag may be rewritten to
-  the `<img>` tag, since `<image>` is an obsolete HTML tag.
-
-  Luckily, there is a simple solution to this problem. Since SVG allows
-  `<svg>` tags to be nested, you can wrap the component content into an
-  `<svg>` tag. This will ensure that it is correctly interpreted by the
-  browser.
   '''
 
   defmodule CID do
