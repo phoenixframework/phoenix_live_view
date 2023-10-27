@@ -38,11 +38,12 @@ const VOID_TAGS = new Set([
   "wbr"
 ])
 const endingTagNameChars = new Set([">", "/", " ", "\n", "\t", "\r"])
+const quoteChars = new Set(["'", '"'])
 
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0
   let insideComment = false
-  let beforeTag, afterTag, tag, tagNameEndsAt, newHTML
+  let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML
   while(i < html.length){
     let char = html.charAt(i)
     if(insideComment){
@@ -58,11 +59,26 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
     } else if(char === "<"){
       beforeTag = html.slice(0, i)
       let iAtOpen = i
+      i++
       for(i; i < html.length; i++){
         if(endingTagNameChars.has(html.charAt(i))){ break }
       }
       tagNameEndsAt = i
       tag = html.slice(iAtOpen + 1, tagNameEndsAt)
+      // If there is an id, it's always the first attribute
+      i++
+      if (html.slice(i, i + 3) === "id=") {
+        i += 3;
+        let char = html.charAt(i)
+        if (quoteChars.has(char)) {
+          let idStartsAt = i
+          i++
+          for(i; i < html.length; i++){
+            if(html.charAt(i) === char){ break }
+          }
+          id = html.slice(idStartsAt + 1, i)
+        }
+      }
       break
     } else {
       i++
@@ -98,10 +114,12 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
     .join(" ")
 
   if(clearInnerHTML){
+    // Keep the id if any
+    let idAttrStr = id ? ` id="${id}"` : "";
     if(VOID_TAGS.has(tag)){
-      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`
+      newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`
     } else {
-      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`
+      newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`
     }
   } else {
     let rest = html.slice(tagNameEndsAt, closeAt + 1)
