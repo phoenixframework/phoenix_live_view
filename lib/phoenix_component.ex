@@ -340,7 +340,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
-    I like <%= fruit %>!
+    I like <b><%= fruit %></b>!
   </.unordered_list>
   ```
 
@@ -348,9 +348,9 @@ defmodule Phoenix.Component do
 
   ```html
   <ul>
-    <li>I like apples!</li>
-    <li>I like bananas!</li>
-    <li>I like cherries!</li>
+    <li>I like <b>apples</b>!</li>
+    <li>I like <b>bananas</b>!</li>
+    <li>I like <b>cherries</b>!</li>
   </ul>
   ```
 
