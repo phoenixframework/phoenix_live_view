@@ -215,25 +215,6 @@ defmodule Phoenix.LiveComponent do
       classDef callback_req fill:#B7ADFF,color:#000,stroke-width:0,text-decoration:underline
   ```
 
-  ## Slots
-
-  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
-
-      <.live_component module={MyComponent} id={@data.id} >
-        <div>Inner content here</div>
-      </.live_component>
-
-  If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
-  includes the `:inner_block` assign it received.
-
-  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
-
-  ## Live patches and live redirects
-
-  A template rendered inside a component can use `<.link patch={...}>` and
-  `<.link navigate={...}>`. Patches are always handled by the parent `LiveView`,
-  as components do not provide `handle_params`.
-
   ## Managing state
 
   Now that we have learned how to define and use components, as well as
@@ -368,6 +349,82 @@ defmodule Phoenix.LiveComponent do
   With `Phoenix.LiveView.send_update/3`, the `CardComponent` given by `id`
   will be invoked, triggering the update or update_many callback, which will
   load the most up to date data from the database.
+
+  ### Unifying LiveView and LiveComponent communication
+
+  In the examples above, we have used `send/2` to communicate with LiveView
+  and `send_update/2` to communicate with components. This introduces a problem:
+  what if you have a component that may be mounted both inside a LiveView
+  or another component? Given each uses a different API for exchanging data,
+  this may seem tricky at first, but an elegant solution is to use anonymous
+  functions as callbacks. Let's see an example.
+
+  In the sections above, we wrote the following code in our `CardComponent`:
+
+  ```elixir
+  def handle_event("update_title", %{"title" => title}, socket) do
+    send self(), {:updated_card, %{socket.assigns.card | title: title}}
+    {:noreply, socket}
+  end
+  ```
+
+  The issue with this code is that, if CardComponent is mounted inside another
+  component, it will still message the LiveView. Not only that, this code may
+  be hard to maintain because the message sent by the component is defined far
+  away from the LiveView that will receive it.
+
+  Instead let's define a callback that will be invoked by CardComponent:
+
+  ```elixir
+  def handle_event("update_title", %{"title" => title}, socket) do
+    socket.assigns.on_card_update(%{socket.assigns.card | title: title})
+    {:noreply, socket}
+  end
+  ```
+
+  And now when initializing the CardComponent from a LiveView, we may write:
+
+  ```heex
+  <.live_component
+    module={CardComponent}
+    card={card}
+    id={card.id}
+    board_id={@id}
+    on_card_update={fn card -> send(self(), {:updated_card, card}) end} />
+  ```
+
+  If initializing it inside another component, one may write:
+
+  ```heex
+  <.live_component
+    module={CardComponent}
+    card={card}
+    id={card.id}
+    board_id={@id}
+    on_card_update={fn card -> send_update(@myself, card: card) end} />
+  ```
+
+  The major benefit in both cases is that the parent has explicit control
+  over the messages it will receive.
+
+  ## Slots
+
+  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
+
+      <.live_component module={MyComponent} id={@data.id} >
+        <div>Inner content here</div>
+      </.live_component>
+
+  If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
+  includes the `:inner_block` assign it received.
+
+  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
+
+  ## Live patches and live redirects
+
+  A template rendered inside a component can use `<.link patch={...}>` and
+  `<.link navigate={...}>`. Patches are always handled by the parent `LiveView`,
+  as components do not provide `handle_params`.
 
   ## Cost of live components
 
