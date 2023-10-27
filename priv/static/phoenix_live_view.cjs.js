@@ -1806,7 +1806,7 @@ var DOMPatch = class {
           if (dom_default.isPhxDestroyed(node)) {
             return null;
           }
-          return node.getAttribute && node.getAttribute(PHX_MAGIC_ID) || node.id;
+          return node.id || node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
         },
         skipFromChildren: (from) => {
           return from.getAttribute(phxUpdate) === PHX_STREAM;
@@ -2094,10 +2094,11 @@ var VOID_TAGS = new Set([
   "wbr"
 ]);
 var endingTagNameChars = new Set([">", "/", " ", "\n", "	", "\r"]);
+var quoteChars = new Set(["'", '"']);
 var modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0;
   let insideComment = false;
-  let beforeTag, afterTag, tag, tagNameEndsAt, newHTML;
+  let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML;
   while (i < html.length) {
     let char = html.charAt(i);
     if (insideComment) {
@@ -2113,6 +2114,7 @@ var modifyRoot = (html, attrs, clearInnerHTML) => {
     } else if (char === "<") {
       beforeTag = html.slice(0, i);
       let iAtOpen = i;
+      i++;
       for (i; i < html.length; i++) {
         if (endingTagNameChars.has(html.charAt(i))) {
           break;
@@ -2120,6 +2122,21 @@ var modifyRoot = (html, attrs, clearInnerHTML) => {
       }
       tagNameEndsAt = i;
       tag = html.slice(iAtOpen + 1, tagNameEndsAt);
+      i++;
+      if (html.slice(i, i + 3) === "id=") {
+        i += 3;
+        let char2 = html.charAt(i);
+        if (quoteChars.has(char2)) {
+          let idStartsAt = i;
+          i++;
+          for (i; i < html.length; i++) {
+            if (html.charAt(i) === char2) {
+              break;
+            }
+          }
+          id = html.slice(idStartsAt + 1, i);
+        }
+      }
       break;
     } else {
       i++;
@@ -2151,10 +2168,11 @@ var modifyRoot = (html, attrs, clearInnerHTML) => {
   afterTag = html.slice(closeAt + 1, html.length);
   let attrsStr = Object.keys(attrs).map((attr) => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`).join(" ");
   if (clearInnerHTML) {
+    let idAttrStr = id ? ` id="${id}"` : "";
     if (VOID_TAGS.has(tag)) {
-      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}/>`;
+      newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`;
     } else {
-      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`;
+      newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`;
     }
   } else {
     let rest = html.slice(tagNameEndsAt, closeAt + 1);
