@@ -8,7 +8,13 @@ import {
 import LiveUploader from "./live_uploader"
 import ARIA from "./aria"
 
+/** @typedef {import('./view_hook').HookCallbacks} HookCallbacks */
+
 let Hooks = {
+  /**
+   * Phoenix hook for handling live file uploads with progress tracking
+   * @satisfies {HookCallbacks}
+   */
   LiveFileUpload: {
     activeRefs(){ return this.el.getAttribute(PHX_ACTIVE_ENTRY_REFS) },
 
@@ -30,6 +36,10 @@ let Hooks = {
     }
   },
 
+  /**
+   * Phoenix hook for image previewing
+   * @satisfies {HookCallbacks}
+   */
   LiveImgPreview: {
     mounted(){
       this.ref = this.el.getAttribute("data-phx-entry-ref")
@@ -43,6 +53,11 @@ let Hooks = {
       URL.revokeObjectURL(this.url)
     }
   },
+  
+  /**
+   * Phoenix hook for wrapping focus on a container element
+   * @satisfies {HookCallbacks}
+   */
   FocusWrap: {
     mounted(){
       this.focusStart = this.el.firstElementChild
@@ -75,6 +90,9 @@ let isWithinViewport = (el) => {
   return rect.top >= 0 && rect.left >= 0 && rect.top <= winHeight()
 }
 
+/**
+ * Phoenix hook for inifinitely scrolling a container and loading new data on-demand
+ */
 Hooks.InfiniteScroll = {
   mounted(){
     let scrollBefore = scrollTop()
@@ -105,6 +123,7 @@ Hooks.InfiniteScroll = {
       })
     })
 
+    // eslint-disable-next-line no-unused-vars
     this.onScroll = (e) => {
       let scrollNow = scrollTop()
 
@@ -148,7 +167,7 @@ Hooks.InfiniteScroll = {
       let remainingTime = interval - (now - lastCallAt)
 
       if(remainingTime <= 0 || remainingTime > interval){
-        if(timer) {
+        if(timer){
           clearTimeout(timer)
           timer = null
         }

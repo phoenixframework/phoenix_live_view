@@ -1,8 +1,19 @@
+/**
+ * Module Type Dependencies:
+ * @typedef {import('./live_socket.js').default} LiveSocket
+ * @typedef {import('./upload_entry').default} UploadEntry
+ */
 import {
   logError
 } from "./utils"
 
 export default class EntryUploader {
+  /**
+   * Constructor
+   * @param {UploadEntry} entry 
+   * @param {number} chunkSize 
+   * @param {LiveSocket} liveSocket 
+   */
   constructor(entry, chunkSize, liveSocket){
     this.liveSocket = liveSocket
     this.entry = entry
@@ -13,6 +24,11 @@ export default class EntryUploader {
     this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, {token: entry.metadata()})
   }
 
+  /**
+   * Mark this entry upload as an error
+   * @private
+   * @param {string} [reason] 
+   */
   error(reason){
     if(this.errored){ return }
     this.errored = true
@@ -20,6 +36,10 @@ export default class EntryUploader {
     this.entry.error(reason)
   }
 
+  /**
+   * Perform upload over channel
+   * @public
+   */
   upload(){
     this.uploadChannel.onError(reason => this.error(reason))
     this.uploadChannel.join()
@@ -27,8 +47,17 @@ export default class EntryUploader {
       .receive("error", reason => this.error(reason))
   }
 
+  /**
+   * Have all file chunks finished uploading?
+   * @public
+   * @returns {boolean}
+   */
   isDone(){ return this.offset >= this.entry.file.size }
 
+  /**
+   * Read and upload next file chunk
+   * @private
+   */
   readNextChunk(){
     let reader = new window.FileReader()
     let blob = this.entry.file.slice(this.offset, this.chunkSize + this.offset)
@@ -43,6 +72,11 @@ export default class EntryUploader {
     reader.readAsArrayBuffer(blob)
   }
 
+  /**
+   * Perform file chunk upload over channel
+   * @private
+   * @param {string | ArrayBuffer | null} chunk 
+   */
   pushChunk(chunk){
     if(!this.uploadChannel.isJoined()){ return }
     this.uploadChannel.push("chunk", chunk)

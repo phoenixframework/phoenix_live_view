@@ -1,9 +1,21 @@
 import DOM from "./dom"
 import ARIA from "./aria"
 
+/**
+ * @typedef {import('./view.js').default} View
+ */
+
 let focusStack = null
 
 let JS = {
+  /**
+   * Execute JS command - main entrypoint
+   * @param {string|null} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {HTMLElement} sourceEl 
+   * @param {[defaultKind: string, defaultArgs: any]} [defaults] 
+   */
   exec(eventType, phxEvent, view, sourceEl, defaults){
     let [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
     let commands = phxEvent.charAt(0) === "[" ?
@@ -22,6 +34,11 @@ let JS = {
     })
   },
 
+  /**
+   * Is element visible and not scrolled off-screen?
+   * @param {Element} el 
+   * @returns {boolean}
+   */
   isVisible(el){
     return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0)
   },
@@ -30,6 +47,16 @@ let JS = {
 
   // commands
 
+  /**
+   * Exec JS command for all targeted DOM nodes
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   * @param {[attrWithCommand: string, toTargetsSelector: string]} args 
+   */
   exec_exec(eventType, phxEvent, view, sourceEl, el, [attr, to]){
     let nodes = to ? DOM.all(document, to) : [sourceEl]
     nodes.forEach(node => {
@@ -39,12 +66,47 @@ let JS = {
     })
   },
 
+  /**
+   * Exec dispatch command for event
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   * @param {object} args 
+   * @param {string} [args.to]
+   * @param {string} [args.event] 
+   * @param {boolean} [args.bubbles] 
+   * @param {object} [args.detail]
+   */
+  // eslint-disable-next-line no-unused-vars
   exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail, bubbles}){
     detail = detail || {}
     detail.dispatcher = sourceEl
     DOM.dispatchEvent(el, event, {detail, bubbles})
   },
 
+  /**
+   * Push an event over livesocket
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   * @param {object} args 
+   * @param {string} [args.event]
+   * @param {any} [args.submitter]
+   * @param {string|number|Element} [args.target]
+   * @param {boolean} [args.page_loading]
+   * @param {any} [args.loading]
+   * @param {any} [args.value]
+   * @param {Element} [args.dispatcher]
+   * @param {function} [args.callback]
+   * @param {string|number} [args.newCid]
+   * @param {string} [args._target]
+   */
   exec_push(eventType, phxEvent, view, sourceEl, el, args){
     if(!view.isConnected()){ return }
 
@@ -67,26 +129,78 @@ let JS = {
     })
   },
 
+  /**
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   * @param {{href: string, replace?: boolean}} args 
+   */
   exec_navigate(eventType, phxEvent, view, sourceEl, el, {href, replace}){
     view.liveSocket.historyRedirect(href, replace ? "replace" : "push")
   },
 
+  /**
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   * @param {{href: string, replace: boolean}} args 
+   */
   exec_patch(eventType, phxEvent, view, sourceEl, el, {href, replace}){
     view.liveSocket.pushHistoryPatch(href, replace ? "replace" : "push", sourceEl)
   },
 
+
+  /**
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   */
   exec_focus(eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => ARIA.attemptFocus(el))
   },
 
+  /**
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   */
   exec_focus_first(eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el))
   },
 
+  /**
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   */
   exec_push_focus(eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => focusStack = el || sourceEl)
   },
 
+  /**
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   */
+  // eslint-disable-next-line no-unused-vars
   exec_pop_focus(eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => {
       if(focusStack){ focusStack.focus() }
@@ -94,6 +208,18 @@ let JS = {
     })
   },
 
+  /**
+   * @private
+   * @param {string} eventType 
+   * @param {string} phxEvent 
+   * @param {View} view 
+   * @param {Element} sourceEl 
+   * @param {Element} el 
+   * @param {object} args
+   * @param {object} args.names
+   * @param {object} args.transition
+   * @param {object} args.time
+   */
   exec_add_class(eventType, phxEvent, view, sourceEl, el, {names, transition, time}){
     this.addOrRemoveClasses(el, names, [], transition, time, view)
   },
@@ -193,6 +319,15 @@ let JS = {
     }
   },
 
+  /**
+   * @param {Element} el 
+   * @param {string[]} adds 
+   * @param {string[]} removes 
+   * @param {[runs: string[], starts: string[], ends: string[]]} [transition] 
+   * @param {number} time 
+   * @param {View} view 
+   * @returns 
+   */
   addOrRemoveClasses(el, adds, removes, transition, time, view){
     let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []]
     if(transitionRun.length > 0){
@@ -208,6 +343,7 @@ let JS = {
     }
 
     window.requestAnimationFrame(() => {
+      /** @type {[string[], string[]]} */
       let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
       let keepAdds = adds.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
       let keepRemoves = removes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
@@ -222,7 +358,13 @@ let JS = {
     })
   },
 
+  /**
+   * @param {Element} el 
+   * @param {[attr: string, val: string][]} sets 
+   * @param {string[]} removes 
+   */
   setOrRemoveAttrs(el, sets, removes){
+    /** @type {[[attr: string, val: string], string[]]} */
     let [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
 
     let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
@@ -236,16 +378,37 @@ let JS = {
     })
   },
 
+  /**
+   * @param {HTMLElement} el 
+   * @param {string[]} classes 
+   * @returns {boolean}
+   */
   hasAllClasses(el, classes){ return classes.every(name => el.classList.contains(name)) },
 
+  /**
+   * @param {HTMLElement} el 
+   * @param {string[]} outClasses 
+   * @returns {boolean}
+   */
   isToggledOut(el, outClasses){
     return !this.isVisible(el) || this.hasAllClasses(el, outClasses)
   },
 
+  /**
+   * @private
+   * @param {HTMLElement} sourceEl 
+   * @param {{to?: string}} args 
+   * @returns 
+   */
   filterToEls(sourceEl, {to}){
     return to ? DOM.all(document, to) : [sourceEl]
   },
 
+  /**
+   * @private
+   * @param {HTMLElement} el 
+   * @returns {"table-row"|"table-cell"|"block"}
+   */
   defaultDisplay(el){
     return {tr: "table-row", td: "table-cell"}[el.tagName.toLowerCase()] || "block"
   }

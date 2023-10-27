@@ -1,3 +1,8 @@
+/**
+ * Module Dependencies:
+ * 
+ * @typedef {import('./rendered.js').Stream} Stream
+ */
 import {
   PHX_COMPONENT,
   PHX_DISABLE_WITH,
@@ -25,6 +30,15 @@ import DOM from "./dom"
 import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
+/**
+ * Definition of a stream insert object
+ * @typedef {object} StreamInsert 
+ * @property {string} ref
+ * @property {number} streamAt
+ * @property {number} limit
+ * @property {boolean} resetKept
+ */
+
 export default class DOMPatch {
   static patchEl(fromEl, toEl, activeElement){
     morphdom(fromEl, toEl, {
@@ -38,6 +52,15 @@ export default class DOMPatch {
     })
   }
 
+  /**
+   * Constructor - DOM Patch to be implemented by Morphdom
+   * @param {import('./view').default} view 
+   * @param {HTMLElement} container 
+   * @param {string} id 
+   * @param {string} html 
+   * @param {Stream[]} streams 
+   * @param {string|number|null} [targetCID] 
+   */
   constructor(view, container, id, html, streams, targetCID){
     this.view = view
     this.liveSocket = view.liveSocket
@@ -46,6 +69,7 @@ export default class DOMPatch {
     this.rootID = view.root.id
     this.html = html
     this.streams = streams
+    /** @type {{[key: string]: StreamInsert}}  - keyed by element ID */
     this.streamInserts = {}
     this.targetCID = targetCID
     this.cidPatch = isCid(this.targetCID)
@@ -58,17 +82,41 @@ export default class DOMPatch {
     }
   }
 
+  /**
+   * Register "before" callback
+   * @param {string} kind 
+   * @param {(...any) => void} callback 
+   */
   before(kind, callback){ this.callbacks[`before${kind}`].push(callback) }
+
+  /**
+   * Register "after" callback
+   * @param {string} kind 
+   * @param {(...any) => void} callback 
+   */
   after(kind, callback){ this.callbacks[`after${kind}`].push(callback) }
 
+  /**
+   * Run all "before" callbacks matching kind
+   * @param {string} kind 
+   * @param  {...any} [args] - given to each executed callback
+   */
   trackBefore(kind, ...args){
     this.callbacks[`before${kind}`].forEach(callback => callback(...args))
   }
 
+  /**
+   * Run all "after" callbacks matching kind
+   * @param {string} kind 
+   * @param  {...any} [args] - given to each executed callback
+   */
   trackAfter(kind, ...args){
     this.callbacks[`after${kind}`].forEach(callback => callback(...args))
   }
 
+  /**
+   * Add the prune attribute to prunable nodes in the container
+   */
   markPrunableContentForRemoval(){
     let phxUpdate = this.liveSocket.binding(PHX_UPDATE)
     DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => el.innerHTML = "")
@@ -77,6 +125,9 @@ export default class DOMPatch {
     })
   }
 
+  /**
+   * Run the patch via morphdom
+   */
   perform(){
     let {view, liveSocket, container, html} = this
     let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
@@ -90,9 +141,14 @@ export default class DOMPatch {
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
+
+    /** @type {HTMLElement[]} */
     let added = []
+    /** @type {HTMLElement[]} */
     let trackedInputs = []
+    /** @type {HTMLElement[]} */
     let updates = []
+    /** @type {DOMPostMorphRestorer[]} */
     let appendPrependUpdates = []
 
     let externalFormTriggered = null
@@ -131,7 +187,7 @@ export default class DOMPatch {
         // tell morphdom how to add a child
         addChild: (parent, child) => {
           let {ref, streamAt, limit} = this.getStreamInsert(child)
-          if(ref === undefined) { return parent.appendChild(child) }
+          if(ref === undefined){ return parent.appendChild(child) }
 
           DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
@@ -168,6 +224,7 @@ export default class DOMPatch {
 
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
+            /* eslint-disable-next-line no-self-assign */
             el.srcset = el.srcset
           } else if(el instanceof HTMLVideoElement && el.autoplay){
             el.play()
@@ -314,12 +371,20 @@ export default class DOMPatch {
     return true
   }
 
+  /**
+   * Notify liveSocket and callbacks of node discard
+   * @param {Element} el 
+   */
   onNodeDiscarded(el){
     // nested view handling
     if(DOM.isPhxChild(el) || DOM.isPhxSticky(el)){ this.liveSocket.destroyViewByEl(el) }
     this.trackAfter("discarded", el)
   }
 
+  /**
+   * @param {Element} node 
+   * @returns {boolean} true if added to pending removals
+   */
   maybePendingRemove(node){
     if(node.getAttribute && node.getAttribute(this.phxRemove) !== null){
       this.pendingRemoves.push(node)
@@ -329,6 +394,10 @@ export default class DOMPatch {
     }
   }
 
+  /**
+   * Remove the child immediately or within a transition
+   * @param {Element} child 
+   */
   removeStreamChildElement(child){
     if(!this.maybePendingRemove(child)){
       child.remove()
@@ -336,12 +405,22 @@ export default class DOMPatch {
     }
   }
 
+  /**
+   * Get stream insert matching Element ID
+   * @param {Element} el 
+   * @returns {StreamInsert}
+   */
   getStreamInsert(el){
     let insert = el.id ? this.streamInserts[el.id] : {}
     return insert || {}
   }
 
+  /**
+   * Insert nodes that are part of the stream, reordering their position if it changed
+   * @param {Element} el 
+   */
   maybeReOrderStream(el){
+    // eslint-disable-next-line no-unused-vars
     let {ref, streamAt, limit} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
 
@@ -366,6 +445,9 @@ export default class DOMPatch {
     }
   }
 
+  /**
+   * Run pending node removals within a transition
+   */
   transitionPendingRemoves(){
     let {pendingRemoves, liveSocket} = this
     if(pendingRemoves.length > 0){
@@ -381,12 +463,26 @@ export default class DOMPatch {
     }
   }
 
+  /**
+   * Is this patch targeting a component?
+   * @returns {boolean}
+   */
   isCIDPatch(){ return this.cidPatch }
 
+  /**
+   * Is this an element that was indicated to be skipped?
+   * @param {Node} el 
+   * @returns {boolean}
+   */
   skipCIDSibling(el){
     return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP)
   }
 
+  /**
+   * Get the container of the target CID
+   * @param {string} html 
+   * @returns {HTMLElement|undefined} undefined if target is not a component
+   */
   targetCIDContainer(html){
     if(!this.isCIDPatch()){ return }
     let [first, ...rest] = DOM.findComponentNodeList(this.container, this.targetCID)
@@ -397,5 +493,11 @@ export default class DOMPatch {
     }
   }
 
+  /**
+   * Find indexOf child within parent
+   * @param {Element} parent 
+   * @param {Element} child 
+   * @returns {number}
+   */
   indexOf(parent, child){ return Array.from(parent.children).indexOf(child) }
 }

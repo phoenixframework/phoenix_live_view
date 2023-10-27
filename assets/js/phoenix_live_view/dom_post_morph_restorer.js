@@ -5,10 +5,19 @@ import {
 import DOM from "./dom"
 
 export default class DOMPostMorphRestorer {
+  /**
+   * Constructor
+   * @param {Element} containerBefore 
+   * @param {Element} containerAfter 
+   * @param {string} updateType 
+   */
   constructor(containerBefore, containerAfter, updateType){
+    /** @type {Set<string>} */
     let idsBefore = new Set()
+    /** @type {Set<string>} */
     let idsAfter = new Set([...containerAfter.children].map(child => child.id))
 
+    /** @type {{elementId: string, previousElementId: string}[]} */
     let elementsToModify = []
 
     Array.from(containerBefore.children).forEach(child => {
@@ -27,12 +36,14 @@ export default class DOMPostMorphRestorer {
     this.elementIdsToAdd = [...idsAfter].filter(id => !idsBefore.has(id))
   }
 
-  // We do the following to optimize append/prepend operations:
-  //   1) Track ids of modified elements & of new elements
-  //   2) All the modified elements are put back in the correct position in the DOM tree
-  //      by storing the id of their previous sibling
-  //   3) New elements are going to be put in the right place by morphdom during append.
-  //      For prepend, we move them to the first position in the container
+  /**
+   * We do the following to optimize append/prepend operations:
+   *   1) Track ids of modified elements & of new elements
+   *   2) All the modified elements are put back in the correct position in the DOM tree
+   *      by storing the id of their previous sibling
+   *   3) New elements are going to be put in the right place by morphdom during append.
+   *      For prepend, we move them to the first position in the container
+   */
   perform(){
     let container = DOM.byId(this.containerId)
     this.elementsToModify.forEach(elementToModify => {

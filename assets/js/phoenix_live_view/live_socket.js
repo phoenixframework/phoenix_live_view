@@ -1,76 +1,16 @@
-/** Initializes the LiveSocket
- *
- *
- * @param {string} endPoint - The string WebSocket endpoint, ie, `"wss://example.com/live"`,
- *                                               `"/live"` (inherited host & protocol)
- * @param {Phoenix.Socket} socket - the required Phoenix Socket class imported from "phoenix". For example:
- *
- *     import {Socket} from "phoenix"
- *     import {LiveSocket} from "phoenix_live_view"
- *     let liveSocket = new LiveSocket("/live", Socket, {...})
- *
- * @param {Object} [opts] - Optional configuration. Outside of keys listed below, all
- * configuration is passed directly to the Phoenix Socket constructor.
- * @param {Object} [opts.defaults] - The optional defaults to use for various bindings,
- * such as `phx-debounce`. Supports the following keys:
- *
- *   - debounce - the millisecond phx-debounce time. Defaults 300
- *   - throttle - the millisecond phx-throttle time. Defaults 300
- *
- * @param {Function} [opts.params] - The optional function for passing connect params.
- * The function receives the element associated with a given LiveView. For example:
- *
- *     (el) => {view: el.getAttribute("data-my-view-name", token: window.myToken}
- *
- * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
- * Defaults to "phx-".
- * @param {Object} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
- * @param {Object} [opts.uploaders] - The optional object for referencing LiveView uploader callbacks.
- * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
- * loading states.
- * @param {integer} [opts.maxReloads] - The maximum reloads before entering failsafe mode.
- * @param {integer} [opts.reloadJitterMin] - The minimum time between normal reload attempts.
- * @param {integer} [opts.reloadJitterMax] - The maximum time between normal reload attempts.
- * @param {integer} [opts.failsafeJitter] - The time between reload attempts in failsafe mode.
- * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
- *
- *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
- *
- * @param {Object} [opts.metadata] - The optional object mapping event names to functions for
- * populating event metadata. For example:
- *
- *     metadata: {
- *       click: (e, el) => {
- *         return {
- *           ctrlKey: e.ctrlKey,
- *           metaKey: e.metaKey,
- *           detail: e.detail || 1,
- *         }
- *       },
- *       keydown: (e, el) => {
- *         return {
- *           key: e.key,
- *           ctrlKey: e.ctrlKey,
- *           metaKey: e.metaKey,
- *           shiftKey: e.shiftKey
- *         }
- *       }
- *     }
- * @param {Object} [opts.sessionStorage] - An optional Storage compatible object
- * Useful when LiveView won't have access to `sessionStorage`.  For example, This could
- * happen if a site loads a cross-domain LiveView in an iframe.  Example usage:
- *
- *     class InMemoryStorage {
- *       constructor() { this.storage = {} }
- *       getItem(keyName) { return this.storage[keyName] || null }
- *       removeItem(keyName) { delete this.storage[keyName] }
- *       setItem(keyName, keyValue) { this.storage[keyName] = keyValue }
- *     }
- *
- * @param {Object} [opts.localStorage] - An optional Storage compatible object
- * Useful for when LiveView won't have access to `localStorage`.
- * See `opts.sessionStorage` for examples.
-*/
+/**
+ * Module dependencies
+ * 
+ * Phoenix:
+ * @typedef {import('phoenix').Socket} Socket
+ * @typedef {typeof import('phoenix').Socket} SocketCls
+ * @typedef {import('phoenix').Channel} Channel
+ * @typedef {import('phoenix').Push} Push
+ * 
+ * Local:
+ * @typedef {import('./view_hook.js').default} ViewHook
+ * @typedef {import('./view_hook.js').HookCallbacks} HookCallbacks
+ */
 
 import {
   BINDING_PREFIX,
@@ -106,7 +46,6 @@ import {
   closestPhxBinding,
   closure,
   debug,
-  isObject,
   maybe
 } from "./utils"
 
@@ -118,6 +57,78 @@ import View from "./view"
 import JS from "./js"
 
 export default class LiveSocket {
+  /** Constructor - Initializes the LiveSocket
+   *
+   * @param {string} url - The WebSocket endpoint, ie, `"wss://example.com/live"`, `"/live"` (inherited host & protocol)
+   * @param {SocketCls} phxSocket - The required Phoenix Socket class imported from "phoenix". For example:
+   *
+   *     import {Socket} from "phoenix"
+   *     import {LiveSocket} from "phoenix_live_view"
+   *     let liveSocket = new LiveSocket("/live", Socket, {...})
+   * 
+   * @param {Object} opts - Optional configuration. Outside of keys listed below, all
+   * configuration is passed directly to the Phoenix Socket constructor.
+   * 
+   * @param {{debounce: number, throttle: number}} [opts.defaults] - The optional defaults to use for various bindings,
+   * such as `phx-debounce`. Supports the following keys:
+   *
+   *   - debounce - the millisecond phx-debounce time. Defaults 300
+   *   - throttle - the millisecond phx-throttle time. Defaults 300
+   *
+   * @param {Function} [opts.params] - The optional function for passing connect params.
+   * The function receives the element associated with a given LiveView. For example:
+   *
+   *     (el) => {view: el.getAttribute("data-my-view-name", token: window.myToken}
+   *
+   * @param {string} [opts.bindingPrefix] - The optional prefix to use for all phx DOM annotations.
+   * Defaults to "phx-".
+   * @param {{[key:string]: HookCallbacks}} [opts.hooks] - The optional object for referencing LiveView hook callbacks.
+   * @param {{[key:string]: function}} [opts.uploaders] - The optional object for referencing LiveView uploader callbacks.
+   * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
+   * loading states.
+   * @param {integer} [opts.maxReloads] - The maximum reloads before entering failsafe mode.
+   * @param {integer} [opts.reloadJitterMin] - The minimum time between normal reload attempts.
+   * @param {integer} [opts.reloadJitterMax] - The maximum time between normal reload attempts.
+   * @param {integer} [opts.failsafeJitter] - The time between reload attempts in failsafe mode.
+   * @param {(view: View, kind: string, msg: string, obj: any) => void} [opts.viewLogger] - The optional function to log debug information. For example:
+   *
+   *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
+   *
+   * @param {{[key:string]: (e: Event, targetEl: Element) => any}} [opts.metadata] - The optional object mapping event names to functions for
+   * populating event metadata. For example:
+   *
+   *     metadata: {
+   *       click: (e, el) => {
+   *         return {
+   *           ctrlKey: e.ctrlKey,
+   *           metaKey: e.metaKey,
+   *           detail: e.detail || 1,
+   *         }
+   *       },
+   *       keydown: (e, el) => {
+   *         return {
+   *           key: e.key,
+   *           ctrlKey: e.ctrlKey,
+   *           metaKey: e.metaKey,
+   *           shiftKey: e.shiftKey
+   *         }
+   *       }
+   *     }
+   * @param {Object} [opts.sessionStorage] - An optional Storage compatible object
+   * Useful when LiveView won't have access to `sessionStorage`.  For example, This could
+   * happen if a site loads a cross-domain LiveView in an iframe.  Example usage:
+   *
+   *     class InMemoryStorage {
+   *       constructor() { this.storage = {} }
+   *       getItem(keyName) { return this.storage[keyName] || null }
+   *       removeItem(keyName) { delete this.storage[keyName] }
+   *       setItem(keyName, keyValue) { this.storage[keyName] = keyValue }
+   *     }
+   *
+   * @param {Object} [opts.localStorage] - An optional Storage compatible object
+   * Useful for when LiveView won't have access to `localStorage`.
+   * See `opts.sessionStorage` for examples.
+   */
   constructor(url, phxSocket, opts = {}){
     this.unloaded = false
     if(!phxSocket || phxSocket.constructor.name === "Object"){
@@ -143,10 +154,12 @@ export default class LiveSocket {
     this.outgoingMainEl = null
     this.clickStartedAtTarget = null
     this.linkRef = 1
+    /** @type {{[key: string]: View}} */
     this.roots = {}
     this.href = window.location.href
     this.pendingLink = null
     this.currentLocation = clone(window.location)
+    /** @type {{[key: string]: HookCallbacks}} */
     this.hooks = opts.hooks || {}
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
@@ -173,35 +186,77 @@ export default class LiveSocket {
 
   // public
 
+  /**
+   * Is profiling mode enabled?
+   * @returns {boolean}
+   */
   isProfileEnabled(){ return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
 
+  /**
+   * Is debug mode enabled?
+   * @returns {boolean}
+   */
   isDebugEnabled(){ return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true" }
 
+  /**
+   * Is debug mode disabled?
+   * @returns {boolean}
+   */
   isDebugDisabled(){ return this.sessionStorage.getItem(PHX_LV_DEBUG) === "false" }
 
+  /**
+   * Enable debug mode
+   */
   enableDebug(){ this.sessionStorage.setItem(PHX_LV_DEBUG, "true") }
 
+  /**
+   * Enable profiling mode
+   */
   enableProfiling(){ this.sessionStorage.setItem(PHX_LV_PROFILE, "true") }
 
+  /**
+   * Disable debug mode
+   */
   disableDebug(){ this.sessionStorage.setItem(PHX_LV_DEBUG, "false") }
 
+  /**
+   * Disable profiling mode
+   */
   disableProfiling(){ this.sessionStorage.removeItem(PHX_LV_PROFILE) }
 
+
+  /**
+   * Enable latency simulation mode
+   * @param {number} upperBoundMs 
+   */
   enableLatencySim(upperBoundMs){
     this.enableDebug()
     console.log("latency simulator enabled for the duration of this browser session. Call disableLatencySim() to disable")
     this.sessionStorage.setItem(PHX_LV_LATENCY_SIM, upperBoundMs)
   }
 
+  /**
+   * Disable latency simulation mode
+   */
   disableLatencySim(){ this.sessionStorage.removeItem(PHX_LV_LATENCY_SIM) }
 
+  /**
+   * Get simulated latency value if set
+   * @returns {number|null}
+   */
   getLatencySim(){
     let str = this.sessionStorage.getItem(PHX_LV_LATENCY_SIM)
     return str ? parseInt(str) : null
   }
 
+  /**
+   * Get the underlying socket object
+   */
   getSocket(){ return this.socket }
 
+  /**
+   * Connect on socket and join views
+   */
   connect(){
     // enable debug by default if on localhost and not explicitly disabled
     if(window.location.hostname === "localhost" && !this.isDebugDisabled()){ this.enableDebug() }
@@ -223,29 +278,52 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Disconnect
+   * @param {() => void | Promise<void>} callback 
+   */
   disconnect(callback){
     clearTimeout(this.reloadWithJitterTimer)
     this.socket.disconnect(callback)
   }
 
+  /**
+   * Replace socket transport object
+   * @param {new(endpoint: string) => object} transport - Class/Constructor implementing transport interface
+   */
   replaceTransport(transport){
     clearTimeout(this.reloadWithJitterTimer)
     this.socket.replaceTransport(transport)
     this.connect()
   }
 
+  /**
+   * Execute JS against element
+   * @param {Element} el 
+   * @param {string} encodedJS 
+   * @param {string} [eventType] 
+   */
   execJS(el, encodedJS, eventType = null){
     this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
   }
 
   // private
 
+  /**
+   * @param {HTMLElement} el 
+   * @param {string} phxEvent 
+   * @param {object} data 
+   * @param {() => void} callback 
+   */
   execJSHookPush(el, phxEvent, data, callback){
     this.withinOwners(el, view => {
       JS.exec("hook", phxEvent, view, el, ["push", {data, callback}])
     })
   }
 
+  /**
+   * Disconnect socket, unload, and destroy all views
+   */
   unload(){
     if(this.unloaded){ return }
     if(this.main && this.isConnected()){ this.log(this.main, "socket", () => ["disconnect for page nav"]) }
@@ -254,8 +332,20 @@ export default class LiveSocket {
     this.disconnect()
   }
 
+  /**
+   * Run registered DOM callbacks matching kind
+   * @param {string} kind 
+   * @param {any[]} args 
+   */
   triggerDOM(kind, args){ this.domCallbacks[kind](...args) }
 
+  /**
+   * Execute the given function in a timer and log to the console
+   * @template T
+   * @param {string} name 
+   * @param {() => T} func 
+   * @returns {T}
+   */
   time(name, func){
     if(!this.isProfileEnabled() || !console.time){ return func() }
     console.time(name)
@@ -264,6 +354,12 @@ export default class LiveSocket {
     return result
   }
 
+  /**
+   * Debug log
+   * @param {View} view 
+   * @param {string} kind 
+   * @param {() => [string, any]} msgCallback - only called if opt.viewLogger given or isDebugEnabled
+   */
   log(view, kind, msgCallback){
     if(this.viewLogger){
       let [msg, obj] = msgCallback()
@@ -274,14 +370,30 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Execute callback after next DOM update transition finishes
+   * @param {() => void} callback 
+   */
   requestDOMUpdate(callback){
     this.transitions.after(callback)
   }
 
+  /**
+   * Add a managed transition
+   * @param {number} time 
+   * @param {() => void} onStart 
+   * @param {() => void} [onDone] 
+   */
   transition(time, onStart, onDone = function(){}){
     this.transitions.addTransition(time, onStart, onDone)
   }
 
+  /**
+   * Subscribe to event on channel
+   * @param {Channel} channel - channel to listen on 
+   * @param {string} event - event to listen for
+   * @param {(response?: object) => void} cb - callback to invoke on each event
+   */
   onChannel(channel, event, cb){
     channel.on(event, data => {
       let latency = this.getLatencySim()
@@ -293,6 +405,13 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * Wrap Channel Push with additional management behavior
+   * @param {View} view 
+   * @param {{timeout: boolean}} opts 
+   * @param {() => Push} push 
+   * @returns {Push}
+   */
   wrapPush(view, opts, push){
     let latency = this.getLatencySim()
     let oldJoinCount = view.joinCount
@@ -321,6 +440,11 @@ export default class LiveSocket {
     return fakePush
   }
 
+  /**
+   * Reload page with simulated network jitter
+   * @param {View} view 
+   * @param {() => void} [log] 
+   */
   reloadWithJitter(view, log){
     clearTimeout(this.reloadWithJitterTimer)
     this.disconnect()
@@ -347,20 +471,51 @@ export default class LiveSocket {
     }, afterMs)
   }
 
+  /**
+   * Lookup hook
+   * @param {string} [name] 
+   * @returns {HookCallbacks|undefined}
+   */
   getHookCallbacks(name){
     return name && name.startsWith("Phoenix.") ? Hooks[name.split(".")[1]] : this.hooks[name]
   }
 
+  /**
+   * Is the socket unloaded?
+   * @returns {boolean}
+   */
   isUnloaded(){ return this.unloaded }
 
+  /**
+   * Is the socket connected?
+   * @returns {boolean}
+   */
   isConnected(){ return this.socket.isConnected() }
 
+  /**
+   * Get the prefix for attribute bindings
+   * @returns {string}
+   */
   getBindingPrefix(){ return this.bindingPrefix }
 
+  /**
+   * Create prefixed binding name
+   * @param {string} kind 
+   * @returns {string}
+   */
   binding(kind){ return `${this.getBindingPrefix()}${kind}` }
 
+  /**
+   * Get socket channel for this topic
+   * @param {string} topic 
+   * @param {object} [params] 
+   * @returns {Channel}
+   */
   channel(topic, params){ return this.socket.channel(topic, params) }
 
+  /**
+   * If no live root views, join the dead views
+   */
   joinDeadView(){
     let body = document.body
     if(body && !this.isPhxView(body) && !this.isPhxView(document.firstElementChild)){
@@ -372,6 +527,10 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Find all root views and join()
+   * @returns {boolean} were root views found?
+   */
   joinRootViews(){
     let rootsFound = false
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
@@ -386,11 +545,23 @@ export default class LiveSocket {
     return rootsFound
   }
 
+  /**
+   * Execute browser redirect
+   * @param {string} to 
+   * @param {string|null} flash 
+   */
   redirect(to, flash){
     this.unload()
     Browser.redirect(to, flash)
   }
 
+  /**
+   * Replace a new root view and main element
+   * @param {string} href 
+   * @param {string|null} flash 
+   * @param {(linkRef: number) => void} [callback] 
+   * @param {number} [linkRef] 
+   */
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let liveReferer = this.currentLocation.href
     this.outgoingMainEl = this.outgoingMainEl || this.main.el
@@ -414,6 +585,10 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * Dispatch remove JS events for given elements or elements with "remove" binding
+   * @param {Element[]} [elements] 
+   */
   transitionRemoves(elements){
     let removeAttr = this.binding("remove")
     elements = elements || DOM.all(document, `[${removeAttr}]`)
@@ -422,30 +597,66 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * Is element part of a view?
+   * @param {Element} el 
+   * @returns {boolean}
+   */
   isPhxView(el){ return el.getAttribute && el.getAttribute(PHX_SESSION) !== null }
 
+  /**
+   * Create a root view
+   * @param {HTMLElement} el 
+   * @param {*} flash 
+   * @param {string} liveReferer - URL of location that initiated the new view
+   * @returns {View}
+   */
   newRootView(el, flash, liveReferer){
     let view = new View(el, this, null, flash, liveReferer)
     this.roots[view.id] = view
     return view
   }
 
+  /**
+   * Run callback with owning View
+   * @param {HTMLElement} childEl 
+   * @param {(view: View) => void} callback 
+   */
   owner(childEl, callback){
     let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el)) || this.main
     if(view){ callback(view) }
   }
 
+  /**
+   * Execute callback for view owning given element
+   * @template {HTMLElement} T
+   * @param {T} childEl 
+   * @param {(view: View, childEl: T) => void} callback 
+   */
   withinOwners(childEl, callback){
     this.owner(childEl, view => callback(view, childEl))
   }
 
+  /**
+   * Get view owning the element
+   * @param {Element} el 
+   * @returns {View}
+   */
   getViewByEl(el){
     let rootId = el.getAttribute(PHX_ROOT_ID)
     return maybe(this.getRootById(rootId), root => root.getDescendentByEl(el))
   }
 
+  /**
+   * Get root view by ID
+   * @param {string} id 
+   * @returns {View}
+   */
   getRootById(id){ return this.roots[id] }
 
+  /**
+   * Destroy all root views
+   */
   destroyAllViews(){
     for(let id in this.roots){
       this.roots[id].destroy()
@@ -454,6 +665,10 @@ export default class LiveSocket {
     this.main = null
   }
 
+  /**
+   * Destroy root view for element
+   * @param {Element} el 
+   */
   destroyViewByEl(el){
     let root = this.getRootById(el.getAttribute(PHX_ROOT_ID))
     if(root && root.id === el.id){
@@ -464,6 +679,10 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Set target as the new active element
+   * @param {Element} target 
+   */
   setActiveElement(target){
     if(this.activeElement === target){ return }
     this.activeElement = target
@@ -476,6 +695,10 @@ export default class LiveSocket {
     target.addEventListener("touchend", cancel)
   }
 
+  /**
+   * Get document's active element
+   * @returns {Element}
+   */
   getActiveElement(){
     if(document.activeElement === document.body){
       return this.activeElement || document.activeElement
@@ -485,23 +708,37 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Unset the existing active element if it's owned by given view
+   * @param {View} view 
+   */
   dropActiveElement(view){
     if(this.prevActive && view.ownsElement(this.prevActive)){
       this.prevActive = null
     }
   }
 
+  /**
+   * Restore focus to the previously active element
+   */
   restorePreviouslyActiveFocus(){
     if(this.prevActive && this.prevActive !== document.body){
       this.prevActive.focus()
     }
   }
 
+  /**
+   * Blue the active element after tracking it for potential future focus
+   * restore.
+   */
   blurActiveElement(){
     this.prevActive = this.getActiveElement()
     if(this.prevActive !== document.body){ this.prevActive.blur() }
   }
 
+  /**
+   * @param {{dead?: boolean}} args 
+   */
   bindTopLevelEvents({dead} = {}){
     if(this.boundTopLevelEvents){ return }
 
@@ -522,7 +759,7 @@ export default class LiveSocket {
     if(!dead){ this.bindNav() }
     this.bindClicks()
     if(!dead){ this.bindForms() }
-    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
+    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, _eventTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
@@ -565,17 +802,31 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * @param {string} eventName 
+   * @param {Event} e 
+   * @param {Element} targetEl 
+   * @returns {object}
+   */
   eventMeta(eventName, e, targetEl){
     let callback = this.metadataCallbacks[eventName]
     return callback ? callback(e, targetEl) : {}
   }
 
+  /**
+   * @param {string} href 
+   * @returns {number}
+   */
   setPendingLink(href){
     this.linkRef++
     this.pendingLink = href
     return this.linkRef
   }
 
+  /**
+   * @param {number} linkRef 
+   * @returns {boolean}
+   */
   commitPendingLink(linkRef){
     if(this.linkRef !== linkRef){
       return false
@@ -586,10 +837,21 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * @returns {string}
+   */
   getHref(){ return this.href }
 
+  /**
+   * @returns {boolean}
+   */
   hasPendingLink(){ return !!this.pendingLink }
 
+  /**
+   * Bind handler to multiple browser events
+   * @param {{[key:string]: string}} events 
+   * @param {(e: Event, eventType: string, view: View, targetEl: Element, phxEvent: string, eventTarget: Element) => void} callback 
+   */
   bind(events, callback){
     for(let event in events){
       let browserEventName = events[event]
@@ -618,12 +880,20 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Bind to all window click events to dispatch internally
+   */
   bindClicks(){
     window.addEventListener("click", e => this.clickStartedAtTarget = e.target)
     this.bindClick("click", "click", false)
     this.bindClick("mousedown", "capture-click", true)
   }
 
+  /**
+   * @param {string} eventName 
+   * @param {string} bindingName 
+   * @param {boolean} capture 
+   */
   bindClick(eventName, bindingName, capture){
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
@@ -655,6 +925,11 @@ export default class LiveSocket {
     }, capture)
   }
 
+  /**
+   * Dispatch click-away events
+   * @param {Event} e 
+   * @param {Element} clickStartedAt 
+   */
   dispatchClickAway(e, clickStartedAt){
     let phxClickAway = this.binding("click-away")
     DOM.all(document, `[${phxClickAway}]`, el => {
@@ -669,6 +944,11 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * Bind navigation events to dispatch internally
+   * 
+   * NOTE: tracking scrolls to restore scroll when necessary
+   */
   bindNav(){
     if(!Browser.canPushState()){ return }
     if(history.scrollRestoration){ history.scrollRestoration = "manual" }
@@ -725,7 +1005,11 @@ export default class LiveSocket {
     }, false)
   }
 
-  maybeScroll(scroll) {
+  /**
+   * Scroll if value given
+   * @param {number} [scroll] 
+   */
+  maybeScroll(scroll){
     if(typeof(scroll) === "number"){
       requestAnimationFrame(() => {
         window.scrollTo(0, scroll)
@@ -733,20 +1017,42 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Dispatch event on window
+   * @param {string} event 
+   * @param {{[key:string]: any}} [payload] 
+   */
   dispatchEvent(event, payload = {}){
     DOM.dispatchEvent(window, `phx:${event}`, {detail: payload})
   }
 
+  /**
+   * Dispatch each event on window
+   * @param {[eventName: string, payload: any][]} events 
+   */
   dispatchEvents(events){
     events.forEach(([event, payload]) => this.dispatchEvent(event, payload))
   }
 
+  /**
+   * Dispatch phx:page-loading-start and return callback to end loading
+   * @template T
+   * @param {any} [info] - optional data to provide in event detail
+   * @param {(stopLoadingCb: ()=>void) => T} [callback] - if given, call with callback that dispatches stop-loading event
+   * @returns {T|()=>void} either a callback to dispatch stop-loading event, or result of callback if given
+   */
   withPageLoading(info, callback){
     DOM.dispatchEvent(window, "phx:page-loading-start", {detail: info})
     let done = () => DOM.dispatchEvent(window, "phx:page-loading-stop", {detail: info})
     return callback ? callback(done) : done
   }
 
+  /**
+   * Push a location history patch
+   * @param {string} href 
+   * @param {("push"|"replace")} linkState 
+   * @param {HTMLElement} targetEl 
+   */
   pushHistoryPatch(href, linkState, targetEl){
     if(!this.isConnected()){ return Browser.redirect(href) }
 
@@ -758,6 +1064,12 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * Perform browser history update for patching
+   * @param {string} href 
+   * @param {("push"|"replace")} linkState 
+   * @param {number} linkRef 
+   */
   historyPatch(href, linkState, linkRef = this.setPendingLink(href)){
     if(!this.commitPendingLink(linkRef)){ return }
 
@@ -766,6 +1078,12 @@ export default class LiveSocket {
     this.registerNewLocation(window.location)
   }
 
+  /**
+   * Perform browser history update for redirect
+   * @param {string} href 
+   * @param {("push"|"replace")} linkState 
+   * @param {string|null} flash 
+   */
   historyRedirect(href, linkState, flash){
     // convert to full href if only path prefix
     if(!this.isConnected()){ return Browser.redirect(href, flash) }
@@ -786,10 +1104,18 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * Replace root in browser history state
+   */
   replaceRootHistory(){
     Browser.pushState("replace", {root: true, type: "patch", id: this.main.id})
   }
 
+  /**
+   * Set new location as current location
+   * @param {Location} newLocation 
+   * @returns {boolean}
+   */
   registerNewLocation(newLocation){
     let {pathname, search} = this.currentLocation
     if(pathname + search === newLocation.pathname + newLocation.search){
@@ -800,6 +1126,9 @@ export default class LiveSocket {
     }
   }
 
+  /**
+   * Bind Forms
+   */
   bindForms(){
     let iterations = 0
     let externalFormSubmitted = false
@@ -878,6 +1207,13 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * @private
+   * @param {Element} el 
+   * @param {Event} event 
+   * @param {string} eventType 
+   * @param {string} callback 
+   */
   debounce(el, event, eventType, callback){
     if(eventType === "blur" || eventType === "focusout"){ return callback() }
 
@@ -894,12 +1230,21 @@ export default class LiveSocket {
     })
   }
 
+  /**
+   * Disable event listeners, execute callback, enable event listeners
+   * @param {() => void} callback 
+   */
   silenceEvents(callback){
     this.silenced = true
     callback()
     this.silenced = false
   }
 
+  /**
+   * Attach handler for event
+   * @param {string} event 
+   * @param {(e: Event) => void} callback 
+   */
   on(event, callback){
     window.addEventListener(event, e => {
       if(!this.silenced){ callback(e) }
@@ -909,10 +1254,15 @@ export default class LiveSocket {
 
 class TransitionSet {
   constructor(){
+    /** @type {Set<number>} @private */
     this.transitions = new Set()
+    /** @type {function[]} */
     this.pendingOps = []
   }
 
+  /**
+   * Clear all transitions and flush any pending operations
+   */
   reset(){
     this.transitions.forEach(timer => {
       clearTimeout(timer)
@@ -921,6 +1271,11 @@ class TransitionSet {
     this.flushPendingOps()
   }
 
+  /**
+   * Register given callback for execution after next transition finishes.
+   * Executes immediately if no transition is in-flight.
+   * @param {() => void} callback 
+   */
   after(callback){
     if(this.size() === 0){
       callback()
@@ -929,6 +1284,12 @@ class TransitionSet {
     }
   }
 
+  /**
+   * Add a transition.
+   * @param {number} time 
+   * @param {() => void} onStart 
+   * @param {() => void} onDone 
+   */
   addTransition(time, onStart, onDone){
     onStart()
     let timer = setTimeout(() => {
@@ -939,10 +1300,23 @@ class TransitionSet {
     this.transitions.add(timer)
   }
 
+  /**
+   * Register operation for execution after next transition
+   * @private
+   * @param {() => void} op 
+   */
   pushPendingOp(op){ this.pendingOps.push(op) }
 
+  /**
+   * Get the size of current transition set.
+   * @returns {number}
+   */
   size(){ return this.transitions.size }
 
+  /**
+   * Execute all registered pending operations
+   * @private
+   */
   flushPendingOps(){
     if(this.size() > 0){ return }
     let op = this.pendingOps.shift()

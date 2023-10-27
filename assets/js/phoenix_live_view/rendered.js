@@ -19,6 +19,27 @@ import {
   isCid,
 } from "./utils"
 
+/** 
+ * @typedef {[number, number]} Insert
+ * 
+ * @typedef {[
+ *   ref: string, 
+ *   inserts: {[key: string]: Insert}, 
+ *   deleteIds: string[], 
+ *   reset: boolean|undefined
+ * ]} Stream 
+ *
+ * @typedef {{
+ *   [key: string]: string | number | string[] | RenderedDiffNode,
+ * }} RenderedDiffNode
+ * 
+ * @typedef {object} Output
+ * @property {string} buffer
+ * @property {Set<Stream>} streams
+ * @property {RenderedDiffNode} [components]
+ * @property {Set<string|number>} [onlyCids]
+ */
+
 const VOID_TAGS = new Set([
   "area",
   "base",
@@ -40,6 +61,13 @@ const VOID_TAGS = new Set([
 const endingTagNameChars = new Set([">", "/", " ", "\n", "\t", "\r"])
 const quoteChars = new Set(["'", '"'])
 
+/**
+ * Modify root html
+ * @param {string} html 
+ * @param {{[key: string]: boolean|string}} attrs 
+ * @param {boolean} [clearInnerHTML] - skip
+ * @returns {[newHTML: string, beforeTag: string, afterTag: string]}
+ */
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0
   let insideComment = false
@@ -117,8 +145,8 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
 
   let attrsStr =
     Object.keys(attrs)
-    .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
-    .join(" ")
+      .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
+      .join(" ")
 
   if(clearInnerHTML){
     // Keep the id if any
@@ -136,7 +164,13 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   return [newHTML, beforeTag, afterTag]
 }
 
+
 export default class Rendered {
+  /**
+   * Extract the important top-level elements from the diff
+   * @param {RenderedDiff} diff 
+   * @returns {{diff: RenderedDiffNode, title?: string, reply: number|null, events: any[]}}
+   */
   static extract(diff){
     let {[REPLY]: reply, [EVENTS]: events, [TITLE]: title} = diff
     delete diff[REPLY]
@@ -145,20 +179,45 @@ export default class Rendered {
     return {diff, title, reply: reply || null, events: events || []}
   }
 
+  /**
+   * Constructor - Handle the LiveView wire protocol render trees with their
+   * statics, dynamics, components, streams, and templates.
+   * 
+   * @param {string} viewId 
+   * @param {RenderedDiffNode} rendered 
+   */
   constructor(viewId, rendered){
     this.viewId = viewId
+    /** @type {RenderedDiffNode} */
     this.rendered = {}
     this.magicId = 0
     this.mergeDiff(rendered)
   }
 
+  /**
+   * Get ID of view that created
+   * @returns {string}
+   */
   parentViewId(){ return this.viewId }
 
+  /**
+   * @param {(string|number)[]} [onlyCids] 
+   * @returns {[string, streams: Set<Stream>]}
+   */
   toString(onlyCids){
     let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, true, {})
     return [str, streams]
   }
 
+  /**
+   * @private
+   * @param {RenderedDiffNode} rendered 
+   * @param {RenderedDiffNode} [components] 
+   * @param {(string|number)[]} onlyCids 
+   * @param {boolean} changeTracking 
+   * @param {{[key: string]: string}} [rootAttrs] 
+   * @returns {[buffer: Output['buffer'], streams: Output['streams']]}
+   */
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs){
     onlyCids = onlyCids ? new Set(onlyCids) : null
     let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
@@ -166,15 +225,35 @@ export default class Rendered {
     return [output.buffer, output.streams]
   }
 
+  /**
+   * Extract component IDs from diff
+   * @param {{[key: string]: any}} diff 
+   * @returns {number[]} list of all CIDs parsed to ints
+   */
   componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) }
 
+  /**
+   * Does diff only contain COMPONENTS segment?
+   * @param {RenderedDiffNode} diff
+   * @returns {boolean}
+   */
   isComponentOnlyDiff(diff){
     if(!diff[COMPONENTS]){ return false }
     return Object.keys(diff).length === 1
   }
 
+  /**
+   * Lookup COMPONENT node with CID from diff 
+   * @param {RenderedDiffNode} diff 
+   * @param {number|string} cid 
+   * @returns {RenderedDiffNode}
+   */
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
+  /**
+   * Merge given diff with 
+   * @param {RenderedDiffNode} diff 
+   */
   mergeDiff(diff){
     let newc = diff[COMPONENTS]
     let cache = {}
@@ -194,6 +273,16 @@ export default class Rendered {
     }
   }
 
+  /**
+   * Lookup Component node
+   * @private
+   * @param {string|number} cid 
+   * @param {RenderedDiffNode} cdiff 
+   * @param {RenderedDiffNode} oldc 
+   * @param {RenderedDiffNode} newc 
+   * @param {{[key: string]: any}} cache 
+   * @returns {RenderedDiffNode}
+   */
   cachedFindComponent(cid, cdiff, oldc, newc, cache){
     if(cache[cid]){
       return cache[cid]
@@ -222,6 +311,12 @@ export default class Rendered {
     }
   }
 
+  /**
+   * @private
+   * @param {object} target 
+   * @param {object} source 
+   * @returns {object}
+   */
   mutableMerge(target, source){
     if(source[STATIC] !== undefined){
       return source
@@ -231,6 +326,11 @@ export default class Rendered {
     }
   }
 
+  /**
+   * @private
+   * @param {object} target 
+   * @param {object} source 
+   */
   doMutableMerge(target, source){
     for(let key in source){
       let val = source[key]
@@ -247,14 +347,19 @@ export default class Rendered {
     }
   }
 
-  // Merges cid trees together, copying statics from source tree.
-  //
-  // The `pruneMagicId` is passed to control pruning the magicId of the
-  // target. We must always prune the magicId when we are sharing statics
-  // from another component. If not pruning, we replicate the logic from
-  // mutableMerge, where we set newRender to true if there is a root
-  // (effectively forcing the new version to be rendered instead of skipped)
-  //
+  /**
+   * Merges cid trees together, copying statics from source tree.
+   *
+   * The `pruneMagicId` is passed to control pruning the magicId of the
+   * target. We must always prune the magicId when we are sharing statics
+   * from another component. If not pruning, we replicate the logic from
+   * mutableMerge, where we set newRender to true if there is a root
+   * (effectively forcing the new version to be rendered instead of skipped)
+   * @param {RenderedDiffNode} target 
+   * @param {RenderedDiffNode} source 
+   * @param {boolean} pruneMagicId 
+   * @returns {RenderedDiffNode} merged CID tree
+   */
   cloneMerge(target, source, pruneMagicId){
     let merged = {...target, ...source}
     for(let key in merged){
@@ -273,11 +378,18 @@ export default class Rendered {
     return merged
   }
 
+  /**
+   * Get stripped HTML for component with ID
+   * @param {string} cid 
+   * @returns {[strippedHTML: string, streams: string | Set<any>]}
+   */
   componentToString(cid){
     let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null)
     let [strippedHTML, _before, _after] = modifyRoot(str, {})
     return [strippedHTML, streams]
   }
+
+
 
   pruneCIDs(cids){
     cids.forEach(cid => delete this.rendered[COMPONENTS][cid])
@@ -285,28 +397,58 @@ export default class Rendered {
 
   // private
 
+  /**
+   * Get the current diff tree
+   * @private
+   * @returns {RenderedDiffNode}
+   */
   get(){ return this.rendered }
 
+  /**
+   * Is the diff a new fingerprint?
+   * @private
+   * @param {RenderedDiffNode} [diff] 
+   * @returns {boolean}
+   */
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
+  /**
+   * Template statics into 
+   * @private
+   * @param {string[]|number} part 
+   * @param {any} templates 
+   * @returns {any}
+   */
   templateStatic(part, templates){
-    if(typeof (part) === "number") {
+    if(typeof (part) === "number"){
       return templates[part]
     } else {
       return part
     }
   }
 
+  /**
+   * @private
+   * @returns {string} unique magic ID
+   */
   nextMagicID(){
     this.magicId++
     return `${this.parentViewId()}-${this.magicId}`
   }
 
-  // Converts rendered tree to output buffer.
-  //
-  // changeTracking controls if we can apply the PHX_SKIP optimization.
-  // It is disabled for comprehensions since we must re-render the entire collection
-  // and no invidial element is tracked inside the comprehension.
+  /**
+   * Converts rendered tree to output buffer.
+   *
+   * changeTracking controls if we can apply the PHX_SKIP optimization.
+   * It is disabled for comprehensions since we must re-render the entire collection
+   * and no invidial element is tracked inside the comprehension.
+   * @private
+   * @param {RenderedDiffNode} rendered 
+   * @param {{[key: string]: string[]}} [templates] 
+   * @param {Output} output 
+   * @param {boolean} changeTracking 
+   * @param {{[key: string]: string}} [rootAttrs] 
+   */
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
@@ -346,6 +488,12 @@ export default class Rendered {
     }
   }
 
+  /**
+   * @private
+   * @param {RenderedDiffNode} rendered 
+   * @param {{[key: string]: string[]}} [templates] 
+   * @param {Output} output 
+   */
   comprehensionToBuffer(rendered, templates, output){
     let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream} = rendered
     let [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null]
@@ -372,6 +520,13 @@ export default class Rendered {
     }
   }
 
+  /**
+   * @private
+   * @param {RenderedDiffNode} rendered 
+   * @param {{[key: string]: string[]}} [templates] 
+   * @param {Output} output 
+   * @param {boolean} changeTracking 
+   */
   dynamicToBuffer(rendered, templates, output, changeTracking){
     if(typeof (rendered) === "number"){
       let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
@@ -384,6 +539,13 @@ export default class Rendered {
     }
   }
 
+  /**
+   * @private
+   * @param {RenderedDiffNode} components 
+   * @param {number|string} cid 
+   * @param {Set<number|string>} [onlyCids] 
+   * @returns {[html: string, streams: Set<Stream>]}
+   */
   recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
     let attrs = {[PHX_COMPONENT]: cid}

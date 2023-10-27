@@ -1,3 +1,8 @@
+/**
+ * Module Type Dependencies:
+ * @typedef {import('./view.js').default} View
+ * @typedef {import('./live_socket.js').default} LiveSocket
+ */
 import {
   PHX_DONE_REFS,
   PHX_PREFLIGHTED_REFS,
@@ -13,6 +18,11 @@ import UploadEntry from "./upload_entry"
 let liveUploaderFileRef = 0
 
 export default class LiveUploader {
+  /**
+   * Generate a unique reference for this file
+   * @param {File} file 
+   * @returns {string} the file ref
+   */
   static genFileRef(file){
     let ref = file._phxRef
     if(ref !== undefined){
@@ -23,11 +33,22 @@ export default class LiveUploader {
     }
   }
 
+  /**
+   * Create URL and pass to the callback
+   * @param {HTMLInputElement} inputEl 
+   * @param {string} ref 
+   * @param {function} callback 
+   */
   static getEntryDataURL(inputEl, ref, callback){
     let file = this.activeFiles(inputEl).find(file => this.genFileRef(file) === ref)
     callback(URL.createObjectURL(file))
   }
 
+  /**
+   * Are any file uploads still in-flight for the given form?
+   * @param {HTMLFormElement} formEl 
+   * @returns {boolean}
+   */
   static hasUploadsInProgress(formEl){
     let active = 0
     DOM.findUploadInputs(formEl).forEach(input => {
@@ -38,6 +59,11 @@ export default class LiveUploader {
     return active > 0
   }
 
+  /**
+   * 
+   * @param {HTMLInputElement} inputEl 
+   * @returns {object} map of file refs to array of entries
+   */
   static serializeUploads(inputEl){
     let files = this.activeFiles(inputEl)
     let fileData = {}
@@ -57,16 +83,31 @@ export default class LiveUploader {
     return fileData
   }
 
+  /**
+   * Clear upload refs on given file upload input
+   * @param {HTMLInputElement} inputEl 
+   */
   static clearFiles(inputEl){
     inputEl.value = null
     inputEl.removeAttribute(PHX_UPLOAD_REF)
     DOM.putPrivate(inputEl, "files", [])
   }
 
+  /**
+   * Untrack file upload for input
+   * @param {HTMLInputElement} inputEl 
+   * @param {File} file 
+   */
   static untrackFile(inputEl, file){
     DOM.putPrivate(inputEl, "files", DOM.private(inputEl, "files").filter(f => !Object.is(f, file)))
   }
 
+  /**
+   * Track file uploads for the given input
+   * @param {HTMLInputElement} inputEl 
+   * @param {File[]} files 
+   * @param {object=} dataTransfer 
+   */
   static trackFiles(inputEl, files, dataTransfer){
     if(inputEl.getAttribute("multiple") !== null){
       let newFiles = files.filter(file => !this.activeFiles(inputEl).find(f => Object.is(f, file)))
@@ -79,24 +120,50 @@ export default class LiveUploader {
     }
   }
 
+  /**
+   * Select a list of all file inputs with active uploads
+   * @param {HTMLFormElement} formEl 
+   * @returns {HTMLInputElement[]}
+   */
   static activeFileInputs(formEl){
     let fileInputs = DOM.findUploadInputs(formEl)
     return Array.from(fileInputs).filter(el => el.files && this.activeFiles(el).length > 0)
   }
 
+  /**
+   * Select a list of all files from this input being actively uploaded
+   * @param {HTMLInputElement} input 
+   * @returns {File[]}
+   */
   static activeFiles(input){
     return (DOM.private(input, "files") || []).filter(f => UploadEntry.isActive(input, f))
   }
 
+  /**
+   * Select a list of all file inputs with files still awaiting preflight
+   * @param {HTMLFormElement} formEl 
+   * @returns {HTMLInputElement[]}
+   */
   static inputsAwaitingPreflight(formEl){
     let fileInputs = DOM.findUploadInputs(formEl)
     return Array.from(fileInputs).filter(input => this.filesAwaitingPreflight(input).length > 0)
   }
 
+  /**
+   * Select a list of all files from this input still awaiting preflight 
+   * @param {HTMLInputElement} input 
+   * @returns {File[]}
+   */
   static filesAwaitingPreflight(input){
     return this.activeFiles(input).filter(f => !UploadEntry.isPreflighted(input, f))
   }
 
+  /**
+   * Constructor
+   * @param {HTMLInputElement} inputEl 
+   * @param {View} view 
+   * @param {function} onComplete 
+   */
   constructor(inputEl, view, onComplete){
     this.view = view
     this.onComplete = onComplete
@@ -107,8 +174,18 @@ export default class LiveUploader {
     this.numEntriesInProgress = this._entries.length
   }
 
+  /**
+   * Get upload entries list
+   * @returns {UploadEntry[]}
+   */
   entries(){ return this._entries }
 
+  /**
+   * Initialize the upload process
+   * @param {any} resp 
+   * @param {function} onError 
+   * @param {LiveSocket} liveSocket 
+   */
   initAdapterUpload(resp, onError, liveSocket){
     this._entries =
       this._entries.map(entry => {
