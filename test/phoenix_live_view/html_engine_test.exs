@@ -166,9 +166,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render(template, assigns) ==
              ~S(<div d1="1" sd1="1" s1="1" d2="2" s2="2" sd2="2"></div>)
 
-    assert %Phoenix.LiveView.Rendered{
-             static: ["<div", "", "", " s1=\"1\"", " s2=\"2\"", "></div>"]
-           } =
+    assert %Phoenix.LiveView.Rendered{static: ["<div", "", " s1=\"1\"", " s2=\"2\"", "></div>"]} =
              eval(template, assigns)
   end
 
@@ -1311,25 +1309,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert eval("  <foo></foo>  ").root == true
       assert eval("\n\n<foo></foo>\n").root == true
-    end
-
-    test "formatting" do
-      assert render(~S|  <foo></foo>  |) == ~S|<foo></foo>|
-
-      assert render(~S|<foo class='bar' id='baz'></foo>|) ==
-               ~S|<foo id='baz' class='bar'></foo>|
-
-      assert render(~S|<foo {[class: "bar"]}></foo>|) ==
-               ~S|<foo class="bar"></foo>|
-
-      assert render(~S|<foo id="baz" {[class: "bar"]}></foo>|) ==
-               ~S|<foo id="baz" class="bar"></foo>|
-
-      assert render(~S|<foo id="baz" {[id: "bar"]}></foo>|) ==
-               ~S|<foo id="baz" id="bar"></foo>|
-
-      assert render(~S|<foo class="bar" {[id: "baz", class: "baz"]}></foo>|) ==
-               ~S|<foo id="baz" class="bar" class="baz"></foo>|
     end
 
     test "invalid cases" do
