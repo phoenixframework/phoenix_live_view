@@ -65,18 +65,25 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
       }
       tagNameEndsAt = i
       tag = html.slice(iAtOpen + 1, tagNameEndsAt)
-      // If there is an id, it's always the first attribute
       i++
-      if (html.slice(i, i + 3) === "id=") {
-        i += 3;
-        let char = html.charAt(i)
-        if (quoteChars.has(char)) {
-          let idStartsAt = i
-          i++
-          for(i; i < html.length; i++){
-            if(html.charAt(i) === char){ break }
+      // Scan the opening tag for id, if there is any
+      for(i; i < html.length; i++){
+        if(html.charAt(i) === ">" ){ break }
+        if(html.charAt(i) === "="){
+          let isId = html.slice(i - 3, i) === " id"
+          i++;
+          let char = html.charAt(i)
+          if (quoteChars.has(char)) {
+            let attrStartsAt = i
+            i++
+            for(i; i < html.length; i++){
+              if(html.charAt(i) === char){ break }
+            }
+            if (isId) {
+              id = html.slice(attrStartsAt + 1, i)
+              break
+            }
           }
-          id = html.slice(idStartsAt + 1, i)
         }
       }
       break
