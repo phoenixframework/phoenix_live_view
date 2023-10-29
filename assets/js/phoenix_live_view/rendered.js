@@ -251,7 +251,7 @@ export default class Rendered {
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
   /**
-   * Merge given diff with 
+   * Merge given diff with rendered diff nodes
    * @param {RenderedDiffNode} diff 
    */
   mergeDiff(diff){
