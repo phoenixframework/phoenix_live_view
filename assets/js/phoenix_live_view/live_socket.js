@@ -728,7 +728,7 @@ export default class LiveSocket {
   }
 
   /**
-   * Blue the active element after tracking it for potential future focus
+   * Blur the active element after tracking it for potential future focus
    * restore.
    */
   blurActiveElement(){
@@ -1020,7 +1020,7 @@ export default class LiveSocket {
   /**
    * Dispatch event on window
    * @param {string} event 
-   * @param {{[key:string]: any}} [payload] 
+   * @param {any} [payload] 
    */
   dispatchEvent(event, payload = {}){
     DOM.dispatchEvent(window, `phx:${event}`, {detail: payload})

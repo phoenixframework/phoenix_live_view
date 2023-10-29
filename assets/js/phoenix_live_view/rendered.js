@@ -227,7 +227,7 @@ export default class Rendered {
 
   /**
    * Extract component IDs from diff
-   * @param {{[key: string]: any}} diff 
+   * @param {RenderedDiffNode} diff 
    * @returns {number[]} list of all CIDs parsed to ints
    */
   componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) }
@@ -381,7 +381,7 @@ export default class Rendered {
   /**
    * Get stripped HTML for component with ID
    * @param {string} cid 
-   * @returns {[strippedHTML: string, streams: string | Set<any>]}
+   * @returns {[strippedHTML: string, streams: Set<Stream>]}
    */
   componentToString(cid){
     let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null)

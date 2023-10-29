@@ -58,7 +58,7 @@ export default class DOMPatch {
    * @param {HTMLElement} container 
    * @param {string} id 
    * @param {string} html 
-   * @param {Stream[]} streams 
+   * @param {Set<Stream>} streams 
    * @param {string|number|null} [targetCID] 
    */
   constructor(view, container, id, html, streams, targetCID){

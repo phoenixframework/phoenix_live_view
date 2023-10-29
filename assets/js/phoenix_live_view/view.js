@@ -55,7 +55,7 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
-/** @typedef {import('./rendered').RenderedDiff} RenderedDiff */
+/** @typedef {import('./rendered').RenderedDiffNode} RenderedDiffNode */
 
 /**
  * URL-safe encoding of data in the given form element
@@ -117,6 +117,7 @@ export default class View {
     this.ref = 0
     this.childJoins = 0
     this.loaderTimer = null
+    /** @type {{diff: RenderedDiffNode, events: [event: string, payload: any]}[]} */
     this.pendingDiffs = []
     this.pruningCIDs = []
     this.redirect = false
@@ -127,7 +128,9 @@ export default class View {
     this.joinCallback = function(onDone){ onDone && onDone() }
     this.stopCallback = function(){ }
     this.pendingJoinOps = this.parent ? null : []
+    /** @type {{[key:string]: ViewHook}} */
     this.viewHooks = {}
+    /** @type {{[key:Element]: LiveUploader}} */
     this.uploaders = {}
 
     /** @type {Array<[el: HTMLFormElement, ref: number, opts: object, cb: () => void]>} */
@@ -334,8 +337,8 @@ export default class View {
   /**
    * Apply the given raw diff
    * @param {"mount"|"update"} type 
-   * @param {RenderedDiff} rawDiff - The LiveView diff wire protocol
-   * @param {({diff: RenderedDiff, reply: number|null, events: any[]}) => void} callback 
+   * @param {RenderedDiffNode} rawDiff - The LiveView diff wire protocol
+   * @param {({diff: RenderedDiffNode, reply: number|null, events: any[]}) => void} callback 
    */
   applyDiff(type, rawDiff, callback){
     this.log(type, () => ["", clone(rawDiff)])
@@ -346,7 +349,7 @@ export default class View {
 
   /**
    * Handle successful channel join
-   * @param {{rendered: RenderedDiff, container?: [string, object]}} resp 
+   * @param {{rendered: RenderedDiffNode, container?: [string, object]}} resp 
    */
   onJoin(resp){
     let {rendered, container} = resp
@@ -396,8 +399,8 @@ export default class View {
    * @param {object} resp 
    * @param {any} resp.live_patch
    * @param {string} html 
-   * @param {any[]} streams 
-   * @param {any[]} events 
+   * @param {Set<Stream>} streams 
+   * @param {[event: string, payload: any][]} events 
    */
   onJoinComplete({live_patch}, html, streams, events){
     // In order to provide a better experience, we want to join
@@ -458,8 +461,8 @@ export default class View {
    * Apply initial patch after socket join completes
    * @param {{kind: "push"|"replace", to: string}} [live_patch] 
    * @param {string} html 
-   * @param {Stream[]} streams 
-   * @param {any[]} events 
+   * @param {Set<Stream>} streams 
+   * @param {[event: string, payload: any][]} events 
    */
   applyJoinPatch(live_patch, html, streams, events){
     this.attachTrueDocEl()
@@ -594,7 +597,7 @@ export default class View {
   }
 
   /**
-   * Call jioinChild
+   * For all children elements, join their views 
    */
   joinNewChildren(){
     DOM.findPhxChildren(this.el, this.id).forEach(el => this.joinChild(el))
@@ -633,7 +636,7 @@ export default class View {
   }
 
   /**
-   * Looks up a child
+   * Ensure a child view for given element exists and was joined
    * @param {HTMLElement} el 
    * @returns {boolean} true if child did
    */
@@ -648,8 +651,16 @@ export default class View {
     }
   }
 
+  /**
+   * Is join still pending?
+   * @returns {boolean}
+   */
   isJoinPending(){ return this.joinPending }
 
+  /**
+   * Notify parents up the chain of join if all children are joined
+   * @param {View} _child 
+   */
   ackJoin(_child){
     this.childJoins--
 
@@ -662,6 +673,9 @@ export default class View {
     }
   }
 
+  /**
+   * Execute pending join callbacks once all children complete joins
+   */
   onAllChildJoinsComplete(){
     this.joinCallback(() => {
       this.pendingJoinOps.forEach(([view, op]) => {
@@ -671,6 +685,12 @@ export default class View {
     })
   }
 
+  /**
+   * Update DOM for a diff and collection of events
+   * @param {RenderedDiffNode} diff 
+   * @param {[event: string, payload: any][]} events 
+   * @returns {void}
+   */
   update(diff, events){
     if(this.isJoinPending() || (this.liveSocket.hasPendingLink() && this.root.isMain())){
       return this.pendingDiffs.push({diff, events})
@@ -702,10 +722,10 @@ export default class View {
   }
 
   /**
-   * 
-   * @param {*} diff 
+   * Render container element for a diff
+   * @param {RenderedDiffNode} diff 
    * @param {string} kind 
-   * @returns {[string, object]}
+   * @returns {[string, Set<Stream>]}
    */
   renderContainer(diff, kind){
     return this.liveSocket.time(`toString diff (${kind})`, () => {
@@ -718,6 +738,12 @@ export default class View {
     })
   }
 
+  /**
+   * Render a DOM patch for component
+   * @param {RenderedDiffNode} diff 
+   * @param {string|number} cid 
+   * @returns {boolean} were children added?
+   */
   componentPatch(diff, cid){
     if(isEmpty(diff)) return false
     let [html, streams] = this.rendered.componentToString(cid)
@@ -726,6 +752,11 @@ export default class View {
     return childrenAdded
   }
 
+  /**
+   * Lookup ViewHook by Element ID
+   * @param {Element} el 
+   * @returns {ViewHook|undefined}
+   */
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
   /**

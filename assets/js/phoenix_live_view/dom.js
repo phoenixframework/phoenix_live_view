@@ -767,7 +767,6 @@ let DOM = {
     }
   },
 
-
   /**
    * Get the stashed result for the element's private "sticky" operation matching given name; if not found, return default value
    * @param {HTMLElement} el 
@@ -797,7 +796,7 @@ let DOM = {
   },
 
   /**
-   * Store a named "sticky" operation and it's result to the element's private data
+   * Store a named "sticky" operation and its result to the element's private data
    * @param {HTMLElement} el 
    * @param {string} name 
    * @param {function} op 

@@ -88,7 +88,7 @@ let JS = {
   },
 
   /**
-   * Push an event over livesocket
+   * Push an event over LiveSocket
    * @private
    * @param {string} eventType 
    * @param {string} phxEvent 

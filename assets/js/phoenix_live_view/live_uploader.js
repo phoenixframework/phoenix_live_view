@@ -60,7 +60,8 @@ export default class LiveUploader {
   }
 
   /**
-   * 
+   * Create entry data for all active file uploads in input element, mapped to
+   * the input's upload ref
    * @param {HTMLInputElement} inputEl 
    * @returns {object} map of file refs to array of entries
    */
