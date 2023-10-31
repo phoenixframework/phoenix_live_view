@@ -144,7 +144,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp text?({:text, _text, _meta}), do: true
   defp text?(_node), do: false
 
-  @codepoints '\s\n\r\t'
+  @codepoints ~c"\s\n\r\t"
 
   defp text_starts_with_space?({:text, text, _meta}) when text != "",
     do: :binary.first(text) in @codepoints
@@ -157,7 +157,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp text_ends_with_space?(_node), do: false
 
   defp text_ends_with_line_break?({:text, text, _meta}) when text != "",
-    do: :binary.last(text) in '\n\r'
+    do: :binary.last(text) in ~c"\n\r"
 
   defp text_ends_with_line_break?(_node), do: false
 
