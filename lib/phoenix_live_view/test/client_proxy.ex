@@ -969,8 +969,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_event(:click, {"a", _, _} = node, element) do
-    live_nav = DOM.attribute(node, "data-phx-link")
+  defp maybe_event(:click, {tag, _, _} = node, element) do
+    live_nav =
+      DOM.attribute(node, "data-phx-link") ||
+        live_nav_in_phx_click(DOM.attribute(node, "phx-click"))
 
     cond do
       event = is_nil(live_nav) && DOM.attribute(node, "phx-click") ->
@@ -989,9 +991,34 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {:stop, proxy_topic(element), {:redirect, %{to: to}}}
         end
 
+      is_list(live_nav) ->
+        case live_nav do
+          ["patch", %{"href" => to}] ->
+            {:patch, proxy_topic(element), to}
+
+          ["navigate", %{"href" => to, "replace" => true}] ->
+            {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: :replace}}}
+
+          ["navigate", %{"href" => to}] ->
+            {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: :push}}}
+        end
+
       true ->
-        {:error, :invalid,
-         "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"}
+        case tag do
+          "a" ->
+            {
+              :error,
+              :invalid,
+              "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"
+            }
+
+          _ ->
+            {
+              :error,
+              :invalid,
+              "element selected by #{inspect(element.selector)} does not have phx-click attribute"
+            }
+        end
     end
   end
 
@@ -1018,6 +1045,20 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
        "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
     end
   end
+
+  defp live_nav_in_phx_click("[" <> _ = encoded_js) do
+    encoded_js
+    |> Phoenix.json_library().decode!()
+    |> Enum.reduce(nil, fn event, acc ->
+      case event do
+        ["patch", _opts] -> event
+        ["navigate", _opts] -> event
+        _ -> acc
+      end
+    end)
+  end
+
+  defp live_nav_in_phx_click(_), do: nil
 
   defp maybe_js_event("[" <> _ = encoded_js) do
     js = Phoenix.json_library().decode!(encoded_js)
