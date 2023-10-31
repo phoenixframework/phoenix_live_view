@@ -138,7 +138,7 @@ defmodule Phoenix.LiveView.EventTest do
              |> render_click() =~ "count: 11"
     end
 
-    test "with repiles", %{conn: conn} do
+    test "with replies", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events-multi-js")
 
       assert element(view, "#reply-values")
