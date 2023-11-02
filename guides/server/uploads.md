@@ -182,8 +182,7 @@ def handle_event("save", _params, socket) do
   uploaded_files =
     consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
       dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
-      # The `static/uploads` directory must exist for `File.cp!/2`
-      # and MyAppWeb.static_paths/0 should contain uploads to work,.
+      # You will need to create `priv/static/uploads` for `File.cp!/2` to work.
       File.cp!(path, dest)
       {:ok, ~p"/uploads/#{Path.basename(dest)}"}
     end)
@@ -198,6 +197,18 @@ end
 
 For more information on implementing client-side,
 direct-to-cloud uploads, see the [External Uploads guide](uploads-external.md).
+
+## Accessing your uploads
+
+In order to access your upload via your app&mdash;for exaample, in an `<img />`
+tag&mdash;we need to add the `uploads` directory to `static_paths/0`.  In a vanilla
+Phoenix project, this is found in `lib/my_app_web.ex`.
+
+Another thing to be aware of is that in development, changes to
+`priv/static/uploads` will be picked up by `live_reload`.  This means that as
+soon as your upload succeeds, your app will be reloaded in the browser.  This
+can be temporarily disabled by setting `code_reloader: false` in
+`config/dev.exs`.
 
 ## Appendix A: UploadLive
 
@@ -231,6 +242,7 @@ defmodule MyAppWeb.UploadLive do
     uploaded_files =
       consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
         dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
+        # You will need to create `priv/static/uploads` for `File.cp!/2` to work.
         File.cp!(path, dest)
         {:ok, ~p"/uploads/#{Path.basename(dest)}"}
       end)
@@ -243,6 +255,9 @@ defmodule MyAppWeb.UploadLive do
   defp error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
 end
 ```
+
+To access your uploads via your app, make sure to add `uploads` to
+`MyAppWeb.static_paths/0`.
 
 [`allow_upload/3`]: `Phoenix.LiveView.allow_upload/3`
 [`live_file_input/1`]: `Phoenix.Component.live_file_input/1`
