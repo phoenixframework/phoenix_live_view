@@ -1646,17 +1646,12 @@ defmodule Phoenix.LiveView do
 
       stream_insert(socket, :songs, %Song{id: 2, title: "Song 2"}, at: 0)
 
-  Or updating an existing song, while also moving it to the top of the collection:
-
-      stream_insert(socket, :songs, %Song{id: 1, title: "Song 1 updated"}, at: 0)
-
   ## Updating Items
 
   As shown, an existing item on the client can be updated by issuing a `stream_insert` for
-  the existing item. When the client updates an existing item with an "append" operation
-  (passing the `at: -1` option), the item will remain in the same location as it was
-  previously, and will not be moved to the end of the parent children. To both update an
-  existing item and move it to the end of a collection, issue a `stream_delete`, followed
+  the existing item. When the client updates an existing item , the item will remain in the
+  same location as it was previously, and will not be moved on the stream list. To both update
+  an existing item and move it from a collection, issue a `stream_delete`, followed
   by a `stream_insert`. For example:
 
       song = get_song!(id)

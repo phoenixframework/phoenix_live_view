@@ -164,7 +164,6 @@ export default class DOMPatch {
           return el
         },
         onNodeAdded: (el) => {
-          if(el.getAttribute){ this.maybeReOrderStream(el) }
 
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
@@ -223,7 +222,6 @@ export default class DOMPatch {
             externalFormTriggered = el
           }
           updates.push(el)
-          this.maybeReOrderStream(el)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
@@ -339,31 +337,6 @@ export default class DOMPatch {
   getStreamInsert(el){
     let insert = el.id ? this.streamInserts[el.id] : {}
     return insert || {}
-  }
-
-  maybeReOrderStream(el){
-    let {ref, streamAt, limit} = this.getStreamInsert(el)
-    if(streamAt === undefined){ return }
-
-    // we need to the PHX_STREAM_REF here as well as addChild is invoked only for parents
-    DOM.putSticky(el, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
-
-    if(streamAt === 0){
-      el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
-    } else if(streamAt > 0){
-      let children = Array.from(el.parentElement.children)
-      let oldIndex = children.indexOf(el)
-      if(streamAt >= children.length - 1){
-        el.parentElement.appendChild(el)
-      } else {
-        let sibling = children[streamAt]
-        if(oldIndex > streamAt){
-          el.parentElement.insertBefore(el, sibling)
-        } else {
-          el.parentElement.insertBefore(el, sibling.nextElementSibling)
-        }
-      }
-    }
   }
 
   transitionPendingRemoves(){
