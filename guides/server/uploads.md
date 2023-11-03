@@ -181,7 +181,7 @@ upload data alongside the form data:
 def handle_event("save", _params, socket) do
   uploaded_files =
     consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
-      dest = Path.join([:code.priv_dir(:my_app), "static", "uploads", Path.basename(path)])
+      dest = Path.join(Application.app_dir(:my_app, "priv/static/uploads"), Path.basename(path))
       # You will need to create `priv/static/uploads` for `File.cp!/2` to work.
       File.cp!(path, dest)
       {:ok, ~p"/uploads/#{Path.basename(dest)}"}
@@ -191,24 +191,28 @@ def handle_event("save", _params, socket) do
 end
 ```
 
-> **Note**: While client metadata cannot be trusted, max file
-> size validations are enforced as each chunk is received
-> when performing direct to server uploads.
+> **Note**: While client metadata cannot be trusted, max file size validations
+> are enforced as each chunk is received when performing direct to server uploads.
 
-For more information on implementing client-side,
-direct-to-cloud uploads, see the [External Uploads guide](uploads-external.md).
-
-## Accessing your uploads
-
-In order to access your upload via your app&mdash;for exaample, in an `<img />`
-tag&mdash;we need to add the `uploads` directory to `static_paths/0`.  In a vanilla
-Phoenix project, this is found in `lib/my_app_web.ex`.
+This example writes the file directly to disk, under the `priv` folder.
+In order to access your upload, for example in an `<img />` tag, you need
+to add the `uploads` directory to `static_paths/0`.  In a vanilla Phoenix
+project, this is found in `lib/my_app_web.ex`.
 
 Another thing to be aware of is that in development, changes to
 `priv/static/uploads` will be picked up by `live_reload`.  This means that as
 soon as your upload succeeds, your app will be reloaded in the browser.  This
-can be temporarily disabled by setting `code_reloader: false` in
-`config/dev.exs`.
+can be temporarily disabled by setting `code_reloader: false` in `config/dev.exs`.
+
+Besides the above, this approach also has limitations in production. If you are
+running multiple instances of your application, the uploaded file will be store
+only in one of the instances. Any request routed to the other machine will
+ultimately fail.
+
+For these reasons, it is best if uploads are stored elsewhere, such as the
+database (depending on the size and contents) or a separate storage service.
+For more information on implementing client-side, direct-to-cloud uploads,
+see the [External Uploads guide](uploads-external.md).
 
 ## Appendix A: UploadLive
 
