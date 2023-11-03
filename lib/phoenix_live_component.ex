@@ -377,7 +377,7 @@ defmodule Phoenix.LiveComponent do
 
   ```elixir
   def handle_event("update_title", %{"title" => title}, socket) do
-    socket.assigns.on_card_update(%{socket.assigns.card | title: title})
+    socket.assigns.on_card_update.(%{socket.assigns.card | title: title})
     {:noreply, socket}
   end
   ```
