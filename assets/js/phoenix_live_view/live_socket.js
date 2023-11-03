@@ -536,9 +536,9 @@ export default class LiveSocket {
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
-    this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+    this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
-      if(phxTarget === "window"){
+      if(eventTarget === "window"){
         let data = this.eventMeta(type, e, targetEl)
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
