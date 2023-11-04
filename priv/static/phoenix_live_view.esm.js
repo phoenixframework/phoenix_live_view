@@ -2110,18 +2110,27 @@ var modifyRoot = (html, attrs, clearInnerHTML) => {
       tagNameEndsAt = i;
       tag = html.slice(iAtOpen + 1, tagNameEndsAt);
       i++;
-      if (html.slice(i, i + 3) === "id=") {
-        i += 3;
-        let char2 = html.charAt(i);
-        if (quoteChars.has(char2)) {
-          let idStartsAt = i;
+      for (i; i < html.length; i++) {
+        if (html.charAt(i) === ">") {
+          break;
+        }
+        if (html.charAt(i) === "=") {
+          let isId = html.slice(i - 3, i) === " id";
           i++;
-          for (i; i < html.length; i++) {
-            if (html.charAt(i) === char2) {
+          let char2 = html.charAt(i);
+          if (quoteChars.has(char2)) {
+            let attrStartsAt = i;
+            i++;
+            for (i; i < html.length; i++) {
+              if (html.charAt(i) === char2) {
+                break;
+              }
+            }
+            if (isId) {
+              id = html.slice(attrStartsAt + 1, i);
               break;
             }
           }
-          id = html.slice(idStartsAt + 1, i);
         }
       }
       break;
