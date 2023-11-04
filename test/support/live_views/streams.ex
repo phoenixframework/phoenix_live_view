@@ -10,6 +10,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     <div :for={{id, _user} <- Enum.map(@streams.users, &(&1))} id={id} />
     """
   end
+
   def render(assigns) do
     ~H"""
     <div id="users" phx-update="stream">
