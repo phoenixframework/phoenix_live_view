@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.TelemtryTest do
+defmodule Phoenix.LiveView.TelemetryTest do
   # Telemetry tests need to run synchronously
   use ExUnit.Case, async: false
 
@@ -190,6 +190,34 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert %RuntimeError{} = metadata.reason
       assert metadata.event == "crash"
       assert metadata.params == %{"foo" => "bar"}
+    end
+
+    test " with a successful render callback emits render telemetry events", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :render])
+
+      {:ok, view, _} = live(conn, "/thermo")
+
+      assert_receive {:event, [:phoenix, :live_view, :render, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.force?
+
+      assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, metadata}
+
+      assert metadata.socket.transport_pid
+      # Includes a full render diff
+      assert %{0 => _, :s => _} = metadata.diff
+      assert metadata.force?
+      assert metadata.changed?
+
+      render_submit(view, :save, %{temp: 20})
+
+      # Returns a partial diff on the second render
+      assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, metadata}
+      assert %{} = metadata.diff
+      refute Enum.empty?(metadata.diff)
+      refute Map.has_key?(metadata.diff, :s)
     end
   end
 

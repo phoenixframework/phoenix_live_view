@@ -913,24 +913,31 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp render_diff(state, socket, force?) do
-    {socket, diff, components} =
-      if force? or Utils.changed?(socket) do
-        rendered = Utils.to_rendered(socket, socket.view)
-        {socket, diff, components} = Diff.render(socket, rendered, state.components)
+    :telemetry.span([:phoenix, :live_view, :render], %{socket: socket, force?: force?}, fn ->
+      changed? = Utils.changed?(socket)
 
-        socket =
-          socket
-          |> Lifecycle.after_render()
-          |> Utils.clear_changed()
+      {socket, diff, components} =
+        if force? or changed? do
+          rendered = Utils.to_rendered(socket, socket.view)
+          {socket, diff, components} = Diff.render(socket, rendered, state.components)
 
-        {socket, diff, components}
-      else
-        {socket, %{}, state.components}
-      end
+          socket =
+            socket
+            |> Lifecycle.after_render()
+            |> Utils.clear_changed()
 
-    diff = Diff.render_private(socket, diff)
-    new_socket = Utils.clear_temp(socket)
-    {:diff, diff, %{state | socket: new_socket, components: components}}
+          {socket, diff, components}
+        else
+          {socket, %{}, state.components}
+        end
+
+      diff = Diff.render_private(socket, diff)
+      new_socket = Utils.clear_temp(socket)
+      {
+        {:diff, diff, %{state | socket: new_socket, components: components}},
+        %{socket: new_socket, diff: diff, force?: force?, changed?: changed?}
+      }
+    end)
   end
 
   defp reply(state, {ref, extra}, status, payload) do
