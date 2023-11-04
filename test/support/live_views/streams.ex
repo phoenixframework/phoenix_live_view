@@ -35,11 +35,16 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     """
   end
 
+  @users [
+    %{id: 1, name: "chris"},
+    %{id: 2, name: "callan"}
+  ]
+
   def mount(_params, _session, socket) do
     {:ok,
      socket
      |> assign(:invalid_consume, false)
-     |> stream(:users, [user(1, "chris"), user(2, "callan")])
+     |> stream(:users, @users)
      |> stream(:admins, [user(1, "chris-admin"), user(2, "callan-admin")])}
   end
 
@@ -72,6 +77,14 @@ defmodule Phoenix.LiveViewTest.StreamLive do
      socket
      |> stream_delete_by_dom_id(:users, dom_id)
      |> stream_insert(:users, user, at: at)}
+  end
+
+  def handle_event("reset-users", _, socket) do
+    {:noreply, stream(socket, :users, [], reset: true)}
+  end
+
+  def handle_event("stream-users", _, socket) do
+    {:noreply, stream(socket, :users, @users)}
   end
 
   def handle_event("admin-delete", %{"id" => dom_id}, socket) do
