@@ -124,6 +124,8 @@ export default class DOMPatch {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
           if(DOM.isPhxDestroyed(node)){ return null }
+          // If we have a join patch, then by definition there was no PHX_MAGIC_ID.
+          // This is important to reduce the amount of elements morphdom discards.
           if(isJoinPatch){ return node.id }
           return node.id || (node.getAttribute && node.getAttribute(PHX_MAGIC_ID))
         },
