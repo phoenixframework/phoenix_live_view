@@ -118,6 +118,7 @@ var EntryUploader = class {
     if (this.errored) {
       return;
     }
+    this.uploadChannel.leave();
     this.errored = true;
     clearTimeout(this.chunkTimer);
     this.entry.error(reason);
@@ -1758,7 +1759,7 @@ var DOMPatch = class {
       el.setAttribute(PHX_PRUNE, "");
     });
   }
-  perform() {
+  perform(isJoinPatch) {
     let { view, liveSocket, container, html } = this;
     let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container;
     if (this.isCIDPatch() && !targetContainer) {
@@ -1805,6 +1806,9 @@ var DOMPatch = class {
         getNodeKey: (node) => {
           if (dom_default.isPhxDestroyed(node)) {
             return null;
+          }
+          if (isJoinPatch) {
+            return node.id;
           }
           return node.id || node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
         },
@@ -2967,7 +2971,7 @@ var View = class {
     this.attachTrueDocEl();
     let patch = new DOMPatch(this, this.el, this.id, html, streams, null);
     patch.markPrunableContentForRemoval();
-    this.performPatch(patch, false);
+    this.performPatch(patch, false, true);
     this.joinNewChildren();
     this.execNewMounted();
     this.joinPending = false;
@@ -3006,7 +3010,7 @@ var View = class {
       newHook.__mounted();
     }
   }
-  performPatch(patch, pruneCids) {
+  performPatch(patch, pruneCids, isJoinPatch = false) {
     let removedEls = [];
     let phxChildrenAdded = false;
     let updatedHookIds = new Set();
@@ -3041,7 +3045,7 @@ var View = class {
       }
     });
     patch.after("transitionsDiscarded", (els) => this.afterElementsRemoved(els, pruneCids));
-    patch.perform();
+    patch.perform(isJoinPatch);
     this.afterElementsRemoved(removedEls, pruneCids);
     return phxChildrenAdded;
   }

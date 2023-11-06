@@ -147,6 +147,7 @@ var LiveView = (() => {
       if (this.errored) {
         return;
       }
+      this.uploadChannel.leave();
       this.errored = true;
       clearTimeout(this.chunkTimer);
       this.entry.error(reason);
@@ -1787,7 +1788,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         el.setAttribute(PHX_PRUNE, "");
       });
     }
-    perform() {
+    perform(isJoinPatch) {
       let { view, liveSocket, container, html } = this;
       let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container;
       if (this.isCIDPatch() && !targetContainer) {
@@ -1834,6 +1835,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           getNodeKey: (node) => {
             if (dom_default.isPhxDestroyed(node)) {
               return null;
+            }
+            if (isJoinPatch) {
+              return node.id;
             }
             return node.id || node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
           },
@@ -2996,7 +3000,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.attachTrueDocEl();
       let patch = new DOMPatch(this, this.el, this.id, html, streams, null);
       patch.markPrunableContentForRemoval();
-      this.performPatch(patch, false);
+      this.performPatch(patch, false, true);
       this.joinNewChildren();
       this.execNewMounted();
       this.joinPending = false;
@@ -3035,7 +3039,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         newHook.__mounted();
       }
     }
-    performPatch(patch, pruneCids) {
+    performPatch(patch, pruneCids, isJoinPatch = false) {
       let removedEls = [];
       let phxChildrenAdded = false;
       let updatedHookIds = new Set();
@@ -3070,7 +3074,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
       patch.after("transitionsDiscarded", (els) => this.afterElementsRemoved(els, pruneCids));
-      patch.perform();
+      patch.perform(isJoinPatch);
       this.afterElementsRemoved(removedEls, pruneCids);
       return phxChildrenAdded;
     }
