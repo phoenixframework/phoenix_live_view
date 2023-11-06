@@ -382,7 +382,7 @@ export default class View {
     if(newHook){ newHook.__mounted() }
   }
 
-  performPatch(patch, pruneCids, isJoinPatch){
+  performPatch(patch, pruneCids, isJoinPatch = false){
     let removedEls = []
     let phxChildrenAdded = false
     let updatedHookIds = new Set()
