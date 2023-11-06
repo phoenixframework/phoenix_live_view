@@ -340,7 +340,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
-    I like <%= fruit %>!
+    I like <b><%= fruit %></b>!
   </.unordered_list>
   ```
 
@@ -348,9 +348,9 @@ defmodule Phoenix.Component do
 
   ```html
   <ul>
-    <li>I like apples!</li>
-    <li>I like bananas!</li>
-    <li>I like cherries!</li>
+    <li>I like <b>apples</b>!</li>
+    <li>I like <b>bananas</b>!</li>
+    <li>I like <b>cherries</b>!</li>
   </ul>
   ```
 
@@ -1392,8 +1392,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Converts a given data structure to a `Phoenix.HTML.Form`
-  according to `Phoenix.HTML.FormData`.
+  Converts a given data structure to a `Phoenix.HTML.Form`.
 
   This is commonly used to convert a map or an Ecto changeset
   into a form to be given to the `form/1` component.
@@ -1993,16 +1992,21 @@ defmodule Phoenix.Component do
   @doc ~S'''
   Renders a form.
 
-  This function receives a form struct, generally created with `to_form/2`,
-  and generates the relevant form tags. It can be used either inside LiveView
-  or outside.
+  This function receives a `Phoenix.HTML.Form` struct, generally created with
+  `to_form/2`, and generates the relevant form tags. It can be used either
+  inside LiveView or outside.
+
+  > To see how forms work in practice, you can run
+  > `mix phx.gen.live Blog Post posts title body:text` inside your Phoenix
+  > application, which will setup the necessary database tables and LiveViews
+  > to manage your data.
 
   ## Examples: inside LiveView
 
-  Inside LiveViews, the `for={...}` attribute is generally a form struct
-  created with the `to_form/1` function. `to_form/1` expects either a map
-  or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
-  as the source of data.
+  Inside LiveViews, this function component is typically called with
+  as `for={@form}`, where `@form` is the result of the `to_form/1` function.
+  `to_form/1` expects either a map or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
+  as the source of data and normalizes it into `Phoenix.HTML.Form` structure.
 
   For example, you may use the parameters received in a
   `c:Phoenix.LiveView.handle_event/3` callback to create an Ecto changeset

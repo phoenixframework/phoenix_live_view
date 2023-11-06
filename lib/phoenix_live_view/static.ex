@@ -243,13 +243,19 @@ defmodule Phoenix.LiveView.Static do
       | extended_attrs
     ]
 
-    Phoenix.HTML.Tag.content_tag(tag, "", attrs)
+    content_tag(tag, attrs, "")
   end
 
   defp to_rendered_content_tag(socket, tag, view, attrs) do
     rendered = Utils.to_rendered(socket, view)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
-    Phoenix.HTML.Tag.content_tag(tag, {:safe, Diff.to_iodata(diff)}, attrs)
+    content_tag(tag, attrs, Diff.to_iodata(diff))
+  end
+
+  defp content_tag(tag, attrs, content) do
+    tag = to_string(tag)
+    {:safe, attrs} = Phoenix.HTML.attributes_escape(attrs)
+    {:safe, [?<, tag, attrs, ?>, content, ?<, ?/, tag, ?>]}
   end
 
   defp load_live!(view_or_component, kind) do

@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   The HTMLEngine that powers `.heex` templates and the `~H` sigil.
 
   It works by adding a HTML parsing and validation layer on top
-  of `Phoenix.HTML.TagEngine`.
+  of `Phoenix.LiveView.TagEngine`.
   """
 
   @behaviour Phoenix.Template.Engine

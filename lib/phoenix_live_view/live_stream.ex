@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.LiveStream do
     raise ArgumentError, """
     expected stream :#{dom_prefix} to be a struct or map with :id key, got: #{inspect(other)}
 
-    If you would like to generate custom DOM id's based on other keys, use the :dom_id option.
+    If you would like to generate custom DOM id's based on other keys, use stream_configure/3 with the :dom_id option beforehand.
     """
   end
 
