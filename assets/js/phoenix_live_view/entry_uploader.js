@@ -15,6 +15,7 @@ export default class EntryUploader {
 
   error(reason){
     if(this.errored){ return }
+    this.uploadChannel.leave()
     this.errored = true
     clearTimeout(this.chunkTimer)
     this.entry.error(reason)
