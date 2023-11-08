@@ -227,7 +227,7 @@ The new `presign_upload/2`:
 ```elixir
 def presign_upload(entry, socket) do
   config = ExAws.Config.new(:s3)
-  bucket = "alborde"
+  bucket = "bucket"
   key = "public/#{entry.client_name}"
 
   {:ok, url} =
