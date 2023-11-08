@@ -243,7 +243,6 @@ The new `Uploaders.S3`:
 
 ```js
 Uploaders.S3 = function (entries, onViewError) {
-
     entries.forEach(entry => {
         let xhr = new XMLHttpRequest()
         onViewError(() => xhr.abort())
