@@ -39,7 +39,7 @@ the default layouts they will use. See the `def controller`
 and `def live_view` definitions in your `MyAppWeb` to learn how
 it is included.
 
-For LiveViews, the default layout can be overidden in two different
+For LiveViews, the default layout can be overridden in two different
 ways for flexibility:
 
   1. The `:layout` option in `Phoenix.LiveView.Router.live_session/2`,
