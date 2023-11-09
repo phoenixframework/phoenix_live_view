@@ -133,25 +133,25 @@ The mount callback receives three arguments: the request parameters, the session
 The parameters can be used to read information from the URL. For example, assuming you have a `Thermostat` module defined somewhere that can read this information based on the house name, you could write this:
 
 ```elixir
-  def mount(%{"house" => house}, _session, socket) do
-    temperature = Thermostat.get_house_reading(house)
-    {:ok, assign(socket, :temperature, temperature)}
-  end
+def mount(%{"house" => house}, _session, socket) do
+  temperature = Thermostat.get_house_reading(house)
+  {:ok, assign(socket, :temperature, temperature)}
+end
 ```
 
 And then in your router:
 
 ```elixir
-  live "/thermostat/:house", ThermostatLive
+live "/thermostat/:house", ThermostatLive
 ```
 
 The session retrieves information from a signed (or encrypted) cookie. This is where you can store authentication information, such as `current_user_id`:
 
 ```elixir
-  def mount(_params, %{"current_user_id" => user_id}, socket) do
-    temperature = Thermostat.get_user_reading(user_id)
-    {:ok, assign(socket, :temperature, temperature)}
-  end
+def mount(_params, %{"current_user_id" => user_id}, socket) do
+  temperature = Thermostat.get_user_reading(user_id)
+  {:ok, assign(socket, :temperature, temperature)}
+end
 ```
 
 > Phoenix comes with built-in authentication generators. See `mix phx.gen.auth`.
@@ -159,10 +159,10 @@ The session retrieves information from a signed (or encrypted) cookie. This is w
 Most times, in practice, you will use both:
 
 ```elixir
-  def mount(%{"house" => house}, %{"current_user_id" => user_id}, socket) do
-    temperature = Thermostat.get_house_reading(user_id, house)
-    {:ok, assign(socket, :temperature, temperature)}
-  end
+def mount(%{"house" => house}, %{"current_user_id" => user_id}, socket) do
+  temperature = Thermostat.get_house_reading(user_id, house)
+  {:ok, assign(socket, :temperature, temperature)}
+end
 ```
 
 In other words, you want to read the information about a given house, as long as the user has access to it.

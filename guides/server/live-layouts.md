@@ -63,10 +63,10 @@ tab with a notification. For example, to update the user's notification
 count in the browser's title bar, first set the `page_title` assign on
 mount:
 
-      def mount(_params, _session, socket) do
-        socket = assign(socket, page_title: "Latest Posts")
-        {:ok, socket}
-      end
+    def mount(_params, _session, socket) do
+      socket = assign(socket, page_title: "Latest Posts")
+      {:ok, socket}
+    end
 
 Then access `@page_title` in the root layout:
 
