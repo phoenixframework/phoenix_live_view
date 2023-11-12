@@ -252,6 +252,45 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
       assert metadata.params == %{"op" => "boom"}
     end
+
+    test "emits telemetry events for update calls", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_component, :update])
+
+      {:ok, view, _html} = live(conn, "/multi-targets")
+
+      assert_receive {:event, [:phoenix, :live_component, :update, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      refute metadata.update_many?
+
+      assert [
+               %{
+                 cid: cid,
+                 assigns: %{id: _id, name: name},
+                 socket: component_socket,
+                 new?: true
+               },
+               _
+             ] = metadata.component_data
+
+      assert is_integer(cid)
+
+      assert_receive {:event, [:phoenix, :live_component, :update, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.socket
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert [%{socket: updated_component_socket}, _] = metadata.component_data
+
+      assert updated_component_socket != component_socket
+
+      render_click(view, "disable", %{"name" => name})
+
+      assert_receive {:event, [:phoenix, :live_component, :update, :start], %{system_time: _},
+                      %{component_data: [%{new?: false, assigns: %{name: ^name, disabled: true}} | _]}}
+    end
   end
 
   describe "logging configuration" do
