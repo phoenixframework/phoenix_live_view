@@ -202,22 +202,17 @@ defmodule Phoenix.LiveView.TelemetryTest do
 
       assert metadata.socket.transport_pid
       assert metadata.force?
+      assert metadata.changed?
 
       assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, metadata}
 
       assert metadata.socket.transport_pid
-      # Includes a full render diff
-      assert %{0 => _, :s => _} = metadata.diff
       assert metadata.force?
       assert metadata.changed?
 
       render_submit(view, :save, %{temp: 20})
 
-      # Returns a partial diff on the second render
-      assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, metadata}
-      assert %{} = metadata.diff
-      refute Enum.empty?(metadata.diff)
-      refute Map.has_key?(metadata.diff, :s)
+      assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, _}
     end
   end
 
