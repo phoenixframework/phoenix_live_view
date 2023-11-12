@@ -629,7 +629,6 @@ defmodule Phoenix.LiveView.Diff do
     {{pending, diffs, components}, seen_ids} =
       Enum.reduce(pending, acc, fn {component, entries}, acc ->
         {{pending, diffs, components}, seen_ids} = acc
-        update_many? = function_exported?(component, :update_many, 1)
         entries = maybe_preload_components(component, Enum.reverse(entries))
 
         {assigns_sockets, metadata, components, seen_ids} =
@@ -653,23 +652,21 @@ defmodule Phoenix.LiveView.Diff do
                      put_cid(components, component, id, cid)}
                 end
 
-              assigns_sockets =
-                if update_many? do
-                  [{new_assigns, socket} | assigns_sockets]
-                else
-                  [Utils.maybe_call_update!(socket, component, new_assigns) | assigns_sockets]
-                end
-
+              assigns_sockets = [{new_assigns, socket} | assigns_sockets]
               metadata = [{cid, id, new?} | metadata]
               seen_ids = Map.put(seen_ids, [component | id], true)
               {assigns_sockets, metadata, components, seen_ids}
           end)
 
+        assigns_sockets = Enum.reverse(assigns_sockets)
+
         sockets =
-          if update_many? do
-            component.update_many(Enum.reverse(assigns_sockets))
+          if function_exported?(component, :update_many, 1) do
+            component.update_many(assigns_sockets)
           else
-            Enum.reverse(assigns_sockets)
+            Enum.map(assigns_sockets, fn {assigns, socket} -> 
+              Utils.maybe_call_update!(socket, component, assigns)
+            end)
           end
 
         metadata = Enum.reverse(metadata)
