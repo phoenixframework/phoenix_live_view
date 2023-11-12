@@ -266,30 +266,27 @@ defmodule Phoenix.LiveView.TelemtryTest do
       refute metadata.update_many?
 
       assert [
-               %{
-                 cid: cid,
-                 assigns: %{id: _id, name: name},
-                 socket: component_socket,
-                 new?: true
+               {
+                 %{id: _id, name: name},
+                 %{assigns: %{myself: cid}} = component_socket
                },
                _
-             ] = metadata.component_data
-
-      assert is_integer(cid)
+             ] = metadata.assigns_sockets
 
       assert_receive {:event, [:phoenix, :live_component, :update, :stop], %{duration: _},
                       metadata}
 
       assert metadata.socket
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      assert [%{socket: updated_component_socket}, _] = metadata.component_data
+      assert [updated_component_socket, _] = metadata.sockets
 
       assert updated_component_socket != component_socket
+      assert %{myself: ^cid} = updated_component_socket.assigns
 
       render_click(view, "disable", %{"name" => name})
 
       assert_receive {:event, [:phoenix, :live_component, :update, :start], %{system_time: _},
-                      %{component_data: [%{new?: false, assigns: %{name: ^name, disabled: true}} | _]}}
+                      %{assigns_sockets: [{%{name: ^name, disabled: true}, _} | _]}}
     end
   end
 
