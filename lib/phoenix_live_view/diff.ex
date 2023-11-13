@@ -629,6 +629,7 @@ defmodule Phoenix.LiveView.Diff do
     {{pending, diffs, components}, seen_ids} =
       Enum.reduce(pending, acc, fn {component, entries}, acc ->
         {{pending, diffs, components}, seen_ids} = acc
+        update_many? = function_exported?(component, :update_many, 1)
         entries = maybe_preload_components(component, Enum.reverse(entries))
 
         {assigns_sockets, metadata, components, seen_ids} =
@@ -659,8 +660,6 @@ defmodule Phoenix.LiveView.Diff do
           end)
 
         assigns_sockets = Enum.reverse(assigns_sockets)
-        metadata = Enum.reverse(metadata)
-        update_many? = function_exported?(component, :update_many, 1)
 
         telemetry_metadata = %{
           socket: socket,
@@ -683,6 +682,7 @@ defmodule Phoenix.LiveView.Diff do
             {sockets, Map.put(telemetry_metadata, :sockets, sockets)}
           end)
 
+        metadata = Enum.reverse(metadata)
         triplet = zip_components(sockets, metadata, component, cids, {pending, diffs, components})
         {triplet, seen_ids}
       end)
