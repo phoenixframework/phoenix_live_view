@@ -263,7 +263,6 @@ defmodule Phoenix.LiveView.TelemtryTest do
 
       assert metadata.socket
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
-      refute metadata.update_many?
 
       assert [
                {

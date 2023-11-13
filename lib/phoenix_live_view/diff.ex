@@ -664,8 +664,7 @@ defmodule Phoenix.LiveView.Diff do
         telemetry_metadata = %{
           socket: socket,
           component: component,
-          assigns_sockets: assigns_sockets,
-          update_many?: update_many?
+          assigns_sockets: assigns_sockets
         }
 
         sockets =
