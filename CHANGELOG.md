@@ -101,6 +101,7 @@
   * Remove previously deprecated `<%= live_img_preview(entry) %>`. Use `<.live_img_preview entry={entry} />` instead
   * Remove previously deprecated `<%= live_file_input(upload) %>`. Use `<.live_file_input upload={upload} />` instead
   * Remove previously deprecated `<%= live_component(Component) %>`. Use `<.live_component module={Component} id=\"hello\" />` instead
+  * Don't convert underscores to dashes automatically when rendering HTML attributes. Use dashes or underscores where appropriate instead.
 
 ### Enhancements
   * Support stream resets with bulk insert operations
