@@ -190,7 +190,67 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             force?: boolean,
             changed?: boolean
           }
-          
+
+  * `[:phoenix, :live_component, :update, :start]` - Dispatched by a `Phoenix.LiveComponent`
+    immediately before [`update/2`](`c:Phoenix.LiveComponent.update/2`) or a
+    [`update_many/1`](`c:Phoenix.LiveComponent.update_many/1`) is invoked.
+
+    In the case of[`update/2`](`c:Phoenix.LiveComponent.update/2`) it might dispatch one event
+    for multiple calls.
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            component: atom,
+            assigns_sockets: {map(), Phoenix.LiveView.Socket.t}
+          }
+
+  * `[:phoenix, :live_component, :update, :stop]` - Dispatched by a `Phoenix.LiveComponent`
+    when the [`update/2`](`c:Phoenix.LiveComponent.update/2`) or a
+    [`update_many/1`](`c:Phoenix.LiveComponent.update_many/1`) callback completes successfully.
+
+    In the case of[`update/2`](`c:Phoenix.LiveComponent.update/2`) it might dispatch one event
+    for multiple calls. The `sockets` metadata contain the updated sockets.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            component: atom,
+            assigns_sockets: {map(), Phoenix.LiveView.Socket.t},
+            sockets: Phoenix.LiveView.Socket.t
+          }
+
+  * `[:phoenix, :live_component, :update, :exception]` - Dispatched by a `Phoenix.LiveComponent`
+    when an exception is raised in the [`update/2`](`c:Phoenix.LiveComponent.update/2`) or a
+    [`update_many/1`](`c:Phoenix.LiveComponent.update_many/1`) callback.
+
+    In the case of[`update/2`](`c:Phoenix.LiveComponent.update/2`) it might dispatch one event
+    for multiple calls.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            component: atom,
+            assigns_sockets: {map(), Phoenix.LiveView.Socket.t}
+          }
+
   * `[:phoenix, :live_component, :handle_event, :start]` - Dispatched by a `Phoenix.LiveComponent`
     immediately before [`handle_event/3`](`c:Phoenix.LiveComponent.handle_event/3`) is invoked.
 
