@@ -143,6 +143,53 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             event: String.t(),
             params: unsigned_params
           }
+
+  * `[:phoenix, :live_view, :render, :start]` - Dispatched by a `Phoenix.LiveView`
+    immediately before [`render/1`](`c:Phoenix.LiveComponent.render/1`) is invoked.
+    
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            force?: boolean,
+            changed?: boolean
+          }
+
+  * `[:phoenix, :live_view, :render, :stop]` - Dispatched by a `Phoenix.LiveView`
+    when the [`render/1`](`c:Phoenix.LiveView.render/1`) callback completes successfully.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            force?: boolean,
+            changed?: boolean
+          }
+
+  * `[:phoenix, :live_view, :render, :exception]` - Dispatched by a `Phoenix.LiveView`
+    when an exception is raised in the [`render/1`](`c:Phoenix.LiveView.render/1`) callback.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            force?: boolean,
+            changed?: boolean
+          }
           
   * `[:phoenix, :live_component, :handle_event, :start]` - Dispatched by a `Phoenix.LiveComponent`
     immediately before [`handle_event/3`](`c:Phoenix.LiveComponent.handle_event/3`) is invoked.
