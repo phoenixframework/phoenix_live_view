@@ -121,6 +121,10 @@ defmodule Phoenix.LiveView.UploadChannel do
   end
 
   @impl true
+  def handle_info({:EXIT, _pid, reason}, socket) do
+    {:stop, reason, socket}
+  end
+
   def handle_info(
         {:DOWN, _, _, live_view_pid, reason},
         %{assigns: %{live_view_pid: live_view_pid}} = socket
