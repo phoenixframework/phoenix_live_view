@@ -151,8 +151,8 @@ defmodule Phoenix.LiveView.Router do
   ## Options
 
     * `:session` - The optional extra session map or MFA tuple to be merged with
-      the LiveView session. For example, `%{"admin" => true}`, `{MyMod, :session, []}`.
-      For MFA, the function is invoked, passing the `Plug.Conn` struct is prepended
+      the LiveView session. For example, `%{"admin" => true}` or `{MyMod, :session, []}`.
+      For MFA, the function is invoked and the `Plug.Conn` struct is prepended
       to the arguments list.
 
     * `:root_layout` - The optional root layout tuple for the initial HTTP render to
