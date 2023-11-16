@@ -153,6 +153,13 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
+  @doc """
+  Returns a diff containing only the events that have been pushed.
+  """
+  def get_push_events_diff(socket) do
+    if events = Utils.get_push_events(socket), do: %{@events => events}
+  end
+
   defp maybe_put_title(diff, socket) do
     if Utils.changed?(socket.assigns, :page_title) do
       Map.put(diff, @title, socket.assigns.page_title)
