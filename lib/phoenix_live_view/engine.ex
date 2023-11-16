@@ -1202,7 +1202,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Calls to attributes escape is always safe
   defp to_safe(
-         {{:., _, [{:__aliases__, _, [:Phoenix, :HTML]}, :attributes_escape]}, _, [_]} = safe,
+         {{:., _, [Phoenix.LiveView.TagEngine, :attributes_escape]}, _, [_]} = safe,
          line,
          _extra_clauses?
        ) do

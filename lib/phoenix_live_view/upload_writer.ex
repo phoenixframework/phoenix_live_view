@@ -29,6 +29,8 @@ defmodule Phoenix.LiveView.UploadWriter do
       defmodule EchoWriter do
         @behaviour Phoenix.LiveView.UploadWriter
 
+        require Logger
+
         @impl true
         def init(opts) do
           {:ok, %{total: 0, level: Keyword.fetch!(opts, :level)}}

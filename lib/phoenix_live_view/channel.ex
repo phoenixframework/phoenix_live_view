@@ -913,23 +913,35 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp render_diff(state, socket, force?) do
+    changed? = Utils.changed?(socket)
+
     {socket, diff, components} =
-      if force? or Utils.changed?(socket) do
-        rendered = Utils.to_rendered(socket, socket.view)
-        {socket, diff, components} = Diff.render(socket, rendered, state.components)
+      if force? or changed? do
+        :telemetry.span(
+          [:phoenix, :live_view, :render],
+          %{socket: socket, force?: force?, changed?: changed?},
+          fn ->
+            rendered = Utils.to_rendered(socket, socket.view)
+            {socket, diff, components} = Diff.render(socket, rendered, state.components)
 
-        socket =
-          socket
-          |> Lifecycle.after_render()
-          |> Utils.clear_changed()
+            socket =
+              socket
+              |> Lifecycle.after_render()
+              |> Utils.clear_changed()
 
-        {socket, diff, components}
+            {
+              {socket, diff, components},
+              %{socket: socket, force?: force?, changed?: changed?}
+            }
+          end
+        )
       else
         {socket, %{}, state.components}
       end
 
     diff = Diff.render_private(socket, diff)
     new_socket = Utils.clear_temp(socket)
+
     {:diff, diff, %{state | socket: new_socket, components: components}}
   end
 
