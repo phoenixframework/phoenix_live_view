@@ -7,7 +7,7 @@
   * Fix JS command `:target` failing to work when used as phx-submit or phx-change with a selector-based target
 
 ### Enhancements
-  * Speed up DOM patching performance 3-30x 🔥
+  * Speed up DOM patching performance 3-30x 🔥🎸🚀
 
 ## 0.20.1 (2023-10-09)
 
