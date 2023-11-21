@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.LiveStream do
         raise ArgumentError, """
         streams can only be consumed directly by a for comprehension.
         If you are attempting to consume the stream ahead of time, such as with
-        `Enum.with_index(@stream.#{stream.name})`, you need to place the relevant information
+        `Enum.with_index(@streams.#{stream.name})`, you need to place the relevant information
         within the stream items instead.
         """
       end
