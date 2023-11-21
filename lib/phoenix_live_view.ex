@@ -71,7 +71,7 @@ defmodule Phoenix.LiveView do
   ## Async Operations
 
   Performing asynchronous work is common in LiveViews and LiveComponents.
-  It allows the user to get a working UI quicky while the system fetches some
+  It allows the user to get a working UI quickly while the system fetches some
   data in the background or talks to an external service, without blocking the
   render or event handling. For async work, you also typically need to handle
   the different states of the async operation, such as loading, error, and the
@@ -1818,7 +1818,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Starts an ansynchronous task and invokes callback to handle the result.
+  Starts an asynchronous task and invokes callback to handle the result.
 
   The task is linked to the caller and errors/exits are wrapped.
   The result of the task is sent to the `c:handle_async/3` callback

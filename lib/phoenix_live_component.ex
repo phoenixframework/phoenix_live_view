@@ -125,7 +125,7 @@ defmodule Phoenix.LiveComponent do
 
   Live components also support an optional `c:update_many/1` callback
   as an alternative to `c:update/2`. While `c:update/2` is called for
-  each component individially, `c:update_many/1` is called with all
+  each component individually, `c:update_many/1` is called with all
   LiveComponents of the same module being currently rendered/updated.
   The advantage is that you can preload data from the database using
   a single query for all components, instead of running one query per
@@ -377,7 +377,7 @@ defmodule Phoenix.LiveComponent do
 
   ```elixir
   def handle_event("update_title", %{"title" => title}, socket) do
-    socket.assigns.on_card_update(%{socket.assigns.card | title: title})
+    socket.assigns.on_card_update.(%{socket.assigns.card | title: title})
     {:noreply, socket}
   end
   ```

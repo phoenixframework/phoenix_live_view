@@ -1712,6 +1712,19 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 5
       )
+
+      assert_formatter_output(
+        """
+        <span phx-no-format class="underline">Check</span> Messages
+        """,
+        """
+        <span
+          phx-no-format
+          class="underline"
+        >Check</span> Messages
+        """,
+        line_length: 5
+      )
     end
 
     test "respect nesting of children when phx-no-format is present" do

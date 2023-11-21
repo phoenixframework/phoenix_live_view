@@ -127,8 +127,9 @@ export default class DOMPatch {
 
   /**
    * Run the patch via morphdom
+   * @param {boolean} isJoinPatch 
    */
-  perform(){
+  perform(isJoinPatch){
     let {view, liveSocket, container, html} = this
     let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
     if(this.isCIDPatch() && !targetContainer){ return }
@@ -180,6 +181,9 @@ export default class DOMPatch {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
           if(DOM.isPhxDestroyed(node)){ return null }
+          // If we have a join patch, then by definition there was no PHX_MAGIC_ID.
+          // This is important to reduce the amount of elements morphdom discards.
+          if(isJoinPatch){ return node.id }
           return node.id || (node.getAttribute && node.getAttribute(PHX_MAGIC_ID))
         },
         // skip indexing from children when container is stream

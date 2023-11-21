@@ -468,7 +468,7 @@ export default class View {
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, streams, null)
     patch.markPrunableContentForRemoval()
-    this.performPatch(patch, false)
+    this.performPatch(patch, false, true)
     this.joinNewChildren()
     this.execNewMounted()
 
@@ -528,9 +528,10 @@ export default class View {
    * Perform DOM patch
    * @param {DOMPatch} patch 
    * @param {boolean} pruneCids - prune components associated in patch?
+   * @param {boolean} isJoinPatch
    * @returns {boolean} were children added?
    */
-  performPatch(patch, pruneCids){
+  performPatch(patch, pruneCids, isJoinPatch = false){
     let removedEls = []
     let phxChildrenAdded = false
     let updatedHookIds = new Set()
@@ -563,7 +564,7 @@ export default class View {
     })
 
     patch.after("transitionsDiscarded", els => this.afterElementsRemoved(els, pruneCids))
-    patch.perform()
+    patch.perform(isJoinPatch)
     this.afterElementsRemoved(removedEls, pruneCids)
 
     return phxChildrenAdded

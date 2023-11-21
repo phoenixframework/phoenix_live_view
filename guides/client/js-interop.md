@@ -138,9 +138,9 @@ end
 Finally, a window event listener can listen for the event and conditionally
 execute the highlight command if the element matches:
 
-```
+```javascript
 let liveSocket = new LiveSocket(...)
-window.addEventListener(`phx:highlight`, (e) => {
+window.addEventListener("phx:highlight", (e) => {
   let el = document.getElementById(e.detail.id)
   if(el) {
     // logic for highlighting
@@ -162,9 +162,9 @@ attribute:
 Now, in the event listener, use `LiveSocket.execJS` to trigger all JS
 commands in the new attribute:
 
-```
+```javascript
 let liveSocket = new LiveSocket(...)
-window.addEventListener(`phx:highlight`, (e) => {
+window.addEventListener("phx:highlight", (e) => {
   document.querySelectorAll(`[data-highlight]`).forEach(el => {
     if(el.id == e.detail.id){
       liveSocket.execJS(el, el.getAttribute("data-highlight"))
