@@ -24,7 +24,11 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   ## Examples
 
-      AsyncResult.loading()
+      iex> result = AsyncResult.loading()
+      iex> result.loading
+      true
+      iex> result.ok?
+      false
 
   """
   def loading do
@@ -38,9 +42,13 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   ## Examples
 
-      AsyncResult.loading(my_async)
-      AsyncResult.loading(%{my: :loading_state})
-      AsyncResult.loading(my_async, %{my: :loading_state})
+      iex> result = AsyncResult.loading(%{my: :loading_state})
+      iex> result.loading
+      %{my: :loading_state}
+      iex> result = AsyncResult.loading(result)
+      iex> result.loading
+      true
+
   """
   def loading(%AsyncResult{} = result) do
     %AsyncResult{result | loading: true, failed: nil}
@@ -54,10 +62,16 @@ defmodule Phoenix.LiveView.AsyncResult do
   Updates the loading state of an existing `async_result`.
 
   When loading, the failed state will be reset to `nil`.
+  If the result was previously `ok?`, both `result` and
+  `loading` will be set.
 
   ## Examples
 
-      AsyncResult.loading(my_async, %{my: :loading_state})
+      iex> result = AsyncResult.loading()
+      iex> result = AsyncResult.loading(result, %{my: :other_state})
+      iex> result.loading
+      %{my: :other_state}
+
   """
   def loading(%AsyncResult{} = result, loading_state) do
     %AsyncResult{result | loading: loading_state, failed: nil}
@@ -67,14 +81,40 @@ defmodule Phoenix.LiveView.AsyncResult do
   Updates the failed state.
 
   When failed, the loading state will be reset to `nil`.
+  If the result was previously `ok?`, both `result` and
+  `failed` will be set.
 
   ## Examples
 
-      AsyncResult.failed(my_async, {:exit, :boom})
-      AsyncResult.failed(my_async, {:error, reason})
+      iex> result = AsyncResult.loading()
+      iex> result = AsyncResult.failed(result, {:exit, :boom})
+      iex> result.failed
+      {:exit, :boom}
+      iex> result.loading
+      nil
+
   """
   def failed(%AsyncResult{} = result, reason) do
     %AsyncResult{result | failed: reason, loading: nil}
+  end
+
+  @doc """
+  Creates a successful result.
+
+  The `:ok?` field will also be set to `true` to indicate this result has
+  completed successfully at least once, regardless of future state changes.
+
+  ### Examples
+
+      iex> result = AsyncResult.ok("initial result")
+      iex> result.ok?
+      true
+      iex> result.result
+      "initial result"
+
+  """
+  def ok(value) do
+    %AsyncResult{failed: nil, loading: nil, ok?: true, result: value}
   end
 
   @doc """
@@ -87,7 +127,15 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   ## Examples
 
-      AsyncResult.ok(my_async, my_result)
+      iex> result = AsyncResult.loading()
+      iex> result = AsyncResult.ok(result, "completed")
+      iex> result.ok?
+      true
+      iex> result.result
+      "completed"
+      iex> result.loading
+      nil
+
   """
   def ok(%AsyncResult{} = result, value) do
     %AsyncResult{result | failed: nil, loading: nil, ok?: true, result: value}
