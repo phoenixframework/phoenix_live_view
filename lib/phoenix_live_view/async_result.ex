@@ -20,20 +20,28 @@ defmodule Phoenix.LiveView.AsyncResult do
   alias Phoenix.LiveView.AsyncResult
 
   @doc """
+  Creates an async result in loading state.
+
+  ## Examples
+
+      AsyncResult.loading()
+
+  """
+  def loading do
+    %AsyncResult{loading: true}
+  end
+
+  @doc """
   Updates the loading state.
 
   When loading, the failed state will be reset to `nil`.
 
   ## Examples
 
-      AsyncResult.loading()
       AsyncResult.loading(my_async)
+      AsyncResult.loading(%{my: :loading_state})
       AsyncResult.loading(my_async, %{my: :loading_state})
   """
-  def loading do
-    %AsyncResult{loading: true}
-  end
-
   def loading(%AsyncResult{} = result) do
     %AsyncResult{result | loading: true, failed: nil}
   end
@@ -42,10 +50,18 @@ defmodule Phoenix.LiveView.AsyncResult do
     %AsyncResult{loading: loading_state, failed: nil}
   end
 
+  @doc """
+  Updates the loading state of an existing `async_result`.
+
+  When loading, the failed state will be reset to `nil`.
+
+  ## Examples
+
+      AsyncResult.loading(my_async, %{my: :loading_state})
+  """
   def loading(%AsyncResult{} = result, loading_state) do
     %AsyncResult{result | loading: loading_state, failed: nil}
   end
-
 
   @doc """
   Updates the failed state.
