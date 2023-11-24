@@ -81,7 +81,14 @@ defmodule Phoenix.LiveView do
   ### Async assigns
 
   The `assign_async/3` function takes a name, a list of keys which will be assigned
-  asynchronously, and a function that returns the result of the async operation.
+  asynchronously, and a function. This function will be wrapped in a `task` by
+  `assign_async`, making it easy for you to return the result. This function must 
+  return an `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map 
+  of the keys passed to `assign_async`.
+  If the function returns anything else, an error is raised.
+
+  The task is only started when the socket is connected.
+
   For example, let's say we want to async fetch a user's organization from the database,
   as well as their profile and rank:
 
@@ -93,15 +100,10 @@ defmodule Phoenix.LiveView do
          |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
-  Here we are assigning `:org` and `[:profile, :rank]` asynchronously. The async function
-  must return a `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map of
-  the keys passed to `assign_async`. If the function returns other keys or a different
-  set of keys, an error is raised.
-
   The state of the async operation is stored in the socket assigns within an
-  `%AsyncResult{}`. It carries the loading and failed states, as well as the result.
-  For example, if we wanted to show the loading states in the UI for the `:org`,
-  our template could conditionally render the states:
+  `Phoenix.LiveView.AsyncResult`. It carries the loading and failed states, as 
+  well as the result. For example, if we wanted to show the loading states in 
+  the UI for the `:org`, our template could conditionally render the states:
 
   ```heex
   <div :if={@org.loading}>Loading organization...</div>
@@ -123,7 +125,7 @@ defmodule Phoenix.LiveView do
 
   Sometimes you need lower level control of asynchronous operations, while
   still receiving process isolation and error handling. For this, you can use
-  `start_async/3` and the `AsyncResult` module directly:
+  `start_async/3` and the `Phoenix.LiveView.AsyncResult` module directly:
 
       def mount(%{"id" => id}, _, socket) do
         {:ok,
@@ -1791,10 +1793,12 @@ defmodule Phoenix.LiveView do
   @doc """
   Assigns keys asynchronously.
 
-  The task is linked to the caller and errors are wrapped.
+  Wraps your function in a task linked to the caller, errors are wrapped.
   Each key passed to `assign_async/3` will be assigned to
   an `%AsyncResult{}` struct holding the status of the operation
-  and the result when completed.
+  and the result when the function completes.
+
+  The task is only started when the socket is connected.
 
   ## Examples
 
@@ -1815,11 +1819,14 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Starts an asynchronous task and invokes callback to handle the result.
+  Wraps your function in an asynchronous task and invokes a callback `name` to
+  handle the result.
 
   The task is linked to the caller and errors/exits are wrapped.
   The result of the task is sent to the `c:handle_async/3` callback
   of the caller LiveView or LiveComponent.
+
+  The task is only started when the socket is connected.
 
   ## Examples
 
