@@ -21,7 +21,7 @@ directly to your cloud storage.
 For any service that supports large file
 uploads via chunked HTTP requests with `Content-Range`
 headers, you can use the UpChunk JS library by Mux to do all
-the hard work of uploading the file.
+the hard work of uploading the file. (For small file uploads, consider just following [this](#direct-to-s3) instead)
 
 You only need to wire the UpChunk instance to the LiveView
 UploadEntry callbacks, and LiveView will take care of the rest.
@@ -101,6 +101,8 @@ let liveSocket = new LiveSocket("/live", Socket, {
 ```
 
 ## Direct to S3
+
+The largest object that can be uploaded to S3 in a single PUT is 5 GB according to the [faq](https://aws.amazon.com/s3/faqs/#:~:text=Individual%20Amazon%20S3%20objects%20can,using%20the%20multipart%20upload%20capability.). For larger file uploads, consider using chunking as shown [above](#chunked-http-uploads).
 
 In order to enforce all of your file constraints when
 uploading to S3, it is necessary to perform a multipart form
