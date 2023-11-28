@@ -680,7 +680,7 @@ defmodule Phoenix.LiveView.Diff do
               if update_many? do
                 component.update_many(assigns_sockets)
               else
-                Enum.map(assigns_sockets, fn {assigns, socket} -> 
+                Enum.map(assigns_sockets, fn {assigns, socket} ->
                   Utils.maybe_call_update!(socket, component, assigns)
                 end)
               end

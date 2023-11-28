@@ -178,8 +178,11 @@ defmodule Phoenix.LiveView.NavigationTest do
         assert str =~ "The temp is"
       end
 
-      assert {:ok, thermo_live3, _html} = live_redirect(thermo_live2, to: "/thermo-live-session/nested-thermo")
-      assert {:ok, _thermo_live4, _html} = live_redirect(thermo_live3, to: "/thermo-live-session/nested-thermo")
+      assert {:ok, thermo_live3, _html} =
+               live_redirect(thermo_live2, to: "/thermo-live-session/nested-thermo")
+
+      assert {:ok, _thermo_live4, _html} =
+               live_redirect(thermo_live3, to: "/thermo-live-session/nested-thermo")
     end
 
     test "refused with mismatched live session", %{conn: conn} do

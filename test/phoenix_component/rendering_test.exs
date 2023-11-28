@@ -5,9 +5,9 @@ defmodule Phoenix.ComponentRenderingTest do
   import ExUnit.CaptureIO
   import Phoenix.LiveViewTest
 
-  embed_templates "pages/*"
-  embed_templates "another_root/*.html", root: "pages"
-  embed_templates "another_root/*.text", root: "pages", suffix: "_text"
+  embed_templates("pages/*")
+  embed_templates("another_root/*.html", root: "pages")
+  embed_templates("another_root/*.text", root: "pages", suffix: "_text")
 
   defp h2s(template) do
     template

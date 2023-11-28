@@ -17,8 +17,9 @@ defmodule Phoenix.LiveView.LiveReloadTestHelpers.Endpoint do
   def config(:cache_static_manifest_latest), do: Process.get(:cache_static_manifest_latest)
   def config(:otp_app), do: :phoenix_live_view
   def config(:pubsub_server), do: Phoenix.LiveView.PubSub
-  def config(:live_reload), do:
-    [
+
+  def config(:live_reload),
+    do: [
       url: "ws://localhost:4000",
       patterns: [
         ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
@@ -33,6 +34,7 @@ defmodule Phoenix.LiveView.LiveReloadTestHelpers.Endpoint do
         ]
       ]
     ]
+
   def config(which), do: super(which)
   def config(which, default), do: super(which, default)
 end

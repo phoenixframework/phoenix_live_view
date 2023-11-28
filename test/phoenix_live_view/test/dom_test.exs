@@ -132,7 +132,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -161,7 +162,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -189,7 +191,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -216,7 +219,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 

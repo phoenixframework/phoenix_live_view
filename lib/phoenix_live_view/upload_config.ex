@@ -123,7 +123,8 @@ defmodule Phoenix.LiveView.UploadConfig do
           ref: String.t(),
           auto_upload?: boolean(),
           writer:
-            (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() -> {module(), term()}),
+            (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
+               {module(), term()}),
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
@@ -561,7 +562,7 @@ defmodule Phoenix.LiveView.UploadConfig do
       client_size: Map.fetch!(client_entry, "size"),
       client_type: Map.fetch!(client_entry, "type"),
       client_last_modified: Map.get(client_entry, "last_modified"),
-      client_meta: Map.get(client_entry, "meta"),
+      client_meta: Map.get(client_entry, "meta")
     }
 
     {:ok, entry}

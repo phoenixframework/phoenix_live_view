@@ -218,10 +218,9 @@ defmodule Phoenix.LiveView.StreamTest do
     {:ok, lv, _html} = live(conn, "/stream")
 
     assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
-      render_click(lv, "consume-stream-invalid", %{})
-    end) =~ ~r/streams can only be consumed directly by a for comprehension/
+             render_click(lv, "consume-stream-invalid", %{})
+           end) =~ ~r/streams can only be consumed directly by a for comprehension/
   end
-
 
   defp assert_pruned_stream(lv) do
     stream = StreamLive.run(lv, fn socket -> {:reply, socket.assigns.streams.users, socket} end)

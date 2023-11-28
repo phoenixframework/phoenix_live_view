@@ -2,12 +2,13 @@ defmodule Phoenix.LiveViewTest.EndpointOverridable do
   defmacro __before_compile__(_env) do
     quote do
       @parsers Plug.Parsers.init(
-                parsers: [:urlencoded, :multipart, :json],
-                pass: ["*/*"],
-                json_decoder: Phoenix.json_library()
-              )
+                 parsers: [:urlencoded, :multipart, :json],
+                 pass: ["*/*"],
+                 json_decoder: Phoenix.json_library()
+               )
 
       defoverridable call: 2
+
       def call(conn, _) do
         %{conn | secret_key_base: config(:secret_key_base)}
         |> Plug.Parsers.call(@parsers)

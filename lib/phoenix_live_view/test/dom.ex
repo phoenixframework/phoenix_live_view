@@ -586,7 +586,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> parse_sorted!()
   end
 
-  @doc"""
+  @doc """
   Parses HTML into Floki format with sorted attributes.
   """
   def parse_sorted!(value) do
