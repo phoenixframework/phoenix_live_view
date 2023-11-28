@@ -102,7 +102,9 @@ let liveSocket = new LiveSocket("/live", Socket, {
 
 ## Direct to S3
 
-The largest object that can be uploaded to S3 in a single PUT is 5 GB according to the [faq](https://aws.amazon.com/s3/faqs/#:~:text=Individual%20Amazon%20S3%20objects%20can,using%20the%20multipart%20upload%20capability.). For larger file uploads, consider using chunking as shown [above](#chunked-http-uploads).
+The largest object that can be uploaded to S3 in a single PUT is 5 GB
+according to [S3 FAQ](https://aws.amazon.com/s3/faqs/). For larger file
+uploads, consider using chunking as shown above.
 
 This guide assumes an existing S3 bucket is set up with the correct CORS configuration
 which allows uploading directly to the bucket.
@@ -120,19 +122,19 @@ An example CORS config is:
 ]
 ```
 
-You may put your domain in the "allowedOrigins" instead. More information on configuring CORS for S3 buckets is available [here](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html).
+You may put your domain in the "allowedOrigins" instead. More information on configuring CORS for
+S3 buckets is [available on AWS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html).
 
-> FYI: In order to enforce all of your file constraints when
-> uploading to S3, it is necessary to perform a multipart form
-> POST with your file data.
+In order to enforce all of your file constraints when uploading to S3,
+it is necessary to perform a multipart form POST with your file data.
+You should have the following S3 information ready before proceeding:
 
-You should have the following S3 information ready before proceeding: 
 1. aws_access_key_id
 2. aws_secret_access_key
 3. bucket_name
 4. region
 
-We will first implement the liveview portion.
+We will first implement the LiveView portion:
 
 ```elixir
 def mount(_params, _session, socket) do
@@ -166,27 +168,22 @@ defp presign_upload(entry, socket) do
 end
 ```
 
-Here, we implemented a `presign_upload/2` function, which we
-passed as a captured anonymous function to `:external`. It generates a pre-signed URL for the upload and returns
-our `:ok` result, with a payload of metadata for the client,
-along with our unchanged socket. 
+Here, we implemented a `presign_upload/2` function, which we passed as a
+captured anonymous function to `:external`. It generates a pre-signed URL
+for the upload and returns our `:ok` result, with a payload of metadata
+for the client, along with our unchanged socket. 
 
-Next, we add a missing module `SimpleS3Upload` to generate pre-signed URLs for S3. 
-Create a file called `simple_s3_upload.ex`. 
-Get the file's content from this zero-dependency module
-called [`SimpleS3Upload`](https://gist.github.com/chrismccord/37862f1f8b1f5148644b75d20d1cb073)
+Next, we add a missing module `SimpleS3Upload` to generate pre-signed URLs
+for S3. Create a file called `simple_s3_upload.ex`. Get the file's content
+from this zero-dependency module called [`SimpleS3Upload`](https://gist.github.com/chrismccord/37862f1f8b1f5148644b75d20d1cb073)
 written by Chris McCord.
 
-> FYI: If you encounter errors with :crypto.hmac or with S3 blocking ACLs, 
-> please read the comments in Chris McCord's implementation above for solutions.
+> Tip: if you encounter errors with the `:crypto` module or with S3 blocking ACLs, 
+> please read the comments in the gist above for solutions.
 
-Next, we add our JavaScript client-side uploader. 
-This is referenced by the `:uploader` key in the metadata stored in the `meta` map. 
+Next, we add our JavaScript client-side uploader. The metadata *must* contain the
+`:uploader` key, specifying the name of the JavaScript client-side uploader.
 In this case, it's `"S3"`, as shown above.
-
-> FYI: The metadata *must* contain
-> the `:uploader` key, specifying the name of the JavaScript
-> client-side uploader
 
 Add a new file `uploaders.js` in the following directory `assets/js/` next to `app.js`.
 The content for this `S3` client uploader:
@@ -221,10 +218,12 @@ export default Uploaders;
 
 We define an `Uploaders.S3` function, which receives our entries. It then
 performs an AJAX request for each entry, using the `entry.progress()` and
-`entry.error()`. functions to report upload events back to the LiveView.
+`entry.error()` functions to report upload events back to the LiveView.
+The name of the uploader must match the one we return on the `:uploader`
+metadata in LiveView.
 
-Next, we need our `S3` client uploader to tell the `LiveSocket` where to find it. 
-Head over to `app.js` and add the `uploaders: Uploaders` key to the `LiveSocket`.
+Finally, head over to `app.js` and add the `uploaders: Uploaders` key to
+the `LiveSocket` constructor:
 
 ```js
 // for uploading to S3
@@ -238,9 +237,6 @@ let liveSocket = new LiveSocket("/live",
 )
 ```
 
-Over here, we passed the `uploaders` namespace to the `LiveSocket` constructor
-to tell phoenix where to find the uploaders returned within the external
-metadata.
-
-> FYI: To debug client-side javascript when trying to upload, 
-> you can inspect your browser and look at the console or networks tab to view the error logs
+Now "S3" returned from the server will match the one in the client.
+To debug client-side javascript when trying to upload, you can inspect your
+browser and look at the console or networks tab to view the error logs.
