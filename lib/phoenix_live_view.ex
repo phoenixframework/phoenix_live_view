@@ -82,8 +82,8 @@ defmodule Phoenix.LiveView do
 
   The `assign_async/3` function takes a name, a list of keys which will be assigned
   asynchronously, and a function. This function will be wrapped in a `task` by
-  `assign_async`, making it easy for you to return the result. This function must 
-  return an `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map 
+  `assign_async`, making it easy for you to return the result. This function must
+  return an `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map
   of the keys passed to `assign_async`.
   If the function returns anything else, an error is raised.
 
@@ -101,8 +101,8 @@ defmodule Phoenix.LiveView do
       end
 
   The state of the async operation is stored in the socket assigns within an
-  `Phoenix.LiveView.AsyncResult`. It carries the loading and failed states, as 
-  well as the result. For example, if we wanted to show the loading states in 
+  `Phoenix.LiveView.AsyncResult`. It carries the loading and failed states, as
+  well as the result. For example, if we wanted to show the loading states in
   the UI for the `:org`, our template could conditionally render the states:
 
   ```heex
@@ -1849,8 +1849,7 @@ defmodule Phoenix.LiveView do
 
   See the moduledoc for more information.
   """
-  def start_async(%Socket{} = socket, name, func)
-      when is_atom(name) and is_function(func, 0) do
+  def start_async(%Socket{} = socket, name, func) when is_function(func, 0) do
     Async.start_async(socket, name, func)
   end
 

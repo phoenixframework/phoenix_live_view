@@ -67,6 +67,12 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       assert render(lv)
       assert_receive {:exit, _pid, :boom}, 1000
     end
+
+    test "complex key task", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=complex_key")
+
+      assert render_async(lv) =~ "result: :complex_key"
+    end
   end
 
   describe "LiveComponent start_async" do
@@ -122,6 +128,12 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
       assert render(lv) =~ "lc: :loading"
       assert render_async(lv, 200) =~ "lc: :renewed"
+    end
+
+    test "complex key task", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=lc_complex_key")
+
+      assert render_async(lv) =~ "lc: :complex_key"
     end
   end
 end

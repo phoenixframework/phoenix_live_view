@@ -572,6 +572,13 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
      end)}
   end
 
+  def mount(%{"test" => "complex_key"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async({:result_task, :foo}, fn -> :complex_key end)}
+  end
+
   def handle_async(:result_task, {:ok, result}, socket) do
     {:noreply, assign(socket, result: result)}
   end
@@ -582,6 +589,10 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
 
   def handle_async(:result_task, {:exit, reason}, socket) do
     {:noreply, assign(socket, result: {:exit, reason})}
+  end
+
+  def handle_async({:result_task, _}, {:ok, result}, socket) do
+    {:noreply, assign(socket, result: result)}
   end
 
   def handle_info(:boom, _socket), do: exit(:boom)
@@ -656,6 +667,13 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
      end)}
   end
 
+  def update(%{test: "complex_key"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async({:result_task, :foo}, fn -> :complex_key end)}
+  end
+
   def update(%{action: :cancel}, socket) do
     {:ok, cancel_async(socket, :result_task)}
   end
@@ -678,5 +696,9 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
 
   def handle_async(:result_task, {:exit, reason}, socket) do
     {:noreply, assign(socket, result: {:exit, reason})}
+  end
+
+  def handle_async({:result_task, _}, {:ok, result}, socket) do
+    {:noreply, assign(socket, result: result)}
   end
 end

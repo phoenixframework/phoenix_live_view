@@ -3,8 +3,7 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  def start_async(%Socket{} = socket, key, func)
-      when is_atom(key) and is_function(func, 0) do
+  def start_async(%Socket{} = socket, key, func) when is_function(func, 0) do
     run_async_task(socket, key, func, :start)
   end
 
