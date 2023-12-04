@@ -38,8 +38,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @behaviour Phoenix.LiveView.TagEngine
 
   @impl true
-  def classify_type(":" <> name), do: {:slot, name}
   def classify_type(":inner_block"), do: {:error, "the slot name :inner_block is reserved"}
+  def classify_type(":" <> name), do: {:slot, name}
 
   def classify_type(<<first, _::binary>> = name) when first in ?A..?Z,
     do: {:remote_component, name}
