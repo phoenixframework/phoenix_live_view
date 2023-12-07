@@ -1230,6 +1230,7 @@ defmodule Phoenix.LiveView do
   LiveView.
 
   ## Examples
+
       def handle_event("cancel-order", _, socket) do
         ...
         send_update(Cart, id: "cart", status: "cancelled")
@@ -1811,6 +1812,20 @@ defmodule Phoenix.LiveView do
       end
 
   See the moduledoc for more information.
+
+  ## `assign_async/3` and `send_update/3`
+
+  Since the code inside `assign_async/3` runs in a separate process,
+  `send_update(Component, data)` does not work inside `assign_async/3`,
+  since `send_update/2` assumes it is running inside the LiveView process.
+  The solution is to explicitly send the update to the LiveView:
+
+      parent = self()
+      assign_async(socket, :org, fn ->
+        # ...
+        send_update(parent, Component, data)
+      end)
+
   """
   def assign_async(%Socket{} = socket, key_or_keys, func)
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
