@@ -1286,6 +1286,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Asserts a live patch will happen to a given path within `timeout`
   milliseconds. 
+
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
@@ -1354,6 +1355,7 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
+
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
