@@ -1278,7 +1278,9 @@ defmodule Phoenix.LiveViewTest do
     path
   end
 
-  def assert_patch(view, to) when is_binary(to), do: assert_patch(view, to, 100)
+  def assert_patch(view, to) when is_binary(to) do
+    assert_patch(view, to, Application.fetch_env!(:ex_unit, :assert_receive_timeout))
+  end
 
   @doc """
   Asserts a live patch will happen to a given path within `timeout`
