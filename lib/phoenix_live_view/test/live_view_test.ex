@@ -925,7 +925,8 @@ defmodule Phoenix.LiveViewTest do
   Awaits all current `assign_async` and `start_async` for a given LiveView or element.
 
   It renders the LiveView or Element once complete and returns the result.
-  By default, the timeout is 100ms, but a custom time may be passed to override.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   ## Examples
 
@@ -1278,11 +1279,16 @@ defmodule Phoenix.LiveViewTest do
     path
   end
 
-  def assert_patch(view, to) when is_binary(to), do: assert_patch(view, to, 100)
+  def assert_patch(view, to) when is_binary(to) do
+    assert_patch(view, to, Application.fetch_env!(:ex_unit, :assert_receive_timeout))
+  end
 
   @doc """
   Asserts a live patch will happen to a given path within `timeout`
-  milliseconds. The default `timeout` is 100.
+  milliseconds. 
+
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It always returns `:ok`.
 
@@ -1349,7 +1355,9 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
-  The default `timeout` is 100.
+
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns the flash messages from said redirect, if any.
   Note the flash will contain string keys.
