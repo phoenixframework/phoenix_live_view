@@ -76,6 +76,18 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
   end
 
+  describe "render_with" do
+    test "with custom function", %{conn: conn} do
+      conn = get(conn, "/render-with")
+      html = html_response(conn, 200)
+      assert html =~ "FROM RENDER WITH!"
+
+      {:ok, view, html} = live(conn)
+      assert html =~ "FROM RENDER WITH!"
+      assert render(view) =~ "FROM RENDER WITH!"
+    end
+  end
+
   describe "rendering" do
     test "live render with valid session", %{conn: conn} do
       conn = get(conn, "/thermo")

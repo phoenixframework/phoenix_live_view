@@ -563,5 +563,5 @@ defmodule Phoenix.LiveComponent do
             ) ::
               {:noreply, Socket.t()}
 
-  @optional_callbacks mount: 1, update_many: 1, update: 2, handle_event: 3, handle_async: 3
+  @optional_callbacks mount: 1, update_many: 1, update: 2, render: 1, handle_event: 3, handle_async: 3
 end

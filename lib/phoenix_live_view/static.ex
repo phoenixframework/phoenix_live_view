@@ -247,7 +247,7 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp to_rendered_content_tag(socket, tag, view, attrs) do
-    rendered = Utils.to_rendered(socket, view)
+    rendered = Phoenix.LiveView.Renderer.to_rendered(socket, view)
     {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
     content_tag(tag, attrs, Diff.to_iodata(diff))
   end

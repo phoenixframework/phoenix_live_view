@@ -929,7 +929,7 @@ defmodule Phoenix.LiveView.Channel do
           [:phoenix, :live_view, :render],
           %{socket: socket, force?: force?, changed?: changed?},
           fn ->
-            rendered = Utils.to_rendered(socket, socket.view)
+            rendered = Phoenix.LiveView.Renderer.to_rendered(socket, socket.view)
             {socket, diff, components} = Diff.render(socket, rendered, state.components)
 
             socket =

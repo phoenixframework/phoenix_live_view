@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Rendered, Socket, Lifecycle}
+  alias Phoenix.LiveView.{Socket, Lifecycle}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -216,46 +216,6 @@ defmodule Phoenix.LiveView.Utils do
     raise ArgumentError,
           ":layout expects a tuple of the form {MyLayoutView, :my_template} or false, " <>
             "got: #{inspect(other)}"
-  end
-
-  @doc """
-  Renders the view with socket into a rendered struct.
-  """
-  def to_rendered(socket, view) do
-    assigns = render_assigns(socket)
-
-    inner_content =
-      assigns
-      |> view.render()
-      |> check_rendered!(view)
-
-    case layout(socket, view) do
-      {layout_mod, layout_template} ->
-        assigns = put_in(assigns[:inner_content], inner_content)
-        assigns = put_in(assigns.__changed__[:inner_content], true)
-
-        layout_mod
-        |> Phoenix.Template.render(to_string(layout_template), "html", assigns)
-        |> check_rendered!(layout_mod)
-
-      false ->
-        inner_content
-    end
-  end
-
-  defp check_rendered!(%Rendered{} = rendered, _view), do: rendered
-
-  defp check_rendered!(other, view) do
-    raise RuntimeError, """
-    expected #{inspect(view)} to return a %Phoenix.LiveView.Rendered{} struct
-
-    Ensure your render function uses ~H, or your template uses the .heex extension.
-
-    Got:
-
-        #{inspect(other)}
-
-    """
   end
 
   @doc """
@@ -581,18 +541,6 @@ defmodule Phoenix.LiveView.Utils do
 
   defp drop_private(%Socket{private: private} = socket, keys) do
     %Socket{socket | private: Map.drop(private, keys)}
-  end
-
-  defp render_assigns(%{assigns: assigns} = socket) do
-    socket = %Socket{socket | assigns: %Socket.AssignsNotInSocket{__assigns__: assigns}}
-    Map.put(assigns, :socket, socket)
-  end
-
-  defp layout(socket, view) do
-    case socket.private do
-      %{live_layout: layout} -> layout
-      %{} -> view.__live__()[:layout]
-    end
   end
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do
