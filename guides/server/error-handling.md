@@ -77,7 +77,7 @@ scenarios: exceptions on mount and during any event.
 ## Common scenarios
 
 Sometimes, it is desirable to have error handling in multiple LiveViews. In
-this case, it is possible to check for an `@error` variable in the teplates
+this case, it is possible to check for an `@error` variable in the templates
 and conditionally render if it is set, or to redirect to a separate error page.
 However another option is to replace the rendering function using
 `Phoenix.LiveView.render_with/2` within a callback or hook such as
