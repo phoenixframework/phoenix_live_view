@@ -687,6 +687,13 @@ defmodule Phoenix.LiveView do
         e => document.getElementById(e.detail.id).remove()
       )
 
+  ## Note:
+
+  `push_event` won't send an event if you use push_navigate in the same call,
+  for example this won't send the `push_event` to the client.
+
+    {:noreply, socket |> push_event("some-event") |> push_navigate(to: ~p"/")}
+
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
