@@ -658,9 +658,12 @@ defmodule Phoenix.LiveView do
 
     2. They can be handled inside a hook via `handleEvent`.
 
-  Note that events are dispatched to all active hooks on the client who are
-  handling the given `event`. If you need to scope events, then this must
-  be done by namespacing them.
+  Events are dispatched to all active hooks on the client who are
+  handling the given `event`. If you need to scope events, then
+  this must be done by namespacing them.
+
+  Events pushed during `push_redirect` are currently discarded,
+  as the LiveView is immediately dismounted.
 
   ## Hook example
 
