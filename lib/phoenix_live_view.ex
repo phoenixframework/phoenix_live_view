@@ -658,9 +658,12 @@ defmodule Phoenix.LiveView do
 
     2. They can be handled inside a hook via `handleEvent`.
 
-  Note that events are dispatched to all active hooks on the client who are
-  handling the given `event`. If you need to scope events, then this must
-  be done by namespacing them.
+  Events are dispatched to all active hooks on the client who are
+  handling the given `event`. If you need to scope events, then
+  this must be done by namespacing them.
+
+  Events pushed during `push_redirect` are currently discarded,
+  as the LiveView is immediately dismounted.
 
   ## Hook example
 
@@ -686,13 +689,6 @@ defmodule Phoenix.LiveView do
         "phx:remove-el",
         e => document.getElementById(e.detail.id).remove()
       )
-
-  ## Note:
-
-  `push_event` won't send an event if you use push_navigate in the same call,
-  for example this won't send the `push_event` to the client.
-
-    {:noreply, socket |> push_event("some-event") |> push_navigate(to: ~p"/")}
 
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
