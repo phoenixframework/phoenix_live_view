@@ -7,6 +7,7 @@ is useful for client-side interop with existing libraries that do their
 own DOM operations. The following `phx-update` values are supported:
 
   * `replace` - the default operation. Replaces the element with the contents
+  * `append` - supports append operations. See the example below.
   * `stream` - supports stream operations. Streams are used to manage large
     collections in the UI without having to store the collection on the server
   * `ignore` - ignores updates to the DOM regardless of new content changes
