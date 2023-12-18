@@ -445,9 +445,11 @@ defmodule Phoenix.LiveViewTest.DOM do
                 child -> set_attr(child, "data-phx-stream", ref)
               end
 
+            parent_id = parent_id(html_tree, id)
+
             cond do
               # skip added children that aren't ours if they are not being appended
-              not_appended? and parent_id(html_tree, id) != container_id ->
+              not_appended? && parent_id && parent_id != container_id ->
                 acc
 
               # do not append existing child if already present, only update in place
