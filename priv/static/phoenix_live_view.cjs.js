@@ -538,12 +538,17 @@ var DOM = {
       el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
     }
   },
-  maybeHideFeedback(container, input, phxFeedbackFor) {
-    if (!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))) {
-      let feedbacks = [input.name];
-      if (input.name.endsWith("[]")) {
-        feedbacks.push(input.name.slice(0, -2));
+  maybeHideFeedback(container, inputs, phxFeedbackFor) {
+    let feedbacks = [];
+    inputs.forEach((input) => {
+      if (!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))) {
+        feedbacks.push(input.name);
+        if (input.name.endsWith("[]")) {
+          feedbacks.push(input.name.slice(0, -2));
+        }
       }
+    });
+    if (feedbacks.length > 0) {
       let selector = feedbacks.map((f) => `[${phxFeedbackFor}="${f}"]`).join(", ");
       DOM.all(container, selector, (el) => el.classList.add(PHX_NO_FEEDBACK_CLASS));
     }
@@ -1979,9 +1984,7 @@ var DOMPatch = class {
         appendPrependUpdates.forEach((update) => update.perform());
       });
     }
-    trackedInputs.forEach((input) => {
-      dom_default.maybeHideFeedback(targetContainer, input, phxFeedbackFor);
-    });
+    dom_default.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor);
     liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
     dom_default.dispatchEvent(document, "phx:update");
     added.forEach((el) => this.trackAfter("added", el));

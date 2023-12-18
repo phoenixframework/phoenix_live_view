@@ -289,10 +289,11 @@ let DOM = {
     let feedbacks = []
     inputs.forEach(input => {
       if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
-        input.name.endsWith("[]") ? feedbacks.push(input.name.slice(0, -2)) : feedbacks.push(input.name)
+        feedbacks.push(input.name)
+        if(input.name.endsWith("[]")){ feedbacks.push(input.name.slice(0, -2)) }
       }
     })
-    if (feedbacks.length > 0) {
+    if(feedbacks.length > 0){
       let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
       DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
     }
