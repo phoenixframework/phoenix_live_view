@@ -870,6 +870,21 @@ defmodule Phoenix.LiveView.TokenizerTest do
     end
   end
 
+  describe "reserved component" do
+    test "raise on using reserved slot :inner_block" do
+      message = """
+      nofile:1:1: the slot name :inner_block is reserved
+        |
+      1 | <:inner_block>Inner</:inner_block>
+        | ^\
+      """
+
+      assert_raise ParseError, message, fn ->
+        tokenize("<:inner_block>Inner</:inner_block>")
+      end
+    end
+  end
+
   test "mixing text and tags" do
     tokens =
       tokenize("""

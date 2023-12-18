@@ -170,6 +170,34 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
              eval(template, assigns)
   end
 
+  test "inlines dynamic attributes when keys are known at compilation time" do
+    assigns = %{val: 1}
+
+    # keyword list
+    template = ~S(<div {[d1: @val, d2: "2", d3: @val]} />)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div", " d2=\"2\"", "></div>"]} =
+             eval(template, assigns)
+
+    # list with string keys
+    template = ~S(<div {[{"d1", @val}, {"d2", "2"}, {"d3", @val}]} />)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div", " d2=\"2\"", "></div>"]} =
+             eval(template, assigns)
+
+    # map with atom keys
+    template = ~S(<div {%{d1: @val, d2: "2", d3: @val}} />)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div", " d2=\"2\"", "></div>"]} =
+             eval(template, assigns)
+
+    # map with string keys
+    template = ~S(<div {%{"d1" => @val, "d2" => "2", "d3" => @val}} />)
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div", " d2=\"2\"", "></div>"]} =
+             eval(template, assigns)
+  end
+
   test "optimizes attributes with literal string values" do
     assigns = %{unsafe: "<foo>", safe: {:safe, "<foo>"}}
 

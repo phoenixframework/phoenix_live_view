@@ -661,7 +661,7 @@ export default class LiveSocket {
       if(!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))){
         this.withinOwners(e.target, view => {
           let phxEvent = el.getAttribute(phxClickAway)
-          if(JS.isVisible(el)){
+          if(JS.isVisible(el) && JS.isInViewport(el)){
             JS.exec("click", phxEvent, view, el, ["push", {data: this.eventMeta("click", e, e.target)}])
           }
         })

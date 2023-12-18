@@ -323,6 +323,10 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   def handle_event("transform", %{"op" => _op}, socket) do
     {:noreply, assign(socket, :message, "Parent was updated")}
   end
+
+  def handle_event("disable", %{"name" => name}, socket) do
+    {:noreply, assign(socket, :disabled, Enum.uniq([name | socket.assigns.disabled]))}
+  end
 end
 
 defmodule Phoenix.LiveViewTest.WithLogOverride do

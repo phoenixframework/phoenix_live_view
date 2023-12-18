@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.TelemtryTest do
+defmodule Phoenix.LiveView.TelemetryTest do
   # Telemetry tests need to run synchronously
   use ExUnit.Case, async: false
 
@@ -191,6 +191,29 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert metadata.event == "crash"
       assert metadata.params == %{"foo" => "bar"}
     end
+
+    test " with a successful render callback emits render telemetry events", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_view, :render])
+
+      {:ok, view, _} = live(conn, "/thermo")
+
+      assert_receive {:event, [:phoenix, :live_view, :render, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.force?
+      assert metadata.changed?
+
+      assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, metadata}
+
+      assert metadata.socket.transport_pid
+      assert metadata.force?
+      assert metadata.changed?
+
+      render_submit(view, :save, %{temp: 20})
+
+      assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, _}
+    end
   end
 
   describe "live components" do
@@ -251,6 +274,41 @@ defmodule Phoenix.LiveView.TelemtryTest do
       assert metadata.event == "transform"
       assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
       assert metadata.params == %{"op" => "boom"}
+    end
+
+    test "emits telemetry events for update calls", %{conn: conn} do
+      attach_telemetry([:phoenix, :live_component, :update])
+
+      {:ok, view, _html} = live(conn, "/multi-targets")
+
+      assert_receive {:event, [:phoenix, :live_component, :update, :start], %{system_time: _},
+                      metadata}
+
+      assert metadata.socket
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+
+      assert [
+               {
+                 %{id: _id, name: name},
+                 %{assigns: %{myself: cid}} = component_socket
+               },
+               _
+             ] = metadata.assigns_sockets
+
+      assert_receive {:event, [:phoenix, :live_component, :update, :stop], %{duration: _},
+                      metadata}
+
+      assert metadata.socket
+      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert [updated_component_socket, _] = metadata.sockets
+
+      assert updated_component_socket != component_socket
+      assert %{myself: ^cid} = updated_component_socket.assigns
+
+      render_click(view, "disable", %{"name" => name})
+
+      assert_receive {:event, [:phoenix, :live_component, :update, :start], %{system_time: _},
+                      %{assigns_sockets: [{%{name: ^name, disabled: true}, _} | _]}}
     end
   end
 

@@ -17,7 +17,7 @@
   * Fix match error on live navigation when reconnecting from client
 
 ### Enhancements
-  * Support new `meta()` method on File/Blob sublcasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
+  * Support new `meta()` method on File/Blob subclasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
   * Improve void tagging and error messages
 
 ## 0.20.0 (2023-09-22)
@@ -101,6 +101,7 @@
   * Remove previously deprecated `<%= live_img_preview(entry) %>`. Use `<.live_img_preview entry={entry} />` instead
   * Remove previously deprecated `<%= live_file_input(upload) %>`. Use `<.live_file_input upload={upload} />` instead
   * Remove previously deprecated `<%= live_component(Component) %>`. Use `<.live_component module={Component} id=\"hello\" />` instead
+  * Don't convert underscores to dashes automatically when rendering HTML attributes. Use dashes or underscores where appropriate instead.
 
 ### Enhancements
   * Support stream resets with bulk insert operations

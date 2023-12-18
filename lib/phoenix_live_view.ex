@@ -71,7 +71,7 @@ defmodule Phoenix.LiveView do
   ## Async Operations
 
   Performing asynchronous work is common in LiveViews and LiveComponents.
-  It allows the user to get a working UI quicky while the system fetches some
+  It allows the user to get a working UI quickly while the system fetches some
   data in the background or talks to an external service, without blocking the
   render or event handling. For async work, you also typically need to handle
   the different states of the async operation, such as loading, error, and the
@@ -81,7 +81,14 @@ defmodule Phoenix.LiveView do
   ### Async assigns
 
   The `assign_async/3` function takes a name, a list of keys which will be assigned
-  asynchronously, and a function that returns the result of the async operation.
+  asynchronously, and a function. This function will be wrapped in a `task` by
+  `assign_async`, making it easy for you to return the result. This function must
+  return an `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map
+  of the keys passed to `assign_async`.
+  If the function returns anything else, an error is raised.
+
+  The task is only started when the socket is connected.
+
   For example, let's say we want to async fetch a user's organization from the database,
   as well as their profile and rank:
 
@@ -93,15 +100,10 @@ defmodule Phoenix.LiveView do
          |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
-  Here we are assigning `:org` and `[:profile, :rank]` asynchronously. The async function
-  must return a `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map of
-  the keys passed to `assign_async`. If the function returns other keys or a different
-  set of keys, an error is raised.
-
   The state of the async operation is stored in the socket assigns within an
-  `%AsyncResult{}`. It carries the loading and failed states, as well as the result.
-  For example, if we wanted to show the loading states in the UI for the `:org`,
-  our template could conditionally render the states:
+  `Phoenix.LiveView.AsyncResult`. It carries the loading and failed states, as
+  well as the result. For example, if we wanted to show the loading states in
+  the UI for the `:org`, our template could conditionally render the states:
 
   ```heex
   <div :if={@org.loading}>Loading organization...</div>
@@ -123,7 +125,7 @@ defmodule Phoenix.LiveView do
 
   Sometimes you need lower level control of asynchronous operations, while
   still receiving process isolation and error handling. For this, you can use
-  `start_async/3` and the `AsyncResult` module directly:
+  `start_async/3` and the `Phoenix.LiveView.AsyncResult` module directly:
 
       def mount(%{"id" => id}, _, socket) do
         {:ok,
@@ -301,6 +303,7 @@ defmodule Phoenix.LiveView do
               {:noreply, Socket.t()}
 
   @optional_callbacks mount: 3,
+                      render: 1,
                       terminate: 2,
                       handle_params: 3,
                       handle_event: 3,
@@ -539,6 +542,32 @@ defmodule Phoenix.LiveView do
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
   @doc """
+  Configures which function to use to render a LiveView/LiveComponent.
+
+  By default, LiveView invokes the `render/1` function in the same module
+  the LiveView/LiveComponent is defined, passing `assigns` as its sole
+  argument. This function allows you to set a different rendering function.
+
+  One possible use case for this function is to set a different template
+  on disconnected render. When the user first accesses a LiveView, we will
+  perform a disconnected render to send to the browser. This is useful for
+  several reasons, such as reducing the time to first paint and for search
+  engine indexing.
+
+  However, when LiveView is gated behind an authentication page, it may be
+  useful to render a placeholder on disconnected render and perform the
+  full render once the WebSocket connects. This can be achieved with
+  `render_with/2` and is particularly useful on complex pages (such as
+  dashboards and reports).
+
+  To do so, you must simply invoke `render_with(socket, &some_function_component/1)`,
+  configuring your socket with a new rendering function.
+  """
+  def render_with(%Socket{} = socket, component) when is_function(component, 1) do
+    put_in(socket.private[:render_with], component)
+  end
+
+  @doc """
   Puts a new private key and value in the socket.
 
   Privates are *not change tracked*. This storage is meant to be used by
@@ -563,6 +592,7 @@ defmodule Phoenix.LiveView do
     live_layout
     live_temp
     lifecycle
+    render_with
     root_view
   )a
   def put_private(%Socket{} = socket, key, value) when key not in @reserved_privates do
@@ -628,9 +658,12 @@ defmodule Phoenix.LiveView do
 
     2. They can be handled inside a hook via `handleEvent`.
 
-  Note that events are dispatched to all active hooks on the client who are
-  handling the given `event`. If you need to scope events, then this must
-  be done by namespacing them.
+  Events are dispatched to all active hooks on the client who are
+  handling the given `event`. If you need to scope events, then
+  this must be done by namespacing them.
+
+  Events pushed during `push_redirect` are currently discarded,
+  as the LiveView is immediately dismounted.
 
   ## Hook example
 
@@ -1228,6 +1261,7 @@ defmodule Phoenix.LiveView do
   LiveView.
 
   ## Examples
+
       def handle_event("cancel-order", _, socket) do
         ...
         send_update(Cart, id: "cart", status: "cancelled")
@@ -1791,10 +1825,12 @@ defmodule Phoenix.LiveView do
   @doc """
   Assigns keys asynchronously.
 
-  The task is linked to the caller and errors are wrapped.
+  Wraps your function in a task linked to the caller, errors are wrapped.
   Each key passed to `assign_async/3` will be assigned to
   an `%AsyncResult{}` struct holding the status of the operation
-  and the result when completed.
+  and the result when the function completes.
+
+  The task is only started when the socket is connected.
 
   ## Examples
 
@@ -1807,6 +1843,20 @@ defmodule Phoenix.LiveView do
       end
 
   See the moduledoc for more information.
+
+  ## `assign_async/3` and `send_update/3`
+
+  Since the code inside `assign_async/3` runs in a separate process,
+  `send_update(Component, data)` does not work inside `assign_async/3`,
+  since `send_update/2` assumes it is running inside the LiveView process.
+  The solution is to explicitly send the update to the LiveView:
+
+      parent = self()
+      assign_async(socket, :org, fn ->
+        # ...
+        send_update(parent, Component, data)
+      end)
+
   """
   def assign_async(%Socket{} = socket, key_or_keys, func)
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
@@ -1815,11 +1865,14 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Starts an ansynchronous task and invokes callback to handle the result.
+  Wraps your function in an asynchronous task and invokes a callback `name` to
+  handle the result.
 
   The task is linked to the caller and errors/exits are wrapped.
   The result of the task is sent to the `c:handle_async/3` callback
   of the caller LiveView or LiveComponent.
+
+  The task is only started when the socket is connected.
 
   ## Examples
 
@@ -1842,8 +1895,7 @@ defmodule Phoenix.LiveView do
 
   See the moduledoc for more information.
   """
-  def start_async(%Socket{} = socket, name, func)
-      when is_atom(name) and is_function(func, 0) do
+  def start_async(%Socket{} = socket, name, func) when is_function(func, 0) do
     Async.start_async(socket, name, func)
   end
 

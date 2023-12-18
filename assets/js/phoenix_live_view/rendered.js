@@ -65,7 +65,6 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
       }
       tagNameEndsAt = i
       tag = html.slice(iAtOpen + 1, tagNameEndsAt)
-      i++
       // Scan the opening tag for id, if there is any
       for(i; i < html.length; i++){
         if(html.charAt(i) === ">" ){ break }

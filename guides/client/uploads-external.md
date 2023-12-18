@@ -21,7 +21,9 @@ directly to your cloud storage.
 For any service that supports large file
 uploads via chunked HTTP requests with `Content-Range`
 headers, you can use the UpChunk JS library by Mux to do all
-the hard work of uploading the file.
+the hard work of uploading the file. For small file uploads
+or to get started quickly, consider [uploading directly to S3](#direct-to-s3)
+instead.
 
 You only need to wire the UpChunk instance to the LiveView
 UploadEntry callbacks, and LiveView will take care of the rest.
@@ -102,11 +104,11 @@ let liveSocket = new LiveSocket("/live", Socket, {
 
 ## Direct to S3
 
-In order to enforce all of your file constraints when
-uploading to S3, it is necessary to perform a multipart form
-POST with your file data.
+The largest object that can be uploaded to S3 in a single PUT is 5 GB
+according to [S3 FAQ](https://aws.amazon.com/s3/faqs/). For larger file
+uploads, consider using chunking as shown above.
 
-This guide assumes an existing S3 bucket with the correct CORS configuration
+This guide assumes an existing S3 bucket is set up with the correct CORS configuration
 which allows uploading directly to the bucket.
 
 An example CORS config is:
@@ -116,19 +118,25 @@ An example CORS config is:
     {
         "AllowedHeaders": [ "*" ],
         "AllowedMethods": [ "PUT", "POST" ],
-        "AllowedOrigins": [ your_domain_or_*_here ],
+        "AllowedOrigins": [ "*" ],
         "ExposeHeaders": []
     }
 ]
 ```
 
-More information on configuring CORS for S3 buckets is available at:
+You may put your domain in the "allowedOrigins" instead. More information on configuring CORS for
+S3 buckets is [available on AWS](https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html).
 
-https://docs.aws.amazon.com/AmazonS3/latest/userguide/ManageCorsUsing.html
+In order to enforce all of your file constraints when uploading to S3,
+it is necessary to perform a multipart form POST with your file data.
+You should have the following S3 information ready before proceeding:
 
-> The following example uses a zero-dependency module
-> called [`SimpleS3Upload`](https://gist.github.com/chrismccord/37862f1f8b1f5148644b75d20d1cb073)
-> written by Chris McCord to generate pre-signed URLs for S3.
+1. aws_access_key_id
+2. aws_secret_access_key
+3. bucket_name
+4. region
+
+We will first implement the LiveView portion:
 
 ```elixir
 def mount(_params, _session, socket) do
@@ -162,16 +170,25 @@ defp presign_upload(entry, socket) do
 end
 ```
 
-Here, we implemented a `presign_upload/2` function, which we
-passed as a captured anonymous function to `:external`. Next,
-we generate a pre-signed URL for the upload. Lastly, we return
-our `:ok` result, with a payload of metadata for the client,
-along with our unchanged socket. The metadata *must* contain
-the `:uploader` key, specifying the name of the JavaScript
-client-side uploader, in this case `"S3"`.
+Here, we implemented a `presign_upload/2` function, which we passed as a
+captured anonymous function to `:external`. It generates a pre-signed URL
+for the upload and returns our `:ok` result, with a payload of metadata
+for the client, along with our unchanged socket. 
 
-To complete the flow, we can implement our `S3` client
-uploader and tell the `LiveSocket` where to find it:
+Next, we add a missing module `SimpleS3Upload` to generate pre-signed URLs
+for S3. Create a file called `simple_s3_upload.ex`. Get the file's content
+from this zero-dependency module called [`SimpleS3Upload`](https://gist.github.com/chrismccord/37862f1f8b1f5148644b75d20d1cb073)
+written by Chris McCord.
+
+> Tip: if you encounter errors with the `:crypto` module or with S3 blocking ACLs, 
+> please read the comments in the gist above for solutions.
+
+Next, we add our JavaScript client-side uploader. The metadata *must* contain the
+`:uploader` key, specifying the name of the JavaScript client-side uploader.
+In this case, it's `"S3"`, as shown above.
+
+Add a new file `uploaders.js` in the following directory `assets/js/` next to `app.js`.
+The content for this `S3` client uploader:
 
 ```js
 let Uploaders = {}
@@ -198,18 +215,34 @@ Uploaders.S3 = function(entries, onViewError){
   })
 }
 
-let liveSocket = new LiveSocket("/live", Socket, {
-  uploaders: Uploaders,
-  params: {_csrf_token: csrfToken}
-})
+export default Uploaders;
 ```
 
 We define an `Uploaders.S3` function, which receives our entries. It then
 performs an AJAX request for each entry, using the `entry.progress()` and
-`entry.error()`. functions to report upload events back to the LiveView.
-Lastly, we pass the `uploaders` namespace to the `LiveSocket` constructor
-to tell phoenix where to find the uploaders returned within the external
-metadata.
+`entry.error()` functions to report upload events back to the LiveView.
+The name of the uploader must match the one we return on the `:uploader`
+metadata in LiveView.
+
+Finally, head over to `app.js` and add the `uploaders: Uploaders` key to
+the `LiveSocket` constructor to tell phoenix where to find the uploaders returned 
+within the external metadata.
+
+```js
+// for uploading to S3
+import Uploaders from "./uploaders"
+
+let liveSocket = new LiveSocket("/live",
+   Socket, {
+     params: {_csrf_token: csrfToken},
+     uploaders: Uploaders
+  }
+)
+```
+
+Now "S3" returned from the server will match the one in the client.
+To debug client-side javascript when trying to upload, you can inspect your
+browser and look at the console or networks tab to view the error logs.
 
 ### Direct to S3-Compatible
 
@@ -243,23 +276,22 @@ The new `Uploaders.S3`:
 
 ```js
 Uploaders.S3 = function (entries, onViewError) {
-    entries.forEach(entry => {
-        let xhr = new XMLHttpRequest()
-        onViewError(() => xhr.abort())
-        xhr.onload = () => xhr.status === 200 ? entry.progress(100) : entry.error()
-        xhr.onerror = () => entry.error()
+  entries.forEach(entry => {
+    let xhr = new XMLHttpRequest()
+    onViewError(() => xhr.abort())
+    xhr.onload = () => xhr.status === 200 ? entry.progress(100) : entry.error()
+    xhr.onerror = () => entry.error()
 
-        xhr.upload.addEventListener("progress", (event) => {
-            if (event.lengthComputable) {
-                let percent = Math.round((event.loaded / event.total) * 100)
-                if (percent < 100) { entry.progress(percent) }
-            }
-        })
-
-        let url = entry.meta.url
-
-        xhr.open("PUT", url, true)
-        xhr.send(entry.file)
+    xhr.upload.addEventListener("progress", (event) => {
+      if(event.lengthComputable){
+        let percent = Math.round((event.loaded / event.total) * 100)
+        if(percent < 100){ entry.progress(percent) }
+      }
     })
+
+    let url = entry.meta.url
+    xhr.open("PUT", url, true)
+    xhr.send(entry.file)
+  })
 }
 ```

@@ -153,6 +153,13 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
+  @doc """
+  Returns a diff containing only the events that have been pushed.
+  """
+  def get_push_events_diff(socket) do
+    if events = Utils.get_push_events(socket), do: %{@events => events}
+  end
+
   defp maybe_put_title(diff, socket) do
     if Utils.changed?(socket.assigns, :page_title) do
       Map.put(diff, @title, socket.assigns.page_title)
@@ -327,7 +334,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp component_to_rendered(socket, component, id) do
-    rendered = Utils.to_rendered(socket, component)
+    rendered = Phoenix.LiveView.Renderer.to_rendered(socket, component)
 
     if rendered.root != true and id != nil do
       reason =
@@ -653,24 +660,33 @@ defmodule Phoenix.LiveView.Diff do
                      put_cid(components, component, id, cid)}
                 end
 
-              assigns_sockets =
-                if update_many? do
-                  [{new_assigns, socket} | assigns_sockets]
-                else
-                  [Utils.maybe_call_update!(socket, component, new_assigns) | assigns_sockets]
-                end
-
+              assigns_sockets = [{new_assigns, socket} | assigns_sockets]
               metadata = [{cid, id, new?} | metadata]
               seen_ids = Map.put(seen_ids, [component | id], true)
               {assigns_sockets, metadata, components, seen_ids}
           end)
 
+        assigns_sockets = Enum.reverse(assigns_sockets)
+
+        telemetry_metadata = %{
+          socket: socket,
+          component: component,
+          assigns_sockets: assigns_sockets
+        }
+
         sockets =
-          if update_many? do
-            component.update_many(Enum.reverse(assigns_sockets))
-          else
-            Enum.reverse(assigns_sockets)
-          end
+          :telemetry.span([:phoenix, :live_component, :update], telemetry_metadata, fn ->
+            sockets =
+              if update_many? do
+                component.update_many(assigns_sockets)
+              else
+                Enum.map(assigns_sockets, fn {assigns, socket} -> 
+                  Utils.maybe_call_update!(socket, component, assigns)
+                end)
+              end
+
+            {sockets, Map.put(telemetry_metadata, :sockets, sockets)}
+          end)
 
         metadata = Enum.reverse(metadata)
         triplet = zip_components(sockets, metadata, component, cids, {pending, diffs, components})

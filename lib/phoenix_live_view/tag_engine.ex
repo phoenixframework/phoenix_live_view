@@ -812,7 +812,18 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
       {:root, {:expr, _, _} = expr, _attr_meta}, state ->
-        handle_attrs_escape(state, meta, parse_expr!(expr, state.file))
+        ast = parse_expr!(expr, state.file)
+
+        if pairs = dynamic_attrs_literal(ast) do
+          # Optimization: if keys are known at compilation time, we
+          # inline the dynamic attributes
+          Enum.reduce(pairs, state, fn {key, value}, state ->
+            name = to_string(key)
+            handle_attr_escape(state, meta, name, value)
+          end)
+        else
+          handle_attrs_escape(state, meta, ast)
+        end
 
       {name, {:expr, _, _} = expr, _attr_meta}, state ->
         handle_attr_escape(state, meta, name, parse_expr!(expr, state.file))
@@ -827,6 +838,22 @@ defmodule Phoenix.LiveView.TagEngine do
         update_subengine(state, :handle_text, [meta, " #{name}"])
     end)
   end
+
+  defp dynamic_attrs_literal({:%{}, _meta, pairs}) do
+    if literal_keys?(pairs), do: pairs
+  end
+
+  defp dynamic_attrs_literal(list) when is_list(list) do
+    if literal_keys?(list), do: list
+  end
+
+  defp dynamic_attrs_literal(_other), do: nil
+
+  def literal_keys?([{key, _value} | rest]) when is_atom(key) or is_binary(key),
+    do: literal_keys?(rest)
+
+  def literal_keys?([]), do: true
+  def literal_keys?(_other), do: false
 
   defp handle_special_expr(state, tag_meta) do
     ast =

@@ -799,6 +799,7 @@ defmodule Phoenix.LiveView.Channel do
           |> Map.put(:to, to)
 
         new_state
+        |> push_pending_events_on_redirect(new_socket)
         |> push_redirect(opts, ref)
         |> stop_shutdown_redirect(:redirect, opts)
 
@@ -806,6 +807,7 @@ defmodule Phoenix.LiveView.Channel do
         opts = copy_flash(new_state, flash, opts)
 
         new_state
+        |> push_pending_events_on_redirect(new_socket)
         |> push_redirect(opts, ref)
         |> stop_shutdown_redirect(:redirect, opts)
 
@@ -813,6 +815,7 @@ defmodule Phoenix.LiveView.Channel do
         opts = copy_flash(new_state, flash, opts)
 
         new_state
+        |> push_pending_events_on_redirect(new_socket)
         |> push_live_redirect(opts, ref, pending_diff_ack)
         |> stop_shutdown_redirect(:live_redirect, opts)
 
@@ -835,6 +838,11 @@ defmodule Phoenix.LiveView.Channel do
          |> maybe_push_pending_diff_ack(pending_diff_ack)
          |> push_diff(diff, ref)}
     end
+  end
+
+  defp push_pending_events_on_redirect(state, socket) do
+    if diff = Diff.get_push_events_diff(socket), do: push_diff(state, diff, nil)
+    state
   end
 
   defp patch_params_and_action!(socket, %{to: to}) do
@@ -913,23 +921,35 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp render_diff(state, socket, force?) do
+    changed? = Utils.changed?(socket)
+
     {socket, diff, components} =
-      if force? or Utils.changed?(socket) do
-        rendered = Utils.to_rendered(socket, socket.view)
-        {socket, diff, components} = Diff.render(socket, rendered, state.components)
+      if force? or changed? do
+        :telemetry.span(
+          [:phoenix, :live_view, :render],
+          %{socket: socket, force?: force?, changed?: changed?},
+          fn ->
+            rendered = Phoenix.LiveView.Renderer.to_rendered(socket, socket.view)
+            {socket, diff, components} = Diff.render(socket, rendered, state.components)
 
-        socket =
-          socket
-          |> Lifecycle.after_render()
-          |> Utils.clear_changed()
+            socket =
+              socket
+              |> Lifecycle.after_render()
+              |> Utils.clear_changed()
 
-        {socket, diff, components}
+            {
+              {socket, diff, components},
+              %{socket: socket, force?: force?, changed?: changed?}
+            }
+          end
+        )
       else
         {socket, %{}, state.components}
       end
 
     diff = Diff.render_private(socket, diff)
     new_socket = Utils.clear_temp(socket)
+
     {:diff, diff, %{state | socket: new_socket, components: components}}
   end
 
