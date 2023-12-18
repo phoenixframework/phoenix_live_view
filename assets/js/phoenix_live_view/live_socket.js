@@ -522,7 +522,7 @@ export default class LiveSocket {
     if(!dead){ this.bindNav() }
     this.bindClicks()
     if(!dead){ this.bindForms() }
-    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
+    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
@@ -530,8 +530,8 @@ export default class LiveSocket {
       let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
       JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
     })
-    this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
-      if(!eventTarget){
+    this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
+      if(!phxTarget){
         let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }

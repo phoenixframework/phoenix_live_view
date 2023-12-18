@@ -967,7 +967,7 @@ var ARIA = {
     return classes.find((name) => instance instanceof name);
   },
   isFocusable(el, interactiveOnly) {
-    return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.tabIndex === 0 && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
+    return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
   },
   attemptFocus(el, interactiveOnly) {
     if (this.isFocusable(el, interactiveOnly)) {
@@ -2497,6 +2497,10 @@ var JS = {
   },
   isVisible(el) {
     return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
+  },
+  isInViewport(el) {
+    const rect = el.getBoundingClientRect();
+    return rect.top >= 0 && rect.left >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && rect.right <= (window.innerWidth || document.documentElement.clientWidth);
   },
   exec_exec(eventType, phxEvent, view, sourceEl, el, [attr, to]) {
     let nodes = to ? dom_default.all(document, to) : [sourceEl];
@@ -4207,7 +4211,7 @@ var LiveSocket = class {
     if (!dead) {
       this.bindForms();
     }
-    this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, targetEl, phxEvent, eventTarget) => {
+    this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY));
       let pressedKey = e.key && e.key.toLowerCase();
       if (matchKey && matchKey.toLowerCase() !== pressedKey) {
@@ -4216,13 +4220,13 @@ var LiveSocket = class {
       let data = { key: e.key, ...this.eventMeta(type, e, targetEl) };
       js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
     });
-    this.bind({ blur: "focusout", focus: "focusin" }, (e, type, view, targetEl, phxEvent, eventTarget) => {
-      if (!eventTarget) {
+    this.bind({ blur: "focusout", focus: "focusin" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
+      if (!phxTarget) {
         let data = { key: e.key, ...this.eventMeta(type, e, targetEl) };
         js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
       }
     });
-    this.bind({ blur: "blur", focus: "focus" }, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+    this.bind({ blur: "blur", focus: "focus" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
       if (phxTarget === "window") {
         let data = this.eventMeta(type, e, targetEl);
         js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
@@ -4345,7 +4349,7 @@ var LiveSocket = class {
       if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))) {
         this.withinOwners(e.target, (view) => {
           let phxEvent = el.getAttribute(phxClickAway);
-          if (js_default.isVisible(el)) {
+          if (js_default.isVisible(el) && js_default.isInViewport(el)) {
             js_default.exec("click", phxEvent, view, el, ["push", { data: this.eventMeta("click", e, e.target) }]);
           }
         });
