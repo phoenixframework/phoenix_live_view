@@ -7,6 +7,7 @@
   * Fix JS command `:target` failing to work when used as phx-submit or phx-change with a selector-based target
   * Fix `JS.focus()` failing to focus negative tabindex
   * Fix `LiveViewTest` failing to remove items after stream reset
+  * Fix `phx-window-blur` and `phx-window-focus` events not firing
 
 ### Enhancements
   * Speed up DOM patching performance 3-30x 🔥
