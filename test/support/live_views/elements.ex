@@ -51,7 +51,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
 
     <button type="button" id="live-redirect-push-button" phx-click={JS.navigate("/example")}>Live redirect</button>
     <button type="button" id="live-redirect-replace-button" phx-click={JS.navigate("/example", replace: true)}>Live redirect</button>
-    <button type="button" id="live-patch-redirect-button" phx-click={JS.patch("/elements?from=uri") |> JS.navigate("/example", replace: true)}>Last one wins</button>
+    <button type="button" id="live-redirect-patch-button" phx-click={JS.navigate("/example", replace: true) |> JS.patch("/elements?from=uri")}>Last one wins</button>
 
     <%# hooks %>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>

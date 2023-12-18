@@ -196,9 +196,9 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert_redirected(view, "/example")
     end
 
-    test "last navigation declared with JS.(patch/navigate) wins", %{live: view} do
+    test "first navigation declared with JS.(patch/navigate) wins", %{live: view} do
       assert {:error, {:live_redirect, %{to: "/example", kind: :replace}}} =
-               view |> element("button#live-patch-redirect-button") |> render_click()
+               view |> element("button#live-redirect-patch-button") |> render_click()
 
       assert_redirected(view, "/example")
     end
