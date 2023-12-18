@@ -2113,7 +2113,6 @@ var modifyRoot = (html, attrs, clearInnerHTML) => {
       }
       tagNameEndsAt = i;
       tag = html.slice(iAtOpen + 1, tagNameEndsAt);
-      i++;
       for (i; i < html.length; i++) {
         if (html.charAt(i) === ">") {
           break;
