@@ -142,7 +142,7 @@ defmodule Phoenix.LiveView.Async do
             """
         end
 
-      {_, %Socket{} = socket} ->
+      {:halt, %Socket{} = socket} ->
         socket
     end
   end
