@@ -4440,7 +4440,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e)) {
           return;
         }
-        let href = target.href;
+        let href = target.href instanceof SVGAnimatedString ? target.href.baseVal : target.href;
         let linkState = target.getAttribute(PHX_LINK_STATE);
         e.preventDefault();
         e.stopImmediatePropagation();

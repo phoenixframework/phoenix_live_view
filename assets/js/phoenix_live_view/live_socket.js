@@ -703,12 +703,8 @@ export default class LiveSocket {
       let type = target && target.getAttribute(PHX_LIVE_LINK)
       if(!type || !this.isConnected() || !this.main || DOM.wantsNewTab(e)){ return }
 
-      let href = target.href
-
-      if(href instanceof SVGAnimatedString){
-        // When wrapping an SVG element in an anchor tag, the href can be an SVGAnimatedString (sometimes?)
-        href = href.baseVal
-      }
+      // When wrapping an SVG element in an anchor tag, the href can be an SVGAnimatedString
+      let href = target.href instanceof SVGAnimatedString ? target.href.baseVal : target.href
 
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
