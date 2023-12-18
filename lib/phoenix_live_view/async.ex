@@ -128,16 +128,22 @@ defmodule Phoenix.LiveView.Async do
   defp handle_kind(socket, maybe_component, :start, key, result) do
     callback_mod = maybe_component || socket.view
 
-    case callback_mod.handle_async(key, result, socket) do
-      {:noreply, %Socket{} = new_socket} ->
-        new_socket
+    case Phoenix.LiveView.Lifecycle.handle_async(key, result, socket) do
+      {:cont, %Socket{} = socket} ->
+        case callback_mod.handle_async(key, result, socket) do
+          {:noreply, %Socket{} = new_socket} ->
+            new_socket
 
-      other ->
-        raise ArgumentError, """
-        expected #{inspect(callback_mod)}.handle_async/3 to return {:noreply, socket}, got:
+          other ->
+            raise ArgumentError, """
+            expected #{inspect(callback_mod)}.handle_async/3 to return {:noreply, socket}, got:
 
-            #{inspect(other)}
-        """
+                #{inspect(other)}
+            """
+        end
+
+      {_, %Socket{} = socket} ->
+        socket
     end
   end
 
