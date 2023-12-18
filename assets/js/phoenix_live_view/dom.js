@@ -285,13 +285,16 @@ let DOM = {
     }
   },
 
-  maybeHideFeedback(container, input, phxFeedbackFor){
-    if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
-      let feedbacks = [input.name]
-      if(input.name.endsWith("[]")){ feedbacks.push(input.name.slice(0, -2)) }
-      let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
-      DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
-    }
+  maybeHideFeedback(container, inputs, phxFeedbackFor){
+    let selector;
+    inputs.forEach(input => {
+      if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
+        let feedbacks = [input.name]
+        if(input.name.endsWith("[]")){ feedbacks.push(input.name.slice(0, -2)) }
+        selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
+      }
+    })
+    DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
   },
 
   resetForm(form, phxFeedbackFor){
