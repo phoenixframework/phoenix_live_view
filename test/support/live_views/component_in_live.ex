@@ -22,7 +22,7 @@ defmodule Phoenix.LiveViewTest.ComponentInLive.Live do
   end
 
   def render(assigns) do
-    ~H"<%= live_component Phoenix.LiveViewTest.ComponentInLive.Component, id: :nested_component %>"
+    ~H"<.live_component module={Phoenix.LiveViewTest.ComponentInLive.Component} id={ :nested_component} />"
   end
 
   def handle_event("disable", _params, socket) do

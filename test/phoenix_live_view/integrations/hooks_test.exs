@@ -123,9 +123,10 @@ defmodule Phoenix.LiveView.HooksTest do
       {:halt, %{}, socket}
     end)
 
+    ref = HooksLive.unlink_and_monitor(lv)
+
     assert ExUnit.CaptureLog.capture_log(fn ->
              send(lv.pid, :boom)
-             ref = Process.monitor(lv.pid)
              assert_receive {:DOWN, ^ref, _, _, _}
            end) =~ "Got: {:halt, %{}, #Phoenix.LiveView.Socket<"
   end
@@ -239,9 +240,53 @@ defmodule Phoenix.LiveView.HooksTest do
     refute_received {:intercepted, ^ref}
   end
 
-  test "handle_info/3 without module callback", %{conn: conn} do
+  test "handle_info/2 without module callback", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle/handle-info-not-defined")
     assert render(lv) =~ "data=somedata"
+  end
+
+  test "handle_async/3 raises when hook result is invalid", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    HooksLive.attach_hook(lv, :boom, :handle_async, fn _, _, _ -> :boom end)
+
+    monitor = HooksLive.unlink_and_monitor(lv)
+    lv |> element("#async") |> render_click()
+    assert_receive {:DOWN, ^monitor, :process, _pid, {%error{message: msg}, _}}
+    assert error == ArgumentError
+    assert msg =~ "Got: :boom"
+  end
+
+  test "handle_async/3 attached after connected", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    HooksLive.attach_hook(lv, :hook, :handle_async, fn _, _, socket ->
+      {:cont, Component.update(socket, :task, &(&1 <> "o"))}
+    end)
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task:o.\n"
+
+    HooksLive.detach_hook(lv, :hook, :handle_async)
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task:o..\n"
+  end
+
+  test "handle_async/3 halts", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle")
+
+    HooksLive.attach_hook(lv, :hook, :handle_async, fn _, _, socket ->
+      {:halt, Component.update(socket, :task, &(&1 <> "o"))}
+    end)
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task:o\n"
+
+    HooksLive.detach_hook(lv, :hook, :handle_async)
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task:o.\n"
   end
 
   test "attach_hook raises when given a live component socket", %{conn: conn} do
@@ -269,6 +314,12 @@ defmodule Phoenix.LiveView.HooksTest do
     assert Lifecycle.stage_info(socket, HooksLive, :mount, 3) == %{
              any?: true,
              callbacks?: true,
+             exported?: true
+           }
+
+    assert Lifecycle.stage_info(socket, HooksLive, :handle_async, 3) == %{
+             any?: true,
+             callbacks?: false,
              exported?: true
            }
 

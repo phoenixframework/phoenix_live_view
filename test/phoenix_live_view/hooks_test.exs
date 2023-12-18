@@ -30,6 +30,13 @@ defmodule Phoenix.LiveView.IntegrationHooksTest do
       end
     end
 
+    test "supports handle_async/3" do
+      assert %Lifecycle{handle_async: [%{id: :noop}]} =
+               build_socket()
+               |> LiveView.attach_hook(:noop, :handle_async, &noop/3)
+               |> lifecycle()
+    end
+
     test "supports handle_event/3" do
       assert %Lifecycle{handle_event: [%{id: :noop}]} =
                build_socket()
@@ -62,11 +69,13 @@ defmodule Phoenix.LiveView.IntegrationHooksTest do
     test "supports named hooks for multiple lifecycle events" do
       socket =
         build_socket()
+        |> LiveView.attach_hook(:noop, :handle_async, &noop/3)
         |> LiveView.attach_hook(:noop, :handle_params, &noop/3)
         |> LiveView.attach_hook(:noop, :handle_event, &noop/3)
         |> LiveView.attach_hook(:noop, :handle_info, &noop/2)
 
       assert %Lifecycle{
+               handle_async: [%{id: :noop, stage: :handle_async}],
                handle_info: [%{id: :noop, stage: :handle_info}],
                handle_event: [%{id: :noop, stage: :handle_event}],
                handle_params: [%{id: :noop, stage: :handle_params}]

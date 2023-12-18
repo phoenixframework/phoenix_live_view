@@ -34,7 +34,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
 
     expired_token =
-      Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}}, signed_at: 0)
+      Phoenix.Token.sign(@endpoint, salt, {Phoenix.LiveView.Static.token_vsn(), %{}},
+        signed_at: 0
+      )
 
     %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
   end
@@ -71,6 +73,18 @@ defmodule Phoenix.LiveView.LiveViewTest do
         |> get("/not_found")
         |> live()
       end
+    end
+  end
+
+  describe "render_with" do
+    test "with custom function", %{conn: conn} do
+      conn = get(conn, "/render-with")
+      html = html_response(conn, 200)
+      assert html =~ "FROM RENDER WITH!"
+
+      {:ok, view, html} = live(conn)
+      assert html =~ "FROM RENDER WITH!"
+      assert render(view) =~ "FROM RENDER WITH!"
     end
   end
 
@@ -199,25 +213,35 @@ defmodule Phoenix.LiveView.LiveViewTest do
       static_html = html_response(conn, 200)
       {:ok, view, connected_html} = live(conn)
 
-      assert static_html =~
-               ~r/<article class="thermo"[^>]*data-phx-main.*[^>]*>/
+      dom_matcher = fn html ->
+        assert [
+                 {"article",
+                  [
+                    {"id", id},
+                    {"data-phx-main", _},
+                    {"data-phx-session", _},
+                    {"data-phx-static", _},
+                    {"class", "thermo"}
+                  ],
+                  [
+                    _text,
+                    _btn_down,
+                    _btn_up,
+                    {"section",
+                     [
+                       {"id", "clock"},
+                       {"data-phx-session", _},
+                       {"data-phx-static", _},
+                       {"data-phx-parent-id", id},
+                       {"class", "clock"}
+                     ], _}
+                  ]}
+               ] = DOM.parse(html)
+      end
 
-      assert static_html =~ ~r/<\/article>/
-
-      assert static_html =~
-               ~r/<section class="clock"[^>]*[^>]*>/
-
-      assert static_html =~ ~r/<\/section>/
-
-      assert connected_html =~
-               ~r/<section class="clock"[^>]*[^>]*>/
-
-      assert connected_html =~ ~r/<\/section>/
-
-      assert render(view) =~
-               ~r/<section class="clock"[^>]*[^>]*>/
-
-      assert render(view) =~ ~r/<\/section>/
+      dom_matcher.(static_html)
+      dom_matcher.(connected_html)
+      dom_matcher.(render(view))
     end
 
     test "custom DOM container and attributes", %{conn: conn} do
@@ -229,25 +253,36 @@ defmodule Phoenix.LiveView.LiveViewTest do
       static_html = html_response(conn, 200)
       {:ok, view, connected_html} = live(conn)
 
-      assert static_html =~
-               ~r/<span class="thermo"[^>]*[^>]*style=\"thermo-flex&lt;script&gt;\">/
+      dom_matcher = fn html ->
+        assert [
+                 {"span",
+                  [
+                    {"id", id},
+                    {"data-phx-main", _},
+                    {"data-phx-session", _},
+                    {"data-phx-static", _},
+                    {"class", "thermo"},
+                    {"style", "thermo-flex<script>"}
+                  ],
+                  [
+                    _text,
+                    _btn_down,
+                    _btn_up,
+                    {"p",
+                     [
+                       {"id", "clock"},
+                       {"data-phx-session", _},
+                       {"data-phx-static", _},
+                       {"data-phx-parent-id", id},
+                       {"class", "clock-flex"}
+                     ], _}
+                  ]}
+               ] = DOM.parse(html)
+      end
 
-      assert static_html =~ ~r/<\/span>/
-
-      assert static_html =~
-               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
-
-      assert static_html =~ ~r/<\/p>/
-
-      assert connected_html =~
-               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
-
-      assert connected_html =~ ~r/<\/p>/
-
-      assert render(view) =~
-               ~r/<p class=\"clock-flex"[^>]*[^>]*>/
-
-      assert render(view) =~ ~r/<\/p>/
+      dom_matcher.(static_html)
+      dom_matcher.(connected_html)
+      dom_matcher.(render(view))
     end
   end
 
@@ -352,14 +387,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
                 _parent,
                 _dbg_opts,
                 [
-                  header: 'Status for generic server ' ++ _,
+                  header: ~c"Status for generic server " ++ _,
                   data: _gen_server_data,
                   data: [
-                    {'LiveView', Phoenix.LiveViewTest.ClockLive},
-                    {'Parent pid', nil},
-                    {'Transport pid', _},
-                    {'Topic', <<_::binary>>},
-                    {'Components count', 0}
+                    {~c"LiveView", Phoenix.LiveViewTest.ClockLive},
+                    {~c"Parent pid", nil},
+                    {~c"Transport pid", _},
+                    {~c"Topic", <<_::binary>>},
+                    {~c"Components count", 0}
                   ]
                 ]
               ]} = :sys.get_status(pid)

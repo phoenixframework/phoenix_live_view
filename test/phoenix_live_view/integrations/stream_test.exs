@@ -104,6 +104,20 @@ defmodule Phoenix.LiveView.StreamTest do
     assert lv |> render() |> users_in_dom("admins") == [{"admins-2", "updated"}]
   end
 
+  test "should properly reset after a steam has been set after mount", %{conn: conn} do
+    {:ok, lv, _} = live(conn, "/stream")
+    assert lv |> element("#users div") |> has_element?()
+
+    lv |> render_hook("reset-users", %{})
+    refute lv |> element("#users div") |> has_element?()
+
+    lv |> render_hook("stream-users", %{})
+    assert lv |> element("#users div") |> has_element?()
+
+    lv |> render_hook("reset-users", %{})
+    refute lv |> element("#users div") |> has_element?()
+  end
+
   test "stream reset on patch", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/healthy/fruits")
 

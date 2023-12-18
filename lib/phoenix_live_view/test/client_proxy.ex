@@ -24,6 +24,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             connect_params: %{},
             connect_info: %{}
 
+  alias Plug.Conn.Query
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload}
 
   @doc """
@@ -526,6 +527,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
+  def handle_call({:async_pids, topic_or_element}, _from, state) do
+    topic = proxy_topic(topic_or_element)
+    %{pid: pid} = fetch_view_by_topic!(state, topic)
+    {:reply, Phoenix.LiveView.Channel.async_pids(pid), state}
+  end
+
   def handle_call({:render_event, topic_or_element, type, value}, from, state) do
     topic = proxy_topic(topic_or_element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
@@ -962,8 +969,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_event(:click, {"a", _, _} = node, element) do
-    live_nav = DOM.attribute(node, "data-phx-link")
+  defp maybe_event(:click, {tag, _, _} = node, element) do
+    live_nav =
+      DOM.attribute(node, "data-phx-link") ||
+        live_nav_in_phx_click(DOM.attribute(node, "phx-click"))
 
     cond do
       event = is_nil(live_nav) && DOM.attribute(node, "phx-click") ->
@@ -982,9 +991,34 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             {:stop, proxy_topic(element), {:redirect, %{to: to}}}
         end
 
+      is_list(live_nav) ->
+        case live_nav do
+          ["patch", %{"href" => to}] ->
+            {:patch, proxy_topic(element), to}
+
+          ["navigate", %{"href" => to, "replace" => true}] ->
+            {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: :replace}}}
+
+          ["navigate", %{"href" => to}] ->
+            {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: :push}}}
+        end
+
       true ->
-        {:error, :invalid,
-         "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"}
+        case tag do
+          "a" ->
+            {
+              :error,
+              :invalid,
+              "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"
+            }
+
+          _ ->
+            {
+              :error,
+              :invalid,
+              "element selected by #{inspect(element.selector)} does not have phx-click attribute"
+            }
+        end
     end
   end
 
@@ -1012,8 +1046,22 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  defp live_nav_in_phx_click("[" <> _ = encoded_js) do
+    encoded_js
+    |> Phoenix.json_library().decode!()
+    |> Enum.reduce(nil, fn event, acc ->
+      case event do
+        ["patch", _opts] -> event
+        ["navigate", _opts] -> event
+        _ -> acc
+      end
+    end)
+  end
+
+  defp live_nav_in_phx_click(_), do: nil
+
   defp maybe_js_event("[" <> _ = encoded_js) do
-    js = encoded_js |> DOM.parse() |> Phoenix.json_library().decode!()
+    js = Phoenix.json_library().decode!(encoded_js)
     op = Enum.filter(js, fn [kind, _args] -> kind == "push" end)
 
     case op do
@@ -1051,20 +1099,20 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       tag == "form" ->
         defaults =
           node
-          |> DOM.reverse_filter(fn node ->
+          |> DOM.filter(fn node ->
             DOM.tag(node) in ~w(input textarea select) and is_nil(DOM.attribute(node, "disabled"))
           end)
-          |> Enum.reduce(%{}, &form_defaults/2)
+          |> Enum.reduce(Query.decode_init(), &form_defaults/2)
 
         with {:ok, defaults} <- maybe_submitter(defaults, type, node, element),
              {:ok, value} <- fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
-          {:ok, DOM.deep_merge(defaults, value)}
+          {:ok, DOM.deep_merge(Query.decode_done(defaults), value)}
         else
           {:error, _, _} = error -> error
         end
 
       type == :change and tag in ~w(input select textarea) ->
-        {:ok, form_defaults(node, %{})}
+        {:ok, form_defaults(node, Query.decode_init()) |> Query.decode_done()}
 
       true ->
         {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
@@ -1097,7 +1145,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
          "form submitter selected by #{inspect(element.selector)} must have a name"}
 
       submitter?(node) and is_nil(DOM.attribute(node, "disabled")) ->
-        {:ok, Plug.Conn.Query.decode_pair({name, DOM.attribute(node, "value")}, defaults)}
+        {:ok, Plug.Conn.Query.decode_each({name, DOM.attribute(node, "value")}, defaults)}
 
       true ->
         {:error, :invalid,
@@ -1172,19 +1220,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         )
       end
 
-    all_selected
-    |> Enum.reverse()
-    |> Enum.reduce(acc, fn selected, acc ->
-      Plug.Conn.Query.decode_pair({name, DOM.attribute(selected, "value")}, acc)
+    Enum.reduce(all_selected, acc, fn selected, acc ->
+      Plug.Conn.Query.decode_each({name, DOM.attribute(selected, "value")}, acc)
     end)
   end
 
   defp form_defaults({"textarea", _, []}, name, acc) do
-    Plug.Conn.Query.decode_pair({name, ""}, acc)
+    Plug.Conn.Query.decode_each({name, ""}, acc)
   end
 
   defp form_defaults({"textarea", _, [value]}, name, acc) do
-    Plug.Conn.Query.decode_pair({name, String.replace_prefix(value, "\n", "")}, acc)
+    Plug.Conn.Query.decode_each({name, String.replace_prefix(value, "\n", "")}, acc)
   end
 
   defp form_defaults({"input", _, _} = node, name, acc) do
@@ -1194,7 +1240,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     cond do
       type in ["radio", "checkbox"] ->
         if DOM.attribute(node, "checked") do
-          Plug.Conn.Query.decode_pair({name, value}, acc)
+          Plug.Conn.Query.decode_each({name, value}, acc)
         else
           acc
         end
@@ -1203,7 +1249,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         acc
 
       true ->
-        Plug.Conn.Query.decode_pair({name, value}, acc)
+        Plug.Conn.Query.decode_each({name, value}, acc)
     end
   end
 
@@ -1369,7 +1415,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp root_page_title(root_html) do
     case DOM.maybe_one(root_html, "head > title") do
-      {:ok, {"title", _, [text]}} -> text
+      {:ok, {"title", _, text}} -> IO.iodata_to_binary(text)
       {:error, _kind, _desc} -> nil
     end
   end

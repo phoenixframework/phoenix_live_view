@@ -34,6 +34,29 @@ defmodule Phoenix.LiveView.EventTest do
       assert render(view) =~ "count: 123"
     end
 
+    test "supports events with redirects", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events")
+
+      GenServer.call(
+        view.pid,
+        {:run,
+         fn socket ->
+           new_socket =
+             socket
+             |> Component.assign(count: 123)
+             |> LiveView.push_event("my-event", %{one: 1})
+             |> LiveView.push_event("my-event", %{one: 2})
+             |> LiveView.push_redirect(to: "/events")
+
+           {:reply, :ok, new_socket}
+         end}
+      )
+
+      assert_push_event(view, "my-event", %{one: 1})
+      assert_push_event(view, "my-event", %{one: 2})
+      assert_redirected(view, "/events")
+    end
+
     test "sends updates with no assigns diff", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events")
 
@@ -138,7 +161,7 @@ defmodule Phoenix.LiveView.EventTest do
              |> render_click() =~ "count: 11"
     end
 
-    test "with repiles", %{conn: conn} do
+    test "with replies", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/events-multi-js")
 
       assert element(view, "#reply-values")

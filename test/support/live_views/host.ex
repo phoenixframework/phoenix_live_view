@@ -10,8 +10,8 @@ defmodule Phoenix.LiveViewTest.HostLive do
     ~H"""
     URI: <%= @uri %>
     LiveAction: <%= @live_action %>
-    <%= live_patch "Path", id: "path", to: Routes.host_path(@socket, :path) %>
-    <%= live_patch "Full", id: "full", to: "https://app.example.com" <> Routes.host_path(@socket, :full) %>
+    <.link id="path" patch={Routes.host_path(@socket, :path)}>Path</.link>
+    <.link id="full" patch={"https://app.example.com" <> Routes.host_path(@socket, :full)}>Full</.link>
     """
   end
 end

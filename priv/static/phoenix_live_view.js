@@ -69,6 +69,7 @@ var LiveView = (() => {
   var PHX_ACTIVE_ENTRY_REFS = "data-phx-active-refs";
   var PHX_LIVE_FILE_UPDATED = "phx:live-file:updated";
   var PHX_SKIP = "data-phx-skip";
+  var PHX_MAGIC_ID = "data-phx-id";
   var PHX_PRUNE = "data-phx-prune";
   var PHX_PAGE_LOADING = "page-loading";
   var PHX_CONNECTED_CLASS = "phx-connected";
@@ -123,6 +124,7 @@ var LiveView = (() => {
   };
   var DYNAMICS = "d";
   var STATIC = "s";
+  var ROOT = "r";
   var COMPONENTS = "c";
   var EVENTS = "e";
   var REPLY = "r";
@@ -145,6 +147,7 @@ var LiveView = (() => {
       if (this.errored) {
         return;
       }
+      this.uploadChannel.leave();
       this.errored = true;
       clearTimeout(this.chunkTimer);
       this.entry.error(reason);
@@ -333,6 +336,9 @@ var LiveView = (() => {
     isUploadInput(el) {
       return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null;
     },
+    isAutoUpload(inputEl) {
+      return inputEl.hasAttribute("data-phx-auto-upload");
+    },
     findUploadInputs(node) {
       return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`);
     },
@@ -349,7 +355,12 @@ var LiveView = (() => {
       return wantsNewTab || isTargetBlank || isDownload;
     },
     isUnloadableFormSubmit(e) {
-      return !e.defaultPrevented && !this.wantsNewTab(e);
+      let isDialogSubmit = e.target && e.target.getAttribute("method") === "dialog" || e.submitter && e.submitter.getAttribute("formmethod") === "dialog";
+      if (isDialogSubmit) {
+        return false;
+      } else {
+        return !e.defaultPrevented && !this.wantsNewTab(e);
+      }
     },
     isNewPageClick(e, currentLocation) {
       let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null;
@@ -358,6 +369,9 @@ var LiveView = (() => {
         return false;
       }
       if (href.startsWith("mailto:") || href.startsWith("tel:")) {
+        return false;
+      }
+      if (e.target.isContentEditable) {
         return false;
       }
       try {
@@ -822,7 +836,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     error(reason = "failed") {
       this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
       this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
-      LiveUploader.clearFiles(this.fileEl);
+      if (!dom_default.isAutoUpload(this.fileEl)) {
+        LiveUploader.clearFiles(this.fileEl);
+      }
     }
     onDone(callback) {
       this._onDone = () => {
@@ -843,7 +859,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         relative_path: this.file.webkitRelativePath,
         size: this.file.size,
         type: this.file.type,
-        ref: this.ref
+        ref: this.ref,
+        meta: typeof this.file.meta === "function" ? this.file.meta() : void 0
       };
     }
     uploader(uploaders) {
@@ -900,6 +917,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         entry.relative_path = file.webkitRelativePath;
         entry.type = file.type;
         entry.size = file.size;
+        if (typeof file.meta === "function") {
+          entry.meta = file.meta();
+        }
         fileData[uploadRef].push(entry);
       });
       return fileData;
@@ -959,6 +979,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return entry;
       });
       let groupedEntries = this._entries.reduce((acc, entry) => {
+        if (!entry.meta) {
+          return acc;
+        }
         let { name, callback } = entry.uploader(liveSocket.uploaders);
         acc[name] = acc[name] || { callback, entries: [] };
         acc[name].entries.push(entry);
@@ -986,7 +1009,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return classes.find((name) => instance instanceof name);
     },
     isFocusable(el, interactiveOnly) {
-      return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.tabIndex === 0 && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
+      return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
     },
     attemptFocus(el, interactiveOnly) {
       if (this.isFocusable(el, interactiveOnly)) {
@@ -1765,7 +1788,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         el.setAttribute(PHX_PRUNE, "");
       });
     }
-    perform() {
+    perform(isJoinPatch) {
       let { view, liveSocket, container, html } = this;
       let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container;
       if (this.isCIDPatch() && !targetContainer) {
@@ -1784,19 +1807,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let updates = [];
       let appendPrependUpdates = [];
       let externalFormTriggered = null;
-      let diffHTML = liveSocket.time("premorph container prep", () => {
-        return this.buildDiffHTML(container, html, phxUpdate, targetContainer);
-      });
       this.trackBefore("added", container);
       this.trackBefore("updated", container, container);
       liveSocket.time("morphdom", () => {
         this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
           Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
-            this.streamInserts[key] = { ref, streamAt, limit };
+            this.streamInserts[key] = { ref, streamAt, limit, resetKept: false };
           });
           if (reset !== void 0) {
             dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
-              if (!inserts[child.id]) {
+              if (inserts[child.id]) {
+                this.streamInserts[child.id].resetKept = true;
+              } else {
                 this.removeStreamChildElement(child);
               }
             });
@@ -1808,10 +1830,16 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           });
         });
-        morphdom_esm_default(targetContainer, diffHTML, {
+        morphdom_esm_default(targetContainer, html, {
           childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
           getNodeKey: (node) => {
-            return dom_default.isPhxDestroyed(node) ? null : node.id;
+            if (dom_default.isPhxDestroyed(node)) {
+              return null;
+            }
+            if (isJoinPatch) {
+              return node.id;
+            }
+            return node.id || node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
           },
           skipFromChildren: (from) => {
             return from.getAttribute(phxUpdate) === PHX_STREAM;
@@ -1867,6 +1895,25 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               this.trackAfter("phxChildAdded", el);
             }
             added.push(el);
+          },
+          onBeforeElChildrenUpdated: (fromEl, toEl) => {
+            if (fromEl.getAttribute(phxUpdate) === PHX_STREAM) {
+              let toIds = Array.from(toEl.children).map((child) => child.id);
+              Array.from(fromEl.children).filter((child) => {
+                let { resetKept } = this.getStreamInsert(child);
+                return resetKept;
+              }).sort((a, b) => {
+                let aIdx = toIds.indexOf(a.id);
+                let bIdx = toIds.indexOf(b.id);
+                if (aIdx === bIdx) {
+                  return 0;
+                } else if (aIdx < bIdx) {
+                  return -1;
+                } else {
+                  return 1;
+                }
+              }).forEach((child) => fromEl.appendChild(child));
+            }
           },
           onNodeDiscarded: (el) => this.onNodeDiscarded(el),
           onBeforeNodeDiscarded: (el) => {
@@ -1971,7 +2018,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.transitionPendingRemoves();
       if (externalFormTriggered) {
         liveSocket.unload();
-        externalFormTriggered.submit();
+        Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered);
       }
       return true;
     }
@@ -2042,7 +2089,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return this.cidPatch;
     }
     skipCIDSibling(el) {
-      return el.nodeType === Node.ELEMENT_NODE && el.getAttribute(PHX_SKIP) !== null;
+      return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP);
     }
     targetCIDContainer(html) {
       if (!this.isCIDPatch()) {
@@ -2055,35 +2102,125 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return first && first.parentNode;
       }
     }
-    buildDiffHTML(container, html, phxUpdate, targetContainer) {
-      let isCIDPatch = this.isCIDPatch();
-      let isCIDWithSingleRoot = isCIDPatch && targetContainer.getAttribute(PHX_COMPONENT) === this.targetCID.toString();
-      if (!isCIDPatch || isCIDWithSingleRoot) {
-        return html;
-      } else {
-        let diffContainer = null;
-        let template = document.createElement("template");
-        diffContainer = dom_default.cloneNode(targetContainer);
-        let [firstComponent, ...rest] = dom_default.findComponentNodeList(diffContainer, this.targetCID);
-        template.innerHTML = html;
-        rest.forEach((el) => el.remove());
-        Array.from(diffContainer.childNodes).forEach((child) => {
-          if (child.id && child.nodeType === Node.ELEMENT_NODE && child.getAttribute(PHX_COMPONENT) !== this.targetCID.toString()) {
-            child.setAttribute(PHX_SKIP, "");
-            child.innerHTML = "";
-          }
-        });
-        Array.from(template.content.childNodes).forEach((el) => diffContainer.insertBefore(el, firstComponent));
-        firstComponent.remove();
-        return diffContainer.outerHTML;
-      }
-    }
     indexOf(parent, child) {
       return Array.from(parent.children).indexOf(child);
     }
   };
 
   // js/phoenix_live_view/rendered.js
+  var VOID_TAGS = new Set([
+    "area",
+    "base",
+    "br",
+    "col",
+    "command",
+    "embed",
+    "hr",
+    "img",
+    "input",
+    "keygen",
+    "link",
+    "meta",
+    "param",
+    "source",
+    "track",
+    "wbr"
+  ]);
+  var endingTagNameChars = new Set([">", "/", " ", "\n", "	", "\r"]);
+  var quoteChars = new Set(["'", '"']);
+  var modifyRoot = (html, attrs, clearInnerHTML) => {
+    let i = 0;
+    let insideComment = false;
+    let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML;
+    while (i < html.length) {
+      let char = html.charAt(i);
+      if (insideComment) {
+        if (char === "-" && html.slice(i, i + 3) === "-->") {
+          insideComment = false;
+          i += 3;
+        } else {
+          i++;
+        }
+      } else if (char === "<" && html.slice(i, i + 4) === "<!--") {
+        insideComment = true;
+        i += 4;
+      } else if (char === "<") {
+        beforeTag = html.slice(0, i);
+        let iAtOpen = i;
+        i++;
+        for (i; i < html.length; i++) {
+          if (endingTagNameChars.has(html.charAt(i))) {
+            break;
+          }
+        }
+        tagNameEndsAt = i;
+        tag = html.slice(iAtOpen + 1, tagNameEndsAt);
+        for (i; i < html.length; i++) {
+          if (html.charAt(i) === ">") {
+            break;
+          }
+          if (html.charAt(i) === "=") {
+            let isId = html.slice(i - 3, i) === " id";
+            i++;
+            let char2 = html.charAt(i);
+            if (quoteChars.has(char2)) {
+              let attrStartsAt = i;
+              i++;
+              for (i; i < html.length; i++) {
+                if (html.charAt(i) === char2) {
+                  break;
+                }
+              }
+              if (isId) {
+                id = html.slice(attrStartsAt + 1, i);
+                break;
+              }
+            }
+          }
+        }
+        break;
+      } else {
+        i++;
+      }
+    }
+    if (!tag) {
+      throw new Error(`malformed html ${html}`);
+    }
+    let closeAt = html.length - 1;
+    insideComment = false;
+    while (closeAt >= beforeTag.length + tag.length) {
+      let char = html.charAt(closeAt);
+      if (insideComment) {
+        if (char === "-" && html.slice(closeAt - 3, closeAt) === "<!-") {
+          insideComment = false;
+          closeAt -= 4;
+        } else {
+          closeAt -= 1;
+        }
+      } else if (char === ">" && html.slice(closeAt - 2, closeAt) === "--") {
+        insideComment = true;
+        closeAt -= 3;
+      } else if (char === ">") {
+        break;
+      } else {
+        closeAt -= 1;
+      }
+    }
+    afterTag = html.slice(closeAt + 1, html.length);
+    let attrsStr = Object.keys(attrs).map((attr) => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`).join(" ");
+    if (clearInnerHTML) {
+      let idAttrStr = id ? ` id="${id}"` : "";
+      if (VOID_TAGS.has(tag)) {
+        newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`;
+      } else {
+        newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`;
+      }
+    } else {
+      let rest = html.slice(tagNameEndsAt, closeAt + 1);
+      newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`;
+    }
+    return [newHTML, beforeTag, afterTag];
+  };
   var Rendered = class {
     static extract(diff) {
       let { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;
@@ -2095,19 +2232,20 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     constructor(viewId, rendered) {
       this.viewId = viewId;
       this.rendered = {};
+      this.magicId = 0;
       this.mergeDiff(rendered);
     }
     parentViewId() {
       return this.viewId;
     }
     toString(onlyCids) {
-      let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids);
+      let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, true, {});
       return [str, streams];
     }
-    recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids) {
+    recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs) {
       onlyCids = onlyCids ? new Set(onlyCids) : null;
       let output = { buffer: "", components, onlyCids, streams: new Set() };
-      this.toOutputBuffer(rendered, null, output);
+      this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
       return [output.buffer, output.streams];
     }
     componentCIDs(diff) {
@@ -2152,10 +2290,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             tdiff = oldc[-scid];
           }
           stat = tdiff[STATIC];
-          ndiff = this.cloneMerge(tdiff, cdiff);
+          ndiff = this.cloneMerge(tdiff, cdiff, true);
           ndiff[STATIC] = stat;
         } else {
-          ndiff = cdiff[STATIC] !== void 0 ? cdiff : this.cloneMerge(oldc[cid] || {}, cdiff);
+          ndiff = cdiff[STATIC] !== void 0 || oldc[cid] === void 0 ? cdiff : this.cloneMerge(oldc[cid], cdiff, false);
         }
         cache[cid] = ndiff;
         return ndiff;
@@ -2180,21 +2318,31 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           target[key] = val;
         }
       }
+      if (target[ROOT]) {
+        target.newRender = true;
+      }
     }
-    cloneMerge(target, source) {
+    cloneMerge(target, source, pruneMagicId) {
       let merged = __spreadValues(__spreadValues({}, target), source);
       for (let key in merged) {
         let val = source[key];
         let targetVal = target[key];
         if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
-          merged[key] = this.cloneMerge(targetVal, val);
+          merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
         }
+      }
+      if (pruneMagicId) {
+        delete merged.magicId;
+        delete merged.newRender;
+      } else if (target[ROOT]) {
+        merged.newRender = true;
       }
       return merged;
     }
     componentToString(cid) {
-      let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid);
-      return [str, streams];
+      let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null);
+      let [strippedHTML, _before, _after] = modifyRoot(str, {});
+      return [strippedHTML, streams];
     }
     pruneCIDs(cids) {
       cids.forEach((cid) => delete this.rendered[COMPONENTS][cid]);
@@ -2212,16 +2360,45 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return part;
       }
     }
-    toOutputBuffer(rendered, templates, output) {
+    nextMagicID() {
+      this.magicId++;
+      return `${this.parentViewId()}-${this.magicId}`;
+    }
+    toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
       if (rendered[DYNAMICS]) {
         return this.comprehensionToBuffer(rendered, templates, output);
       }
       let { [STATIC]: statics } = rendered;
       statics = this.templateStatic(statics, templates);
+      let isRoot = rendered[ROOT];
+      let prevBuffer = output.buffer;
+      if (isRoot) {
+        output.buffer = "";
+      }
+      if (changeTracking && isRoot && !rendered.magicId) {
+        rendered.newRender = true;
+        rendered.magicId = this.nextMagicID();
+      }
       output.buffer += statics[0];
       for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(rendered[i - 1], templates, output);
+        this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
         output.buffer += statics[i];
+      }
+      if (isRoot) {
+        let skip = false;
+        let attrs;
+        if (changeTracking || Object.keys(rootAttrs).length > 0) {
+          skip = !rendered.newRender;
+          attrs = __spreadValues({ [PHX_MAGIC_ID]: rendered.magicId }, rootAttrs);
+        } else {
+          attrs = rootAttrs;
+        }
+        if (skip) {
+          attrs[PHX_SKIP] = true;
+        }
+        let [newRoot, commentBefore, commentAfter] = modifyRoot(output.buffer, attrs, skip);
+        rendered.newRender = false;
+        output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
       }
     }
     comprehensionToBuffer(rendered, templates, output) {
@@ -2233,7 +2410,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         let dynamic = dynamics[d];
         output.buffer += statics[0];
         for (let i = 1; i < statics.length; i++) {
-          this.dynamicToBuffer(dynamic[i - 1], compTemplates, output);
+          let changeTracking = false;
+          this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, changeTracking);
           output.buffer += statics[i];
         }
       }
@@ -2243,69 +2421,26 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         output.streams.add(stream);
       }
     }
-    dynamicToBuffer(rendered, templates, output) {
+    dynamicToBuffer(rendered, templates, output, changeTracking) {
       if (typeof rendered === "number") {
         let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids);
         output.buffer += str;
         output.streams = new Set([...output.streams, ...streams]);
       } else if (isObject(rendered)) {
-        this.toOutputBuffer(rendered, templates, output);
+        this.toOutputBuffer(rendered, templates, output, changeTracking, {});
       } else {
         output.buffer += rendered;
       }
     }
     recursiveCIDToString(components, cid, onlyCids) {
       let component = components[cid] || logError(`no component for CID ${cid}`, components);
-      let template = document.createElement("template");
-      let [html, streams] = this.recursiveToString(component, components, onlyCids);
-      template.innerHTML = html;
-      let container = template.content;
+      let attrs = { [PHX_COMPONENT]: cid };
       let skip = onlyCids && !onlyCids.has(cid);
-      let [hasChildNodes, hasChildComponents] = Array.from(container.childNodes).reduce(([hasNodes, hasComponents], child, i) => {
-        if (child.nodeType === Node.ELEMENT_NODE) {
-          if (child.getAttribute(PHX_COMPONENT)) {
-            return [hasNodes, true];
-          }
-          child.setAttribute(PHX_COMPONENT, cid);
-          if (!child.id) {
-            child.id = `${this.parentViewId()}-${cid}-${i}`;
-          }
-          if (skip) {
-            child.setAttribute(PHX_SKIP, "");
-            child.innerHTML = "";
-          }
-          return [true, hasComponents];
-        } else {
-          if (child.nodeValue.trim() !== "") {
-            logError(`only HTML element tags are allowed at the root of components.
-
-got: "${child.nodeValue.trim()}"
-
-within:
-`, template.innerHTML.trim());
-            child.replaceWith(this.createSpan(child.nodeValue, cid));
-            return [true, hasComponents];
-          } else {
-            child.remove();
-            return [hasNodes, hasComponents];
-          }
-        }
-      }, [false, false]);
-      if (!hasChildNodes && !hasChildComponents) {
-        logError("expected at least one HTML element tag inside a component, but the component is empty:\n", template.innerHTML.trim());
-        return [this.createSpan("", cid).outerHTML, streams];
-      } else if (!hasChildNodes && hasChildComponents) {
-        logError("expected at least one HTML element tag directly inside a component, but only subcomponents were found. A component must render at least one HTML tag directly inside itself.", template.innerHTML.trim());
-        return [template.innerHTML, streams];
-      } else {
-        return [template.innerHTML, streams];
-      }
-    }
-    createSpan(text, cid) {
-      let span = document.createElement("span");
-      span.innerText = text;
-      span.setAttribute(PHX_COMPONENT, cid);
-      return span;
+      component.newRender = !skip;
+      component.magicId = `${this.parentViewId()}-c-${cid}`;
+      let changeTracking = true;
+      let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs);
+      return [html, streams];
     }
   };
 
@@ -2374,10 +2509,12 @@ within:
       this.__listeners.delete(callbackRef);
     }
     upload(name, files) {
-      return this.__view.dispatchUploads(name, files);
+      return this.__view.dispatchUploads(null, name, files);
     }
     uploadTo(phxTarget, name, files) {
-      return this.__view.withinTargets(phxTarget, (view) => view.dispatchUploads(name, files));
+      return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+        view.dispatchUploads(targetCtx, name, files);
+      });
     }
     __cleanup__() {
       this.__listeners.forEach((callbackRef) => this.removeHandleEvent(callbackRef));
@@ -2402,6 +2539,10 @@ within:
     },
     isVisible(el) {
       return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
+    },
+    isInViewport(el) {
+      const rect = el.getBoundingClientRect();
+      return rect.top >= 0 && rect.left >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && rect.right <= (window.innerWidth || document.documentElement.clientWidth);
     },
     exec_exec(eventType, phxEvent, view, sourceEl, el, [attr, to]) {
       let nodes = to ? dom_default.all(document, to) : [sourceEl];
@@ -2554,10 +2695,16 @@ within:
       }
     },
     addOrRemoveClasses(el, adds, removes, transition, time, view) {
-      let [transition_run, transition_start, transition_end] = transition || [[], [], []];
-      if (transition_run.length > 0) {
-        let onStart = () => this.addOrRemoveClasses(el, transition_start.concat(transition_run), []);
-        let onDone = () => this.addOrRemoveClasses(el, adds.concat(transition_end), removes.concat(transition_run).concat(transition_start));
+      let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []];
+      if (transitionRun.length > 0) {
+        let onStart = () => {
+          this.addOrRemoveClasses(el, transitionStart, [].concat(transitionRun).concat(transitionEnd));
+          window.requestAnimationFrame(() => {
+            this.addOrRemoveClasses(el, transitionRun, []);
+            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, transitionEnd, transitionStart));
+          });
+        };
+        let onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart));
         return view.transition(time, onStart, onDone);
       }
       window.requestAnimationFrame(() => {
@@ -2655,9 +2802,10 @@ within:
       this.children = this.parent ? null : {};
       this.root.children[this.id] = {};
       this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
+        let url = this.href && this.expandURL(this.href);
         return {
-          redirect: this.redirect ? this.href : void 0,
-          url: this.redirect ? void 0 : this.href || void 0,
+          redirect: this.redirect ? url : void 0,
+          url: this.redirect ? void 0 : url || void 0,
           params: this.connectParams(liveReferer),
           session: this.getSession(),
           static: this.getStatic(),
@@ -2855,7 +3003,7 @@ within:
       this.attachTrueDocEl();
       let patch = new DOMPatch(this, this.el, this.id, html, streams, null);
       patch.markPrunableContentForRemoval();
-      this.performPatch(patch, false);
+      this.performPatch(patch, false, true);
       this.joinNewChildren();
       this.execNewMounted();
       this.joinPending = false;
@@ -2894,7 +3042,7 @@ within:
         newHook.__mounted();
       }
     }
-    performPatch(patch, pruneCids) {
+    performPatch(patch, pruneCids, isJoinPatch = false) {
       let removedEls = [];
       let phxChildrenAdded = false;
       let updatedHookIds = new Set();
@@ -2929,7 +3077,7 @@ within:
         }
       });
       patch.after("transitionsDiscarded", (els) => this.afterElementsRemoved(els, pruneCids));
-      patch.perform();
+      patch.perform(isJoinPatch);
       this.afterElementsRemoved(removedEls, pruneCids);
       return phxChildrenAdded;
     }
@@ -3158,10 +3306,16 @@ within:
     onJoinError(resp) {
       if (resp.reason === "reload") {
         this.log("error", () => [`failed mount with ${resp.status}. Falling back to page request`, resp]);
-        return this.onRedirect({ to: this.href });
+        if (this.isMain()) {
+          this.onRedirect({ to: this.href });
+        }
+        return;
       } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
         this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp]);
-        return this.onRedirect({ to: this.href });
+        if (this.isMain()) {
+          this.onRedirect({ to: this.href });
+        }
+        return;
       }
       if (resp.redirect || resp.live_redirect) {
         this.joinPending = false;
@@ -3328,7 +3482,7 @@ within:
       if (isCid(targetCtx)) {
         return targetCtx;
       }
-      let cidOrSelector = target.getAttribute(this.binding("target"));
+      let cidOrSelector = opts.target || target.getAttribute(this.binding("target"));
       if (isCid(cidOrSelector)) {
         return parseInt(cidOrSelector);
       } else if (targetCtx && (cidOrSelector !== null || opts.target)) {
@@ -3412,7 +3566,7 @@ within:
     }
     pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback) {
       let uploads;
-      let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx);
+      let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts);
       let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts);
       let formData;
       let meta = this.extractMeta(inputEl.form);
@@ -3434,7 +3588,7 @@ within:
       };
       this.pushWithReply(refGenerator, "event", event, (resp) => {
         dom_default.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR));
-        if (dom_default.isUploadInput(inputEl) && inputEl.getAttribute("data-phx-auto-upload") !== null) {
+        if (dom_default.isUploadInput(inputEl) && dom_default.isAutoUpload(inputEl)) {
           if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
             let [ref, _els] = refGenerator();
             this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
@@ -3508,7 +3662,7 @@ within:
       let cid = this.targetComponentID(formEl, targetCtx);
       if (LiveUploader.hasUploadsInProgress(formEl)) {
         let [ref, _els] = refGenerator();
-        let push = () => this.pushFormSubmit(formEl, submitter, targetCtx, phxEvent, opts, onReply);
+        let push = () => this.pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply);
         return this.scheduleSubmit(formEl, ref, opts, push);
       } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
         let [ref, els] = refGenerator();
@@ -3572,14 +3726,25 @@ within:
         });
       });
     }
-    dispatchUploads(name, filesOrBlobs) {
-      let inputs = dom_default.findUploadInputs(this.el).filter((el) => el.name === name);
+    dispatchUploads(targetCtx, name, filesOrBlobs) {
+      let targetElement = this.targetCtxElement(targetCtx) || this.el;
+      let inputs = dom_default.findUploadInputs(targetElement).filter((el) => el.name === name);
       if (inputs.length === 0) {
         logError(`no live file inputs found matching the name "${name}"`);
       } else if (inputs.length > 1) {
         logError(`duplicate live file inputs found matching the name "${name}"`);
       } else {
         dom_default.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, { detail: { files: filesOrBlobs } });
+      }
+    }
+    targetCtxElement(targetCtx) {
+      if (isCid(targetCtx)) {
+        let [target] = dom_default.findComponentNodeList(this.el, targetCtx);
+        return target;
+      } else if (targetCtx) {
+        return targetCtx;
+      } else {
+        return null;
       }
     }
     pushFormRecovery(form, newCid, callback) {
@@ -3589,6 +3754,7 @@ within:
         if (inputs.length === 0) {
           return;
         }
+        inputs.forEach((input2) => input2.hasAttribute(PHX_UPLOAD_REF) && LiveUploader.clearFiles(input2));
         let input = inputs.find((el) => el.type !== "hidden") || inputs[0];
         let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
         js_default.exec("change", phxEvent, view, input, ["push", { _target: input.name, newCid, callback }]);
@@ -3626,7 +3792,8 @@ within:
       let template = document.createElement("template");
       template.innerHTML = html;
       return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id && this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").map((form) => {
-        let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${form.getAttribute(phxChange)}"]`);
+        const phxChangeValue = form.getAttribute(phxChange).replaceAll(/([\[\]"])/g, "\\$1");
+        let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${phxChangeValue}"]`);
         if (newForm) {
           return [form, newForm, this.targetComponentID(newForm)];
         } else {
@@ -4086,7 +4253,7 @@ within:
       if (!dead) {
         this.bindForms();
       }
-      this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, targetEl, phxEvent, eventTarget) => {
+      this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
         let matchKey = targetEl.getAttribute(this.binding(PHX_KEY));
         let pressedKey = e.key && e.key.toLowerCase();
         if (matchKey && matchKey.toLowerCase() !== pressedKey) {
@@ -4095,13 +4262,13 @@ within:
         let data = __spreadValues({ key: e.key }, this.eventMeta(type, e, targetEl));
         js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
       });
-      this.bind({ blur: "focusout", focus: "focusin" }, (e, type, view, targetEl, phxEvent, eventTarget) => {
-        if (!eventTarget) {
+      this.bind({ blur: "focusout", focus: "focusin" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
+        if (!phxTarget) {
           let data = __spreadValues({ key: e.key }, this.eventMeta(type, e, targetEl));
           js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
         }
       });
-      this.bind({ blur: "blur", focus: "focus" }, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+      this.bind({ blur: "blur", focus: "focus" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
         if (phxTarget === "window") {
           let data = this.eventMeta(type, e, targetEl);
           js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
@@ -4182,7 +4349,7 @@ within:
       }
     }
     bindClicks() {
-      window.addEventListener("click", (e) => this.clickStartedAtTarget = e.target);
+      window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
       this.bindClick("click", "click", false);
       this.bindClick("mousedown", "capture-click", true);
     }
@@ -4224,7 +4391,7 @@ within:
         if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))) {
           this.withinOwners(e.target, (view) => {
             let phxEvent = el.getAttribute(phxClickAway);
-            if (js_default.isVisible(el)) {
+            if (js_default.isVisible(el) && js_default.isInViewport(el)) {
               js_default.exec("click", phxEvent, view, el, ["push", { data: this.eventMeta("click", e, e.target) }]);
             }
           });
@@ -4273,7 +4440,7 @@ within:
         if (!type || !this.isConnected() || !this.main || dom_default.wantsNewTab(e)) {
           return;
         }
-        let href = target.href;
+        let href = target.href instanceof SVGAnimatedString ? target.href.baseVal : target.href;
         let linkState = target.getAttribute(PHX_LINK_STATE);
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -4415,7 +4582,7 @@ within:
           let currentIterations = iterations;
           iterations++;
           let { at, type: lastType } = dom_default.private(input, "prev-iteration") || {};
-          if (at === currentIterations - 1 && type !== lastType) {
+          if (at === currentIterations - 1 && type === "change" && lastType === "input") {
             return;
           }
           dom_default.putPrivate(input, "prev-iteration", { at: currentIterations, type });

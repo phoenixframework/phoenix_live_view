@@ -48,6 +48,8 @@ let DOM = {
 
   isUploadInput(el){ return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null },
 
+  isAutoUpload(inputEl){ return inputEl.hasAttribute("data-phx-auto-upload") },
+
   findUploadInputs(node){ return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`) },
 
   findComponentNodeList(node, cid){
@@ -66,7 +68,16 @@ let DOM = {
   },
 
   isUnloadableFormSubmit(e){
-    return !e.defaultPrevented && !this.wantsNewTab(e)
+    // Ignore form submissions intended to close a native <dialog> element
+    // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog#usage_notes
+    let isDialogSubmit = (e.target && e.target.getAttribute("method") === "dialog") ||
+      (e.submitter && e.submitter.getAttribute("formmethod") === "dialog")
+
+    if(isDialogSubmit){
+      return false
+    } else {
+      return !e.defaultPrevented && !this.wantsNewTab(e)
+    }
   },
 
   isNewPageClick(e, currentLocation){
@@ -75,6 +86,7 @@ let DOM = {
 
     if(e.defaultPrevented || href === null || this.wantsNewTab(e)){ return false }
     if(href.startsWith("mailto:") || href.startsWith("tel:")){ return false }
+    if(e.target.isContentEditable){ return false }
 
     try {
       url = new URL(href)

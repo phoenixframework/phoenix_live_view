@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <div id="last-event"><%= @event %></div>
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
-    <div id="child-component"><%= live_component Phoenix.LiveViewTest.ElementsComponent, id: 1 %></div>
+    <div id="child-component"><.live_component module={Phoenix.LiveViewTest.ElementsComponent} id={1} /></div>
 
     <%# basic render_* %>
     <span id="span-no-attr">This is a span</span>
@@ -43,9 +43,15 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
     <a href="/" id="redirect-a">Regular Link</a>
-    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-a" %>
-    <%= live_redirect "Live redirect", to: "/example", id: "live-redirect-replace-a", replace: true %>
-    <%= live_patch "Live patch", to: "/elements?from=uri", id: "live-patch-a" %>
+    <.link navigate="/example" id="live-redirect-a">Live redirect</.link>
+    <.link navigate="/example" id="live-redirect-replace-a" replace>Live redirect</.link>
+    <.link patch="/elements?from=uri" id="live-patch-a">Live patch</.link>
+
+    <button type="button" id="live-patch-button" phx-click={JS.patch("/elements?from=uri")}>Live patch button</button>
+
+    <button type="button" id="live-redirect-push-button" phx-click={JS.navigate("/example")}>Live redirect</button>
+    <button type="button" id="live-redirect-replace-button" phx-click={JS.navigate("/example", replace: true)}>Live redirect</button>
+    <button type="button" id="live-patch-redirect-button" phx-click={JS.patch("/elements?from=uri") |> JS.navigate("/example", replace: true)}>Last one wins</button>
 
     <%# hooks %>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>

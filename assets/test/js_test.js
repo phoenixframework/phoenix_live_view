@@ -139,13 +139,13 @@ describe("JS", () => {
 
       expect(Array.from(modal.classList)).toEqual(["modal"])
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      window.requestAnimationFrame(() => {
+      setTimeout(() => {
         expect(Array.from(modal.classList)).toEqual(["modal", "fade-out"])
         done()
-      })
+      }, 200)
     })
 
-    test("with multiple selector", done => {
+    test("with multiple selector", () => {
       let view = setupView(`
       <div id="modal1" class="modal">modal</div>
       <div id="modal2" class="modal">modal</div>
@@ -158,11 +158,11 @@ describe("JS", () => {
       expect(Array.from(modal1.classList)).toEqual(["modal"])
       expect(Array.from(modal2.classList)).toEqual(["modal"])
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      window.requestAnimationFrame(() => {
+      setTimeout(() => {
         expect(Array.from(modal1.classList)).toEqual(["modal", "fade-out"])
         expect(Array.from(modal2.classList)).toEqual(["modal", "fade-out"])
         done()
-      })
+      }, 200)
     })
   })
 

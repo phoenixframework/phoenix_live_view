@@ -16,7 +16,7 @@ defmodule Phoenix.LiveViewUnitTest do
               connect_params: %{},
               connect_info: %{},
               root_view: Phoenix.LiveViewTest.ParamCounterLive,
-              __temp__: %{}
+              live_temp: %{}
             },
             nil,
             %{},
@@ -286,6 +286,19 @@ defmodule Phoenix.LiveViewUnitTest do
 
       assert push_patch(socket, to: "/counter/123").redirected ==
                {:live, :patch, %{kind: :push, to: "/counter/123"}}
+    end
+  end
+
+  describe "put_private" do
+    test "assigns private keys" do
+      assert @socket.private[:hello] == nil
+      assert put_private(@socket, :hello, "world").private[:hello] == "world"
+    end
+
+    test "disallows reserved keys" do
+      assert_raise ArgumentError, ~r/reserved/, fn ->
+        put_private(@socket, :assign_new, "boom")
+      end
     end
   end
 end

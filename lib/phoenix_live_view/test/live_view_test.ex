@@ -468,8 +468,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_component__(endpoint, %{module: component}, assigns, opts) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
 
-    assigns =
-      Map.new(assigns)
+    assigns = Map.new(assigns)
 
     # TODO: Make the ID required once we support only stateful module components as live_component
     mount_assigns = if assigns[:id], do: %{myself: %Phoenix.LiveComponent.CID{cid: -1}}, else: %{}
@@ -923,6 +922,55 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Awaits all current `assign_async` and `start_async` for a given LiveView or element.
+
+  It renders the LiveView or Element once complete and returns the result.
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
+
+  ## Examples
+
+      {:ok, lv, html} = live(conn, "/path")
+      assert html =~ "loading data..."
+      assert render_async(lv) =~ "data loaded!"
+  """
+  def render_async(
+        view_or_element,
+        timeout \\ Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+      ) do
+    pids =
+      case view_or_element do
+        %View{} = view -> call(view, {:async_pids, {proxy_topic(view), nil, nil}})
+        %Element{} = element -> call(element, {:async_pids, element})
+      end
+
+    timeout_ref = make_ref()
+    Process.send_after(self(), {timeout_ref, :timeout}, timeout)
+
+    pids
+    |> Enum.map(&Process.monitor(&1))
+    |> Enum.each(fn ref ->
+      receive do
+        {^timeout_ref, :timeout} ->
+          raise RuntimeError, "expected async processes to finish within #{timeout}ms"
+
+        {:DOWN, ^ref, :process, _pid, _reason} ->
+          :ok
+      end
+    end)
+
+    unless Process.cancel_timer(timeout_ref) do
+      receive do
+        {^timeout_ref, :timeout} -> :noop
+      after
+        0 -> :noop
+      end
+    end
+
+    render(view_or_element)
+  end
+
+  @doc """
   Simulates a `live_patch` to the given `path` and returns the rendered result.
   """
   def render_patch(%View{} = view, path) when is_binary(path) do
@@ -1075,7 +1123,7 @@ defmodule Phoenix.LiveViewTest do
   a single element.
 
       assert view
-            |> element("#term a:first-child", "Increment")
+            |> element("#term > :first-child", "Increment")
             |> render() =~ "Increment</a>"
 
   Attribute selectors are also supported, and may be used on special cases
@@ -1127,6 +1175,7 @@ defmodule Phoenix.LiveViewTest do
     * `:size` - the byte size of the content
     * `:type` - the MIME type of the file
     * `:relative_path` - for simulating webkitdirectory metadata
+    * `:meta` - optional metadata sent by the client
 
   ## Examples
 
@@ -1230,11 +1279,16 @@ defmodule Phoenix.LiveViewTest do
     path
   end
 
-  def assert_patch(view, to) when is_binary(to), do: assert_patch(view, to, 100)
+  def assert_patch(view, to) when is_binary(to) do
+    assert_patch(view, to, Application.fetch_env!(:ex_unit, :assert_receive_timeout))
+  end
 
   @doc """
   Asserts a live patch will happen to a given path within `timeout`
-  milliseconds. The default `timeout` is 100.
+  milliseconds. 
+
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It always returns `:ok`.
 
@@ -1301,7 +1355,9 @@ defmodule Phoenix.LiveViewTest do
 
   @doc """
   Asserts a redirect will happen to a given path within `timeout` milliseconds.
-  The default `timeout` is 100.
+
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `assert_receive_timeout` (100 ms).
 
   It returns the flash messages from said redirect, if any.
   Note the flash will contain string keys.
@@ -1408,7 +1464,7 @@ defmodule Phoenix.LiveViewTest do
   ## Examples
 
       view
-      |> element("#term a:first-child", "Increment")
+      |> element("#term > :first-child", "Increment")
       |> open_browser()
 
       assert view
@@ -1658,7 +1714,7 @@ defmodule Phoenix.LiveViewTest do
 
     url =
       case Keyword.fetch!(opts, :to) do
-        "/" <> path -> URI.merge(root.uri, path)
+        "/" <> _ = path -> URI.merge(root.uri, path)
         url -> url
       end
 
@@ -1816,19 +1872,39 @@ defmodule Phoenix.LiveViewTest do
   you will need to call `render_submit/1`.
   """
   def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
-    if UploadClient.allow_acknowledged?(upload) do
-      render_chunk(upload, entry_name, percent)
-    else
-      case preflight_upload(upload) do
-        {:ok, %{ref: ref, config: config, entries: entries_resp}} ->
-          case UploadClient.allowed_ack(upload, ref, config, entries_resp) do
-            :ok -> render_chunk(upload, entry_name, percent)
-            {:error, reason} -> {:error, reason}
-          end
+    entry_ref =
+      Enum.find_value(upload.entries, fn
+        %{"name" => ^entry_name, "ref" => ref} -> ref
+        %{} -> nil
+      end)
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+    unless entry_name do
+      raise ArgumentError, "no such entry with name #{inspect(entry_name)}"
+    end
+
+    case UploadClient.fetch_allow_acknowledged(upload, entry_name) do
+      {:ok, _token} ->
+        render_chunk(upload, entry_name, percent)
+
+      {:error, :nopreflight} ->
+        case preflight_upload(upload) do
+          {:ok, %{ref: ref, config: config, entries: entries_resp, errors: errors}} ->
+            if entry_errors = errors[entry_ref] do
+              UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp, errors)
+              {:error, for(reason <- entry_errors, do: [entry_ref, reason])}
+            else
+              case UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp, errors) do
+                :ok -> render_chunk(upload, entry_name, percent)
+                {:error, reason} -> {:error, reason}
+              end
+            end
+
+          {:error, reason} ->
+            {:error, reason}
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

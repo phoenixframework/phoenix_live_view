@@ -51,6 +51,7 @@ export default class LiveUploader {
       entry.relative_path = file.webkitRelativePath
       entry.type = file.type
       entry.size = file.size
+      if(typeof(file.meta) === "function"){ entry.meta = file.meta() }
       fileData[uploadRef].push(entry)
     })
     return fileData
@@ -120,6 +121,7 @@ export default class LiveUploader {
       })
 
     let groupedEntries = this._entries.reduce((acc, entry) => {
+      if(!entry.meta){ return acc }
       let {name, callback} = entry.uploader(liveSocket.uploaders)
       acc[name] = acc[name] || {callback: callback, entries: []}
       acc[name].entries.push(entry)

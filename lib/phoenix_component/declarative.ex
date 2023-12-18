@@ -123,8 +123,8 @@ defmodule Phoenix.Component.Declarative do
   )
 
   @doc false
-  def __global__?(module, name, global_attr \\ nil) when is_atom(module) and is_binary(name) do
-    includes = global_attr && Keyword.get(global_attr.opts, :include, [])
+  def __global__?(module, name, global_attr) when is_atom(module) and is_binary(name) do
+    includes = Keyword.get(global_attr.opts, :include, [])
 
     if function_exported?(module, :__global__?, 1) do
       module.__global__?(name) or __global__?(name) or name in includes
@@ -198,7 +198,14 @@ defmodule Phoenix.Component.Declarative do
   @doc false
   @valid_opts [:global_prefixes]
   def __setup__(module, opts) do
-    {prefixes, invalid_opts} = Keyword.pop(opts, :global_prefixes, [])
+    {prefixes, opts} = Keyword.pop(opts, :global_prefixes, [])
+
+    {debug_annotations, invalid_opts} =
+      Keyword.pop(
+        opts,
+        :debug_heex_annotations,
+        Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
+      )
 
     prefix_matches =
       for prefix <- prefixes do
@@ -224,6 +231,7 @@ defmodule Phoenix.Component.Declarative do
     Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
+    Module.put_attribute(module, :__debug_annotations__, debug_annotations)
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
 
@@ -1131,7 +1139,6 @@ defmodule Phoenix.Component.Declarative do
 
           # slot with attributes
           _ ->
-            has_global? = Enum.any?(attrs, &(&1.type == :global))
             slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
             required_attrs = for {attr_name, %{required: true}} <- slot_attr_defs, do: attr_name
 
@@ -1183,8 +1190,7 @@ defmodule Phoenix.Component.Declarative do
 
                 # undefined slot attr
                 %{} ->
-                  if attr_name == :inner_block or
-                       (has_global? and __global__?(caller_module, Atom.to_string(attr_name))) do
+                  if attr_name == :inner_block do
                     :ok
                   else
                     message =

@@ -174,6 +174,34 @@ defmodule Phoenix.LiveView.ElementsTest do
                    "clicked link selected by \"a#a-no-attr\" does not have phx-click or href attributes",
                    fn -> view |> element("a#a-no-attr") |> render_click() end
     end
+
+    test "clicks live patch declared with JS.patch", %{live: view} do
+      assert view |> element("button#live-patch-button") |> render_click() |> is_binary()
+      assert last_event(view) =~ ~s|handle_params: %{"from" => "uri"}|
+
+      assert_patched(view, "/elements?from=uri")
+    end
+
+    test "clicks live redirect declared with JS.navigate (replace: false)", %{live: view} do
+      assert {:error, {:live_redirect, %{to: "/example", kind: :push}}} =
+               view |> element("button#live-redirect-push-button") |> render_click()
+
+      assert_redirected(view, "/example")
+    end
+
+    test "clicks live redirect declared with JS.navigate (replace: true)", %{live: view} do
+      assert {:error, {:live_redirect, %{to: "/example", kind: :replace}}} =
+               view |> element("button#live-redirect-replace-button") |> render_click()
+
+      assert_redirected(view, "/example")
+    end
+
+    test "last navigation declared with JS.(patch/navigate) wins", %{live: view} do
+      assert {:error, {:live_redirect, %{to: "/example", kind: :replace}}} =
+               view |> element("button#live-patch-redirect-button") |> render_click()
+
+      assert_redirected(view, "/example")
+    end
   end
 
   describe "render_hook" do

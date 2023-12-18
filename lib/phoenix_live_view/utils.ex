@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.Utils do
   # but also Static, and LiveViewTest.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Rendered, Socket, Lifecycle}
+  alias Phoenix.LiveView.{Socket, Lifecycle}
 
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
@@ -118,7 +118,7 @@ defmodule Phoenix.LiveView.Utils do
   Clears temporary data (flash, pushes, etc) from the socket privates.
   """
   def clear_temp(socket) do
-    put_in(socket.private.__temp__, %{})
+    put_in(socket.private.live_temp, %{})
   end
 
   @doc """
@@ -219,46 +219,6 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Renders the view with socket into a rendered struct.
-  """
-  def to_rendered(socket, view) do
-    assigns = render_assigns(socket)
-
-    inner_content =
-      assigns
-      |> view.render()
-      |> check_rendered!(view)
-
-    case layout(socket, view) do
-      {layout_mod, layout_template} ->
-        assigns = put_in(assigns[:inner_content], inner_content)
-        assigns = put_in(assigns.__changed__[:inner_content], true)
-
-        layout_mod
-        |> Phoenix.Template.render(to_string(layout_template), "html", assigns)
-        |> check_rendered!(layout_mod)
-
-      false ->
-        inner_content
-    end
-  end
-
-  defp check_rendered!(%Rendered{} = rendered, _view), do: rendered
-
-  defp check_rendered!(other, view) do
-    raise RuntimeError, """
-    expected #{inspect(view)} to return a %Phoenix.LiveView.Rendered{} struct
-
-    Ensure your render function uses ~H, or your template uses the .heex extension.
-
-    Got:
-
-        #{inspect(other)}
-
-    """
-  end
-
-  @doc """
   Returns the socket's flash messages.
   """
   def get_flash(%Socket{assigns: assigns}), do: assigns.flash
@@ -286,7 +246,7 @@ defmodule Phoenix.LiveView.Utils do
     new_flash = Map.delete(socket.assigns.flash, key)
 
     socket = assign(socket, :flash, new_flash)
-    update_in(socket.private.__temp__[:flash], &Map.delete(&1 || %{}, key))
+    update_in(socket.private.live_temp[:flash], &Map.delete(&1 || %{}, key))
   end
 
   @doc """
@@ -297,14 +257,14 @@ defmodule Phoenix.LiveView.Utils do
     new_flash = Map.put(assigns.flash, key, msg)
 
     socket = assign(socket, :flash, new_flash)
-    update_in(socket.private.__temp__[:flash], &Map.put(&1 || %{}, key, msg))
+    update_in(socket.private.live_temp[:flash], &Map.put(&1 || %{}, key, msg))
   end
 
   @doc """
   Returns a map of the flash messages which have changed.
   """
   def changed_flash(%Socket{} = socket) do
-    socket.private.__temp__[:flash] || %{}
+    socket.private.live_temp[:flash] || %{}
   end
 
   defp flash_key(binary) when is_binary(binary), do: binary
@@ -318,28 +278,28 @@ defmodule Phoenix.LiveView.Utils do
   redirects, the events won't be invoked.
   """
   def push_event(%Socket{} = socket, event, %{} = payload) do
-    update_in(socket.private.__temp__[:push_events], &[[event, payload] | &1 || []])
+    update_in(socket.private.live_temp[:push_events], &[[event, payload] | &1 || []])
   end
 
   @doc """
   Annotates the reply in the socket changes.
   """
   def put_reply(%Socket{} = socket, %{} = payload) do
-    put_in(socket.private.__temp__[:push_reply], payload)
+    put_in(socket.private.live_temp[:push_reply], payload)
   end
 
   @doc """
   Returns the push events in the socket.
   """
   def get_push_events(%Socket{} = socket) do
-    Enum.reverse(socket.private.__temp__[:push_events] || [])
+    Enum.reverse(socket.private.live_temp[:push_events] || [])
   end
 
   @doc """
   Returns the reply in the socket.
   """
   def get_reply(%Socket{} = socket) do
-    socket.private.__temp__[:push_reply]
+    socket.private.live_temp[:push_reply]
   end
 
   @doc """
@@ -479,31 +439,43 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Calls the optional `update/2` callback, otherwise update the socket directly.
+  Calls the optional `update/2` or `update_many/1` callback, otherwise update the socket(s) directly.
   """
   def maybe_call_update!(socket, component, assigns) do
-    if function_exported?(component, :update, 2) do
-      socket =
-        case component.update(assigns, socket) do
-          {:ok, %Socket{} = socket} ->
+    cond do
+      function_exported?(component, :update_many, 1) ->
+        case component.update_many([{assigns, socket}]) do
+          [%Socket{} = socket] ->
             socket
 
           other ->
-            raise ArgumentError, """
-            invalid result returned from #{inspect(component)}.update/2.
-
-            Expected {:ok, socket}, got: #{inspect(other)}
-            """
+            raise "#{inspect(component)}.update_many/1 must return a list of Phoenix.LiveView.Socket " <>
+                    "of the same length as the input list, got: #{inspect(other)}"
         end
 
-      if socket.redirected do
-        raise "cannot redirect socket on update. Redirect before `update/2` is called" <>
-                " or use `send/2` and redirect in the `handle_info/2` response"
-      end
+      function_exported?(component, :update, 2) ->
+        socket =
+          case component.update(assigns, socket) do
+            {:ok, %Socket{} = socket} ->
+              socket
 
-      socket
-    else
-      Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
+            other ->
+              raise ArgumentError, """
+              invalid result returned from #{inspect(component)}.update/2.
+
+              Expected {:ok, socket}, got: #{inspect(other)}
+              """
+          end
+
+        if socket.redirected do
+          raise "cannot redirect socket on update. Redirect before `update/2` is called" <>
+                  " or use `send/2` and redirect in the `handle_info/2` response"
+        end
+
+        socket
+
+      true ->
+        Enum.reduce(assigns, socket, fn {k, v}, acc -> assign(acc, k, v) end)
     end
   end
 
@@ -569,18 +541,6 @@ defmodule Phoenix.LiveView.Utils do
 
   defp drop_private(%Socket{private: private} = socket, keys) do
     %Socket{socket | private: Map.drop(private, keys)}
-  end
-
-  defp render_assigns(%{assigns: assigns} = socket) do
-    socket = %Socket{socket | assigns: %Socket.AssignsNotInSocket{__assigns__: assigns}}
-    Map.put(assigns, :socket, socket)
-  end
-
-  defp layout(socket, view) do
-    case socket.private do
-      %{live_layout: layout} -> layout
-      %{} -> view.__live__()[:layout]
-    end
   end
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do

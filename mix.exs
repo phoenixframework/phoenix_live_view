@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.19.5"
+  @version "0.20.1"
 
   def project do
     [
@@ -37,15 +37,17 @@ defmodule Phoenix.LiveView.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.6.15 or ~> 1.7.0"},
+      {:plug, "~> 1.15"},
       {:phoenix_view, "~> 2.0", optional: true},
       {:phoenix_template, "~> 1.0"},
-      {:phoenix_html, "~> 3.3"},
+      {:phoenix_html, "~> 3.3 or ~> 4.0"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
       {:floki, "~> 0.30.0", only: :test},
       {:ex_doc, "~> 0.29", only: :docs},
       {:makeup_eex, ">= 0.1.1", only: :docs},
+      {:makeup_diff, "~> 0.1", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4.1", only: :test}
     ]

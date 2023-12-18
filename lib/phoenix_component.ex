@@ -316,7 +316,7 @@ defmodule Phoenix.Component do
   ### The default slot
 
   The example above uses the default slot, accessible as an assign named `@inner_block`, to render
-  HEEx content via the `render_slot/2` function.
+  HEEx content via the `render_slot/1` function.
 
   If the values rendered in the slot need to be dynamic, you can pass a second value back to the
   HEEx content by calling `render_slot/2`:
@@ -340,7 +340,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
-    I like <%= fruit %>!
+    I like <b><%= fruit %></b>!
   </.unordered_list>
   ```
 
@@ -348,9 +348,9 @@ defmodule Phoenix.Component do
 
   ```html
   <ul>
-    <li>I like apples!</li>
-    <li>I like bananas!</li>
-    <li>I like cherries!</li>
+    <li>I like <b>apples</b>!</li>
+    <li>I like <b>bananas</b>!</li>
+    <li>I like <b>cherries</b>!</li>
   </ul>
   ```
 
@@ -509,11 +509,46 @@ defmodule Phoenix.Component do
 
   See `embed_templates/1` for more information, including declarative
   assigns support for embedded templates.
+
+  ## Debug Annotations
+
+  HEEx templates support debug annotations, which are special HTML comments
+  that wrap around rendered components to help you identify where markup
+  in your HTML document is rendered within your function component tree.
+
+  For example, imagine the following HEEx template:
+
+  ```heex
+  <.header>
+    <.button>Click</.button>
+  </.header>
+  ```
+
+  The HTML document would receive the following comments when debug annotations
+  are enabled:
+
+  ```html
+  <!-- <AppWeb.CoreComponents.header> lib/app_web/core_components.ex:123 -->
+  <header class="p-5">
+    <!-- <AppWeb.CoreComponents.button> lib/app_web/core_components.ex:456 -->
+    <button class="px-2 bg-indigo-500 text-white">Click</button>
+    <!-- </AppWeb.CoreComponents.button> -->
+  </header>
+  <!-- </AppWeb.CoreComponents.header> -->
+  ```
+
+  Debug annotations work across any `~H` or `.html.heex` template.
+  They can be enabled globally with the following configuration in your
+  `config/dev.exs` file:
+
+      config :phoenix_live_view, debug_heex_annotations: true
+
+  Changing this configuration will require `mix clean` and a full recompile.
   '''
 
   ## Functions
 
-  alias Phoenix.LiveView.{Static, Socket}
+  alias Phoenix.LiveView.{Static, Socket, AsyncResult}
   @reserved_assigns Phoenix.Component.Declarative.__reserved__()
   # Note we allow live_action as it may be passed down to a component, so it is not listed
   @non_assignables [:uploads, :streams, :socket, :myself]
@@ -752,6 +787,8 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
+    debug_annotations? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
+
     options = [
       engine: Phoenix.LiveView.TagEngine,
       file: __CALLER__.file,
@@ -759,7 +796,9 @@ defmodule Phoenix.Component do
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
       source: expr,
-      tag_handler: Phoenix.LiveView.HTMLEngine
+      tag_handler: Phoenix.LiveView.HTMLEngine,
+      annotate_tagged_content:
+        debug_annotations? && (&Phoenix.LiveView.HTMLEngine.annotate_tagged_content/1)
     ]
 
     EEx.compile_string(expr, options)
@@ -883,6 +922,10 @@ defmodule Phoenix.Component do
 
   If you don't want the container to affect layout, you can use the CSS property
   `display: contents` or a class that applies it, like Tailwind's `.contents`.
+
+  Beware if you set this to `:body`, as any content injected inside the body
+  (such as `Phoenix.LiveReload` features) will be discarded once the LiveView
+  connects
   """
   def live_render(conn_or_socket, view, opts \\ [])
 
@@ -1077,7 +1120,7 @@ defmodule Phoenix.Component do
   Imagine you have a function component that accepts a color:
 
   ```heex
-  <.my_component color="red" />
+  <.my_component bg_color="red" />
   ```
 
   The color is also optional, so you can skip it:
@@ -1349,8 +1392,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Converts a given data structure to a `Phoenix.HTML.Form`
-  according to `Phoenix.HTML.FormData`.
+  Converts a given data structure to a `Phoenix.HTML.Form`.
 
   This is commonly used to convert a map or an Ecto changeset
   into a form to be given to the `form/1` component.
@@ -1950,16 +1992,21 @@ defmodule Phoenix.Component do
   @doc ~S'''
   Renders a form.
 
-  This function receives a form struct, generally created with `to_form/2`,
-  and generates the relevant form tags. It can be used either inside LiveView
-  or outside.
+  This function receives a `Phoenix.HTML.Form` struct, generally created with
+  `to_form/2`, and generates the relevant form tags. It can be used either
+  inside LiveView or outside.
+
+  > To see how forms work in practice, you can run
+  > `mix phx.gen.live Blog Post posts title body:text` inside your Phoenix
+  > application, which will setup the necessary database tables and LiveViews
+  > to manage your data.
 
   ## Examples: inside LiveView
 
-  Inside LiveViews, the `for={...}` attribute is generally a form struct
-  created with the `to_form/1` function. `to_form/1` expects either a map
-  or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
-  as the source of data.
+  Inside LiveViews, this function component is typically called with
+  as `for={@form}`, where `@form` is the result of the `to_form/1` function.
+  `to_form/1` expects either a map or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
+  as the source of data and normalizes it into `Phoenix.HTML.Form` structure.
 
   For example, you may use the parameters received in a
   `c:Phoenix.LiveView.handle_event/3` callback to create an Ecto changeset
@@ -2127,6 +2174,7 @@ defmodule Phoenix.Component do
     The HTTP method.
     It is only used if an `:action` is given. If the method is not `get` nor `post`,
     an input tag with name `_method` is generated alongside the form tag.
+    If an `:action` is given with no method, the method will default to `post`.
     """
   )
 
@@ -2263,8 +2311,8 @@ defmodule Phoenix.Component do
 
   Here we see the `:sort_param` and `:drop_param` options in action.
 
-  *Note: `on_replace: :delete` on the `has_many` and `embeds_many` is required when using
-  these options.
+  > Note: `on_replace: :delete` on the `has_many` and `embeds_many` is required
+  > when using these options.
 
   When Ecto sees the specified sort or drop parameter from the form, it will sort
   the children based on the order they appear in the form, add new children it hasn't
@@ -2283,12 +2331,12 @@ defmodule Phoenix.Component do
     </label>
   </.inputs_for>
 
+  <input type="hidden" name="mailing_list[emails_drop][]" />
+
   <label class="block cursor-pointer">
     <input type="checkbox" name="mailing_list[emails_sort][]" class="hidden" />
     add more
   </label>
-
-  <input type="hidden" name="mailing_list[emails_drop][]" />
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
@@ -2302,11 +2350,15 @@ defmodule Phoenix.Component do
   checked. Wrapping the checkbox and textual content in a label makes any clicked content
   within the label check and uncheck the checkbox.
 
-  Finally, outside the `inputs_for`, we render another label with a value-less
-  `mailing_list[emails_sort][]` checkbox with accompanied "add more" text. Ecto will
-  treat unknown sort params as new children and build a new child. We also render an
-  empty `mailing_list[emails_drop][]` to ensure that all children are deleted when saving our
-  form in the event that the user dropped all the inputs.
+  Outside the `inputs_for`, we render an empty `mailing_list[emails_drop][]`,
+  to ensure that all children are deleted when saving a form where the user
+  dropped all entries. This checkbox is required whenever dropping associations.
+
+  Finally, we also render another label with a value-less `mailing_list[emails_sort][]`
+  checkbox with accompanied "add more" text. Ecto will treat unknown sort params
+  as new children and build a new child. This checkbox is optional and only necessary
+  if you want to dyamically add entries. You can optionally add a similar checkbox
+  before the `<.inputs_for>`, in the case you want to prepend entries.
   """
   @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
@@ -2417,7 +2469,11 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Generates a link for live and href navigation.
+  Generates a link to a given route.
+
+  To navigate across pages, using traditional browser navigation, use
+  the `href` attribute. To patch the current LiveView or navigate
+  across LiveViews, use `patch` and `navigate` respectively.
 
   [INSERT LVATTRDOCS]
 
@@ -2788,7 +2844,7 @@ defmodule Phoenix.Component do
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
       data-phx-preflighted-refs={join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))}
-      data-phx-auto-upload={valid_upload?(@upload) and @upload.auto_upload?}
+      data-phx-auto-upload={@upload.auto_upload?}
       {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
     />
     """
@@ -2796,10 +2852,7 @@ defmodule Phoenix.Component do
 
   defp join_refs(entries), do: Enum.join(entries, ",")
 
-  defp valid_upload?(%{entries: [_ | _], errors: []}), do: true
-  defp valid_upload?(%{}), do: false
-
-  @doc """
+  @doc ~S"""
   Generates an image preview on the client for a selected file.
 
   [INSERT LVATTRDOCS]
@@ -2811,6 +2864,18 @@ defmodule Phoenix.Component do
     <.live_img_preview entry={entry} width="75" />
   <% end %>
   ```
+
+  When you need to use it multiple times, make sure that they have distinct ids
+
+  ```heex
+  <%= for entry <- @uploads.avatar.entries do %>
+    <.live_img_preview entry={entry} width="75" />
+  <% end %>
+
+  <%= for entry <- @uploads.avatar.entries do %>
+    <.live_img_preview id={"modal-#{entry.ref}"} entry={entry} width="500" />
+  <% end %>
+  ```
   """
   @doc type: :component
 
@@ -2819,12 +2884,18 @@ defmodule Phoenix.Component do
     doc: "The `Phoenix.LiveView.UploadEntry` struct"
   )
 
+  attr.(:id, :string,
+    default: nil,
+    doc:
+      "the id of the img tag. Derived by default from the entry ref, but can be overridden as needed if you need to render a preview of the same entry multiple times on the same page"
+  )
+
   attr.(:rest, :global, [])
 
   def live_img_preview(assigns) do
     ~H"""
     <img
-      id={"phx-preview-#{@entry.ref}"}
+      id={@id || "phx-preview-#{@entry.ref}"}
       data-phx-upload-ref={@entry.upload_ref}
       data-phx-entry-ref={@entry.ref}
       data-phx-hook="Phoenix.LiveImgPreview"
@@ -2870,5 +2941,65 @@ defmodule Phoenix.Component do
       end
     %><% end %>
     """
+  end
+
+  @doc """
+  Renders an async assign with slots for the different loading states.
+  The result state takes precedence over subsequent loading and failed
+  states.
+
+  *Note*: The inner block receives the result of the async assign as a :let.
+  The let is only accessible to the inner block and is not in scope to the
+  other slots.
+
+  ## Examples
+
+  ```heex
+  <.async_result :let={org} assign={@org}>
+    <:loading>Loading organization...</:loading>
+    <:failed :let={reason}>there was an error loading the organization</:failed>
+    <%= if org do %>
+      <%= org.name %>
+    <% else %>
+      You don't have an organization yet.
+    <% end %>
+  </.async_result>
+  ```
+
+  To display loading and failed states again on subsequent `assign_async` calls,
+  reset the assign to a result-free `%AsyncResult{}`:
+
+  ```elixir
+  {:noreply,
+    socket
+    |> assign_async(:page, :data, &reload_data/0)
+    |> assign(:page, AsyncResult.loading())}
+  ```
+  """
+  @doc type: :component
+  attr.(:assign, AsyncResult, required: true)
+  slot.(:loading, doc: "rendered while the assign is loading for the first time")
+
+  slot.(:failed,
+    doc:
+      "rendered when an error or exit is caught or assign_async returns `{:error, reason}` for the first time. Receives the error as a `:let`"
+  )
+
+  slot.(:inner_block,
+    doc:
+      "rendered when the assign is loaded successfully via `AsyncResult.ok/2`. Receives the result as a `:let`"
+  )
+
+  def async_result(%{assign: async_assign} = assigns) do
+    cond do
+      async_assign.ok? ->
+        ~H|<%= render_slot(@inner_block, @assign.result) %>|
+
+      async_assign.loading ->
+        ~H|<%= render_slot(@loading, @assign.loading) %>|
+
+      async_assign.failed ->
+        ~H|<%= render_slot(@failed, @assign.failed) %>|
+    end
   end
 end

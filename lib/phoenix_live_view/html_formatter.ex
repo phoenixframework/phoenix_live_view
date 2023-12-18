@@ -462,13 +462,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
-  @void_tags ~w(area base br col hr img input link meta param command keygen source)
-  defp to_tree([{:tag, name, attrs, meta} | tokens], buffer, stack, source)
-       when name in @void_tags do
-    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
-  end
-
-  defp to_tree([{type, _name, attrs, %{self_close: true} = meta} | tokens], buffer, stack, source)
+  defp to_tree([{type, _name, attrs, %{closing: _} = meta} | tokens], buffer, stack, source)
        when is_tag_open(type) do
     to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
   end
@@ -485,7 +479,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          source
        ) do
     {mode, block} =
-      if (tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
+      if tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs) do
         content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
         {:preserve, [{:text, content, %{newlines: 0}}]}
       else
@@ -563,7 +557,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   # -- HELPERS
 
-  defp count_newlines_until_text(<<char, rest::binary>>, counter) when char in '\s\t\r',
+  defp count_newlines_until_text(<<char, rest::binary>>, counter) when char in ~c"\s\t\r",
     do: count_newlines_until_text(rest, counter)
 
   defp count_newlines_until_text(<<?\n, rest::binary>>, counter),
@@ -593,7 +587,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp head_may_not_have_whitespace?([{:text, text, _meta} | _]),
-    do: String.trim_leading(text) != "" and :binary.last(text) not in '\s\t'
+    do: String.trim_leading(text) != "" and :binary.last(text) not in ~c"\s\t"
 
   defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
   defp head_may_not_have_whitespace?(_), do: false
@@ -603,7 +597,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text)
        when name in @inline_elements do
     mode =
-      if String.trim_leading(text) != "" and :binary.first(text) not in '\s\t\n\r' do
+      if String.trim_leading(text) != "" and :binary.first(text) not in ~c"\s\t\n\r" do
         :preserve
       else
         meta.mode
@@ -635,10 +629,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   defp may_set_preserve_on_text(buffer, _mode, _tag_name), do: buffer
 
-  defp whitespace_around?(text), do: :binary.first(text) in '\s\t' or :binary.last(text) in '\s\t'
+  defp whitespace_around?(text),
+    do: :binary.first(text) in ~c"\s\t" or :binary.last(text) in ~c"\s\t"
 
   defp cleanup_extra_spaces_leading(text) do
-    if :binary.first(text) in '\s\t' do
+    if :binary.first(text) in ~c"\s\t" do
       " " <> String.trim_leading(text)
     else
       text
@@ -646,7 +641,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp cleanup_extra_spaces_trailing(text) do
-    if :binary.last(text) in '\s\t' do
+    if :binary.last(text) in ~c"\s\t" do
       String.trim_trailing(text) <> " "
     else
       text

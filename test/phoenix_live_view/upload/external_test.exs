@@ -68,6 +68,20 @@ defmodule Phoenix.LiveView.UploadExternalTest do
   end
 
   @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
+  test "external with relative path from file_input/4 helper", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{
+          name: "foo1.jpeg",
+          content: String.duplicate("ok", 100),
+          relative_path: "some/path/to/foo1.jpeg"
+        }
+      ])
+
+    assert render_upload(avatar, "foo1.jpeg", 1) =~ "relative path:some/path/to/foo1.jpeg"
+  end
+
+  @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
   test "external upload invokes preflight per entry", %{lv: lv} do
     avatar =
       file_input(lv, "form", :avatar, [
@@ -84,6 +98,73 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     assert render(lv) =~ "preflight:#{UploadLive.inspect_html_safe("foo2.jpeg")}"
   end
 
+  @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, external: :preflight]
+  test "external with too many entries", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo1.jpeg", content: String.duplicate("ok", 100)},
+        %{name: "foo2.jpeg", content: String.duplicate("ok", 100)}
+      ])
+
+    assert lv
+           |> form("form", user: %{})
+           |> render_change(avatar) =~ "foo1.jpeg:0%"
+
+    assert {:error, [[_ref, :too_many_files]]} = render_upload(avatar, "foo1.jpeg", 1)
+  end
+
+  @tag allow: [
+         max_entries: 1,
+         chunk_size: 20,
+         auto_upload: true,
+         accept: :any,
+         external: :preflight
+       ]
+  test "external auto upload with too many entries", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo1.jpeg", content: String.duplicate("ok", 100)},
+        %{name: "foo2.jpeg", content: String.duplicate("ok", 100)}
+      ])
+
+    html =
+      lv
+      |> form("form", user: %{})
+      |> render_change(avatar)
+
+    assert html =~ "foo1.jpeg:0%"
+    assert html =~ "foo2.jpeg:0%"
+
+    assert render_upload(avatar, "foo1.jpeg", 1) =~ "foo1.jpeg:1%"
+    assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
+  end
+
+  @tag allow: [
+         max_entries: 1,
+         max_file_size: 1,
+         auto_upload: true,
+         accept: :any,
+         external: :preflight
+       ]
+  test "external auto upload with exceeded max file size", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo1.jpeg", content: String.duplicate("ok", 100)},
+        %{name: "foo2.jpeg", content: String.duplicate("ok", 100)}
+      ])
+
+    html =
+      lv
+      |> form("form", user: %{})
+      |> render_change(avatar)
+
+    assert html =~ "foo1.jpeg:0%"
+    assert html =~ "foo2.jpeg:0%"
+
+    assert {:error, [[_, %{reason: :too_large}]]} = render_upload(avatar, "foo1.jpeg", 1)
+    assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
+  end
+
   def bad_preflight(%LiveView.UploadEntry{} = _entry, socket), do: {:ok, %{}, socket}
 
   @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, external: :bad_preflight]
@@ -92,8 +173,8 @@ defmodule Phoenix.LiveView.UploadExternalTest do
       file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("ok", 100)}])
 
     assert UploadLive.exits_with(lv, avatar, ArgumentError, fn ->
-      render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
-    end) =~ "external uploader metadata requires an :uploader key."
+             render_upload(avatar, "foo.jpeg", 1) =~ "foo.jpeg:1%"
+           end) =~ "external uploader metadata requires an :uploader key."
   end
 
   def error_preflight(%LiveView.UploadEntry{} = entry, socket) do
@@ -117,10 +198,31 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     assert render(lv) =~ "bad name"
   end
 
+  @tag allow: [
+         max_entries: 2,
+         chunk_size: 20,
+         auto_upload: true,
+         accept: :any,
+         external: :error_preflight
+       ]
+  test "preflight with auto_upload with error return", %{lv: lv} do
+    avatar =
+      file_input(lv, "form", :avatar, [
+        %{name: "foo.jpeg", content: String.duplicate("ok", 100)},
+        %{name: "bad.jpeg", content: String.duplicate("ok", 100)}
+      ])
+
+    assert {:error, [[_, %{reason: "bad name"}]]} = render_upload(avatar, "bad.jpeg", 1)
+    html = render_upload(avatar, "foo.jpeg", 1)
+    assert html =~ "foo.jpeg:1%"
+    assert html =~ "bad.jpeg:0%"
+  end
+
   @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
   test "consume_uploaded_entries", %{lv: lv} do
     upload_complete = "foo.jpeg:100%"
     parent = self()
+
     avatar =
       file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("ok", 100)}])
 
@@ -130,6 +232,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
       Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn meta, entry ->
         {:ok, send(parent, {:consume, meta, entry.client_name})}
       end)
+
       {:reply, :ok, socket}
     end)
 
@@ -141,6 +244,7 @@ defmodule Phoenix.LiveView.UploadExternalTest do
   test "consume_uploaded_entry", %{lv: lv} do
     upload_complete = "foo.jpeg:100%"
     parent = self()
+
     avatar =
       file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("ok", 100)}])
 
@@ -148,9 +252,11 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
     run(lv, fn socket ->
       {[entry], []} = Phoenix.LiveView.uploaded_entries(socket, :avatar)
+
       Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn meta ->
         {:ok, send(parent, {:individual_consume, meta, entry.client_name})}
       end)
+
       {:reply, :ok, socket}
     end)
 
@@ -158,7 +264,13 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     refute render(lv) =~ upload_complete
   end
 
-  @tag allow: [max_entries: 5, chunk_size: 20, accept: :any, external: :preflight, progress: :consume]
+  @tag allow: [
+         max_entries: 5,
+         chunk_size: 20,
+         accept: :any,
+         external: :preflight,
+         progress: :consume
+       ]
   test "consume_uploaded_entry/3 maintains entries state after drop", %{lv: lv} do
     parent = self()
 

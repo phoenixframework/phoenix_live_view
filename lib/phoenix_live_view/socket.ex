@@ -31,14 +31,14 @@ defmodule Phoenix.LiveView.Socket do
       socket "/live", MyAppWeb.UserSocket,
         websocket: [connect_info: [session: @session_options]]
 
-  If you require session options to be set at runtime, you can use 
+  If you require session options to be set at runtime, you can use
   an MFA tuple. The function it designates must return a keyword list.
 
       socket "/live", MyAppWeb.UserSocket,
         websocket: [connect_info: [session: {__MODULE__, :runtime_opts, []}]]
 
-      # ...  
-    
+      # ...
+
       def runtime_opts() do
         Keyword.put(@session_options, :domain, host())
       end
@@ -66,7 +66,7 @@ defmodule Phoenix.LiveView.Socket do
             root_pid: nil,
             router: nil,
             assigns: %{__changed__: %{}},
-            private: %{__temp__: %{}},
+            private: %{live_temp: %{}},
             fingerprints: Phoenix.LiveView.Diff.new_fingerprints(),
             redirected: nil,
             host_uri: nil,

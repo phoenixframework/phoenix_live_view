@@ -371,7 +371,7 @@ defmodule Phoenix.LiveView.Upload do
          %{} = client_config_meta
        ) do
     reply_entries =
-      for entry <- entries, into: %{} do
+      for entry <- entries, entry.valid?, into: %{} do
         token =
           Phoenix.LiveView.Static.sign_token(socket.endpoint, %{
             pid: self(),
@@ -382,25 +382,48 @@ defmodule Phoenix.LiveView.Upload do
         {entry.ref, token}
       end
 
-    {:ok, %{ref: conf.ref, config: client_config_meta, entries: reply_entries}, socket}
+    errors =
+      for entry <- entries,
+          not entry.valid?,
+          into: %{},
+          do: {entry.ref, entry_errors(conf, entry)}
+
+    reply = %{ref: conf.ref, config: client_config_meta, entries: reply_entries, errors: errors}
+    {:ok, reply, socket}
+  end
+
+  defp entry_errors(%UploadConfig{} = conf, %UploadEntry{} = entry) do
+    for {ref, err} <- conf.errors, ref == entry.ref, do: err
   end
 
   defp external_preflight(%Socket{} = socket, %UploadConfig{} = conf, entries, client_config_meta) do
     reply_entries =
-      Enum.reduce_while(entries, {:ok, %{}, socket}, fn entry, {:ok, metas, acc} ->
-        case conf.external.(entry, acc) do
-          {:ok, %{} = meta, new_socket} ->
-            new_socket = update_upload_entry_meta(new_socket, conf.name, entry, meta)
-            {:cont, {:ok, Map.put(metas, entry.ref, meta), new_socket}}
+      Enum.reduce_while(entries, {:ok, %{}, %{}, socket}, fn entry, {:ok, metas, errors, acc} ->
+        if conf.auto_upload? and not entry.valid? do
+          reasons = for {ref, reason} <- conf.errors, ref == entry.ref, do: %{reason: reason}
+          new_errors = Map.put(errors, entry.ref, reasons)
+          {:cont, {:ok, metas, new_errors, acc}}
+        else
+          case conf.external.(entry, acc) do
+            {:ok, %{} = meta, new_socket} ->
+              new_socket = update_upload_entry_meta(new_socket, conf.name, entry, meta)
+              {:cont, {:ok, Map.put(metas, entry.ref, meta), errors, new_socket}}
 
-          {:error, %{} = meta, new_socket} ->
-            {:halt, {:error, {entry.ref, meta}, new_socket}}
+            {:error, %{} = meta, new_socket} ->
+              if conf.auto_upload? do
+                new_errors = Map.put(errors, entry.ref, [meta])
+                {:cont, {:ok, metas, new_errors, new_socket}}
+              else
+                {:halt, {:error, {entry.ref, meta}, new_socket}}
+              end
+          end
         end
       end)
 
     case reply_entries do
-      {:ok, entry_metas, new_socket} ->
-        {:ok, %{ref: conf.ref, config: client_config_meta, entries: entry_metas}, new_socket}
+      {:ok, entry_metas, errors, new_socket} ->
+        reply = %{ref: conf.ref, config: client_config_meta, entries: entry_metas, errors: errors}
+        {:ok, reply, new_socket}
 
       {:error, {entry_ref, meta_reason}, new_socket} ->
         new_socket = put_upload_error(new_socket, conf.name, entry_ref, meta_reason)
