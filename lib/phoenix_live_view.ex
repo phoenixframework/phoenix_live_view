@@ -714,7 +714,9 @@ defmodule Phoenix.LiveView do
       upload channel when a new chunk has not been received. Defaults `10_000`.
 
     * `:external` - The 2-arity function for generating metadata for external
-      client uploaders. See the Uploads section for example usage.
+      client uploaders. This function must return either `{:ok, meta, socket}`
+      or `{:error, meta, socket}` where meta is a map. See the Uploads section
+      for example usage.
 
     * `:progress` - The optional 3-arity function for receiving progress events
 
