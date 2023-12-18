@@ -8,6 +8,7 @@
   * Fix `JS.focus()` failing to focus negative tabindex
   * Fix `LiveViewTest` failing to remove items after stream reset
   * Fix `phx-window-blur` and `phx-window-focus` events not firing
+  * Fix SVG anchor links throwing errors when clicked
 
 ### Enhancements
   * Speed up DOM patching performance 3-30x 🔥
