@@ -1833,6 +1833,11 @@ defmodule Phoenix.LiveView do
   and the result when the function completes.
 
   The task is only started when the socket is connected.
+   
+  ## Options
+    
+    * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
+
 
   ## Examples
 
@@ -1858,12 +1863,11 @@ defmodule Phoenix.LiveView do
         # ...
         send_update(parent, Component, data)
       end)
-
   """
-  def assign_async(%Socket{} = socket, key_or_keys, func)
+  def assign_async(%Socket{} = socket, key_or_keys, func, opts \\ [])
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
              is_function(func, 0) do
-    Async.assign_async(socket, key_or_keys, func)
+    Async.assign_async(socket, key_or_keys, func, opts)
   end
 
   @doc """

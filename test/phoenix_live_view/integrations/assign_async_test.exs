@@ -158,4 +158,30 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv, 200) =~ "lc_data: 123"
     end
   end
+
+  describe "LiveView assign_async, supervised" do
+    setup do
+      start_supervised!({Task.Supervisor, name: TestAsyncSupervisor})
+      :ok
+    end
+
+    test "valid return", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=sup_ok")
+      assert render_async(lv) =~ "data: 123"
+    end
+
+    test "raise during execution", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=sup_raise")
+
+      assert render_async(lv) =~ "{:exit, {%RuntimeError{message: &quot;boom&quot;}"
+      assert render(lv)
+    end
+
+    test "exit during execution", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=sup_exit")
+
+      assert render_async(lv) =~ "{:exit, :boom}"
+      assert render(lv)
+    end
+  end
 end
