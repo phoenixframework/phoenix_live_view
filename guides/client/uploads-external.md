@@ -225,20 +225,73 @@ The name of the uploader must match the one we return on the `:uploader`
 metadata in LiveView.
 
 Finally, head over to `app.js` and add the `uploaders: Uploaders` key to
-the `LiveSocket` constructor:
+the `LiveSocket` constructor to tell phoenix where to find the uploaders returned 
+within the external metadata.
 
 ```js
 // for uploading to S3
 import Uploaders from "./uploaders"
 
 let liveSocket = new LiveSocket("/live",
-    Socket, {
-        params: {_csrf_token: csrfToken},
-        uploaders: Uploaders
-    }
+   Socket, {
+     params: {_csrf_token: csrfToken},
+     uploaders: Uploaders
+  }
 )
 ```
 
 Now "S3" returned from the server will match the one in the client.
 To debug client-side javascript when trying to upload, you can inspect your
 browser and look at the console or networks tab to view the error logs.
+
+### Direct to S3-Compatible
+
+> This section assumes that you installed and configured [ExAws](https://hexdocs.pm/ex_aws/readme.html)
+> and [ExAws.S3](https://hexdocs.pm/ex_aws_s3/ExAws.S3.html) correctly in your project and can execute
+> the examples in the page without errors.
+
+Most S3 compatible platforms like Cloudflare R2 don't support `POST` when
+uploading files so we need to use `PUT` with a signed URL instead of the
+signed `POST`and send the file straight to the service, to do so we need to
+change the `presign_url/2` function and the `Uploaders.S3` that does the upload.
+
+The new `presign_upload/2`:
+
+```elixir
+def presign_upload(entry, socket) do
+  config = ExAws.Config.new(:s3)
+  bucket = "bucket"
+  key = "public/#{entry.client_name}"
+
+  {:ok, url} =
+    ExAws.S3.presigned_url(config, :put, bucket, key,
+      expires_in: 3600,
+      query_params: ["Content-Type": entry.client_type]
+    )
+   {:ok, %{uploader: "S3", key: key, url: url}, socket}
+end
+```
+
+The new `Uploaders.S3`:
+
+```js
+Uploaders.S3 = function (entries, onViewError) {
+  entries.forEach(entry => {
+    let xhr = new XMLHttpRequest()
+    onViewError(() => xhr.abort())
+    xhr.onload = () => xhr.status === 200 ? entry.progress(100) : entry.error()
+    xhr.onerror = () => entry.error()
+
+    xhr.upload.addEventListener("progress", (event) => {
+      if(event.lengthComputable){
+        let percent = Math.round((event.loaded / event.total) * 100)
+        if(percent < 100){ entry.progress(percent) }
+      }
+    })
+
+    let url = entry.meta.url
+    xhr.open("PUT", url, true)
+    xhr.send(entry.file)
+  })
+}
+```
