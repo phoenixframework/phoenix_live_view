@@ -115,9 +115,10 @@ export default class View {
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
+      let url = this.href && this.expandURL(this.href)
       return {
-        redirect: this.redirect ? this.href : undefined,
-        url: this.redirect ? undefined : this.href || undefined,
+        redirect: this.redirect ? url : undefined,
+        url: this.redirect ? undefined : url || undefined,
         params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
@@ -340,7 +341,7 @@ export default class View {
     this.attachTrueDocEl()
     let patch = new DOMPatch(this, this.el, this.id, html, streams, null)
     patch.markPrunableContentForRemoval()
-    this.performPatch(patch, false)
+    this.performPatch(patch, false, true)
     this.joinNewChildren()
     this.execNewMounted()
 
@@ -381,7 +382,7 @@ export default class View {
     if(newHook){ newHook.__mounted() }
   }
 
-  performPatch(patch, pruneCids){
+  performPatch(patch, pruneCids, isJoinPatch = false){
     let removedEls = []
     let phxChildrenAdded = false
     let updatedHookIds = new Set()
@@ -414,7 +415,7 @@ export default class View {
     })
 
     patch.after("transitionsDiscarded", els => this.afterElementsRemoved(els, pruneCids))
-    patch.perform()
+    patch.perform(isJoinPatch)
     this.afterElementsRemoved(removedEls, pruneCids)
 
     return phxChildrenAdded
@@ -808,7 +809,7 @@ export default class View {
   targetComponentID(target, targetCtx, opts = {}){
     if(isCid(targetCtx)){ return targetCtx }
 
-    let cidOrSelector = target.getAttribute(this.binding("target"))
+    let cidOrSelector = opts.target || target.getAttribute(this.binding("target"))
     if(isCid(cidOrSelector)){
       return parseInt(cidOrSelector)
     } else if(targetCtx && (cidOrSelector !== null || opts.target)){
@@ -890,7 +891,7 @@ export default class View {
 
   pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback){
     let uploads
-    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx)
+    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts)
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
     let formData
     let meta  = this.extractMeta(inputEl.form)
@@ -994,7 +995,7 @@ export default class View {
     let cid = this.targetComponentID(formEl, targetCtx)
     if(LiveUploader.hasUploadsInProgress(formEl)){
       let [ref, _els] = refGenerator()
-      let push = () => this.pushFormSubmit(formEl, submitter, targetCtx, phxEvent, opts, onReply)
+      let push = () => this.pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply)
       return this.scheduleSubmit(formEl, ref, opts, push)
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()
@@ -1062,11 +1063,23 @@ export default class View {
     })
   }
 
-  dispatchUploads(name, filesOrBlobs){
-    let inputs = DOM.findUploadInputs(this.el).filter(el => el.name === name)
+  dispatchUploads(targetCtx, name, filesOrBlobs){
+    let targetElement = this.targetCtxElement(targetCtx) || this.el;
+    let inputs = DOM.findUploadInputs(targetElement).filter(el => el.name === name)
     if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
     else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
     else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {detail: {files: filesOrBlobs}}) }
+  }
+
+  targetCtxElement(targetCtx) {
+    if(isCid(targetCtx)){
+      let [target] = DOM.findComponentNodeList(this.el, targetCtx)
+      return target
+    } else if(targetCtx) {
+      return targetCtx
+    } else {
+      return null
+    }
   }
 
   pushFormRecovery(form, newCid, callback){

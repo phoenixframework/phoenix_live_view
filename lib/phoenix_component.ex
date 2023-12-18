@@ -316,7 +316,7 @@ defmodule Phoenix.Component do
   ### The default slot
 
   The example above uses the default slot, accessible as an assign named `@inner_block`, to render
-  HEEx content via the `render_slot/2` function.
+  HEEx content via the `render_slot/1` function.
 
   If the values rendered in the slot need to be dynamic, you can pass a second value back to the
   HEEx content by calling `render_slot/2`:
@@ -340,7 +340,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
-    I like <%= fruit %>!
+    I like <b><%= fruit %></b>!
   </.unordered_list>
   ```
 
@@ -348,9 +348,9 @@ defmodule Phoenix.Component do
 
   ```html
   <ul>
-    <li>I like apples!</li>
-    <li>I like bananas!</li>
-    <li>I like cherries!</li>
+    <li>I like <b>apples</b>!</li>
+    <li>I like <b>bananas</b>!</li>
+    <li>I like <b>cherries</b>!</li>
   </ul>
   ```
 
@@ -787,7 +787,7 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
-    annotate_root? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
+    debug_annotations? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
 
     options = [
       engine: Phoenix.LiveView.TagEngine,
@@ -797,7 +797,8 @@ defmodule Phoenix.Component do
       indentation: meta[:indentation] || 0,
       source: expr,
       tag_handler: Phoenix.LiveView.HTMLEngine,
-      annotate_root_tag: annotate_root? && (&Phoenix.LiveView.HTMLEngine.annotate_root_tag/1)
+      annotate_tagged_content:
+        debug_annotations? && (&Phoenix.LiveView.HTMLEngine.annotate_tagged_content/1)
     ]
 
     EEx.compile_string(expr, options)
@@ -1391,8 +1392,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Converts a given data structure to a `Phoenix.HTML.Form`
-  according to `Phoenix.HTML.FormData`.
+  Converts a given data structure to a `Phoenix.HTML.Form`.
 
   This is commonly used to convert a map or an Ecto changeset
   into a form to be given to the `form/1` component.
@@ -1992,16 +1992,21 @@ defmodule Phoenix.Component do
   @doc ~S'''
   Renders a form.
 
-  This function receives a form struct, generally created with `to_form/2`,
-  and generates the relevant form tags. It can be used either inside LiveView
-  or outside.
+  This function receives a `Phoenix.HTML.Form` struct, generally created with
+  `to_form/2`, and generates the relevant form tags. It can be used either
+  inside LiveView or outside.
+
+  > To see how forms work in practice, you can run
+  > `mix phx.gen.live Blog Post posts title body:text` inside your Phoenix
+  > application, which will setup the necessary database tables and LiveViews
+  > to manage your data.
 
   ## Examples: inside LiveView
 
-  Inside LiveViews, the `for={...}` attribute is generally a form struct
-  created with the `to_form/1` function. `to_form/1` expects either a map
-  or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
-  as the source of data.
+  Inside LiveViews, this function component is typically called with
+  as `for={@form}`, where `@form` is the result of the `to_form/1` function.
+  `to_form/1` expects either a map or an [`Ecto.Changeset`](https://hexdocs.pm/ecto/Ecto.Changeset.html)
+  as the source of data and normalizes it into `Phoenix.HTML.Form` structure.
 
   For example, you may use the parameters received in a
   `c:Phoenix.LiveView.handle_event/3` callback to create an Ecto changeset
@@ -2464,7 +2469,11 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Generates a link for live and href navigation.
+  Generates a link to a given route.
+
+  To navigate across pages, using traditional browser navigation, use
+  the `href` attribute. To patch the current LiveView or navigate
+  across LiveViews, use `patch` and `navigate` respectively.
 
   [INSERT LVATTRDOCS]
 
@@ -2936,6 +2945,8 @@ defmodule Phoenix.Component do
 
   @doc """
   Renders an async assign with slots for the different loading states.
+  The result state takes precedence over subsequent loading and failed
+  states.
 
   *Note*: The inner block receives the result of the async assign as a :let.
   The let is only accessible to the inner block and is not in scope to the
@@ -2954,18 +2965,29 @@ defmodule Phoenix.Component do
     <% end %>
   </.async_result>
   ```
+
+  To display loading and failed states again on subsequent `assign_async` calls,
+  reset the assign to a result-free `%AsyncResult{}`:
+
+  ```elixir
+  {:noreply,
+    socket
+    |> assign_async(:page, :data, &reload_data/0)
+    |> assign(:page, AsyncResult.loading())}
+  ```
   """
+  @doc type: :component
   attr.(:assign, AsyncResult, required: true)
-  slot.(:loading, doc: "rendered while the assign is loading")
+  slot.(:loading, doc: "rendered while the assign is loading for the first time")
 
   slot.(:failed,
     doc:
-      "rendered when an error or exit is caught or assign_async returns `{:error, reason}`. Receives the error as a :let."
+      "rendered when an error or exit is caught or assign_async returns `{:error, reason}` for the first time. Receives the error as a `:let`"
   )
 
   slot.(:inner_block,
     doc:
-      "rendered when the assign is loaded successfully via AsyncResult.ok/2. Receives the result as a :let"
+      "rendered when the assign is loaded successfully via `AsyncResult.ok/2`. Receives the result as a `:let`"
   )
 
   def async_result(%{assign: async_assign} = assigns) do

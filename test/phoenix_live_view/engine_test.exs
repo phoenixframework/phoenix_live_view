@@ -303,6 +303,19 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{}, %{}) == ["3", "3"]
     end
 
+    test "does not render dynamic if it has variables on the right side of the pipe" do
+      template = "<%= @foo |> Kernel.+(@bar) |> is_integer %>"
+      assert changed(template, %{foo: 1, bar: 2}, nil) == ["true"]
+      assert changed(template, %{foo: 1, bar: 2}, %{}) == [nil]
+      assert changed(template, %{foo: 1, bar: 2}, %{foo: true}) == ["true"]
+      assert changed(template, %{foo: 1, bar: 2}, %{bar: true}) == ["true"]
+
+      template = "<%= @foo |> is_integer |> is_boolean %>"
+      assert changed(template, %{foo: 1}, nil) == ["true"]
+      assert changed(template, %{foo: 1}, %{}) == [nil]
+      assert changed(template, %{foo: 1}, %{foo: true}) == ["true"]
+    end
+
     test "does not render dynamic for special variables" do
       template = "<%= __MODULE__ %>"
       assert changed(template, %{}, nil) == [""]

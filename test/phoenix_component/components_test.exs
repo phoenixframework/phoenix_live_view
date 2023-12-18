@@ -1,7 +1,6 @@
 defmodule Phoenix.LiveView.ComponentsTest do
   use ExUnit.Case, async: true
 
-  import Phoenix.HTML.Form
   import Phoenix.Component
   import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
 
@@ -250,7 +249,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f}>
-        <%= text_input f, :foo %>
+        <input id={f[:foo].id} name={f[:foo].name} type="text" />
       </.form>
       """
 
@@ -262,7 +261,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form for={@form}>
-        <%= text_input @form, :foo %>
+        <input id={@form[:foo].id} name={@form[:foo].name} type="text" />
       </.form>
       """
 
@@ -287,7 +286,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} for={@form} as="base" data-foo="bar" class="pretty" phx-change="valid">
-        <%= text_input f, :foo %>
+        <input id={f[:foo].id} name={f[:foo].name} type="text" />
       </.form>
       """
 
@@ -316,7 +315,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} for={%{}}>
-        <%= text_input f, :foo %>
+        <input id={f[:foo].id} name={f[:foo].name} type="text" />
       </.form>
       """
 
@@ -343,7 +342,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} for={%{}} action="/">
-        <%= text_input f, :foo %>
+        <input id={f[:foo].id} name={f[:foo].name} type="text" />
       </.form>
       """
 
@@ -363,7 +362,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} for={%{}} method="get" action="/">
-        <%= text_input f, :foo %>
+        <input id={f[:foo].id} name={f[:foo].name} type="text" />
       </.form>
       """
 
@@ -376,7 +375,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} for={%{}}>
-        <%= text_input f, :foo %>
+        <input id={f[:foo].id} name={f[:foo].name} type="text" />
       </.form>
       """
 
@@ -405,7 +404,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
         class="pretty"
         phx-change="valid"
       >
-        <%= text_input user_form, :foo %>
+        <input id={user_form[:foo].id} name={user_form[:foo].name} type="text" />
         <%= inspect(user_form.errors) %>
       </.form>
       """
@@ -438,7 +437,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
         <.form :let={f} as={:myform}>
           <.inputs_for :let={finner} field={f[:inner]}}>
-            <%= text_input finner, :foo %>
+            <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
           </.inputs_for>
         </.form>
       """
@@ -458,7 +457,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
         <.form :let={f} as={:myform}>
           <.inputs_for :let={finner} field={f[:inner]}} id="test" as={:name}>
-            <%= text_input finner, :foo %>
+            <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
           </.inputs_for>
         </.form>
       """
@@ -478,7 +477,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
         <.form :let={f} as={:myform}>
           <.inputs_for :let={finner} field={f[:inner]}} default={%{foo: "123"}}>
-            <%= text_input finner, :foo %>
+            <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
           </.inputs_for>
         </.form>
       """
@@ -504,7 +503,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
             prepend={[%{foo: "123"}]}
             append={[%{foo: "789"}]}
           >
-            <%= text_input finner, :foo %>
+            <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
           </.inputs_for>
         </.form>
       """

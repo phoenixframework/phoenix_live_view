@@ -297,8 +297,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       text = List.to_string(text)
       meta = [line: meta.line, column: meta.column]
       state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
-      {tokens, cont, _state} = Tokenizer.tokenize(text, meta, tokens, cont, state)
-      {tokens, cont}
+      Tokenizer.tokenize(text, meta, tokens, cont, state)
     end
 
     defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents) do
@@ -321,8 +320,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       text = List.to_string(text)
       meta = [line: line, column: column]
       state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
-      {tokens, cont, _state} = Tokenizer.tokenize(text, meta, tokens, cont, state)
-      {tokens, cont}
+      Tokenizer.tokenize(text, meta, tokens, cont, state)
     end
 
     defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}, _contents)
@@ -464,13 +462,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
-  @void_tags ~w(area base br col hr img input link meta param command keygen source)
-  defp to_tree([{:tag, name, attrs, meta} | tokens], buffer, stack, source)
-       when name in @void_tags do
-    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
-  end
-
-  defp to_tree([{type, _name, attrs, %{self_close: true} = meta} | tokens], buffer, stack, source)
+  defp to_tree([{type, _name, attrs, %{closing: _} = meta} | tokens], buffer, stack, source)
        when is_tag_open(type) do
     to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
   end
@@ -487,7 +479,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          source
        ) do
     {mode, block} =
-      if (tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs)) and buffer != [] do
+      if tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs) do
         content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
         {:preserve, [{:text, content, %{newlines: 0}}]}
       else

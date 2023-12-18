@@ -74,6 +74,26 @@ During a regular controller request, this exception will be converted to a
 To understand how a LiveView reacts to exceptions, we need to consider two
 scenarios: exceptions on mount and during any event.
 
+## Common scenarios
+
+Sometimes, it is desirable to have error handling in multiple LiveViews. In
+this case, it is possible to check for an `@error` variable in the templates
+and conditionally render if it is set, or to redirect to a separate error page.
+However another option is to replace the rendering function using
+`Phoenix.LiveView.render_with/2` within a callback or hook such as
+`Phoenix.LiveView.on_mount/1`. This allows common error rendering without
+requiring a redirect or a check in every template.
+
+For example:
+
+    def on_mount(:check_errors, params, _session, socket) when is_map_key(params, "invalid") do
+      {:cont, Phoenix.LiveView.render_with(socket, &MyApp.Components.param_error/1)}
+    end
+
+    def on_mount(:check_errors, _params, _session, socket) do
+      {:cont, socket}
+    end
+
 ## Exceptions on mount
 
 Given the code on mount runs both on the initial disconnected render and the

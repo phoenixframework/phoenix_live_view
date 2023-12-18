@@ -39,7 +39,7 @@ the default layouts they will use. See the `def controller`
 and `def live_view` definitions in your `MyAppWeb` to learn how
 it is included.
 
-For LiveViews, the default layout can be overidden in two different
+For LiveViews, the default layout can be overridden in two different
 ways for flexibility:
 
   1. The `:layout` option in `Phoenix.LiveView.Router.live_session/2`,
@@ -63,10 +63,10 @@ tab with a notification. For example, to update the user's notification
 count in the browser's title bar, first set the `page_title` assign on
 mount:
 
-      def mount(_params, _session, socket) do
-        socket = assign(socket, page_title: "Latest Posts")
-        {:ok, socket}
-      end
+    def mount(_params, _session, socket) do
+      socket = assign(socket, page_title: "Latest Posts")
+      {:ok, socket}
+    end
 
 Then access `@page_title` in the root layout:
 

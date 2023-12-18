@@ -38,7 +38,7 @@ defmodule Phoenix.LiveView.LiveStream do
     raise ArgumentError, """
     expected stream :#{dom_prefix} to be a struct or map with :id key, got: #{inspect(other)}
 
-    If you would like to generate custom DOM id's based on other keys, use the :dom_id option.
+    If you would like to generate custom DOM id's based on other keys, use stream_configure/3 with the :dom_id option beforehand.
     """
   end
 
@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.LiveStream do
         raise ArgumentError, """
         streams can only be consumed directly by a for comprehension.
         If you are attempting to consume the stream ahead of time, such as with
-        `Enum.with_index(@stream.#{stream.name})`, you need to place the relevant information
+        `Enum.with_index(@streams.#{stream.name})`, you need to place the relevant information
         within the stream items instead.
         """
       end

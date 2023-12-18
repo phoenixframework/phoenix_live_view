@@ -53,11 +53,13 @@ export default class ViewHook {
   }
 
   upload(name, files){
-    return this.__view.dispatchUploads(name, files)
+    return this.__view.dispatchUploads(null, name, files)
   }
 
   uploadTo(phxTarget, name, files){
-    return this.__view.withinTargets(phxTarget, view => view.dispatchUploads(name, files))
+    return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+      view.dispatchUploads(targetCtx, name, files)
+    })
   }
 
   __cleanup__(){

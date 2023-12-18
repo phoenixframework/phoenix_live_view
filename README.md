@@ -29,10 +29,10 @@ model while keeping your code closer to your data (and ultimately your source of
 
   * **Rich templating language:** Enjoy HEEx: a templating language that supports function components, slots, HTML validation, verified routes, and more.
 
-  * **Small payloads:** LiveView is smart enough to track changes so it only sends what the client needs, making LiveView payloads much smaller than server-rendered HTML.
+  * **Diffs over the wire:** Instead of sending "HTML over the wire", LiveView knows exactly which parts of your templates change, sending minimal diffs over the wire after the initial render, reducing latency and bandwidth usage. The client leverages this information and optimizes the browser with 5-10x faster updates, compared to solutions that replace whole HTML fragments.
 
   * **Live form validation:** LiveView supports real-time form validation out of the box. Create rich user interfaces with features like uploads, nested inputs, and [specialized recovery](https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects).
-  
+
   * **File uploads:** Real-time file uploads with progress indicators and image previews. Process your uploads on the fly or submit them to your desired cloud service.
 
   * **Rich integration API:** Use the rich integration API to interact with the client, with `phx-click`, `phx-focus`, `phx-blur`, `phx-submit`, and `phx-hook` included for cases where you have to write JavaScript.
@@ -47,9 +47,13 @@ model while keeping your code closer to your data (and ultimately your source of
 
   * **Robust test suite:** Write tests with confidence alongside Phoenix LiveView built-in testing tools. No more running a whole browser alongside your tests.
 
-## Official announcements
+## Learning
 
-News from the Phoenix team on LiveView:
+Check our [comprehensive docs](https://hexdocs.pm/phoenix_live_view) to get started.
+
+The Phoenix framework documentation also keeps a list of [community resources](https://hexdocs.pm/phoenix/community.html), including books, videos, and other materials, and some include LiveView too.
+
+Also follow these announcements from the Phoenix team on LiveView for more examples and rationale:
 
   * [LiveBeats: Building a Social Music App With Phoenix LiveView](https://fly.io/blog/livebeats/)
 
@@ -57,15 +61,11 @@ News from the Phoenix team on LiveView:
 
   * [Initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript)
 
-## Learning
-
-See our existing comprehensive [docs](https://hexdocs.pm/phoenix_live_view) and [guides](https://hexdocs.pm/phoenix_live_view/api-reference.html) for more information.
-
 ## Installation
 
 LiveView is included by default in all new Phoenix v1.6+ applications and
 later. If you have an older existing Phoenix app and you wish to add
-LiveView, see [the installation guide on HexDocs](https://hexdocs.pm/phoenix_live_view/installation.html).
+LiveView, see [the previous installation guide](https://github.com/phoenixframework/phoenix_live_view/blob/v0.20.1/guides/introduction/installation.md).
 
 ## What makes LiveView unique?
 
@@ -167,6 +167,7 @@ $ mix test
 ```
 
 Running the Javascript tests:
+
 ```bash
 $ cd assets
 $ npm run test

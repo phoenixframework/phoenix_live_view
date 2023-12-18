@@ -1666,9 +1666,12 @@ if Version.match?(System.version(), ">= 1.13.0") do
       <textarea />
       """)
 
-      assert_formatter_doesnt_change("""
-      <textarea></textarea>
-      """)
+      assert_formatter_doesnt_change(
+        """
+        <textarea></textarea>
+        """,
+        line_length: 5
+      )
     end
 
     test "keeps right format for inline elements within block elements" do
@@ -1706,6 +1709,19 @@ if Version.match?(System.version(), ">= 1.13.0") do
       assert_formatter_doesnt_change(
         """
         <.textarea phx-no-format>My content</.textarea>
+        """,
+        line_length: 5
+      )
+
+      assert_formatter_output(
+        """
+        <span phx-no-format class="underline">Check</span> Messages
+        """,
+        """
+        <span
+          phx-no-format
+          class="underline"
+        >Check</span> Messages
         """,
         line_length: 5
       )

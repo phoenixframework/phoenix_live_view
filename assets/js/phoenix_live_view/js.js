@@ -26,6 +26,16 @@ let JS = {
     return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0)
   },
 
+  isInViewport(el){
+    const rect = el.getBoundingClientRect()
+    return (
+      rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.right <= (window.innerWidth || document.documentElement.clientWidth)
+    )
+  },
+
   // private
 
   // commands

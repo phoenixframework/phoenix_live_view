@@ -3,8 +3,7 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  def start_async(%Socket{} = socket, key, func, opts \\ [])
-      when is_atom(key) and is_function(func, 0) do
+  def start_async(%Socket{} = socket, key, func, opts \\ []) when is_function(func, 0) do
     run_async_task(socket, key, func, :start, opts)
   end
 
@@ -136,16 +135,22 @@ defmodule Phoenix.LiveView.Async do
   defp handle_kind(socket, maybe_component, :start, key, result) do
     callback_mod = maybe_component || socket.view
 
-    case callback_mod.handle_async(key, result, socket) do
-      {:noreply, %Socket{} = new_socket} ->
-        new_socket
+    case Phoenix.LiveView.Lifecycle.handle_async(key, result, socket) do
+      {:cont, %Socket{} = socket} ->
+        case callback_mod.handle_async(key, result, socket) do
+          {:noreply, %Socket{} = new_socket} ->
+            new_socket
 
-      other ->
-        raise ArgumentError, """
-        expected #{inspect(callback_mod)}.handle_async/3 to return {:noreply, socket}, got:
+          other ->
+            raise ArgumentError, """
+            expected #{inspect(callback_mod)}.handle_async/3 to return {:noreply, socket}, got:
 
-            #{inspect(other)}
-        """
+                #{inspect(other)}
+            """
+        end
+
+      {:halt, %Socket{} = socket} ->
+        socket
     end
   end
 
@@ -186,13 +191,13 @@ defmodule Phoenix.LiveView.Async do
     end
   end
 
-  defp update_private_async(socket, func) do
-    existing = socket.private[:phoenix_async] || %{}
-    Phoenix.LiveView.put_private(socket, :phoenix_async, func.(existing))
+  defp update_private_async(%{private: private} = socket, func) do
+    existing = Map.get(private, :live_async, %{})
+    %{socket | private: Map.put(private, :live_async, func.(existing))}
   end
 
   defp get_private_async(%Socket{} = socket, key) do
-    socket.private[:phoenix_async][key]
+    socket.private[:live_async][key]
   end
 
   defp get_current_async!(socket, key) do

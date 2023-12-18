@@ -522,7 +522,7 @@ export default class LiveSocket {
     if(!dead){ this.bindNav() }
     this.bindClicks()
     if(!dead){ this.bindForms() }
-    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
+    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
@@ -530,13 +530,13 @@ export default class LiveSocket {
       let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
       JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
     })
-    this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, eventTarget) => {
-      if(!eventTarget){
+    this.bind({blur: "focusout", focus: "focusin"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
+      if(!phxTarget){
         let data = {key: e.key, ...this.eventMeta(type, e, targetEl)}
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
-    this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, targetCtx, phxEvent, phxTarget) => {
+    this.bind({blur: "blur", focus: "focus"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
       // blur and focus are triggered on document and window. Discard one to avoid dups
       if(phxTarget === "window"){
         let data = this.eventMeta(type, e, targetEl)
@@ -619,7 +619,7 @@ export default class LiveSocket {
   }
 
   bindClicks(){
-    window.addEventListener("click", e => this.clickStartedAtTarget = e.target)
+    window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
     this.bindClick("click", "click", false)
     this.bindClick("mousedown", "capture-click", true)
   }
@@ -661,7 +661,7 @@ export default class LiveSocket {
       if(!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))){
         this.withinOwners(e.target, view => {
           let phxEvent = el.getAttribute(phxClickAway)
-          if(JS.isVisible(el)){
+          if(JS.isVisible(el) && JS.isInViewport(el)){
             JS.exec("click", phxEvent, view, el, ["push", {data: this.eventMeta("click", e, e.target)}])
           }
         })
@@ -703,7 +703,9 @@ export default class LiveSocket {
       let type = target && target.getAttribute(PHX_LIVE_LINK)
       if(!type || !this.isConnected() || !this.main || DOM.wantsNewTab(e)){ return }
 
-      let href = target.href
+      // When wrapping an SVG element in an anchor tag, the href can be an SVGAnimatedString
+      let href = target.href instanceof SVGAnimatedString ? target.href.baseVal : target.href
+
       let linkState = target.getAttribute(PHX_LINK_STATE)
       e.preventDefault()
       e.stopImmediatePropagation() // do not bubble click to regular phx-click bindings

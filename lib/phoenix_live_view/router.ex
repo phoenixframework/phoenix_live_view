@@ -128,13 +128,20 @@ defmodule Phoenix.LiveView.Router do
   `live_redirect` from the client with navigation purely over the existing
   websocket connection. This allows live routes defined in the router to
   mount a new root LiveView without additional HTTP requests to the server.
+  For backwards compatibility reasons, all live routes defined outside
+  of any live session are considered part of a single unnamed live session.
 
   ## Security Considerations
 
-  You must always perform authentication and authorization in your LiveViews.
-  If your application handle both regular HTTP requests and LiveViews, then
-  you must perform authentication and authorization on both. This is important
-  because `live_redirect`s *do not go through the plug pipeline*.
+  In a regular web application, we perform authentication and authorization
+  checks on every request. Given LiveViews start as a regular HTTP request,
+  they share the authentication logic with regular requests through plugs.
+  Once the user is authenticated, we typically validate the sessions on
+  the `mount` callback. Authorization rules generally happen on `mount`
+  (for instance, is the user allowed to see this page?) and also on
+  `handle_event` (is the user allowed to delete this item?). Performing
+  authorization on mount is important because `live_redirect`s *do not go
+  through the plug pipeline*.
 
   `live_session` can be used to draw boundaries between groups of LiveViews.
   Redirecting between `live_session`s will always force a full page reload
@@ -149,8 +156,8 @@ defmodule Phoenix.LiveView.Router do
   ## Options
 
     * `:session` - The optional extra session map or MFA tuple to be merged with
-      the LiveView session. For example, `%{"admin" => true}`, `{MyMod, :session, []}`.
-      For MFA, the function is invoked, passing the `Plug.Conn` struct is prepended
+      the LiveView session. For example, `%{"admin" => true}` or `{MyMod, :session, []}`.
+      For MFA, the function is invoked and the `Plug.Conn` struct is prepended
       to the arguments list.
 
     * `:root_layout` - The optional root layout tuple for the initial HTTP render to

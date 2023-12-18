@@ -125,7 +125,7 @@ defmodule Phoenix.LiveComponent do
 
   Live components also support an optional `c:update_many/1` callback
   as an alternative to `c:update/2`. While `c:update/2` is called for
-  each component individially, `c:update_many/1` is called with all
+  each component individually, `c:update_many/1` is called with all
   LiveComponents of the same module being currently rendered/updated.
   The advantage is that you can preload data from the database using
   a single query for all components, instead of running one query per
@@ -158,13 +158,13 @@ defmodule Phoenix.LiveComponent do
           |> Repo.all()
           |> Map.new()
 
-        Enum.map(assigns_sockets, fn {assigns, sockets} ->
+        Enum.map(assigns_sockets, fn {assigns, socket} ->
           assign(socket, :user, users[assigns.id])
         end)
       end
 
   Now only a single query to the database will be made. In fact, the
-  `update_many/2` algorithm is a breadth-first tree traversal, which means
+  `update_many/1` algorithm is a breadth-first tree traversal, which means
   that even for nested components, the amount of queries are kept to
   a minimum.
 
@@ -215,29 +215,10 @@ defmodule Phoenix.LiveComponent do
       classDef callback_req fill:#B7ADFF,color:#000,stroke-width:0,text-decoration:underline
   ```
 
-  ## Slots
-
-  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
-
-      <.live_component module={MyComponent} id={@data.id} >
-        <div>Inner content here</div>
-      </.live_component>
-
-  If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
-  includes the `:inner_block` assign it received.
-
-  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
-
-  ## Live patches and live redirects
-
-  A template rendered inside a component can use `<.link patch={...}>` and
-  `<.link navigate={...}>`. Patches are always handled by the parent `LiveView`,
-  as components do not provide `handle_params`.
-
   ## Managing state
 
   Now that we have learned how to define and use components, as well as
-  how to use `c:preload/1` as a data loading optimization, it is important
+  how to use `c:update_many/1` as a data loading optimization, it is important
   to talk about how to manage state in components.
 
   Generally speaking, you want to avoid both the parent LiveView and the
@@ -347,7 +328,7 @@ defmodule Phoenix.LiveComponent do
 
   Now, each CardComponent will load its own card. Of course, doing so
   per card could be expensive and lead to N queries, where N is the
-  number of cards, so we can use the `c:preload/1` callback to make it
+  number of cards, so we can use the `c:update_many/1` callback to make it
   efficient.
 
   Once the card components are started, they can each manage their own
@@ -366,8 +347,84 @@ defmodule Phoenix.LiveComponent do
       end
 
   With `Phoenix.LiveView.send_update/3`, the `CardComponent` given by `id`
-  will be invoked, triggering both preload and update callbacks, which will
+  will be invoked, triggering the update or update_many callback, which will
   load the most up to date data from the database.
+
+  ### Unifying LiveView and LiveComponent communication
+
+  In the examples above, we have used `send/2` to communicate with LiveView
+  and `send_update/2` to communicate with components. This introduces a problem:
+  what if you have a component that may be mounted both inside a LiveView
+  or another component? Given each uses a different API for exchanging data,
+  this may seem tricky at first, but an elegant solution is to use anonymous
+  functions as callbacks. Let's see an example.
+
+  In the sections above, we wrote the following code in our `CardComponent`:
+
+  ```elixir
+  def handle_event("update_title", %{"title" => title}, socket) do
+    send self(), {:updated_card, %{socket.assigns.card | title: title}}
+    {:noreply, socket}
+  end
+  ```
+
+  The issue with this code is that, if CardComponent is mounted inside another
+  component, it will still message the LiveView. Not only that, this code may
+  be hard to maintain because the message sent by the component is defined far
+  away from the LiveView that will receive it.
+
+  Instead let's define a callback that will be invoked by CardComponent:
+
+  ```elixir
+  def handle_event("update_title", %{"title" => title}, socket) do
+    socket.assigns.on_card_update.(%{socket.assigns.card | title: title})
+    {:noreply, socket}
+  end
+  ```
+
+  And now when initializing the CardComponent from a LiveView, we may write:
+
+  ```heex
+  <.live_component
+    module={CardComponent}
+    card={card}
+    id={card.id}
+    board_id={@id}
+    on_card_update={fn card -> send(self(), {:updated_card, card}) end} />
+  ```
+
+  If initializing it inside another component, one may write:
+
+  ```heex
+  <.live_component
+    module={CardComponent}
+    card={card}
+    id={card.id}
+    board_id={@id}
+    on_card_update={fn card -> send_update(@myself, card: card) end} />
+  ```
+
+  The major benefit in both cases is that the parent has explicit control
+  over the messages it will receive.
+
+  ## Slots
+
+  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
+
+      <.live_component module={MyComponent} id={@data.id} >
+        <div>Inner content here</div>
+      </.live_component>
+
+  If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
+  includes the `:inner_block` assign it received.
+
+  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
+
+  ## Live patches and live redirects
+
+  A template rendered inside a component can use `<.link patch={...}>` and
+  `<.link navigate={...}>`. Patches are always handled by the parent `LiveView`,
+  as components do not provide `handle_params`.
 
   ## Cost of live components
 
@@ -434,31 +491,8 @@ defmodule Phoenix.LiveComponent do
 
   ## Limitations
 
-  ### Live Components require a single HTML tag at the root
-
   Live Components require a single HTML tag at the root. It is not possible
   to have components that render only text or multiple tags.
-
-  ### SVG support
-
-  Given components compartmentalize markup on the server, they are also
-  rendered in isolation on the client, which provides great performance
-  benefits on the client too.
-
-  However, when rendering components on the client, the client needs to
-  choose the mime type of the component contents, which defaults to HTML.
-  This is the best default but in some cases it may lead to unexpected
-  results.
-
-  For example, if you are rendering SVG, the SVG will be interpreted as
-  HTML. This may work just fine for most components but you may run into
-  corner cases. For example, the `<image>` SVG tag may be rewritten to
-  the `<img>` tag, since `<image>` is an obsolete HTML tag.
-
-  Luckily, there is a simple solution to this problem. Since SVG allows
-  `<svg>` tags to be nested, you can wrap the component content into an
-  `<svg>` tag. This will ensure that it is correctly interpreted by the
-  browser.
   '''
 
   defmodule CID do
@@ -522,5 +556,12 @@ defmodule Phoenix.LiveComponent do
             ) ::
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
-  @optional_callbacks mount: 1, update_many: 1, update: 2, handle_event: 3
+  @callback handle_async(
+              name :: atom,
+              async_fun_result :: {:ok, term} | {:exit, term},
+              socket :: Socket.t()
+            ) ::
+              {:noreply, Socket.t()}
+
+  @optional_callbacks mount: 1, update_many: 1, update: 2, render: 1, handle_event: 3, handle_async: 3
 end

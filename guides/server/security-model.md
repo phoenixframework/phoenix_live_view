@@ -29,20 +29,20 @@ and some of those actions require specific permissions. This is called
 authorization and the specific rules often change per application.
 
 In a regular web application, we perform authentication and authorization
-checks on every request. In LiveView, we should also run those exact same
-checks, always. Once the user is authenticated, we typically validate the
-sessions on the `mount` callback. Authorization rules generally happen on
-`mount` (for instance, is the user allowed to see this page?) and also on
+checks on every request. Given LiveViews start as a regular HTTP request,
+they share the authentication logic with regular requests through plugs.
+Once the user is authenticated, we typically validate the sessions on
+the `mount` callback. Authorization rules generally happen on `mount`
+(for instance, is the user allowed to see this page?) and also on
 `handle_event` (is the user allowed to delete this item?).
 
 ## Mounting considerations
 
 The [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
 the initial HTTP mount and when LiveView is connected. Therefore, any
-authentication performed during mount will cover all scenarios.
+authorization performed during mount will cover all scenarios.
 
-However, if you perform user authentication and confirmation exclusively on HTTP
-requests via Plugs, such as this:
+Once the user is authorized and stored in the session, the logic to fetch the user and further authorize its account needs to happen inside LiveView. For example, if you have the following plugs:
 
     plug :ensure_user_authenticated
     plug :ensure_user_confirmed
@@ -63,7 +63,7 @@ should execute those same verifications:
       {:ok, socket}
     end
 
-LiveView v0.17 includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
+Beginning with v0.17, LiveView includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
 which allows you to encapsulate this logic and execute it on every mount,
 as you would with plug:
 
@@ -288,13 +288,14 @@ LiveView is mounted, even after `live_redirect`s.
 The important concepts to keep in mind are:
 
   * If you have both LiveViews and regular web requests, then any
-    logic in your plugs must be replicated in your LiveView. Code
-    that executes on the `mount` callback always runs on both live
+    authorization logic in your plugs must be replicated in your LiveView.
+    Code that executes on the `mount` callback always runs on both live
     and regular web requests to that LiveView
 
   * All actions (events) must also be explicitly authorized by
     checking permissions. Those permissions are often domain/business
-    specific, and typically happen in your context modules
+    specific, and typically happen in your context modules. This is
+    also a requirement for regular requests and responses
 
   * `live_session` can be used to draw boundaries between groups of
     LiveViews. While you could use `live_session` to draw lines between

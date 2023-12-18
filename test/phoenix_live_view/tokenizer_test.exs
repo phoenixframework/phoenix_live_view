@@ -45,7 +45,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       assert tokenize("<!DOCTYPE\nhtml\n>  <br />") == [
                {:text, "<!DOCTYPE\nhtml\n>  ", %{line_end: 3, column_end: 4}},
                {:tag, "br", [],
-                %{column: 4, line: 3, self_close: true, tag_name: "br", inner_location: {3, 10}}}
+                %{column: 4, line: 3, closing: :void, tag_name: "br", inner_location: {3, 10}}}
              ]
     end
   end
@@ -82,7 +82,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       <div>
       """
 
-      {first_tokens, cont, _} =
+      {first_tokens, cont} =
         Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
@@ -94,7 +94,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </div>
       """
 
-      {tokens, :text, _} =
+      {tokens, :text} =
         Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       assert Enum.reverse(tokens) == [
@@ -124,7 +124,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       <%= "Hello" %>
       """
 
-      {first_tokens, cont, _} =
+      {first_tokens, cont} =
         Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
 
       second_part = """
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       <p><%= "World"</p>
       """
 
-      {second_tokens, cont, _} =
+      {second_tokens, cont} =
         Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       third_part = """
@@ -143,7 +143,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </p>
       """
 
-      {tokens, :text, _} =
+      {tokens, :text} =
         Tokenizer.tokenize(third_part, [], second_tokens, cont, tokenizer_state(third_part))
 
       assert Enum.reverse(tokens) == [
@@ -183,7 +183,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
 
     test "self close" do
       tokens = tokenize("<div/>")
-      assert [{:tag, "div", [], %{self_close: true}}] = tokens
+      assert [{:tag, "div", [], %{closing: :self}}] = tokens
     end
 
     test "compute line and column" do
@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
                {:text, _, %{line_end: 2, column_end: 3}},
                {:tag, "span", [], %{line: 2, column: 3}},
                {:text, _, %{line_end: 4, column_end: 1}},
-               {:tag, "p", [], %{column: 1, line: 4, self_close: true}},
+               {:tag, "p", [], %{column: 1, line: 4, closing: :self}},
                {:tag, "br", [], %{column: 5, line: 4}}
              ] = tokens
     end
@@ -751,7 +751,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
                 %{
                   column: 1,
                   line: 1,
-                  self_close: true,
+                  closing: :self,
                   tag_name: "script",
                   inner_location: {1, 24}
                 }},
@@ -784,7 +784,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
                 %{
                   column: 1,
                   line: 1,
-                  self_close: true,
+                  closing: :self,
                   inner_location: {1, 23},
                   tag_name: "style"
                 }},
@@ -804,6 +804,84 @@ defmodule Phoenix.LiveView.TokenizerTest do
                {:close, :tag, "style", %{column: 1, line: 3, inner_location: {3, 1}}},
                {:text, "\n", %{column_end: 1, line_end: 4}}
              ]
+    end
+  end
+
+  describe "local component" do
+    test "self-closing" do
+      assert tokenize("""
+             <.live_component module={MyApp.WeatherComponent} id="thermostat" city="Kraków" />
+             """) == [
+               {:local_component, "live_component",
+                 [
+                   {"module", {:expr, "MyApp.WeatherComponent", %{line: 1, column: 26}}, %{line: 1, column: 18}},
+                   {"id", {:string, "thermostat", %{delimiter: 34}}, %{line: 1, column: 50}},
+                   {"city", {:string, "Kraków", %{delimiter: 34}}, %{line: 1, column: 66}}
+                 ],
+                 %{line: 1, closing: :self, column: 1, tag_name: ".live_component", inner_location: {1, 82}}
+               },
+               {:text, "\n", %{line_end: 2, column_end: 1}}
+             ]
+    end
+
+    test "traverses until </.link>" do
+      assert tokenize("""
+             <.link href="/">Regular anchor link</.link>
+             """) == [
+               {:local_component, "link", [{"href", {:string, "/", %{delimiter: 34}}, %{line: 1, column: 8}}], %{line: 1, column: 1, tag_name: ".link", inner_location: {1, 17}}},
+               {:text, "Regular anchor link", %{line_end: 1, column_end: 36}},
+               {:close, :local_component, "link", %{line: 1, column: 36, tag_name: ".link", inner_location: {1, 36}}},
+               {:text, "\n", %{line_end: 2, column_end: 1}}
+             ]
+    end
+  end
+
+  describe "remote component" do
+    test "self-closing" do
+      assert tokenize("""
+             <MyAppWeb.CoreComponents.flash kind={:info} flash={@flash} />
+             """) == [
+               {
+                 :remote_component,
+                 "MyAppWeb.CoreComponents.flash",
+                 [{"kind", {:expr, ":info", %{column: 38, line: 1}}, %{column: 32, line: 1}}, {"flash", {:expr, "@flash", %{column: 52, line: 1}}, %{column: 45, line: 1}}],
+                 %{closing: :self, column: 1, inner_location: {1, 62}, line: 1, tag_name: "MyAppWeb.CoreComponents.flash"}
+               },
+               {:text, "\n", %{column_end: 1, line_end: 2}}
+             ]
+    end
+
+    test "traverses until </MyAppWeb.CoreComponents.modal>" do
+      assert tokenize("""
+             <MyAppWeb.CoreComponents.modal id="confirm" on_cancel={JS.navigate(~p"/posts")}>
+               This is another modal.
+             </MyAppWeb.CoreComponents.modal>
+             """) == [
+               {
+                 :remote_component,
+                 "MyAppWeb.CoreComponents.modal",
+                 [{"id", {:string, "confirm", %{delimiter: 34}}, %{line: 1, column: 32}}, {"on_cancel", {:expr, "JS.navigate(~p\"/posts\")", %{line: 1, column: 56}}, %{line: 1, column: 45}}],
+                 %{line: 1, column: 1, tag_name: "MyAppWeb.CoreComponents.modal", inner_location: {1, 81}}
+               },
+               {:text, "\n  This is another modal.\n", %{line_end: 3, column_end: 1}},
+               {:close, :remote_component, "MyAppWeb.CoreComponents.modal", %{line: 3, column: 1, tag_name: "MyAppWeb.CoreComponents.modal", inner_location: {3, 1}}},
+               {:text, "\n", %{line_end: 4, column_end: 1}}
+             ]
+    end
+  end
+
+  describe "reserved component" do
+    test "raise on using reserved slot :inner_block" do
+      message = """
+      nofile:1:1: the slot name :inner_block is reserved
+        |
+      1 | <:inner_block>Inner</:inner_block>
+        | ^\
+      """
+
+      assert_raise ParseError, message, fn ->
+        tokenize("<:inner_block>Inner</:inner_block>")
+      end
     end
   end
 

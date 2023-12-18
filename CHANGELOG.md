@@ -1,10 +1,37 @@
 # Changelog
 
+## 0.20.2
+
+### Bug fixes
+  * Fix javascript error when submitting a form that has in progress uploads
+  * Fix JS command `:target` failing to work when used as phx-submit or phx-change with a selector-based target
+  * Fix `JS.focus()` failing to focus negative tabindex
+  * Fix `LiveViewTest` failing to remove items after stream reset
+  * Fix `phx-window-blur` and `phx-window-focus` events not firing
+  * Fix SVG anchor links throwing errors when clicked
+
+### Enhancements
+  * Speed up DOM patching performance 3-30x 🔥
+  * Support `handle_async` Lifecycle callback
+  * Extend visibility checks for phx-click-away to better handle whether an element is visible in the viewport or not
+  * Allow `JS.patch` and `JS.navigate` to be tested with `render_click`
+
+## 0.20.1 (2023-10-09)
+
+### Bug fixes
+  * Fix error with live uploads `auto_upload: true` when a file fails to preflight
+  * Fix error with live uploads where an early exit can cause a map key error
+  * Fix match error on live navigation when reconnecting from client
+
+### Enhancements
+  * Support new `meta()` method on File/Blob sublcasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
+  * Improve void tagging and error messages
+
 ## 0.20.0 (2023-09-22)
 
 ### Deprecations
   * Deprecate the `~L` sigil in favor of `~H`
-  * Deprecate `preload/1` in LiveComponent in favor of `update_many/2`
+  * Deprecate `preload/1` in LiveComponent in favor of `update_many/1`
   * Deprecate `live_component/2-3` in favor of `<.live_component />`
   * Deprecate `live_patch` in favor of `<.link patch={...} />`
   * Deprecate `live_redirect` in favor of `<.link navigate={...} />`
@@ -16,7 +43,7 @@
   * Remove previously deprecated `live_file_input/2` in favor of `<.live_file_input />`
 
 ### Bug fixes
-  * Fix uploads with `auto_upload: true` failing to propegate errors when any individual entry is invalid
+  * Fix uploads with `auto_upload: true` failing to propagate errors when any individual entry is invalid
   * Fix uploads with `auto_upload: true` failing to auto upload valid entries errors when any individual entry is invalid
   * Fix error on form recovery with `auto_upload: true`
   * Fix issue on form recovery where hidden inputs would be selected by mistake
@@ -26,7 +53,7 @@
   * Fix anchors within contenteditable causing LiveSocket disconnects
 
 ### Enhancements
-  * Add heex debug annotations via `config :phoenix_live_view, :debug_heex_annotations: true`, which provides special HTML comments that wrap around rendered components to help you identify where markup in your HTML document is rendered within your function component tree
+  * Add heex debug annotations via `config :phoenix_live_view, debug_heex_annotations: true`, which provides special HTML comments that wrap around rendered components to help you identify where markup in your HTML document is rendered within your function component tree
   * Add `assign_async`, `start_async`, `<.async_result>` and, `AsyncResult` for declaratively handling async operations in a LiveView or LiveComponent.
   * Supporting passing `@myself` for `Phoenix.LiveView.send_update/3`
   * Support change tracking on Access.get
@@ -81,6 +108,7 @@
   * Remove previously deprecated `<%= live_img_preview(entry) %>`. Use `<.live_img_preview entry={entry} />` instead
   * Remove previously deprecated `<%= live_file_input(upload) %>`. Use `<.live_file_input upload={upload} />` instead
   * Remove previously deprecated `<%= live_component(Component) %>`. Use `<.live_component module={Component} id=\"hello\" />` instead
+  * Don't convert underscores to dashes automatically when rendering HTML attributes. Use dashes or underscores where appropriate instead.
 
 ### Enhancements
   * Support stream resets with bulk insert operations
