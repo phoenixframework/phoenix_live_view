@@ -448,6 +448,9 @@ defmodule Phoenix.LiveViewTest.DOM do
             parent_id = parent_id(html_tree, id)
 
             cond do
+              !child ->
+                acc
+
               # skip added children that aren't ours if they are not being appended
               not_appended? && parent_id && parent_id != container_id ->
                 acc
