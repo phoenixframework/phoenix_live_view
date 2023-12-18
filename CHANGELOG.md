@@ -15,6 +15,7 @@
   * Support `handle_async` Lifecycle callback
   * Extend visibility checks for phx-click-away to better handle whether an element is visible in the viewport or not
   * Allow `JS.patch` and `JS.navigate` to be tested with `render_click`
+  * Support `:supervisor` option to `assign_async` and `start_async`
 
 ## 0.20.1 (2023-10-09)
 
