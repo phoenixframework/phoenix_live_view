@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.2
+## 0.20.2 (2023-12-18)
 
 ### Bug fixes
   * Fix javascript error when submitting a form that has in progress uploads
