@@ -2418,22 +2418,30 @@ defmodule Phoenix.Component do
 
     forms = parent_form.impl.to_form(parent_form.source, parent_form, field_name, options)
     seen_ids = for f <- forms, vid = f.params[@persistent_id], into: %{}, do: {vid, true}
+    acc = {seen_ids, 0}
 
     {forms, _} =
-      forms
-      |> Enum.with_index()
-      |> Enum.map_reduce(seen_ids, fn {%Phoenix.HTML.Form{params: params} = form, index}, seen_ids ->
-        id =
-          case params do
-            %{@persistent_id => id} -> id
-            %{} -> next_id(map_size(seen_ids), seen_ids)
-          end
+      Enum.map_reduce(forms, acc, fn
+        %Phoenix.HTML.Form{params: params} = form, {seen_ids, index} ->
+          id =
+            case params do
+              %{@persistent_id => id} -> id
+              %{} -> next_id(map_size(seen_ids), seen_ids)
+            end
 
-        form_id = "#{parent_form.id}_#{field_name}_#{id}"
-        new_params = Map.put(params, @persistent_id, id)
-        new_hidden = [{@persistent_id, id} | form.hidden]
-        new_form = %Phoenix.HTML.Form{form | id: form_id, params: new_params, hidden: new_hidden, index: index}
-        {new_form, Map.put(seen_ids, id, true)}
+          form_id = "#{parent_form.id}_#{field_name}_#{id}"
+          new_params = Map.put(params, @persistent_id, id)
+          new_hidden = [{@persistent_id, id} | form.hidden]
+
+          new_form = %Phoenix.HTML.Form{
+            form
+            | id: form_id,
+              params: new_params,
+              hidden: new_hidden,
+              index: index
+          }
+
+          {new_form, {Map.put(seen_ids, id, true), index + 1}}
       end)
 
     assigns = assign(assigns, :forms, forms)

@@ -437,6 +437,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
         <.form :let={f} as={:myform}>
           <.inputs_for :let={finner} field={f[:inner]}}>
+            <% 0 = finner.index %>
             <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
           </.inputs_for>
         </.form>
