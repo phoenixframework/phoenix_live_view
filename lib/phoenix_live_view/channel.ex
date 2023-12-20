@@ -1276,6 +1276,11 @@ defmodule Phoenix.LiveView.Channel do
 
   defp reply_mount(result, from, %Session{} = session, route) do
     case result do
+      {:ok, diff, :mount, %{socket: %{private: %{halted: true}}} = new_state} ->
+        reply = put_container(session, route, %{rendered: diff})
+        GenServer.reply(from, {:ok, %{render_and_halt: reply}})
+        {:stop, :shutdown, new_state}
+
       {:ok, diff, :mount, new_state} ->
         reply = put_container(session, route, %{rendered: diff})
         GenServer.reply(from, {:ok, reply})
