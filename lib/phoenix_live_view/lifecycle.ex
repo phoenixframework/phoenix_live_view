@@ -153,6 +153,14 @@ defmodule Phoenix.LiveView.Lifecycle do
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
     reduce_socket(lifecycle.mount, socket, fn %{id: {_mod, arg}} = hook, acc ->
       case hook.function.(arg, params, session, acc) do
+        {_, %Socket{redirected: to, private: %{render_with: render_with}}}
+        when is_function(render_with) and not is_nil(to) ->
+          raise_halt_with_redirect_and_render_with!(hook)
+
+        {:halt, %Socket{private: %{render_with: render_with}}} = ok
+        when is_function(render_with) ->
+          ok
+
         {:halt, %Socket{redirected: nil}} ->
           raise_halt_without_redirect!(hook)
 
@@ -266,5 +274,13 @@ defmodule Phoenix.LiveView.Lifecycle do
   defp raise_continue_with_redirect!(hook) do
     raise ArgumentError,
           "the hook #{inspect(hook.id)} for lifecycle event :mount attempted to redirect without halting."
+  end
+
+  defp raise_halt_with_redirect_and_render_with!(hook) do
+    raise ArgumentError, """
+    the hook #{inspect(hook.id)} for lifecycle event :mount attempted to halt using both redirect and render_with.
+
+    It is only possible to use one of these inside of a lifecycle event.
+    """
   end
 end

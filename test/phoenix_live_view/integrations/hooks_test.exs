@@ -47,6 +47,19 @@ defmodule Phoenix.LiveView.HooksTest do
                  end
   end
 
+  test "on_mount hook halts with {:halt, render_with} socket", %{conn: conn} do
+    {:ok, _, html} = live(conn, "/lifecycle/render-with-mount")
+    assert html =~ "RENDER_WITH"
+  end
+
+  test "on_mount hook raises with both render_with and redirect", %{conn: conn} do
+    assert_raise Plug.Conn.WrapperError,
+                 ~r(the hook {Phoenix.LiveViewTest.HooksLive.HaltRenderWithRedirectMount, :default} for lifecycle event :mount attempted to halt using both redirect and render_with),
+                 fn ->
+                   live(conn, "/lifecycle/halt-render-with-redirect-mount")
+                 end
+  end
+
   test "on_mount hook halts with redirected socket", %{conn: conn} do
     assert {:error, {:live_redirect, %{to: "/lifecycle"}}} =
              live(conn, "/lifecycle/redirect-halt-mount")
