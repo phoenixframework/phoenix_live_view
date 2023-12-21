@@ -280,12 +280,13 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp add_cid_attr(cid, [head | tail]) do
-    head_with_cid = Regex.replace(
-      ~r/^((?:<!--.*-->)?<[^\s>]+)/,
-      IO.iodata_to_binary(head),
-      "\\1 #{@phx_component}=\"#{to_string(cid)}\"",
-      global: false
-    )
+    head_with_cid =
+      Regex.replace(
+        ~r"^((?:<!--.*-->)?<[^\s\r\n\t/>]+)",
+        IO.iodata_to_binary(head),
+        "\\1 #{@phx_component}=\"#{to_string(cid)}\"",
+        global: false
+      )
 
     [head_with_cid | tail]
   end
