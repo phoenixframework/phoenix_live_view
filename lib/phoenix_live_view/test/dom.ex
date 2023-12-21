@@ -273,21 +273,21 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def render_diff(rendered) do
     rendered
-    |> Phoenix.LiveView.Diff.to_iodata(fn cid, contents ->
-      contents
-      |> IO.iodata_to_binary()
-      |> parse()
-      |> List.wrap()
-      |> Enum.map(walk_fun(&inject_cid_attr(&1, cid)))
-      |> to_html()
-    end)
+    |> Phoenix.LiveView.Diff.to_iodata(&add_cid_attr/2)
     |> IO.iodata_to_binary()
     |> parse()
     |> List.wrap()
   end
 
-  defp inject_cid_attr({tag, attrs, children}, cid) do
-    {tag, [{@phx_component, to_string(cid)}] ++ attrs, children}
+  defp add_cid_attr(cid, [head | tail]) do
+    head_with_cid = Regex.replace(
+      ~r/^((?:<!--.*-->)?<[^\s>]+)/,
+      IO.iodata_to_binary(head),
+      "\\1 #{@phx_component}=\"#{to_string(cid)}\"",
+      global: false
+    )
+
+    [head_with_cid | tail]
   end
 
   # Patching
