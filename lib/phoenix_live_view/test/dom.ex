@@ -282,7 +282,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp add_cid_attr(cid, [head | tail]) do
     head_with_cid =
       Regex.replace(
-        ~r"^\s*(<!--.*-->)?\s*<[^\s/>]+",
+        ~r/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/,
         IO.iodata_to_binary(head),
         "\\0 #{@phx_component}=\"#{to_string(cid)}\"",
         global: false

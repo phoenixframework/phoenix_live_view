@@ -44,7 +44,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let insideComment = false
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML
 
-  let lookahead = html.match(/(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
+  let lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
   if(lookahead === null) { throw new Error(`malformed html ${html}`) }
 
   i = lookahead[0].length
