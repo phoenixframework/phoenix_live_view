@@ -37,7 +37,6 @@ const VOID_TAGS = new Set([
   "track",
   "wbr"
 ])
-const endingTagNameChars = new Set([">", "/", " ", "\n", "\t", "\r"])
 const quoteChars = new Set(["'", '"'])
 
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
@@ -45,18 +44,13 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let insideComment = false
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML
 
-  let lookahead = html.match(/\s*(<!--.*?-->\s*)*<[^!]/)
+  let lookahead = html.match(/(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
   if(lookahead === null) { throw new Error(`malformed html ${html}`) }
 
-  i = lookahead[0].length - 1
-  beforeTag = html.slice(0, i - 1)
-
-  for(i; i < html.length; i++){
-    if(endingTagNameChars.has(html.charAt(i))){ break }
-  }
-
+  i = lookahead[0].length
+  beforeTag = lookahead[1]
+  tag = lookahead[2]
   tagNameEndsAt = i
-  tag = html.slice(beforeTag.length + 1, tagNameEndsAt)
 
   // Scan the opening tag for id, if there is any
   for(i; i < html.length; i++){
