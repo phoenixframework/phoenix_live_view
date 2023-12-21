@@ -734,17 +734,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       |> maybe_push_reply(state)
       |> maybe_push_title(state)
 
-    case fetch_view_by_topic(state, topic) do
-      {:ok, view} ->
-        rendered = DOM.merge_diff(view.rendered, diff)
-        new_view = %ClientProxy{view | rendered: rendered}
+    if diff == %{} do
+      state
+    else
+      case fetch_view_by_topic(state, topic) do
+        {:ok, view} ->
+          rendered = DOM.merge_diff(view.rendered, diff)
+          new_view = %ClientProxy{view | rendered: rendered}
 
-        %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
-        |> patch_view(new_view, DOM.render_diff(rendered), rendered.streams)
-        |> detect_added_or_removed_children(new_view, html_before, rendered.streams)
+          %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
+          |> patch_view(new_view, DOM.render_diff(rendered), rendered.streams)
+          |> detect_added_or_removed_children(new_view, html_before, rendered.streams)
 
-      :error ->
-        state
+        :error ->
+          state
+      end
     end
   end
 

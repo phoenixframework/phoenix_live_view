@@ -145,13 +145,11 @@ defmodule Phoenix.LiveView.Diff do
     socket = %{socket | fingerprints: prints}
     diff = maybe_put_title(diff, socket)
     {diff, cdiffs} = extract_events({diff, cdiffs})
-
-    if map_size(cdiffs) == 0 do
-      {socket, diff, components}
-    else
-      {socket, Map.put(diff, @components, cdiffs), components}
-    end
+    {socket, maybe_put_cdiffs(diff, cdiffs), components}
   end
+
+  defp maybe_put_cdiffs(diff, cdiffs) when cdiffs == %{}, do: diff
+  defp maybe_put_cdiffs(diff, cdiffs), do: Map.put(diff, @components, cdiffs)
 
   @doc """
   Returns a diff containing only the events that have been pushed.
@@ -219,7 +217,7 @@ defmodule Phoenix.LiveView.Diff do
           render_pending_components(socket, pending, cids, cdiffs, components)
 
         {diff, cdiffs} = extract_events({diff, cdiffs})
-        {Map.put(diff, @components, cdiffs), components, extra}
+        {maybe_put_cdiffs(diff, cdiffs), components, extra}
 
       %{} ->
         :error
@@ -680,7 +678,7 @@ defmodule Phoenix.LiveView.Diff do
               if update_many? do
                 component.update_many(assigns_sockets)
               else
-                Enum.map(assigns_sockets, fn {assigns, socket} -> 
+                Enum.map(assigns_sockets, fn {assigns, socket} ->
                   Utils.maybe_call_update!(socket, component, assigns)
                 end)
               end
