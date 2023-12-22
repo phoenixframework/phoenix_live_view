@@ -193,12 +193,37 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Validate and normalizes the layout.
+  Validate and normalizes the layouts.
   """
+  def normalize_layouts(false, _warn_ctx), do: false
+  def normalize_layouts(layouts, warn_ctx) when is_list(layouts) do
+    Enum.map(layouts, &normalize_layout(&1, warn_ctx))
+  end
+  def normalize_layouts(other, _warn_ctz) do
+    raise ArgumentError,
+          "layouts expects a Keyword listwith pair with each item's key being the format and the value a tuple of the form {MyLayoutView, :my_template} or false, " <>
+            "got: #{inspect(other)}"
+  end
+
   def normalize_layout(false, _warn_ctx), do: false
+
+  def normalize_layout({format, {mod, layout}}, _warn_ctx) when is_atom(mod) and is_atom(layout) do
+    {format, {mod, Atom.to_string(layout)}}
+  end
 
   def normalize_layout({mod, layout}, _warn_ctx) when is_atom(mod) and is_atom(layout) do
     {mod, Atom.to_string(layout)}
+  end
+
+  def normalize_layout({format, {mod, layout}}, warn_ctx) when is_atom(mod) and is_binary(layout) do
+    root_template = Path.rootname(layout)
+
+    IO.warn(
+      "passing a string as a layout template for #{inspect(format)} in #{warn_ctx} is deprecated, please pass " <>
+        "{#{inspect(mod)}, :#{root_template}} instead of {#{inspect(mod)}, \"#{root_template}.html\"}"
+    )
+
+    {format, {mod, root_template}}
   end
 
   def normalize_layout({mod, layout}, warn_ctx) when is_atom(mod) and is_binary(layout) do
@@ -214,7 +239,7 @@ defmodule Phoenix.LiveView.Utils do
 
   def normalize_layout(other, _warn_ctx) do
     raise ArgumentError,
-          ":layout expects a tuple of the form {MyLayoutView, :my_template} or false, " <>
+          "layout expects a key/value pair with the key being the format and the value a tuple of the form {MyLayoutView, :my_template} or false, " <>
             "got: #{inspect(other)}"
   end
 
@@ -577,4 +602,10 @@ defmodule Phoenix.LiveView.Utils do
       to
     end
   end
+
+  @doc false
+  def get_format(%Phoenix.LiveView.Socket{private: %{connect_info: conn}}), do: get_format(conn)
+  def get_format(%Plug.Conn{private: %{phoenix_format: format}}), do: format
+  def get_format(%{private: %{connect_params: %{"_phoenix_format" => format}}}), do: format
+  def get_format(_socket), do: "html"
 end

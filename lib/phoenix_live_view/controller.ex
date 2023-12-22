@@ -6,6 +6,8 @@ defmodule Phoenix.LiveView.Controller do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Socket
 
+  import Phoenix.LiveView.Utils, only: [get_format: 1]
+
   @doc """
   Renders a live view from a Plug request and sends an HTML response
   from within a controller.
@@ -41,7 +43,7 @@ defmodule Phoenix.LiveView.Controller do
         conn
         |> Phoenix.Controller.put_view(LiveView.Static)
         |> Phoenix.Controller.render(
-          "template.html",
+          "template." <> get_format(conn),
           Map.merge(socket_assigns, %{content: content, live_module: view})
         )
 

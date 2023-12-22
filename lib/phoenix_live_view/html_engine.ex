@@ -30,9 +30,25 @@ defmodule Phoenix.LiveView.HTMLEngine do
       trim: trim,
       caller: __CALLER__,
       source: source,
-      tag_handler: __MODULE__,
+      tag_handler: get_tag_handler(path),
       annotate_tagged_content: debug_annotations? && (&annotate_tagged_content/1)
     )
+  end
+
+  defp get_tag_handler(path) do
+    tag_type =
+      path
+      |> Path.basename()
+      |> String.split(".")
+      |> Enum.slice(1..-2)
+      |> Enum.join(".")
+      |> String.to_atom()
+
+    case Application.fetch_env(:phoenix_live_view, :tag_handlers) do
+      {:ok, tag_handlers} -> tag_handlers
+      _ -> []
+    end
+    |> Keyword.get(tag_type, __MODULE__)
   end
 
   @behaviour Phoenix.LiveView.TagEngine

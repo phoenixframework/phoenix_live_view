@@ -318,7 +318,8 @@ defmodule Phoenix.LiveView do
       use Phoenix.LiveView,
         namespace: MyAppWeb,
         container: {:tr, class: "colorized"},
-        layout: {MyAppWeb.LayoutView, :app},
+        formats: [:html],
+        layouts: [:html, {MyAppWeb.LayoutView, :app}],
         log: :info
 
   ## Options
@@ -343,12 +344,19 @@ defmodule Phoenix.LiveView do
   defmacro __using__(opts) do
     # Expand layout if possible to avoid compile-time dependencies
     opts =
-      with true <- Keyword.keyword?(opts),
-           {layout, template} <- Keyword.get(opts, :layout) do
-        layout = Macro.expand(layout, %{__CALLER__ | function: {:__live__, 0}})
-        Keyword.replace!(opts, :layout, {layout, template})
+      if Macro.quoted_literal?(opts) do
+        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
       else
-        _ -> opts
+        opts
+      end
+
+    opts = Keyword.put(opts, :formats, Keyword.get(opts, :formats, [:html]))
+
+    opts =
+      case Keyword.pop(opts, :layout) do
+        {{layout, template}, opts} ->
+          Keyword.put(opts, :layouts, [html: {layout, template}])
+        {nil, opts} -> opts
       end
 
     quote bind_quoted: [opts: opts] do
@@ -368,8 +376,8 @@ defmodule Phoenix.LiveView do
   defmacro __before_compile__(env) do
     opts = Module.get_attribute(env.module, :phoenix_live_opts)
 
-    layout =
-      Phoenix.LiveView.Utils.normalize_layout(Keyword.get(opts, :layout, false), "use options")
+    layouts =
+      Phoenix.LiveView.Utils.normalize_layouts(Keyword.get(opts, :layouts, false), "use options")
 
     log =
       case Keyword.fetch(opts, :log) do
@@ -393,7 +401,8 @@ defmodule Phoenix.LiveView do
       name: name,
       kind: :view,
       module: env.module,
-      layout: layout,
+      formats: opts[:formats],
+      layouts: layouts,
       lifecycle: lifecycle,
       log: log
     }
