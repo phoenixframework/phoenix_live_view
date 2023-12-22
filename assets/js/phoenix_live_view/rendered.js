@@ -37,60 +37,41 @@ const VOID_TAGS = new Set([
   "track",
   "wbr"
 ])
-const endingTagNameChars = new Set([">", "/", " ", "\n", "\t", "\r"])
 const quoteChars = new Set(["'", '"'])
 
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0
   let insideComment = false
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML
-  while(i < html.length){
-    let char = html.charAt(i)
-    if(insideComment){
-      if(char === "-" && html.slice(i, i + 3) === "-->"){
-        insideComment = false
-        i += 3
-      } else {
+
+  let lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
+  if(lookahead === null) { throw new Error(`malformed html ${html}`) }
+
+  i = lookahead[0].length
+  beforeTag = lookahead[1]
+  tag = lookahead[2]
+  tagNameEndsAt = i
+
+  // Scan the opening tag for id, if there is any
+  for(i; i < html.length; i++){
+    if(html.charAt(i) === ">" ){ break }
+    if(html.charAt(i) === "="){
+      let isId = html.slice(i - 3, i) === " id"
+      i++;
+      let char = html.charAt(i)
+      if (quoteChars.has(char)) {
+        let attrStartsAt = i
         i++
-      }
-    } else if(char === "<" && html.slice(i, i + 4) === "<!--"){
-      insideComment = true
-      i += 4
-    } else if(char === "<"){
-      beforeTag = html.slice(0, i)
-      let iAtOpen = i
-      i++
-      for(i; i < html.length; i++){
-        if(endingTagNameChars.has(html.charAt(i))){ break }
-      }
-      tagNameEndsAt = i
-      tag = html.slice(iAtOpen + 1, tagNameEndsAt)
-      // Scan the opening tag for id, if there is any
-      for(i; i < html.length; i++){
-        if(html.charAt(i) === ">" ){ break }
-        if(html.charAt(i) === "="){
-          let isId = html.slice(i - 3, i) === " id"
-          i++;
-          let char = html.charAt(i)
-          if (quoteChars.has(char)) {
-            let attrStartsAt = i
-            i++
-            for(i; i < html.length; i++){
-              if(html.charAt(i) === char){ break }
-            }
-            if (isId) {
-              id = html.slice(attrStartsAt + 1, i)
-              break
-            }
-          }
+        for(i; i < html.length; i++){
+          if(html.charAt(i) === char){ break }
+        }
+        if (isId) {
+          id = html.slice(attrStartsAt + 1, i)
+          break
         }
       }
-      break
-    } else {
-      i++
     }
   }
-  if(!tag){ throw new Error(`malformed html ${html}`) }
 
   let closeAt = html.length - 1
   insideComment = false
