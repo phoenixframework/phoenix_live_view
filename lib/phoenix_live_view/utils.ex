@@ -383,7 +383,7 @@ defmodule Phoenix.LiveView.Utils do
        when is_list(opts) do
     validate_mount_redirect!(socket.redirected)
 
-    Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, arity) end)
+    Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, {:mount, arity}) end)
   end
 
   defp handle_mount_result!({:ok, %Socket{} = socket}, {:mount, _arity, _view}) do
@@ -508,13 +508,14 @@ defmodule Phoenix.LiveView.Utils do
     Base.url_encode64(binary)
   end
 
-  defp mount_opt(%Socket{} = socket, key, val, _arity) when key in @mount_opts do
+  @doc false
+  def mount_opt(%Socket{} = socket, key, val, {_function_name, _arity}) when key in @mount_opts do
     do_mount_opt(socket, key, val)
   end
 
-  defp mount_opt(%Socket{view: view}, key, val, arity) do
+  def mount_opt(%Socket{view: view}, key, val, {function_name, arity}) do
     raise ArgumentError, """
-    invalid option returned from #{inspect(view)}.mount/#{arity}.
+    invalid option returned from #{inspect(view)}.#{function_name}/#{arity}.
 
     Expected keys to be one of #{inspect(@mount_opts)}
     got: #{inspect(key)}: #{inspect(val)}
