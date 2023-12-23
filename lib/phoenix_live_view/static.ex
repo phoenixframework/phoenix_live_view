@@ -16,11 +16,9 @@ defmodule Phoenix.LiveView.Static do
   Acts as a view via put_view to maintain the
   controller render + instrumentation stack.
   """
-  def render("template.html", %{content: content}) do
+  def render(_, %{content: content}) do
     content
   end
-
-  def render(_other, _assigns), do: nil
 
   @doc """
   Verifies a LiveView token.
