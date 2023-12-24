@@ -435,6 +435,10 @@ defmodule Phoenix.LiveView do
   Registering `on_mount` hooks can be useful to perform authentication
   as well as add custom behaviour to other callbacks via `attach_hook/4`.
 
+  The `on_mount` callback can return a keyword list of options as a third
+  element in the return tuple. These options are identical to what can
+  optionally be returned in `mount/3`.
+
   ## Examples
 
   The following is an example of attaching a hook via
@@ -456,8 +460,8 @@ defmodule Phoenix.LiveView do
           # code
         end
 
-        def on_mount(:admin, params, session, socket) do
-          # code
+        def on_mount(:admin, _params, _session, socket) do
+          {:cont, socket, layout: {DemoWeb.Layouts, :admin}}
         end
       end
 
