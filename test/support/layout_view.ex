@@ -67,6 +67,14 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     </html>
     """
   end
+
+  def on_mount_layout(assigns) do
+    ~H"""
+    <div id="on-mount">
+      <%= @inner_content %>
+    </div>
+    """
+  end
 end
 
 defmodule Phoenix.LiveViewTest.AssignsLayoutView do

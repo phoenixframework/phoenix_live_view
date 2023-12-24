@@ -308,7 +308,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.OnMountOptions do
   end
 
   def on_mount(:layout, _params, _session, socket) do
-    {:cont, socket, layout: {Phoenix.LiveViewTest.Layouts, :on_mount}}
+    {:cont, socket, layout: {Phoenix.LiveViewTest.LayoutView, :on_mount_layout}}
   end
 
   def render(assigns), do: ~H"data-<%= @data %>"
