@@ -356,7 +356,7 @@ defmodule Phoenix.LiveView.Utils do
               {_, %Socket{} = socket} ->
                 {:ok, socket}
             end
-            |> handle_mount_result!({:mount, 3, view})
+            |> handle_mount_result!({view, :mount, 3})
 
           {socket, %{socket: socket, params: params, session: session, uri: uri}}
         end
@@ -373,28 +373,26 @@ defmodule Phoenix.LiveView.Utils do
     if Code.ensure_loaded?(component) and function_exported?(component, :mount, 1) do
       socket
       |> component.mount()
-      |> handle_mount_result!({:mount, 1, component})
+      |> handle_mount_result!({component, :mount, 1})
     else
       socket
     end
   end
 
-  defp handle_mount_result!({:ok, %Socket{} = socket, opts}, {:mount, arity, _view})
+  defp handle_mount_result!({:ok, %Socket{} = socket, opts}, context)
        when is_list(opts) do
     validate_mount_redirect!(socket.redirected)
-
-    Enum.reduce(opts, socket, fn {key, val}, acc -> mount_opt(acc, key, val, {:mount, arity}) end)
+    handle_mount_options!(socket, opts, context)
   end
 
-  defp handle_mount_result!({:ok, %Socket{} = socket}, {:mount, _arity, _view}) do
+  defp handle_mount_result!({:ok, %Socket{} = socket}, _context) do
     validate_mount_redirect!(socket.redirected)
-
     socket
   end
 
-  defp handle_mount_result!(response, {:mount, arity, view}) do
+  defp handle_mount_result!(response, {mod, fun, arity}) do
     raise ArgumentError, """
-    invalid result returned from #{inspect(view)}.mount/#{arity}.
+    invalid result returned from #{inspect(mod)}.#{fun}/#{arity}.
 
     Expected {:ok, socket} | {:ok, socket, opts}, got: #{inspect(response)}
     """
@@ -402,6 +400,48 @@ defmodule Phoenix.LiveView.Utils do
 
   defp validate_mount_redirect!({:live, :patch, _}), do: raise_bad_mount_and_live_patch!()
   defp validate_mount_redirect!(_), do: :ok
+
+  @doc """
+  Handle all valid options on mount/on_mount.
+  """
+  def handle_mount_options!(%Socket{} = socket, opts, {mod, fun, arity}) do
+    Enum.reduce(opts, socket, fn
+      {key, val}, socket when key in @mount_opts ->
+        handle_mount_option(socket, key, val)
+
+      {key, val}, _socket ->
+        raise ArgumentError, """
+        invalid option returned from #{inspect(mod)}.#{fun}/#{arity}.
+
+        Expected keys to be one of #{inspect(@mount_opts)}
+        got: #{inspect(key)}: #{inspect(val)}
+        """
+    end)
+  end
+
+  defp handle_mount_option(socket, :layout, layout) do
+    put_in(socket.private[:live_layout], normalize_layout(layout, "mount options"))
+  end
+
+  defp handle_mount_option(socket, :temporary_assigns, temp_assigns) do
+    unless Keyword.keyword?(temp_assigns) do
+      raise "the :temporary_assigns mount option must be keyword list"
+    end
+
+    temp_assigns = Map.new(temp_assigns)
+
+    %Socket{
+      socket
+      | assigns: Map.merge(temp_assigns, socket.assigns),
+        private:
+          Map.update(
+            socket.private,
+            :temporary_assigns,
+            temp_assigns,
+            &Map.merge(&1, temp_assigns)
+          )
+    }
+  end
 
   @doc """
   Calls the `handle_params/3` callback, and returns the result.
@@ -506,38 +546,6 @@ defmodule Phoenix.LiveView.Utils do
     >>
 
     Base.url_encode64(binary)
-  end
-
-  @doc false
-  def mount_opt(%Socket{} = socket, key, val, {_function_name, _arity}) when key in @mount_opts do
-    do_mount_opt(socket, key, val)
-  end
-
-  def mount_opt(%Socket{view: view}, key, val, {function_name, arity}) do
-    raise ArgumentError, """
-    invalid option returned from #{inspect(view)}.#{function_name}/#{arity}.
-
-    Expected keys to be one of #{inspect(@mount_opts)}
-    got: #{inspect(key)}: #{inspect(val)}
-    """
-  end
-
-  defp do_mount_opt(socket, :layout, layout) do
-    put_in(socket.private[:live_layout], normalize_layout(layout, "mount options"))
-  end
-
-  defp do_mount_opt(socket, :temporary_assigns, temp_assigns) do
-    unless Keyword.keyword?(temp_assigns) do
-      raise "the :temporary_assigns mount option must be keyword list"
-    end
-
-    temp_assigns = Map.new(temp_assigns)
-
-    %Socket{
-      socket
-      | assigns: Map.merge(temp_assigns, socket.assigns),
-        private: Map.put(socket.private, :temporary_assigns, temp_assigns)
-    }
   end
 
   defp drop_private(%Socket{private: private} = socket, keys) do

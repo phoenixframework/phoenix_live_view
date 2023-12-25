@@ -151,7 +151,7 @@ defmodule Phoenix.LiveView.Lifecycle do
 
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
-    reduce_socket(lifecycle.mount, socket, fn %{id: {_mod, arg}} = hook, acc ->
+    reduce_socket(lifecycle.mount, socket, fn %{id: {mod, arg}} = hook, acc ->
       case hook.function.(arg, params, session, acc) do
         {:halt, %Socket{redirected: nil}} ->
           raise_halt_without_redirect!(hook)
@@ -165,17 +165,14 @@ defmodule Phoenix.LiveView.Lifecycle do
         {:cont, %Socket{redirected: to}, _opts} when not is_nil(to) ->
           raise_continue_with_redirect!(hook)
 
+        {:cont, socket, opts} ->
+          {:cont, Utils.handle_mount_options!(socket, opts, {mod, :on_mount, 4})}
+
         ok ->
-          handle_on_mount_opts!(ok)
+          ok
       end
     end)
   end
-
-  defp handle_on_mount_opts!({result, %Socket{} = socket, opts}) do
-    {result, Enum.reduce(opts, socket, fn {key, val}, acc -> Utils.mount_opt(acc, key, val, {:on_mount, 4}) end)}
-  end
-
-  defp handle_on_mount_opts!(ok), do: ok
 
   @doc false
   def handle_event(event, val, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
