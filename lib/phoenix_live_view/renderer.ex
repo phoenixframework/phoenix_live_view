@@ -3,10 +3,15 @@ defmodule Phoenix.LiveView.Renderer do
 
   alias Phoenix.LiveView.{Rendered, Socket}
 
-  defmacro __before_compile__(%{module: module, file: file} = env) do
-    render? = Module.defines?(module, {:render, 1})
+  defmacro __before_compile__(env) do
+    compile_templates(env, :render, "html")
+  end
+
+  @doc false
+  def compile_templates(%{module: module, file: file} = env, function_name, format) do
+    render? = Module.defines?(module, {function_name, 1})
     root = Path.dirname(file)
-    filename = template_filename(module)
+    filename = template_filename(module, format)
     templates = Phoenix.Template.find_all(root, filename)
 
     case {render?, templates} do
@@ -52,12 +57,12 @@ defmodule Phoenix.LiveView.Renderer do
     end
   end
 
-  defp template_filename(module) do
+  defp template_filename(module, format) do
     module
     |> Module.split()
     |> List.last()
     |> Macro.underscore()
-    |> Kernel.<>(".html")
+    |> Kernel.<>(".#{format}")
   end
 
   @doc """
@@ -82,7 +87,7 @@ defmodule Phoenix.LiveView.Renderer do
             template =
               view.__info__(:compile)[:source]
               |> Path.dirname()
-              |> Path.join(template_filename(view) <> ".heex")
+              |> Path.join(template_filename(view, "html") <> ".heex")
 
             raise ~s'''
             render/1 was not implemented for #{inspect(view)}.
