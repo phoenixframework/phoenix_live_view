@@ -4,11 +4,21 @@ defmodule Phoenix.LiveView.Renderer do
   alias Phoenix.LiveView.{Rendered, Socket}
 
   defmacro __before_compile__(env) do
-    compile_templates(env, :render, "html")
+    compile_templates(env, format: "html")
   end
 
   @doc false
-  def compile_templates(%{module: module, file: file} = env, function_name, format) do
+  def compile_templates(%{module: module, file: file} = env, opts \\ [])
+    when is_list(opts) do
+
+    suffix = Keyword.get(opts, :suffix) || "" 
+    format = Keyword.get(opts, :format, "html")
+
+    if format == "html" and suffix != "" do
+      raise ArgumentError, "The `suffix` for `html` must be `nil`"
+    end
+
+    function_name = :"render#{suffix}"
     render? = Module.defines?(module, {function_name, 1})
     root = Path.dirname(file)
     filename = template_filename(module, format)
@@ -32,10 +42,11 @@ defmodule Phoenix.LiveView.Renderer do
         engine = Map.fetch!(Phoenix.Template.engines(), ext)
         ast = engine.compile(template, filename)
 
+
         quote do
           @file unquote(template)
           @external_resource unquote(template)
-          def render(var!(assigns)) when is_map(var!(assigns)) do
+          def unquote(function_name)(var!(assigns)) when is_map(var!(assigns)) do
             unquote(ast)
           end
         end
