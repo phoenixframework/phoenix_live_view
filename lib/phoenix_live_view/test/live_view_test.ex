@@ -1322,7 +1322,8 @@ defmodule Phoenix.LiveViewTest do
 
   """
   def assert_patched(view, to) do
-    assert_patch(view, to, 0)
+    {path, _flash} = assert_navigation(view, :patch, to, 0)
+    path
   end
 
   @doc ~S"""
