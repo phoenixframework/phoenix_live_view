@@ -296,3 +296,20 @@ defmodule Phoenix.LiveViewTest.HooksLive.HandleInfoNotDefined do
 
   def render(assigns), do: ~H"data=<%= assigns[:data] %>"
 end
+
+defmodule Phoenix.LiveViewTest.HooksLive.OnMountOptions do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  on_mount {__MODULE__, :temporary_assigns}
+  on_mount {__MODULE__, :layout}
+
+  def on_mount(:temporary_assigns, _params, _session, socket) do
+    {:cont, socket, temporary_assigns: [data: "Phoenix"]}
+  end
+
+  def on_mount(:layout, _params, _session, socket) do
+    {:cont, socket, layout: {Phoenix.LiveViewTest.LayoutView, :on_mount_layout}}
+  end
+
+  def render(assigns), do: ~H"data-<%= @data %>"
+end

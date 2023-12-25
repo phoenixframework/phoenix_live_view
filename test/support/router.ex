@@ -120,6 +120,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/lifecycle/components", HooksLive.WithComponent
     live "/lifecycle/handle-params-not-defined", HooksLive.HandleParamsNotDefined
     live "/lifecycle/handle-info-not-defined", HooksLive.HandleInfoNotDefined
+    live "/lifecycle/on-mount-options", HooksLive.OnMountOptions
 
     # integration stream
     live "/stream", StreamLive

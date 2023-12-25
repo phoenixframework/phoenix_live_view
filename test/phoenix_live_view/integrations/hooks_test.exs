@@ -52,6 +52,12 @@ defmodule Phoenix.LiveView.HooksTest do
              live(conn, "/lifecycle/redirect-halt-mount")
   end
 
+  test "on_mount hook can set options in return value", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/on-mount-options")
+
+    assert lv |> element("#on-mount") |> render() =~ "data-Phoenix"
+  end
+
   test "handle_event/3 raises when hook result is invalid", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle")
 
