@@ -381,16 +381,10 @@ defmodule Phoenix.LiveView do
 
     phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
     lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_mount)
-
-    namespace =
-      opts[:namespace] || env.module |> Module.split() |> Enum.take(1) |> Module.concat()
-
-    name = env.module |> Atom.to_string() |> String.replace_prefix("#{namespace}.", "")
     container = opts[:container] || {:div, []}
 
     live = %{
       container: container,
-      name: name,
       kind: :view,
       module: env.module,
       layout: layout,
@@ -1837,9 +1831,9 @@ defmodule Phoenix.LiveView do
   and the result when the function completes.
 
   The task is only started when the socket is connected.
-   
+
   ## Options
-    
+
     * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
 
 
