@@ -379,8 +379,11 @@ defmodule Phoenix.LiveView do
         _ -> raise ArgumentError, ":log expects an atom or false, got: #{inspect(opts[:log])}"
       end
 
-    phoenix_live_mount = Module.get_attribute(env.module, :phoenix_live_mount)
-    lifecycle = Phoenix.LiveView.Lifecycle.mount(env.module, phoenix_live_mount)
+    on_mount =
+      env.module
+      |> Module.get_attribute(:phoenix_live_mount)
+      |> Enum.reverse()
+
     container = opts[:container] || {:div, []}
 
     live = %{
@@ -388,7 +391,7 @@ defmodule Phoenix.LiveView do
       kind: :view,
       module: env.module,
       layout: layout,
-      lifecycle: lifecycle,
+      lifecycle: Phoenix.LiveView.Lifecycle.build(on_mount),
       log: log
     }
 
@@ -500,7 +503,7 @@ defmodule Phoenix.LiveView do
       Module.put_attribute(
         __MODULE__,
         :phoenix_live_mount,
-        Phoenix.LiveView.Lifecycle.on_mount(__MODULE__, unquote(mod_or_mod_arg))
+        Phoenix.LiveView.Lifecycle.validate_on_mount!(__MODULE__, unquote(mod_or_mod_arg))
       )
     end
   end

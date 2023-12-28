@@ -90,6 +90,10 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
   end
 
+  defp hook!(id, stage, fun) when is_atom(stage) and is_function(fun) do
+    %{id: id, stage: stage, function: fun}
+  end
+
   defp lifecycle(socket, stage) do
     if Utils.cid(socket) && stage not in [:after_render] do
       raise ArgumentError, "lifecycle hooks are not supported on stateful components."
@@ -113,15 +117,15 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   @doc false
-  def on_mount(_view, {module, arg}) when is_atom(module) do
-    mount_hook!({module, arg})
+  def validate_on_mount!(_view, {module, arg}) when is_atom(module) do
+    {module, arg}
   end
 
-  def on_mount(_view, module) when is_atom(module) do
-    mount_hook!({module, :default})
+  def validate_on_mount!(_view, module) when is_atom(module) do
+    {module, :default}
   end
 
-  def on_mount(view, result) do
+  def validate_on_mount!(view, result) do
     raise ArgumentError, """
     invalid on_mount hook declared in #{inspect(view)}.
 
@@ -134,19 +138,18 @@ defmodule Phoenix.LiveView.Lifecycle do
     """
   end
 
-  defp mount_hook!({mod, _arg} = id) do
-    hook!(id, :mount, Function.capture(mod, :on_mount, 4))
-  end
-
-  defp hook!(id, stage, fun) when is_atom(stage) and is_function(fun) do
-    %{id: id, stage: stage, function: fun}
+  @doc false
+  def prepare_on_mount!(hooks) do
+    for {module, _fun} = id <- hooks do
+      hook!(id, :mount, Function.capture(module, :on_mount, 4))
+    end
   end
 
   # Lifecycle Event API
 
   @doc false
-  def mount(_view, hooks) when is_list(hooks) do
-    %__MODULE__{mount: Enum.reverse(hooks)}
+  def build(mount_hooks) when is_list(mount_hooks) do
+    %__MODULE__{mount: prepare_on_mount!(mount_hooks)}
   end
 
   @doc false
