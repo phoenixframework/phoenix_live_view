@@ -316,7 +316,6 @@ defmodule Phoenix.LiveView do
   Uses LiveView in the current module to mark it a LiveView.
 
       use Phoenix.LiveView,
-        namespace: MyAppWeb,
         container: {:tr, class: "colorized"},
         layout: {MyAppWeb.LayoutView, :app},
         log: :info
@@ -334,9 +333,8 @@ defmodule Phoenix.LiveView do
       This layout can be overridden by on `c:mount/3` or via the `:layout`
       option in `Phoenix.LiveView.Router.live_session/2`
 
-    * `:log` - configures the log level for the `LiveView`
-
-    * `:namespace` - configures the namespace the `LiveView` is in
+    * `:log` - configures the log level for the `LiveView`, either false
+      or a Log level
 
   """
 
@@ -368,6 +366,45 @@ defmodule Phoenix.LiveView do
   defmacro __before_compile__(env) do
     opts = Module.get_attribute(env.module, :phoenix_live_opts)
 
+    on_mount =
+      env.module
+      |> Module.get_attribute(:phoenix_live_mount)
+      |> Enum.reverse()
+
+    live = Phoenix.LiveView.__live__([on_mount: on_mount] ++ opts)
+
+    quote do
+      @doc false
+      def __live__ do
+        unquote(Macro.escape(live))
+      end
+    end
+  end
+
+  @doc """
+  Defines metadata for a LiveView.
+
+  This must be returned from the `__live__` callback.
+
+  It accepts:
+
+    * `:container` - an optional tuple for the HTML tag and DOM attributes to
+      be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
+
+    * `:layout` - configures the layout the `LiveView` will be rendered in.
+      This layout can be overridden by on `c:mount/3` or via the `:layout`
+      option in `Phoenix.LiveView.Router.live_session/2`
+
+    * `:log` - configures the log level for the `LiveView`, either false
+      or a log level
+
+    * `:on_mount` - a list of tuples with module names and argument to be invoked
+      as `on_mount` hooks
+
+  """
+  def __live__(opts \\ []) do
+    on_mount = opts[:on_mount] || []
+
     layout =
       Phoenix.LiveView.Utils.normalize_layout(Keyword.get(opts, :layout, false), "use options")
 
@@ -379,28 +416,15 @@ defmodule Phoenix.LiveView do
         _ -> raise ArgumentError, ":log expects an atom or false, got: #{inspect(opts[:log])}"
       end
 
-    on_mount =
-      env.module
-      |> Module.get_attribute(:phoenix_live_mount)
-      |> Enum.reverse()
-
     container = opts[:container] || {:div, []}
 
-    live = %{
+    %{
       container: container,
       kind: :view,
-      module: env.module,
       layout: layout,
       lifecycle: Phoenix.LiveView.Lifecycle.build(on_mount),
       log: log
     }
-
-    quote do
-      @doc false
-      def __live__ do
-        unquote(Macro.escape(live))
-      end
-    end
   end
 
   @doc """
