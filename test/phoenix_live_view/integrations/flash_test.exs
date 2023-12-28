@@ -354,13 +354,31 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     |> element("#flash-component")
     |> render_click(%{"type" => "put_flash", "error" => "oops!"})
 
-    assert has_element?(flash_live, "#flash-component span[phx-value-key=info]", "component[ok!]:info")
-    assert has_element?(flash_live, "#flash-component span[phx-value-key=error]", "component[oops!]:error")
+    assert has_element?(
+             flash_live,
+             "#flash-component span[phx-value-key=info]",
+             "component[ok!]:info"
+           )
+
+    assert has_element?(
+             flash_live,
+             "#flash-component span[phx-value-key=error]",
+             "component[oops!]:error"
+           )
 
     flash_live |> element("#flash-component span", "Clear all") |> render_click()
 
-    assert has_element?(flash_live, "#flash-component span[phx-value-key=info]", "component[]:info")
-    assert has_element?(flash_live, "#flash-component span[phx-value-key=error]", "component[]:error")
+    assert has_element?(
+             flash_live,
+             "#flash-component span[phx-value-key=info]",
+             "component[]:info"
+           )
+
+    assert has_element?(
+             flash_live,
+             "#flash-component span[phx-value-key=error]",
+             "component[]:error"
+           )
   end
 
   test "lv:clear-flash component with phx-value-key", %{conn: conn} do
@@ -370,11 +388,19 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
     |> element("#flash-component")
     |> render_click(%{"type" => "put_flash", "error" => "oops!"})
 
-    assert has_element?(flash_live, "#flash-component span[phx-value-key=error]", "component[oops!]:error")
+    assert has_element?(
+             flash_live,
+             "#flash-component span[phx-value-key=error]",
+             "component[oops!]:error"
+           )
 
     flash_live |> element("#flash-component span", ":error") |> render_click()
 
-    assert has_element?(flash_live, "#flash-component span[phx-value-key=error]", "component[]:error")
+    assert has_element?(
+             flash_live,
+             "#flash-component span[phx-value-key=error]",
+             "component[]:error"
+           )
   end
 
   test "works without session and flash", %{conn: conn} do
