@@ -358,7 +358,7 @@ defmodule Phoenix.LiveView.Router do
         ...
       end
   """
-  def fetch_live_flash(%Plug.Conn{} = conn, _) do
+  def fetch_live_flash(%Plug.Conn{} = conn, _opts \\ []) do
     case cookie_flash(conn) do
       {conn, nil} ->
         Phoenix.Controller.fetch_flash(conn, [])
