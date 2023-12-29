@@ -108,14 +108,45 @@ defmodule Phoenix.LiveView.StreamTest do
     {:ok, lv, _} = live(conn, "/stream")
     assert lv |> element("#users div") |> has_element?()
 
+    assert lv |> render() |> users_in_dom("users") == [
+      {"users-1", "chris"},
+      {"users-2", "callan"}
+    ]
+
     lv |> render_hook("reset-users", %{})
     refute lv |> element("#users div") |> has_element?()
+
+    assert lv |> render() |> users_in_dom("users") == []
 
     lv |> render_hook("stream-users", %{})
     assert lv |> element("#users div") |> has_element?()
 
+    assert lv |> render() |> users_in_dom("users") == [
+      {"users-1", "chris"},
+      {"users-2", "callan"}
+    ]
+
     lv |> render_hook("reset-users", %{})
     refute lv |> element("#users div") |> has_element?()
+
+    assert lv |> render() |> users_in_dom("users") == []
+  end
+
+  test "properly orders elements on reset", %{conn: conn} do
+    {:ok, lv, _} = live(conn, "/stream")
+
+    assert lv |> render() |> users_in_dom("users") == [
+      {"users-1", "chris"},
+      {"users-2", "callan"}
+    ]
+
+    lv |> render_hook("reset-users-reorder", %{})
+
+    assert lv |> render() |> users_in_dom("users") == [
+      {"users-3", "peter"},
+      {"users-1", "chris"},
+      {"users-4", "mona"}
+    ]
   end
 
   test "stream reset on patch", %{conn: conn} do

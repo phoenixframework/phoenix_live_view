@@ -434,9 +434,6 @@ defmodule Phoenix.LiveViewTest.DOM do
           Enum.reduce(stream_inserts, children, fn {id, {ref, insert_at, _limit}}, acc ->
             old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
 
-            not_appended? =
-              is_nil(Enum.find_index(updated_appended, &(attribute(&1, "id") == id)))
-
             existing? = Enum.find_index(updated_existing_children, &(attribute(&1, "id") == id))
             deleted? = MapSet.member?(stream_deletes, id)
 
@@ -450,11 +447,11 @@ defmodule Phoenix.LiveViewTest.DOM do
 
             cond do
               !child ->
-                acc
+                set_data_phx_stream(acc, id, ref)
 
               # skip added children that aren't ours if they are not being appended
-              not_appended? && parent_id && parent_id != container_id ->
-                acc
+              parent_id != container_id ->
+                set_data_phx_stream(acc, id, ref)
 
               # do not append existing child if already present, only update in place
               old_index && insert_at == -1 && existing? ->
@@ -578,6 +575,16 @@ defmodule Phoenix.LiveViewTest.DOM do
       |> Kernel.++([{name, val}])
 
     {tag, new_attrs, children}
+  end
+
+  defp set_data_phx_stream(children, id, ref) do
+    Enum.map(children, fn child ->
+      if attribute(child, "id") == id do
+        set_attr(child, "data-phx-stream", ref)
+      else
+        child
+      end
+    end)
   end
 
   defmacro sigil_X({:<<>>, _, [binary]}, []) when is_binary(binary) do
