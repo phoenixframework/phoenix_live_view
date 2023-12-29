@@ -296,15 +296,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           view = fetch_view_by_topic!(state, topic)
 
           cids =
-            if selector, do: DOM.targets_from_selector(root(state, view), selector), else: [nil]
+            if selector do
+              DOM.targets_from_selector(root(state, view), selector)
+            else
+              [nil]
+            end
 
-          case value do
-            %Upload{} = upload ->
-              [{view, cids, event, %{}, upload}]
+          {values, upload} =
+            case value do
+              %Upload{} = upload -> {%{}, upload}
+              _ -> {stringify(value, & &1), nil}
+            end
 
-            other ->
-              [{view, cids, event, stringify(other, & &1), nil}]
-          end
+          [{:event, view, cids, event, values, upload}]
 
         %Element{} = element ->
           view = fetch_view_by_topic!(state, proxy_topic(element))
@@ -314,87 +318,60 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
                :ok <- maybe_enabled(type, node, element),
                {:ok, event_or_js} <- maybe_event(type, node, element),
                {:ok, dom_values} <- maybe_values(type, node, element) do
-            event_or_js
-            |> maybe_push_events()
-            |> List.wrap()
-            |> Enum.map(fn {event, js_values, js_target_selector} ->
-              event_values = Map.merge(dom_values, js_values)
-
-              {values, uploads} =
-                case value do
-                  %Upload{} = upload -> {event_values, upload}
-                  other -> {DOM.deep_merge(event_values, stringify(other, & &1)), nil}
-                end
-
-              js_targets = DOM.targets_from_selector(root, js_target_selector)
-              node_targets = DOM.targets_from_node(root, node)
-
-              targets =
-                case {js_targets, node_targets} do
-                  {[nil], right} -> right
-                  {left, [nil]} -> left
-                  {left, right} -> Enum.uniq(left ++ right)
-                end
-
-              {view, targets, event, values, uploads}
-            end)
+            maybe_js_commands(event_or_js, root, view, node, value, dom_values)
           end
       end
 
     case result do
-      [{%ClientProxy{} = _view, _cids, _event, _values, _upload} | _] = events ->
+      [_ | _] = events ->
         last_event = length(events) - 1
 
-        diffs =
-          events
-          |> Enum.with_index()
-          |> Enum.reduce(state, fn {{view, cids, event, values, upload}, event_index}, state
-                                   when is_list(cids) ->
-            last_cid = length(cids) - 1
+        events
+        |> Enum.with_index()
+        |> Enum.reduce({:noreply, state}, fn
+          {event, event_index}, {:noreply, state} ->
+            case event do
+              {:event, view, cids, event, values, upload} ->
+                last_cid = length(cids) - 1
 
-            cids
-            |> Enum.with_index()
-            |> Enum.reduce(state, fn {cid, cid_index}, acc ->
-              {type, encoded_value} = encode_event_type(type, values)
+                state =
+                  cids
+                  |> Enum.with_index()
+                  |> Enum.reduce(state, fn {cid, cid_index}, acc ->
+                    payload =
+                      encode_payload(type, event, values)
+                      |> maybe_put_cid(cid)
+                      |> maybe_put_uploads(state, view, upload)
 
-              payload =
-                maybe_put_uploads(
-                  state,
-                  view,
-                  %{
-                    "cid" => cid,
-                    "type" => type,
-                    "event" => event,
-                    "value" => encoded_value
-                  },
-                  upload
-                )
+                    push_with_callback(acc, from, view, "event", payload, fn reply, state ->
+                      if event_index == last_event and cid_index == last_cid do
+                        {:noreply, render_reply(reply, from, state)}
+                      else
+                        {:noreply, state}
+                      end
+                    end)
+                  end)
 
-              push_with_callback(acc, view, "event", from, payload, fn reply, state ->
-                if event_index == last_event and cid_index == last_cid do
-                  {:noreply, render_reply(reply, from, state)}
-                else
-                  {:noreply, state}
-                end
-              end)
-            end)
-          end)
+                {:noreply, state}
 
-        {:noreply, diffs}
+              {:patch, topic, path} ->
+                handle_call({:render_patch, topic, path}, from, state)
 
-      {:allow_upload, topic, ref} ->
-        handle_call({:render_allow_upload, topic, ref, value}, from, state)
+              {:allow_upload, topic, ref} ->
+                handle_call({:render_allow_upload, topic, ref, value}, from, state)
 
-      {:upload_progress, topic, upload_ref} ->
-        payload = Map.put(value, "ref", upload_ref)
-        view = fetch_view_by_topic!(state, topic)
-        {:noreply, push_with_reply(state, from, view, "progress", payload)}
+              {:upload_progress, topic, upload_ref} ->
+                payload = Map.put(value, "ref", upload_ref)
+                view = fetch_view_by_topic!(state, topic)
+                {:noreply, push_with_reply(state, from, view, "progress", payload)}
 
-      {:patch, topic, path} ->
-        handle_call({:render_patch, topic, path}, from, state)
+              {:stop, topic, reason} ->
+                stop_redirect(state, topic, reason)
+            end
 
-      {:stop, topic, reason} ->
-        stop_redirect(state, topic, reason)
+          {_event, _event_index}, return ->
+            return
+        end)
 
       {:error, _, message} ->
         GenServer.reply(from, {:raise, ArgumentError.exception(message)})
@@ -488,7 +465,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
-    payload = put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
+    payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
     topic = proxy_topic(el)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
@@ -551,20 +528,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:render_allow_upload, topic, ref, {entries, cid}}, from, state) do
     view = fetch_view_by_topic!(state, topic)
-    payload = put_cid(%{"ref" => ref, "entries" => entries}, cid)
+    payload = maybe_put_cid(%{"ref" => ref, "entries" => entries}, cid)
 
     new_state =
-      push_with_callback(
-        state,
-        view,
-        "allow_upload",
-        from,
-        payload,
-        fn reply, state ->
-          GenServer.reply(from, {:ok, reply.payload})
-          {:noreply, state}
-        end
-      )
+      push_with_callback(state, from, view, "allow_upload", payload, fn reply, state ->
+        GenServer.reply(from, {:ok, reply.payload})
+        {:noreply, state}
+      end)
 
     {:noreply, new_state}
   end
@@ -674,12 +644,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         state = %{state | html: new_html}
         payload = %{"cids" => will_destroy_cids}
 
-        push_with_callback(state, view, "cids_will_destroy", nil, payload, fn _, state ->
+        push_with_callback(state, nil, view, "cids_will_destroy", payload, fn _, state ->
           still_there_cids = DOM.component_ids(view.id, state.html)
           payload = %{"cids" => Enum.reject(will_destroy_cids, &(&1 in still_there_cids))}
 
           state =
-            push_with_callback(state, view, "cids_destroyed", nil, payload, fn reply, state ->
+            push_with_callback(state, nil, view, "cids_destroyed", payload, fn reply, state ->
               cids = reply.payload.cids
               {:noreply, update_in(state.views[topic].rendered, &DOM.drop_cids(&1, cids))}
             end)
@@ -826,7 +796,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp push_with_reply(state, from, view, event, payload) do
-    push_with_callback(state, view, event, from, payload, fn reply, state ->
+    push_with_callback(state, from, view, event, payload, fn reply, state ->
       {:noreply, render_reply(reply, from, state)}
     end)
   end
@@ -856,7 +826,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp push_with_callback(state, view, event, from, payload, callback) do
+  defp push_with_callback(state, from, view, event, payload, callback) do
     ref = to_string(state.ref + 1)
 
     state
@@ -878,11 +848,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   ## Element helpers
 
-  defp encode_event_type(type, value) when type in [:change, :submit],
-    do: {"form", Plug.Conn.Query.encode(value)}
+  defp encode_payload(type, event, value) when type in [:change, :submit],
+    do: %{
+      "type" => "form",
+      "event" => event,
+      "value" => Plug.Conn.Query.encode(value)
+    }
 
-  defp encode_event_type(type, value),
-    do: {Atom.to_string(type), value}
+  defp encode_payload(type, event, value),
+    do: %{
+      "type" => Atom.to_string(type),
+      "event" => event,
+      "value" => value
+    }
 
   defp proxy_topic({topic, _, _}) when is_binary(topic), do: topic
   defp proxy_topic(%{proxy: {_ref, topic, _pid}}), do: topic
@@ -941,7 +919,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_event(:upload_progress, node, %Element{} = element) do
     if ref = DOM.attribute(node, @data_phx_upload_ref) do
-      {:upload_progress, proxy_topic(element), ref}
+      [{:upload_progress, proxy_topic(element), ref}]
     else
       {:error, :invalid,
        "element selected by #{inspect(element.selector)} does not have a #{@data_phx_upload_ref} attribute"}
@@ -950,7 +928,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_event(:allow_upload, node, %Element{} = element) do
     if ref = DOM.attribute(node, @data_phx_upload_ref) do
-      {:allow_upload, proxy_topic(element), ref}
+      [{:allow_upload, proxy_topic(element), ref}]
     else
       {:error, :invalid,
        "element selected by #{inspect(element.selector)} does not have a #{@data_phx_upload_ref} attribute"}
@@ -974,34 +952,30 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp maybe_event(:click, {"a", _, _} = node, element) do
-    with :error <- maybe_phx_click_event(node, element) do
-      if to = DOM.attribute(node, "href") do
+    # If there is a phx-click, that's what we will use, otherwise fallback to href
+    cond do
+      phx_click = DOM.attribute(node, "phx-click") ->
+        {:ok, phx_click}
+
+      to = DOM.attribute(node, "href") ->
         case DOM.attribute(node, "data-phx-link") do
           "patch" ->
-            {:patch, proxy_topic(element), to}
+            [{:patch, proxy_topic(element), to}]
 
           "redirect" ->
             kind = DOM.attribute(node, "data-phx-link-state") || "push"
-            {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: String.to_atom(kind)}}}
+            opts = %{to: to, kind: String.to_atom(kind)}
+            [{:stop, proxy_topic(element), {:live_redirect, opts}}]
 
           nil ->
-            {:stop, proxy_topic(element), {:redirect, %{to: to}}}
+            [{:stop, proxy_topic(element), {:redirect, %{to: to}}}]
         end
-      else
+
+      true ->
         message =
           "clicked link selected by #{inspect(element.selector)} does not have phx-click or href attributes"
 
         {:error, :invalid, message}
-      end
-    end
-  end
-
-  defp maybe_event(:click, node, element) do
-    with :error <- maybe_phx_click_event(node, element) do
-      message =
-        "element selected by #{inspect(element.selector)} does not have phx-click attribute"
-
-      {:error, :invalid, message}
     end
   end
 
@@ -1029,47 +1003,57 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_phx_click_event(node, element) do
-    if phx_click = DOM.attribute(node, "phx-click") do
-      phx_click
-      |> maybe_js_decode()
-      |> Enum.find_value({:ok, phx_click}, fn
-        ["patch", %{"href" => to}] ->
-          {:patch, proxy_topic(element), to}
-
-        ["navigate", %{"href" => to, "replace" => true}] ->
-          {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: :replace}}}
-
-        ["navigate", %{"href" => to}] ->
-          {:stop, proxy_topic(element), {:live_redirect, %{to: to, kind: :push}}}
-
-        _ ->
-          false
-      end)
-    else
-      :error
-    end
-  end
-
   defp maybe_js_decode("[" <> _ = encoded_js), do: Phoenix.json_library().decode!(encoded_js)
-  defp maybe_js_decode(_), do: []
+  defp maybe_js_decode(event), do: [["push", %{"event" => event}]]
 
-  defp maybe_push_events("[" <> _ = encoded_js) do
-    js = Phoenix.json_library().decode!(encoded_js)
-    op = Enum.filter(js, fn [kind, _args] -> kind == "push" end)
+  defp maybe_js_commands(event_or_js, root, view, node, value, dom_values) do
+    event_or_js
+    |> maybe_js_decode()
+    |> Enum.flat_map(fn
+      ["push", %{"event" => event} = args] ->
+        js_values = args["value"] || %{}
+        js_target_selector = args["target"]
+        event_values = Map.merge(dom_values, js_values)
 
-    case op do
+        {values, uploads} =
+          case value do
+            %Upload{} = upload -> {event_values, upload}
+            other -> {DOM.deep_merge(event_values, stringify(other, & &1)), nil}
+          end
+
+        js_targets = DOM.targets_from_selector(root, js_target_selector)
+        node_targets = DOM.targets_from_node(root, node)
+
+        targets =
+          case {js_targets, node_targets} do
+            {[nil], right} -> right
+            {left, [nil]} -> left
+            {left, right} -> Enum.uniq(left ++ right)
+          end
+
+        [{:event, view, targets, event, values, uploads}]
+
+      ["patch", %{"href" => to}] ->
+        [{:patch, view.topic, to}]
+
+      ["navigate", %{"href" => to, "replace" => true}] ->
+        [{:stop, view.topic, {:live_redirect, %{to: to, kind: :replace}}}]
+
+      ["navigate", %{"href" => to}] ->
+        [{:stop, view.topic, {:live_redirect, %{to: to, kind: :push}}}]
+
+      _ ->
+        []
+    end)
+    |> case do
       [] ->
-        raise ArgumentError, "no push command found within JS commands: #{inspect(js)}"
+        {:error, :invalid,
+         "no push or navigation command found within JS commands: #{event_or_js}"}
 
-      push_events ->
-        Enum.map(push_events, fn ["push", %{"event" => event} = args] ->
-          {event, args["value"] || %{}, args["target"]}
-        end)
+      events ->
+        events
     end
   end
-
-  defp maybe_push_events(event), do: {event, _values = %{}, _target = nil}
 
   defp maybe_enabled(_type, {tag, _, _}, %{form_data: form_data})
        when tag != "form" and form_data != nil do
@@ -1396,16 +1380,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp stringify_value(other, fun), do: fun.(other)
   defp stringify_kv({k, v}, fun), do: {to_string(k), stringify(v, fun)}
 
-  defp maybe_put_uploads(state, view, payload, %Upload{} = upload) do
+  defp maybe_put_uploads(payload, state, view, %Upload{} = upload) do
     {:ok, node} = state |> root(view) |> select_node(upload.element)
     ref = DOM.attribute(node, "data-phx-upload-ref")
     Map.put(payload, "uploads", %{ref => upload.entries})
   end
 
-  defp maybe_put_uploads(_state, _view, payload, nil), do: payload
+  defp maybe_put_uploads(payload, _state, _view, nil), do: payload
 
-  defp put_cid(payload, nil), do: payload
-  defp put_cid(payload, cid), do: Map.put(payload, "cid", cid)
+  defp maybe_put_cid(payload, nil), do: payload
+  defp maybe_put_cid(payload, cid), do: Map.put(payload, "cid", cid)
 
   defp root_page_title(root_html) do
     case DOM.maybe_one(root_html, "head > title") do
