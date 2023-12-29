@@ -920,6 +920,7 @@ export default class View {
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
             callback && callback(resp)
             this.triggerAwaitingSubmit(inputEl.form)
+            this.undoRefs(ref)
           })
         }
       } else {
