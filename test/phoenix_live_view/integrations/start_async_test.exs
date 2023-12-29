@@ -73,6 +73,30 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
       assert render_async(lv) =~ "result: :complex_key"
     end
+
+    test "navigate", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=navigate")
+
+      assert_redirect lv, "/start_async?test=ok"
+    end
+
+    test "patch", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=patch")
+
+      assert_patch lv, "/start_async?test=ok"
+    end
+
+    test "redirect", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=redirect")
+
+      assert_redirect lv, "/not_found"
+    end
+
+    test "put_flash", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=put_flash")
+
+      assert render_async(lv) =~ "flash: hello"
+    end
   end
 
   describe "LiveComponent start_async" do
@@ -134,6 +158,31 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_complex_key")
 
       assert render_async(lv) =~ "lc: :complex_key"
+    end
+
+    test "navigate", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=lc_navigate")
+
+      assert_redirect lv, "/start_async?test=ok"
+    end
+
+    test "patch", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=lc_patch")
+
+      assert_patch lv, "/start_async?test=ok"
+    end
+
+    test "redirect", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=lc_redirect")
+
+      assert_redirect lv, "/not_found"
+    end
+
+    test "navigate with flash", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/start_async?test=lc_navigate_flash")
+
+      flash = assert_redirect lv, "/start_async?test=ok"
+      assert %{"info" => "hello"} = flash
     end
   end
 end

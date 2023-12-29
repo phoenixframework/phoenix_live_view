@@ -251,13 +251,13 @@ defmodule Phoenix.LiveView.Channel do
   def handle_info({@prefix, :async_result, {kind, info}}, state) do
     {ref, cid, keys, result} = info
 
-    new_state =
-      write_socket(state, cid, nil, fn socket, maybe_component ->
-        new_socket = Async.handle_async(socket, maybe_component, kind, keys, ref, result)
-        {new_socket, {:ok, nil, state}}
-      end)
+    if cid do
+      component_handle_async(state, cid, kind, keys, ref, result)
+    else
+      new_socket = Async.handle_async(state.socket, nil, kind, keys, ref, result)
 
-    {:noreply, new_state}
+      handle_result({:noreply, new_socket}, {:handle_async, 3, nil}, state)
+    end
   end
 
   def handle_info({@prefix, :drop_upload_entries, info}, state) do
@@ -657,6 +657,33 @@ defmodule Phoenix.LiveView.Channel do
 
       :error ->
         {:noreply, push_noop(state, ref)}
+    end
+  end
+
+  defp component_handle_async(state, cid, kind, keys, ref, result) do
+    %{socket: socket, components: components} = state
+
+    result =
+      Diff.write_component(socket, cid, components, fn component_socket, component ->
+        component_socket =
+          %Socket{redirected: redirected, assigns: assigns} =
+          Async.handle_async(component_socket, component, kind, keys, ref, result)
+
+        {component_socket, {redirected, assigns.flash}}
+      end)
+
+    case result do
+      {diff, new_components, {redirected, flash}} ->
+        new_state = %{state | components: new_components}
+
+        if redirected do
+          handle_redirect(new_state, redirected, flash, nil, nil)
+        else
+          {:noreply, push_diff(new_state, diff, nil)}
+        end
+
+      :error ->
+        {:noreply, push_noop(state, nil)}
     end
   end
 
