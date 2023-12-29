@@ -316,9 +316,19 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
-               {:ok, event_or_js} <- maybe_event(type, node, element),
+               {:ok, event_or_js, fallback} <- maybe_event(type, node, element),
                {:ok, dom_values} <- maybe_values(type, node, element) do
-            maybe_js_commands(event_or_js, root, view, node, value, dom_values)
+            case maybe_js_commands(event_or_js, root, view, node, value, dom_values) do
+              [] when fallback != [] ->
+                fallback
+
+              [] ->
+                {:error, :invalid,
+                 "no push or navigation command found within JS commands: #{event_or_js}"}
+
+              events ->
+                events
+            end
           end
       end
 
@@ -940,7 +950,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
     if DOM.attribute(node, "phx-hook") do
       if DOM.attribute(node, "id") do
-        {:ok, event}
+        {:ok, event, []}
       else
         {:error, :invalid,
          "element selected by #{inspect(element.selector)} for phx-hook does not have an ID"}
@@ -953,11 +963,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_event(:click, {"a", _, _} = node, element) do
     # If there is a phx-click, that's what we will use, otherwise fallback to href
-    cond do
-      phx_click = DOM.attribute(node, "phx-click") ->
-        {:ok, phx_click}
-
-      to = DOM.attribute(node, "href") ->
+    fallback =
+      if to = DOM.attribute(node, "href") do
         case DOM.attribute(node, "data-phx-link") do
           "patch" ->
             [{:patch, proxy_topic(element), to}]
@@ -970,6 +977,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           nil ->
             [{:stop, proxy_topic(element), {:redirect, %{to: to}}}]
         end
+      else
+        []
+      end
+
+    cond do
+      event = DOM.attribute(node, "phx-click") ->
+        {:ok, event, fallback}
+
+      fallback != [] ->
+        fallback
 
       true ->
         message =
@@ -982,10 +999,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_event(type, node, element) when type in [:keyup, :keydown] do
     cond do
       event = DOM.attribute(node, "phx-#{type}") ->
-        {:ok, event}
+        {:ok, event, []}
 
       event = DOM.attribute(node, "phx-window-#{type}") ->
-        {:ok, event}
+        {:ok, event, []}
 
       true ->
         {:error, :invalid,
@@ -996,7 +1013,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_event(type, node, element) do
     if event = DOM.attribute(node, "phx-#{type}") do
-      {:ok, event}
+      {:ok, event, []}
     else
       {:error, :invalid,
        "element selected by #{inspect(element.selector)} does not have phx-#{type} attribute"}
@@ -1045,14 +1062,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       _ ->
         []
     end)
-    |> case do
-      [] ->
-        {:error, :invalid,
-         "no push or navigation command found within JS commands: #{event_or_js}"}
-
-      events ->
-        events
-    end
   end
 
   defp maybe_enabled(_type, {tag, _, _}, %{form_data: form_data})

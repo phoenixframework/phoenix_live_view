@@ -45,10 +45,11 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <a href="/" id="redirect-a">Regular Link</a>
     <.link navigate="/example" id="live-redirect-a">Live redirect</.link>
     <.link navigate="/example" id="live-redirect-replace-a" replace>Live redirect</.link>
-    <.link patch="/elements?from=uri" id="live-patch-a">Live patch</.link>
+    <%# unrelated phx-click does not disable patching %>
+    <.link patch="/elements?from=uri" id="live-patch-a" phx-click={JS.dispatch("noop")}>Live patch</.link>
 
     <button type="button" id="live-patch-button" phx-click={JS.patch("/elements?from=uri")}>Live patch button</button>
-
+    <button type="button" id="live-push-patch-button" phx-click={JS.push("foo") |> JS.patch("/elements?from=uri")}>Live push patch button</button>
     <button type="button" id="live-redirect-push-button" phx-click={JS.navigate("/example")}>Live redirect</button>
     <button type="button" id="live-redirect-replace-button" phx-click={JS.navigate("/example", replace: true)}>Live redirect</button>
     <button type="button" id="live-redirect-patch-button" phx-click={JS.navigate("/example", replace: true) |> JS.patch("/elements?from=uri")}>Last one wins</button>
