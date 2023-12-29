@@ -523,6 +523,9 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
     ~H"""
     <.live_component :if={@lc} module={Phoenix.LiveViewTest.StartAsyncLive.LC} test={@lc} id="lc" />
     result: <%= inspect(@result) %>
+    <%= if flash = @flash["info"] do %>
+    flash: <%= flash %>
+    <% end %>
     """
   end
 
@@ -591,6 +594,38 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
      |> start_async({:result_task, :foo}, fn -> :complex_key end)}
   end
 
+  def mount(%{"test" => "navigate"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:navigate, fn -> nil end)}
+  end
+
+  def mount(%{"test" => "patch"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:patch, fn -> nil end)}
+  end
+
+  def mount(%{"test" => "redirect"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:redirect, fn -> nil end)}
+  end
+
+  def mount(%{"test" => "put_flash"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:flash, fn -> "hello" end)}
+  end
+
+  def handle_params(_unsigned_params, _uri, socket) do
+    {:noreply, socket}
+  end
+
   def handle_async(:result_task, {:ok, result}, socket) do
     {:noreply, assign(socket, result: result)}
   end
@@ -605,6 +640,22 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
 
   def handle_async({:result_task, _}, {:ok, result}, socket) do
     {:noreply, assign(socket, result: result)}
+  end
+
+  def handle_async(:navigate, {:ok, _result}, socket) do
+    {:noreply, push_navigate(socket, to: "/start_async?test=ok")}
+  end
+
+  def handle_async(:patch, {:ok, _result}, socket) do
+    {:noreply, push_patch(socket, to: "/start_async?test=ok")}
+  end
+
+  def handle_async(:redirect, {:ok, _result}, socket) do
+    {:noreply, redirect(socket, to: "/not_found")}
+  end
+
+  def handle_async(:flash, {:ok, flash}, socket) do
+    {:noreply, put_flash(socket, :info, flash)}
   end
 
   def handle_info(:boom, _socket), do: exit(:boom)
@@ -686,6 +737,34 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
      |> start_async({:result_task, :foo}, fn -> :complex_key end)}
   end
 
+  def update(%{test: "patch"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:patch, fn -> nil end)}
+  end
+
+  def update(%{test: "navigate"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:navigate, fn -> nil end)}
+  end
+
+  def update(%{test: "redirect"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:redirect, fn -> nil end)}
+  end
+
+  def update(%{test: "navigate_flash"}, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:navigate_flash, fn -> "hello" end)}
+  end
+
   def update(%{action: :cancel}, socket) do
     {:ok, cancel_async(socket, :result_task)}
   end
@@ -712,5 +791,21 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
 
   def handle_async({:result_task, _}, {:ok, result}, socket) do
     {:noreply, assign(socket, result: result)}
+  end
+
+  def handle_async(:navigate, {:ok, _result}, socket) do
+    {:noreply, push_navigate(socket, to: "/start_async?test=ok")}
+  end
+
+  def handle_async(:patch, {:ok, _result}, socket) do
+    {:noreply, push_patch(socket, to: "/start_async?test=ok")}
+  end
+
+  def handle_async(:redirect, {:ok, _result}, socket) do
+    {:noreply, redirect(socket, to: "/not_found")}
+  end
+
+  def handle_async(:navigate_flash, {:ok, flash}, socket) do
+    {:noreply, socket |> put_flash(:info, flash) |> push_navigate(to: "/start_async?test=ok")}
   end
 end
