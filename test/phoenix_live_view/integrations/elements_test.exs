@@ -178,7 +178,10 @@ defmodule Phoenix.LiveView.ElementsTest do
     test "clicks live patch declared with JS.patch", %{live: view} do
       assert view |> element("button#live-patch-button") |> render_click() |> is_binary()
       assert last_event(view) =~ ~s|handle_params: %{"from" => "uri"}|
+      assert_patched(view, "/elements?from=uri")
 
+      assert view |> element("button#live-push-patch-button") |> render_click() |> is_binary()
+      assert last_event(view) =~ ~s|handle_params: %{"from" => "uri"}|
       assert_patched(view, "/elements?from=uri")
     end
 
