@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.3
+
+### Bug fixes
+  * Fix phx-viewport bindings failing to fire after navigation
+
 ## 0.20.2 (2023-12-18)
 
 ### Bug fixes
