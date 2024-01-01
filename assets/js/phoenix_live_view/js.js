@@ -56,13 +56,12 @@ let JS = {
   },
 
   exec_push(eventType, phxEvent, view, sourceEl, el, args){
-    if(!view.isConnected()){ return }
-
     let {event, data, target, page_loading, loading, value, dispatcher, callback} = args
     let pushOpts = {loading, value, target, page_loading: !!page_loading}
     let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
     let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
     view.withinTargets(phxTarget, (targetView, targetCtx) => {
+      if(!targetView.isConnected()){ return }
       if(eventType === "change"){
         let {newCid, _target} = args
         _target = _target || (DOM.isFormInput(sourceEl) ? sourceEl.name : undefined)
