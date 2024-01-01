@@ -126,6 +126,23 @@ defmodule Phoenix.LiveView.StreamTest do
     assert lv |> element("#users div:last-child") |> render =~ "last_user"
   end
 
+  test "properly orders elements on reset", %{conn: conn} do
+    {:ok, lv, _} = live(conn, "/stream")
+
+    assert lv |> render() |> users_in_dom("users") == [
+      {"users-1", "chris"},
+      {"users-2", "callan"}
+    ]
+
+    lv |> render_hook("reset-users-reorder", %{})
+
+    assert lv |> render() |> users_in_dom("users") == [
+      {"users-3", "peter"},
+      {"users-1", "chris"},
+      {"users-4", "mona"}
+    ]
+  end
+
   test "stream reset on patch", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/healthy/fruits")
 

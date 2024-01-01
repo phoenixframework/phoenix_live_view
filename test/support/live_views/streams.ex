@@ -89,6 +89,10 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     {:noreply, stream(socket, :users, [], reset: true)}
   end
 
+  def handle_event("reset-users-reorder", %{}, socket) do
+    {:noreply, stream(socket, :users, [user(3, "peter"), user(1, "chris"), user(4, "mona")], reset: true)}
+  end
+
   def handle_event("stream-users", _, socket) do
     {:noreply, stream(socket, :users, @users)}
   end
