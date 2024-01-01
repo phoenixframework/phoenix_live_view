@@ -41,6 +41,11 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     %{id: 2, name: "callan"}
   ]
 
+  @append_users [
+    %{id: 4, name: "foo"},
+    %{id: 3, name: "last_user"},
+  ]
+
   def mount(_params, _session, socket) do
     {:ok,
      socket
@@ -86,6 +91,10 @@ defmodule Phoenix.LiveViewTest.StreamLive do
 
   def handle_event("stream-users", _, socket) do
     {:noreply, stream(socket, :users, @users)}
+  end
+
+  def handle_event("append-users", _, socket) do
+    {:noreply, stream(socket, :users, @append_users, at: -1)}
   end
 
   def handle_event("admin-delete", %{"id" => dom_id}, socket) do
