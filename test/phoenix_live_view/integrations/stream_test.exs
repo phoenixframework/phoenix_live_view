@@ -118,6 +118,14 @@ defmodule Phoenix.LiveView.StreamTest do
     refute lv |> element("#users div") |> has_element?()
   end
 
+  test "should preserve the order of appended items", %{conn: conn} do
+    {:ok, lv, _} = live(conn, "/stream")
+    assert lv |> element("#users div:last-child") |> render =~ "callan"
+
+    lv |> render_hook("append-users", %{})
+    assert lv |> element("#users div:last-child") |> render =~ "last_user"
+  end
+
   test "stream reset on patch", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/healthy/fruits")
 
