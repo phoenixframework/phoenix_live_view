@@ -639,7 +639,7 @@ var LiveView = (() => {
       for (let i = targetAttrs.length - 1; i >= 0; i--) {
         let name = targetAttrs[i].name;
         if (isIgnored) {
-          if (name.startsWith("data-") && !source.hasAttribute(name)) {
+          if (name.startsWith("data-") && !source.hasAttribute(name) && ![PHX_REF, PHX_REF_SRC].includes(name)) {
             target.removeAttribute(name);
           }
         } else {
@@ -2539,14 +2539,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       dom_default.dispatchEvent(el, event, { detail, bubbles });
     },
     exec_push(eventType, phxEvent, view, sourceEl, el, args) {
-      if (!view.isConnected()) {
-        return;
-      }
       let { event, data, target, page_loading, loading, value, dispatcher, callback } = args;
       let pushOpts = { loading, value, target, page_loading: !!page_loading };
       let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
       let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
       view.withinTargets(phxTarget, (targetView, targetCtx) => {
+        if (!targetView.isConnected()) {
+          return;
+        }
         if (eventType === "change") {
           let { newCid, _target } = args;
           _target = _target || (dom_default.isFormInput(sourceEl) ? sourceEl.name : void 0);
@@ -3576,6 +3576,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
               callback && callback(resp);
               this.triggerAwaitingSubmit(inputEl.form);
+              this.undoRefs(ref);
             });
           }
         } else {

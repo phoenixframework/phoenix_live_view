@@ -4,6 +4,10 @@
 
 ### Bug fixes
   * Fix phx-viewport bindings failing to fire after navigation
+  * Preserve order of appended items in stream in `LiveViewTest`
+
+### Enhancements
+  * Support `JS.push` from dead views
 
 ## 0.20.2 (2023-12-18)
 
