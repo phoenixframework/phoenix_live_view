@@ -334,7 +334,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
     start_proxy(path, %{
-      html: Phoenix.ConnTest.html_response(conn, 200),
+      html: format_response(conn, 200),
       connect_params: conn.private[:live_view_connect_params] || %{},
       connect_info: conn.private[:live_view_connect_info] || prune_conn(conn) || %{},
       live_module: live_module,
@@ -356,6 +356,18 @@ defmodule Phoenix.LiveViewTest do
 
   defp prune_conn(conn) do
     %{conn | resp_body: nil, resp_headers: []}
+  end
+
+  defp format_response(conn, status) do
+    body = Phoenix.ConnTest.response(conn, status)
+    format =
+      conn
+      |> Phoenix.Controller.get_format()
+      |> String.to_atom()
+
+    _ = Phoenix.ConnTest.response_content_type(conn, format)
+
+    body
   end
 
   defp error_redirect_conn(conn) do
