@@ -1068,7 +1068,7 @@ export default class View {
   }
 
   dispatchUploads(targetCtx, name, filesOrBlobs){
-    let targetElement = this.targetCtxElement(targetCtx) || this.el;
+    let targetElement = this.targetCtxElement(targetCtx) || this.el
     let inputs = DOM.findUploadInputs(targetElement).filter(el => el.name === name)
     if(inputs.length === 0){ logError(`no live file inputs found matching the name "${name}"`) }
     else if(inputs.length > 1){ logError(`duplicate live file inputs found matching the name "${name}"`) }
