@@ -608,9 +608,7 @@ var DOM = {
     }
   },
   mergeFocusedInput(target, source) {
-    if (!(target instanceof HTMLSelectElement)) {
-      DOM.mergeAttrs(target, source, { exclude: ["value"] });
-    }
+    DOM.mergeAttrs(target, source, { exclude: ["value"] });
     if (source.readOnly) {
       target.setAttribute("readonly", true);
     } else {
@@ -2541,6 +2539,9 @@ var JS = {
   exec_remove_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time }) {
     this.addOrRemoveClasses(el, [], names, transition, time, view);
   },
+  exec_toggle_class(eventType, phxEvent, view, sourceEl, el, { to, names, transition, time }) {
+    this.toggleClasses(el, names, transition, view);
+  },
   exec_transition(eventType, phxEvent, view, sourceEl, el, { time, transition }) {
     this.addOrRemoveClasses(el, [], [], transition, time, view);
   },
@@ -2622,6 +2623,14 @@ var JS = {
         });
       }
     }
+  },
+  toggleClasses(el, classes, transition, time, view) {
+    window.requestAnimationFrame(() => {
+      let [prevAdds, prevRemoves] = dom_default.getSticky(el, "classes", [[], []]);
+      let newAdds = classes.filter((name) => prevAdds.indexOf(name) < 0 && !el.classList.contains(name));
+      let newRemoves = classes.filter((name) => prevRemoves.indexOf(name) < 0 && el.classList.contains(name));
+      this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view);
+    });
   },
   addOrRemoveClasses(el, adds, removes, transition, time, view) {
     let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []];
