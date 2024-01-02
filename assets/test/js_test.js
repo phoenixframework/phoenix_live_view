@@ -145,7 +145,7 @@ describe("JS", () => {
       }, 200)
     })
 
-    test("with multiple selector", () => {
+    test("with multiple selector", done => {
       let view = setupView(`
       <div id="modal1" class="modal">modal</div>
       <div id="modal2" class="modal">modal</div>

@@ -9,8 +9,6 @@ let JS = {
     let commands = phxEvent.charAt(0) === "[" ?
       JSON.parse(phxEvent) : [[defaultKind, defaultArgs]]
 
-
-
     commands.forEach(([kind, args]) => {
       if(kind === defaultKind && defaultArgs.data){
         args.data = Object.assign(args.data || {}, defaultArgs.data)
@@ -111,12 +109,8 @@ let JS = {
     this.addOrRemoveClasses(el, [], names, transition, time, view)
   },
 
-  exec_toggle_class(eventType, phxEvent, view, sourceEl, {to, names, transition, time}){
-    if(to){
-      DOM.all(document, to, el => this.toggleClasses(el, names, transition, time, view))
-    } else {
-      this.toggleClasses(sourceEl, names, transition, view)
-    }
+  exec_toggle_class(eventType, phxEvent, view, sourceEl, el, {to, names, transition, time}){
+    this.toggleClasses(el, names, transition, view)
   },
 
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition}){
