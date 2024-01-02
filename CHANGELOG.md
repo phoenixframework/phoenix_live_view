@@ -1,10 +1,11 @@
 # Changelog
 
-## 0.20.3
+## 0.20.3 (2024-01-02)
 
 ### Bug fixes
   * Fix phx-viewport bindings failing to fire after navigation
   * Preserve order of appended items in stream in `LiveViewTest`
+  * Fix order of items on client when resetting a stream to existing set of items
 
 ### Enhancements
   * Support `JS.push` from dead views
