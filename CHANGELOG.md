@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.4
+
+### Enhancements
+  * Add `JS.toggle_class`
+
 ## 0.20.3 (2024-01-02)
 
 ### Bug fixes
