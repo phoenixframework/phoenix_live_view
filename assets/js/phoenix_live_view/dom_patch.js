@@ -196,17 +196,9 @@ export default class DOMPatch {
             Array.from(fromEl.children).filter(child => {
               let {resetKept} = this.getStreamInsert(child)
               return resetKept
-            }).sort((a, b) => {
-              let aIdx = toIds.indexOf(a.id)
-              let bIdx = toIds.indexOf(b.id)
-              if(aIdx === bIdx){
-                return 0
-              } else if(aIdx < bIdx){
-                return -1
-              } else {
-                return 1
-              }
-            }).forEach(child => fromEl.appendChild(child))
+            }).forEach((child) => {
+              this.streamInserts[child.id].streamAt = toIds.indexOf(child.id)
+            })
           }
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
