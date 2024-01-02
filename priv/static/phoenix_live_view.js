@@ -1881,7 +1881,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           },
           onNodeAdded: (el) => {
             if (el.getAttribute) {
-              this.maybeReOrderStream(el);
+              this.maybeReOrderStream(el, true);
             }
             if (el instanceof HTMLImageElement && el.srcset) {
               el.srcset = el.srcset;
@@ -1931,7 +1931,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               externalFormTriggered = el;
             }
             updates.push(el);
-            this.maybeReOrderStream(el);
+            this.maybeReOrderStream(el, false);
           },
           onBeforeElUpdated: (fromEl, toEl) => {
             dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
@@ -2039,9 +2039,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let insert = el.id ? this.streamInserts[el.id] : {};
       return insert || {};
     }
-    maybeReOrderStream(el) {
+    maybeReOrderStream(el, isNew) {
       let { ref, streamAt, limit } = this.getStreamInsert(el);
-      if (streamAt === void 0) {
+      if (streamAt === void 0 || streamAt === 0 && !isNew) {
         return;
       }
       dom_default.putSticky(el, PHX_STREAM_REF, (el2) => el2.setAttribute(PHX_STREAM_REF, ref));
