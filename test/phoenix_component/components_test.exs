@@ -521,6 +521,26 @@ defmodule Phoenix.LiveView.ComponentsTest do
                </form>
                """
     end
+
+    test "with FormData implementation options" do
+      assigns = %{}
+
+      template = ~H"""
+        <.form :let={f} as={:myform}>
+          <.inputs_for
+            :let={finner}
+            field={f[:inner]}}
+            options={[foo: "bar"]}
+          >
+            <p><%= finner.options[:foo] %></p>
+          </.inputs_for>
+        </.form>
+      """
+
+      html = t2h(template)
+      assert [p] = Floki.find(html, "p")
+      assert Floki.text(p) =~ "bar"
+    end
   end
 
   describe "live_file_input/1" do
