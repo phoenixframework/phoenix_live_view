@@ -2,6 +2,9 @@
 
 ## 0.20.4
 
+### Bug fixes
+  * Fix phx-remove on sticky LiveViews
+
 ### Enhancements
   * Add `JS.toggle_class`
 
