@@ -2404,6 +2404,14 @@ defmodule Phoenix.Component do
     """
   )
 
+  attr.(:options, :list,
+    default: [],
+    doc: """
+    Any additional options for the `Phoenix.HTML.FormData` protocol
+    implementation.
+    """
+  )
+
   slot.(:inner_block, required: true, doc: "The content rendered for each nested form.")
 
   @persistent_id "_persistent_id"
@@ -2415,6 +2423,7 @@ defmodule Phoenix.Component do
       parent_form.options
       |> Keyword.take([:multipart])
       |> Keyword.merge(options)
+      |> Keyword.merge(assigns.options)
 
     forms = parent_form.impl.to_form(parent_form.source, parent_form, field_name, options)
     seen_ids = for f <- forms, vid = f.params[@persistent_id], into: %{}, do: {vid, true}
