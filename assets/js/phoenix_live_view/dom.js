@@ -329,8 +329,8 @@ let DOM = {
     return node.getAttribute && node.getAttribute(PHX_STICKY) !== null
   },
 
-  isChildOfAny(el, nodes){
-    return !!nodes.find(node => node.contains(el))
+  isChildOfAny(el, parents){
+    return !!parents.find(parent => parent.contains(el))
   },
 
   firstPhxChild(el){
