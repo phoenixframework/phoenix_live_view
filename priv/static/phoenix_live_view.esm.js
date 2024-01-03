@@ -565,6 +565,9 @@ var DOM = {
   isPhxSticky(node) {
     return node.getAttribute && node.getAttribute(PHX_STICKY) !== null;
   },
+  isChildOfAny(el, parents) {
+    return !!parents.find((parent) => parent.contains(el));
+  },
   firstPhxChild(el) {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
   },
@@ -4071,7 +4074,7 @@ var LiveSocket = class {
     this.main.destroy();
     this.main = this.newRootView(newMainEl, flash, liveReferer);
     this.main.setRedirect(href);
-    this.transitionRemoves();
+    this.transitionRemoves(null, true);
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
@@ -4084,9 +4087,13 @@ var LiveSocket = class {
       }
     });
   }
-  transitionRemoves(elements) {
+  transitionRemoves(elements, skipSticky) {
     let removeAttr = this.binding("remove");
     elements = elements || dom_default.all(document, `[${removeAttr}]`);
+    if (skipSticky) {
+      const stickies = dom_default.findPhxSticky(document) || [];
+      elements = elements.filter((el) => !dom_default.isChildOfAny(el, stickies));
+    }
     elements.forEach((el) => {
       this.execJS(el, el.getAttribute(removeAttr), "remove");
     });
