@@ -223,7 +223,11 @@ export default class DOMPatch {
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
-          if(this.skipCIDSibling(toEl)){ return false }
+          if(this.skipCIDSibling(toEl)){
+            // if this is a live component used in a stream, we may need to reorder it
+            this.maybeReOrderStream(fromEl)
+            return false
+          }
           if(DOM.isPhxSticky(fromEl)){ return false }
           if(DOM.isIgnored(fromEl, phxUpdate) || (fromEl.form && fromEl.form.isSameNode(externalFormTriggered))){
             this.trackBefore("updated", fromEl, toEl)
