@@ -1257,7 +1257,7 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  @doc """
+  @doc ~S'''
   Asynchronously updates a `Phoenix.LiveComponent` with new assigns.
 
   The `pid` argument is optional and it defaults to the current process,
@@ -1308,9 +1308,11 @@ defmodule Phoenix.LiveView do
       end
 
       def render(assigns) do
+        ~H"""
         <.some_component on_complete={&send_update(@myself, completed: &1)} />
+        """
       end
-  """
+  '''
   def send_update(pid \\ self(), module_or_cid, assigns)
 
   def send_update(pid, module, assigns) when is_atom(module) and is_pid(pid) do
