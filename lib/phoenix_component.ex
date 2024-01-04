@@ -1447,7 +1447,7 @@ defmodule Phoenix.Component do
   The underlying data may accept additional options when
   converted to forms. For example, a map accepts `:errors`
   to list errors, but such option is not accepted by
-  changesets. `:errors` a keyword of tuples in the shape
+  changesets. `:errors` is a keyword of tuples in the shape
   of `{error_message, options_list}`. Here is an example:
 
       to_form(%{"search" => nil}, errors: [search: {"Can't be blank", []}])
