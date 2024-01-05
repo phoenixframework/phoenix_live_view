@@ -455,9 +455,12 @@ defmodule Phoenix.LiveViewTest do
     quote do
       component = unquote(component)
 
+      # Emit this line for undefined component warnings
+      if(is_atom(component), do: component.__live__())
+
       Phoenix.LiveViewTest.__render_component__(
         unquote(endpoint),
-        if(is_atom(component), do: component.__live__(), else: component),
+        unquote(component),
         unquote(assigns),
         unquote(opts)
       )
@@ -465,7 +468,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc false
-  def __render_component__(endpoint, %{module: component}, assigns, opts) do
+  def __render_component__(endpoint, component, assigns, opts) when is_atom(component) do
     socket = %Socket{endpoint: endpoint, router: opts[:router]}
 
     assigns = Map.new(assigns)
