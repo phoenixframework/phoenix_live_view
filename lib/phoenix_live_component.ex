@@ -536,7 +536,7 @@ defmodule Phoenix.LiveComponent do
       use Phoenix.Component, Keyword.take(unquote(opts), [:global_prefixes])
 
       @doc false
-      def __live__, do: %{kind: :component, module: __MODULE__, layout: false}
+      def __live__, do: %{kind: :component, layout: false}
     end
   end
 
@@ -563,5 +563,10 @@ defmodule Phoenix.LiveComponent do
             ) ::
               {:noreply, Socket.t()}
 
-  @optional_callbacks mount: 1, update_many: 1, update: 2, render: 1, handle_event: 3, handle_async: 3
+  @optional_callbacks mount: 1,
+                      update_many: 1,
+                      update: 2,
+                      render: 1,
+                      handle_event: 3,
+                      handle_async: 3
 end
