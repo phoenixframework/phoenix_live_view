@@ -2976,7 +2976,7 @@ defmodule Phoenix.Component do
   ```heex
   <.async_result :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
-    <:failed :let={reason}>there was an error loading the organization</:failed>
+    <:failed :let={{:error, reason}}>there was an error loading the organization: <%= reason %></:failed>
     <%= if org do %>
       <%= org.name %>
     <% else %>
