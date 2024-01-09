@@ -103,13 +103,11 @@ export default class DOMPatch {
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
         Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
-          this.streamInserts[key] = {ref, streamAt, limit, resetKept: false}
+          this.streamInserts[key] = {ref, streamAt, limit, reset}
         })
         if(reset !== undefined){
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
-            if(inserts[child.id]){
-              this.streamInserts[child.id].resetKept = true
-            } else {
+            if(!inserts[child.id]){
               this.removeStreamChildElement(child)
             }
           })
@@ -189,15 +187,14 @@ export default class DOMPatch {
           added.push(el)
         },
         onBeforeElChildrenUpdated: (fromEl, toEl) => {
-          // before we update the children, we need to set existing stream children
-          // into the new order from the server if they were kept during a stream reset
+          // when resetting a stream, we override the order of the streamInserts to
+          // the order of the elements in the diff (toEl)
           if(fromEl.getAttribute(phxUpdate) === PHX_STREAM){
-            let toIds = Array.from(toEl.children).map(child => child.id)
-            Array.from(fromEl.children).filter(child => {
-              let {resetKept} = this.getStreamInsert(child)
-              return resetKept
-            }).forEach((child) => {
-              this.streamInserts[child.id].streamAt = toIds.indexOf(child.id)
+            Array.from(toEl.children).forEach((child, idx) => {
+              // if this is not a reset, the streamAt must be preserved
+              if(this.streamInserts[child.id].reset){
+                this.streamInserts[child.id].streamAt = idx
+              }
             })
           }
         },
