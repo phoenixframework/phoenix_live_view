@@ -3455,6 +3455,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           if (disableText !== "") {
             el.innerText = disableText;
           }
+          el.setAttribute(PHX_DISABLED, el.disabled);
           el.setAttribute("disabled", "");
         }
       });
