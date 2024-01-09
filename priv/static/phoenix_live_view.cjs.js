@@ -3426,6 +3426,7 @@ var View = class {
         if (disableText !== "") {
           el.innerText = disableText;
         }
+        el.setAttribute(PHX_DISABLED, el.disabled);
         el.setAttribute("disabled", "");
       }
     });
