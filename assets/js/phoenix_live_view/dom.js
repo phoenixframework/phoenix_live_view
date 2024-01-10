@@ -375,7 +375,8 @@ let DOM = {
   },
 
   mergeFocusedInput(target, source){
-    DOM.mergeAttrs(target, source, {exclude: ["value"]})
+    // skip selects because FF will reset highlighted index for any setAttribute
+    if(!(target instanceof HTMLSelectElement)){ DOM.mergeAttrs(target, source, {exclude: ["value"]}) }
 
     if(source.readOnly){
       target.setAttribute("readonly", true)
@@ -389,7 +390,9 @@ let DOM = {
   },
 
   restoreFocus(focused, selectionStart, selectionEnd){
+    if(focused instanceof HTMLSelectElement){ focused.focus() }
     if(!DOM.isTextualInput(focused)){ return }
+
     let wasFocused = focused.matches(":focus")
     if(focused.readOnly){ focused.blur() }
     if(!wasFocused){ focused.focus() }

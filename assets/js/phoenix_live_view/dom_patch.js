@@ -257,7 +257,9 @@ export default class DOMPatch {
           DOM.copyPrivates(toEl, fromEl)
 
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
-          if(isFocusedFormEl && fromEl.type !== "hidden"){
+          // skip patching focused inputs unless focus is a select that has changed options
+          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
+          if(isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeFocusedInput(fromEl, toEl)
             DOM.syncAttrsToProps(fromEl)
@@ -266,6 +268,8 @@ export default class DOMPatch {
             trackedInputs.push(fromEl)
             return false
           } else {
+            // blur focused select if it changed so native UI is updated (ie safari won't update visible options)
+            if(focusedSelectChanged){ fromEl.blur() }
             if(DOM.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])){
               appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)))
             }
@@ -373,6 +377,21 @@ export default class DOMPatch {
         this.trackAfter("transitionsDiscarded", pendingRemoves)
       })
     }
+  }
+
+  isChangedSelect(fromEl, toEl){
+    if(!(fromEl instanceof HTMLSelectElement) || fromEl.multiple){ return false }
+    if(fromEl.options.length !== toEl.options.length){ return true }
+
+    let fromSelected = fromEl.selectedOptions[0]
+    let toSelected = toEl.selectedOptions[0]
+    if(fromSelected && fromSelected.hasAttribute("selected")){
+      toSelected.setAttribute("selected", fromSelected.getAttribute("selected"))
+    }
+
+    // in general we have to be very careful with using isEqualNode as it does not a reliable
+    // DOM tree equality check, but for selection attributes and options it works fine
+    return !fromEl.isEqualNode(toEl)
   }
 
   isCIDPatch(){ return this.cidPatch }
