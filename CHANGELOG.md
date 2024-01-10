@@ -5,6 +5,7 @@
 ### Bug fixes
   * Fix phx-remove on sticky LiveViews
   * Fix phx-disabled-with not restoring button disabled state on empty diff acknowledgement
+  * Fix stream reset not ordering items correctly
 
 ### Enhancements
   * Add `JS.toggle_class`
