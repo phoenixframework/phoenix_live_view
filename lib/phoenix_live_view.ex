@@ -116,7 +116,7 @@ defmodule Phoenix.LiveView do
   ```heex
   <.async_result :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
-    <:failed :let={_reason}>there was an error loading the organization</:failed>
+    <:failed :let={_failure}>there was an error loading the organization</:failed>
     <%= org.name %>
   </.async_result>
   ```
