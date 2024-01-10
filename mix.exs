@@ -24,6 +24,7 @@ defmodule Phoenix.LiveView.MixProject do
     ]
   end
 
+  defp elixirc_paths(:e2e), do: ["lib", "test/support"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
@@ -49,7 +50,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:makeup_eex, ">= 0.1.1", only: :docs},
       {:makeup_diff, "~> 0.1", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
-      {:phoenix_live_reload, "~> 1.4.1", only: :test}
+      {:phoenix_live_reload, "~> 1.4.1", only: :test},
+      {:plug_cowboy, "~> 2.6", only: :e2e}
     ]
   end
 

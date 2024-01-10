@@ -33,6 +33,9 @@ defmodule Phoenix.LiveViewTest.StreamLive do
       </div>
     </div>
     <.live_component id="stream-component" module={Phoenix.LiveViewTest.StreamComponent} />
+
+    <button phx-click="reset-users">Reset users</button>
+    <button phx-click="reset-users-reorder">Reorder users</button>
     """
   end
 
