@@ -88,7 +88,7 @@ enforces this best practice.
 
 ## Pitfalls
 
-There are two common pitfalls to keep in mind when using the `~H` sigil
+There are some common pitfalls to keep in mind when using the `~H` sigil
 or `.heex` templates inside LiveViews.
 
 When it comes to `do/end` blocks, change tracking is supported only on blocks
@@ -115,6 +115,8 @@ inside `.heex` templates:
   <%= @description %>
 </div>
 ```
+
+---
 
 The next pitfall is related to variables. Due to the scope of variables,
 LiveView has to disable change tracking whenever variables are used in the
@@ -174,9 +176,88 @@ below works as expected:
 <% end %>
 ```
 
+---
+
+Sometimes you might want to pass all assigns from one function component to
+another. For example, imagine you have a `card` component that is quite
+complex and has a header, content and footer section.
+You might refactor your component into three smaller components internally:
+
+```elixir
+def card(assigns) do
+  ~H"""
+  <div class="card">
+    <.card_header {assigns} />
+    <.card_body {assigns} />
+    <.card_footer {assigns} />
+  </div>
+  """
+end
+
+defp card_header(assigns) do
+  ...
+end
+
+defp card_body(assigns) do
+  ...
+end
+
+defp card_footer(assigns) do
+  ...
+end
+```
+
+Because of the way function components track changes, the above code will
+not work as expected. When any assign changes, even if it is only used in
+one of the child components, all three components will be re-rendered,
+leading to a large diff over the wire.
+
+Generally, you should avoid passing all assigns and instead be explicit about
+which assigns the child components need:
+
+```elixir
+def card(assigns) do
+  ~H"""
+  <div class="card">
+    <.card_header title={@title} class={@title_class} />
+    <.card_body>
+      <%= render_slot(@inner_block) %>
+    </.card_body>
+    <.card_footer on_close={@on_close} />
+  </div>
+  """
+end
+```
+
+If you really need to pass all assigns you should instead use the regular
+function call syntax:
+
+```elixir
+def card(assigns) do
+  ~H"""
+  <div class="card">
+    <%= card_header(assigns) %>
+    <%= card_body(assigns) %>
+    <%= card_footer(assigns) %>
+  </div>
+  """
+end
+```
+
+This ensures that the change tracking information from the parent component
+is passed to the child components. In this case, changing an assign that is
+only used in one child component will only re-render the parts of the component
+that changed.
+
+---
+
 To sum up:
 
   1. Avoid passing block expressions to library and custom functions,
      instead prefer to use the conveniences in `HEEx` templates
 
   2. Avoid defining local variables, except within Elixir's constructs
+
+  3. Avoid passing all assigns to child components, instead be explicit
+     about which assigns the child components need or, as a last resort, use
+     `<%= component(assigns) %>` instead of `<.component {assigns} />`.
