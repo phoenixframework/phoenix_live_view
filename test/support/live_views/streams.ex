@@ -46,7 +46,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
 
   @append_users [
     %{id: 4, name: "foo"},
-    %{id: 3, name: "last_user"},
+    %{id: 3, name: "last_user"}
   ]
 
   def mount(_params, _session, socket) do
@@ -93,7 +93,8 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   end
 
   def handle_event("reset-users-reorder", %{}, socket) do
-    {:noreply, stream(socket, :users, [user(3, "peter"), user(1, "chris"), user(4, "mona")], reset: true)}
+    {:noreply,
+     stream(socket, :users, [user(3, "peter"), user(1, "chris"), user(4, "mona")], reset: true)}
   end
 
   def handle_event("stream-users", _, socket) do
@@ -254,5 +255,158 @@ defmodule Phoenix.LiveViewTest.HealthyLive do
       |> stream(:items, Map.fetch!(@healthy_stuff, category), reset: true)
 
     {:noreply, socket}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.StreamResetLive do
+  use Phoenix.LiveView
+
+  # see https://github.com/phoenixframework/phoenix_live_view/issues/2994
+
+  def mount(_params, _session, socket) do
+    socket
+    |> stream(:items, [
+      %{id: "a", name: "A"},
+      %{id: "b", name: "B"},
+      %{id: "c", name: "C"},
+      %{id: "d", name: "D"}
+    ])
+    |> then(&{:ok, &1})
+  end
+
+  def render(assigns) do
+    ~H"""
+    <ul phx-update="stream" id="thelist">
+      <li id={id} :for={{id, item} <- @streams.items}>
+        <%= item.name %>
+      </li>
+    </ul>
+
+    <button phx-click="filter">Filter</button>
+    <button phx-click="reorder">Reorder</button>
+    <button phx-click="reset">Reset</button>
+    <button phx-click="prepend">Prepend</button>
+    <button phx-click="append">Append</button>
+    """
+  end
+
+  def handle_event("filter", _, socket) do
+    {:noreply,
+     stream(
+       socket,
+       :items,
+       [
+         %{id: "b", name: "B"},
+         %{id: "c", name: "C"},
+         %{id: "d", name: "D"}
+       ],
+       reset: true
+     )}
+  end
+
+  def handle_event("reorder", _, socket) do
+    {:noreply,
+     stream(
+       socket,
+       :items,
+       [
+         %{id: "b", name: "B"},
+         %{id: "a", name: "A"},
+         %{id: "c", name: "C"},
+         %{id: "d", name: "D"}
+       ],
+       reset: true
+     )}
+  end
+
+  def handle_event("reset", _, socket) do
+    {:noreply,
+     stream(
+       socket,
+       :items,
+       [
+         %{id: "a", name: "A"},
+         %{id: "b", name: "B"},
+         %{id: "c", name: "C"},
+         %{id: "d", name: "D"}
+       ],
+       reset: true
+     )}
+  end
+
+  def handle_event("prepend", _, socket) do
+    {:noreply,
+     stream_insert(
+       socket,
+       :items,
+       %{id: "a" <> "#{System.unique_integer()}", name: "#{System.unique_integer()}"},
+       at: 0
+     )}
+  end
+
+  def handle_event("append", _, socket) do
+    {:noreply,
+     stream_insert(
+       socket,
+       :items,
+       %{id: "a" <> "#{System.unique_integer()}", name: "#{System.unique_integer()}"},
+       at: -1
+     )}
+  end
+end
+
+defmodule Phoenix.LiveViewTest.StreamResetLCLive do
+  use Phoenix.LiveView
+
+  # see https://github.com/phoenixframework/phoenix_live_view/issues/2982
+
+  defmodule InnerComponent do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <li id={@id}>
+        <%= @item.name %>
+      </li>
+      """
+    end
+  end
+
+  def mount(_params, _session, socket) do
+    socket
+    |> stream(:items, [
+      %{id: "a", name: "A"},
+      %{id: "b", name: "B"},
+      %{id: "c", name: "C"},
+      %{id: "d", name: "D"}
+    ])
+    |> then(&{:ok, &1})
+  end
+
+  def handle_event("reorder", _, socket) do
+    socket =
+      stream(
+        socket,
+        :items,
+        [
+          %{id: "e", name: "E"},
+          %{id: "a", name: "A"},
+          %{id: "f", name: "F"},
+          %{id: "g", name: "G"}
+        ],
+        reset: true
+      )
+
+    {:noreply, socket}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <ul phx-update="stream" id="thelist">
+      <.live_component module={InnerComponent} id={id} item={item} :for={{id, item} <- @streams.items}/>
+    </ul>
+
+    <button phx-click="reorder">Reorder</button>
+    """
   end
 end

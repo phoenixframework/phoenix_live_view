@@ -104,7 +104,7 @@ defmodule Phoenix.LiveView.StreamTest do
     assert lv |> render() |> users_in_dom("admins") == [{"admins-2", "updated"}]
   end
 
-  test "should properly reset after a steam has been set after mount", %{conn: conn} do
+  test "should properly reset after a stream has been set after mount", %{conn: conn} do
     {:ok, lv, _} = live(conn, "/stream")
     assert lv |> element("#users div") |> has_element?()
 
@@ -130,17 +130,17 @@ defmodule Phoenix.LiveView.StreamTest do
     {:ok, lv, _} = live(conn, "/stream")
 
     assert lv |> render() |> users_in_dom("users") == [
-      {"users-1", "chris"},
-      {"users-2", "callan"}
-    ]
+             {"users-1", "chris"},
+             {"users-2", "callan"}
+           ]
 
     lv |> render_hook("reset-users-reorder", %{})
 
     assert lv |> render() |> users_in_dom("users") == [
-      {"users-3", "peter"},
-      {"users-1", "chris"},
-      {"users-4", "mona"}
-    ]
+             {"users-3", "peter"},
+             {"users-1", "chris"},
+             {"users-4", "mona"}
+           ]
   end
 
   test "stream reset on patch", %{conn: conn} do
@@ -178,6 +178,49 @@ defmodule Phoenix.LiveView.StreamTest do
 
     assert has_element?(lv, "li", "Apples")
     assert has_element?(lv, "li", "Oranges")
+  end
+
+  describe "issue #2994" do
+    test "can filter and reset a stream", %{conn: conn} do
+      {:ok, lv, html} = live(conn, "/stream/reset")
+
+      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Filter") |> render_click()
+      assert ids_in_ul_list(html) == ["items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Reset") |> render_click()
+      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+    end
+
+    test "can reorder stream", %{conn: conn} do
+      {:ok, lv, html} = live(conn, "/stream/reset")
+
+      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Reorder") |> render_click()
+      assert ids_in_ul_list(html) == ["items-b", "items-a", "items-c", "items-d"]
+    end
+
+    test "can filter and then prepend / append stream", %{conn: conn} do
+      {:ok, lv, html} = live(conn, "/stream/reset")
+
+      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Filter") |> render_click()
+      assert ids_in_ul_list(html) == ["items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Prepend") |> render_click()
+      assert [<<"items-a-", _::binary>>, "items-b", "items-c", "items-d"] = ids_in_ul_list(html)
+
+      html = assert lv |> element("button", "Reset") |> render_click()
+      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Append") |> render_click()
+
+      assert ["items-a", "items-b", "items-c", "items-d", <<"items-a-", _::binary>>] =
+               ids_in_ul_list(html)
+    end
   end
 
   describe "within live component" do
@@ -265,16 +308,24 @@ defmodule Phoenix.LiveView.StreamTest do
       assert streams.c_users.deletes == []
       assert_pruned_stream(lv)
     end
+
+    test "issue #2982 - can reorder a stream with LiveComponents as direct stream children", %{conn: conn} do
+      {:ok, lv, html} = live(conn, "/stream/reset-lc")
+
+      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Reorder") |> render_click()
+      assert ids_in_ul_list(html) == ["items-e", "items-a", "items-f", "items-g"]
+    end
   end
 
   test "stream raises when attempting to consume ahead of for", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/stream")
 
     assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
-      render_click(lv, "consume-stream-invalid", %{})
-    end) =~ ~r/streams can only be consumed directly by a for comprehension/
+             render_click(lv, "consume-stream-invalid", %{})
+           end) =~ ~r/streams can only be consumed directly by a for comprehension/
   end
-
 
   defp assert_pruned_stream(lv) do
     stream = StreamLive.run(lv, fn socket -> {:reply, socket.assigns.streams.users, socket} end)
@@ -289,5 +340,12 @@ defmodule Phoenix.LiveView.StreamTest do
     |> Enum.map(fn {_tag, _attrs, [text | _children]} = child ->
       {DOM.attribute(child, "id"), String.trim(text)}
     end)
+  end
+
+  defp ids_in_ul_list(html) do
+    html
+    |> DOM.parse()
+    |> DOM.all("ul > li")
+    |> Enum.map(fn child -> DOM.attribute(child, "id") end)
   end
 end

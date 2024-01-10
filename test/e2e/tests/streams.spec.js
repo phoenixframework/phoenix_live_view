@@ -191,3 +191,90 @@ test.describe("Issue #2656", () => {
     await expect(page.locator("ul")).toContainText("Oranges");
   });
 });
+
+test.describe("Issue #2994", () => {
+  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
+
+  test("can filter and reset a stream", async ({ page }) => {
+    await page.goto("/stream/reset");
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Filter" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Reset" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+  });
+
+  test("can reorder stream", async ({ page }) => {
+    await page.goto("/stream/reset");
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Reorder" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-b", "items-a", "items-c", "items-d"]);
+  });
+
+  test("can filter and then prepend / append stream", async ({ page }) => {
+    await page.goto("/stream/reset");
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Filter" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Prepend" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      expect.stringMatching(/items-a-.*/),
+      "items-b",
+      "items-c",
+      "items-d"
+    ]);
+
+    await page.getByRole("button", { name: "Reset" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Append" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-a",
+      "items-b",
+      "items-c",
+      "items-d",
+      expect.stringMatching(/items-a-.*/),
+    ]);
+  });
+});
+
+test.describe("Issue #2982", () => {
+  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
+
+  test("can reorder a stream with LiveComponents as direct stream children", async ({ page }) => {
+    await page.goto("/stream/reset-lc");
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Reorder" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-e", "items-a", "items-f", "items-g"]);
+  });
+});

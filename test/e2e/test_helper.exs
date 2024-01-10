@@ -52,6 +52,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       pipe_through(:browser)
 
       live "/stream", Phoenix.LiveViewTest.StreamLive
+      live "/stream/reset", Phoenix.LiveViewTest.StreamResetLive
+      live "/stream/reset-lc", Phoenix.LiveViewTest.StreamResetLCLive
       live "/healthy/:category", Phoenix.LiveViewTest.HealthyLive
     end
   end
