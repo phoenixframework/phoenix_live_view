@@ -13,7 +13,8 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
     view: Phoenix.LiveViewTest.E2E.ErrorHTML,
     layout: false
   ],
-  debug_errors: true
+  pubsub_server: Phoenix.LiveViewTest.E2E.PubSub,
+  debug_errors: false
 )
 
 defmodule Phoenix.LiveViewTest.E2E.ErrorHTML do
@@ -55,6 +56,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/stream/reset", Phoenix.LiveViewTest.StreamResetLive
       live "/stream/reset-lc", Phoenix.LiveViewTest.StreamResetLCLive
       live "/healthy/:category", Phoenix.LiveViewTest.HealthyLive
+
+      live "/upload", Phoenix.LiveViewTest.E2E.UploadLive
     end
   end
 end
@@ -66,6 +69,7 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
 
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
+  plug Plug.Static, from: System.tmp_dir!(), at: "/tmp"
 
   plug :health_check
 
@@ -78,5 +82,13 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   defp health_check(conn, _opts), do: conn
 end
 
-{:ok, _} = Supervisor.start_link([Phoenix.LiveViewTest.E2E.Endpoint], strategy: :one_for_one)
+{:ok, _} =
+  Supervisor.start_link(
+    [
+      Phoenix.LiveViewTest.E2E.Endpoint,
+      {Phoenix.PubSub, name: Phoenix.LiveViewTest.E2E.PubSub}
+    ],
+    strategy: :one_for_one
+  )
+
 Process.sleep(:infinity)
