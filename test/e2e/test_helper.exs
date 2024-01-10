@@ -51,7 +51,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     scope "/" do
       pipe_through(:browser)
 
-      live("/stream", Phoenix.LiveViewTest.StreamLive, :index)
+      live "/stream", Phoenix.LiveViewTest.StreamLive
+      live "/healthy/:category", Phoenix.LiveViewTest.HealthyLive
     end
   end
 end

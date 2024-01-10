@@ -60,7 +60,7 @@ test("elements can be updated and deleted (LV)", async ({ page }) => {
     { id: "admins-2", text: "callan-admin" }
   ]);
 
-  await page.locator("#users-1").getByRole("button", { name: "Delete" }).click();
+  await page.locator("#users-1").getByRole("button", { name: "delete" }).click();
   await syncLV(page);
 
   await expect(await usersInDom(page, "users")).toEqual([
@@ -104,7 +104,7 @@ test("elements can be updated and deleted (LC)", async ({ page }) => {
     { id: "admins-2", text: "callan-admin" }
   ]);
 
-  await page.locator("#c_users-1").getByRole("button", { name: "Delete" }).click();
+  await page.locator("#c_users-1").getByRole("button", { name: "delete" }).click();
   await syncLV(page);
 
   await expect(await usersInDom(page, "c_users")).toEqual([
@@ -159,4 +159,35 @@ test("stream reset properly reorders items", async ({ page }) => {
     { id: "users-1", text: "chris" },
     { id: "users-4", text: "mona" }
   ]);
+});
+
+test.describe("Issue #2656", () => {
+  test("stream reset works when patching", async ({ page }) => {
+    await page.goto("/healthy/fruits");
+    await syncLV(page);
+
+    await expect(page.locator("h1")).toContainText("Fruits");
+    await expect(page.locator("ul")).toContainText("Apples");
+    await expect(page.locator("ul")).toContainText("Oranges");
+
+    await page.getByRole("link", { name: "Switch" }).click();
+    await expect(page).toHaveURL("/healthy/veggies");
+    await syncLV(page);
+
+    await expect(page.locator("h1")).toContainText("Veggies");
+
+    await expect(page.locator("ul")).toContainText("Carrots");
+    await expect(page.locator("ul")).toContainText("Tomatoes");
+    await expect(page.locator("ul")).not.toContainText("Apples");
+    await expect(page.locator("ul")).not.toContainText("Oranges");
+
+    await page.getByRole("link", { name: "Switch" }).click();
+    await expect(page).toHaveURL("/healthy/fruits");
+    await syncLV(page);
+
+    await expect(page.locator("ul")).not.toContainText("Carrots");
+    await expect(page.locator("ul")).not.toContainText("Tomatoes");
+    await expect(page.locator("ul")).toContainText("Apples");
+    await expect(page.locator("ul")).toContainText("Oranges");
+  });
 });
