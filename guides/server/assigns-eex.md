@@ -91,38 +91,11 @@ enforces this best practice.
 There are some common pitfalls to keep in mind when using the `~H` sigil
 or `.heex` templates inside LiveViews.
 
-When it comes to `do/end` blocks, change tracking is supported only on blocks
-given to Elixir's basic constructs, such as `if`, `case`, `for`, and similar.
-If the do/end block is given to a library function or user function, such as
-`content_tag`, change tracking won't work. For example, imagine the following
-template that renders a `div`:
-
-```heex
-<%= content_tag :div, id: "user_#{@id}" do %>
-  <%= @name %>
-  <%= @description %>
-<% end %>
-```
-
-LiveView knows nothing about `content_tag`, which means the whole `div` will
-be sent whenever any of the assigns change. Luckily, HEEx templates provide
-a nice syntax for building tags, so there is rarely a need to use `content_tag`
-inside `.heex` templates:
-
-```heex
-<div id={"user_#{@id}"}>
-  <%= @name %>
-  <%= @description %>
-</div>
-```
-
----
-
-The next pitfall is related to variables. Due to the scope of variables,
-LiveView has to disable change tracking whenever variables are used in the
-template, with the exception of variables introduced by Elixir basic `case`,
-`for`, and other block constructs. Therefore, you **must avoid** code like
-this in your `HEEx` templates:
+Due to the scope of variables, LiveView has to disable change tracking
+whenever variables are used in the template, with the exception of
+variables introduced by Elixir block constructs such as `case`,
+`for`, `if`, and others. Therefore, you **must avoid** code like
+this in your HEEx templates:
 
 ```heex
 <% some_var = @x + @y %>
@@ -150,9 +123,10 @@ Instead explicitly precompute the assign outside of render:
 
     assign(socket, sum: socket.assigns.x + socket.assigns.y)
 
-Unlike LiveView, a `Phoenix.Component` function can modify the assigns it receives
-via the `assign/2`, `assign/3`, `assign_new/3`, and `update/3` functions.
-Therefore, you can assign the computed values before declaring your template:
+Unlike LiveView's `render/1` callback, a function components can
+modify the assigns it receives via the `assign/2`, `assign/3`,
+`assign_new/3`, and `update/3` functions. Therefore, you can assign
+the computed values before declaring your template:
 
     attr :x, :integer, required: true
     attr :y, :integer, required: true
@@ -176,7 +150,9 @@ below works as expected:
 <% end %>
 ```
 
----
+When talking about variables, it is also worth discussing the `assigns`
+special variable. Every time you use the `~H` sigil, you must define an
+`assigns` variable, which is also available on every `.heex` templates.
 
 Sometimes you might want to pass all assigns from one function component to
 another. For example, imagine you have a `card` component that is quite
@@ -207,10 +183,9 @@ defp card_footer(assigns) do
 end
 ```
 
-Because of the way function components track changes, the above code will
-not work as expected. When any assign changes, even if it is only used in
-one of the child components, all three components will be re-rendered,
-leading to a large diff over the wire.
+Because of the way function components handle attributes, the above code will
+not perform change tracking and it will always re-render all three components
+on every change.
 
 Generally, you should avoid passing all assigns and instead be explicit about
 which assigns the child components need:
@@ -245,19 +220,12 @@ end
 ```
 
 This ensures that the change tracking information from the parent component
-is passed to the child components. In this case, changing an assign that is
-only used in one child component will only re-render the parts of the component
-that changed.
-
----
+is passed to each child component, only re-rendering what is necessary.
+However, generally speaking, it is best to avoid passing `assigns` altogether
+and instead let LiveView figure out the best way to track changes.
 
 To sum up:
 
-  1. Avoid passing block expressions to library and custom functions,
-     instead prefer to use the conveniences in `HEEx` templates
+  1. Avoid defining local variables inside HEEx templates, except within Elixir's constructs
 
-  2. Avoid defining local variables, except within Elixir's constructs
-
-  3. Avoid passing all assigns to child components, instead be explicit
-     about which assigns the child components need or, as a last resort, use
-     `<%= component(assigns) %>` instead of `<.component {assigns} />`.
+  2. Avoid passing or accessing the `assigns` variable inside HEEx templates
