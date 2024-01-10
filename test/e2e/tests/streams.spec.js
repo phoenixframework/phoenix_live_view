@@ -6,7 +6,7 @@ const usersInDom = async (page, parent) => {
     .evaluateAll(list => list.map(el => ({ id: el.id, text: el.childNodes[0].nodeValue.trim() })));
 }
 
-test("render properly", async ({ page }) => {
+test("renders properly", async ({ page }) => {
   await page.goto("/stream");
   await syncLV(page);
 
@@ -59,6 +59,13 @@ test("elements can be updated and deleted (LV)", async ({ page }) => {
     { id: "admins-1", text: "chris-admin" },
     { id: "admins-2", text: "callan-admin" }
   ]);
+
+  await page.locator("#users-1").getByRole("button", { name: "Delete" }).click();
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-2", text: "updated" }
+  ]);
 });
 
 test("elements can be updated and deleted (LC)", async ({ page }) => {
@@ -95,6 +102,13 @@ test("elements can be updated and deleted (LC)", async ({ page }) => {
   await expect(await usersInDom(page, "admins")).toEqual([
     { id: "admins-1", text: "chris-admin" },
     { id: "admins-2", text: "callan-admin" }
+  ]);
+
+  await page.locator("#c_users-1").getByRole("button", { name: "Delete" }).click();
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "c_users")).toEqual([
+    { id: "c_users-2", text: "updated" }
   ]);
 });
 
