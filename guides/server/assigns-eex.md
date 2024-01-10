@@ -88,39 +88,14 @@ enforces this best practice.
 
 ## Pitfalls
 
-There are two common pitfalls to keep in mind when using the `~H` sigil
+There are some common pitfalls to keep in mind when using the `~H` sigil
 or `.heex` templates inside LiveViews.
 
-When it comes to `do/end` blocks, change tracking is supported only on blocks
-given to Elixir's basic constructs, such as `if`, `case`, `for`, and similar.
-If the do/end block is given to a library function or user function, such as
-`content_tag`, change tracking won't work. For example, imagine the following
-template that renders a `div`:
-
-```heex
-<%= content_tag :div, id: "user_#{@id}" do %>
-  <%= @name %>
-  <%= @description %>
-<% end %>
-```
-
-LiveView knows nothing about `content_tag`, which means the whole `div` will
-be sent whenever any of the assigns change. Luckily, HEEx templates provide
-a nice syntax for building tags, so there is rarely a need to use `content_tag`
-inside `.heex` templates:
-
-```heex
-<div id={"user_#{@id}"}>
-  <%= @name %>
-  <%= @description %>
-</div>
-```
-
-The next pitfall is related to variables. Due to the scope of variables,
-LiveView has to disable change tracking whenever variables are used in the
-template, with the exception of variables introduced by Elixir basic `case`,
-`for`, and other block constructs. Therefore, you **must avoid** code like
-this in your `HEEx` templates:
+Due to the scope of variables, LiveView has to disable change tracking
+whenever variables are used in the template, with the exception of
+variables introduced by Elixir block constructs such as `case`,
+`for`, `if`, and others. Therefore, you **must avoid** code like
+this in your HEEx templates:
 
 ```heex
 <% some_var = @x + @y %>
@@ -148,9 +123,10 @@ Instead explicitly precompute the assign outside of render:
 
     assign(socket, sum: socket.assigns.x + socket.assigns.y)
 
-Unlike LiveView, a `Phoenix.Component` function can modify the assigns it receives
-via the `assign/2`, `assign/3`, `assign_new/3`, and `update/3` functions.
-Therefore, you can assign the computed values before declaring your template:
+Unlike LiveView's `render/1` callback, a function components can
+modify the assigns it receives via the `assign/2`, `assign/3`,
+`assign_new/3`, and `update/3` functions. Therefore, you can assign
+the computed values before declaring your template:
 
     attr :x, :integer, required: true
     attr :y, :integer, required: true
@@ -174,9 +150,82 @@ below works as expected:
 <% end %>
 ```
 
+When talking about variables, it is also worth discussing the `assigns`
+special variable. Every time you use the `~H` sigil, you must define an
+`assigns` variable, which is also available on every `.heex` templates.
+
+Sometimes you might want to pass all assigns from one function component to
+another. For example, imagine you have a complex `card` component with 
+header, content and footer section.
+You might refactor your component into three smaller components internally:
+
+```elixir
+def card(assigns) do
+  ~H"""
+  <div class="card">
+    <.card_header {assigns} />
+    <.card_body {assigns} />
+    <.card_footer {assigns} />
+  </div>
+  """
+end
+
+defp card_header(assigns) do
+  ...
+end
+
+defp card_body(assigns) do
+  ...
+end
+
+defp card_footer(assigns) do
+  ...
+end
+```
+
+Because of the way function components handle attributes, the above code will
+not perform change tracking and it will always re-render all three components
+on every change.
+
+Generally, you should avoid passing all assigns and instead be explicit about
+which assigns the child components need:
+
+```elixir
+def card(assigns) do
+  ~H"""
+  <div class="card">
+    <.card_header title={@title} class={@title_class} />
+    <.card_body>
+      <%= render_slot(@inner_block) %>
+    </.card_body>
+    <.card_footer on_close={@on_close} />
+  </div>
+  """
+end
+```
+
+If you really need to pass all assigns you should instead use the regular
+function call syntax:
+
+```elixir
+def card(assigns) do
+  ~H"""
+  <div class="card">
+    <%= card_header(assigns) %>
+    <%= card_body(assigns) %>
+    <%= card_footer(assigns) %>
+  </div>
+  """
+end
+```
+
+This ensures that the change tracking information from the parent component
+is passed to each child component, only re-rendering what is necessary.
+However, generally speaking, it is best to avoid passing `assigns` altogether
+and instead let LiveView figure out the best way to track changes.
+
 To sum up:
 
-  1. Avoid passing block expressions to library and custom functions,
-     instead prefer to use the conveniences in `HEEx` templates
+  1. Avoid defining local variables inside HEEx templates, except within Elixir's constructs
 
-  2. Avoid defining local variables, except within Elixir's constructs
+  2. Avoid passing or accessing the `assigns` variable inside HEEx templates
