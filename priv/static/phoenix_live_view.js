@@ -653,7 +653,9 @@ var LiveView = (() => {
       }
     },
     mergeFocusedInput(target, source) {
-      DOM.mergeAttrs(target, source, { exclude: ["value"] });
+      if (!(target instanceof HTMLSelectElement)) {
+        DOM.mergeAttrs(target, source, { exclude: ["value"] });
+      }
       if (source.readOnly) {
         target.setAttribute("readonly", true);
       } else {
@@ -664,6 +666,9 @@ var LiveView = (() => {
       return el.setSelectionRange && (el.type === "text" || el.type === "textarea");
     },
     restoreFocus(focused, selectionStart, selectionEnd) {
+      if (focused instanceof HTMLSelectElement) {
+        focused.focus();
+      }
       if (!DOM.isTextualInput(focused)) {
         return;
       }
@@ -1972,7 +1977,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             dom_default.copyPrivates(toEl, fromEl);
             let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
-            if (isFocusedFormEl && fromEl.type !== "hidden") {
+            let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
+            if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
               this.trackBefore("updated", fromEl, toEl);
               dom_default.mergeFocusedInput(fromEl, toEl);
               dom_default.syncAttrsToProps(fromEl);
@@ -1981,6 +1987,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               trackedInputs.push(fromEl);
               return false;
             } else {
+              if (focusedSelectChanged) {
+                fromEl.blur();
+              }
               if (dom_default.isPhxUpdate(toEl, phxUpdate, ["append", "prepend"])) {
                 appendPrependUpdates.push(new DOMPostMorphRestorer(fromEl, toEl, toEl.getAttribute(phxUpdate)));
               }
@@ -2077,6 +2086,20 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           this.trackAfter("transitionsDiscarded", pendingRemoves);
         });
       }
+    }
+    isChangedSelect(fromEl, toEl) {
+      if (!(fromEl instanceof HTMLSelectElement) || fromEl.multiple) {
+        return false;
+      }
+      if (fromEl.options.length !== toEl.options.length) {
+        return true;
+      }
+      let fromSelected = fromEl.selectedOptions[0];
+      let toSelected = toEl.selectedOptions[0];
+      if (fromSelected && fromSelected.hasAttribute("selected")) {
+        toSelected.setAttribute("selected", fromSelected.getAttribute("selected"));
+      }
+      return !fromEl.isEqualNode(toEl);
     }
     isCIDPatch() {
       return this.cidPatch;
