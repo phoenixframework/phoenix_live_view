@@ -8,6 +8,7 @@
 
 ### Enhancements
   * Add `JS.toggle_class`
+  * Force update select options when the options changed from the server while a select has focus
 
 ## 0.20.3 (2024-01-02)
 
