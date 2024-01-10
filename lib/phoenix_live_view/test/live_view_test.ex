@@ -334,7 +334,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
     start_proxy(path, %{
-      html: Phoenix.ConnTest.html_response(conn, 200),
+      response: Phoenix.ConnTest.response(conn, 200),
       connect_params: conn.private[:live_view_connect_params] || %{},
       connect_info: conn.private[:live_view_connect_info] || prune_conn(conn) || %{},
       live_module: live_module,
@@ -380,7 +380,7 @@ defmodule Phoenix.LiveViewTest do
     opts =
       Map.merge(opts, %{
         caller: {self(), ref},
-        html: opts.html,
+        html: opts.response,
         connect_params: opts.connect_params,
         connect_info: opts.connect_info,
         live_module: opts.live_module,
@@ -1739,7 +1739,7 @@ defmodule Phoenix.LiveViewTest do
     static_token = token_func.(root.static_token)
 
     start_proxy(url, %{
-      html: html,
+      response: html,
       live_redirect: {root.id, root_token, static_token},
       connect_params: root.connect_params,
       connect_info: root.connect_info,
