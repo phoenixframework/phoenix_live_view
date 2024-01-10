@@ -155,8 +155,8 @@ special variable. Every time you use the `~H` sigil, you must define an
 `assigns` variable, which is also available on every `.heex` templates.
 
 Sometimes you might want to pass all assigns from one function component to
-another. For example, imagine you have a `card` component that is quite
-complex and has a header, content and footer section.
+another. For example, imagine you have a complex `card` component with 
+header, content and footer section.
 You might refactor your component into three smaller components internally:
 
 ```elixir
