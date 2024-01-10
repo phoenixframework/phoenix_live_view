@@ -355,12 +355,17 @@ let DOM = {
   },
 
   mergeAttrs(target, source, opts = {}){
-    let exclude = opts.exclude || []
+    let exclude = new Set(opts.exclude || [])
     let isIgnored = opts.isIgnored
     let sourceAttrs = source.attributes
     for(let i = sourceAttrs.length - 1; i >= 0; i--){
       let name = sourceAttrs[i].name
-      if(exclude.indexOf(name) < 0){ target.setAttribute(name, source.getAttribute(name)) }
+      if(!exclude.has(name)){
+        const sourceValue = source.getAttribute(name)
+        if(target.getAttribute(name) !== sourceValue){
+          target.setAttribute(name, sourceValue)
+        }
+      }
     }
 
     let targetAttrs = target.attributes
