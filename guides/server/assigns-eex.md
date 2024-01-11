@@ -123,7 +123,7 @@ Instead explicitly precompute the assign outside of render:
 
     assign(socket, sum: socket.assigns.x + socket.assigns.y)
 
-Unlike LiveView's `render/1` callback, a function components can
+Unlike LiveView's `render/1` callback, a function component can
 modify the assigns it receives via the `assign/2`, `assign/3`,
 `assign_new/3`, and `update/3` functions. Therefore, you can assign
 the computed values before declaring your template:
@@ -152,12 +152,12 @@ below works as expected:
 
 When talking about variables, it is also worth discussing the `assigns`
 special variable. Every time you use the `~H` sigil, you must define an
-`assigns` variable, which is also available on every `.heex` templates.
+`assigns` variable, which is also available on every `.heex` template.
 
 Sometimes you might want to pass all assigns from one function component to
 another. For example, imagine you have a complex `card` component with 
-header, content and footer section.
-You might refactor your component into three smaller components internally:
+header, content and footer section. You might refactor your component
+into three smaller components internally:
 
 ```elixir
 def card(assigns) do
