@@ -338,7 +338,12 @@ let DOM = {
   },
 
   dispatchEvent(target, name, opts = {}){
-    let bubbles = opts.bubbles === undefined ? true : !!opts.bubbles
+    let defaultBubble = true
+    let isUploadTarget = target.nodeName === "INPUT" && target.type === "file"
+    if (isUploadTarget) {
+      defaultBubble = false
+    }
+    let bubbles = opts.bubbles === undefined ? defaultBubble : !!opts.bubbles
     let eventOpts = {bubbles: bubbles, cancelable: true, detail: opts.detail || {}}
     let event = name === "click" ? new MouseEvent("click", eventOpts) : new CustomEvent(name, eventOpts)
     target.dispatchEvent(event)
