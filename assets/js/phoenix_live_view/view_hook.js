@@ -11,7 +11,11 @@ export default class ViewHook {
     this.__isDisconnected = false
     this.el = el
     this.el.phxHookId = this.constructor.makeID()
-    for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
+    if(typeof(callbacks) === "function"){
+      this.mounted = () => callbacks({el: el, pushEvent: this.pushEvent.bind(this)})
+    } else {
+      for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
+    }
   }
 
   __mounted(){ this.mounted && this.mounted() }

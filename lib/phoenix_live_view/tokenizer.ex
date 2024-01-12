@@ -183,10 +183,101 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   ## handle_script
 
+  def prune(file) do
+    hashed_name = hashed_script_name(file)
+    hooks_dir = Path.expand("assets/js/hooks", File.cwd!())
+    manifest_path = Path.join(hooks_dir, "index.js")
+
+    case File.ls(hooks_dir) do
+      {:ok, hooks} ->
+        for hook_basename <- hooks do
+          case String.split(hook_basename, "_") do
+            [^hashed_name | _] ->
+              File.rm!(IO.inspect(Path.join(hooks_dir, hook_basename), label: "Pruning"))
+
+              if File.exists?(manifest_path) do
+                new_file =
+                  manifest_path
+                  |> File.stream!()
+                  |> Enum.filter(fn line -> !String.contains?(line, hashed_name) end)
+                  |> Enum.join("")
+                  |> String.trim()
+
+                File.write!(manifest_path, new_file)
+              end
+
+            _ ->
+              :noop
+          end
+        end
+
+      _ ->
+        :noop
+    end
+
+    nil
+  end
+
+  def hashed_script_name(file) do
+    :md5 |> :crypto.hash(file) |> Base.encode16()
+  end
+
   defp handle_script("</script>" <> rest, line, column, buffer, acc, state) do
+    %{file: file} = state
+    [{:tag, "script", attrs, %{line: line, column: col}} | _] = acc
+    raw_content = buffer_to_string(buffer)
+
+    script_content =
+      "// #{Path.relative_to_cwd(file)}:#{line}:#{col}\n" <> raw_content
+
+    type =
+      Enum.find_value(attrs, fn
+        {"type", {:string, type, _}, _meta} -> type
+        {_attr, _val, _meta} -> nil
+      end)
+
+
+    new_buffer =
+      if type == "phx-hook" do
+        dir = "assets/js/hooks"
+        manifest_path = Path.join(dir, "index.js")
+
+        js_filename = hashed_script_name(file) <> "_#{line}_#{col}"
+        js_path = Path.join(dir, js_filename <> ".js")
+
+        File.mkdir_p!(dir)
+        File.write!(js_path, script_content)
+
+        if !File.exists?(manifest_path) do
+          File.write!(manifest_path, """
+          let hooks = {}
+          export default hooks
+          """)
+        end
+
+        manifest = File.read!(manifest_path)
+
+        File.open(manifest_path, [:append], fn file ->
+          if !String.contains?(manifest, js_filename) do
+            IO.puts("Add hook to #{manifest_path}")
+
+            IO.binwrite(
+              file,
+              ~s|\nimport hook_#{js_filename} from "./#{js_filename}"; hooks["#{js_filename}"] = hook_#{js_filename};|
+            )
+          end
+        end)
+
+        IO.puts("Write hook to #{js_path}")
+
+        [js_filename]
+      else
+        buffer
+      end
+
     acc = [
       {:close, :tag, "script", %{line: line, column: column, inner_location: {line, column}}}
-      | text_to_acc(buffer, acc, line, column, [])
+      | text_to_acc(new_buffer, acc, line, column, [])
     ]
 
     handle_text(rest, line, column + 9, [], acc, state)
@@ -374,7 +465,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   defp handle_maybe_tag_open_end(">" <> rest, line, column, acc, state) do
     case normalize_tag(acc, line, column + 1, false, state) do
-      [{:tag, "script", _, _} | _] = acc ->
+      [{:tag, "script", _, _} = tag | _] = acc ->
         handle_script(rest, line, column + 1, [], acc, state)
 
       [{:tag, "style", _, _} | _] = acc ->

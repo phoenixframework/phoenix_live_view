@@ -331,7 +331,8 @@ export default class View {
       DOM.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom)
       this.maybeAddNewHook(hookEl)
     })
-    DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
+    let phxHook = this.binding(PHX_HOOK)
+    DOM.all(this.el, `[${phxHook}], [data-phx-${PHX_HOOK}], script[type="${phxHook}"]`, hookEl => {
       this.maybeAddNewHook(hookEl)
     })
     DOM.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, el => this.maybeMounted(el))
@@ -555,8 +556,12 @@ export default class View {
 
   addHook(el){
     if(ViewHook.elementID(el) || !el.getAttribute){ return }
-    let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
-    if(hookName && !this.ownsElement(el)){ return }
+    let hookName
+    if(el.type === this.binding(PHX_HOOK)){
+      hookName = el.innerText
+    } else {
+      hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
+    }
     let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
     if(callbacks){
