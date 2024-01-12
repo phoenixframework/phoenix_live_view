@@ -557,11 +557,12 @@ export default class View {
   addHook(el){
     if(ViewHook.elementID(el) || !el.getAttribute){ return }
     let hookName
-    if(el.type === this.binding(PHX_HOOK)){
+    if(el.type === "text/phx-hook"){
       hookName = el.innerText
     } else {
       hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
     }
+    if(hookName && !this.ownsElement(el)){ return }
     let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
     if(callbacks){

@@ -12,7 +12,10 @@ export default class ViewHook {
     this.el = el
     this.el.phxHookId = this.constructor.makeID()
     if(typeof(callbacks) === "function"){
-      this.mounted = () => callbacks({el: el, pushEvent: this.pushEvent.bind(this)})
+      this.updated = () => {
+        return function(){}
+      }
+      this.mounted = () => callbacks(this)
     } else {
       for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
     }

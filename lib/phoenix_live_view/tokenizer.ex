@@ -224,21 +224,18 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   defp handle_script("</script>" <> rest, line, column, buffer, acc, state) do
     %{file: file} = state
+    # TODO enforce no {:expr, "=", "test"} inside script
     [{:tag, "script", attrs, %{line: line, column: col}} | _] = acc
     raw_content = buffer_to_string(buffer)
 
     script_content =
       "// #{Path.relative_to_cwd(file)}:#{line}:#{col}\n" <> raw_content
 
-    type =
-      Enum.find_value(attrs, fn
-        {"type", {:string, type, _}, _meta} -> type
-        {_attr, _val, _meta} -> nil
-      end)
-
+    str_attrs =
+      for {attr, {:string, type, _}, _meta} <- attrs, into: %{}, do: {attr, type}
 
     new_buffer =
-      if type == "phx-hook" do
+      if str_attrs["phx-hook"] do
         dir = "assets/js/hooks"
         manifest_path = Path.join(dir, "index.js")
 
@@ -465,8 +462,18 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   defp handle_maybe_tag_open_end(">" <> rest, line, column, acc, state) do
     case normalize_tag(acc, line, column + 1, false, state) do
-      [{:tag, "script", _, _} = tag | _] = acc ->
-        handle_script(rest, line, column + 1, [], acc, state)
+      [{:tag, "script", attrs, tag_meta} | _] = acc ->
+        new_acc =
+          Enum.reduce(attrs, acc, fn
+            {"phx-hook", {:string, _val, delim}, meta}, acc ->
+              new_attrs = [{"type", {:string, "text/phx-hook", delim}, meta} | attrs]
+              [{:tag, "script", new_attrs, tag_meta} | tl(acc)]
+
+            {_name, _val, _meta}, acc ->
+              acc
+          end)
+
+        handle_script(rest, line, column + 1, [], new_acc, state)
 
       [{:tag, "style", _, _} | _] = acc ->
         handle_style(rest, line, column + 1, [], acc, state)
