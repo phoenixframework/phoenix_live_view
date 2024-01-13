@@ -2,6 +2,7 @@ import {
   PHX_COMPONENT,
   PHX_DISABLE_WITH,
   PHX_FEEDBACK_FOR,
+  PHX_FEEDBACK_GROUP,
   PHX_PRUNE,
   PHX_ROOT_ID,
   PHX_SESSION,
@@ -86,6 +87,7 @@ export default class DOMPatch {
     let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
+    let phxFeedbackGroup = liveSocket.binding(PHX_FEEDBACK_GROUP)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
@@ -132,7 +134,7 @@ export default class DOMPatch {
         // tell morphdom how to add a child
         addChild: (parent, child) => {
           let {ref, streamAt, limit} = this.getStreamInsert(child)
-          if(ref === undefined) { return parent.appendChild(child) }
+          if(ref === undefined){ return parent.appendChild(child) }
 
           DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
@@ -294,7 +296,7 @@ export default class DOMPatch {
       })
     }
 
-    DOM.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor)
+    DOM.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup)
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")

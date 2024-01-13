@@ -38,6 +38,7 @@ export const PHX_VIEWPORT_TOP = "viewport-top"
 export const PHX_VIEWPORT_BOTTOM = "viewport-bottom"
 export const PHX_TRIGGER_ACTION = "trigger-action"
 export const PHX_FEEDBACK_FOR = "feedback-for"
+export const PHX_FEEDBACK_GROUP = "feedback-group"
 export const PHX_HAS_FOCUSED = "phx-has-focused"
 export const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "datetime-local", "color", "range"]
 export const CHECKABLE_INPUTS = ["checkbox", "radio"]
