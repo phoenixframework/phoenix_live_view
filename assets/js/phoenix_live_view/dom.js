@@ -340,7 +340,7 @@ let DOM = {
   dispatchEvent(target, name, opts = {}){
     let defaultBubble = true
     let isUploadTarget = target.nodeName === "INPUT" && target.type === "file"
-    if (isUploadTarget) {
+    if(isUploadTarget && name === "click"){
       defaultBubble = false
     }
     let bubbles = opts.bubbles === undefined ? defaultBubble : !!opts.bubbles
