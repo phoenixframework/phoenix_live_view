@@ -287,12 +287,25 @@ let DOM = {
 
   maybeHideFeedback(container, inputs, phxFeedbackFor){
     let feedbacks = []
+    // if there are multiple inputs with the same name
+    // (for example the default checkbox renders a hidden input as well)
+    // we must only add the no feedback class if none of them have been focused yet
+    let inputNamesFocused = {}
+
     inputs.forEach(input => {
-      if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
-        feedbacks.push(input.name)
-        if(input.name.endsWith("[]")){ feedbacks.push(input.name.slice(0, -2)) }
+      if(!(input.name in inputNamesFocused)) inputNamesFocused[input.name] = false
+      if(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)){
+        inputNamesFocused[input.name] = true
       }
     })
+
+    for(const [name, focused] of Object.entries(inputNamesFocused)){
+      if(!focused){
+        feedbacks.push(name)
+        if(name.endsWith("[]")){ feedbacks.push(name.slice(0, -2)) }
+      }
+    }
+
     if(feedbacks.length > 0){
       let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
       DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
