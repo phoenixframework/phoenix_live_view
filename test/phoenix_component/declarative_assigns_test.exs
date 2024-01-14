@@ -164,7 +164,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    line: func1_line + 3,
                    name: :inner_block,
                    opts: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: func1_line + 4
@@ -416,7 +417,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :inner_block,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.fun_with_slot_line()
@@ -431,7 +433,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :footer,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  },
                  %{
                    doc: nil,
@@ -439,7 +442,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :header,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.fun_with_named_slots_line()
@@ -464,7 +468,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                        type: :any
                      }
                    ],
-                   required: true
+                   required: true,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.fun_with_slot_attrs_line()
@@ -499,7 +504,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                        type: :string
                      }
                    ],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.table_line()
@@ -557,7 +563,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :slot,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: Bodyless.example2_line() + 1
@@ -813,7 +820,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                      }
                    ],
                    opts: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: line + 29
