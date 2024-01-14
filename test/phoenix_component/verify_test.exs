@@ -518,6 +518,67 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 4}: (file)"
   end
 
+  test "does not warn for unknown attribute in slot without do-block when validate_attrs is false" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule SlotWithoutDoBlockValidateFalse do
+          use Phoenix.Component
+
+          slot :item, validate_attrs: false
+
+          def func_slot_wo_do_block(assigns) do
+            ~H"""
+            <div>
+              <%= render_slot(@item) %>
+            </div>
+            """
+          end
+
+          def render(assigns) do
+            ~H"""
+            <.func_slot_wo_do_block>
+              <:item class="test"></:item>
+            </.func_slot_wo_do_block>
+            """
+          end
+        end
+      end)
+
+    assert warnings == ""
+  end
+
+  test "does warn for unknown attribute in slot without do-block when validate_attrs is true" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule SlotWithoutDoBlock do
+          use Phoenix.Component
+
+          slot :item, validate_attrs: true
+
+          def func_slot_wo_do_block(assigns) do
+            ~H"""
+            <div>
+              <%= render_slot(@item) %>
+            </div>
+            """
+          end
+
+          def render(assigns) do
+            ~H"""
+            <.func_slot_wo_do_block>
+              <:item class="test"></:item>
+            </.func_slot_wo_do_block>
+            """
+          end
+        end
+      end)
+
+    assert warnings =~ """
+    undefined attribute "class" in slot "item" for component \
+    Phoenix.ComponentVerifyTest.SlotWithoutDoBlock.func_slot_wo_do_block/1
+    """
+  end
+
   test "validates slot attr values" do
     warnings =
       capture_io(:stderr, fn ->

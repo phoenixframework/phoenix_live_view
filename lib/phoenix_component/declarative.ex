@@ -252,6 +252,7 @@ defmodule Phoenix.Component.Declarative do
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
+    {validate_attrs, opts} = Keyword.pop(opts, :validate_attrs, true)
 
     unless is_boolean(required) do
       compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
@@ -274,7 +275,8 @@ defmodule Phoenix.Component.Declarative do
       opts: opts,
       doc: doc,
       line: line,
-      attrs: slot_attrs
+      attrs: slot_attrs,
+      validate_attrs: validate_attrs
     }
 
     validate_slot!(module, slot, line, file)
@@ -1124,7 +1126,7 @@ defmodule Phoenix.Component.Declarative do
 
     undefined_slots =
       Enum.reduce(slots_defs, slots, fn slot_def, slots ->
-        %{name: slot_name, required: required, attrs: attrs} = slot_def
+        %{name: slot_name, required: required, attrs: attrs, validate_attrs: validate_attrs} = slot_def
         {slot_values, slots} = Map.pop(slots, slot_name)
 
         case slot_values do
@@ -1190,14 +1192,17 @@ defmodule Phoenix.Component.Declarative do
 
                 # undefined slot attr
                 %{} ->
-                  if attr_name == :inner_block do
-                    :ok
-                  else
-                    message =
-                      "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
-                        "for component #{component_fa(call)}"
+                  cond do
+                    attr_name == :inner_block -> :ok
 
-                    warn(message, call.file, line)
+                    attrs == [] and not validate_attrs -> :ok
+
+                    true ->
+                      message =
+                        "undefined attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
+                          "for component #{component_fa(call)}"
+
+                      warn(message, call.file, line)
                   end
               end
             end
