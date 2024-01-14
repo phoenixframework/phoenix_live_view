@@ -1630,6 +1630,9 @@ defmodule Phoenix.Component do
   * `:required` - marks a slot as required. If a caller does not pass a value for a required slot,
   a compilation warning is emitted. Otherwise, an omitted slot will default to `[]`.
 
+  * `:validate_attrs` - when set to `false`, no warning is emitted when a caller passes attributes
+  to a slot defined without a do block. If not set, defaults to `true`.
+
   * `:doc` - documentation for the slot. Any slot attributes declared
   will have their documentation listed alongside the slot.
 
