@@ -753,12 +753,13 @@ export default class View {
 
     DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
       let disabledVal = el.getAttribute(PHX_DISABLED)
+      let readOnlyVal = el.getAttribute(PHX_READONLY)
       // remove refs
       el.removeAttribute(PHX_REF)
       el.removeAttribute(PHX_REF_SRC)
       // restore inputs
-      if(el.getAttribute(PHX_READONLY) !== null){
-        el.readOnly = false
+      if(readOnlyVal !== null){
+        el.readOnly = readOnlyVal === "true" ? true : false
         el.removeAttribute(PHX_READONLY)
       }
       if(disabledVal !== null){
@@ -798,7 +799,8 @@ export default class View {
           el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText)
         }
         if(disableText !== ""){ el.innerText = disableText }
-        el.setAttribute(PHX_DISABLED, el.disabled)
+        // PHX_DISABLED could have already been set in disableForm
+        el.setAttribute(PHX_DISABLED, el.getAttribute(PHX_DISABLED) || el.disabled)
         el.setAttribute("disabled", "")
       }
     })
