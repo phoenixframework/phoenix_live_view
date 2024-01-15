@@ -58,6 +58,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/healthy/:category", Phoenix.LiveViewTest.HealthyLive
 
       live "/upload", Phoenix.LiveViewTest.E2E.UploadLive
+      live "/form", Phoenix.LiveViewTest.E2E.FormLive
     end
   end
 end
