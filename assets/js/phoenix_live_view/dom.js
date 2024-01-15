@@ -50,7 +50,11 @@ let DOM = {
 
   isAutoUpload(inputEl){ return inputEl.hasAttribute("data-phx-auto-upload") },
 
-  findUploadInputs(node){ return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`) },
+  findUploadInputs(node){
+    const formId = node.id
+    const inputsOutsideForm = this.all(document, `input[type="file"][${PHX_UPLOAD_REF}][form="${formId}"]`)
+    return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`).concat(inputsOutsideForm)
+  },
 
   findComponentNodeList(node, cid){
     return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node)
