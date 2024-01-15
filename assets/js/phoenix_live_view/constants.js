@@ -5,7 +5,8 @@ export const RELOAD_JITTER_MAX = 10000
 export const FAILSAFE_JITTER = 30000
 export const PHX_EVENT_CLASSES = [
   "phx-click-loading", "phx-change-loading", "phx-submit-loading",
-  "phx-keydown-loading", "phx-keyup-loading", "phx-blur-loading", "phx-focus-loading"
+  "phx-keydown-loading", "phx-keyup-loading", "phx-blur-loading", "phx-focus-loading",
+  "phx-hook-loading"
 ]
 export const PHX_COMPONENT = "data-phx-component"
 export const PHX_LIVE_LINK = "data-phx-link"
