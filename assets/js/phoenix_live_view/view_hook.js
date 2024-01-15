@@ -15,7 +15,18 @@ export default class ViewHook {
       this.updated = () => {
         return function(){}
       }
-      this.mounted = () => callbacks(this)
+
+      this.mounted = () => callbacks({
+        el: el,
+        pushEvent: this.pushEvent.bind(this),
+        pushEventTo: this.pushEventTo.bind(this),
+        handleEvent: this.handleEvent.bind(this),
+        removeHandleEvent: this.removeHandleEvent.bind(this),
+        upload: this.upload.bind(this),
+        uploadTo: this.uploadTo.bind(this),
+        updated: (cb) => this.updated = cb,
+        disconnected: (cb) => this.disconnected = cb,
+      })
     } else {
       for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
     }
