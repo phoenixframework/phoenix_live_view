@@ -53,7 +53,8 @@ var LiveView = (() => {
     "phx-keydown-loading",
     "phx-keyup-loading",
     "phx-blur-loading",
-    "phx-focus-loading"
+    "phx-focus-loading",
+    "phx-hook-loading"
   ];
   var PHX_COMPONENT = "data-phx-component";
   var PHX_LIVE_LINK = "data-phx-link";
@@ -340,7 +341,9 @@ var LiveView = (() => {
       return inputEl.hasAttribute("data-phx-auto-upload");
     },
     findUploadInputs(node) {
-      return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`);
+      const formId = node.id;
+      const inputsOutsideForm = this.all(document, `input[type="file"][${PHX_UPLOAD_REF}][form="${formId}"]`);
+      return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`).concat(inputsOutsideForm);
     },
     findComponentNodeList(node, cid) {
       return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node);
@@ -569,14 +572,22 @@ var LiveView = (() => {
     },
     maybeHideFeedback(container, inputs, phxFeedbackFor) {
       let feedbacks = [];
+      let inputNamesFocused = {};
       inputs.forEach((input) => {
-        if (!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))) {
-          feedbacks.push(input.name);
-          if (input.name.endsWith("[]")) {
-            feedbacks.push(input.name.slice(0, -2));
-          }
+        if (!(input.name in inputNamesFocused))
+          inputNamesFocused[input.name] = false;
+        if (this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)) {
+          inputNamesFocused[input.name] = true;
         }
       });
+      for (const [name, focused] of Object.entries(inputNamesFocused)) {
+        if (!focused) {
+          feedbacks.push(name);
+          if (name.endsWith("[]")) {
+            feedbacks.push(name.slice(0, -2));
+          }
+        }
+      }
       if (feedbacks.length > 0) {
         let selector = feedbacks.map((f) => `[${phxFeedbackFor}="${f}"]`).join(", ");
         DOM.all(container, selector, (el) => el.classList.add(PHX_NO_FEEDBACK_CLASS));
@@ -614,7 +625,12 @@ var LiveView = (() => {
       return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
     },
     dispatchEvent(target, name, opts = {}) {
-      let bubbles = opts.bubbles === void 0 ? true : !!opts.bubbles;
+      let defaultBubble = true;
+      let isUploadTarget = target.nodeName === "INPUT" && target.type === "file";
+      if (isUploadTarget && name === "click") {
+        defaultBubble = false;
+      }
+      let bubbles = opts.bubbles === void 0 ? defaultBubble : !!opts.bubbles;
       let eventOpts = { bubbles, cancelable: true, detail: opts.detail || {} };
       let event = name === "click" ? new MouseEvent("click", eventOpts) : new CustomEvent(name, eventOpts);
       target.dispatchEvent(event);
@@ -3430,10 +3446,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
         let disabledVal = el.getAttribute(PHX_DISABLED);
+        let readOnlyVal = el.getAttribute(PHX_READONLY);
         el.removeAttribute(PHX_REF);
         el.removeAttribute(PHX_REF_SRC);
-        if (el.getAttribute(PHX_READONLY) !== null) {
-          el.readOnly = false;
+        if (readOnlyVal !== null) {
+          el.readOnly = readOnlyVal === "true" ? true : false;
           el.removeAttribute(PHX_READONLY);
         }
         if (disabledVal !== null) {
@@ -3475,7 +3492,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           if (disableText !== "") {
             el.innerText = disableText;
           }
-          el.setAttribute(PHX_DISABLED, el.disabled);
+          el.setAttribute(PHX_DISABLED, el.getAttribute(PHX_DISABLED) || el.disabled);
           el.setAttribute("disabled", "");
         }
       });
