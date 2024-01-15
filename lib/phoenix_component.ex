@@ -644,7 +644,10 @@ defmodule Phoenix.Component do
   * `true` - if a value is `true`, the attribute is rendered with no value at all.
     For example, `<input required={true}>` is the same as `<input required>`;
 
-  * `false` or `nil` - if a value is `false` or `nil`, the attribute is not rendered;
+  * `false` or `nil` - if a value is `false` or `nil`, the attribute is omitted, or
+    rendered with an empty value if it has the same effect (to minimize the dynamic
+    part). For example, `<div class={false}>` renders to `<div class="">`, but
+    `<checkbox checked={false}>` renders to `<checkbox>`;
 
   * `list` (only for the `class` attribute) - each element of the list is processed
     as a different class. `nil` and `false` elements are discarded.
