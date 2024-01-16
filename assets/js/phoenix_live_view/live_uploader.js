@@ -94,7 +94,11 @@ export default class LiveUploader {
   }
 
   static filesAwaitingPreflight(input){
-    return this.activeFiles(input).filter(f => !UploadEntry.isPreflighted(input, f))
+    return this.activeFiles(input).filter(f => !UploadEntry.isPreflighted(input, f) && !UploadEntry.isPreflightInProgress(f))
+  }
+
+  static markPreflightInProgress(entries){
+    entries.forEach(entry => UploadEntry.markPreflightInProgress(entry.file))
   }
 
   constructor(inputEl, view, onComplete){
@@ -103,6 +107,9 @@ export default class LiveUploader {
     this._entries =
       Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || [])
         .map(file => new UploadEntry(inputEl, file, view))
+
+    // prevent sending duplicate preflight requests 
+    LiveUploader.markPreflightInProgress(this._entries)
 
     this.numEntriesInProgress = this._entries.length
   }
