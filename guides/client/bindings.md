@@ -213,7 +213,7 @@ Our `paginate_posts` function fetches a page of posts, and determines if the use
   ]}
 >
   <li :for={{id, post} <- @streams.posts} id={id}>
-    <.post_card post={post}>
+    <.post_card post={post} />
   </li>
 </ul>
 <div :if={@end_of_timeline?} class="mt-5 text-[50px] text-center">
