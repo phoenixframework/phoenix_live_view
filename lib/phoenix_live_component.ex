@@ -557,7 +557,7 @@ defmodule Phoenix.LiveComponent do
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @callback handle_async(
-              name :: atom,
+              name :: term,
               async_fun_result :: {:ok, term} | {:exit, term},
               socket :: Socket.t()
             ) ::
