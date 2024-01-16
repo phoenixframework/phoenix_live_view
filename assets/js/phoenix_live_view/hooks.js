@@ -57,27 +57,59 @@ let Hooks = {
   }
 }
 
-let scrollTop = () => document.documentElement.scrollTop || document.body.scrollTop
-let winHeight = () => window.innerHeight || document.documentElement.clientHeight
-
-let isAtViewportTop = (el) => {
-  let rect = el.getBoundingClientRect()
-  return rect.top >= 0 && rect.left >= 0 && rect.top <= winHeight()
+let findScrollContainer = (el) => {
+  if(["scroll", "auto"].indexOf(getComputedStyle(el).overflowY) >= 0) return el
+  if(document.documentElement === el) return null
+  return findScrollContainer(el.parentElement)
 }
 
-let isAtViewportBottom = (el) => {
-  let rect = el.getBoundingClientRect()
-  return rect.right >= 0 && rect.left >= 0 && rect.bottom <= winHeight()
+let scrollTop = (scrollContainer) => {
+  if(scrollContainer){
+    return scrollContainer.scrollTop
+  } else {
+    return document.documentElement.scrollTop || document.body.scrollTop
+  }
 }
 
-let isWithinViewport = (el) => {
+let bottom = (scrollContainer) => {
+  if(scrollContainer){
+    return scrollContainer.getBoundingClientRect().bottom
+  } else {
+    // when we have no container, the whole page scrolls,
+    // therefore the bottom coordinate is the viewport height
+    return window.innerHeight || document.documentElement.clientHeight
+  }
+}
+
+let top = (scrollContainer) => {
+  if(scrollContainer){
+    return scrollContainer.getBoundingClientRect().top
+  } else {
+    // when we have no container the whole page scrolls,
+    // therefore the top coordinate is 0
+    return 0
+  }
+}
+
+let isAtViewportTop = (el, scrollContainer) => {
   let rect = el.getBoundingClientRect()
-  return rect.top >= 0 && rect.left >= 0 && rect.top <= winHeight()
+  return rect.top >= top(scrollContainer) && rect.left >= 0 && rect.top <= bottom(scrollContainer)
+}
+
+let isAtViewportBottom = (el, scrollContainer) => {
+  let rect = el.getBoundingClientRect()
+  return rect.right >= top(scrollContainer) && rect.left >= 0 && rect.bottom <= bottom(scrollContainer)
+}
+
+let isWithinViewport = (el, scrollContainer) => {
+  let rect = el.getBoundingClientRect()
+  return rect.top >= top(scrollContainer) && rect.left >= 0 && rect.top <= bottom(scrollContainer)
 }
 
 Hooks.InfiniteScroll = {
   mounted(){
-    let scrollBefore = scrollTop()
+    this.scrollContainer = findScrollContainer(this.el)
+    let scrollBefore = scrollTop(this.scrollContainer)
     let topOverran = false
     let throttleInterval = 500
     let pendingOp = null
@@ -93,7 +125,12 @@ Hooks.InfiniteScroll = {
       pendingOp = () => firstChild.scrollIntoView({block: "start"})
       this.liveSocket.execJSHookPush(this.el, topEvent, {id: firstChild.id}, () => {
         pendingOp = null
-        if(!isWithinViewport(firstChild)){ firstChild.scrollIntoView({block: "start"}) }
+        // make sure that the DOM is patched by waiting for the next tick
+        window.requestAnimationFrame(() => {
+          if(!isWithinViewport(firstChild, this.scrollContainer)){
+            firstChild.scrollIntoView({block: "start"})
+          }
+        })
       })
     })
 
@@ -101,12 +138,17 @@ Hooks.InfiniteScroll = {
       pendingOp = () => lastChild.scrollIntoView({block: "end"})
       this.liveSocket.execJSHookPush(this.el, bottomEvent, {id: lastChild.id}, () => {
         pendingOp = null
-        if(!isWithinViewport(lastChild)){ lastChild.scrollIntoView({block: "end"}) }
+        // make sure that the DOM is patched by waiting for the next tick
+        window.requestAnimationFrame(() => {
+          if(!isWithinViewport(lastChild, this.scrollContainer)){
+            lastChild.scrollIntoView({block: "end"})
+          }
+        })
       })
     })
 
-    this.onScroll = (e) => {
-      let scrollNow = scrollTop()
+    this.onScroll = (_e) => {
+      let scrollNow = scrollTop(this.scrollContainer)
 
       if(pendingOp){
         scrollBefore = scrollNow
@@ -128,16 +170,28 @@ Hooks.InfiniteScroll = {
         topOverran = false
       }
 
-      if(topEvent && isScrollingUp && isAtViewportTop(firstChild)){
+      if(topEvent && isScrollingUp && isAtViewportTop(firstChild, this.scrollContainer)){
         onFirstChildAtTop(topEvent, firstChild)
-      } else if(bottomEvent && isScrollingDown && isAtViewportBottom(lastChild)){
+      } else if(bottomEvent && isScrollingDown && isAtViewportBottom(lastChild, this.scrollContainer)){
         onLastChildAtBottom(bottomEvent, lastChild)
       }
       scrollBefore = scrollNow
     }
-    window.addEventListener("scroll", this.onScroll)
+
+    if(this.scrollContainer){
+      this.scrollContainer.addEventListener("scroll", this.onScroll)
+    } else {
+      window.addEventListener("scroll", this.onScroll)
+    }
   },
-  destroyed(){ window.removeEventListener("scroll", this.onScroll) },
+  
+  destroyed(){
+    if(this.scrollContainer){
+      this.scrollContainer.removeEventListener("scroll", this.onScroll)
+    } else {
+      window.removeEventListener("scroll", this.onScroll)
+    }
+  },
 
   throttle(interval, callback){
     let lastCallAt = 0
