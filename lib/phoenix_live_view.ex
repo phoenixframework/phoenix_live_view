@@ -296,7 +296,7 @@ defmodule Phoenix.LiveView do
   refer to the ["Arbitrary async operations"](#module-arbitrary-async-operations) section.
   """
   @callback handle_async(
-              name :: atom,
+              name :: term,
               async_fun_result :: {:ok, term} | {:exit, term},
               socket :: Socket.t()
             ) ::
