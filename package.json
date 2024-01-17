@@ -24,7 +24,7 @@
     "assets/js/phoenix_live_view/*"
   ],
   "devDependencies": {
-    "@playwright/test": "^1.40.1"
+    "@playwright/test": "^1.41.0"
   },
   "scripts": {
     "e2e:server": "MIX_ENV=e2e mix run test/e2e/test_helper.exs",
