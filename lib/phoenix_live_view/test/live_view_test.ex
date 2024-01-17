@@ -1308,8 +1308,8 @@ defmodule Phoenix.LiveViewTest do
   """
   def assert_patch(view, to, timeout)
       when is_binary(to) and is_integer(timeout) do
-    assert_navigation(view, :patch, to, timeout)
-    :ok
+    {path, _flash} = assert_navigation(view, :patch, to, timeout)
+    path
   end
 
   @doc """
