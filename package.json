@@ -22,5 +22,12 @@
     "package.json",
     "priv/static/*",
     "assets/js/phoenix_live_view/*"
-  ]
+  ],
+  "devDependencies": {
+    "@playwright/test": "^1.40.1"
+  },
+  "scripts": {
+    "e2e:server": "MIX_ENV=e2e mix run test/e2e/test_helper.exs",
+    "e2e:test": "cd test/e2e && npx playwright test"
+  }
 }
