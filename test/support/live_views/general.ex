@@ -377,7 +377,8 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
   end
 
   def mount(%{"test" => "sup_ok"}, _session, socket) do
-    {:ok, assign_async(socket, :data, fn -> {:ok, %{data: 123}} end, supervisor: TestAsyncSupervisor)}
+    {:ok,
+     assign_async(socket, :data, fn -> {:ok, %{data: 123}} end, supervisor: TestAsyncSupervisor)}
   end
 
   def mount(%{"test" => "raise"}, _session, socket) do
@@ -666,7 +667,9 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
 
   def handle_info(:renew_canceled, socket) do
     {:noreply,
-     start_async(socket, :result_task, fn ->
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
        Process.sleep(100)
        :renewed
      end)}
@@ -771,7 +774,9 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
 
   def update(%{action: :renew_canceled}, socket) do
     {:ok,
-     start_async(socket, :result_task, fn ->
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, fn ->
        Process.sleep(100)
        :renewed
      end)}

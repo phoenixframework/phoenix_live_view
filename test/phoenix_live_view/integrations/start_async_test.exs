@@ -47,11 +47,14 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       {:ok, lv, _html} = live(conn, "/start_async?test=cancel")
       Process.unlink(lv.pid)
       async_ref = Process.monitor(Process.whereis(:start_async_cancel))
+
+      assert render(lv) =~ "result: :loading"
+
       send(lv.pid, :cancel)
 
       assert_receive {:DOWN, ^async_ref, :process, _pid, {:shutdown, :cancel}}, 1000
 
-      assert render(lv) =~ "result: :loading"
+      assert render(lv) =~ "result: {:exit, {:shutdown, :cancel}}"
 
       send(lv.pid, :renew_canceled)
 
@@ -143,7 +146,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
       assert_receive {:DOWN, ^async_ref, :process, _pid, {:shutdown, :cancel}}
 
-      assert render(lv) =~ "lc: :loading"
+      assert render(lv) =~ "lc: {:exit, {:shutdown, :cancel}}"
 
       Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StartAsyncLive.LC,
         id: "lc",

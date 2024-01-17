@@ -111,7 +111,7 @@ defmodule Phoenix.LiveView.Async do
       {_ref, pid, _kind} when is_pid(pid) ->
         Process.unlink(pid)
         Process.exit(pid, reason)
-        update_private_async(socket, &Map.delete(&1, key))
+        socket
 
       nil ->
         socket
