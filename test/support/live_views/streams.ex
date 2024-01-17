@@ -66,7 +66,10 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   end
 
   def handle_event("move-to-first", %{"id" => "users-" <> id}, socket) do
-    {:noreply, stream_insert(socket, :users, user(id, "updated"), at: 0)}
+    {:noreply,
+     socket
+     |> stream_delete_by_dom_id(:users, "users-" <> id)
+     |> stream_insert(:users, user(id, "updated"), at: 0)}
   end
 
   def handle_event("move-to-last", %{"id" => "users-" <> id = dom_id}, socket) do
@@ -185,7 +188,10 @@ defmodule Phoenix.LiveViewTest.StreamComponent do
   end
 
   def handle_event("move-to-first", %{"id" => "c_users-" <> id}, socket) do
-    {:noreply, stream_insert(socket, :c_users, user(id, "updated"), at: 0)}
+    {:noreply,
+     socket
+     |> stream_delete_by_dom_id(:c_users, "c_users-" <> id)
+     |> stream_insert(:c_users, user(id, "updated"), at: 0)}
   end
 
   def handle_event("move-to-last", %{"id" => "c_users-" <> id = dom_id}, socket) do

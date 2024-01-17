@@ -113,20 +113,19 @@ test("elements can be updated and deleted (LC)", async ({ page }) => {
 });
 
 test("move-to-first moves the second element to the first position (LV)", async ({ page }) => {
-  test.fail("currently broken");
 
   await page.goto("/stream");
   await syncLV(page);
 
   await expect(await usersInDom(page, "c_users")).toEqual([
-    { id: "users-1", text: "chris" },
-    { id: "users-2", text: "callan" }
+    { id: "c_users-1", text: "chris" },
+    { id: "c_users-2", text: "callan" }
   ]);
 
-  await page.locator("#users-2").getByRole("button", { name: "make first" }).click();
+  await page.locator("#c_users-2").getByRole("button", { name: "make first" }).click();
   await expect(await usersInDom(page, "c_users")).toEqual([
-    { id: "users-2", text: "updated" },
-    { id: "users-1", text: "chris" }
+    { id: "c_users-2", text: "updated" },
+    { id: "c_users-1", text: "chris" }
   ]);
 });
 
