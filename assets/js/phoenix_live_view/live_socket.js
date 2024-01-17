@@ -106,7 +106,6 @@ import {
   closestPhxBinding,
   closure,
   debug,
-  isObject,
   maybe
 } from "./utils"
 
@@ -732,7 +731,7 @@ export default class LiveSocket {
     }, false)
   }
 
-  maybeScroll(scroll) {
+  maybeScroll(scroll){
     if(typeof(scroll) === "number"){
       requestAnimationFrame(() => {
         window.scrollTo(0, scroll)

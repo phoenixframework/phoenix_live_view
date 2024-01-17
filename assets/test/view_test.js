@@ -1041,6 +1041,87 @@ describe("View + Component", function(){
     expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
   })
 
+  test("pushInput sets phx-no-feedback on feedback groups", function(){
+    expect.assertions(9)
+    let html =
+      `<form id="form" phx-change="validate">
+      <div phx-feedback-for="mygroup"></div>
+      <label for="first_name">First Name</label>
+      <input id="first_name" value="" name="user[first_name]" />
+
+      <label for="last_name">Last Name</label>
+      <input id="last_name" value="" name="user[last_name]" />
+
+      <label for="email">Email</label>
+      <input id="email" value="" name="user[email]" />
+    </form>`
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM(html)
+    let view = simulateJoinedView(el, liveSocket, html)
+    let channelStub = {
+      validate: "",
+      nextValidate(payload){
+        this.validate = Object.entries(payload)
+          .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value) : ""}`)
+          .join("&")
+      },
+      push(_evt, payload, _timeout){
+        expect(payload.value).toBe(this.validate)
+        return {
+          receive(status, cb){
+            if(status === "ok"){
+              let diff = {
+                s: [`
+                <form id="form" phx-change="validate">
+                  <div phx-feedback-for="mygroup"></div>
+
+                  <label for="first_name">First Name</label>
+                  <input id="first_name" value="" name="user[first_name]" phx-feedback-group="mygroup" />
+                  <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
+
+                  <label for="last_name">Last Name</label>
+                  <input id="last_name" value="" name="user[last_name]" phx-feedback-group="mygroup" />
+                  <span class="feedback" phx-feedback-for="user[last_name]">can't be blank</span>
+
+                  <label for="email">Email</label>
+                  <input id="email" value="" name="user[email]" />
+                  <span class="feedback" phx-feedback-for="user[email]">can't be blank</span>
+                </form>
+                `],
+                fingerprint: 345
+              }
+              cb({diff: diff})
+              return this
+            } else {
+              return this
+            }
+          }
+        }
+      }
+    }
+    view.channel = channelStub
+
+    let first_name = view.el.querySelector("#first_name")
+    let last_name = view.el.querySelector("#last_name")
+    let email = view.el.querySelector("#email")
+    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[email]"})
+    // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
+    DOM.putPrivate(email, "phx-has-focused", true)
+    view.pushInput(email, el, null, "validate", {_target: email.name})
+    expect(el.querySelector(`[phx-feedback-for="${email.name}"]`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
+    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
+    expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeTruthy()
+
+    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[first_name]"})
+    DOM.putPrivate(first_name, "phx-has-focused", true)
+    view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
+    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
+    // first_name was focused, the feedback-group should not have the phx-no-feedback class
+    expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeFalsy()
+  })
+
   test("pushInput sets phx-no-feedback class on feedback elements for multiple select", function(){
     // a multiple select name attribute contains trailing square brackets [] to capture multiple options
     let multiple_select_name = "user[allergies][]"
