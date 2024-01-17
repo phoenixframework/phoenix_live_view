@@ -616,13 +616,16 @@ var DOM = {
     }
   },
   mergeAttrs(target, source, opts = {}) {
-    let exclude = opts.exclude || [];
+    let exclude = new Set(opts.exclude || []);
     let isIgnored = opts.isIgnored;
     let sourceAttrs = source.attributes;
     for (let i = sourceAttrs.length - 1; i >= 0; i--) {
       let name = sourceAttrs[i].name;
-      if (exclude.indexOf(name) < 0) {
-        target.setAttribute(name, source.getAttribute(name));
+      if (!exclude.has(name)) {
+        const sourceValue = source.getAttribute(name);
+        if (target.getAttribute(name) !== sourceValue) {
+          target.setAttribute(name, sourceValue);
+        }
       }
     }
     let targetAttrs = target.attributes;
@@ -779,14 +782,21 @@ var dom_default = DOM;
 var UploadEntry = class {
   static isActive(fileEl, file) {
     let isNew = file._phxRef === void 0;
+    let isPreflightInProgress = UploadEntry.isPreflightInProgress(file);
     let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",");
     let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0;
-    return file.size > 0 && (isNew || isActive);
+    return file.size > 0 && (isNew || isActive || !isPreflightInProgress);
   }
   static isPreflighted(fileEl, file) {
     let preflightedRefs = fileEl.getAttribute(PHX_PREFLIGHTED_REFS).split(",");
     let isPreflighted = preflightedRefs.indexOf(LiveUploader.genFileRef(file)) >= 0;
     return isPreflighted && this.isActive(fileEl, file);
+  }
+  static isPreflightInProgress(file) {
+    return file._preflightInProgress === true;
+  }
+  static markPreflightInProgress(file) {
+    file._preflightInProgress = true;
   }
   constructor(fileEl, file, view) {
     this.ref = LiveUploader.genFileRef(file);
@@ -954,12 +964,16 @@ var LiveUploader = class {
     return Array.from(fileInputs).filter((input) => this.filesAwaitingPreflight(input).length > 0);
   }
   static filesAwaitingPreflight(input) {
-    return this.activeFiles(input).filter((f) => !UploadEntry.isPreflighted(input, f));
+    return this.activeFiles(input).filter((f) => !UploadEntry.isPreflighted(input, f) && !UploadEntry.isPreflightInProgress(f));
+  }
+  static markPreflightInProgress(entries) {
+    entries.forEach((entry) => UploadEntry.markPreflightInProgress(entry.file));
   }
   constructor(inputEl, view, onComplete) {
     this.view = view;
     this.onComplete = onComplete;
     this._entries = Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || []).map((file) => new UploadEntry(inputEl, file, view));
+    LiveUploader.markPreflightInProgress(this._entries);
     this.numEntriesInProgress = this._entries.length;
   }
   entries() {
@@ -1100,23 +1114,50 @@ var Hooks = {
     }
   }
 };
-var scrollTop = () => document.documentElement.scrollTop || document.body.scrollTop;
-var winHeight = () => window.innerHeight || document.documentElement.clientHeight;
-var isAtViewportTop = (el) => {
-  let rect = el.getBoundingClientRect();
-  return rect.top >= 0 && rect.left >= 0 && rect.top <= winHeight();
+var findScrollContainer = (el) => {
+  if (["scroll", "auto"].indexOf(getComputedStyle(el).overflowY) >= 0)
+    return el;
+  if (document.documentElement === el)
+    return null;
+  return findScrollContainer(el.parentElement);
 };
-var isAtViewportBottom = (el) => {
-  let rect = el.getBoundingClientRect();
-  return rect.right >= 0 && rect.left >= 0 && rect.bottom <= winHeight();
+var scrollTop = (scrollContainer) => {
+  if (scrollContainer) {
+    return scrollContainer.scrollTop;
+  } else {
+    return document.documentElement.scrollTop || document.body.scrollTop;
+  }
 };
-var isWithinViewport = (el) => {
+var bottom = (scrollContainer) => {
+  if (scrollContainer) {
+    return scrollContainer.getBoundingClientRect().bottom;
+  } else {
+    return window.innerHeight || document.documentElement.clientHeight;
+  }
+};
+var top = (scrollContainer) => {
+  if (scrollContainer) {
+    return scrollContainer.getBoundingClientRect().top;
+  } else {
+    return 0;
+  }
+};
+var isAtViewportTop = (el, scrollContainer) => {
   let rect = el.getBoundingClientRect();
-  return rect.top >= 0 && rect.left >= 0 && rect.top <= winHeight();
+  return rect.top >= top(scrollContainer) && rect.left >= 0 && rect.top <= bottom(scrollContainer);
+};
+var isAtViewportBottom = (el, scrollContainer) => {
+  let rect = el.getBoundingClientRect();
+  return rect.right >= top(scrollContainer) && rect.left >= 0 && rect.bottom <= bottom(scrollContainer);
+};
+var isWithinViewport = (el, scrollContainer) => {
+  let rect = el.getBoundingClientRect();
+  return rect.top >= top(scrollContainer) && rect.left >= 0 && rect.top <= bottom(scrollContainer);
 };
 Hooks.InfiniteScroll = {
   mounted() {
-    let scrollBefore = scrollTop();
+    this.scrollContainer = findScrollContainer(this.el);
+    let scrollBefore = scrollTop(this.scrollContainer);
     let topOverran = false;
     let throttleInterval = 500;
     let pendingOp = null;
@@ -1130,22 +1171,26 @@ Hooks.InfiniteScroll = {
       pendingOp = () => firstChild.scrollIntoView({ block: "start" });
       this.liveSocket.execJSHookPush(this.el, topEvent, { id: firstChild.id }, () => {
         pendingOp = null;
-        if (!isWithinViewport(firstChild)) {
-          firstChild.scrollIntoView({ block: "start" });
-        }
+        window.requestAnimationFrame(() => {
+          if (!isWithinViewport(firstChild, this.scrollContainer)) {
+            firstChild.scrollIntoView({ block: "start" });
+          }
+        });
       });
     });
     let onLastChildAtBottom = this.throttle(throttleInterval, (bottomEvent, lastChild) => {
       pendingOp = () => lastChild.scrollIntoView({ block: "end" });
       this.liveSocket.execJSHookPush(this.el, bottomEvent, { id: lastChild.id }, () => {
         pendingOp = null;
-        if (!isWithinViewport(lastChild)) {
-          lastChild.scrollIntoView({ block: "end" });
-        }
+        window.requestAnimationFrame(() => {
+          if (!isWithinViewport(lastChild, this.scrollContainer)) {
+            lastChild.scrollIntoView({ block: "end" });
+          }
+        });
       });
     });
-    this.onScroll = (e) => {
-      let scrollNow = scrollTop();
+    this.onScroll = (_e) => {
+      let scrollNow = scrollTop(this.scrollContainer);
       if (pendingOp) {
         scrollBefore = scrollNow;
         return pendingOp();
@@ -1163,17 +1208,25 @@ Hooks.InfiniteScroll = {
       } else if (isScrollingDown && topOverran && rect.top <= 0) {
         topOverran = false;
       }
-      if (topEvent && isScrollingUp && isAtViewportTop(firstChild)) {
+      if (topEvent && isScrollingUp && isAtViewportTop(firstChild, this.scrollContainer)) {
         onFirstChildAtTop(topEvent, firstChild);
-      } else if (bottomEvent && isScrollingDown && isAtViewportBottom(lastChild)) {
+      } else if (bottomEvent && isScrollingDown && isAtViewportBottom(lastChild, this.scrollContainer)) {
         onLastChildAtBottom(bottomEvent, lastChild);
       }
       scrollBefore = scrollNow;
     };
-    window.addEventListener("scroll", this.onScroll);
+    if (this.scrollContainer) {
+      this.scrollContainer.addEventListener("scroll", this.onScroll);
+    } else {
+      window.addEventListener("scroll", this.onScroll);
+    }
   },
   destroyed() {
-    window.removeEventListener("scroll", this.onScroll);
+    if (this.scrollContainer) {
+      this.scrollContainer.removeEventListener("scroll", this.onScroll);
+    } else {
+      window.removeEventListener("scroll", this.onScroll);
+    }
   },
   throttle(interval, callback) {
     let lastCallAt = 0;
@@ -1781,7 +1834,6 @@ var DOMPatch = class {
   }
   markPrunableContentForRemoval() {
     let phxUpdate = this.liveSocket.binding(PHX_UPDATE);
-    dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => el.innerHTML = "");
     dom_default.all(this.container, `[${phxUpdate}=append] > *, [${phxUpdate}=prepend] > *`, (el) => {
       el.setAttribute(PHX_PRUNE, "");
     });
@@ -1826,6 +1878,15 @@ var DOMPatch = class {
           }
         });
       });
+      if (isJoinPatch) {
+        dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => {
+          Array.from(el.children).forEach((child) => {
+            if (!this.streamInserts[child.id]) {
+              this.removeStreamChildElement(child);
+            }
+          });
+        });
+      }
       morphdom_esm_default(targetContainer, html, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
@@ -2959,6 +3020,7 @@ var View = class {
       if (phxStatic) {
         toEl.setAttribute(PHX_STATIC, phxStatic);
       }
+      fromEl.setAttribute(PHX_ROOT_ID, this.root.id);
       return this.joinChild(toEl);
     });
     if (newChildren.length === 0) {
@@ -4389,7 +4451,7 @@ var LiveSocket = class {
     let phxClickAway = this.binding("click-away");
     dom_default.all(document, `[${phxClickAway}]`, (el) => {
       if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))) {
-        this.withinOwners(e.target, (view) => {
+        this.withinOwners(el, (view) => {
           let phxEvent = el.getAttribute(phxClickAway);
           if (js_default.isVisible(el) && js_default.isInViewport(el)) {
             js_default.exec("click", phxEvent, view, el, ["push", { data: this.eventMeta("click", e, e.target) }]);
@@ -4601,9 +4663,11 @@ var LiveSocket = class {
       let form = e.target;
       dom_default.resetForm(form, this.binding(PHX_FEEDBACK_FOR));
       let input = Array.from(form.elements).find((el) => el.type === "reset");
-      window.requestAnimationFrame(() => {
-        input.dispatchEvent(new Event("input", { bubbles: true, cancelable: false }));
-      });
+      if (input) {
+        window.requestAnimationFrame(() => {
+          input.dispatchEvent(new Event("input", { bubbles: true, cancelable: false }));
+        });
+      }
     });
   }
   debounce(el, event, eventType, callback) {
