@@ -166,7 +166,7 @@ jobs:
             deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
 
       - name: Install dependencies
-        run: mix deps.get --only e2e --only dev
+        run: mix deps.get
 
       - name: Restore npm cache
         uses: actions/cache@v2
