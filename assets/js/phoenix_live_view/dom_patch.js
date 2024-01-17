@@ -71,7 +71,6 @@ export default class DOMPatch {
 
   markPrunableContentForRemoval(){
     let phxUpdate = this.liveSocket.binding(PHX_UPDATE)
-    DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => el.innerHTML = "")
     DOM.all(this.container, `[${phxUpdate}=append] > *, [${phxUpdate}=prepend] > *`, el => {
       el.setAttribute(PHX_PRUNE, "")
     })
@@ -117,6 +116,17 @@ export default class DOMPatch {
           if(child){ this.removeStreamChildElement(child) }
         })
       })
+
+      // clear stream items from the dead render if they are not inserted again
+      if(isJoinPatch){
+        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
+          Array.from(el.children).forEach(child => {
+            if(!this.streamInserts[child.id]){
+              this.removeStreamChildElement(child)
+            }
+          })
+        })
+      }
 
       morphdom(targetContainer, html, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
