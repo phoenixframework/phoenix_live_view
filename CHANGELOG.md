@@ -11,6 +11,7 @@
 ### Enhancements
   * Add `JS.toggle_class`
   * Force update select options when the options changed from the server while a select has focus
+  * Introduce `phx-feedback-group` for handling feedback for composite input groups
 
 ## 0.20.3 (2024-01-02)
 

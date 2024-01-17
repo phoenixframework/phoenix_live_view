@@ -104,13 +104,12 @@ end
 
 _Note_: only the individual input is sent as params for an input marked with `phx-change`.
 
-## `phx-feedback-for`
+## Error Feedback
 
-For proper form error tag updates, the error tag must specify which
-input it belongs to. This is accomplished with the `phx-feedback-for` attribute,
-which specifies the name (or id, for backwards compatibility) of the input it belongs to.
-Failing to add the `phx-feedback-for` attribute will result in displaying error
-messages for form fields that the user has not changed yet (e.g. required
+For proper error feedback on form updates, the error tags must specify which
+input they belong to. This is accomplished with the `phx-feedback-for` and `phx-feedback-group` attributes.
+
+The `phx-feedback-for` annotation which specifies the name (or id, for backwards compatibility) of the input it belongs to. Failing to add the `phx-feedback-for` attribute will result in displaying error messages for form fields that the user has not changed yet (e.g. required
 fields further down on the page).
 
 For example, your `MyAppWeb.CoreComponents` may use this function:
@@ -147,6 +146,8 @@ Now, any DOM container with the `phx-feedback-for` attribute will receive a
 `phx-no-feedback` class in cases where the form fields has yet to receive
 user input/focus. Using new CSS rules or tailwindcss variants allows you
 errors to be shown, hidden, and styled as feedback changes.
+
+Likewise, the `phx-feedback-group` attribute behaves similarly `phx-feedback-for`, but allows error tags and inputs to specify a composite name for a group of inputs.
 
 ## Number inputs
 
