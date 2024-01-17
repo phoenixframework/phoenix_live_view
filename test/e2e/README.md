@@ -7,7 +7,7 @@ with an actual LiveView server.
 
 ## Running the tests
 
-To run the tests, ensure that the npm dependencies are installed by running `npm install` in
+To run the tests, ensure that the npm dependencies are installed by running `npm install`, followed by `npx playwright install` in
 the root of the repository. Then, run `npm run e2e:test` to run the tests.
 
 This will execute the `npx playwright test` command in the `test/e2e` directory. Playwright
