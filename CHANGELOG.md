@@ -7,11 +7,16 @@
   * Fix phx-disabled-with not restoring button disabled state on empty diff acknowledgement
   * Fix stream reset not ordering items correctly
   * Send `{:shutdown, :cancel}` to `handle_async/3` on `cancel_async`
+  * Prevent events from child LiveViews from bubbling up to root LiveView when child is not mounted yet
+  * Fix `phx-mounted` being called twice for stream items
+  * Do not move existing stream items when prepending
 
 ### Enhancements
   * Add `JS.toggle_class`
   * Force update select options when the options changed from the server while a select has focus
   * Introduce `phx-feedback-group` for handling feedback for composite input groups
+  * Add `validate_attrs` to slots
+  * Support `phx-viewport` bindings in scrollable containers
 
 ## 0.20.3 (2024-01-02)
 
