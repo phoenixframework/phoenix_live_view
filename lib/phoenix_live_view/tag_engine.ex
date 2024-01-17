@@ -44,7 +44,8 @@ defmodule Phoenix.LiveView.TagEngine do
   Renders a component defined by the given function.
 
   This function is rarely invoked directly by users. Instead, it is used by `~H`
-  to render `Phoenix.Component`s. For example, the following:
+  and other engine implementations to render `Phoenix.Component`s. For example,
+  the following:
 
       <MyApp.Weather.city name="Kraków" />
 
@@ -89,7 +90,7 @@ defmodule Phoenix.LiveView.TagEngine do
   @doc """
   Define a inner block, generally used by slots.
 
-  This macro is mostly used by HTML engines that provide
+  This macro is mostly used by custom HTML engines that provide
   a `slot` implementation and rarely called directly. The
   `name` must be the assign name the slot/block will be stored
   under.
@@ -849,11 +850,11 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp dynamic_attrs_literal(_other), do: nil
 
-  def literal_keys?([{key, _value} | rest]) when is_atom(key) or is_binary(key),
+  defp literal_keys?([{key, _value} | rest]) when is_atom(key) or is_binary(key),
     do: literal_keys?(rest)
 
-  def literal_keys?([]), do: true
-  def literal_keys?(_other), do: false
+  defp literal_keys?([]), do: true
+  defp literal_keys?(_other), do: false
 
   defp handle_special_expr(state, tag_meta) do
     ast =
