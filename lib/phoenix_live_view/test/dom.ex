@@ -431,44 +431,48 @@ defmodule Phoenix.LiveViewTest.DOM do
         children = updated_existing_children ++ updated_appended
 
         new_children =
-          Enum.reduce(stream_inserts, children, fn {id, {ref, insert_at, _limit}}, acc ->
-            old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
+          Enum.reduce(streams, children, fn item, acc ->
+            [ref, inserts, _deletes | _maybe_reset] = item
 
-            appended? = Enum.any?(updated_appended, &(attribute(&1, "id") == id))
+            Enum.reduce(inserts, acc, fn [id, insert_at, _limit], acc ->
+              old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
 
-            existing? = Enum.any?(updated_existing_children, &(attribute(&1, "id") == id))
-            deleted? = MapSet.member?(stream_deletes, id)
+              appended? = Enum.any?(updated_appended, &(attribute(&1, "id") == id))
 
-            child =
-              case old_index && Enum.at(acc, old_index) do
-                nil -> nil
-                child -> set_attr(child, "data-phx-stream", ref)
-              end
+              existing? = Enum.any?(updated_existing_children, &(attribute(&1, "id") == id))
+              deleted? = MapSet.member?(stream_deletes, id)
 
-            parent_id = parent_id(html_tree, id)
-
-            cond do
-              !child ->
-                acc
-
-              # skip added children that aren't ours if they are not being appended
-              not appended? && parent_id && parent_id != container_id ->
-                acc
-
-              # do not append existing child if already present, only update in place
-              old_index && insert_at == -1 && (existing? or appended?) ->
-                if deleted? do
-                  acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
-                else
-                  List.replace_at(acc, old_index, child)
+              child =
+                case old_index && Enum.at(acc, old_index) do
+                  nil -> nil
+                  child -> set_attr(child, "data-phx-stream", ref)
                 end
 
-              old_index && insert_at ->
-                acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
+              parent_id = parent_id(html_tree, id)
 
-              !old_index && insert_at ->
-                List.insert_at(acc, insert_at, child)
-            end
+              cond do
+                !child ->
+                  acc
+
+                # skip added children that aren't ours if they are not being appended
+                not appended? && parent_id && parent_id != container_id ->
+                  acc
+
+                # do not append existing child if already present, only update in place
+                old_index && insert_at == -1 && (existing? or appended?) ->
+                  if deleted? do
+                    acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
+                  else
+                    List.replace_at(acc, old_index, child)
+                  end
+
+                old_index && insert_at ->
+                  acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
+
+                !old_index && insert_at ->
+                  List.insert_at(acc, insert_at, child)
+              end
+            end)
           end)
           |> Enum.reject(fn child ->
             id = attribute(child, "id")
