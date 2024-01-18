@@ -366,12 +366,15 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp apply_phx_update(type, html_tree, {tag, attrs, appended_children} = node, streams)
        when type in ["stream", "append", "prepend"] do
     {stream_inserts, stream_deletes, stream_resets} =
-      Enum.reduce(streams, {%{}, MapSet.new(), MapSet.new()}, fn item, acc ->
+      Enum.reduce(streams, {[], MapSet.new(), MapSet.new()}, fn item, acc ->
         [ref, inserts, deletes | maybe_reset] = item
         {in_acc, deletes_acc, resets_acc} = acc
-        # rewrite inserts to nest ref
-        inserts = Enum.into(inserts, %{}, fn [id, at, limit] -> {id, {ref, at, limit}} end)
-        new_inserts = Map.merge(in_acc, inserts)
+        # rewrite inserts to nest ref, maintaining order of inserts within each stream ref
+        new_inserts =
+          Enum.reduce(Enum.reverse(inserts), in_acc, fn [id, at, limit], in_acc ->
+            [{id, ref, at, limit} | in_acc]
+          end)
+
         new_deletes = MapSet.union(deletes_acc, MapSet.new(deletes))
 
         case maybe_reset do
@@ -431,7 +434,7 @@ defmodule Phoenix.LiveViewTest.DOM do
         children = updated_existing_children ++ updated_appended
 
         new_children =
-          Enum.reduce(stream_inserts, children, fn {id, {ref, insert_at, _limit}}, acc ->
+          Enum.reduce(stream_inserts, children, fn {id, ref, insert_at, _limit}, acc ->
             old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
 
             appended? = Enum.any?(updated_appended, &(attribute(&1, "id") == id))
@@ -473,7 +476,11 @@ defmodule Phoenix.LiveViewTest.DOM do
           |> Enum.reject(fn child ->
             id = attribute(child, "id")
             deleted? = MapSet.member?(stream_deletes, id)
-            {_ref, inserted_at, _limit} = Map.get(stream_inserts, id, {nil, false, nil})
+
+            inserted_at =
+              Enum.find_value(stream_inserts, fn {match_id, _ref, insert_at, _limit} ->
+                if match_id == id, do: insert_at
+              end)
 
             deleted? && !inserted_at
           end)
