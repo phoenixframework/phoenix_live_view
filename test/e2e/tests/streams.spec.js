@@ -277,3 +277,19 @@ test.describe("Issue #2982", () => {
     await expect(await listItems(page)).toEqual(["items-e", "items-a", "items-f", "items-g"]);
   });
 });
+
+test.describe("Issue #3023", () => {
+  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
+
+  test("can bulk insert items at a specific index", async ({ page }) => {
+    await page.goto("/stream/reset");
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+    await page.getByRole("button", { name: "Bulk insert" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual(["items-a", "items-e", "items-f", "items-g", "items-b", "items-c", "items-d"]);
+  });
+});

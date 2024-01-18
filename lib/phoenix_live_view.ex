@@ -1803,7 +1803,7 @@ defmodule Phoenix.LiveView do
             socket
           end
 
-        Enum.reduce(items, new_socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
+        bulk_insert(new_socket, name, items, opts)
 
       %{} ->
         config = get_in(streams, [:__configured__, name]) || []
@@ -1834,6 +1834,22 @@ defmodule Phoenix.LiveView do
             hook_socket
           end
         end)
+    end
+  end
+
+  defp bulk_insert(%Socket{} = socket, name, items, opts) do
+    if Keyword.get(opts, :at, -1) != -1 do
+      # LV issue: https://github.com/phoenixframework/phoenix_live_view/issues/3023
+      # when bulk inserting items that are not appended at the end, the items
+      # would be rendered in the opposite order than defined in the items list,
+      # as we continously insert items at the same index, therefore basically reversing them
+      #
+      # to counter this, we reverse the items list before reducing
+      items
+      |> Enum.reverse()
+      |> Enum.reduce(socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
+    else
+      Enum.reduce(items, socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
     end
   end
 

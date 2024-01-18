@@ -319,6 +319,15 @@ defmodule Phoenix.LiveView.StreamTest do
     end
   end
 
+  test "issue #3023 - can bulk insert at index != -1", %{conn: conn} do
+    {:ok, lv, html} = live(conn, "/stream/reset")
+
+    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    html = assert lv |> element("button", "Bulk insert") |> render_click()
+    assert ids_in_ul_list(html) == ["items-a", "items-e", "items-f", "items-g", "items-b", "items-c", "items-d"]
+  end
+
   test "stream raises when attempting to consume ahead of for", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/stream")
 
