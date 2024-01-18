@@ -103,12 +103,12 @@ export default class DOMPatch {
 
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-        Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
+        inserts.forEach(([key, streamAt, limit]) => {
           this.streamInserts[key] = {ref, streamAt, limit, reset}
         })
         if(reset !== undefined){
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
-            if(!inserts[child.id]){
+            if(!this.streamInserts[child.id]){
               this.removeStreamChildElement(child)
             }
           })
