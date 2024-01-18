@@ -370,7 +370,7 @@ defmodule Phoenix.LiveViewTest.DOM do
         [ref, inserts, deletes | maybe_reset] = item
         {in_acc, deletes_acc, resets_acc} = acc
         # rewrite inserts to nest ref
-        inserts = Enum.into(inserts, %{}, fn {id, [at, limit]} -> {id, {ref, at, limit}} end)
+        inserts = Enum.into(inserts, %{}, fn [id, at, limit] -> {id, {ref, at, limit}} end)
         new_inserts = Map.merge(in_acc, inserts)
         new_deletes = MapSet.union(deletes_acc, MapSet.new(deletes))
 
