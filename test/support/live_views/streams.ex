@@ -293,6 +293,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
     <button phx-click="reset">Reset</button>
     <button phx-click="prepend">Prepend</button>
     <button phx-click="append">Append</button>
+    <button phx-click="bulk-insert">Bulk insert</button>
     """
   end
 
@@ -357,6 +358,20 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
        :items,
        %{id: "a" <> "#{System.unique_integer()}", name: "#{System.unique_integer()}"},
        at: -1
+     )}
+  end
+
+  def handle_event("bulk-insert", _, socket) do
+    {:noreply,
+     stream(
+       socket,
+       :items,
+       Enum.reverse([
+         %{id: "e", name: "E"},
+         %{id: "f", name: "F"},
+         %{id: "g", name: "G"}
+       ]),
+       at: 1
      )}
   end
 end
