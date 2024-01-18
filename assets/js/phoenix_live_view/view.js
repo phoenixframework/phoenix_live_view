@@ -250,6 +250,10 @@ export default class View {
   }
 
   onJoin(resp){
+    if (resp.render_and_halt) {
+      resp = resp.render_and_halt;
+      this.liveSocket.disconnect();
+    }
     let {rendered, container} = resp
     if(container){
       let [tag, attrs] = container
@@ -696,6 +700,9 @@ export default class View {
   }
 
   onError(reason){
+    if (this.halt) {
+      return;
+    }
     this.onClose(reason)
     if(this.liveSocket.isConnected()){ this.log("error", () => ["view crashed", reason]) }
     if(!this.liveSocket.isUnloaded()){

@@ -57,6 +57,7 @@ var PHX_VIEWPORT_TOP = "viewport-top";
 var PHX_VIEWPORT_BOTTOM = "viewport-bottom";
 var PHX_TRIGGER_ACTION = "trigger-action";
 var PHX_FEEDBACK_FOR = "feedback-for";
+var PHX_FEEDBACK_GROUP = "feedback-group";
 var PHX_HAS_FOCUSED = "phx-has-focused";
 var FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "datetime-local", "color", "range"];
 var CHECKABLE_INPUTS = ["checkbox", "radio"];
@@ -541,14 +542,20 @@ var DOM = {
       el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
     }
   },
-  maybeHideFeedback(container, inputs, phxFeedbackFor) {
+  maybeHideFeedback(container, inputs, phxFeedbackFor, phxFeedbackGroup) {
     let feedbacks = [];
     let inputNamesFocused = {};
+    let feedbackGroups = {};
     inputs.forEach((input) => {
+      const group = input.getAttribute(phxFeedbackGroup);
+      if (group && !(group in feedbackGroups))
+        feedbackGroups[group] = true;
       if (!(input.name in inputNamesFocused))
         inputNamesFocused[input.name] = false;
       if (this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)) {
         inputNamesFocused[input.name] = true;
+        if (group)
+          feedbackGroups[group] = false;
       }
     });
     for (const [name, focused] of Object.entries(inputNamesFocused)) {
@@ -558,6 +565,10 @@ var DOM = {
           feedbacks.push(name.slice(0, -2));
         }
       }
+    }
+    for (const [group, noFeedback] of Object.entries(feedbackGroups)) {
+      if (noFeedback)
+        feedbacks.push(group);
     }
     if (feedbacks.length > 0) {
       let selector = feedbacks.map((f) => `[${phxFeedbackFor}="${f}"]`).join(", ");
@@ -1848,6 +1859,7 @@ var DOMPatch = class {
     let { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
     let phxUpdate = liveSocket.binding(PHX_UPDATE);
     let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR);
+    let phxFeedbackGroup = liveSocket.binding(PHX_FEEDBACK_GROUP);
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
@@ -2060,7 +2072,7 @@ var DOMPatch = class {
         appendPrependUpdates.forEach((update) => update.perform());
       });
     }
-    dom_default.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor);
+    dom_default.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup);
     liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
     dom_default.dispatchEvent(document, "phx:update");
     added.forEach((el) => this.trackAfter("added", el));
@@ -2976,6 +2988,10 @@ var View = class {
     }
   }
   onJoin(resp) {
+    if (resp.render_and_halt) {
+      resp = resp.render_and_halt;
+      this.liveSocket.disconnect();
+    }
     let { rendered, container } = resp;
     if (container) {
       let [tag, attrs] = container;
@@ -3405,6 +3421,9 @@ var View = class {
     }
   }
   onError(reason) {
+    if (this.halt) {
+      return;
+    }
     this.onClose(reason);
     if (this.liveSocket.isConnected()) {
       this.log("error", () => ["view crashed", reason]);

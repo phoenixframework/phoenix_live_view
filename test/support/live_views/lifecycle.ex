@@ -166,6 +166,34 @@ defmodule Phoenix.LiveViewTest.HooksLive.HaltMount do
   def render(assigns), do: ~H"<div></div>"
 end
 
+defmodule Phoenix.LiveViewTest.HooksLive.RenderWithMount do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  on_mount __MODULE__
+
+  def on_mount(:default, _, _, socket),
+    do: {:halt, render_with(socket, fn assigns -> ~H(RENDER_WITH) end)}
+
+  def render(assigns), do: ~H"<div></div>"
+end
+
+defmodule Phoenix.LiveViewTest.HooksLive.HaltRenderWithRedirectMount do
+  use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
+
+  on_mount __MODULE__
+
+  def on_mount(:default, _, _, socket) do
+    socket =
+      socket
+      |> push_navigate(to: "/lifecycle")
+      |> render_with(fn assigns -> ~H(RENDER_WITH) end)
+
+    {:halt, socket}
+  end
+
+  def render(assigns), do: ~H"<div></div>"
+end
+
 defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
