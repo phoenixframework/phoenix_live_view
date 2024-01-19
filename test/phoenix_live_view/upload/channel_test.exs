@@ -100,15 +100,20 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   def consume(%LiveView.UploadEntry{} = entry, socket) do
     socket =
-      if entry.done? do
-        name =
-          Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ ->
-            {:ok, entry.client_name}
-          end)
+      cond do
+        entry.client_name == "redirect.jpeg" ->
+          Phoenix.LiveView.push_navigate(socket, to: "/redirected")
 
-        Phoenix.Component.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
-      else
-        socket
+        entry.done? ->
+          name =
+            Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ ->
+              {:ok, entry.client_name}
+            end)
+
+          Phoenix.Component.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
+
+        true ->
+          socket
       end
 
     {:noreply, socket}
@@ -322,6 +327,17 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           ])
 
         assert render_upload(avatar, "foo.jpeg") =~ "consumed:foo.jpeg"
+      end
+
+      @tag allow: [max_entries: 3, chunk_size: 20, accept: :any, progress: :consume]
+      test "render_upload uploads with progress redirect", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "redirect.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        assert {:error, {:live_redirect, redir}} = render_upload(avatar, "redirect.jpeg")
+        assert redir[:to] == "/redirected"
       end
 
       @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
