@@ -1167,6 +1167,9 @@ export default class View {
     })
     if(willDestroyCIDs.length > 0){
       this.pruningCIDs.push(...willDestroyCIDs)
+      // we must reset the render change tracking for cids that
+      // could be added back from the server so we don't skip them
+      this.pruningCIDs.forEach(cid => this.rendered.resetRender(cid))
 
       this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
         // The cids are either back on the page or they will be fully removed,

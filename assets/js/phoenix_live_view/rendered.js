@@ -155,6 +155,8 @@ export default class Rendered {
 
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
+  resetRender(cid){ this.rendered[COMPONENTS][cid].changeTracking = false }
+
   mergeDiff(diff){
     let newc = diff[COMPONENTS]
     let cache = {}
@@ -286,7 +288,7 @@ export default class Rendered {
   //
   // changeTracking controls if we can apply the PHX_SKIP optimization.
   // It is disabled for comprehensions since we must re-render the entire collection
-  // and no invidial element is tracked inside the comprehension.
+  // and no individual element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
@@ -319,7 +321,7 @@ export default class Rendered {
       } else {
         attrs = rootAttrs
       }
-      if(skip){ attrs[PHX_SKIP] = true}
+      if(skip){ attrs[PHX_SKIP] = true }
       let [newRoot, commentBefore, commentAfter] = modifyRoot(output.buffer, attrs, skip)
       rendered.newRender = false
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter
@@ -381,10 +383,16 @@ export default class Rendered {
     //
     // Both optimization flows apply here. newRender is set based on the onlyCids optimization, and
     // we track a deterministic magicId based on the cid.
+    //
+    // By default changeTracking is enabled, but we special case the flow where the client is pruning
+    // cids and the server adds the component back. In such cases, we explicitly disable changeTracking
+    // with resetRender for this cid, then re-enable it after the recursive call to skip the optimization
+    // for the entire component tree.
     component.newRender = !skip
     component.magicId = `${this.parentViewId()}-c-${cid}`
-    let changeTracking = true
+    let changeTracking = component.changeTracking === undefined ? true : component.changeTracking
     let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
+    delete component.changeTracking
 
     return [html, streams]
   }
