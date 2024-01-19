@@ -11,6 +11,7 @@
   * Fix `phx-mounted` being called twice for stream items
   * Do not move existing stream items when prepending
   * Fix live component rendering breaking when the server adds a component back that was pruned by the client (#3026)
+  * Allow redirect from upload progress callback
 
 ### Enhancements
   * Add `JS.toggle_class`
