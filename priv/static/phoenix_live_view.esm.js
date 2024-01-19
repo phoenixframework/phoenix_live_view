@@ -2300,7 +2300,7 @@ var Rendered = class {
     return diff[COMPONENTS][cid];
   }
   resetRender(cid) {
-    this.rendered[COMPONENTS][cid].changeTracking = false;
+    this.rendered[COMPONENTS][cid].reset = true;
   }
   mergeDiff(diff) {
     let newc = diff[COMPONENTS];
@@ -2480,9 +2480,9 @@ var Rendered = class {
     let skip = onlyCids && !onlyCids.has(cid);
     component.newRender = !skip;
     component.magicId = `${this.parentViewId()}-c-${cid}`;
-    let changeTracking = component.changeTracking === void 0 ? true : component.changeTracking;
+    let changeTracking = !component.reset;
     let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs);
-    delete component.changeTracking;
+    delete component.reset;
     return [html, streams];
   }
 };
