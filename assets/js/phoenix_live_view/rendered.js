@@ -155,7 +155,7 @@ export default class Rendered {
 
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
-  resetRender(cid){ this.rendered[COMPONENTS][cid].changeTracking = false }
+  resetRender(cid){ this.rendered[COMPONENTS][cid].reset = true }
 
   mergeDiff(diff){
     let newc = diff[COMPONENTS]
@@ -378,7 +378,7 @@ export default class Rendered {
     //
     //   2. The root PHX_SKIP optimization generalizes to all HEEx function components, and
     //     works in the same PHX_SKIP attribute fashion as 1, but the newRender tracking is done
-    //     at the general diff merge level. If we merge a diff with new dynamics, we necessariy have
+    //     at the general diff merge level. If we merge a diff with new dynamics, we necessarily have
     //     experienced a change which must be a newRender, and thus we can't skip the render.
     //
     // Both optimization flows apply here. newRender is set based on the onlyCids optimization, and
@@ -390,9 +390,11 @@ export default class Rendered {
     // for the entire component tree.
     component.newRender = !skip
     component.magicId = `${this.parentViewId()}-c-${cid}`
-    let changeTracking = component.changeTracking === undefined ? true : component.changeTracking
+    // enable change tracking as long as the component hasn't been reset
+    let changeTracking = !component.reset
     let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
-    delete component.changeTracking
+    // disable reset after we've rendered
+    delete component.reset
 
     return [html, streams]
   }
