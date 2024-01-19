@@ -1713,6 +1713,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
                             removeNode(curFromNodeChild, fromEl, true);
                           }
                           curFromNodeChild = matchingFromEl;
+                          curFromNodeKey = getNodeKey(curFromNodeChild);
                         }
                       } else {
                         isCompatible = false;
@@ -4590,7 +4591,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return callback ? callback(done) : done;
     }
     pushHistoryPatch(href, linkState, targetEl) {
-      if (!this.isConnected()) {
+      if (!this.isConnected() || !this.main.isMain()) {
         return browser_default.redirect(href);
       }
       this.withPageLoading({ to: href, kind: "patch" }, (done) => {
@@ -4609,7 +4610,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.registerNewLocation(window.location);
     }
     historyRedirect(href, linkState, flash) {
-      if (!this.isConnected()) {
+      if (!this.isConnected() || !this.main.isMain()) {
         return browser_default.redirect(href, flash);
       }
       if (/^\/$|^\/[^\/]+.*$/.test(href)) {

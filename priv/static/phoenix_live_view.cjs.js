@@ -1684,6 +1684,7 @@ function morphdomFactory(morphAttrs2) {
                           removeNode(curFromNodeChild, fromEl, true);
                         }
                         curFromNodeChild = matchingFromEl;
+                        curFromNodeKey = getNodeKey(curFromNodeChild);
                       }
                     } else {
                       isCompatible = false;
@@ -4561,7 +4562,7 @@ var LiveSocket = class {
     return callback ? callback(done) : done;
   }
   pushHistoryPatch(href, linkState, targetEl) {
-    if (!this.isConnected()) {
+    if (!this.isConnected() || !this.main.isMain()) {
       return browser_default.redirect(href);
     }
     this.withPageLoading({ to: href, kind: "patch" }, (done) => {
@@ -4580,7 +4581,7 @@ var LiveSocket = class {
     this.registerNewLocation(window.location);
   }
   historyRedirect(href, linkState, flash) {
-    if (!this.isConnected()) {
+    if (!this.isConnected() || !this.main.isMain()) {
       return browser_default.redirect(href, flash);
     }
     if (/^\/$|^\/[^\/]+.*$/.test(href)) {

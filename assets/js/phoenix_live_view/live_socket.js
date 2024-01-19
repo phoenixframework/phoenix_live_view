@@ -754,7 +754,7 @@ export default class LiveSocket {
   }
 
   pushHistoryPatch(href, linkState, targetEl){
-    if(!this.isConnected()){ return Browser.redirect(href) }
+    if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href) }
 
     this.withPageLoading({to: href, kind: "patch"}, done => {
       this.main.pushLinkPatch(href, targetEl, linkRef => {
@@ -773,8 +773,9 @@ export default class LiveSocket {
   }
 
   historyRedirect(href, linkState, flash){
+    if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href, flash) }
+
     // convert to full href if only path prefix
-    if(!this.isConnected()){ return Browser.redirect(href, flash) }
     if(/^\/$|^\/[^\/]+.*$/.test(href)){
       let {protocol, host} = window.location
       href = `${protocol}//${host}${href}`
