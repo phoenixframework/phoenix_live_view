@@ -19,6 +19,7 @@
   * Introduce `phx-feedback-group` for handling feedback for composite input groups
   * Add `validate_attrs` to slots
   * Support `phx-viewport` bindings in scrollable containers
+  * Perform client redirect when trying to live nav from dead client to avoid extra round trip
 
 ## 0.20.3 (2024-01-02)
 
