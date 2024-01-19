@@ -1997,8 +1997,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           onBeforeElChildrenUpdated: (fromEl, toEl) => {
             if (fromEl.getAttribute(phxUpdate) === PHX_STREAM) {
               Array.from(toEl.children).forEach((child, idx) => {
-                if (this.streamInserts[child.id].reset) {
-                  this.streamInserts[child.id].streamAt = idx;
+                let insert = this.streamInserts[child.id];
+                if (insert && insert.reset) {
+                  insert.streamAt = idx;
                 }
               });
             }
@@ -3895,7 +3896,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let template = document.createElement("template");
       template.innerHTML = html;
       return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id && this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").map((form) => {
-        const phxChangeValue = form.getAttribute(phxChange).replaceAll(/([\[\]"])/g, "\\$1");
+        const phxChangeValue = CSS.escape(form.getAttribute(phxChange));
         let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${phxChangeValue}"]`);
         if (newForm) {
           return [form, newForm, this.targetComponentID(newForm)];
