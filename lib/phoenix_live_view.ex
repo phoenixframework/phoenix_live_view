@@ -1536,14 +1536,14 @@ defmodule Phoenix.LiveView do
       the given index. Therefore, when inserting multiple items at an index other than `-1`,
       the UI will display the items in reverse order:
 
-          stream(socket, :songs, [song1, song2, song3], at: 0])
+          stream(socket, :songs, [song1, song2, song3], at: 0)
 
       In this case the UI will prepend `song1`, then `song2` and then `song3`, so it will show
       `song3`, `song2`, `song1` and then any previously inserted items.
 
       To insert in the order of the list, use `Enum.reverse/1`:
 
-          stream(socket, :songs, Enum.reverse([song1, song2, song3]), at: 0])
+          stream(socket, :songs, Enum.reverse([song1, song2, song3]), at: 0)
 
     * `:reset` - the boolean to reset the stream on the client or not. Defaults
       to `false`.
