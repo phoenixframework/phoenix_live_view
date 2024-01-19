@@ -204,9 +204,8 @@ export default class DOMPatch {
           if(fromEl.getAttribute(phxUpdate) === PHX_STREAM){
             Array.from(toEl.children).forEach((child, idx) => {
               // if this is not a reset, the streamAt must be preserved
-              if(this.streamInserts[child.id].reset){
-                this.streamInserts[child.id].streamAt = idx
-              }
+              let insert = this.streamInserts[child.id]
+              if(insert && insert.reset){ insert.streamAt = idx }
             })
           }
         },
