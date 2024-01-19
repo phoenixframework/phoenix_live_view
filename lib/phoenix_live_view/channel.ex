@@ -736,9 +736,16 @@ defmodule Phoenix.LiveView.Channel do
               """
           end
 
+        new_component_socket =
+          if redirected do
+            Utils.clear_flash(component_socket)
+          else
+            component_socket
+          end
+
         {
-          {component_socket, {redirected, assigns.flash}},
-          %{socket: component_socket, component: component, event: event, params: val}
+          {new_component_socket, {redirected, assigns.flash}},
+          %{socket: new_component_socket, component: component, event: event, params: val}
         }
       end
     )
