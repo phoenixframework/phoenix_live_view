@@ -1149,7 +1149,7 @@ export default class View {
         .map(form => {
           // attribute given via JS module needs to be escaped as it contains the symbols []",
           // which result in an invalid css selector otherwise.
-          const phxChangeValue = form.getAttribute(phxChange).replaceAll(/([\[\]"])/g, '\\$1')
+          const phxChangeValue = CSS.escape(form.getAttribute(phxChange))
           let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${phxChangeValue}"]`)
           if(newForm){
             return [form, newForm, this.targetComponentID(newForm)]
