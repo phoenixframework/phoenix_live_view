@@ -1203,6 +1203,19 @@ defmodule Phoenix.LiveViewTest do
   @doc false
   def __file_input__(view, selector, name, entries, builder) do
     cid = find_cid!(view, selector)
+    for entry <- entries do
+      content = entry[:content]
+      size = entry[:size]
+      if content && size && byte_size(content) != size do
+        raise ArgumentError, """
+        entry content size must match provided size.
+
+        By default the content size is calculated using byte_size/1, so you
+        rarely need to provide the size option yourself unless you are testing
+        for misbehaving clients.
+        """
+      end
+    end
 
     case Phoenix.LiveView.Channel.fetch_upload_config(view.pid, name, cid) do
       {:ok, %{external: false}} ->

@@ -70,13 +70,16 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   def build_entries(count, opts \\ []) do
+    content = String.duplicate("0", 100)
+    size = byte_size(content)
+
     for i <- 1..count do
       Enum.into(opts, %{
         last_modified: 1_594_171_879_000,
         name: "myfile#{i}.jpeg",
         relative_path: "./myfile#{i}.jpeg",
-        content: String.duplicate("0", 100),
-        size: 1_396_009,
+        content: content,
+        size: size,
         type: "image/jpeg"
       })
     end
