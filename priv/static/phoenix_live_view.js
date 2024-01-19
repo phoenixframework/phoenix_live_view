@@ -2341,6 +2341,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     getComponent(diff, cid) {
       return diff[COMPONENTS][cid];
     }
+    resetRender(cid) {
+      this.rendered[COMPONENTS][cid].changeTracking = false;
+    }
     mergeDiff(diff) {
       let newc = diff[COMPONENTS];
       let cache = {};
@@ -2519,8 +2522,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let skip = onlyCids && !onlyCids.has(cid);
       component.newRender = !skip;
       component.magicId = `${this.parentViewId()}-c-${cid}`;
-      let changeTracking = true;
+      let changeTracking = component.changeTracking === void 0 ? true : component.changeTracking;
       let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs);
+      delete component.changeTracking;
       return [html, streams];
     }
   };
@@ -3906,6 +3910,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
       if (willDestroyCIDs.length > 0) {
         this.pruningCIDs.push(...willDestroyCIDs);
+        this.pruningCIDs.forEach((cid) => this.rendered.resetRender(cid));
         this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }, () => {
           this.pruningCIDs = this.pruningCIDs.filter((cid) => willDestroyCIDs.indexOf(cid) !== -1);
           let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
