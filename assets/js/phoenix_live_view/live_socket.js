@@ -775,17 +775,13 @@ export default class LiveSocket {
   historyRedirect(href, linkState, flash){
     if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href, flash) }
 
-    // convert to full href if only path prefix
-    if(/^\/$|^\/[^\/]+.*$/.test(href)){
-      let {protocol, host} = window.location
-      href = `${protocol}//${host}${href}`
-    }
+    let url = View.expandURL(href)
     let scroll = window.scrollY
-    this.withPageLoading({to: href, kind: "redirect"}, done => {
-      this.replaceMain(href, flash, (linkRef) => {
+    this.withPageLoading({to: url, kind: "redirect"}, done => {
+      this.replaceMain(url, flash, (linkRef) => {
         if(linkRef === this.linkRef){
-          Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
-          DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
+          Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, url)
+          DOM.dispatchEvent(window, "phx:navigate", {detail: {href: url, patch: false, pop: false}})
           this.registerNewLocation(window.location)
         }
         done()

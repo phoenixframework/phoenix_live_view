@@ -629,7 +629,7 @@ export default class View {
   }
 
   expandURL(to){
-    return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
+    return to.startsWith("/") || to.startsWith("?") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
   onRedirect({to, flash}){ this.liveSocket.redirect(to, flash) }
