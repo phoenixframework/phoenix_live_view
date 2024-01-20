@@ -100,7 +100,7 @@ export default class View {
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
-    this.pruningCIDs = []
+    this.pruningCIDsClock = 0
     this.redirect = false
     this.href = null
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
@@ -540,7 +540,7 @@ export default class View {
       let tag = this.el.tagName
       // Don't skip any component in the diff nor any marked as pruned
       // (as they may have been added back)
-      let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null
+      let cids = diff && this.pruningCIDsClock === 0 ? this.rendered.componentCIDs(diff) : null
       let [html, streams] = this.rendered.toString(cids)
       return [`<${tag}>${html}</${tag}>`, streams]
     })
@@ -1166,16 +1166,14 @@ export default class View {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
     if(willDestroyCIDs.length > 0){
-      this.pruningCIDs.push(...willDestroyCIDs)
+      this.pruningCIDsClock++
+      let pruningCIDsWas = this.pruningCIDsClock
+
       // we must reset the render change tracking for cids that
       // could be added back from the server so we don't skip them
-      this.pruningCIDs.forEach(cid => this.rendered.resetRender(cid))
+      willDestroyCIDs.forEach(cid => this.rendered.resetRender(cid))
 
       this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
-        // The cids are either back on the page or they will be fully removed,
-        // so we can remove them from the pruningCIDs.
-        this.pruningCIDs = this.pruningCIDs.filter(cid => willDestroyCIDs.indexOf(cid) !== -1)
-
         // See if any of the cids we wanted to destroy were added back,
         // if they were added back, we don't actually destroy them.
         let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
@@ -1184,6 +1182,7 @@ export default class View {
 
         if(completelyDestroyCIDs.length > 0){
           this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+            if(pruningCIDsWas === this.pruningCIDsClock){ this.pruningCIDsClock = 0 }
             this.rendered.pruneCIDs(resp.cids)
           })
         }

@@ -2853,7 +2853,7 @@ var View = class {
     this.childJoins = 0;
     this.loaderTimer = null;
     this.pendingDiffs = [];
-    this.pruningCIDs = [];
+    this.pruningCIDsClock = 0;
     this.redirect = false;
     this.href = null;
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
@@ -3259,7 +3259,7 @@ var View = class {
   renderContainer(diff, kind) {
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName;
-      let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null;
+      let cids = diff && this.pruningCIDsClock === 0 ? this.rendered.componentCIDs(diff) : null;
       let [html, streams] = this.rendered.toString(cids);
       return [`<${tag}>${html}</${tag}>`, streams];
     });
@@ -3882,15 +3882,18 @@ var View = class {
       return dom_default.findComponentNodeList(this.el, cid).length === 0;
     });
     if (willDestroyCIDs.length > 0) {
-      this.pruningCIDs.push(...willDestroyCIDs);
-      this.pruningCIDs.forEach((cid) => this.rendered.resetRender(cid));
+      this.pruningCIDsClock++;
+      let pruningCIDsWas = this.pruningCIDsClock;
+      willDestroyCIDs.forEach((cid) => this.rendered.resetRender(cid));
       this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }, () => {
-        this.pruningCIDs = this.pruningCIDs.filter((cid) => willDestroyCIDs.indexOf(cid) !== -1);
         let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
           return dom_default.findComponentNodeList(this.el, cid).length === 0;
         });
         if (completelyDestroyCIDs.length > 0) {
           this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }, (resp) => {
+            if (pruningCIDsWas === this.pruningCIDsClock) {
+              this.pruningCIDsClock = 0;
+            }
             this.rendered.pruneCIDs(resp.cids);
           });
         }
