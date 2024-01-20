@@ -117,7 +117,10 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   end
 
   def handle_event("admin-move-to-first", %{"id" => "admins-" <> id}, socket) do
-    {:noreply, stream_insert(socket, :admins, user(id, "updated"), at: 0)}
+    {:noreply,
+     socket
+     |> stream_delete_by_dom_id(:admins, "admins-" <> id)
+     |> stream_insert(:admins, user(id, "updated"), at: 0)}
   end
 
   def handle_event("admin-move-to-last", %{"id" => "admins-" <> id = dom_id}, socket) do
@@ -294,6 +297,11 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
     <button phx-click="prepend">Prepend</button>
     <button phx-click="append">Append</button>
     <button phx-click="bulk-insert">Bulk insert</button>
+    <button phx-click="insert-at-one">Insert at 1</button>
+    <button phx-click="insert-existing-at-one">Insert C at 1</button>
+    <button phx-click="delete-insert-existing-at-one">Delete C and insert at 1</button>
+    <button phx-click="prepend-existing">Prepend C</button>
+    <button phx-click="append-existing">Append C</button>
     """
   end
 
@@ -372,6 +380,57 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
          %{id: "g", name: "G"}
        ]),
        at: 1
+     )}
+  end
+
+  def handle_event("insert-at-one", _, socket) do
+    {:noreply,
+     stream_insert(
+       socket,
+       :items,
+       %{id: "a" <> "#{System.unique_integer()}", name: "#{System.unique_integer()}"},
+       at: 1
+     )}
+  end
+
+  def handle_event("insert-existing-at-one", _, socket) do
+    {:noreply,
+     stream_insert(
+       socket,
+       :items,
+       %{id: "c", name: "C"},
+       at: 1
+     )}
+  end
+
+  def handle_event("delete-insert-existing-at-one", _, socket) do
+    {:noreply,
+     socket
+     |> stream_delete_by_dom_id(:items, "items-c")
+     |> stream_insert(
+       :items,
+       %{id: "c", name: "C"},
+       at: 1
+     )}
+  end
+
+  def handle_event("prepend-existing", _, socket) do
+    {:noreply,
+     stream_insert(
+       socket,
+       :items,
+       %{id: "c", name: "C"},
+       at: 0
+     )}
+  end
+
+  def handle_event("append-existing", _, socket) do
+    {:noreply,
+     stream_insert(
+       socket,
+       :items,
+       %{id: "c", name: "C"},
+       at: -1
      )}
   end
 end

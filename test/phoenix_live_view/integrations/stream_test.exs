@@ -210,13 +210,13 @@ defmodule Phoenix.LiveView.StreamTest do
       html = assert lv |> element("button", "Filter") |> render_click()
       assert ids_in_ul_list(html) == ["items-b", "items-c", "items-d"]
 
-      html = assert lv |> element("button", "Prepend") |> render_click()
+      html = assert lv |> element(~s(button[phx-click="prepend"]), "Prepend") |> render_click()
       assert [<<"items-a-", _::binary>>, "items-b", "items-c", "items-d"] = ids_in_ul_list(html)
 
       html = assert lv |> element("button", "Reset") |> render_click()
       assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
 
-      html = assert lv |> element("button", "Append") |> render_click()
+      html = assert lv |> element(~s(button[phx-click="append"]), "Append") |> render_click()
 
       assert ["items-a", "items-b", "items-c", "items-d", <<"items-a-", _::binary>>] =
                ids_in_ul_list(html)
@@ -326,6 +326,30 @@ defmodule Phoenix.LiveView.StreamTest do
 
     html = assert lv |> element("button", "Bulk insert") |> render_click()
     assert ids_in_ul_list(html) == ["items-a", "items-e", "items-f", "items-g", "items-b", "items-c", "items-d"]
+  end
+
+  test "any stream insert for elements already in the DOM does not reorder", %{conn: conn} do
+    {:ok, lv, html} = live(conn, "/stream/reset")
+
+    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    html = assert lv |> element("button", "Prepend C") |> render_click()
+    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    html = assert lv |> element("button", "Append C") |> render_click()
+    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    html = assert lv |> element("button", "Insert C at 1") |> render_click()
+    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    html = assert lv |> element("button", "Insert at 1") |> render_click()
+    assert ["items-a", _, "items-b", "items-c", "items-d"] = ids_in_ul_list(html)
+
+    html = assert lv |> element("button", "Reset") |> render_click()
+    assert ["items-a", "items-b", "items-c", "items-d"] = ids_in_ul_list(html)
+
+    html = assert lv |> element("button", "Delete C and insert at 1") |> render_click()
+    assert ["items-a", "items-c", "items-b", "items-d"] = ids_in_ul_list(html)
   end
 
   test "stream raises when attempting to consume ahead of for", %{conn: conn} do
