@@ -60,6 +60,12 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/upload", Phoenix.LiveViewTest.E2E.UploadLive
       live "/form", Phoenix.LiveViewTest.E2E.FormLive
     end
+
+    scope "/issues" do
+      pipe_through(:browser)
+
+      live "/3026", Phoenix.LiveViewTest.E2E.Issue3026Live
+    end
   end
 end
 
