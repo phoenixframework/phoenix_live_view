@@ -155,7 +155,13 @@ export default class Rendered {
 
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
 
-  resetRender(cid){ this.rendered[COMPONENTS][cid].reset = true }
+  resetRender(cid){
+    // we are racing a component destroy, it could not exist, so
+    // make sure that we don't try to set reset on undefined
+    if(this.rendered[COMPONENTS][cid]){
+      this.rendered[COMPONENTS][cid].reset = true
+    }
+  }
 
   mergeDiff(diff){
     let newc = diff[COMPONENTS]
