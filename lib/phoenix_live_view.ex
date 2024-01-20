@@ -1728,12 +1728,11 @@ defmodule Phoenix.LiveView do
 
   ## Updating Items
 
-  As shown, an existing item on the client can be updated by issuing a `stream_insert` for
-  the existing item. When the client updates an existing item with an "append" operation
-  (passing the `at: -1` option), the item will remain in the same location as it was
-  previously, and will not be moved to the end of the parent children. To both update an
-  existing item and move it to the end of a collection, issue a `stream_delete`, followed
-  by a `stream_insert`. For example:
+  As shown, an existing item on the client can be updated by issuing a `stream_insert`
+  for the existing item. When the client updates an existing item, the item will remain
+  in the same location as it was previously, and will not be moved to the end of the
+  parent children. To both update an existing item and move it to another position,
+  issue a `stream_delete`, followed by a `stream_insert`. For example:
 
       song = get_song!(id)
 
