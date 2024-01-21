@@ -430,12 +430,27 @@ defmodule Phoenix.LiveViewTest.DOM do
       content_changed? && type == "stream" ->
         children = updated_existing_children ++ updated_appended
 
+        # we always reduce over all streams, even if only one of them is actually relevant
+        # for this container...
         new_children =
-          Enum.reduce(streams, children, fn item, acc ->
-            [ref, inserts, _deletes | _maybe_reset] = item
+          Enum.reduce(streams, updated_existing_children, fn item, acc ->
+            [ref, inserts, _deletes | maybe_reset] = item
+            reset = maybe_reset == [true]
 
-            Enum.reduce(inserts, acc, fn [id, insert_at, _limit], acc ->
-              old_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
+            # remove all children that are in a stream that was reset
+            acc =
+              if reset do
+                Enum.reject(acc, fn child ->
+                  item_ref = attribute(child, "data-phx-stream")
+                  item_ref == ref
+                end)
+              else
+                acc
+              end
+
+            Enum.reduce(inserts, acc, fn [id, insert_at, limit], acc ->
+              old_index = Enum.find_index(children, &(attribute(&1, "id") == id))
+              current_index = Enum.find_index(acc, &(attribute(&1, "id") == id))
 
               appended? = Enum.any?(updated_appended, &(attribute(&1, "id") == id))
 
@@ -443,7 +458,7 @@ defmodule Phoenix.LiveViewTest.DOM do
               deleted? = MapSet.member?(stream_deletes, id)
 
               child =
-                case old_index && Enum.at(acc, old_index) do
+                case old_index && Enum.at(children, old_index) do
                   nil -> nil
                   child -> set_attr(child, "data-phx-stream", ref)
                 end
@@ -459,19 +474,20 @@ defmodule Phoenix.LiveViewTest.DOM do
                   acc
 
                 # do not append existing child if already present, only update in place
-                old_index && insert_at == -1 && (existing? or appended?) ->
+                current_index && insert_at == -1 && (existing? or appended?) ->
                   if deleted? do
-                    acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
+                    acc |> List.delete_at(current_index) |> List.insert_at(insert_at, child)
                   else
-                    List.replace_at(acc, old_index, child)
+                    List.replace_at(acc, current_index, child)
                   end
 
-                old_index && insert_at ->
-                  acc |> List.delete_at(old_index) |> List.insert_at(insert_at, child)
+                current_index && insert_at ->
+                  acc |> List.delete_at(current_index) |> List.insert_at(insert_at, child)
 
-                !old_index && insert_at ->
+                !current_index && insert_at ->
                   List.insert_at(acc, insert_at, child)
               end
+              |> maybe_apply_stream_limit(limit)
             end)
           end)
           |> Enum.reject(fn child ->
@@ -615,4 +631,10 @@ defmodule Phoenix.LiveViewTest.DOM do
     do: Enum.map(values, &normalize_attribute_order/1)
 
   defp normalize_attribute_order(value), do: value
+
+  defp maybe_apply_stream_limit(children, nil), do: children
+
+  defp maybe_apply_stream_limit(children, limit) do
+    Enum.take(children, limit)
+  end
 end
