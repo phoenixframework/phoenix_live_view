@@ -48,6 +48,7 @@ export default class DOMPatch {
     this.html = html
     this.streams = streams
     this.streamInserts = {}
+    this.streamComponentRestore = {}
     this.targetCID = targetCID
     this.cidPatch = isCid(this.targetCID)
     this.pendingRemoves = []
@@ -108,9 +109,7 @@ export default class DOMPatch {
         })
         if(reset !== undefined){
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
-            if(!this.streamInserts[child.id]){
-              this.removeStreamChildElement(child)
-            }
+            this.removeStreamChildElement(child)
           })
         }
         deleteIds.forEach(id => {
@@ -123,9 +122,7 @@ export default class DOMPatch {
       if(isJoinPatch){
         DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
           Array.from(el.children).forEach(child => {
-            if(!this.streamInserts[child.id]){
-              this.removeStreamChildElement(child)
-            }
+            this.removeStreamChildElement(child)
           })
         })
       }
@@ -143,10 +140,19 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let {ref, streamAt, limit} = this.getStreamInsert(child)
+          let {ref, streamAt} = this.getStreamInsert(child)
           if(ref === undefined){ return parent.appendChild(child) }
 
           DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
+
+          // we may need to restore the component, see removeStreamChildElement
+          if(child.getAttribute(PHX_COMPONENT)){
+            if(child.getAttribute(PHX_SKIP) !== null){
+              child = this.streamComponentRestore[child.id]
+            } else {
+              delete this.streamComponentRestore[child.id]
+            }
+          }
 
           // streaming
           if(streamAt === 0){
@@ -157,19 +163,6 @@ export default class DOMPatch {
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
           }
-          let children = limit !== null && Array.from(parent.children)
-          let childrenToRemove = []
-          if(limit && limit < 0 && children.length > limit * -1){
-            childrenToRemove = children.slice(0, children.length + limit)
-          } else if(limit && limit >= 0 && children.length > limit){
-            childrenToRemove = children.slice(limit)
-          }
-          childrenToRemove.forEach(removeChild => {
-            // do not remove child as part of limit if we are re-adding it
-            if(!this.streamInserts[removeChild.id]){
-              this.removeStreamChildElement(removeChild)
-            }
-          })
         },
         onBeforeNodeAdded: (el) => {
           DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
@@ -197,17 +190,6 @@ export default class DOMPatch {
             this.trackAfter("phxChildAdded", el)
           }
           added.push(el)
-        },
-        onBeforeElChildrenUpdated: (fromEl, toEl) => {
-          // when resetting a stream, we override the order of the streamInserts to
-          // the order of the elements in the diff (toEl)
-          if(fromEl.getAttribute(phxUpdate) === PHX_STREAM){
-            Array.from(toEl.children).forEach((child, idx) => {
-              // if this is not a reset, the streamAt must be preserved
-              let insert = this.streamInserts[child.id]
-              if(insert && insert.reset){ insert.streamAt = idx }
-            })
-          }
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
@@ -340,6 +322,11 @@ export default class DOMPatch {
 
   removeStreamChildElement(child){
     if(!this.maybePendingRemove(child)){
+      if(child.getAttribute(PHX_COMPONENT) && this.streamInserts[child.id]){
+        // live component would be removed and then be re-added;
+        // because of the PHX_SKIP optimization we need to temporarily store the DOM node
+        this.streamComponentRestore[child.id] = child
+      }
       child.remove()
       this.onNodeDiscarded(child)
     }
@@ -351,7 +338,7 @@ export default class DOMPatch {
   }
 
   maybeReOrderStream(el, isNew){
-    let {ref, streamAt, limit} = this.getStreamInsert(el)
+    let {ref, streamAt} = this.getStreamInsert(el)
     if(streamAt === undefined || (streamAt === 0 && !isNew)){ return }
 
     // we need to the PHX_STREAM_REF here as well as addChild is invoked only for parents
@@ -372,6 +359,18 @@ export default class DOMPatch {
           el.parentElement.insertBefore(el, sibling.nextElementSibling)
         }
       }
+    }
+
+    this.maybeLimitStream(el)
+  }
+
+  maybeLimitStream(el){
+    let {limit} = this.getStreamInsert(el)
+    let children = limit !== null && Array.from(el.parentElement.children)
+    if(limit && limit < 0 && children.length > limit * -1){
+      children.slice(0, children.length + limit).forEach(child => this.removeStreamChildElement(child))
+    } else if(limit && limit >= 0 && children.length > limit){
+      children.slice(limit).forEach(child => this.removeStreamChildElement(child))
     }
   }
 

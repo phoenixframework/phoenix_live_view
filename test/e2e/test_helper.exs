@@ -55,6 +55,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/stream", Phoenix.LiveViewTest.StreamLive
       live "/stream/reset", Phoenix.LiveViewTest.StreamResetLive
       live "/stream/reset-lc", Phoenix.LiveViewTest.StreamResetLCLive
+      live "/stream/limit", Phoenix.LiveViewTest.StreamLimitLive
       live "/healthy/:category", Phoenix.LiveViewTest.HealthyLive
 
       live "/upload", Phoenix.LiveViewTest.E2E.UploadLive

@@ -293,3 +293,243 @@ test.describe("Issue #3023", () => {
     await expect(await listItems(page)).toEqual(["items-a", "items-e", "items-f", "items-g", "items-b", "items-c", "items-d"]);
   });
 });
+
+test.describe("stream limit - issue #2686", () => {
+  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
+
+  test("limit is enforced on mount, but not dead render", async ({ page, request }) => {
+    const html = await (request.get("/stream/limit").then(r => r.text()));
+    for (let i = 1; i <= 10; i++) {
+      await expect(html).toContain(`id="items-${i}"`);
+    }
+
+    await page.goto("/stream/limit");
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-6",
+      "items-7",
+      "items-8",
+      "items-9",
+      "items-10"
+    ]);
+  });
+
+  test("removes item at front when appending and limit is negative", async ({ page }) => {
+    await page.goto("/stream/limit");
+    await syncLV(page);
+
+    // these are the defaults in the LV
+    await expect(page.locator("input[name='at']")).toHaveValue("-1");
+    await expect(page.locator("input[name='limit']")).toHaveValue("-5");
+
+    await page.getByRole("button", { name: "add 1", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-7",
+      "items-8",
+      "items-9",
+      "items-10",
+      "items-11"
+    ]);
+
+    await page.getByRole("button", { name: "add 10", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-17",
+      "items-18",
+      "items-19",
+      "items-20",
+      "items-21"
+    ]);
+  });
+
+  test("removes item at back when prepending and limit is positive", async ({ page }) => {
+    await page.goto("/stream/limit");
+    await syncLV(page);
+
+    await page.locator("input[name='at']").fill("0");
+    await page.locator("input[name='limit']").fill("5");
+    await page.getByRole("button", { name: "recreate stream" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-10",
+      "items-9",
+      "items-8",
+      "items-7",
+      "items-6"
+    ]);
+
+    await page.getByRole("button", { name: "add 1", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-11",
+      "items-10",
+      "items-9",
+      "items-8",
+      "items-7"
+    ]);
+
+    await page.getByRole("button", { name: "add 10", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-21",
+      "items-20",
+      "items-19",
+      "items-18",
+      "items-17"
+    ]);
+  });
+
+  test("does nothing if appending and positive limit is reached", async ({ page }) => {
+    await page.goto("/stream/limit");
+    await syncLV(page);
+
+    await page.locator("input[name='at']").fill("-1");
+    await page.locator("input[name='limit']").fill("5");
+    await page.getByRole("button", { name: "recreate stream" }).click();
+    await syncLV(page);
+
+    await page.getByRole("button", { name: "clear" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([]);
+
+    const items = [];
+    for (let i = 1; i <= 5; i++) {
+      await page.getByRole("button", { name: "add 1", exact: true }).click();
+      await syncLV(page);
+      items.push(`items-${i}`);
+      await expect(await listItems(page)).toEqual(items);
+    }
+
+    // now adding new items should do nothing, as the limit is reached
+    await page.getByRole("button", { name: "add 1", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-1",
+      "items-2",
+      "items-3",
+      "items-4",
+      "items-5"
+    ]);
+
+    // same when bulk inserting
+    await page.getByRole("button", { name: "add 10", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-1",
+      "items-2",
+      "items-3",
+      "items-4",
+      "items-5"
+    ]);
+  });
+
+  test("does nothing if prepending and negative limit is reached", async ({ page }) => {
+    await page.goto("/stream/limit");
+    await syncLV(page);
+
+    await page.locator("input[name='at']").fill("0");
+    await page.locator("input[name='limit']").fill("-5");
+    await page.getByRole("button", { name: "recreate stream" }).click();
+    await syncLV(page);
+
+    await page.getByRole("button", { name: "clear" }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([]);
+
+    const items = [];
+    for (let i = 1; i <= 5; i++) {
+      await page.getByRole("button", { name: "add 1", exact: true }).click();
+      await syncLV(page);
+      items.unshift(`items-${i}`);
+      await expect(await listItems(page)).toEqual(items);
+    }
+
+    // now adding new items should do nothing, as the limit is reached
+    await page.getByRole("button", { name: "add 1", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-5",
+      "items-4",
+      "items-3",
+      "items-2",
+      "items-1"
+    ]);
+
+    // same when bulk inserting
+    await page.getByRole("button", { name: "add 10", exact: true }).click();
+    await syncLV(page);
+
+    await expect(await listItems(page)).toEqual([
+      "items-5",
+      "items-4",
+      "items-3",
+      "items-2",
+      "items-1"
+    ]);
+  });
+
+  test("arbitrary index", async ({ page }) => {
+    await page.goto("/stream/limit");
+    await syncLV(page);
+
+    await page.locator("input[name='at']").fill("1");
+    await page.locator("input[name='limit']").fill("5");
+    await page.getByRole("button", { name: "recreate stream" }).click();
+    await syncLV(page);
+
+    // we tried to insert 10 items
+    await expect(await listItems(page)).toEqual([
+      "items-1",
+      "items-10",
+      "items-9",
+      "items-8",
+      "items-7"
+    ]);
+
+    await page.getByRole("button", { name: "add 10", exact: true }).click();
+    await syncLV(page);
+    await expect(await listItems(page)).toEqual([
+      "items-1",
+      "items-20",
+      "items-19",
+      "items-18",
+      "items-17"
+    ]);
+
+    await page.locator("input[name='at']").fill("1");
+    await page.locator("input[name='limit']").fill("-5");
+    await page.getByRole("button", { name: "recreate stream" }).click();
+    await syncLV(page);
+
+    // we tried to insert 10 items
+    await expect(await listItems(page)).toEqual([
+      "items-10",
+      "items-5",
+      "items-4",
+      "items-3",
+      "items-2"
+    ]);
+
+    await page.getByRole("button", { name: "add 10", exact: true }).click();
+    await syncLV(page);
+    await expect(await listItems(page)).toEqual([
+      "items-20",
+      "items-5",
+      "items-4",
+      "items-3",
+      "items-2"
+    ]);
+  });
+});

@@ -431,3 +431,88 @@ defmodule Phoenix.LiveViewTest.StreamResetLCLive do
     """
   end
 end
+
+defmodule Phoenix.LiveViewTest.StreamLimitLive do
+  use Phoenix.LiveView
+
+  # see https://github.com/phoenixframework/phoenix_live_view/issues/2686
+
+  def mount(_params, _session, socket) do
+    {:noreply, socket} = handle_event("configure", %{"at" => "-1", "limit" => "-5"}, socket)
+    {:ok, socket}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <form phx-submit="configure">
+      at: <input type="text" name="at" value={@at}/>
+      limit: <input type="text" name="limit" value={@limit}/>
+      <button type="submit">recreate stream</button>
+    </form>
+
+    <div>configured with at: <%= @at %>, limit: <%= @limit %></div>
+
+    <button phx-click="insert_10">add 10</button>
+    <button phx-click="insert_1">add 1</button>
+    <button phx-click="clear">clear</button>
+
+    <ul id="items" phx-update="stream">
+      <li :for={{id, item} <- @streams.items} id={id}><%= item.id %></li>
+    </ul>
+    """
+  end
+
+  def handle_event("configure", %{"at" => at, "limit" => limit}, socket) do
+    socket =
+      socket
+      |> assign(limit: String.to_integer(limit), at: String.to_integer(at), last_id: 0)
+      |> new_stream()
+
+    {:noreply, socket}
+  end
+
+  def handle_event("insert_10", _params, socket) do
+    %{limit: l, at: a, last_id: last_id} = socket.assigns
+    items = for n <- 1..10, do: %{id: last_id + n}
+    opts = [at: a, limit: l]
+
+    socket =
+      socket
+      |> assign(last_id: last_id + 10)
+      |> stream(:items, items, opts)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("insert_1", _params, socket) do
+    %{limit: l, at: a, last_id: last_id} = socket.assigns
+    item = %{id: last_id + 1}
+    opts = [at: a, limit: l]
+
+    socket =
+      socket
+      |> assign(last_id: last_id + 1)
+      |> stream_insert(:items, item, opts)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("clear", _params, socket) do
+    socket =
+      socket
+      |> assign(last_id: 0)
+      |> stream(:items, [], reset: true)
+
+    {:noreply, socket}
+  end
+
+  defp new_stream(socket) do
+    %{limit: l, at: a} = socket.assigns
+    items = for n <- 1..10, do: %{id: n}
+    opts = [reset: true, at: a, limit: l]
+
+    socket
+    |> assign(last_id: 10)
+    |> stream(:items, items, opts)
+  end
+end
