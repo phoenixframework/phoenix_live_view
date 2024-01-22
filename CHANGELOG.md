@@ -15,6 +15,7 @@
 
 ### Enhancements
   * Add `JS.toggle_class`
+  * Add `JS.toggle_attribute`
   * Force update select options when the options changed from the server while a select has focus
   * Introduce `phx-feedback-group` for handling feedback for composite input groups
   * Add `validate_attrs` to slots

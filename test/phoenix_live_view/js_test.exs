@@ -837,6 +837,58 @@ defmodule Phoenix.LiveView.JSTest do
     end
   end
 
+  describe "toggle_attribute" do
+    test "with defaults" do
+      assert JS.toggle_attribute({"open", "true"}) == %JS{
+               ops: [
+                 ["toggle_attr", %{attr: ["open", "true"], to: nil}]
+               ]
+             }
+
+      assert JS.toggle_attribute({"open", "true"}, to: "#dropdown") == %JS{
+               ops: [
+                 ["toggle_attr", %{attr: ["open", "true"], to: "#dropdown"}]
+               ]
+             }
+
+      assert JS.toggle_attribute({"aria-expanded", "true", "false"}, to: "#dropdown") == %JS{
+               ops: [
+                 ["toggle_attr", %{attr: ["aria-expanded", "true", "false"], to: "#dropdown"}]
+               ]
+             }
+    end
+
+    test "composability" do
+      js =
+        {"aria-expanded", "true", "false"}
+        |> JS.toggle_attribute()
+        |> JS.toggle_attribute({"open", "true"})
+        |> JS.toggle_attribute({"disabled", "true"}, to: "#dropdown")
+
+      assert js == %JS{
+               ops: [
+                 ["toggle_attr", %{to: nil, attr: ["aria-expanded", "true", "false"]}],
+                 ["toggle_attr", %{to: nil, attr: ["open", "true"]}],
+                 ["toggle_attr", %{to: "#dropdown", attr: ["disabled", "true"]}]
+               ]
+             }
+    end
+
+    test "raises with unknown options" do
+      assert_raise ArgumentError, ~r/invalid option for toggle_attribute/, fn ->
+        JS.toggle_attribute({"disabled", "true"}, bad: :opt)
+      end
+    end
+
+    test "encoding" do
+      assert js_to_string(JS.toggle_attribute({"disabled", "true"})) ==
+               "[[&quot;toggle_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;],&quot;to&quot;:null}]]"
+
+      assert js_to_string(JS.toggle_attribute({"aria-expanded", "true", "false"})) ==
+               "[[&quot;toggle_attr&quot;,{&quot;attr&quot;:[&quot;aria-expanded&quot;,&quot;true&quot;,&quot;false&quot;],&quot;to&quot;:null}]]"
+    end
+  end
+
   describe "focus" do
     test "with defaults" do
       assert JS.focus() == %JS{ops: [["focus", %{to: nil}]]}

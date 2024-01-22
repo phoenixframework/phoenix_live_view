@@ -21,6 +21,7 @@ defmodule Phoenix.LiveView.JS do
     * `remove_class` - Remove classes from elements, with optional transitions
     * `set_attribute` - Set an attribute on elements
     * `remove_attribute` - Remove an attribute from elements
+    * `toggle_attribute` - Sets or removes element attribute based on attribute presence.
     * `show` - Show elements, with optional transitions
     * `hide` - Hide elements, with optional transitions
     * `toggle` - Shows or hides elements based on visibility, with optional transitions
@@ -662,6 +663,56 @@ defmodule Phoenix.LiveView.JS do
   def remove_attribute(%JS{} = js, attr, opts) when is_list(opts) do
     opts = validate_keys(opts, :remove_attribute, [:to])
     put_op(js, "remove_attr", %{to: opts[:to], attr: attr})
+  end
+
+  @doc """
+  Sets or removes element attribute based on attribute presence.
+
+  Accepts a two or three-element tuple:
+
+  * `{attr, val}` - Sets the attribute to the given value or removes it
+  * `{attr, val1, val2}` - Toggles the attribute between `val1` and `val2`
+
+  ## Options
+
+    * `:to` - The optional DOM selector to set or remove attributes from.
+      Defaults to the interacted element.
+
+  ## Examples
+
+      <button phx-click={JS.toggle_attribute({"aria-expanded", "true", "false"}, to: "#dropdown")}>
+        toggle
+      </button>
+
+      <button phx-click={JS.toggle_attribute({"open", "true"}, to: "#dialog")}>
+        toggle
+      </button>
+
+  """
+  def toggle_attribute({attr, val}), do: toggle_attribute(%JS{}, {attr, val}, [])
+  def toggle_attribute({attr, val1, val2}), do: toggle_attribute(%JS{}, {attr, val1, val2}, [])
+
+  @doc "See `toggle_attribute/1`."
+  def toggle_attribute({attr, val}, opts) when is_list(opts),
+    do: toggle_attribute(%JS{}, {attr, val}, opts)
+
+  def toggle_attribute({attr, val1, val2}, opts) when is_list(opts),
+    do: toggle_attribute(%JS{}, {attr, val1, val2}, opts)
+
+  def toggle_attribute(%JS{} = js, {attr, val}), do: toggle_attribute(js, {attr, val}, [])
+
+  def toggle_attribute(%JS{} = js, {attr, val1, val2}),
+    do: toggle_attribute(js, {attr, val1, val2}, [])
+
+  @doc "See `toggle_attribute/1`."
+  def toggle_attribute(%JS{} = js, {attr, val}, opts) when is_list(opts) do
+    opts = validate_keys(opts, :toggle_attribute, [:to])
+    put_op(js, "toggle_attr", %{to: opts[:to], attr: [attr, val]})
+  end
+
+  def toggle_attribute(%JS{} = js, {attr, val1, val2}, opts) when is_list(opts) do
+    opts = validate_keys(opts, :toggle_attribute, [:to])
+    put_op(js, "toggle_attr", %{to: opts[:to], attr: [attr, val1, val2]})
   end
 
   @doc """
