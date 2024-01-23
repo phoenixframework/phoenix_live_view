@@ -648,7 +648,7 @@ defmodule Phoenix.LiveView.Diff do
               {socket, components} =
                 case cids do
                   %{^cid => {_component, _id, assigns, private, prints}} ->
-                    private = Map.delete(private, @marked_for_deletion)
+                    {private, components} = unmark_for_deletion(private, components)
                     {configure_socket_for_component(socket, assigns, private, prints), components}
 
                   %{} ->
@@ -761,13 +761,21 @@ defmodule Phoenix.LiveView.Diff do
         {changed?, linked_cid, prints} =
           maybe_reuse_static(rendered, socket, component, cids, components)
 
-        {diff, component_prints, pending, components, nil} =
-          traverse(socket, rendered, prints, pending, components, nil, changed?)
+        {diff, component_prints, my_pending, components, nil} =
+          traverse(socket, rendered, prints, %{}, components, nil, changed?)
+
+        my_children_cids =
+          for {_component, list} <- my_pending,
+              entry <- list,
+              do: elem(entry, 0)
+
+        pending = Map.merge(pending, my_pending, fn _, v1, v2 -> v2 ++ v1 end)
 
         diff = if linked_cid, do: Map.put(diff, @static, linked_cid), else: diff
 
         socket =
-          %{socket | fingerprints: component_prints}
+          put_in(socket.private.children_cids, my_children_cids)
+          |> Map.replace!(:fingerprints, component_prints)
           |> Lifecycle.after_render()
           |> Utils.clear_changed()
 
@@ -786,6 +794,33 @@ defmodule Phoenix.LiveView.Diff do
     socket = Utils.clear_temp(socket)
     cid_to_component = Map.put(cid_to_component, cid, dump_component(socket, component, id))
     {pending, diffs, {cid_to_component, id_to_cid, uuids}}
+  end
+
+  defp unmark_for_deletion(private, {cid_to_component, id_to_cid, uuids}) do
+    {private, cid_to_component} = do_unmark_for_deletion(private, cid_to_component)
+    {private, {cid_to_component, id_to_cid, uuids}}
+  end
+
+  defp do_unmark_for_deletion(private, cids) do
+    {marked?, private} = Map.pop(private, @marked_for_deletion, false)
+
+    cids =
+      if marked? do
+        Enum.reduce(private.children_cids, cids, fn cid, cids ->
+          case cids do
+            %{^cid => {component, id, assigns, private, prints}} ->
+              {private, cids} = do_unmark_for_deletion(private, cids)
+              Map.put(cids, cid, {component, id, assigns, private, prints})
+
+            %{} ->
+              cids
+          end
+        end)
+      else
+        cids
+      end
+
+    {private, cids}
   end
 
   # 32 is one bucket from large maps
@@ -863,6 +898,7 @@ defmodule Phoenix.LiveView.Diff do
       socket.private
       |> Map.take([:conn_session, :root_view])
       |> Map.put(:live_temp, %{})
+      |> Map.put(:children_cids, [])
       |> Map.put(:lifecycle, %Phoenix.LiveView.Lifecycle{})
 
     socket =
