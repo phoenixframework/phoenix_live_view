@@ -1820,7 +1820,8 @@ defmodule Phoenix.LiveView do
         Enum.reduce(items, new_socket, fn item, acc -> stream_insert(acc, name, item, opts) end)
 
       %{} ->
-        config = get_in(streams, [:__configured__, name]) || opts
+        config = get_in(streams, [:__configured__, name]) || []
+        opts = Keyword.merge(opts, config)
 
         ref =
           if cid = socket.assigns[:myself] do
@@ -1829,7 +1830,7 @@ defmodule Phoenix.LiveView do
             to_string(streams.__ref__)
           end
 
-        stream = LiveStream.new(name, ref, items, config)
+        stream = LiveStream.new(name, ref, items, opts)
 
         socket
         |> Phoenix.Component.update(:streams, fn streams ->

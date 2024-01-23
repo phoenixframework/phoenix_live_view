@@ -438,6 +438,8 @@ defmodule Phoenix.LiveViewTest.StreamLimitLive do
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2686
 
   def mount(_params, _session, socket) do
+    socket = stream_configure(socket, :items, [])
+
     {:noreply, socket} = handle_event("configure", %{"at" => "-1", "limit" => "-5"}, socket)
     {:ok, socket}
   end
