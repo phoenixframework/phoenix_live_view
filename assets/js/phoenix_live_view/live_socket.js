@@ -635,6 +635,9 @@ export default class LiveSocket {
       if(capture){
         target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
       } else {
+        // a synthetic click event (detail 0) will not have caused a mousedown event,
+        // therefore the clickStartedAtTarget is stale
+        if(e.detail === 0) this.clickStartedAtTarget = e.target
         let clickStartedAtTarget = this.clickStartedAtTarget || e.target
         target = closestPhxBinding(clickStartedAtTarget, click)
         this.dispatchClickAway(e, clickStartedAtTarget)
