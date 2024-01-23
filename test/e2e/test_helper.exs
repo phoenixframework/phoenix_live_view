@@ -65,6 +65,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       pipe_through(:browser)
 
       live "/3026", Phoenix.LiveViewTest.E2E.Issue3026Live
+      live "/3040", Phoenix.LiveViewTest.E2E.Issue3040Live
     end
   end
 end
