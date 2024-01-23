@@ -211,7 +211,7 @@ defmodule Phoenix.LiveView.Diff do
         diff = render_private(csocket, %{})
 
         {pending, cdiffs, components} =
-          render_component(csocket, component, id, cid, false, %{}, cids, %{}, components)
+          render_component(csocket, component, id, cid, false, cids, %{}, components)
 
         {cdiffs, components} =
           render_pending_components(socket, pending, cids, cdiffs, components)
@@ -702,8 +702,9 @@ defmodule Phoenix.LiveView.Diff do
          {pending, diffs, components}
        ) do
     diffs = maybe_put_events(diffs, socket)
-    acc = render_component(socket, component, id, cid, new?, pending, cids, diffs, components)
-    zip_components(sockets, metadata, component, cids, acc)
+    {new_pending, diffs, compnents} = render_component(socket, component, id, cid, new?, cids, diffs, components)
+    pending = Map.merge(pending, new_pending, fn _, v1, v2 -> v2 ++ v1 end)
+    zip_components(sockets, metadata, component, cids, {pending, diffs, compnents})
   end
 
   defp zip_components([], [], _component, _cids, acc) do
@@ -751,7 +752,7 @@ defmodule Phoenix.LiveView.Diff do
             "as the list of assigns given, got: #{inspect(preloaded)}"
   end
 
-  defp render_component(socket, component, id, cid, new?, pending, cids, diffs, components) do
+  defp render_component(socket, component, id, cid, new?, cids, diffs, components) do
     changed? = new? or Utils.changed?(socket)
 
     {socket, pending, diff, {cid_to_component, id_to_cid, uuids}} =
@@ -761,27 +762,25 @@ defmodule Phoenix.LiveView.Diff do
         {changed?, linked_cid, prints} =
           maybe_reuse_static(rendered, socket, component, cids, components)
 
-        {diff, component_prints, my_pending, components, nil} =
+        {diff, component_prints, pending, components, nil} =
           traverse(socket, rendered, prints, %{}, components, nil, changed?)
 
-        my_children_cids =
-          for {_component, list} <- my_pending,
+        children_cids =
+          for {_component, list} <- pending,
               entry <- list,
               do: elem(entry, 0)
-
-        pending = Map.merge(pending, my_pending, fn _, v1, v2 -> v2 ++ v1 end)
 
         diff = if linked_cid, do: Map.put(diff, @static, linked_cid), else: diff
 
         socket =
-          put_in(socket.private.children_cids, my_children_cids)
+          put_in(socket.private.children_cids, children_cids)
           |> Map.replace!(:fingerprints, component_prints)
           |> Lifecycle.after_render()
           |> Utils.clear_changed()
 
         {socket, pending, diff, components}
       else
-        {socket, pending, %{}, components}
+        {socket, %{}, %{}, components}
       end
 
     diffs =
