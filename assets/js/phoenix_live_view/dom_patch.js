@@ -126,9 +126,7 @@ export default class DOMPatch {
           this.liveSocket.owner(el, (view) => {
             if(view === this.view){
               Array.from(el.children).forEach(child => {
-                if(!this.streamInserts[child.id]){
-                  this.removeStreamChildElement(child)
-                }
+                this.removeStreamChildElement(child)
               })
             }
           })
