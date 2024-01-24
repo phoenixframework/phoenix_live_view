@@ -502,6 +502,11 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
     {:ok, cancel_async(socket, socket.assigns.lc_data)}
   end
 
+  def update(%{action: :assign_async_reset, reset: reset}, socket) do
+    fun = fn -> Process.sleep(50); {:ok, %{lc_data: 456}} end
+    {:ok, assign_async(socket, :lc_data, fun, reset: reset)}
+  end
+
   def update(%{action: :renew_canceled}, socket) do
     {:ok,
      assign_async(socket, :lc_data, fn ->

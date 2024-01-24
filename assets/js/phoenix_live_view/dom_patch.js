@@ -121,8 +121,16 @@ export default class DOMPatch {
       // clear stream items from the dead render if they are not inserted again
       if(isJoinPatch){
         DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
-          Array.from(el.children).forEach(child => {
-            this.removeStreamChildElement(child)
+          // make sure to only remove elements owned by the current view
+          // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
+          this.liveSocket.owner(el, (view) => {
+            if(view === this.view){
+              Array.from(el.children).forEach(child => {
+                if(!this.streamInserts[child.id]){
+                  this.removeStreamChildElement(child)
+                }
+              })
+            }
           })
         })
       }

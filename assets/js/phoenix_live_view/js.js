@@ -113,6 +113,24 @@ let JS = {
     this.toggleClasses(el, names, transition, view)
   },
 
+  exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val1, val2]}){
+    if(el.hasAttribute(attr)){
+      if(val2 !== undefined){
+        // toggle between val1 and val2
+        if(el.getAttribute(attr) === val1){
+          this.setOrRemoveAttrs(el, [[attr, val2]], [])
+        } else {
+          this.setOrRemoveAttrs(el, [[attr, val1]], [])
+        }
+      } else {
+        // remove attr
+        this.setOrRemoveAttrs(el, [], [attr])
+      }
+    } else {
+      this.setOrRemoveAttrs(el, [[attr, val1]], [])
+    }
+  },
+
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition}){
     this.addOrRemoveClasses(el, [], [], transition, time, view)
   },
@@ -245,9 +263,9 @@ let JS = {
   setOrRemoveAttrs(el, sets, removes){
     let [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
 
-    let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
-    let newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
-    let newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
+    let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes)
+    let newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets)
+    let newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes)
 
     DOM.putSticky(el, "attrs", currentEl => {
       newRemoves.forEach(attr => currentEl.removeAttribute(attr))

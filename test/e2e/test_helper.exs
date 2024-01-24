@@ -60,13 +60,23 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
 
       live "/upload", Phoenix.LiveViewTest.E2E.UploadLive
       live "/form", Phoenix.LiveViewTest.E2E.FormLive
+      live "/js", Phoenix.LiveViewTest.E2E.JsLive
     end
 
     scope "/issues" do
       pipe_through(:browser)
 
       live "/3026", Phoenix.LiveViewTest.E2E.Issue3026Live
+      live "/3040", Phoenix.LiveViewTest.E2E.Issue3040Live
     end
+  end
+
+  # these routes use a custom layout and therefore cannot be in the live_session
+  scope "/issues" do
+    pipe_through(:browser)
+
+    live "/3047/a", Phoenix.LiveViewTest.E2E.Issue3047ALive
+    live "/3047/b", Phoenix.LiveViewTest.E2E.Issue3047BLive
   end
 end
 
