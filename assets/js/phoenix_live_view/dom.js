@@ -256,7 +256,10 @@ let DOM = {
           })
         }
         if(this.once(el, "bind-debounce")){
-          el.addEventListener("blur", () => this.triggerCycle(el, DEBOUNCE_TRIGGER))
+          el.addEventListener("blur", () => {
+            // always trigger callback on blur
+            callback()
+          })
         }
     }
   },
