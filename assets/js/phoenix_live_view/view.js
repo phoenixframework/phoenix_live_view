@@ -305,7 +305,7 @@ export default class View {
       if(phxStatic){ toEl.setAttribute(PHX_STATIC, phxStatic) }
       // set PHX_ROOT_ID to prevent events from being dispatched to the root view
       // while the child join is still pending
-      fromEl.setAttribute(PHX_ROOT_ID, this.root.id)
+      if(fromEl){ fromEl.setAttribute(PHX_ROOT_ID, this.root.id) }
       return this.joinChild(toEl)
     })
 
