@@ -110,6 +110,35 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv) =~ "lc_data: 123"
     end
 
+    test "keeps previous values when updating async assign", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
+      assert render_async(lv) =~ "lc_data: 123"
+
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+        id: "lc",
+        action: :assign_async_reset,
+        reset: false
+      )
+
+      assert render(lv) =~ "lc_data: 123"
+      assert render_async(lv) =~ "lc_data: 456"
+    end
+
+    test "when using the reset flag", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
+      assert render_async(lv) =~ "lc_data: 123"
+
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+        id: "lc",
+        action: :assign_async_reset,
+        reset: true
+      )
+
+      assert render(lv) =~ "loading"
+      refute render(lv) =~ "lc_data: 123"
+      assert render_async(lv) =~ "lc_data: 456"
+    end
+
     test "raise during execution", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_raise")
 
