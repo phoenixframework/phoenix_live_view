@@ -59,6 +59,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
 
       live "/upload", Phoenix.LiveViewTest.E2E.UploadLive
       live "/form", Phoenix.LiveViewTest.E2E.FormLive
+      live "/js", Phoenix.LiveViewTest.E2E.JsLive
     end
 
     scope "/issues" do

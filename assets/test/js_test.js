@@ -408,7 +408,6 @@ describe("JS", () => {
         <input type="text" name="other" id="other" />
       </form>
       `)
-      let form = document.querySelector("#my-form")
       let input = document.querySelector("#username1")
       let oldPush = view.pushInput.bind(view)
       view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
@@ -440,7 +439,6 @@ describe("JS", () => {
         <input type="text" name="other" id="other" />
       </form>
       `)
-      let form = document.querySelector("#my-form")
       let input = document.querySelector("#username")
       let oldPush = view.pushInput.bind(view)
       view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, opts, callback) => {
@@ -473,7 +471,6 @@ describe("JS", () => {
       </form>
       `)
       let form = document.querySelector("#my-form")
-      let input = document.querySelector("#username")
 
       view.pushWithReply = (refGen, event, payload) => {
         expect(payload).toEqual({"cid": null, "event": "save", "type": "form", "value": "username=&desc="})
@@ -513,7 +510,6 @@ describe("JS", () => {
       <div id="click" phx-value-three="3" phx-click='[["push", {"event": "clicked", "value": {"one": 1, "two": 2}}]]'></div>
       `)
       let click = document.querySelector("#click")
-      let modal = document.getElementById("modal")
 
       view.pushWithReply = (refGenerator, event, payload, onReply) => {
         expect(payload.value).toEqual({"one": 1, "two": 2, "three": "3"})
@@ -587,6 +583,7 @@ describe("JS", () => {
       <div id="set" phx-click='[["set_attr", {"to": "#modal", "attr": ["aria-expanded", "true"]}]]'></div>
       `)
       let set = document.querySelector("#set")
+      let modal = document.querySelector("#modal")
 
       expect(modal.getAttribute("aria-expanded")).toEqual("false")
       JS.exec("click", set.getAttribute("phx-click"), view, set)
@@ -601,6 +598,7 @@ describe("JS", () => {
       `)
       let setFalse = document.querySelector("#set-false")
       let setTrue = document.querySelector("#set-true")
+      let modal = document.querySelector("#modal")
 
       expect(modal.getAttribute("aria-expanded")).toEqual(null)
       JS.exec("click", setFalse.getAttribute("phx-click"), view, setFalse)
@@ -623,6 +621,94 @@ describe("JS", () => {
         done()
       }
       JS.exec("exec", click.getAttribute("phx-click"), view, click)
+    })
+  })
+
+  describe("exec_toggle_attr", () => {
+    test("with defaults", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="toggle" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      `)
+      let modal = document.querySelector("#modal")
+      let toggle = document.querySelector("#toggle")
+
+      expect(modal.getAttribute("open")).toEqual(null)
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(modal.getAttribute("open")).toEqual("true")
+
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(modal.getAttribute("open")).toEqual(null)
+    })
+
+    test("with no selector", () => {
+      let view = setupView(`
+      <div id="toggle" phx-click='[["toggle_attr", {"to": null, "attr": ["open", "true"]}]]'></div>
+      `)
+      let toggle = document.querySelector("#toggle")
+
+      expect(toggle.getAttribute("open")).toEqual(null)
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(toggle.getAttribute("open")).toEqual("true")
+    })
+
+    test("with multiple selector", () => {
+      let view = setupView(`
+      <div id="modal1">modal</div>
+      <div id="modal2" open="true">modal</div>
+      <div id="toggle" phx-click='[["toggle_attr", {"to": "#modal1, #modal2", "attr": ["open", "true"]}]]'></div>
+      `)
+      let modal1 = document.querySelector("#modal1")
+      let modal2 = document.querySelector("#modal2")
+      let toggle = document.querySelector("#toggle")
+
+      expect(modal1.getAttribute("open")).toEqual(null)
+      expect(modal2.getAttribute("open")).toEqual("true")
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(modal1.getAttribute("open")).toEqual("true")
+      expect(modal2.getAttribute("open")).toEqual(null)
+    })
+
+    test("toggling a pre-existing attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal" open="true">modal</div>
+      <div id="toggle" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      `)
+      let toggle = document.querySelector("#toggle")
+      let modal = document.querySelector("#modal")
+
+      expect(modal.getAttribute("open")).toEqual("true")
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(modal.getAttribute("open")).toEqual(null)
+    })
+
+    test("toggling a dynamically added attribute updates its value", () => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <div id="toggle1" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      <div id="toggle2" phx-click='[["toggle_attr", {"to": "#modal", "attr": ["open", "true"]}]]'></div>
+      `)
+      let toggle1 = document.querySelector("#toggle1")
+      let toggle2 = document.querySelector("#toggle2")
+      let modal = document.querySelector("#modal")
+
+      expect(modal.getAttribute("open")).toEqual(null)
+      JS.exec("click", toggle1.getAttribute("phx-click"), view, toggle1)
+      expect(modal.getAttribute("open")).toEqual("true")
+      JS.exec("click", toggle2.getAttribute("phx-click"), view, toggle2)
+      expect(modal.getAttribute("open")).toEqual(null)
+    })
+
+    test("toggling between two values", () => {
+      let view = setupView(`
+      <div id="toggle" phx-click='[["toggle_attr", {"to": null, "attr": ["aria-expanded", "true", "false"]}]]'></div>
+      `)
+      let toggle = document.querySelector("#toggle")
+
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(toggle.getAttribute("aria-expanded")).toEqual("true")
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      expect(toggle.getAttribute("aria-expanded")).toEqual("false")
     })
   })
 
