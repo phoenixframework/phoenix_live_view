@@ -1746,6 +1746,7 @@ defmodule Phoenix.LiveView do
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
     limit = Keyword.get(opts, :limit)
+
     update_stream(socket, name, &LiveStream.insert_item(&1, item, at, limit))
   end
 
@@ -1820,6 +1821,7 @@ defmodule Phoenix.LiveView do
 
       %{} ->
         config = get_in(streams, [:__configured__, name]) || []
+        opts = Keyword.merge(opts, config)
 
         ref =
           if cid = socket.assigns[:myself] do
@@ -1828,7 +1830,7 @@ defmodule Phoenix.LiveView do
             to_string(streams.__ref__)
           end
 
-        stream = LiveStream.new(name, ref, items, config)
+        stream = LiveStream.new(name, ref, items, opts)
 
         socket
         |> Phoenix.Component.update(:streams, fn streams ->

@@ -336,6 +336,184 @@ defmodule Phoenix.LiveView.StreamTest do
            end) =~ ~r/streams can only be consumed directly by a for comprehension/
   end
 
+  describe "limit" do
+    test "limit is enforced on mount, but not dead render", %{conn: conn} do
+      conn = get(conn, "/stream/limit")
+      assert html_response(conn, 200) |> ids_in_ul_list() == [
+               "items-1",
+               "items-2",
+               "items-3",
+               "items-4",
+               "items-5",
+               "items-6",
+               "items-7",
+               "items-8",
+               "items-9",
+               "items-10"
+            ]
+
+      {:ok, _lv, html} = live(conn)
+
+      assert ids_in_ul_list(html) == [
+        "items-6",
+        "items-7",
+        "items-8",
+        "items-9",
+        "items-10"
+      ]
+    end
+
+    test "removes item at front when appending and limit is negative", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/stream/limit")
+
+      assert lv |> render_hook("configure", %{"at" => "-1", "limit" => "-5"}) |> ids_in_ul_list()== [
+        "items-6",
+        "items-7",
+        "items-8",
+        "items-9",
+        "items-10"
+      ]
+
+      assert lv |> render_hook("insert_1") |> ids_in_ul_list()== [
+        "items-7",
+        "items-8",
+        "items-9",
+        "items-10",
+        "items-11"
+      ]
+
+      assert lv |> render_hook("insert_10") |> ids_in_ul_list()== [
+        "items-17",
+        "items-18",
+        "items-19",
+        "items-20",
+        "items-21"
+      ]
+    end
+
+    test "removes item at back when prepending and limit is positive", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/stream/limit")
+
+      assert lv |> render_hook("configure", %{"at" => "0", "limit" => "5"}) |> ids_in_ul_list() == [
+        "items-10",
+        "items-9",
+        "items-8",
+        "items-7",
+        "items-6"
+      ]
+
+      assert lv |> render_hook("insert_1") |> ids_in_ul_list()== [
+        "items-11",
+        "items-10",
+        "items-9",
+        "items-8",
+        "items-7"
+      ]
+
+      assert lv |> render_hook("insert_10") |> ids_in_ul_list()== [
+        "items-21",
+        "items-20",
+        "items-19",
+        "items-18",
+        "items-17"
+      ]
+    end
+
+    test "does nothing if appending and positive limit is reached", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/stream/limit")
+
+      assert lv |> render_hook("configure", %{"at" => "-1", "limit" => "5"}) |> ids_in_ul_list() == [
+        "items-1",
+        "items-2",
+        "items-3",
+        "items-4",
+        "items-5"
+      ]
+
+      # adding new items should do nothing, as the limit is reached
+      assert lv |> render_hook("insert_1") |> ids_in_ul_list()== [
+        "items-1",
+        "items-2",
+        "items-3",
+        "items-4",
+        "items-5"
+      ]
+
+      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
+        "items-1",
+        "items-2",
+        "items-3",
+        "items-4",
+        "items-5"
+      ]
+    end
+
+    test "does nothing if prepending and negative limit is reached", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/stream/limit")
+
+      assert lv |> render_hook("configure", %{"at" => "0", "limit" => "-5"}) |> ids_in_ul_list() == [
+        "items-5",
+        "items-4",
+        "items-3",
+        "items-2",
+        "items-1"
+      ]
+
+      # adding new items should do nothing, as the limit is reached
+      assert lv |> render_hook("insert_1") |> ids_in_ul_list()== [
+        "items-5",
+        "items-4",
+        "items-3",
+        "items-2",
+        "items-1"
+      ]
+
+      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
+        "items-5",
+        "items-4",
+        "items-3",
+        "items-2",
+        "items-1"
+      ]
+    end
+
+    test "arbitrary index", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/stream/limit")
+
+      assert lv |> render_hook("configure", %{"at" => "1", "limit" => "5"}) |> ids_in_ul_list() == [
+        "items-1",
+        "items-10",
+        "items-9",
+        "items-8",
+        "items-7"
+      ]
+
+      assert lv |> render_hook("insert_10") |> ids_in_ul_list()== [
+        "items-1",
+        "items-20",
+        "items-19",
+        "items-18",
+        "items-17"
+      ]
+
+      assert lv |> render_hook("configure", %{"at" => "1", "limit" => "-5"}) |> ids_in_ul_list() == [
+        "items-10",
+        "items-5",
+        "items-4",
+        "items-3",
+        "items-2"
+      ]
+
+      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
+        "items-20",
+        "items-5",
+        "items-4",
+        "items-3",
+        "items-2"
+      ]
+    end
+  end
+
   defp assert_pruned_stream(lv) do
     stream = StreamLive.run(lv, fn socket -> {:reply, socket.assigns.streams.users, socket} end)
     assert stream.inserts == []

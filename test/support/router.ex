@@ -126,6 +126,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/stream", StreamLive
     live "/stream/reset", StreamResetLive
     live "/stream/reset-lc", StreamResetLCLive
+    live "/stream/limit", StreamLimitLive
 
     # healthy
     live "/healthy/:category", HealthyLive
