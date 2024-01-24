@@ -36,13 +36,15 @@ defmodule Phoenix.LiveView.Async do
       end
     end
 
+    reset = Keyword.get(opts, :reset, false)
+
     new_assigns =
       Enum.map(keys, fn key ->
-        case socket.assigns do
-          %{^key => %AsyncResult{ok?: true} = existing} ->
+        case {reset, socket.assigns} do
+          {false, %{^key => %AsyncResult{ok?: true} = existing}} ->
             {key, AsyncResult.loading(existing, keys)}
 
-          %{} ->
+          _ ->
             {key, AsyncResult.loading(keys)}
         end
       end)
