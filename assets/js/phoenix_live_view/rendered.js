@@ -303,6 +303,8 @@ export default class Rendered {
     let prevBuffer = output.buffer
     if(isRoot){ output.buffer = "" }
 
+    // this condition is called when first rendering an optimizable function component.
+    // LC have their magicId previously set
     if(changeTracking && isRoot && !rendered.magicId){
       rendered.newRender = true
       rendered.magicId = this.nextMagicID()
@@ -321,8 +323,12 @@ export default class Rendered {
     if(isRoot){
       let skip = false
       let attrs
-      if(changeTracking || Object.keys(rootAttrs).length > 0){
-        skip = !rendered.newRender
+      // when a LC is added on the page, we need to re-render the entire LC tree,
+      // therefore changeTracking is false; however, we need to keep all the magicIds
+      // from any function component so the next time the LC is updated, we can apply
+      // the skip optimization
+      if(changeTracking || rendered.magicId){
+        skip = changeTracking && !rendered.newRender
         attrs = {[PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs}
       } else {
         attrs = rootAttrs

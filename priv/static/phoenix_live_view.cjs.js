@@ -509,7 +509,9 @@ var DOM = {
           });
         }
         if (this.once(el, "bind-debounce")) {
-          el.addEventListener("blur", () => this.triggerCycle(el, DEBOUNCE_TRIGGER));
+          el.addEventListener("blur", () => {
+            callback();
+          });
         }
     }
   },
@@ -1817,6 +1819,7 @@ var DOMPatch = class {
     this.html = html;
     this.streams = streams;
     this.streamInserts = {};
+    this.streamComponentRestore = {};
     this.targetCID = targetCID;
     this.cidPatch = isCid(this.targetCID);
     this.pendingRemoves = [];
@@ -1879,9 +1882,7 @@ var DOMPatch = class {
         });
         if (reset !== void 0) {
           dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
-            if (!this.streamInserts[child.id]) {
-              this.removeStreamChildElement(child);
-            }
+            this.removeStreamChildElement(child);
           });
         }
         deleteIds.forEach((id) => {
@@ -1893,9 +1894,11 @@ var DOMPatch = class {
       });
       if (isJoinPatch) {
         dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => {
-          Array.from(el.children).forEach((child) => {
-            if (!this.streamInserts[child.id]) {
-              this.removeStreamChildElement(child);
+          this.liveSocket.owner(el, (view2) => {
+            if (view2 === this.view) {
+              Array.from(el.children).forEach((child) => {
+                this.removeStreamChildElement(child);
+              });
             }
           });
         });
@@ -1915,11 +1918,18 @@ var DOMPatch = class {
           return from.getAttribute(phxUpdate) === PHX_STREAM;
         },
         addChild: (parent, child) => {
-          let { ref, streamAt, limit } = this.getStreamInsert(child);
+          let { ref, streamAt } = this.getStreamInsert(child);
           if (ref === void 0) {
             return parent.appendChild(child);
           }
           dom_default.putSticky(child, PHX_STREAM_REF, (el) => el.setAttribute(PHX_STREAM_REF, ref));
+          if (child.getAttribute(PHX_COMPONENT)) {
+            if (child.getAttribute(PHX_SKIP) !== null) {
+              child = this.streamComponentRestore[child.id];
+            } else {
+              delete this.streamComponentRestore[child.id];
+            }
+          }
           if (streamAt === 0) {
             parent.insertAdjacentElement("afterbegin", child);
           } else if (streamAt === -1) {
@@ -1928,18 +1938,6 @@ var DOMPatch = class {
             let sibling = Array.from(parent.children)[streamAt];
             parent.insertBefore(child, sibling);
           }
-          let children = limit !== null && Array.from(parent.children);
-          let childrenToRemove = [];
-          if (limit && limit < 0 && children.length > limit * -1) {
-            childrenToRemove = children.slice(0, children.length + limit);
-          } else if (limit && limit >= 0 && children.length > limit) {
-            childrenToRemove = children.slice(limit);
-          }
-          childrenToRemove.forEach((removeChild) => {
-            if (!this.streamInserts[removeChild.id]) {
-              this.removeStreamChildElement(removeChild);
-            }
-          });
         },
         onBeforeNodeAdded: (el) => {
           dom_default.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom);
@@ -1965,16 +1963,6 @@ var DOMPatch = class {
             this.trackAfter("phxChildAdded", el);
           }
           added.push(el);
-        },
-        onBeforeElChildrenUpdated: (fromEl, toEl) => {
-          if (fromEl.getAttribute(phxUpdate) === PHX_STREAM) {
-            Array.from(toEl.children).forEach((child, idx) => {
-              let insert = this.streamInserts[child.id];
-              if (insert && insert.reset) {
-                insert.streamAt = idx;
-              }
-            });
-          }
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
@@ -2102,6 +2090,9 @@ var DOMPatch = class {
   }
   removeStreamChildElement(child) {
     if (!this.maybePendingRemove(child)) {
+      if (child.getAttribute(PHX_COMPONENT) && this.streamInserts[child.id]) {
+        this.streamComponentRestore[child.id] = child;
+      }
       child.remove();
       this.onNodeDiscarded(child);
     }
@@ -2111,7 +2102,7 @@ var DOMPatch = class {
     return insert || {};
   }
   maybeReOrderStream(el, isNew) {
-    let { ref, streamAt, limit } = this.getStreamInsert(el);
+    let { ref, streamAt } = this.getStreamInsert(el);
     if (streamAt === void 0 || streamAt === 0 && !isNew) {
       return;
     }
@@ -2131,6 +2122,16 @@ var DOMPatch = class {
           el.parentElement.insertBefore(el, sibling.nextElementSibling);
         }
       }
+    }
+    this.maybeLimitStream(el);
+  }
+  maybeLimitStream(el) {
+    let { limit } = this.getStreamInsert(el);
+    let children = limit !== null && Array.from(el.parentElement.children);
+    if (limit && limit < 0 && children.length > limit * -1) {
+      children.slice(0, children.length + limit).forEach((child) => this.removeStreamChildElement(child));
+    } else if (limit && limit >= 0 && children.length > limit) {
+      children.slice(limit).forEach((child) => this.removeStreamChildElement(child));
     }
   }
   transitionPendingRemoves() {
@@ -2315,7 +2316,9 @@ var Rendered = class {
     return diff[COMPONENTS][cid];
   }
   resetRender(cid) {
-    this.rendered[COMPONENTS][cid].reset = true;
+    if (this.rendered[COMPONENTS][cid]) {
+      this.rendered[COMPONENTS][cid].reset = true;
+    }
   }
   mergeDiff(diff) {
     let newc = diff[COMPONENTS];
@@ -2444,8 +2447,8 @@ var Rendered = class {
     if (isRoot) {
       let skip = false;
       let attrs;
-      if (changeTracking || Object.keys(rootAttrs).length > 0) {
-        skip = !rendered.newRender;
+      if (changeTracking || rendered.magicId) {
+        skip = changeTracking && !rendered.newRender;
         attrs = { [PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs };
       } else {
         attrs = rootAttrs;
@@ -2673,6 +2676,21 @@ var JS = {
   exec_toggle_class(eventType, phxEvent, view, sourceEl, el, { to, names, transition, time }) {
     this.toggleClasses(el, names, transition, view);
   },
+  exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
+    if (el.hasAttribute(attr)) {
+      if (val2 !== void 0) {
+        if (el.getAttribute(attr) === val1) {
+          this.setOrRemoveAttrs(el, [[attr, val2]], []);
+        } else {
+          this.setOrRemoveAttrs(el, [[attr, val1]], []);
+        }
+      } else {
+        this.setOrRemoveAttrs(el, [], [attr]);
+      }
+    } else {
+      this.setOrRemoveAttrs(el, [[attr, val1]], []);
+    }
+  },
   exec_transition(eventType, phxEvent, view, sourceEl, el, { time, transition }) {
     this.addOrRemoveClasses(el, [], [], transition, time, view);
   },
@@ -2853,7 +2871,7 @@ var View = class {
     this.childJoins = 0;
     this.loaderTimer = null;
     this.pendingDiffs = [];
-    this.pruningCIDsClock = 0;
+    this.pruningCIDs = [];
     this.redirect = false;
     this.href = null;
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
@@ -3038,7 +3056,9 @@ var View = class {
       if (phxStatic) {
         toEl.setAttribute(PHX_STATIC, phxStatic);
       }
-      fromEl.setAttribute(PHX_ROOT_ID, this.root.id);
+      if (fromEl) {
+        fromEl.setAttribute(PHX_ROOT_ID, this.root.id);
+      }
       return this.joinChild(toEl);
     });
     if (newChildren.length === 0) {
@@ -3259,7 +3279,7 @@ var View = class {
   renderContainer(diff, kind) {
     return this.liveSocket.time(`toString diff (${kind})`, () => {
       let tag = this.el.tagName;
-      let cids = diff && this.pruningCIDsClock === 0 ? this.rendered.componentCIDs(diff) : null;
+      let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null;
       let [html, streams] = this.rendered.toString(cids);
       return [`<${tag}>${html}</${tag}>`, streams];
     });
@@ -3878,12 +3898,11 @@ var View = class {
     }).filter(([form, newForm, newCid]) => newForm);
   }
   maybePushComponentsDestroyed(destroyedCIDs) {
-    let willDestroyCIDs = destroyedCIDs.filter((cid) => {
+    let willDestroyCIDs = destroyedCIDs.concat(this.pruningCIDs).filter((cid) => {
       return dom_default.findComponentNodeList(this.el, cid).length === 0;
     });
+    this.pruningCIDs = willDestroyCIDs.concat([]);
     if (willDestroyCIDs.length > 0) {
-      this.pruningCIDsClock++;
-      let pruningCIDsWas = this.pruningCIDsClock;
       willDestroyCIDs.forEach((cid) => this.rendered.resetRender(cid));
       this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }, () => {
         let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
@@ -3891,9 +3910,7 @@ var View = class {
         });
         if (completelyDestroyCIDs.length > 0) {
           this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }, (resp) => {
-            if (pruningCIDsWas === this.pruningCIDsClock) {
-              this.pruningCIDsClock = 0;
-            }
+            this.pruningCIDs = this.pruningCIDs.filter((cid) => resp.cids.indexOf(cid) === -1);
             this.rendered.pruneCIDs(resp.cids);
           });
         }
@@ -4444,6 +4461,8 @@ var LiveSocket = class {
       if (capture) {
         target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`);
       } else {
+        if (e.detail === 0)
+          this.clickStartedAtTarget = e.target;
         let clickStartedAtTarget = this.clickStartedAtTarget || e.target;
         target = closestPhxBinding(clickStartedAtTarget, click);
         this.dispatchClickAway(e, clickStartedAtTarget);
