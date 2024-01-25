@@ -8,7 +8,19 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
     {:ok,
      socket
      |> assign(:uploaded_files, [])
+     |> assign(:auto_upload, false)
      |> allow_upload(:avatar, accept: ~w(.txt .md), max_entries: 2)}
+  end
+
+  @impl Phoenix.LiveView
+  def handle_params(%{"auto_upload" => _}, _uri, socket) do
+    socket
+    |> allow_upload(:avatar, accept: ~w(.txt .md), max_entries: 2, auto_upload: true)
+    |> then(&{:noreply, &1})
+  end
+
+  def handle_params(_params, _uri, socket) do
+    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
