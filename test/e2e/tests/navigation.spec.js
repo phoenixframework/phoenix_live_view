@@ -201,6 +201,11 @@ test("restores scroll position on custom container after navigation", async ({ p
   await expect(await page.locator("#my-scroll-container").evaluate((el) => el.scrollTop)).toEqual(0);
   await page.locator("#my-scroll-container").evaluate((el) => el.scrollTo(0, 1000));
 
+  // in CI, the scrolled position is not always equal to 1000
+  // I'm not sure why. Instead, we store the value before the navigation
+  // to compare it later.
+  const scrollTopBefore = await page.locator("#my-scroll-container").evaluate((el) => el.scrollTop);
+
   await page.getByRole("link", { name: "Item 42" }).click();
   await syncLV(page);
 
@@ -208,13 +213,10 @@ test("restores scroll position on custom container after navigation", async ({ p
   await syncLV(page);
 
   // scroll position is restored
-  await expect(async () => {
-    // in CI the scrolled value is somehow 1007 and not 1000
-    // I'm not sure why, but it's consistent, so we just check for a range
-    const position = await page.locator("#my-scroll-container").evaluate((el) => el.scrollTop)
-    expect(position).toBeGreaterThanOrEqual(990);
-    expect(position).toBeLessThanOrEqual(1010);
-  },
+  await expect.poll(
+    async () => {
+      return await page.locator("#my-scroll-container").evaluate((el) => el.scrollTop);
+    },
     { message: 'scrollTop not restored', timeout: 5000 }
-  ).toPass();
+  ).toBe(scrollTopBefore);
 });
