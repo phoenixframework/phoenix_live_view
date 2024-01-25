@@ -391,6 +391,9 @@ let DOM = {
     }
   },
 
+  // merge attributes from source to target
+  // if an element is ignored, we only merge data attributes
+  // including removing data attributes that are no longer in the source
   mergeAttrs(target, source, opts = {}){
     let exclude = new Set(opts.exclude || [])
     let isIgnored = opts.isIgnored
@@ -399,7 +402,7 @@ let DOM = {
       let name = sourceAttrs[i].name
       if(!exclude.has(name)){
         const sourceValue = source.getAttribute(name)
-        if(target.getAttribute(name) !== sourceValue){
+        if(target.getAttribute(name) !== sourceValue && (!isIgnored || (isIgnored && name.startsWith("data-")))){
           target.setAttribute(name, sourceValue)
         }
       }

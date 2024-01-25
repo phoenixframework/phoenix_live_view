@@ -19,8 +19,7 @@ element with the new content. See `Phoenix.LiveView.stream/3` for more
 information.
 
 The "ignore" behaviour is frequently used when you need to integrate
-with another JS library. Note only the element contents are ignored,
-its attributes can still be updated.
+with another JS library. Updates from the server to the element's content and attributes are ignored, *except for data attributes*. Changes, additions, and removals from the server to data attributes are merged with the ignored element which can be used to pass data to the JS handler.
 
 To react to elements being mounted to the DOM, the `phx-mounted` binding
 can be used. For example, to animate an element on mount:
