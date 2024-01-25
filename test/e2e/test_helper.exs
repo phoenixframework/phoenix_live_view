@@ -26,10 +26,12 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
 
   def render("live.html", assigns) do
     ~H"""
+    <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script src="/assets/phoenix/phoenix.min.js"></script>
     <script src="/assets/phoenix_live_view/phoenix_live_view.js"></script>
     <script>
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket)
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
       window.liveSocket = liveSocket
     </script>
@@ -46,7 +48,9 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
   import Phoenix.LiveView.Router
 
   pipeline :browser do
-    plug(:accepts, ["html"])
+    plug :accepts, ["html"]
+    plug :fetch_session
+    plug :protect_from_forgery
   end
 
   live_session :default, layout: {Phoenix.LiveViewTest.E2E.Layout, :live} do
@@ -76,6 +80,16 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     end
   end
 
+  live_session :navigation, layout: {Phoenix.LiveViewTest.E2E.Navigation.Layout, :live} do
+    scope "/navigation" do
+      pipe_through(:browser)
+
+      live "/a", Phoenix.LiveViewTest.E2E.Navigation.ALive
+      live "/b", Phoenix.LiveViewTest.E2E.Navigation.BLive, :index
+      live "/b/:id", Phoenix.LiveViewTest.E2E.Navigation.BLive, :show
+    end
+  end
+
   # these routes use a custom layout and therefore cannot be in the live_session
   scope "/issues" do
     pipe_through(:browser)
@@ -88,7 +102,14 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix_live_view
 
-  socket("/live", Phoenix.LiveView.Socket)
+  @session_options [
+    store: :cookie,
+    key: "_lv_e2e_key",
+    signing_salt: "1gk/d8ms",
+    same_site: "Lax"
+  ]
+
+  socket "/live", Phoenix.LiveView.Socket, websocket: [connect_info: [session: @session_options]]
 
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
@@ -101,6 +122,7 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
     pass: ["*/*"],
     json_decoder: Phoenix.json_library()
 
+  plug Plug.Session, @session_options
   plug Phoenix.LiveViewTest.E2E.Router
 
   defp health_check(%{request_path: "/health"} = conn, _opts) do
