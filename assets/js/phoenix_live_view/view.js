@@ -1044,8 +1044,12 @@ export default class View {
         if(numFileInputsInProgress === 0){ onComplete() }
       });
 
-      this.uploaders[inputEl] = uploader
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
+
+      if (entries.length === 0) {
+        numFileInputsInProgress--
+        return
+      }
 
       let payload = {
         ref: inputEl.getAttribute(PHX_UPLOAD_REF),
