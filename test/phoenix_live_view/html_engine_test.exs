@@ -1738,7 +1738,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on unsupported special attrs" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":let\" in tags
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute :let in tags
         |
       1 | <div :let={@user}>Content</div>
         |      ^\
@@ -1751,7 +1751,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":foo\" in tags
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute :foo in tags
         |
       1 | <div :foo=\"something\" />
         |      ^\
@@ -1854,6 +1854,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("""
         <div :for="1">Content</div>
+        """)
+      end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:7: :for must be an expression between {...}
+        |
+      1 | <.div :for=\"1\">Content</.div>
+        |       ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.div :for="1">Content</.div>
         """)
       end)
     end

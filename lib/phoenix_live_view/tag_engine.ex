@@ -758,10 +758,14 @@ defmodule Phoenix.LiveView.TagEngine do
         |> List.keytake(string_attr, 0)
         |> raise_if_duplicated_special_attr!(state)
         |> case do
-          {{^string_attr, expr, meta}, attrs} ->
+          {{^string_attr, {:expr, _, _} = expr, meta}, attrs} ->
             parsed_expr = parse_expr!(expr, state.file)
             validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
             {true, Map.put(meta_acc, attr, parsed_expr), attrs}
+
+          {{^string_attr, _expr, meta}, _attrs} ->
+            message = "#{string_attr} must be an expression between {...}"
+            raise_syntax_error!(message, meta, state)
 
           nil ->
             {special_acc, meta_acc, attrs_acc}
@@ -1411,8 +1415,9 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp validate_phx_attrs!([{":" <> _ = name, _, attr_meta} | _], _meta, state, _attr, _id?) do
-    message = "unsupported attribute #{inspect(name)} in tags"
+  defp validate_phx_attrs!([{":" <> name, _, attr_meta} | _], _meta, state, _attr, _id?)
+       when name not in ~w(if for) do
+    message = "unsupported attribute :#{name} in tags"
     raise_syntax_error!(message, attr_meta, state)
   end
 

@@ -473,6 +473,10 @@ defmodule Phoenix.LiveView.Tokenizer do
     handle_attr_name(rest, column + 1, [char_or_bin(c) | buffer])
   end
 
+  defp handle_attr_name(<<>>, column, _buffer) do
+    {:error, "unexpected end of string inside tag", column}
+  end
+
   ## handle_maybe_attr_value
 
   defp handle_maybe_attr_value("\r\n" <> rest, line, _column, acc, state) do

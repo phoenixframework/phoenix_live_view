@@ -281,6 +281,19 @@ defmodule Phoenix.LiveView.TokenizerTest do
       assert [{"class", {:string, "panel", %{}}, %{}}] = attrs
     end
 
+    test "raise on incomplete attribute" do
+      message = """
+      nofile:1:11: unexpected end of string inside tag
+        |
+      1 | <div class
+        |           ^\
+      """
+
+      assert_raise ParseError, message, fn ->
+        tokenize("<div class")
+      end
+    end
+
     test "raise on missing value" do
       message = """
       nofile:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
@@ -813,13 +826,19 @@ defmodule Phoenix.LiveView.TokenizerTest do
              <.live_component module={MyApp.WeatherComponent} id="thermostat" city="Kraków" />
              """) == [
                {:local_component, "live_component",
-                 [
-                   {"module", {:expr, "MyApp.WeatherComponent", %{line: 1, column: 26}}, %{line: 1, column: 18}},
-                   {"id", {:string, "thermostat", %{delimiter: 34}}, %{line: 1, column: 50}},
-                   {"city", {:string, "Kraków", %{delimiter: 34}}, %{line: 1, column: 66}}
-                 ],
-                 %{line: 1, closing: :self, column: 1, tag_name: ".live_component", inner_location: {1, 82}}
-               },
+                [
+                  {"module", {:expr, "MyApp.WeatherComponent", %{line: 1, column: 26}},
+                   %{line: 1, column: 18}},
+                  {"id", {:string, "thermostat", %{delimiter: 34}}, %{line: 1, column: 50}},
+                  {"city", {:string, "Kraków", %{delimiter: 34}}, %{line: 1, column: 66}}
+                ],
+                %{
+                  line: 1,
+                  closing: :self,
+                  column: 1,
+                  tag_name: ".live_component",
+                  inner_location: {1, 82}
+                }},
                {:text, "\n", %{line_end: 2, column_end: 1}}
              ]
     end
@@ -828,9 +847,12 @@ defmodule Phoenix.LiveView.TokenizerTest do
       assert tokenize("""
              <.link href="/">Regular anchor link</.link>
              """) == [
-               {:local_component, "link", [{"href", {:string, "/", %{delimiter: 34}}, %{line: 1, column: 8}}], %{line: 1, column: 1, tag_name: ".link", inner_location: {1, 17}}},
+               {:local_component, "link",
+                [{"href", {:string, "/", %{delimiter: 34}}, %{line: 1, column: 8}}],
+                %{line: 1, column: 1, tag_name: ".link", inner_location: {1, 17}}},
                {:text, "Regular anchor link", %{line_end: 1, column_end: 36}},
-               {:close, :local_component, "link", %{line: 1, column: 36, tag_name: ".link", inner_location: {1, 36}}},
+               {:close, :local_component, "link",
+                %{line: 1, column: 36, tag_name: ".link", inner_location: {1, 36}}},
                {:text, "\n", %{line_end: 2, column_end: 1}}
              ]
     end
@@ -844,8 +866,17 @@ defmodule Phoenix.LiveView.TokenizerTest do
                {
                  :remote_component,
                  "MyAppWeb.CoreComponents.flash",
-                 [{"kind", {:expr, ":info", %{column: 38, line: 1}}, %{column: 32, line: 1}}, {"flash", {:expr, "@flash", %{column: 52, line: 1}}, %{column: 45, line: 1}}],
-                 %{closing: :self, column: 1, inner_location: {1, 62}, line: 1, tag_name: "MyAppWeb.CoreComponents.flash"}
+                 [
+                   {"kind", {:expr, ":info", %{column: 38, line: 1}}, %{column: 32, line: 1}},
+                   {"flash", {:expr, "@flash", %{column: 52, line: 1}}, %{column: 45, line: 1}}
+                 ],
+                 %{
+                   closing: :self,
+                   column: 1,
+                   inner_location: {1, 62},
+                   line: 1,
+                   tag_name: "MyAppWeb.CoreComponents.flash"
+                 }
                },
                {:text, "\n", %{column_end: 1, line_end: 2}}
              ]
@@ -860,11 +891,26 @@ defmodule Phoenix.LiveView.TokenizerTest do
                {
                  :remote_component,
                  "MyAppWeb.CoreComponents.modal",
-                 [{"id", {:string, "confirm", %{delimiter: 34}}, %{line: 1, column: 32}}, {"on_cancel", {:expr, "JS.navigate(~p\"/posts\")", %{line: 1, column: 56}}, %{line: 1, column: 45}}],
-                 %{line: 1, column: 1, tag_name: "MyAppWeb.CoreComponents.modal", inner_location: {1, 81}}
+                 [
+                   {"id", {:string, "confirm", %{delimiter: 34}}, %{line: 1, column: 32}},
+                   {"on_cancel", {:expr, "JS.navigate(~p\"/posts\")", %{line: 1, column: 56}},
+                    %{line: 1, column: 45}}
+                 ],
+                 %{
+                   line: 1,
+                   column: 1,
+                   tag_name: "MyAppWeb.CoreComponents.modal",
+                   inner_location: {1, 81}
+                 }
                },
                {:text, "\n  This is another modal.\n", %{line_end: 3, column_end: 1}},
-               {:close, :remote_component, "MyAppWeb.CoreComponents.modal", %{line: 3, column: 1, tag_name: "MyAppWeb.CoreComponents.modal", inner_location: {3, 1}}},
+               {:close, :remote_component, "MyAppWeb.CoreComponents.modal",
+                %{
+                  line: 3,
+                  column: 1,
+                  tag_name: "MyAppWeb.CoreComponents.modal",
+                  inner_location: {3, 1}
+                }},
                {:text, "\n", %{line_end: 4, column_end: 1}}
              ]
     end

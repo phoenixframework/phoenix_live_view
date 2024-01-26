@@ -466,13 +466,13 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns, caller) do
     with {:for, meta, [gen | args]} <- expr,
+         {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller)
 
       gen_var = Macro.unique_var(:for, __MODULE__)
-      {:<-, gen_meta, [gen_pattern, gen_collection]} = gen
 
       gen_collection =
         quote do
@@ -1315,12 +1315,12 @@ defmodule Phoenix.LiveView.Engine do
   # variables defined in arguments, such as `if var = ... do`.
   # This does not follow Elixir semantics, but yields better
   # optimizations.
-  defp classify_taint(:case, [_, _]), do: :live
-  defp classify_taint(:if, [_, _]), do: :live
-  defp classify_taint(:unless, [_, _]), do: :live
-  defp classify_taint(:cond, [_]), do: :live
-  defp classify_taint(:try, [_]), do: :live
-  defp classify_taint(:receive, [_]), do: :live
+  defp classify_taint(:case, [_, opts]) when is_list(opts), do: :live
+  defp classify_taint(:if, [_, opts]) when is_list(opts), do: :live
+  defp classify_taint(:unless, [_, opts]) when is_list(opts), do: :live
+  defp classify_taint(:cond, [opts]) when is_list(opts), do: :live
+  defp classify_taint(:try, [opts]) when is_list(opts), do: :live
+  defp classify_taint(:receive, [opts]) when is_list(opts), do: :live
 
   # with/for are specially handled during analyze
   defp classify_taint(:with, _), do: :live
