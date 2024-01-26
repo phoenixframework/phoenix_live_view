@@ -70,6 +70,19 @@
  * @param {Object} [opts.localStorage] - An optional Storage compatible object
  * Useful for when LiveView won't have access to `localStorage`.
  * See `opts.sessionStorage` for examples.
+ * 
+ * @param {Object} [opts.navigation] - The optional object for defining navigation guards.
+ * Useful to perform custom logic before navigating away from a LiveView. For example:
+ * 
+ *     navigation: {
+ *       beforeEach(to, from) {
+ *         console.debug(`Navigating to: ${to}; from: ${from}.`)
+ *         // return false to cancel navigation
+ *         if(document.querySelector("form[data-submit-pending]")) {
+ *           return confirm("Do you really want to leave with unsubmitted changes?")
+ *         }
+ *       }
+ *     }
 */
 
 import {
@@ -833,6 +846,18 @@ export default class LiveSocket {
     }
   }
 
+  // Every function that performs a navigation must be wrapped by a call to withNavigationGuard.
+  // This ensures that the user can cancel a navigation or store some state to restore
+  // after navigating.
+  //
+  // withNavigationGuard should be called with the href string that is being navigated to,
+  // the href string that is being navigated from, and a callback that performs the navigation.
+  // A third and optional callback will be invoked in case the navigation is canceled. This
+  // callback is currently only used in the "popstate" case, because when popstate is invoked
+  // the navigation already happened (i.e. an entry from the history is already popped).
+  // Therefore, we push the previous location again, see bindNav for details.
+  //
+  // When the callback is done, it must call `afterNavigation` with the same arguments (to, from).
   withNavigationGuard(to, from, callback, cancel = function(){}){
     // the beforeEach navigation guard can return a promise that must resolve
     // to false in order to cancel the navigation
@@ -847,6 +872,7 @@ export default class LiveSocket {
     })
   }
 
+  // must be called after a navigation was performed, see `withNavigationGuard`.
   afterNavigation(to, from){
     this.navigationCallbacks["afterEach"](to, from)
   }

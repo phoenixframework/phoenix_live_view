@@ -314,4 +314,79 @@ Hooks.Chart = {
 *Note*: remember events pushed from the server via `push_event` are global and will be dispatched
 to all active hooks on the client who are handling that event.
 
-*Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
+*Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invokedafter the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
+
+## Navigation Guards
+
+Sometimes, it is useful to perform an action before a navigation event occurs.
+For instance, you may want to prompt the user to save their work before navigating
+away from a page. The LiveSocket constructor accepts a navigation option with two callbacks:
+
+  * `beforeEach(to, from)` is called before a navigation event occurs.
+    If this callback returns `false`, the navigation event is cancelled.
+    The callback can return a promise, which will be awaited before
+    allowing the navigation to proceed.
+  * `afterEach(to, from)` is called after a navigation event is complete.
+    The return value of this callback is ignored. Its primary use is
+    for restoring state that was stored in `beforeEach`,
+    e.g., restoring the scroll position of custom containers.
+
+For example, the following option could be used to prevent navigating away from a page
+when there is a form with the `data-submit-pending` attribute:
+
+```javascript
+beforeEach(){
+  // prevent navigating when form submit is pending
+  if (document.querySelector("form[data-submit-pending]")) {
+    return confirm("Do you really want to leave with unsubmitted changes?")
+  }
+}
+```
+
+This assumes that you are setting `data-submit-pending` on the form, for example,
+when handling a `phx-change` event.
+
+For this use case, you should also add a [`beforeunload` event listener](https://developer.mozilla.org/en-US/docs/Web/API/Window/beforeunload_event)
+to the window to prevent the page from being closed (which does not trigger a navigation event):
+
+```javascript
+window.onbeforeunload = function(e) {
+  if(document.querySelector("form[data-submit-pending]")){
+    return "Do you really want to leave with unsubmitted changes?"
+  }
+}
+```
+
+Another use case for navigation guards is to store and restore the scroll
+position of custom scrollable containers. By default, LiveView only
+restores the scroll position of the window itself.
+If you have a custom scrollable container, you can use navigation guards like this:
+
+```javascript
+// app.js
+
+let scrollPositions = {}
+
+let liveSocket = new LiveSocket("/live", Socket, {
+  // other options left out
+  // ...
+  navigation: {
+    beforeEach() {
+      Array.from(document.querySelectorAll("[data-restore-scroll]")).forEach(el => {
+        scrollPositions[el.id] = el.scrollTop
+      })
+    },
+    afterEach() {
+      // restore scroll positions
+      Array.from(document.querySelectorAll("[data-restore-scroll]")).forEach(el => {
+        if(scrollPositions[el.id]) {
+          el.scrollTop = scrollPositions[el.id]
+        }
+      })
+    }
+  }
+})
+```
+
+This assumes that all scrollable containers have a `data-restore-scroll` attribute,
+as well as a unique `id`.
