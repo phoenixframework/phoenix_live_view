@@ -133,7 +133,7 @@ defmodule Phoenix.Component do
 
   Multiple function components can be defined in the same module, with different attributes. In the
   following example, `<Components.greet/>` requires a `name`, but *does not* require a `title`, and
-  `<Component.heading>` requires a `title`, but *does not* require a `name`.
+  `<Components.heading>` requires a `title`, but *does not* require a `name`.
 
       defmodule Components do
         # In Phoenix apps, the line is typically: use MyAppWeb, :html
