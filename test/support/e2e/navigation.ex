@@ -268,7 +268,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.CLive do
     <div
       :if={@live_action == :index}
       id="my-scroll-container"
-      style={"#{if @container, do: "height: 85vh; overflow-y: scroll; "}width: 100%; border: 1px solid #e2e8f0; border-radius: 0.375rem;"}
+      style={"#{if @container, do: "height: 85vh; overflow-y: scroll; "}width: 100%; border: 1px solid #e2e8f0; border-radius: 0.375rem; position: relative;"}
     >
       <ul id="items" style="padding: 1rem; list-style: none;" phx-update="stream">
         <%= for {id, item} <- @streams.items do %>

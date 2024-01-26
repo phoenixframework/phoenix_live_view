@@ -173,7 +173,8 @@ test("restores scroll position after navigation", async ({ page }) => {
   await expect(page.locator("#items")).toContainText("Item 42");
 
   await expect(await page.evaluate(() => document.body.scrollTop)).toEqual(0);
-  await page.evaluate(() => window.scrollTo(0, 1200));
+  const offset = (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200;
+  await page.evaluate((offset) => window.scrollTo(0, offset), offset);
   // LiveView only updates the scroll position every 100ms
   await page.waitForTimeout(150);
 
@@ -189,7 +190,7 @@ test("restores scroll position after navigation", async ({ page }) => {
       return await page.evaluate(() => document.body.scrollTop);
     },
     { message: 'scrollTop not restored', timeout: 5000 }
-  ).toBe(1200);
+  ).toBe(offset);
 });
 
 test("restores scroll position on custom container after navigation", async ({ page }) => {
@@ -199,12 +200,8 @@ test("restores scroll position on custom container after navigation", async ({ p
   await expect(page.locator("#items")).toContainText("Item 42");
 
   await expect(await page.locator("#my-scroll-container").evaluate((el) => el.scrollTop)).toEqual(0);
-  await page.locator("#my-scroll-container").evaluate((el) => el.scrollTo(0, 1000));
-
-  // in CI, the scrolled position is not always equal to 1000
-  // I'm not sure why. Instead, we store the value before the navigation
-  // to compare it later.
-  const scrollTopBefore = await page.locator("#my-scroll-container").evaluate((el) => el.scrollTop);
+  const offset = (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200;
+  await page.locator("#my-scroll-container").evaluate((el, offset) => el.scrollTo(0, offset), offset);
 
   await page.getByRole("link", { name: "Item 42" }).click();
   await syncLV(page);
@@ -218,5 +215,5 @@ test("restores scroll position on custom container after navigation", async ({ p
       return await page.locator("#my-scroll-container").evaluate((el) => el.scrollTop);
     },
     { message: 'scrollTop not restored', timeout: 5000 }
-  ).toBe(scrollTopBefore);
+  ).toBe(offset);
 });
