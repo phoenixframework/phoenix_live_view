@@ -2,6 +2,7 @@ import DOM from "./dom"
 import ARIA from "./aria"
 
 let focusStack = null
+let default_transition_time = 200
 
 let JS = {
   exec(eventType, phxEvent, view, sourceEl, defaults){
@@ -170,6 +171,7 @@ let JS = {
   },
 
   toggle(eventType, view, el, display, ins, outs, time){
+    time = time || default_transition_time
     let [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []]
     let [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []]
     if(inClasses.length > 0 || outClasses.length > 0){
@@ -232,6 +234,7 @@ let JS = {
   },
 
   addOrRemoveClasses(el, adds, removes, transition, time, view){
+    time = time || default_transition_time
     let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []]
     if(transitionRun.length > 0){
       let onStart = () => {

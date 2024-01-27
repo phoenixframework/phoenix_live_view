@@ -307,7 +307,7 @@ defmodule Phoenix.LiveView.JS do
     opts = validate_keys(opts, :toggle, [:to, :in, :out, :display, :time])
     in_classes = transition_class_names(opts[:in])
     out_classes = transition_class_names(opts[:out])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
     put_op(js, "toggle", %{
       to: opts[:to],
@@ -358,7 +358,7 @@ defmodule Phoenix.LiveView.JS do
   def show(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :show, [:to, :transition, :display, :time])
     transition = transition_class_names(opts[:transition])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
     put_op(js, "show", %{
       to: opts[:to],
@@ -407,7 +407,7 @@ defmodule Phoenix.LiveView.JS do
   def hide(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :hide, [:to, :transition, :time])
     transition = transition_class_names(opts[:transition])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
     put_op(js, "hide", %{
       to: opts[:to],
@@ -453,7 +453,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `add_class/1`."
   def add_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :add_class, [:to, :transition, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
     put_op(js, "add_class", %{
       to: opts[:to],
@@ -498,7 +498,7 @@ defmodule Phoenix.LiveView.JS do
 
   def toggle_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :toggle_class, [:to, :transition, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
     put_op(js, "toggle_class", %{
       to: opts[:to],
@@ -545,7 +545,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `remove_class/1`."
   def remove_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :remove_class, [:to, :transition, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
     put_op(js, "remove_class", %{
       to: opts[:to],
@@ -596,7 +596,7 @@ defmodule Phoenix.LiveView.JS do
   def transition(%JS{} = js, transition, opts)
       when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
     opts = validate_keys(opts, :transition, [:to, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
     put_op(js, "transition", %{
       time: time,
@@ -889,8 +889,16 @@ defmodule Phoenix.LiveView.JS do
   end
 
   defp put_op(%JS{ops: ops} = js, kind, args) do
+    args = drop_nil_values(args)
     %JS{js | ops: ops ++ [[kind, args]]}
   end
+
+  defp drop_nil_values(args) when is_map(args) do
+    Enum.reject(args, fn {_k, v} -> is_nil(v) end)
+    |> Map.new()
+  end
+
+  defp drop_nil_values(args), do: args
 
   defp class_names(nil), do: []
 
@@ -898,7 +906,7 @@ defmodule Phoenix.LiveView.JS do
     String.split(names, " ")
   end
 
-  defp transition_class_names(nil), do: [[], [], []]
+  defp transition_class_names(nil), do: nil
 
   defp transition_class_names(transition) when is_binary(transition),
     do: [class_names(transition), [], []]
