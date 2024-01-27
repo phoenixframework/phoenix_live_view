@@ -5,8 +5,11 @@ defmodule Phoenix.LiveView.JSTest do
 
   describe "exec" do
     test "with defaults" do
-      assert JS.exec("phx-remove") == %JS{ops: [["exec", ["phx-remove"]]]}
-      assert JS.exec("phx-remove", to: "#modal") == %JS{ops: [["exec", ["phx-remove", "#modal"]]]}
+      assert JS.exec("phx-remove") == %JS{ops: [["exec", %{attr: "phx-remove"}]]}
+
+      assert JS.exec("phx-remove", to: "#modal") == %JS{
+               ops: [["exec", %{attr: "phx-remove", to: "#modal"}]]
+             }
     end
   end
 

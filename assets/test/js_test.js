@@ -618,7 +618,7 @@ describe("JS", () => {
     test("executes command", done => {
       let view = setupView(`
       <div id="modal" phx-remove='[["push", {"event": "clicked"}]]'>modal</div>
-      <div id="click" phx-click='[["exec",["phx-remove","#modal"]]]'></div>
+      <div id="click" phx-click='[["exec",{"attr": "phx-remove", "to": "#modal"}]]'></div>
       `)
       let click = document.querySelector("#click")
       view.pushEvent = (eventType, sourceEl, targetCtx, event, meta) => {

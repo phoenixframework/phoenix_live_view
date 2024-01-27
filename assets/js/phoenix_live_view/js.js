@@ -39,7 +39,7 @@ let JS = {
 
   // commands
 
-  exec_exec(eventType, phxEvent, view, sourceEl, el, [attr, to]){
+  exec_exec(eventType, phxEvent, view, sourceEl, el, {attr, to}){
     let nodes = to ? DOM.all(document, to) : [sourceEl]
     nodes.forEach(node => {
       let encodedJS = node.getAttribute(attr)
