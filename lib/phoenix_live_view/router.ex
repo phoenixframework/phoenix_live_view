@@ -287,9 +287,11 @@ defmodule Phoenix.LiveView.Router do
 
       {:root_layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
         template = Phoenix.LiveView.Utils.normalize_layout(template, "live_session :root_layout")
+        mod = Phoenix.Router.scoped_alias(module, mod)
         Map.put(acc, :root_layout, {mod, String.to_atom(template)})
 
       {:root_layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
+        mod = Phoenix.Router.scoped_alias(module, mod)
         Map.put(acc, :root_layout, {mod, template})
 
       {:root_layout, false}, acc ->
@@ -304,9 +306,11 @@ defmodule Phoenix.LiveView.Router do
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
         template = Phoenix.LiveView.Utils.normalize_layout(template, "live_session :layout")
+        mod = Phoenix.Router.scoped_alias(module, mod)
         Map.put(acc, :layout, {mod, template})
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
+        mod = Phoenix.Router.scoped_alias(module, mod)
         Map.put(acc, :layout, {mod, template})
 
       {:layout, false}, acc ->
@@ -324,6 +328,9 @@ defmodule Phoenix.LiveView.Router do
           on_mount
           |> List.wrap()
           |> Enum.map(&Phoenix.LiveView.Lifecycle.validate_on_mount!(module, &1))
+          |> Enum.map(fn {hook_module, arg} ->
+            {Phoenix.Router.scoped_alias(module, hook_module), arg}
+          end)
           |> Phoenix.LiveView.Lifecycle.prepare_on_mount!()
 
         Map.put(acc, :on_mount, hooks)
