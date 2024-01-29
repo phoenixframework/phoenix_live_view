@@ -1573,11 +1573,7 @@ defmodule Phoenix.LiveViewTest do
           {"open", [path]}
 
         {:unix, _} ->
-          if System.find_executable("cmd.exe") do
-            {"cmd.exe", ["/c", "start", path]}
-          else
-            {"xdg-open", [path]}
-          end
+          {"xdg-open", [path]}
       end
 
     System.cmd(cmd, args)
