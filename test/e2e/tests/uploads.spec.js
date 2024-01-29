@@ -17,9 +17,13 @@ const readStream = (stream) => new Promise((resolve) => {
 
 test("can upload a file", async ({ page }) => {
   await page.goto("/upload");
+  await syncLV(page);
+
   let changesForm = attributeMutations(page, "#upload-form");
   let changesInput = attributeMutations(page, "#upload-form input");
-  await syncLV(page);
+
+  // wait for the change listeners to be ready
+  await page.waitForTimeout(50);
 
   await page.locator("#upload-form input").setInputFiles({
     name: "file.txt",
@@ -151,10 +155,11 @@ test("shows error for invalid mimetype", async ({ page }) => {
 
 test("auto upload", async ({ page }) => {
   await page.goto("/upload?auto_upload=1");
-  let changes = attributeMutations(page, "#upload-form input");
-
   await syncLV(page);
 
+  let changes = attributeMutations(page, "#upload-form input");
+  // wait for the change listeners to be ready
+  await page.waitForTimeout(50);
   await page.locator("#upload-form input").setInputFiles([
     {
       name: "file.txt",
