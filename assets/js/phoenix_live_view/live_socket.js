@@ -649,7 +649,7 @@ export default class LiveSocket {
         return
       }
 
-      if(target.getAttribute("href") === "#"){ e.preventDefault() }
+      if(target.getAttribute("href") === "#" || target.form){ e.preventDefault() }
 
       // noop if we are in the middle of awaiting an ack for this el already
       if(target.hasAttribute(PHX_REF)){ return }

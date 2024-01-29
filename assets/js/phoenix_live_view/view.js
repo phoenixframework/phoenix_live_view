@@ -904,6 +904,7 @@ export default class View {
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
     let formData
     let meta  = this.extractMeta(inputEl.form)
+    if(inputEl instanceof HTMLButtonElement){ meta.submitter = inputEl }
     if(inputEl.getAttribute(this.binding("change"))){
       formData = serializeForm(inputEl.form, {_target: opts._target, ...meta}, [inputEl.name])
     } else {
