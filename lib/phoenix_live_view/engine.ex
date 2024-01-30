@@ -1323,8 +1323,8 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:receive, [opts]) when is_list(opts), do: :live
 
   # with/for are specially handled during analyze
-  defp classify_taint(:with, _), do: :live
-  defp classify_taint(:for, _), do: :live
+  defp classify_taint(:with, [_ | _]), do: :live
+  defp classify_taint(:for, [_ | _]), do: :live
 
   # Constructs from Phoenix and TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
