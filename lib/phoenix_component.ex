@@ -2344,7 +2344,7 @@ defmodule Phoenix.Component do
 
   <input type="hidden" name="mailing_list[emails_drop][]" />
 
-  <button name="mailing_list[emails_sort][new]" phx-click={JS.dispatch("change")}>
+  <button name="mailing_list[emails_sort][][new]" phx-click={JS.dispatch("change")}>
     add more
   </label>
   ```
@@ -2366,7 +2366,7 @@ defmodule Phoenix.Component do
   to ensure that all children are deleted when saving a form where the user
   dropped all entries. This hidden input is required whenever dropping associations.
 
-  Finally, we also render another button with a value-less `mailing_list[emails_sort][new]`
+  Finally, we also render another button with a value-less `mailing_list[emails_sort][][new]`
   name with accompanied "add more" text. Ecto will treat unknown sort params
   as new children and build a new child. This button is optional and only necessary
   if you want to dyamically add entries. You can optionally add a similar button
