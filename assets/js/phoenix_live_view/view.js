@@ -57,16 +57,7 @@ import JS from "./js"
 
 let serializeForm = (form, metadata, onlyNames = []) => {
   let {submitter, ...meta} = metadata
-
-  // TODO: Replace with `new FormData(form, submitter)` when supported by latest browsers,
-  //       and mention `formdata-submitter-polyfill` in the docs.
   let formData = new FormData(form)
-
-  // TODO: Remove when FormData constructor supports the submitter argument.
-  if(submitter && submitter.hasAttribute("name") && submitter.form && submitter.form === form){
-    formData.append(submitter.name, submitter.value)
-  }
-
   let toRemove = []
 
   formData.forEach((val, key, _index) => {
@@ -77,11 +68,20 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   toRemove.forEach(key => formData.delete(key))
 
   let params = new URLSearchParams()
-  for(let [key, val] of formData.entries()){
-    if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
-      params.append(key, val)
+  // Go through form els in order to mirror ordered generation of formData.entries().
+  // We must traverse elements in order manually so that we append the submitter in
+  // the order that it exists in the DOM releative to other inputs. For example,
+  // for checkbox groups, the order must be maintained. Likewise for checkboxes,
+  // we can only append to params if the checkbox is checked, so we use formData.getAll()
+  // to check if the current element value exists in the form data.
+  Array.from(form.elements).forEach(el => {
+    if((el.name && formData.getAll(el.name).indexOf(el.value) >= 0) || submitter === el){
+      params.append(el.name, el.value)
     }
-  }
+  })
+
+  if(submitter && !params.has(submitter.name)){ params.append(submitter.name, submitter.value) }
+
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
   return params.toString()
