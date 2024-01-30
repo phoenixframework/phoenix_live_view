@@ -623,7 +623,7 @@ var DOM = {
       let name = sourceAttrs[i].name;
       if (!exclude.has(name)) {
         const sourceValue = source.getAttribute(name);
-        if (target.getAttribute(name) !== sourceValue) {
+        if (target.getAttribute(name) !== sourceValue && (!isIgnored || isIgnored && name.startsWith("data-"))) {
           target.setAttribute(name, sourceValue);
         }
       }
@@ -2824,9 +2824,6 @@ var js_default = JS;
 var serializeForm = (form, metadata, onlyNames = []) => {
   let { submitter, ...meta } = metadata;
   let formData = new FormData(form);
-  if (submitter && submitter.hasAttribute("name") && submitter.form && submitter.form === form) {
-    formData.append(submitter.name, submitter.value);
-  }
   let toRemove = [];
   formData.forEach((val, key, _index) => {
     if (val instanceof File) {
@@ -2835,10 +2832,15 @@ var serializeForm = (form, metadata, onlyNames = []) => {
   });
   toRemove.forEach((key) => formData.delete(key));
   let params = new URLSearchParams();
-  for (let [key, val] of formData.entries()) {
-    if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
-      params.append(key, val);
+  Array.from(form.elements).forEach((el) => {
+    if (el.name && onlyNames.length === 0 || onlyNames.indexOf(el.name) >= 0) {
+      if (el.name && formData.getAll(el.name).indexOf(el.value) >= 0 || submitter === el) {
+        params.append(el.name, el.value);
+      }
     }
+  });
+  if (submitter && submitter.name && !params.has(submitter.name)) {
+    params.append(submitter.name, submitter.value);
   }
   for (let metaKey in meta) {
     params.append(metaKey, meta[metaKey]);
@@ -3652,6 +3654,9 @@ var View = class {
     let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts);
     let formData;
     let meta = this.extractMeta(inputEl.form);
+    if (inputEl instanceof HTMLButtonElement) {
+      meta.submitter = inputEl;
+    }
     if (inputEl.getAttribute(this.binding("change"))) {
       formData = serializeForm(inputEl.form, { _target: opts._target, ...meta }, [inputEl.name]);
     } else {
@@ -4462,7 +4467,7 @@ var LiveSocket = class {
         }
         return;
       }
-      if (target.getAttribute("href") === "#") {
+      if (target.getAttribute("href") === "#" || target.form) {
         e.preventDefault();
       }
       if (target.hasAttribute(PHX_REF)) {
