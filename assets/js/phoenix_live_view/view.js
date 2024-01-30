@@ -75,12 +75,16 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   // we can only append to params if the checkbox is checked, so we use formData.getAll()
   // to check if the current element value exists in the form data.
   Array.from(form.elements).forEach(el => {
-    if((el.name && formData.getAll(el.name).indexOf(el.value) >= 0) || submitter === el){
-      params.append(el.name, el.value)
+    if(el.name && onlyNames.length === 0 || onlyNames.indexOf(el.name) >= 0){
+      if((el.name && formData.getAll(el.name).indexOf(el.value) >= 0) || submitter === el){
+        params.append(el.name, el.value)
+      }
     }
   })
 
-  if(submitter && !params.has(submitter.name)){ params.append(submitter.name, submitter.value) }
+  if(submitter && submitter.name && !params.has(submitter.name)){
+    params.append(submitter.name, submitter.value)
+  }
 
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
