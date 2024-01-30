@@ -13,6 +13,11 @@ let setupView = (content) => {
 describe("JS", () => {
   beforeEach(() => {
     global.document.body.innerHTML = ""
+    jest.useFakeTimers()
+  })
+
+  afterEach(() => {
+    jest.useRealTimers()
   })
 
   describe("exec_toggle", () => {
@@ -34,19 +39,20 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      window.requestAnimationFrame(() => {
-        expect(modal.style.display).toEqual("none")
+      jest.runAllTimers()
 
-        JS.exec("click", click.getAttribute("phx-click"), view, click)
-        window.requestAnimationFrame(() => {
-          expect(modal.style.display).toEqual("block")
-          expect(showEndCalled).toBe(true)
-          expect(hideEndCalled).toBe(true)
-          expect(showStartCalled).toBe(true)
-          expect(hideStartCalled).toBe(true)
-          done()
-        })
-      })
+      expect(modal.style.display).toEqual("none")
+
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      jest.runAllTimers()
+
+      expect(modal.style.display).toEqual("block")
+      expect(showEndCalled).toBe(true)
+      expect(hideEndCalled).toBe(true)
+      expect(showStartCalled).toBe(true)
+      expect(hideStartCalled).toBe(true)
+
+      done()
     })
 
     test("with display", done => {
@@ -67,22 +73,23 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      window.requestAnimationFrame(() => {
-        expect(modal.style.display).toEqual("none")
+      jest.runAllTimers()
 
-        JS.exec("click", click.getAttribute("phx-click"), view, click)
-        window.requestAnimationFrame(() => {
-          expect(modal.style.display).toEqual("inline-block")
-          expect(showEndCalled).toBe(true)
-          expect(hideEndCalled).toBe(true)
-          expect(showStartCalled).toBe(true)
-          expect(hideStartCalled).toBe(true)
-          done()
-        })
-      })
+      expect(modal.style.display).toEqual("none")
+
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      jest.runAllTimers()
+
+      expect(modal.style.display).toEqual("inline-block")
+      expect(showEndCalled).toBe(true)
+      expect(hideEndCalled).toBe(true)
+      expect(showStartCalled).toBe(true)
+      expect(hideStartCalled).toBe(true)
+      done()
     })
 
-    test("with in and out classes", done => {
+    test("with in and out classes", (done) => {
+      jest.useFakeTimers()
       let view = setupView(`
       <div id="modal">modal</div>
       <div id="click" phx-click='[["toggle", {"to": "#modal", "ins": [["fade-in"],[],[]], "outs": [["fade-out"],[],[]]}]]'></div>
@@ -101,30 +108,27 @@ describe("JS", () => {
       expect(modal.style.display).toEqual("")
       expect(modal.classList.contains("fade-out")).toBe(false)
       expect(modal.classList.contains("fade-in")).toBe(false)
-      JS.exec("click", click.getAttribute("phx-click"), view, click)
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          window.requestAnimationFrame(() => {
-            expect(modal.classList.contains("fade-out")).toBe(true)
-            expect(modal.classList.contains("fade-in")).toBe(false)
 
-            JS.exec("click", click.getAttribute("phx-click"), view, click)
-            window.requestAnimationFrame(() => {
-              window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => {
-                  expect(modal.classList.contains("fade-out")).toBe(false)
-                  expect(modal.classList.contains("fade-in")).toBe(true)
-                  expect(showEndCalled).toBe(true)
-                  expect(hideEndCalled).toBe(true)
-                  expect(showStartCalled).toBe(true)
-                  expect(hideStartCalled).toBe(true)
-                  done()
-                })
-              })
-            })
-          })
-        })
-      })
+      // toggle in
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      jest.advanceTimersByTime(100)
+      expect(modal.classList.contains("fade-out")).toBe(true)
+      expect(modal.classList.contains("fade-in")).toBe(false)
+      jest.runAllTimers()
+
+      // toggle out
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+      jest.advanceTimersByTime(100)
+      expect(modal.classList.contains("fade-out")).toBe(false)
+      expect(modal.classList.contains("fade-in")).toBe(true)
+      jest.runAllTimers()
+
+      expect(showEndCalled).toBe(true)
+      expect(hideEndCalled).toBe(true)
+      expect(showStartCalled).toBe(true)
+      expect(hideStartCalled).toBe(true)
+
+      done()
     })
   })
 
@@ -138,11 +142,15 @@ describe("JS", () => {
       let click = document.querySelector("#click")
 
       expect(Array.from(modal.classList)).toEqual(["modal"])
+
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      setTimeout(() => {
-        expect(Array.from(modal.classList)).toEqual(["modal", "fade-out"])
-        done()
-      }, 200)
+      jest.advanceTimersByTime(100)
+
+      expect(Array.from(modal.classList)).toEqual(["modal", "fade-out"])
+      jest.runAllTimers()
+
+      expect(Array.from(modal.classList)).toEqual(["modal"])
+      done()
     })
 
     test("with multiple selector", done => {
@@ -157,12 +165,19 @@ describe("JS", () => {
 
       expect(Array.from(modal1.classList)).toEqual(["modal"])
       expect(Array.from(modal2.classList)).toEqual(["modal"])
+
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      setTimeout(() => {
-        expect(Array.from(modal1.classList)).toEqual(["modal", "fade-out"])
-        expect(Array.from(modal2.classList)).toEqual(["modal", "fade-out"])
-        done()
-      }, 200)
+      jest.advanceTimersByTime(100)
+
+      expect(Array.from(modal1.classList)).toEqual(["modal", "fade-out"])
+      expect(Array.from(modal2.classList)).toEqual(["modal", "fade-out"])
+
+      jest.runAllTimers()
+
+      expect(Array.from(modal1.classList)).toEqual(["modal"])
+      expect(Array.from(modal2.classList)).toEqual(["modal"])
+
+      done()
     })
   })
 
@@ -242,15 +257,15 @@ describe("JS", () => {
       JS.exec("click", add.getAttribute("phx-click"), view, add)
       JS.exec("click", add.getAttribute("phx-click"), view, add)
       JS.exec("click", add.getAttribute("phx-click"), view, add)
-      window.requestAnimationFrame(() => {
-        expect(Array.from(modal.classList)).toEqual(["modal", "class1"])
+      jest.runAllTimers()
 
-        JS.exec("click", remove.getAttribute("phx-click"), view, remove)
-        window.requestAnimationFrame(() => {
-          expect(Array.from(modal.classList)).toEqual(["modal"])
-          done()
-        })
-      })
+      expect(Array.from(modal.classList)).toEqual(["modal", "class1"])
+
+      JS.exec("click", remove.getAttribute("phx-click"), view, remove)
+      jest.runAllTimers()
+
+      expect(Array.from(modal.classList)).toEqual(["modal"])
+      done()
     })
 
     test("with multiple selector", done => {
@@ -266,17 +281,17 @@ describe("JS", () => {
       let remove = document.querySelector("#remove")
 
       JS.exec("click", add.getAttribute("phx-click"), view, add)
-      window.requestAnimationFrame(() => {
-        expect(Array.from(modal1.classList)).toEqual(["modal", "class1"])
-        expect(Array.from(modal2.classList)).toEqual(["modal", "class1"])
+      jest.runAllTimers()
 
-        JS.exec("click", remove.getAttribute("phx-click"), view, remove)
-        window.requestAnimationFrame(() => {
-          expect(Array.from(modal1.classList)).toEqual(["modal"])
-          expect(Array.from(modal2.classList)).toEqual(["modal"])
-          done()
-        })
-      })
+      expect(Array.from(modal1.classList)).toEqual(["modal", "class1"])
+      expect(Array.from(modal2.classList)).toEqual(["modal", "class1"])
+
+      JS.exec("click", remove.getAttribute("phx-click"), view, remove)
+      jest.runAllTimers()
+
+      expect(Array.from(modal1.classList)).toEqual(["modal"])
+      expect(Array.from(modal2.classList)).toEqual(["modal"])
+      done()
     })
   })
 
@@ -290,19 +305,15 @@ describe("JS", () => {
       let toggle = document.querySelector("#toggle")
 
       JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      jest.runAllTimers()
 
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          expect(Array.from(modal.classList)).toEqual(["modal", "class1"])
-          JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
-          window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => {
-              expect(Array.from(modal.classList)).toEqual(["modal"])
-              done()
-            })
-          })
-        })
-      })
+      expect(Array.from(modal.classList)).toEqual(["modal", "class1"])
+
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      jest.runAllTimers()
+
+      expect(Array.from(modal.classList)).toEqual(["modal"])
+      done()
     })
     test("with multiple selector", done => {
       let view = setupView(`
@@ -315,21 +326,16 @@ describe("JS", () => {
       let toggle = document.querySelector("#toggle")
 
       JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      jest.runAllTimers()
 
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          expect(Array.from(modal1.classList)).toEqual(["modal", "class1"])
-          expect(Array.from(modal2.classList)).toEqual(["modal", "class1"])
-          JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
-          window.requestAnimationFrame(() => {
-            window.requestAnimationFrame(() => {
-              expect(Array.from(modal1.classList)).toEqual(["modal"])
-              expect(Array.from(modal2.classList)).toEqual(["modal"])
-              done()
-            })
-          })
-        })
-      })
+      expect(Array.from(modal1.classList)).toEqual(["modal", "class1"])
+      expect(Array.from(modal2.classList)).toEqual(["modal", "class1"])
+      JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
+      jest.runAllTimers()
+      
+      expect(Array.from(modal1.classList)).toEqual(["modal"])
+      expect(Array.from(modal2.classList)).toEqual(["modal"])
+      done()
     })
   })
 
@@ -535,9 +541,9 @@ describe("JS", () => {
 
       expect(modal.style.display).toEqual("")
       JS.exec("click", click.getAttribute("phx-click"), view, click)
-      window.requestAnimationFrame(() => {
-        expect(modal.style.display).toEqual("none")
-      })
+      jest.runAllTimers()
+
+      expect(modal.style.display).toEqual("none")
     })
   })
 
@@ -612,7 +618,7 @@ describe("JS", () => {
     test("executes command", done => {
       let view = setupView(`
       <div id="modal" phx-remove='[["push", {"event": "clicked"}]]'>modal</div>
-      <div id="click" phx-click='[["exec",["phx-remove","#modal"]]]'></div>
+      <div id="click" phx-click='[["exec",{"attr": "phx-remove", "to": "#modal"}]]'></div>
       `)
       let click = document.querySelector("#click")
       view.pushEvent = (eventType, sourceEl, targetCtx, event, meta) => {

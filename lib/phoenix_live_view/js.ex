@@ -183,7 +183,7 @@ defmodule Phoenix.LiveView.JS do
       |> put_target()
       |> put_value()
 
-    put_op(js, "push", Enum.into(opts, %{event: event}))
+    put_op(js, "push", Keyword.put(opts, :event, event))
   end
 
   @doc """
@@ -223,12 +223,12 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `dispatch/2`."
   def dispatch(%JS{} = js, event, opts) do
     opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles])
-    args = %{event: event, to: opts[:to]}
+    args = [event: event, to: opts[:to]]
 
     args =
       case Keyword.fetch(opts, :bubbles) do
         {:ok, val} when is_boolean(val) ->
-          Map.put(args, :bubbles, val)
+          Keyword.put(args, :bubbles, val)
 
         {:ok, other} ->
           raise ArgumentError, "expected :bubbles to be a boolean, got: #{inspect(other)}"
@@ -255,7 +255,7 @@ defmodule Phoenix.LiveView.JS do
           """
 
         {_, {:ok, detail}} ->
-          Map.put(args, :detail, detail)
+          Keyword.put(args, :detail, detail)
 
         {_, :error} ->
           args
@@ -307,15 +307,15 @@ defmodule Phoenix.LiveView.JS do
     opts = validate_keys(opts, :toggle, [:to, :in, :out, :display, :time])
     in_classes = transition_class_names(opts[:in])
     out_classes = transition_class_names(opts[:out])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
-    put_op(js, "toggle", %{
+    put_op(js, "toggle",
       to: opts[:to],
       display: opts[:display],
       ins: in_classes,
       outs: out_classes,
       time: time
-    })
+    )
   end
 
   @doc """
@@ -358,14 +358,14 @@ defmodule Phoenix.LiveView.JS do
   def show(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :show, [:to, :transition, :display, :time])
     transition = transition_class_names(opts[:transition])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
-    put_op(js, "show", %{
+    put_op(js, "show",
       to: opts[:to],
       display: opts[:display],
       transition: transition,
       time: time
-    })
+    )
   end
 
   @doc """
@@ -407,13 +407,13 @@ defmodule Phoenix.LiveView.JS do
   def hide(js, opts) when is_list(opts) do
     opts = validate_keys(opts, :hide, [:to, :transition, :time])
     transition = transition_class_names(opts[:transition])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
-    put_op(js, "hide", %{
+    put_op(js, "hide",
       to: opts[:to],
       transition: transition,
       time: time
-    })
+    )
   end
 
   @doc """
@@ -453,14 +453,14 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `add_class/1`."
   def add_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :add_class, [:to, :transition, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
-    put_op(js, "add_class", %{
+    put_op(js, "add_class",
       to: opts[:to],
       names: class_names(names),
       transition: transition_class_names(opts[:transition]),
       time: time
-    })
+    )
   end
 
   @doc """
@@ -498,14 +498,14 @@ defmodule Phoenix.LiveView.JS do
 
   def toggle_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :toggle_class, [:to, :transition, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
-    put_op(js, "toggle_class", %{
+    put_op(js, "toggle_class",
       to: opts[:to],
       names: class_names(names),
       transition: transition_class_names(opts[:transition]),
       time: time
-    })
+    )
   end
 
   @doc """
@@ -545,14 +545,14 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `remove_class/1`."
   def remove_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
     opts = validate_keys(opts, :remove_class, [:to, :transition, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
-    put_op(js, "remove_class", %{
+    put_op(js, "remove_class",
       to: opts[:to],
       names: class_names(names),
       transition: transition_class_names(opts[:transition]),
       time: time
-    })
+    )
   end
 
   @doc """
@@ -596,13 +596,13 @@ defmodule Phoenix.LiveView.JS do
   def transition(%JS{} = js, transition, opts)
       when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
     opts = validate_keys(opts, :transition, [:to, :time])
-    time = opts[:time] || @default_transition_time
+    time = opts[:time]
 
-    put_op(js, "transition", %{
+    put_op(js, "transition",
       time: time,
       to: opts[:to],
       transition: transition_class_names(transition)
-    })
+    )
   end
 
   @doc """
@@ -632,7 +632,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `set_attribute/1`."
   def set_attribute(%JS{} = js, {attr, val}, opts) when is_list(opts) do
     opts = validate_keys(opts, :set_attribute, [:to])
-    put_op(js, "set_attr", %{to: opts[:to], attr: [attr, val]})
+    put_op(js, "set_attr", to: opts[:to], attr: [attr, val])
   end
 
   @doc """
@@ -662,7 +662,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `remove_attribute/1`."
   def remove_attribute(%JS{} = js, attr, opts) when is_list(opts) do
     opts = validate_keys(opts, :remove_attribute, [:to])
-    put_op(js, "remove_attr", %{to: opts[:to], attr: attr})
+    put_op(js, "remove_attr", to: opts[:to], attr: attr)
   end
 
   @doc """
@@ -707,12 +707,12 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `toggle_attribute/1`."
   def toggle_attribute(%JS{} = js, {attr, val}, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle_attribute, [:to])
-    put_op(js, "toggle_attr", %{to: opts[:to], attr: [attr, val]})
+    put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val])
   end
 
   def toggle_attribute(%JS{} = js, {attr, val1, val2}, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle_attribute, [:to])
-    put_op(js, "toggle_attr", %{to: opts[:to], attr: [attr, val1, val2]})
+    put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val1, val2])
   end
 
   @doc """
@@ -734,7 +734,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `focus/1`."
   def focus(%JS{} = js, opts) when is_list(opts) do
     opts = validate_keys(opts, :focus, [:to])
-    put_op(js, "focus", %{to: opts[:to]})
+    put_op(js, "focus", to: opts[:to])
   end
 
   @doc """
@@ -756,7 +756,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `focus_first/1`."
   def focus_first(%JS{} = js, opts) when is_list(opts) do
     opts = validate_keys(opts, :focus_first, [:to])
-    put_op(js, "focus_first", %{to: opts[:to]})
+    put_op(js, "focus_first", to: opts[:to])
   end
 
   @doc """
@@ -779,7 +779,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `push_focus/1`."
   def push_focus(%JS{} = js, opts) when is_list(opts) do
     opts = validate_keys(opts, :push_focus, [:to])
-    put_op(js, "push_focus", %{to: opts[:to]})
+    put_op(js, "push_focus", to: opts[:to])
   end
 
   @doc """
@@ -790,7 +790,7 @@ defmodule Phoenix.LiveView.JS do
       JS.pop_focus()
   """
   def pop_focus(%JS{} = js \\ %JS{}) do
-    put_op(js, "pop_focus", %{})
+    put_op(js, "pop_focus", [])
   end
 
   @doc """
@@ -820,7 +820,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `navigate/1`."
   def navigate(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
     opts = validate_keys(opts, :navigate, [:replace])
-    put_op(js, "navigate", %{href: href, replace: !!opts[:replace]})
+    put_op(js, "navigate", href: href, replace: !!opts[:replace])
   end
 
   @doc """
@@ -850,7 +850,7 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `patch/1`."
   def patch(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
     opts = validate_keys(opts, :patch, [:replace])
-    put_op(js, "patch", %{href: href, replace: !!opts[:replace]})
+    put_op(js, "patch", href: href, replace: !!opts[:replace])
   end
 
   @doc """
@@ -884,12 +884,17 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `exec/1`."
   def exec(%JS{} = js, attr, opts) when is_binary(attr) and is_list(opts) do
     opts = validate_keys(opts, :exec, [:to])
-    ops = if to = opts[:to], do: [attr, to], else: [attr]
-    put_op(js, "exec", ops)
+    put_op(js, "exec", attr: attr, to: opts[:to])
   end
 
   defp put_op(%JS{ops: ops} = js, kind, args) do
+    args = drop_nil_values(args)
     %JS{js | ops: ops ++ [[kind, args]]}
+  end
+
+  defp drop_nil_values(args) when is_list(args) do
+    Enum.reject(args, fn {_k, v} -> is_nil(v) end)
+    |> Map.new()
   end
 
   defp class_names(nil), do: []
@@ -898,7 +903,7 @@ defmodule Phoenix.LiveView.JS do
     String.split(names, " ")
   end
 
-  defp transition_class_names(nil), do: [[], [], []]
+  defp transition_class_names(nil), do: nil
 
   defp transition_class_names(transition) when is_binary(transition),
     do: [class_names(transition), [], []]
