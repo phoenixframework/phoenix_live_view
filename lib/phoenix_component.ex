@@ -2289,8 +2289,9 @@ defmodule Phoenix.Component do
 
   ## Dynamically adding and removing inputs
 
-  Dynamically adding and removing inputs is supported by rendering
-  checkboxes for inserts and removals. Libraries such as Ecto, or custom param
+  Dynamically adding and removing inputs is supported by rendering named buttons for
+  inserts and removals. Like inputs, buttons with name/value pairs are serialized with
+  form data on change and submit events. Libraries such as Ecto, or custom param
   filtering can then inspect the parameters and handle the added or removed fields.
   This can be combined with `Ecto.Changeset.cast/3`'s `:sort_param` and `:drop_param`
   options. For example, imagine a parent with an `:emails` `has_many` or `embeds_many`
@@ -2332,16 +2333,18 @@ defmodule Phoenix.Component do
     <input type="hidden" name="mailing_list[emails_sort][]" value={ef.index} />
     <.input type="text" field={ef[:email]} placeholder="email" />
     <.input type="text" field={ef[:name]} placeholder="name" />
-    <label>
-      <input type="checkbox" name="mailing_list[emails_drop][]" value={ef.index} class="hidden" />
+    <button
+      name="mailing_list[emails_drop][]"
+      value={ef.index}
+      phx-click={JS.dispatch("change")}
+    >
       <.icon name="hero-x-mark" class="w-6 h-6 relative top-2" />
-    </label>
+    </button>
   </.inputs_for>
 
   <input type="hidden" name="mailing_list[emails_drop][]" />
 
-  <label class="block cursor-pointer">
-    <input type="checkbox" name="mailing_list[emails_sort][]" class="hidden" />
+  <button name="mailing_list[emails_sort][new]" phx-click={JS.dispatch("change")}>
     add more
   </label>
   ```
@@ -2351,20 +2354,22 @@ defmodule Phoenix.Component do
   we render a hidden `mailing_list[emails_sort][]` input, which is set to the index of the
   given child. This tells Ecto's cast operation how to sort existing children, or
   where to insert new children. Next, we render the email and name inputs as usual.
-  Then we render a label containing the "delete" text and a hidden checkbox input
-  with the name `mailing_list[emails_drop][]`, containing the index of the child as its value.
-  Like before, this tells Ecto to delete the child at this index when the checkbox is
-  checked. Wrapping the checkbox and textual content in a label makes any clicked content
-  within the label check and uncheck the checkbox.
+  Then we render a button containing the "delete" text with the name `mailing_list[emails_drop][]`,
+  containing the index of the child as its value.
 
-  Outside the `inputs_for`, we render an empty `mailing_list[emails_drop][]`,
+  Like before, this tells Ecto to delete the child at this index when the button is
+  clicked. We use `phx-click={JS.dispatch("change")}` on the button to tell LiveView
+  to treat this button click as a change event, rather than a submit event on the form,
+  which invokes our form's `phx-change` binding.
+
+  Outside the `inputs_for`, we render an empty `mailing_list[emails_drop][]` input,
   to ensure that all children are deleted when saving a form where the user
-  dropped all entries. This checkbox is required whenever dropping associations.
+  dropped all entries. This hidden input is required whenever dropping associations.
 
-  Finally, we also render another label with a value-less `mailing_list[emails_sort][]`
-  checkbox with accompanied "add more" text. Ecto will treat unknown sort params
-  as new children and build a new child. This checkbox is optional and only necessary
-  if you want to dyamically add entries. You can optionally add a similar checkbox
+  Finally, we also render another button with a value-less `mailing_list[emails_sort][new]`
+  name with accompanied "add more" text. Ecto will treat unknown sort params
+  as new children and build a new child. This button is optional and only necessary
+  if you want to dyamically add entries. You can optionally add a similar button
   before the `<.inputs_for>`, in the case you want to prepend entries.
   """
   @doc type: :component
