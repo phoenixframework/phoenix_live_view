@@ -31,6 +31,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     <script>
       let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket)
       liveSocket.connect()
+      window.liveSocket = liveSocket
     </script>
     <style>
       * { font-size: 1.1em; }
@@ -90,6 +91,11 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   plug Plug.Static, from: System.tmp_dir!(), at: "/tmp"
 
   plug :health_check
+
+  plug Plug.Parsers,
+    parsers: [:urlencoded, :multipart, :json],
+    pass: ["*/*"],
+    json_decoder: Phoenix.json_library()
 
   plug Phoenix.LiveViewTest.E2E.Router
 
