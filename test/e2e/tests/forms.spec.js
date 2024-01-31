@@ -11,7 +11,7 @@ test.describe("restores disabled and readonly states", () => {
     let changesA = attributeMutations(page, "input[name=a]");
     let changesB = attributeMutations(page, "input[name=b]");
     // can submit multiple times and readonly input stays readonly
-    await page.locator("button[type=submit]").click();
+    await page.locator("#submit").click();
     await syncLV(page);
     // a is readonly and should stay readonly
     await expect(await changesA()).toEqual(expect.arrayContaining([
@@ -28,7 +28,7 @@ test.describe("restores disabled and readonly states", () => {
       { attr: "readonly", oldValue: "", newValue: null },
     ]));
     await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
-    await page.locator("button[type=submit]").click();
+    await page.locator("#submit").click();
     await syncLV(page);
     await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
   });
@@ -36,8 +36,8 @@ test.describe("restores disabled and readonly states", () => {
   test("button disabled state is restored after submits", async ({ page }) => {
     await page.goto("/form");
     await syncLV(page);
-    let changes = attributeMutations(page, "button[type=submit]");
-    await page.locator("button[type=submit]").click();
+    let changes = attributeMutations(page, "#submit");
+    await page.locator("#submit").click();
     await syncLV(page);
     // submit button is disabled while submitting, but then restored
     await expect(await changes()).toEqual(expect.arrayContaining([
@@ -171,3 +171,15 @@ test.describe("form recovery", () => {
     ]))
   });
 })
+
+test("can submit form with button that has phx-click", async ({ page }) => {
+  await page.goto("/form?phx-auto-recover=custom-recovery");
+  await syncLV(page);
+
+  await expect(page.getByText("Form was submitted!")).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Submit with JS" }).click();
+  await syncLV(page);
+
+  await expect(page.getByText("Form was submitted!")).toBeVisible();
+});
