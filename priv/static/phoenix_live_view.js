@@ -2613,6 +2613,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
 
   // js/phoenix_live_view/js.js
   var focusStack = null;
+  var default_transition_time = 200;
   var JS = {
     exec(eventType, phxEvent, view, sourceEl, defaults) {
       let [defaultKind, defaultArgs] = defaults || [null, { callback: defaults && defaults.callback }];
@@ -2634,7 +2635,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const rect = el.getBoundingClientRect();
       return rect.top >= 0 && rect.left >= 0 && rect.bottom <= (window.innerHeight || document.documentElement.clientHeight) && rect.right <= (window.innerWidth || document.documentElement.clientWidth);
     },
-    exec_exec(eventType, phxEvent, view, sourceEl, el, [attr, to]) {
+    exec_exec(eventType, phxEvent, view, sourceEl, el, { attr, to }) {
       let nodes = to ? dom_default.all(document, to) : [sourceEl];
       nodes.forEach((node) => {
         let encodedJS = node.getAttribute(attr);
@@ -2749,6 +2750,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     },
     toggle(eventType, view, el, display, ins, outs, time) {
+      time = time || default_transition_time;
       let [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []];
       let [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []];
       if (inClasses.length > 0 || outClasses.length > 0) {
@@ -2811,6 +2813,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
     },
     addOrRemoveClasses(el, adds, removes, transition, time, view) {
+      time = time || default_transition_time;
       let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []];
       if (transitionRun.length > 0) {
         let onStart = () => {
@@ -2876,8 +2879,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     let params = new URLSearchParams();
     Array.from(form.elements).forEach((el) => {
       if (el.name && onlyNames.length === 0 || onlyNames.indexOf(el.name) >= 0) {
-        if (el.name && formData.getAll(el.name).indexOf(el.value) >= 0 || submitter === el) {
-          params.append(el.name, el.value);
+        const values = formData.getAll(el.name);
+        if (el.name && values.indexOf(el.value) >= 0 || submitter === el) {
+          values.forEach((val) => params.append(el.name, val));
         }
       }
     });
@@ -4509,7 +4513,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           }
           return;
         }
-        if (target.getAttribute("href") === "#" || target.form) {
+        if (target.getAttribute("href") === "#") {
           e.preventDefault();
         }
         if (target.hasAttribute(PHX_REF)) {
