@@ -1,15 +1,19 @@
 defmodule Phoenix.LiveViewTest.E2E.FormLive do
   use Phoenix.LiveView
 
+  alias Phoenix.LiveView.JS
+
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     {:ok,
-     assign(socket, :params, %{
+     socket
+     |> assign(:params, %{
        "a" => "foo",
        "b" => "bar",
        "id" => "test-form",
        "phx-change" => "validate"
-     })}
+     })
+     |> assign(:submitted, false)}
   end
 
   @impl Phoenix.LiveView
@@ -35,7 +39,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
   end
 
   def handle_event("save", _params, socket) do
-    {:noreply, socket}
+    {:noreply, assign(socket, :submitted, true)}
   end
 
   def handle_event("custom-recovery", _params, socket) do
@@ -62,11 +66,16 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
     >
       <input type="text" name="a" readonly value={@params["a"]} />
       <input type="text" name="b" value={@params["b"]} />
-      <button type="submit" phx-disable-with="Submitting">Submit</button>
+      <button type="submit" phx-disable-with="Submitting" phx-click={JS.dispatch("test")}>
+        Submit with JS
+      </button>
+      <button id="submit" type="submit" phx-disable-with="Submitting">Submit</button>
       <button type="button" phx-click="button-test" phx-disable-with="Loading">
         Non-form Button
       </button>
     </form>
+
+    <p :if={@submitted}>Form was submitted!</p>
     """
   end
 end
