@@ -2344,7 +2344,7 @@ defmodule Phoenix.Component do
 
   <input type="hidden" name="mailing_list[emails_drop][]" />
 
-  <button name="mailing_list[emails_sort][]" value="new" phx-click={JS.dispatch("change")}>
+  <button type="button" name="mailing_list[emails_sort][]" value="new" phx-click={JS.dispatch("change")}>
     add more
   </label>
   ```
@@ -2367,10 +2367,12 @@ defmodule Phoenix.Component do
   dropped all entries. This hidden input is required whenever dropping associations.
 
   Finally, we also render another button with the sort param name `mailing_list[emails_sort][]`
-  and `value="new"` name with accompanied "add more" text. Ecto will treat unknown sort params
-  as new children and build a new child. This button is optional and only necessary
-  if you want to dyamically add entries. You can optionally add a similar button
-  before the `<.inputs_for>`, in the case you want to prepend entries.
+  and `value="new"` name with accompanied "add more" text. Please note that this button must
+  have `type="button"` to prevent it from submitting the form.
+  Ecto will treat unknown sort params as new children and build a new child.
+  This button is optional and only necessary if you want to dyamically add entries.
+  You can optionally add a similar button before the `<.inputs_for>`, in the case you want
+  to prepend entries.
   """
   @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
