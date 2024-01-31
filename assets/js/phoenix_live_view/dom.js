@@ -405,6 +405,18 @@ let DOM = {
         if(target.getAttribute(name) !== sourceValue && (!isIgnored || (isIgnored && name.startsWith("data-")))){
           target.setAttribute(name, sourceValue)
         }
+      } else {
+        // We exclude the value from being merged on focused inputs, because the
+        // user's input should always win.
+        // We can still assign it as long as the value property is the same, though.
+        // This prevents a situation where the updated hook is not being triggered
+        // when an input is back in its "original state", because the attribute
+        // was never changed, see:
+        // https://github.com/phoenixframework/phoenix_live_view/issues/2163
+        if(name === "value" && target.value === source.value){
+          // actually set the value attribute to sync it with the value property
+          target.setAttribute("value", source.getAttribute(name))
+        }
       }
     }
 
