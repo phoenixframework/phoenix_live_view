@@ -76,8 +76,9 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   // to check if the current element value exists in the form data.
   Array.from(form.elements).forEach(el => {
     if(el.name && onlyNames.length === 0 || onlyNames.indexOf(el.name) >= 0){
-      if((el.name && formData.getAll(el.name).indexOf(el.value) >= 0) || submitter === el){
-        params.append(el.name, el.value)
+      const values = formData.getAll(el.name)
+      if((el.name && values.indexOf(el.value) >= 0) || submitter === el){
+        values.forEach(val => params.append(el.name, val))
       }
     }
   })
