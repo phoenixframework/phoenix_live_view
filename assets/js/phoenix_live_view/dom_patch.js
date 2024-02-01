@@ -93,7 +93,7 @@ export default class DOMPatch {
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
-    let trackedInputs = []
+    let trackedForms = new Set()
     let updates = []
     let appendPrependUpdates = []
 
@@ -188,7 +188,7 @@ export default class DOMPatch {
           }
 
           if(el.getAttribute && el.getAttribute("name") && DOM.isFormInput(el)){
-            trackedInputs.push(el)
+            trackedForms.add(el.form)
           }
           // nested view handling
           if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
@@ -263,7 +263,7 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
-            trackedInputs.push(fromEl)
+            trackedForms.add(fromEl.form)
             return false
           } else {
             // blur focused select if it changed so native UI is updated (ie safari won't update visible options)
@@ -275,7 +275,7 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
             if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){
-              trackedInputs.push(toEl)
+              trackedForms.add(toEl.form)
             }
             this.trackBefore("updated", fromEl, toEl)
             return true
@@ -292,7 +292,7 @@ export default class DOMPatch {
       })
     }
 
-    DOM.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup)
+    DOM.maybeHideFeedback(targetContainer, trackedForms, phxFeedbackFor, phxFeedbackGroup)
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
@@ -351,10 +351,10 @@ export default class DOMPatch {
   maybeReOrderStream(el, isNew){
     let {ref, streamAt, reset} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
-    
+
     // we need to set the PHX_STREAM_REF here as well as addChild is invoked only for parents
     this.setStreamRef(el, ref)
-    
+
     if(!reset && !isNew){
       // we only reorder if the element is new or it's a stream reset
       return
