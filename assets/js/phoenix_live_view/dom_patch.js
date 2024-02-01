@@ -151,14 +151,13 @@ export default class DOMPatch {
 
           DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
 
-          // we may need to restore the component, see removeStreamChildElement
-          if(child.getAttribute(PHX_COMPONENT)){
-            if(child.getAttribute(PHX_SKIP) !== null){
-              child = this.streamComponentRestore[child.id]
-            } else {
-              delete this.streamComponentRestore[child.id]
+          // we may need to restore skipped components, see removeStreamChildElement
+          child.querySelectorAll(`[${PHX_MAGIC_ID}][${PHX_SKIP}]`).forEach(el => {
+            const component = this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)]
+            if(component){
+              el.replaceWith(component)
             }
-          }
+          })
 
           // streaming
           if(streamAt === 0){
@@ -328,10 +327,12 @@ export default class DOMPatch {
 
   removeStreamChildElement(child){
     if(!this.maybePendingRemove(child)){
-      if(child.getAttribute(PHX_COMPONENT) && this.streamInserts[child.id]){
-        // live component would be removed and then be re-added;
-        // because of the PHX_SKIP optimization we need to temporarily store the DOM node
-        this.streamComponentRestore[child.id] = child
+      if(this.streamInserts[child.id]){
+        // we need to store children so we can restore them later
+        // in case they are skipped
+        child.querySelectorAll(`[${PHX_MAGIC_ID}]`).forEach(el => {
+          this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)] = el
+        })
       }
       child.remove()
       this.onNodeDiscarded(child)
