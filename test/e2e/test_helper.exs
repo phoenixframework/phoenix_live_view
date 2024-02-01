@@ -50,25 +50,26 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
   end
 
   live_session :default, layout: {Phoenix.LiveViewTest.E2E.Layout, :live} do
-    scope "/" do
+    scope "/", Phoenix.LiveViewTest do
       pipe_through(:browser)
 
-      live "/stream", Phoenix.LiveViewTest.StreamLive
-      live "/stream/reset", Phoenix.LiveViewTest.StreamResetLive
-      live "/stream/reset-lc", Phoenix.LiveViewTest.StreamResetLCLive
-      live "/stream/limit", Phoenix.LiveViewTest.StreamLimitLive
-      live "/healthy/:category", Phoenix.LiveViewTest.HealthyLive
+      live "/stream", StreamLive
+      live "/stream/reset", StreamResetLive
+      live "/stream/reset-lc", StreamResetLCLive
+      live "/stream/limit", StreamLimitLive
+      live "/healthy/:category", HealthyLive
 
-      live "/upload", Phoenix.LiveViewTest.E2E.UploadLive
-      live "/form", Phoenix.LiveViewTest.E2E.FormLive
-      live "/js", Phoenix.LiveViewTest.E2E.JsLive
+      live "/upload", E2E.UploadLive
+      live "/form", E2E.FormLive
+      live "/form/dynamic-inputs", E2E.FormDynamicInputsLive
+      live "/js", E2E.JsLive
     end
 
-    scope "/issues" do
+    scope "/issues", Phoenix.LiveViewTest.E2E do
       pipe_through(:browser)
 
-      live "/3026", Phoenix.LiveViewTest.E2E.Issue3026Live
-      live "/3040", Phoenix.LiveViewTest.E2E.Issue3040Live
+      live "/3026", Issue3026Live
+      live "/3040", Issue3040Live
     end
   end
 

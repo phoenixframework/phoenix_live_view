@@ -56,9 +56,28 @@ import ViewHook from "./view_hook"
 import JS from "./js"
 
 let serializeForm = (form, metadata, onlyNames = []) => {
-  let {submitter, ...meta} = metadata
-  let formData = new FormData(form)
-  let toRemove = []
+  const {submitter, ...meta} = metadata
+
+  // We must inject the submitter in the order that it exists in the DOM
+  // releative to other inputs. For example, for checkbox groups, the order must be maintained.
+  let injectedElement
+  if(submitter && submitter.name){
+    const input = document.createElement("input")
+    input.type = "hidden"
+    // set the form attribute if the submitter has one;
+    // this can happen if the element is outside the actual form element
+    const formId = submitter.getAttribute("form")
+    if(formId){
+      input.setAttribute("form", form)
+    }
+    input.name = submitter.name
+    input.value = submitter.value
+    submitter.parentElement.insertBefore(input, submitter)
+    injectedElement = input
+  }
+
+  const formData = new FormData(form)
+  const toRemove = []
 
   formData.forEach((val, key, _index) => {
     if(val instanceof File){ toRemove.push(key) }
@@ -67,24 +86,18 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   // Cleanup after building fileData
   toRemove.forEach(key => formData.delete(key))
 
-  let params = new URLSearchParams()
-  // Go through form els in order to mirror ordered generation of formData.entries().
-  // We must traverse elements in order manually so that we append the submitter in
-  // the order that it exists in the DOM releative to other inputs. For example,
-  // for checkbox groups, the order must be maintained. Likewise for checkboxes,
-  // we can only append to params if the checkbox is checked, so we use formData.getAll()
-  // to check if the current element value exists in the form data.
-  Array.from(form.elements).forEach(el => {
-    if(el.name && onlyNames.length === 0 || onlyNames.indexOf(el.name) >= 0){
-      const values = formData.getAll(el.name)
-      if((el.name && values.indexOf(el.value) >= 0) || submitter === el){
-        values.forEach(val => params.append(el.name, val))
-      }
-    }
-  })
+  const params = new URLSearchParams()
 
-  if(submitter && submitter.name && !params.has(submitter.name)){
-    params.append(submitter.name, submitter.value)
+  for(let [key, val] of formData.entries()){
+    if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
+      params.append(key, val)
+    }
+  }
+
+  // remove the injected element again
+  // (it would be removed by the next dom patch anyway, but this is cleaner)
+  if(submitter && injectedElement){
+    submitter.parentElement.removeChild(injectedElement)
   }
 
   for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }

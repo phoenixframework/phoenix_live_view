@@ -183,3 +183,93 @@ test("can submit form with button that has phx-click", async ({ page }) => {
 
   await expect(page.getByText("Form was submitted!")).toBeVisible();
 });
+
+test("can dynamically add/remove inputs (ecto sort_param/drop_param)", async ({ page }) => {
+  await page.goto("/form/dynamic-inputs");
+  await syncLV(page);
+
+  const formData = () => page.locator("form").evaluate(form => Object.fromEntries(new FormData(form).entries()));
+
+  await expect(await formData()).toEqual({
+    "my_form[name]": "",
+    "my_form[users_drop][]": ""
+  });
+
+  await page.locator("#my-form_name").fill("Test");
+  await page.getByRole("button", { name: "add more" }).click();
+
+  await expect(await formData()).toEqual(expect.objectContaining({
+    "my_form[name]": "Test",
+    "my_form[users][0][name]": "",
+  }));
+
+  await page.locator("#my-form_users_0_name").fill("User A");
+  await page.getByRole("button", { name: "add more" }).click();
+  await page.getByRole("button", { name: "add more" }).click();
+
+  await page.locator("#my-form_users_1_name").fill("User B");
+  await page.locator("#my-form_users_2_name").fill("User C");
+
+  await expect(await formData()).toEqual(expect.objectContaining({
+    "my_form[name]": "Test",
+    "my_form[users_drop][]": "",
+    "my_form[users][0][name]": "User A",
+    "my_form[users][1][name]": "User B",
+    "my_form[users][2][name]": "User C"
+  }));
+
+  // remove User B
+  await page.locator("button[name=\"my_form[users_drop][]\"][value=\"1\"]").click();
+
+  await expect(await formData()).toEqual(expect.objectContaining({
+    "my_form[name]": "Test",
+    "my_form[users_drop][]": "",
+    "my_form[users][0][name]": "User A",
+    "my_form[users][1][name]": "User C"
+  }));
+});
+
+test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
+  await page.goto("/form/dynamic-inputs?checkboxes=1");
+  await syncLV(page);
+
+  const formData = () => page.locator("form").evaluate(form => Object.fromEntries(new FormData(form).entries()));
+
+  await expect(await formData()).toEqual({
+    "my_form[name]": "",
+    "my_form[users_drop][]": ""
+  });
+
+  await page.locator("#my-form_name").fill("Test");
+  await page.locator("label", { hasText: "add more" }).click();
+
+  await expect(await formData()).toEqual(expect.objectContaining({
+    "my_form[name]": "Test",
+    "my_form[users][0][name]": "",
+  }));
+
+  await page.locator("#my-form_users_0_name").fill("User A");
+  await page.locator("label", { hasText: "add more" }).click();
+  await page.locator("label", { hasText: "add more" }).click();
+
+  await page.locator("#my-form_users_1_name").fill("User B");
+  await page.locator("#my-form_users_2_name").fill("User C");
+
+  await expect(await formData()).toEqual(expect.objectContaining({
+    "my_form[name]": "Test",
+    "my_form[users_drop][]": "",
+    "my_form[users][0][name]": "User A",
+    "my_form[users][1][name]": "User B",
+    "my_form[users][2][name]": "User C"
+  }));
+
+  // remove User B
+  await page.locator("input[name=\"my_form[users_drop][]\"][value=\"1\"]").click();
+
+  await expect(await formData()).toEqual(expect.objectContaining({
+    "my_form[name]": "Test",
+    "my_form[users_drop][]": "",
+    "my_form[users][0][name]": "User A",
+    "my_form[users][1][name]": "User C"
+  }));
+});

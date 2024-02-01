@@ -2346,7 +2346,7 @@ defmodule Phoenix.Component do
 
   <button type="button" name="mailing_list[emails_sort][]" value="new" phx-click={JS.dispatch("change")}>
     add more
-  </label>
+  </button>
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
