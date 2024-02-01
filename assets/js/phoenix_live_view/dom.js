@@ -292,7 +292,7 @@ let DOM = {
     }
   },
 
-  maybeHideFeedback(container, inputs, phxFeedbackFor, phxFeedbackGroup){
+  maybeHideFeedback(container, forms, phxFeedbackFor, phxFeedbackGroup){
     let feedbacks = []
     // if there are multiple inputs with the same name
     // (for example the default checkbox renders a hidden input as well)
@@ -301,17 +301,19 @@ let DOM = {
     // an entry in this object will be true if NO input in the group has been focused yet
     let feedbackGroups = {}
 
-    inputs.forEach(input => {
-      const group = input.getAttribute(phxFeedbackGroup)
-      // initialize the group to true if it doesn't exist
-      if(group && !(group in feedbackGroups)) feedbackGroups[group] = true
-      // initialize the focused state to false if it doesn't exist
-      if(!(input.name in inputNamesFocused)) inputNamesFocused[input.name] = false
-      if(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)){
-        inputNamesFocused[input.name] = true
-        // the input was focused, therefore the group will NOT get phx-no-feedback
-        if(group) feedbackGroups[group] = false
-      }
+    forms.forEach(form => {
+      Array.from(form.elements).forEach(input => {
+        const group = input.getAttribute(phxFeedbackGroup)
+        // initialize the group to true if it doesn't exist
+        if(group && !(group in feedbackGroups)){ feedbackGroups[group] = true }
+        // initialize the focused state to false if it doesn't exist
+        if(!(input.name in inputNamesFocused)){ inputNamesFocused[input.name] = false }
+        if(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)){
+          inputNamesFocused[input.name] = true
+          // the input was focused, therefore the group will NOT get phx-no-feedback
+          if(group){ feedbackGroups[group] = false }
+        }
+      })
     })
 
     for(const [name, focused] of Object.entries(inputNamesFocused)){

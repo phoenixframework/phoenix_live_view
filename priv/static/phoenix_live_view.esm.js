@@ -531,21 +531,26 @@ var DOM = {
       el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
     }
   },
-  maybeHideFeedback(container, inputs, phxFeedbackFor, phxFeedbackGroup) {
+  maybeHideFeedback(container, forms, phxFeedbackFor, phxFeedbackGroup) {
     let feedbacks = [];
     let inputNamesFocused = {};
     let feedbackGroups = {};
-    inputs.forEach((input) => {
-      const group = input.getAttribute(phxFeedbackGroup);
-      if (group && !(group in feedbackGroups))
-        feedbackGroups[group] = true;
-      if (!(input.name in inputNamesFocused))
-        inputNamesFocused[input.name] = false;
-      if (this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)) {
-        inputNamesFocused[input.name] = true;
-        if (group)
-          feedbackGroups[group] = false;
-      }
+    forms.forEach((form) => {
+      Array.from(form.elements).forEach((input) => {
+        const group = input.getAttribute(phxFeedbackGroup);
+        if (group && !(group in feedbackGroups)) {
+          feedbackGroups[group] = true;
+        }
+        if (!(input.name in inputNamesFocused)) {
+          inputNamesFocused[input.name] = false;
+        }
+        if (this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)) {
+          inputNamesFocused[input.name] = true;
+          if (group) {
+            feedbackGroups[group] = false;
+          }
+        }
+      });
     });
     for (const [name, focused] of Object.entries(inputNamesFocused)) {
       if (!focused) {
@@ -625,6 +630,10 @@ var DOM = {
         const sourceValue = source.getAttribute(name);
         if (target.getAttribute(name) !== sourceValue && (!isIgnored || isIgnored && name.startsWith("data-"))) {
           target.setAttribute(name, sourceValue);
+        }
+      } else {
+        if (name === "value" && target.value === source.value) {
+          target.setAttribute("value", source.getAttribute(name));
         }
       }
     }
@@ -1856,7 +1865,7 @@ var DOMPatch = class {
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
     let added = [];
-    let trackedInputs = [];
+    let trackedForms = new Set();
     let updates = [];
     let appendPrependUpdates = [];
     let externalFormTriggered = null;
@@ -1909,14 +1918,13 @@ var DOMPatch = class {
           if (ref === void 0) {
             return parent.appendChild(child);
           }
-          dom_default.putSticky(child, PHX_STREAM_REF, (el) => el.setAttribute(PHX_STREAM_REF, ref));
-          if (child.getAttribute(PHX_COMPONENT)) {
-            if (child.getAttribute(PHX_SKIP) !== null) {
-              child = this.streamComponentRestore[child.id];
-            } else {
-              delete this.streamComponentRestore[child.id];
+          this.setStreamRef(child, ref);
+          child.querySelectorAll(`[${PHX_MAGIC_ID}][${PHX_SKIP}]`).forEach((el) => {
+            const component = this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)];
+            if (component) {
+              el.replaceWith(component);
             }
-          }
+          });
           if (streamAt === 0) {
             parent.insertAdjacentElement("afterbegin", child);
           } else if (streamAt === -1) {
@@ -1944,7 +1952,7 @@ var DOMPatch = class {
             externalFormTriggered = el;
           }
           if (el.getAttribute && el.getAttribute("name") && dom_default.isFormInput(el)) {
-            trackedInputs.push(el);
+            trackedForms.add(el.form);
           }
           if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
             this.trackAfter("phxChildAdded", el);
@@ -2021,7 +2029,7 @@ var DOMPatch = class {
             dom_default.syncAttrsToProps(fromEl);
             updates.push(fromEl);
             dom_default.applyStickyOperations(fromEl);
-            trackedInputs.push(fromEl);
+            trackedForms.add(fromEl.form);
             return false;
           } else {
             if (focusedSelectChanged) {
@@ -2033,7 +2041,7 @@ var DOMPatch = class {
             dom_default.syncAttrsToProps(toEl);
             dom_default.applyStickyOperations(toEl);
             if (toEl.getAttribute("name") && dom_default.isFormInput(toEl)) {
-              trackedInputs.push(toEl);
+              trackedForms.add(toEl.form);
             }
             this.trackBefore("updated", fromEl, toEl);
             return true;
@@ -2049,7 +2057,7 @@ var DOMPatch = class {
         appendPrependUpdates.forEach((update) => update.perform());
       });
     }
-    dom_default.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup);
+    dom_default.maybeHideFeedback(targetContainer, trackedForms, phxFeedbackFor, phxFeedbackGroup);
     liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
     dom_default.dispatchEvent(document, "phx:update");
     added.forEach((el) => this.trackAfter("added", el));
@@ -2077,8 +2085,10 @@ var DOMPatch = class {
   }
   removeStreamChildElement(child) {
     if (!this.maybePendingRemove(child)) {
-      if (child.getAttribute(PHX_COMPONENT) && this.streamInserts[child.id]) {
-        this.streamComponentRestore[child.id] = child;
+      if (this.streamInserts[child.id]) {
+        child.querySelectorAll(`[${PHX_MAGIC_ID}]`).forEach((el) => {
+          this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)] = el;
+        });
       }
       child.remove();
       this.onNodeDiscarded(child);
@@ -2088,12 +2098,18 @@ var DOMPatch = class {
     let insert = el.id ? this.streamInserts[el.id] : {};
     return insert || {};
   }
+  setStreamRef(el, ref) {
+    dom_default.putSticky(el, PHX_STREAM_REF, (el2) => el2.setAttribute(PHX_STREAM_REF, ref));
+  }
   maybeReOrderStream(el, isNew) {
-    let { ref, streamAt } = this.getStreamInsert(el);
-    if (streamAt === void 0 || streamAt === 0 && !isNew) {
+    let { ref, streamAt, reset } = this.getStreamInsert(el);
+    if (streamAt === void 0) {
       return;
     }
-    dom_default.putSticky(el, PHX_STREAM_REF, (el2) => el2.setAttribute(PHX_STREAM_REF, ref));
+    this.setStreamRef(el, ref);
+    if (!reset && !isNew) {
+      return;
+    }
     if (streamAt === 0) {
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
     } else if (streamAt > 0) {
@@ -2825,26 +2841,36 @@ var js_default = JS;
 
 // js/phoenix_live_view/view.js
 var serializeForm = (form, metadata, onlyNames = []) => {
-  let { submitter, ...meta } = metadata;
-  let formData = new FormData(form);
-  let toRemove = [];
+  const { submitter, ...meta } = metadata;
+  let injectedElement;
+  if (submitter && submitter.name) {
+    const input = document.createElement("input");
+    input.type = "hidden";
+    const formId = submitter.getAttribute("form");
+    if (formId) {
+      input.setAttribute("form", form);
+    }
+    input.name = submitter.name;
+    input.value = submitter.value;
+    submitter.parentElement.insertBefore(input, submitter);
+    injectedElement = input;
+  }
+  const formData = new FormData(form);
+  const toRemove = [];
   formData.forEach((val, key, _index) => {
     if (val instanceof File) {
       toRemove.push(key);
     }
   });
   toRemove.forEach((key) => formData.delete(key));
-  let params = new URLSearchParams();
-  Array.from(form.elements).forEach((el) => {
-    if (el.name && onlyNames.length === 0 || onlyNames.indexOf(el.name) >= 0) {
-      const values = formData.getAll(el.name);
-      if (el.name && values.indexOf(el.value) >= 0 || submitter === el) {
-        values.forEach((val) => params.append(el.name, val));
-      }
+  const params = new URLSearchParams();
+  for (let [key, val] of formData.entries()) {
+    if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
+      params.append(key, val);
     }
-  });
-  if (submitter && submitter.name && !params.has(submitter.name)) {
-    params.append(submitter.name, submitter.value);
+  }
+  if (submitter && injectedElement) {
+    submitter.parentElement.removeChild(injectedElement);
   }
   for (let metaKey in meta) {
     params.append(metaKey, meta[metaKey]);
@@ -4229,7 +4255,7 @@ var LiveSocket = class {
           dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
           this.outgoingMainEl.replaceWith(newMainEl);
           this.outgoingMainEl = null;
-          callback && requestAnimationFrame(() => callback(linkRef));
+          callback && callback(linkRef);
           onDone();
         });
       }
