@@ -9,7 +9,7 @@
   * Send `{:shutdown, :cancel}` to `handle_async/3` on `cancel_async`
   * Prevent events from child LiveViews from bubbling up to root LiveView when child is not mounted yet
   * Fix `phx-mounted` being called twice for stream items
-  * Do not move existing stream items when prepending
+  * Never move existing stream items if they already exist (use stream_delete and then stream_insert instead)
   * Fix live component rendering breaking when the server adds a component back that was pruned by the client (#3026)
   * Allow redirect from upload progress callback
 

@@ -191,9 +191,10 @@ test.describe("Issue #2656", () => {
   });
 });
 
-test.describe("Issue #2994", () => {
-  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
+// helper function used below
+const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
 
+test.describe("Issue #2994", () => {
   test("can filter and reset a stream", async ({ page }) => {
     await page.goto("/stream/reset");
     await syncLV(page);
@@ -234,7 +235,7 @@ test.describe("Issue #2994", () => {
 
     await expect(await listItems(page)).toEqual(["items-b", "items-c", "items-d"]);
 
-    await page.getByRole("button", { name: "Prepend" }).click();
+    await page.getByRole("button", { name: "Prepend", exact: true }).click();
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
@@ -249,7 +250,7 @@ test.describe("Issue #2994", () => {
 
     await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
 
-    await page.getByRole("button", { name: "Append" }).click();
+    await page.getByRole("button", { name: "Append", exact: true }).click();
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
@@ -263,8 +264,6 @@ test.describe("Issue #2994", () => {
 });
 
 test.describe("Issue #2982", () => {
-  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
-
   test("can reorder a stream with LiveComponents as direct stream children", async ({ page }) => {
     await page.goto("/stream/reset-lc");
     await syncLV(page);
@@ -279,8 +278,6 @@ test.describe("Issue #2982", () => {
 });
 
 test.describe("Issue #3023", () => {
-  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
-
   test("can bulk insert items at a specific index", async ({ page }) => {
     await page.goto("/stream/reset");
     await syncLV(page);
@@ -532,4 +529,41 @@ test.describe("stream limit - issue #2686", () => {
       "items-2"
     ]);
   });
+});
+
+test("any stream insert for elements already in the DOM does not reorder", async ({ page }) => {
+  await page.goto("/stream/reset");
+  await syncLV(page);
+
+  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+  await page.getByRole("button", { name: "Prepend C" }).click();
+  await syncLV(page);
+  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+  await page.getByRole("button", { name: "Append C" }).click();
+  await syncLV(page);
+  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+  await page.getByRole("button", { name: "Insert C at 1" }).click();
+  await syncLV(page);
+  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+  await page.getByRole("button", { name: "Insert at 1", exact: true }).click();
+  await syncLV(page);
+  await expect(await listItems(page)).toEqual([
+    "items-a",
+    expect.stringMatching(/items-a-.*/),
+    "items-b",
+    "items-c",
+    "items-d"
+  ]);
+
+  await page.getByRole("button", { name: "Reset" }).click();
+  await syncLV(page);
+  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+
+  await page.getByRole("button", { name: "Delete C and insert at 1" }).click();
+  await syncLV(page);
+  await expect(await listItems(page)).toEqual(["items-a", "items-c", "items-b", "items-d"]);
 });

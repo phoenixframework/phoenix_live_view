@@ -474,7 +474,7 @@ defmodule Phoenix.LiveViewTest.DOM do
                   acc
 
                 # do not append existing child if already present, only update in place
-                current_index && insert_at == -1 && (existing? or appended?) ->
+                current_index && insert_at && existing? ->
                   if deleted? do
                     acc |> List.delete_at(current_index) |> List.insert_at(insert_at, child)
                   else
