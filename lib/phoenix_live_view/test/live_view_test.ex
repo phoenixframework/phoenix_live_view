@@ -1573,7 +1573,17 @@ defmodule Phoenix.LiveViewTest do
           {"open", [path]}
 
         {:unix, _} ->
-          {"xdg-open", [path]}
+          if System.find_executable("cmd.exe") do
+            win_path_regex = ~r{^\\(?:\\[^\\]+\\)*([^<>:]*)$}x
+            if Regex.match?(win_path_regex, path) do
+              # Use cmd.exe for WSL with project dir under windows path
+              {"cmd.exe", ["/c", "start", path]}
+            else
+              {"xdg-open", [path]}
+            end
+          else
+            {"xdg-open", [path]}
+          end
       end
 
     System.cmd(cmd, args)
