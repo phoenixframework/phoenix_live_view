@@ -3512,6 +3512,7 @@ var View = class {
     }
     return this.liveSocket.wrapPush(this, { timeout: true }, () => {
       return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", (resp) => {
+        let refEls = [];
         let finish = (hookReply) => {
           if (resp.redirect) {
             this.onRedirect(resp.redirect);
@@ -3529,26 +3530,39 @@ var View = class {
           this.liveSocket.requestDOMUpdate(() => {
             this.applyDiff("update", resp.diff, ({ diff, reply, events }) => {
               if (ref !== null) {
-                this.undoRefs(ref);
+                refEls = this.undoRefs(ref);
               }
               this.update(diff, events);
+              if (refEls.length > 0) {
+                this.maybeHideFeedbackFromRefs(refEls);
+              }
               finish(reply);
             });
           });
         } else {
           if (ref !== null) {
-            this.undoRefs(ref);
+            refEls = this.undoRefs(ref);
+          }
+          if (refEls.length > 0) {
+            this.maybeHideFeedbackFromRefs(refEls);
           }
           finish(null);
         }
       });
     });
   }
+  maybeHideFeedbackFromRefs(refEls) {
+    let phxFeedbackFor = this.binding(PHX_FEEDBACK_FOR);
+    let phxFeedbackGroup = this.binding(PHX_FEEDBACK_GROUP);
+    let inputs = refEls.filter((el) => dom_default.isFormInput(el) || el.hasAttribute("name"));
+    dom_default.maybeHideFeedback(this.el, inputs, phxFeedbackFor, phxFeedbackGroup);
+  }
   undoRefs(ref) {
     if (!this.isConnected()) {
       return;
     }
-    dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
+    let els = dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`);
+    els.forEach((el) => {
       let disabledVal = el.getAttribute(PHX_DISABLED);
       let readOnlyVal = el.getAttribute(PHX_READONLY);
       el.removeAttribute(PHX_REF);
@@ -3577,6 +3591,7 @@ var View = class {
         dom_default.deletePrivate(el, PHX_REF);
       }
     });
+    return els;
   }
   putRef(elements, event, opts = {}) {
     let newRef = this.ref++;

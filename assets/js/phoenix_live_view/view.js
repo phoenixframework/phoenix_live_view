@@ -14,6 +14,7 @@ import {
   PHX_CLIENT_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
   PHX_FEEDBACK_FOR,
+  PHX_FEEDBACK_GROUP,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
   PHX_PAGE_LOADING,
@@ -745,6 +746,7 @@ export default class View {
     return (
       this.liveSocket.wrapPush(this, {timeout: true}, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+          let refEls = []
           let finish = (hookReply) => {
             if(resp.redirect){ this.onRedirect(resp.redirect) }
             if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
@@ -755,13 +757,15 @@ export default class View {
           if(resp.diff){
             this.liveSocket.requestDOMUpdate(() => {
               this.applyDiff("update", resp.diff, ({diff, reply, events}) => {
-                if(ref !== null){ this.undoRefs(ref) }
+                if(ref !== null){ refEls = this.undoRefs(ref) }
                 this.update(diff, events)
+                if(refEls.length > 0){ this.maybeHideFeedbackFromRefs(refEls) }
                 finish(reply)
               })
             })
           } else {
-            if(ref !== null){ this.undoRefs(ref) }
+            if(ref !== null){ refEls = this.undoRefs(ref) }
+            if(refEls.length > 0){ this.maybeHideFeedbackFromRefs(refEls) }
             finish(null)
           }
         })
@@ -769,12 +773,21 @@ export default class View {
     )
   }
 
+  maybeHideFeedbackFromRefs(refEls){
+    let phxFeedbackFor = this.binding(PHX_FEEDBACK_FOR)
+    let phxFeedbackGroup = this.binding(PHX_FEEDBACK_GROUP)
+    let inputs = refEls.filter(el => DOM.isFormInput(el) || el.hasAttribute("name"))
+    DOM.maybeHideFeedback(this.el, inputs, phxFeedbackFor, phxFeedbackGroup)
+  }
+
   undoRefs(ref){
     if(!this.isConnected()){ return } // exit if external form triggered
 
-    DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
+    let els = DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`)
+    els.forEach(el => {
       let disabledVal = el.getAttribute(PHX_DISABLED)
       let readOnlyVal = el.getAttribute(PHX_READONLY)
+
       // remove refs
       el.removeAttribute(PHX_REF)
       el.removeAttribute(PHX_REF_SRC)
@@ -803,6 +816,7 @@ export default class View {
         DOM.deletePrivate(el, PHX_REF)
       }
     })
+    return els
   }
 
   putRef(elements, event, opts = {}){

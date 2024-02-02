@@ -292,6 +292,8 @@ export default class DOMPatch {
       })
     }
 
+    // we also hide feedback in the view, but we need to do it after patch
+    // to catch cases where out-of-band input updates are made
     DOM.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup)
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
