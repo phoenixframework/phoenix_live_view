@@ -6,24 +6,24 @@ overview of LiveView and its benefits is [available in our README](https://githu
 
 ## What is a LiveView?
 
-LiveViews are processes that receives events, updates its state,
+LiveViews are processes that receive events, update their state,
 and render updates to a page as diffs.
 
 The LiveView programming model is declarative: instead of saying
 "once event X happens, change Y on the page", events in LiveView
-are regular messages which may cause changes to its state. Once
-the state changes, LiveView will re-render the relevant parts of
-its HTML template and push it to the browser, which updates itself
+are regular messages which may cause changes to the state. Once
+the state changes, the LiveView will re-render the relevant parts of
+its HTML template and push it to the browser, which updates the page
 in the most efficient manner.
 
 LiveView state is nothing more than functional and immutable
 Elixir data structures. The events are either internal application messages
 (usually emitted by `Phoenix.PubSub`) or sent by the client/browser.
 
-LiveView is first rendered statically as part of regular
-HTTP requests, which provides quick times for "First Meaningful
+Every LiveView is first rendered statically as part of a regular
+HTTP request, which provides quick times for "First Meaningful
 Paint", in addition to helping search and indexing engines.
-Then a persistent connection is established between client and
+A persistent connection is then established between the client and
 server. This allows LiveView applications to react faster to user
 events as there is less work to be done and less data to be sent
 compared to stateless requests that have to authenticate, decode, load,
@@ -84,7 +84,7 @@ Because Elixir data structures are immutable, LiveView APIs often
 receive the socket and return an updated socket. Then we return
 `{:ok, socket}` to signal that we were able to mount the LiveView
 successfully. After `mount`, LiveView will render the page with the
-values from `assigns` and sent it to the client.
+values from `assigns` and send it to the client.
 
 If you look at the HTML rendered, you will notice there is a button
 with a `phx-click` attribute. When the button is clicked, a
@@ -95,7 +95,7 @@ and returns `{:noreply, socket}` with the updated socket.
 invoked based on some action, in this case, the user clicking a button.
 The `{:noreply, socket}` return means there is no additional replies
 sent to the browser, only that a new version of the page is rendered.
-LiveView then computes diffs and sends them to client.
+LiveView then computes diffs and sends them to the client.
 
 Now we are ready to render our LiveView. You can serve the LiveView
 directly from your router:
