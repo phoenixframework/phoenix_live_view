@@ -532,7 +532,7 @@ var DOM = {
     }
   },
   maybeHideFeedback(container, inputs, phxFeedbackFor, phxFeedbackGroup) {
-    let forms = new Set(inputs.map((i) => i.form));
+    let forms = new Set(inputs.map((i) => i.form).filter((f) => f));
     let feedbacks = [];
     let inputNamesFocused = {};
     let feedbackGroups = {};
