@@ -170,6 +170,7 @@ Running the Javascript tests:
 
 ```bash
 $ cd assets
+$ npm install
 $ npm run test
 # to automatically run tests for files that have been changed
 $ npm run test.watch
