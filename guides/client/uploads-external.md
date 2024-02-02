@@ -268,7 +268,7 @@ def presign_upload(entry, socket) do
   {:ok, url} =
     ExAws.S3.presigned_url(config, :put, bucket, key,
       expires_in: 3600,
-      query_params: ["Content-Type": entry.client_type]
+      query_params: [{"Content-Type", entry.client_type}]
     )
    {:ok, %{uploader: "S3", key: key, url: url}, socket}
 end
