@@ -795,7 +795,7 @@ defmodule Phoenix.LiveView do
 
       <%= for entry <- @uploads.avatar.entries do %>
         ...
-        <button phx-click="cancel-upload" phx-value-ref="<%= entry.ref %>">cancel</button>
+        <button phx-click="cancel-upload" phx-value-ref={entry.ref}>cancel</button>
       <% end %>
 
       def handle_event("cancel-upload", %{"ref" => ref}, socket) do
@@ -1178,8 +1178,8 @@ defmodule Phoenix.LiveView do
   To use this functionality, the first step is to annotate which static files
   you want to be tracked by LiveView, with the `phx-track-static`. For example:
 
-      <link phx-track-static rel="stylesheet" href="<%= Routes.static_path(@conn, "/css/app.css") %>"/>
-      <script defer phx-track-static type="text/javascript" src="<%= Routes.static_path(@conn, "/js/app.js") %>"></script>
+      <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/css/app.css")} />
+      <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/js/app.js")}></script>
 
   Now, whenever LiveView connects to the server, it will send a copy `src`
   or `href` attributes of all tracked statics and compare those values with
