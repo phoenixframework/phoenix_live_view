@@ -427,7 +427,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
     cond do
       # reorder and/or remove stream children
-      content_changed? && type == "stream" ->
+      content_changed? && type == "stream" && !Enum.empty?(streams) ->
         children = updated_existing_children ++ updated_appended
 
         # we always reduce over all streams, even if only one of them is actually relevant
@@ -499,6 +499,10 @@ defmodule Phoenix.LiveViewTest.DOM do
           end)
 
         {tag, attrs, new_children}
+
+      content_changed? && type == "stream" ->
+        # return the current children, they are probably from a nested LV
+        {tag, attrs, updated_existing_children ++ updated_appended}
 
       content_changed? && type == "append" ->
         {tag, attrs, updated_existing_children ++ updated_appended}

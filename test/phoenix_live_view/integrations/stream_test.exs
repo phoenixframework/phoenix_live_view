@@ -180,6 +180,24 @@ defmodule Phoenix.LiveView.StreamTest do
     assert has_element?(lv, "li", "Oranges")
   end
 
+  describe "within nested lv" do
+    test "does not clear stream when parent updates", %{conn: conn} do
+      {:ok, lv, html} = live(conn, "/stream/nested")
+      lv = find_live_child(lv, "nested")
+
+      # let the parent update
+      Process.sleep(100)
+
+      assert ids_in_ul_list(render(lv)) == ["items-a", "items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Filter") |> render_click()
+      assert ids_in_ul_list(html) == ["items-b", "items-c", "items-d"]
+
+      html = assert lv |> element("button", "Reset") |> render_click()
+      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+    end
+  end
+
   describe "issue #2994" do
     test "can filter and reset a stream", %{conn: conn} do
       {:ok, lv, html} = live(conn, "/stream/reset")

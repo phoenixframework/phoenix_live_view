@@ -577,3 +577,26 @@ defmodule Phoenix.LiveViewTest.StreamLimitLive do
     |> stream(:items, items, opts)
   end
 end
+
+defmodule Phoenix.LiveViewTest.StreamNestedLive do
+  use Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    :timer.send_interval(50, self(), :tick)
+
+    {:ok, assign(socket, :foo, 1)}
+  end
+
+  def handle_info(:tick, socket) do
+    {:noreply, update(socket, :foo, & &1 + 1)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div id="nested-container">
+      <%= @foo %>
+      <%= live_render(@socket, Phoenix.LiveViewTest.StreamResetLive, id: "nested") %>
+    </div>
+    """
+  end
+end
