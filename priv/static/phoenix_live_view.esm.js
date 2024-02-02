@@ -531,7 +531,9 @@ var DOM = {
       el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
     }
   },
-  maybeHideFeedback(container, forms, phxFeedbackFor, phxFeedbackGroup) {
+  maybeHideFeedback(container, inputs, phxFeedbackFor, phxFeedbackGroup) {
+    console.log(inputs);
+    let forms = new Set(inputs.map((i) => i.form));
     let feedbacks = [];
     let inputNamesFocused = {};
     let feedbackGroups = {};
@@ -1865,7 +1867,7 @@ var DOMPatch = class {
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
     let added = [];
-    let trackedForms = new Set();
+    let trackedInputs = [];
     let updates = [];
     let appendPrependUpdates = [];
     let externalFormTriggered = null;
@@ -1952,7 +1954,7 @@ var DOMPatch = class {
             externalFormTriggered = el;
           }
           if (el.getAttribute && el.getAttribute("name") && dom_default.isFormInput(el)) {
-            trackedForms.add(el.form);
+            trackedInputs.push(el);
           }
           if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
             this.trackAfter("phxChildAdded", el);
@@ -2029,7 +2031,7 @@ var DOMPatch = class {
             dom_default.syncAttrsToProps(fromEl);
             updates.push(fromEl);
             dom_default.applyStickyOperations(fromEl);
-            trackedForms.add(fromEl.form);
+            trackedInputs.push(fromEl);
             return false;
           } else {
             if (focusedSelectChanged) {
@@ -2041,7 +2043,7 @@ var DOMPatch = class {
             dom_default.syncAttrsToProps(toEl);
             dom_default.applyStickyOperations(toEl);
             if (toEl.getAttribute("name") && dom_default.isFormInput(toEl)) {
-              trackedForms.add(toEl.form);
+              trackedInputs.push(toEl);
             }
             this.trackBefore("updated", fromEl, toEl);
             return true;
@@ -2057,7 +2059,7 @@ var DOMPatch = class {
         appendPrependUpdates.forEach((update) => update.perform());
       });
     }
-    dom_default.maybeHideFeedback(targetContainer, trackedForms, phxFeedbackFor, phxFeedbackGroup);
+    dom_default.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup);
     liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
     dom_default.dispatchEvent(document, "phx:update");
     added.forEach((el) => this.trackAfter("added", el));

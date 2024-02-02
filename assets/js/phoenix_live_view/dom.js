@@ -292,7 +292,9 @@ let DOM = {
     }
   },
 
-  maybeHideFeedback(container, forms, phxFeedbackFor, phxFeedbackGroup){
+  maybeHideFeedback(container, inputs, phxFeedbackFor, phxFeedbackGroup){
+    console.log(inputs)
+    let forms = new Set(inputs.map(i => i.form))
     let feedbacks = []
     // if there are multiple inputs with the same name
     // (for example the default checkbox renders a hidden input as well)

@@ -93,7 +93,7 @@ export default class DOMPatch {
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
-    let trackedForms = new Set()
+    let trackedInputs = []
     let updates = []
     let appendPrependUpdates = []
 
@@ -188,7 +188,7 @@ export default class DOMPatch {
           }
 
           if(el.getAttribute && el.getAttribute("name") && DOM.isFormInput(el)){
-            trackedForms.add(el.form)
+            trackedInputs.push(el)
           }
           // nested view handling
           if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
@@ -263,7 +263,7 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
-            trackedForms.add(fromEl.form)
+            trackedInputs.push(fromEl)
             return false
           } else {
             // blur focused select if it changed so native UI is updated (ie safari won't update visible options)
@@ -275,7 +275,7 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
             if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){
-              trackedForms.add(toEl.form)
+              trackedInputs.push(toEl)
             }
             this.trackBefore("updated", fromEl, toEl)
             return true
@@ -292,7 +292,7 @@ export default class DOMPatch {
       })
     }
 
-    DOM.maybeHideFeedback(targetContainer, trackedForms, phxFeedbackFor, phxFeedbackGroup)
+    DOM.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup)
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
