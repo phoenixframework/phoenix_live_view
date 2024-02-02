@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.4
+## 0.20.4 (2024-02-01)
 
 ### Bug fixes
   * Fix phx-remove on sticky LiveViews
@@ -12,6 +12,12 @@
   * Never move existing stream items if they already exist (use stream_delete and then stream_insert instead)
   * Fix live component rendering breaking when the server adds a component back that was pruned by the client (#3026)
   * Allow redirect from upload progress callback
+  * Fix nested components getting skipped when resetting a stream
+  * Fix nested components getting skipped in LiveComponents
+  * Fix stream limits not being applied correctly when bulk inserting
+  * Fix click-away being called incorrectly on form submits
+  * Fix inconsistencies between LiveViewTest and browser stream implementations
+  * Fix phx-feedback-for being reapplied when there are multiple inputs with the same name
 
 ### Enhancements
   * Add `JS.toggle_class`
@@ -21,6 +27,8 @@
   * Add `validate_attrs` to slots
   * Support `phx-viewport` bindings in scrollable containers
   * Perform client redirect when trying to live nav from dead client to avoid extra round trip
+  * Allow regular buttons with name/value attributes to send form events and adjusted dynamic form documentation to reflect this
+  * Allow form attribute on `live_file_input`
 
 ## 0.20.3 (2024-01-02)
 
