@@ -22,6 +22,8 @@ import {
   THROTTLED
 } from "./constants"
 
+import JS from "./js"
+
 import {
   logError
 } from "./utils"
@@ -331,28 +333,40 @@ let DOM = {
 
     if(feedbacks.length > 0){
       let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
-      DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
+      // permanently add the no feedback class to the elements, so that they are
+      // not removed on subsequent patches
+      // we only remove them once the elements are touched or the form is submitted,
+      // see showError
+      DOM.all(container, selector, el => JS.addOrRemoveClasses(el, [PHX_NO_FEEDBACK_CLASS], []))
     }
   },
 
-  resetForm(form, phxFeedbackFor){
+  resetForm(form, phxFeedbackFor, phxFeedbackGroup){
     Array.from(form.elements).forEach(input => {
       let query = `[${phxFeedbackFor}="${input.id}"],
                    [${phxFeedbackFor}="${input.name}"],
                    [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
-
+      if(input.getAttribute(phxFeedbackGroup)){
+        query += `,[${phxFeedbackFor}="${input.getAttribute(phxFeedbackGroup)}"]`
+      }
       this.deletePrivate(input, PHX_HAS_FOCUSED)
       this.deletePrivate(input, PHX_HAS_SUBMITTED)
       this.all(document, query, feedbackEl => {
-        feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS)
+        JS.addOrRemoveClasses(feedbackEl, [PHX_NO_FEEDBACK_CLASS], [])
       })
     })
   },
 
-  showError(inputEl, phxFeedbackFor){
+  showError(inputEl, phxFeedbackFor, phxFeedbackGroup){
     if(inputEl.id || inputEl.name){
-      this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
-        this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
+      let query = `[${phxFeedbackFor}="${inputEl.id}"],
+                   [${phxFeedbackFor}="${inputEl.name}"],
+                   [${phxFeedbackFor}="${inputEl.name.replace(/\[\]$/, "")}"]`
+      if(inputEl.getAttribute(phxFeedbackGroup)){
+        query += `,[${phxFeedbackFor}="${inputEl.getAttribute(phxFeedbackGroup)}"]`
+      }
+      this.all(document, query, (el) => {
+        JS.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS])
       })
     }
   },

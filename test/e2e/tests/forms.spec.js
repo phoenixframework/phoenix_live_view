@@ -273,3 +273,39 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
     "my_form[users][1][name]": "User C"
   }));
 });
+
+test("phx-no-feedback is applied correctly", async ({ page }) => {
+  await page.goto("/form/feedback");
+  await syncLV(page);
+
+  await expect(page.locator("[phx-feedback-for=myfeedback]")).not.toBeVisible();
+  await page.getByRole("button", { name: "+" }).click();
+  await syncLV(page);
+  await expect(page.locator("[phx-feedback-for=myfeedback]")).not.toBeVisible();
+  await expect(page.getByText("Validate count")).toContainText("0");
+
+  await page.locator("input[name=name]").fill("Test");
+  await syncLV(page);
+  await expect(page.locator("[phx-feedback-for=myfeedback]")).not.toBeVisible();
+  await expect(page.getByText("Validate count")).toContainText("1");
+
+  await page.locator("input[name=myfeedback]").fill("Test");
+  await syncLV(page);
+  await expect(page.getByText("Validate count")).toContainText("2");
+  await expect(page.locator("[phx-feedback-for=myfeedback]")).toBeVisible();
+
+  // feedback appears on submit
+  await page.reload();
+  await syncLV(page);
+  await expect(page.locator("[phx-feedback-for=myfeedback]")).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Submit" }).click();
+  await syncLV(page);
+  await expect(page.getByText("Submit count")).toContainText("1");
+  await expect(page.locator("[phx-feedback-for=myfeedback]")).toBeVisible();
+
+  // feedback hides on reset
+  await page.getByRole("button", { name: "Reset" }).click();
+  await syncLV(page);
+  await expect(page.locator("[phx-feedback-for=myfeedback]")).not.toBeVisible();
+})
