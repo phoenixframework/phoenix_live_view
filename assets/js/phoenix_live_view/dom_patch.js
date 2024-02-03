@@ -93,7 +93,7 @@ export default class DOMPatch {
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
-    let trackedInputs = []
+    let feedbackContainers = []
     let updates = []
     let appendPrependUpdates = []
 
@@ -171,6 +171,7 @@ export default class DOMPatch {
         },
         onBeforeNodeAdded: (el) => {
           DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
+          if(DOM.isFeedbackContainer(el, phxFeedbackFor)) feedbackContainers.push(el)
           this.trackBefore("added", el)
           return el
         },
@@ -187,9 +188,6 @@ export default class DOMPatch {
             externalFormTriggered = el
           }
 
-          if(el.getAttribute && el.getAttribute("name") && DOM.isFormInput(el)){
-            trackedInputs.push(el)
-          }
           // nested view handling
           if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
             this.trackAfter("phxChildAdded", el)
@@ -217,6 +215,9 @@ export default class DOMPatch {
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
+          // mark both from and to els as feedback containers, as we don't know yet which one will be used
+          if(DOM.isFeedbackContainer(fromEl, phxFeedbackFor)) feedbackContainers.push(fromEl)
+          if(DOM.isFeedbackContainer(toEl, phxFeedbackFor)) feedbackContainers.push(toEl)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
             // if this is a live component used in a stream, we may need to reorder it
@@ -263,7 +264,6 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
-            trackedInputs.push(fromEl)
             return false
           } else {
             // blur focused select if it changed so native UI is updated (ie safari won't update visible options)
@@ -274,9 +274,6 @@ export default class DOMPatch {
 
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
-            if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){
-              trackedInputs.push(toEl)
-            }
             this.trackBefore("updated", fromEl, toEl)
             return true
           }
@@ -292,7 +289,7 @@ export default class DOMPatch {
       })
     }
 
-    DOM.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor, phxFeedbackGroup)
+    DOM.maybeHideFeedback(targetContainer, feedbackContainers, phxFeedbackFor, phxFeedbackGroup)
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
