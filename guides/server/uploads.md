@@ -205,7 +205,7 @@ soon as your upload succeeds, your app will be reloaded in the browser.  This
 can be temporarily disabled by setting `code_reloader: false` in `config/dev.exs`.
 
 Besides the above, this approach also has limitations in production. If you are
-running multiple instances of your application, the uploaded file will be store
+running multiple instances of your application, the uploaded file will be stored
 only in one of the instances. Any request routed to the other machine will
 ultimately fail.
 
