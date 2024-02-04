@@ -8,7 +8,6 @@ import {
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_MAIN,
-  PHX_NO_FEEDBACK_CLASS,
   PHX_PARENT_ID,
   PHX_PRIVATE,
   PHX_REF,
@@ -21,8 +20,6 @@ import {
   PHX_STICKY,
   THROTTLED
 } from "./constants"
-
-import JS from "./js"
 
 import {
   logError
@@ -294,73 +291,11 @@ let DOM = {
     }
   },
 
-  isFeedbackContainer(el, phxFeedbackFor){
-    return el.hasAttribute && el.hasAttribute(phxFeedbackFor)
-  },
-
-  maybeHideFeedback(container, feedbackContainers, phxFeedbackFor, phxFeedbackGroup){
-    // because we can have multiple containers with the same phxFeedbackFor value
-    // we perform the check only once and store the result;
-    // we often have multiple containers, because we push both fromEl and toEl in dompatch
-    // when a container is updated
-    const feedbackResults = {}
-    feedbackContainers.forEach(el => {
-      const feedback = el.getAttribute(phxFeedbackFor)
-      if(feedbackResults[feedback] === true){
-        this.hideFeedback(el)
-        return
-      }
-      feedbackResults[feedback] = this.shouldHideFeedback(container, feedback, phxFeedbackGroup)
-      if(feedbackResults[feedback] === true){
-        this.hideFeedback(el)
-      }
-    })
-  },
-
-  hideFeedback(container){
-    JS.addOrRemoveClasses(container, [PHX_NO_FEEDBACK_CLASS], [])
-  },
-
-  shouldHideFeedback(container, nameOrGroup, phxFeedbackGroup){
-    const query = `[name="${nameOrGroup}"],
-                   [name="${nameOrGroup}[]"],
-                   [${phxFeedbackGroup}="${nameOrGroup}"]`
-    let focused = false
-    DOM.all(container, query, (input) => {
-      if(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)){
-        focused = true
-      }
-    })
-    return !focused
-  },
-
-  feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup){
-    let query = `[${phxFeedbackFor}="${input.name}"],
-                 [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
-    if(input.getAttribute(phxFeedbackGroup)){
-      query += `,[${phxFeedbackFor}="${input.getAttribute(phxFeedbackGroup)}"]`
-    }
-    return query
-  },
-
-  resetForm(form, phxFeedbackFor, phxFeedbackGroup){
+  resetForm(form){
     Array.from(form.elements).forEach(input => {
-      let query = this.feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup)
       this.deletePrivate(input, PHX_HAS_FOCUSED)
       this.deletePrivate(input, PHX_HAS_SUBMITTED)
-      this.all(document, query, feedbackEl => {
-        JS.addOrRemoveClasses(feedbackEl, [PHX_NO_FEEDBACK_CLASS], [])
-      })
     })
-  },
-
-  showError(inputEl, phxFeedbackFor, phxFeedbackGroup){
-    if(inputEl.name){
-      let query = this.feedbackSelector(inputEl, phxFeedbackFor, phxFeedbackGroup)
-      this.all(document, query, (el) => {
-        JS.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS])
-      })
-    }
   },
 
   isPhxChild(node){

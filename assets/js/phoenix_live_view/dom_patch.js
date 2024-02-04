@@ -1,8 +1,6 @@
 import {
   PHX_COMPONENT,
   PHX_DISABLE_WITH,
-  PHX_FEEDBACK_FOR,
-  PHX_FEEDBACK_GROUP,
   PHX_PRUNE,
   PHX_ROOT_ID,
   PHX_SESSION,
@@ -86,14 +84,11 @@ export default class DOMPatch {
     let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
-    let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
-    let phxFeedbackGroup = liveSocket.binding(PHX_FEEDBACK_GROUP)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
-    let feedbackContainers = []
     let updates = []
     let appendPrependUpdates = []
 
@@ -101,6 +96,8 @@ export default class DOMPatch {
 
     this.trackBefore("added", container)
     this.trackBefore("updated", container, container)
+
+    DOM.dispatchEvent(document, "phx:update-start")
 
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
@@ -171,7 +168,6 @@ export default class DOMPatch {
         },
         onBeforeNodeAdded: (el) => {
           DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
-          if(DOM.isFeedbackContainer(el, phxFeedbackFor)) feedbackContainers.push(el)
           this.trackBefore("added", el)
           return el
         },
@@ -215,9 +211,6 @@ export default class DOMPatch {
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
-          // mark both from and to els as feedback containers, as we don't know yet which one will be used
-          if(DOM.isFeedbackContainer(fromEl, phxFeedbackFor)) feedbackContainers.push(fromEl)
-          if(DOM.isFeedbackContainer(toEl, phxFeedbackFor)) feedbackContainers.push(toEl)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
             // if this is a live component used in a stream, we may need to reorder it
@@ -289,12 +282,11 @@ export default class DOMPatch {
       })
     }
 
-    DOM.maybeHideFeedback(targetContainer, feedbackContainers, phxFeedbackFor, phxFeedbackGroup)
-
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
     added.forEach(el => this.trackAfter("added", el))
     updates.forEach(el => this.trackAfter("updated", el))
+    DOM.dispatchEvent(document, "phx:update-end")
 
     this.transitionPendingRemoves()
 

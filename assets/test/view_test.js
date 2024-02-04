@@ -2,6 +2,7 @@ import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
+import {init as initFeedbackFor} from "phoenix_live_view/feedback_for"
 
 import {
   PHX_LOADING_CLASS,
@@ -931,6 +932,8 @@ function liveViewComponent(){
 }
 
 describe("View + Component", function(){
+  let feedback
+
   beforeEach(() => {
     global.Phoenix = {Socket}
     global.document.body.innerHTML = liveViewComponent().outerHTML
@@ -938,6 +941,11 @@ describe("View + Component", function(){
 
   afterAll(() => {
     global.document.body.innerHTML = ""
+  })
+
+  afterEach(() => {
+    // detach feedback listeners
+    if(feedback) feedback()
   })
 
   test("targetComponentID", async () => {
@@ -986,6 +994,7 @@ describe("View + Component", function(){
       <input id="last_name" value="" name="user[last_name]" />
     </form>`
     let liveSocket = new LiveSocket("/live", Socket)
+    feedback = initFeedbackFor(liveSocket)
     let el = liveViewDOM(html)
     let view = simulateJoinedView(el, liveSocket, html)
     let channelStub = {
@@ -1030,6 +1039,7 @@ describe("View + Component", function(){
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[first_name]"})
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name, "phx-has-focused", true)
+    first_name.dispatchEvent(new Event("input", {bubbles: true}))
     view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
     window.requestAnimationFrame(() => {
       expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
@@ -1037,6 +1047,7 @@ describe("View + Component", function(){
   
       view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
       DOM.putPrivate(last_name, "phx-has-focused", true)
+      last_name.dispatchEvent(new Event("input", {bubbles: true}))
       view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
       window.requestAnimationFrame(() => {
         expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
@@ -1061,6 +1072,7 @@ describe("View + Component", function(){
       <input id="email" value="" name="user[email]" />
     </form>`
     let liveSocket = new LiveSocket("/live", Socket)
+    feedback = initFeedbackFor(liveSocket)
     let el = liveViewDOM(html)
     let view = simulateJoinedView(el, liveSocket, html)
     let channelStub = {
@@ -1112,6 +1124,7 @@ describe("View + Component", function(){
     view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[email]"})
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(email, "phx-has-focused", true)
+    email.dispatchEvent(new Event("input", {bubbles: true}))
     view.pushInput(email, el, null, "validate", {_target: email.name})
     window.requestAnimationFrame(() => {
       expect(el.querySelector(`[phx-feedback-for="${email.name}"]`).classList.contains("phx-no-feedback")).toBeFalsy()
@@ -1121,6 +1134,7 @@ describe("View + Component", function(){
 
       view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[first_name]"})
       DOM.putPrivate(first_name, "phx-has-focused", true)
+      first_name.dispatchEvent(new Event("input", {bubbles: true}))
       view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
       window.requestAnimationFrame(() => {
         expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
@@ -1151,6 +1165,7 @@ describe("View + Component", function(){
       </select>
     </form>`
     let liveSocket = new LiveSocket("/live", Socket)
+    feedback = initFeedbackFor(liveSocket)
     let el = liveViewDOM(html)
     let view = simulateJoinedView(el, liveSocket, html)
     let channelStub = {
@@ -1187,12 +1202,14 @@ describe("View + Component", function(){
     let allergies_select = view.el.querySelector("select#allergies")
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name_input, "phx-has-focused", true)
+    first_name_input.dispatchEvent(new Event("input", {bubbles: true}))
     view.pushInput(first_name_input, el, null, "validate", {_target: "user[first_name]"})
     window.requestAnimationFrame(() => {
       expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
       expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeTruthy()
   
       DOM.putPrivate(allergies_select, "phx-has-focused", true)
+      allergies_select.dispatchEvent(new Event("input", {bubbles: true}))
       view.pushInput(allergies_select, el, null, "validate", {_target: "user[allergies][]"})
       window.requestAnimationFrame(() => {
         expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
