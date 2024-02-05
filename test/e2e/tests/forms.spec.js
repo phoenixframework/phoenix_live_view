@@ -308,4 +308,17 @@ test("phx-no-feedback is applied correctly", async ({ page }) => {
   await page.getByRole("button", { name: "Reset" }).click();
   await syncLV(page);
   await expect(page.locator("[phx-feedback-for=myfeedback]")).not.toBeVisible();
-})
+
+  // can toggle feedback visibility
+  await page.reload();
+  await syncLV(page);
+  await expect(page.locator("[data-feedback-container]")).not.toBeVisible();
+
+  await page.getByRole("button", { name: "Toggle feedback" }).click();
+  await syncLV(page);
+  await expect(page.locator("[data-feedback-container]")).toBeVisible();
+
+  await page.getByRole("button", { name: "Toggle feedback" }).click();
+  await syncLV(page);
+  await expect(page.locator("[data-feedback-container]")).not.toBeVisible();
+});

@@ -3,7 +3,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, count: 0, submit_count: 0, validate_count: 0)}
+    {:ok, assign(socket, count: 0, submit_count: 0, validate_count: 0, feedback: true)}
   end
 
   @impl Phoenix.LiveView
@@ -23,6 +23,10 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
     {:noreply, assign(socket, :count, socket.assigns.count - 1)}
   end
 
+  def handle_event("toggle-feedback", _, socket) do
+    {:noreply, assign(socket, :feedback, !socket.assigns.feedback)}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
@@ -39,9 +43,11 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
 
     <.myform />
 
-    <div phx-feedback-for="myfeedback">
+    <div phx-feedback-for={@feedback && "myfeedback"} data-feedback-container>
       I am visible, because phx-no-feedback is not set for myfeedback!
     </div>
+
+    <button phx-click="toggle-feedback">Toggle feedback</button>
     """
   end
 
