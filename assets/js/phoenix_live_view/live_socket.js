@@ -705,7 +705,7 @@ export default class LiveSocket {
       // early return if the navigation does not actually navigate anywhere (hashchange)
       if(!this.registerNewLocation(window.location)){ return }
       this.withNavigationGuard(window.location.href, previousLocation.href, () => {
-        let {type, id, root, scroll} = event.state || {}
+        let {type, id, root, scroll, userData} = event.state || {}
         let href = window.location.href
 
         DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true}})
@@ -713,13 +713,13 @@ export default class LiveSocket {
           if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
             this.main.pushLinkPatch(href, null, () => {
               this.maybeScroll(scroll)
-              this.afterNavigation(href, previousLocation.href)
+              this.afterNavigation(href, previousLocation.href, userData)
             })
           } else {
             this.replaceMain(href, null, () => {
               if(root){ this.replaceRootHistory() }
               this.maybeScroll(scroll)
-              this.afterNavigation(href, previousLocation.href)
+              this.afterNavigation(href, previousLocation.href, userData)
             })
           }
         })
@@ -785,8 +785,9 @@ export default class LiveSocket {
   }
 
   pushHistoryPatch(href, linkState, targetEl){
-    this.withNavigationGuard(href, this.currentLocation.href, () => {
+    this.withNavigationGuard(href, this.currentLocation.href, (userData) => {
       if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href) }
+      if(userData) Browser.updateCurrentState(state => Object.assign(state, {userData}))
 
       this.withPageLoading({to: href, kind: "patch"}, done => {
         this.main.pushLinkPatch(href, targetEl, linkRef => {
@@ -808,8 +809,9 @@ export default class LiveSocket {
   }
 
   historyRedirect(href, linkState, flash){
-    this.withNavigationGuard(href, this.currentLocation.href, () => {
+    this.withNavigationGuard(href, this.currentLocation.href, (userData) => {
       if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href, flash) }
+      if(userData) Browser.updateCurrentState(state => Object.assign(state, {userData}))
 
       // convert to full href if only path prefix
       if(/^\/$|^\/[^\/]+.*$/.test(href)){
@@ -867,16 +869,16 @@ export default class LiveSocket {
       if(result === false){
         cancel()
       } else {
-        callback()
+        callback(result)
       }
     })
   }
 
   // must be called after a navigation was performed, see `withNavigationGuard`.
-  afterNavigation(to, from){
+  afterNavigation(to, from, userData){
     // wait for the DOM to be patched
     window.requestAnimationFrame(() => {
-      this.navigationCallbacks["afterEach"](to, from)
+      this.navigationCallbacks["afterEach"](to, from, userData)
     })
   }
 

@@ -12,7 +12,6 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
     </script>
     <script>
       window.navigationEvents = []
-      let customScrollPosition = null;
 
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
       let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {
@@ -21,6 +20,8 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
           async beforeEach(to, from) {
             console.log(to, from)
             window.navigationEvents.push({ type: "before", to, from });
+            let customScrollPosition
+            let preventNavigation = false
 
             // remember custom scroll position
             if (document.querySelector("#my-scroll-container")) {
@@ -29,19 +30,27 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
 
             // prevent navigating when form submit is pending
             if (document.querySelector("form[data-submit-pending]")) {
-              return confirm("Do you really want to leave the page?")
+              preventNavigation = !confirm("Do you really want to leave the page?")
             }
 
             if(document.startViewTransition) {
               document.startViewTransition();
             }
+
+            if(preventNavigation) {
+              return false
+            } else {
+              // the return value will be passed to the `afterEach` as third parameter,
+              // when navigating back to the previous page
+              return { customScrollPosition }
+            }
           },
-          async afterEach(to, from) {
+          async afterEach(to, from, historyState) {
             window.navigationEvents.push({ type: "after", to, from });
 
             // restore custom scroll position
-            if (document.querySelector("#my-scroll-container") && customScrollPosition) {
-              document.querySelector("#my-scroll-container").scrollTop = customScrollPosition
+            if (document.querySelector("#my-scroll-container") && historyState && historyState.customScrollPosition) {
+              document.querySelector("#my-scroll-container").scrollTop = historyState.customScrollPosition
             }
           }
         }

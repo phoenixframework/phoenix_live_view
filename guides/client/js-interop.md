@@ -325,11 +325,14 @@ away from a page. The LiveSocket constructor accepts a navigation option with tw
   * `beforeEach(to, from)` is called before a navigation event occurs.
     If this callback returns `false`, the navigation event is cancelled.
     The callback can return a promise, which will be awaited before
-    allowing the navigation to proceed.
-  * `afterEach(to, from)` is called after a navigation event is complete.
+    allowing the navigation to proceed. Any other return value than false
+    will be stored in the history state and can be accessed in the `afterEach` callback
+    as third parameter when navigating back in the history.
+  * `afterEach(to, from, userData)` is called after a navigation event is complete.
     The return value of this callback is ignored. Its primary use is
     for restoring state that was stored in `beforeEach`,
-    e.g., restoring the scroll position of custom containers.
+    e.g., restoring the scroll position of custom containers. The userData parameter
+    is only available when navigating back in the history. Otherwise it will be undefined.
 
 For example, the following option could be used to prevent navigating away from a page
 when there is a form with the `data-submit-pending` attribute:
@@ -365,24 +368,27 @@ If you have a custom scrollable container, you can use navigation guards like th
 ```javascript
 // app.js
 
-let scrollPositions = {}
-
 let liveSocket = new LiveSocket("/live", Socket, {
   // other options left out
   // ...
   navigation: {
     beforeEach() {
+      let scrollPositions = {}
       Array.from(document.querySelectorAll("[data-restore-scroll]")).forEach(el => {
         scrollPositions[el.id] = el.scrollTop
       })
+      return { scrollPositions }
     },
-    afterEach() {
+    afterEach(_to, _from, userData) {
       // restore scroll positions
-      Array.from(document.querySelectorAll("[data-restore-scroll]")).forEach(el => {
-        if(scrollPositions[el.id]) {
-          el.scrollTop = scrollPositions[el.id]
+      if(userData && userData.scrollPositions){
+        for (let [id, scrollPosition] of Object.entries(userData.scrollPositions)){
+          let el = document.getElementById(id)
+          if(el) {
+            el.scrollTop = scrollPosition
+          }
         }
-      })
+      }
     }
   }
 })
