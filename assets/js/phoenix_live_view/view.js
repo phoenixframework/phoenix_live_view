@@ -57,6 +57,18 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
+let prependFormDataKey = (key, prefix) => {
+  let isArray = key.endsWith("[]")
+  // Remove the '[]' if it's an array
+  let baseKey = isArray ? key.slice(0, -2) : key
+  // Replace the last occurrence of a word before a closing bracket or
+  // the end with the word plus the suffix
+  baseKey = baseKey.replace(/(\w+)(\]?$)/, `${prefix}$1$2`)
+  // Add back the '[]' if it was an array
+  if(isArray){ baseKey += '[]' }
+  return baseKey
+}
+
 let serializeForm = (form, metadata, onlyNames = []) => {
   const {submitter, ...meta} = metadata
 
@@ -90,8 +102,13 @@ let serializeForm = (form, metadata, onlyNames = []) => {
 
   const params = new URLSearchParams()
 
+  let elements = Array.from(form.elements)
   for(let [key, val] of formData.entries()){
     if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
+      let input = elements.find(input => input.name === key)
+      if(!(DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED))){
+        params.append(prependFormDataKey(key, "_unused_"), "")
+      }
       params.append(key, val)
     }
   }

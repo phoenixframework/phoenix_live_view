@@ -284,6 +284,37 @@ defmodule Phoenix.ComponentUnitTest do
 
       form = to_form(base, errors: [name: "can't be blank"])
       assert form.errors == [name: "can't be blank"]
+
+      form = to_form(base, action: :validate)
+      assert form.action == :validate
     end
+  end
+
+  test "used_errors/1" do
+    errors = [username: "username required", email: "email required"]
+
+    params = %{}
+    form = to_form(params, as: "profile", action: :validate, errors: errors)
+    assert form.errors == errors
+    assert used_errors(form[:username]) == []
+    assert used_errors(form[:email]) == []
+
+    params = %{"username" => "", "email" => ""}
+    form = to_form(params, as: "profile", action: :validate, errors: errors)
+    assert form.errors == errors
+    assert used_errors(form[:username]) == ["username required"]
+    assert used_errors(form[:email]) == ["email required"]
+
+    params = %{"username" => "", "email" => "", "_unused_username" => ""}
+    form = to_form(params, as: "profile", action: :validate, errors: errors)
+    assert form.errors == errors
+    assert used_errors(form[:username]) == []
+    assert used_errors(form[:email]) == ["email required"]
+
+    params = %{"username" => "", "email" => "", "_unused_username" => "", "_unused_email" => ""}
+    form = to_form(params, as: "profile", action: :validate, errors: errors)
+    assert form.errors == errors
+    assert used_errors(form[:username]) == []
+    assert used_errors(form[:email]) == []
   end
 end
