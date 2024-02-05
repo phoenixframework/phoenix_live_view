@@ -14,7 +14,6 @@ import {
   PHX_CLIENT_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
   PHX_FEEDBACK_FOR,
-  PHX_FEEDBACK_GROUP,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
@@ -59,13 +58,12 @@ import JS from "./js"
 
 let prependFormDataKey = (key, prefix) => {
   let isArray = key.endsWith("[]")
-  // Remove the '[]' if it's an array
+  // Remove the "[]" if it's an array
   let baseKey = isArray ? key.slice(0, -2) : key
-  // Replace the last occurrence of a word before a closing bracket or
-  // the end with the word plus the suffix
+  // Replace last occurrence of key before a closing bracket or the end with key plus suffix
   baseKey = baseKey.replace(/(\w+)(\]?$)/, `${prefix}$1$2`)
-  // Add back the '[]' if it was an array
-  if(isArray){ baseKey += '[]' }
+  // Add back the "[]" if it was an array
+  if(isArray){ baseKey += "[]" }
   return baseKey
 }
 
