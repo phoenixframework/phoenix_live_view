@@ -1501,7 +1501,6 @@ defmodule Phoenix.Component do
     {action, options} = Keyword.pop(options, :action)
     options = Keyword.merge(data.options, options)
 
-    # todo filter errors based on params
     %Phoenix.HTML.Form{
       data
       | action: action,
@@ -2544,7 +2543,6 @@ defmodule Phoenix.Component do
           new_params = Map.put(params, @persistent_id, id)
           new_hidden = [{@persistent_id, id} | form.hidden]
 
-          # todo errors filter here
           new_form = %Phoenix.HTML.Form{
             form
             | id: form_id,
