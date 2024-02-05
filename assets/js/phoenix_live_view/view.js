@@ -56,7 +56,7 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
-let prependFormDataKey = (key, prefix) => {
+export let prependFormDataKey = (key, prefix) => {
   let isArray = key.endsWith("[]")
   // Remove the "[]" if it's an array
   let baseKey = isArray ? key.slice(0, -2) : key

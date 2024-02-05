@@ -332,7 +332,7 @@ describe("JS", () => {
       expect(Array.from(modal2.classList)).toEqual(["modal", "class1"])
       JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
       jest.runAllTimers()
-      
+
       expect(Array.from(modal1.classList)).toEqual(["modal"])
       expect(Array.from(modal2.classList)).toEqual(["modal"])
       done()
@@ -398,7 +398,7 @@ describe("JS", () => {
           event: "validate",
           type: "form",
           uploads: {},
-          value: "username=&other=&_target=username"
+          value: "_unused_username=&username=&_unused_other=&other=&_target=username"
         })
         done()
       }
@@ -429,7 +429,7 @@ describe("JS", () => {
           event: "username_changed",
           type: "form",
           uploads: {},
-          value: "username=&_target=username"
+          value: "_unused_username=&username=&_target=username"
         })
         done()
       }
@@ -460,7 +460,7 @@ describe("JS", () => {
           event: "username_changed",
           type: "form",
           uploads: {},
-          value: "username=&_target=username"
+          value: "_unused_username=&username=&_target=username"
         })
         done()
       }
