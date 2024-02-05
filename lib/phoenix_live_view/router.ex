@@ -155,10 +155,9 @@ defmodule Phoenix.LiveView.Router do
 
   > #### `live_session` and `forward` {: .warning}
   >
-  > Your `live_session` configuration does not apply to any forwarded route.
-  > Instead, you must declare `live_session` in any additional router you
-  > dispatch to. For this reason, we recommend not nesting `forward` inside
-  > `live_session` declarations.
+  > `live_session` does not currently work with `forward`. LiveView expects
+  > your `live` routes to always be directly defined within the main router
+  > of your application.
 
   ## Options
 
