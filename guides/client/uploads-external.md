@@ -50,7 +50,7 @@ Supply the `:external` option to
 function that generates a signed URL where the client will
 push the bytes for the upload entry. This function must
 return either `{:ok, meta, socket}` or `{:error, meta, socket}`,
-where `meta` must me a map.
+where `meta` must be a map.
 
 For example, if you were using a context that provided a
 [`start_session`](https://developers.google.com/youtube/v3/guides/using_resumable_upload_protocol##Start_Resumable_Session)

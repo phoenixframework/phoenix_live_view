@@ -153,6 +153,12 @@ defmodule Phoenix.LiveView.Router do
   detailed description and general tips on authentication, authorization,
   and more.
 
+  > #### `live_session` and `forward` {: .warning}
+  >
+  > `live_session` does not currently work with `forward`. LiveView expects
+  > your `live` routes to always be directly defined within the main router
+  > of your application.
+
   ## Options
 
     * `:session` - The optional extra session map or MFA tuple to be merged with
