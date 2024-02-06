@@ -271,6 +271,15 @@ describe("View + DOM", function(){
       submitWithButton(btn, "increment=1&note=2&btnName=btnValue")
     })
 
+    test("payload includes submitter when name is provided (submitter outside form)", function(){
+      let btn = document.createElement("button")
+      btn.setAttribute("form", "my-form")
+      btn.setAttribute("type", "submit")
+      btn.setAttribute("name", "btnName")
+      btn.setAttribute("value", "btnValue")
+      submitWithButton(btn, "increment=1&note=2&btnName=btnValue", document.body)
+    })
+
     test("payload does not include submitter when name is not provided", function(){
       let btn = document.createElement("button")
       btn.setAttribute("type", "submit")
@@ -278,11 +287,15 @@ describe("View + DOM", function(){
       submitWithButton(btn, "increment=1&note=2")
     })
 
-    function submitWithButton(btn, queryString) {
+    function submitWithButton(btn, queryString, appendTo){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let form = el.querySelector("form")
-      form.appendChild(btn)
+      if(appendTo){
+        appendTo.appendChild(btn)
+      } else {
+        form.appendChild(btn)
+      }
 
       let view = simulateJoinedView(el, liveSocket)
       let channelStub = {

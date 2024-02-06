@@ -57,7 +57,7 @@ export function liveViewDOM(content){
   div.setAttribute("id", "container")
   div.setAttribute("class", "user-implemented-class")
   div.innerHTML = content || `
-    <form>
+    <form id="my-form">
       <label for="plus">Plus</label>
       <input id="plus" value="1" name="increment" />
       <textarea id="note" name="note">2</textarea>
