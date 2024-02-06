@@ -1566,29 +1566,29 @@ defmodule Phoenix.Component do
 
   The `Phoenix.HTML.FormData` implementation will consider an empty title in
   this scenario as invalid, but the user shouldn't see the error because they
-  haven't yet used the email field. To filter the errors, `used_errors/1`
-  will used param metadata from the client to distinguish between used and
-  unused fields. For non-LiveViews, all fields are considered used.
+  haven't yet used the email input. To handle this `used_input?/1` can be used to
+  filter errors from the client by referencing param metadata to distinguish between
+  used and unused input fields. For non-LiveViews, all inputs are considered used.
 
   ```heex
   <input type="text" name={@form[:title].name} value={@form[:title].value} />
 
-  <%= for error <- used_errors(@form[:email]) do %>
-    <p><%= error %></p>
-  <% end %>
+  <div :if={used_input?(@form[:title])}>
+    <p :for={error <- @form[:title].errors}><%= error %></p>
+  </div>
 
   <input type="text" name={@form[:email].name} value={@form[:email].value} />
 
-  <%= for error <- used_errors(@form[:email]) do %>
-    <p><%= error %></p>
-  <% end %>
+  <div :if={used_input?(@form[:email])}>
+    <p :for={error <- @form[:email].errors}><%= error %></p>
+  </div>
   ```
   """
-  def used_errors(%Phoenix.HTML.FormField{field: field, errors: errors, form: form}) do
+  def used_input?(%Phoenix.HTML.FormField{field: field, form: form}) do
     cond do
-      !is_map_key(form.params, "#{field}") -> []
-      is_map_key(form.params, "_unused_#{field}") -> []
-      true -> errors
+      !is_map_key(form.params, "#{field}") -> false
+      is_map_key(form.params, "_unused_#{field}") -> false
+      true -> true
     end
   end
 
@@ -2185,12 +2185,12 @@ defmodule Phoenix.Component do
   set it to `:validate` or anything else to avoid giving the impression that a
   database operation has actually been attempted.
 
-  ### Displaying errors on used and unused fields
+  ### Displaying errors on used and unused input fields
 
   Used inputs are only those inputs that have been focused, interacted with, or
   submitted by the client. In most cases, a user shouldn't receive error feedback
   for forms they haven't yet interacted with, until they submit the form. Filtering
-  the errors based on used fields can be done with `used_errors/1`.
+  the errors based on used input fields can be done with `used_input?/1`.
 
   ## Example: outside LiveView (regular HTTP requests)
 

@@ -290,31 +290,25 @@ defmodule Phoenix.ComponentUnitTest do
     end
   end
 
-  test "used_errors/1" do
-    errors = [username: "username required", email: "email required"]
-
+  test "used_input?/1" do
     params = %{}
-    form = to_form(params, as: "profile", action: :validate, errors: errors)
-    assert form.errors == errors
-    assert used_errors(form[:username]) == []
-    assert used_errors(form[:email]) == []
+    form = to_form(params, as: "profile", action: :validate)
+    refute used_input?(form[:username])
+    refute used_input?(form[:email])
 
     params = %{"username" => "", "email" => ""}
-    form = to_form(params, as: "profile", action: :validate, errors: errors)
-    assert form.errors == errors
-    assert used_errors(form[:username]) == ["username required"]
-    assert used_errors(form[:email]) == ["email required"]
+    form = to_form(params, as: "profile", action: :validate)
+    assert used_input?(form[:username])
+    assert used_input?(form[:email])
 
     params = %{"username" => "", "email" => "", "_unused_username" => ""}
-    form = to_form(params, as: "profile", action: :validate, errors: errors)
-    assert form.errors == errors
-    assert used_errors(form[:username]) == []
-    assert used_errors(form[:email]) == ["email required"]
+    form = to_form(params, as: "profile", action: :validate)
+    refute used_input?(form[:username])
+    assert used_input?(form[:email])
 
     params = %{"username" => "", "email" => "", "_unused_username" => "", "_unused_email" => ""}
-    form = to_form(params, as: "profile", action: :validate, errors: errors)
-    assert form.errors == errors
-    assert used_errors(form[:username]) == []
-    assert used_errors(form[:email]) == []
+    form = to_form(params, as: "profile", action: :validate)
+    refute used_input?(form[:username])
+    refute used_input?(form[:email])
   end
 end
