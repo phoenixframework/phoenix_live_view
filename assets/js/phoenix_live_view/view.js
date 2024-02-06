@@ -68,7 +68,7 @@ let serializeForm = (form, metadata, onlyNames = []) => {
     // this can happen if the element is outside the actual form element
     const formId = submitter.getAttribute("form")
     if(formId){
-      input.setAttribute("form", form)
+      input.setAttribute("form", formId)
     }
     input.name = submitter.name
     input.value = submitter.value
