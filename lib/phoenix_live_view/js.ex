@@ -19,6 +19,7 @@ defmodule Phoenix.LiveView.JS do
 
     * `add_class` - Add classes to elements, with optional transitions
     * `remove_class` - Remove classes from elements, with optional transitions
+    * `toggle_class` - Sets or removes classes from elements, with optional transitions
     * `set_attribute` - Set an attribute on elements
     * `remove_attribute` - Remove an attribute from elements
     * `toggle_attribute` - Sets or removes element attribute based on attribute presence.
