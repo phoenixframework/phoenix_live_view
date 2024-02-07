@@ -426,6 +426,15 @@ defmodule Phoenix.LiveViewTest.DOM do
         apply_stream(acc, appended_children, stream)
       end)
 
+    # we can only verify the children after applying all the streams;
+    # this is because apply_phx_update is called with all streams of the LiveView,
+    # even of nested components that may have nothing to do with the current node
+    verify_only_stream_children!(
+      children_before,
+      appended_children,
+      Enum.flat_map(streams, fn [_, inserts, _ | _maybe_reset] -> inserts end)
+    )
+
     {tag, attrs, new_children}
   end
 
@@ -496,6 +505,22 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp verify_phx_update_id!(_type, _id, _node) do
     :ok
+  end
+
+  defp verify_only_stream_children!(existing_children, appended_children, inserts) do
+    existing_ids = MapSet.new(apply_phx_update_children_id("stream", existing_children))
+    appended_ids = MapSet.new(apply_phx_update_children_id("stream", appended_children))
+    new_appended_ids = MapSet.difference(appended_ids, existing_ids)
+    insert_ids = Enum.map(inserts, fn [id, _stream_at, _limit] -> id end) |> MapSet.new()
+
+    if MapSet.difference(new_appended_ids, insert_ids) |> MapSet.size() > 0 do
+      raise ArgumentError, """
+      a container with phx-update="stream" must only contain stream children with the \
+      id set to the `dom_id` of the stream item. Got:
+
+      #{to_html(appended_children)}
+      """
+    end
   end
 
   defp apply_phx_update_children(html_tree, id) do
