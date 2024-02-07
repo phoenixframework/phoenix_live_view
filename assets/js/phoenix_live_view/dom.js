@@ -221,7 +221,20 @@ let DOM = {
 
       default:
         let timeout = parseInt(value)
-        let trigger = () => throttle ? this.deletePrivate(el, THROTTLED) : callback()
+        let trigger = (blur) => {
+          if(blur){
+            // if the input is blurred, we need to cancel the next throttle timeout
+            // therefore we store the timer id in the THROTTLED private attribute
+            if(throttle && this.private(el, THROTTLED)){
+              clearTimeout(this.private(el, THROTTLED))
+              this.deletePrivate(el, THROTTLED)
+            }
+            // on debounce we just trigger the callback
+            return callback()
+          }
+          // no blur, remove the throttle attribute if we are in throttle mode
+          throttle ? this.deletePrivate(el, THROTTLED) : callback()
+        }
         let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger)
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
         if(throttle){
@@ -236,10 +249,14 @@ let DOM = {
             return false
           } else {
             callback()
-            this.putPrivate(el, THROTTLED, true)
-            setTimeout(() => {
+            // store the throttle timer id in the THROTTLED private attribute,
+            // so that we can cancel it if the input is blurred
+            // otherwise, when new events happen after blur, but before the old
+            // timeout is triggered, we would actually trigger the callback multiple times
+            const t = setTimeout(() => {
               if(asyncFilter()){ this.triggerCycle(el, DEBOUNCE_TRIGGER) }
             }, timeout)
+            this.putPrivate(el, THROTTLED, t)
           }
         } else {
           setTimeout(() => {
@@ -258,20 +275,17 @@ let DOM = {
           })
         }
         if(this.once(el, "bind-debounce")){
-          el.addEventListener("blur", () => {
-            // always trigger callback on blur
-            callback()
-          })
+          el.addEventListener("blur", () => this.triggerCycle(el, DEBOUNCE_TRIGGER, null, [true]))
         }
     }
   },
 
-  triggerCycle(el, key, currentCycle){
+  triggerCycle(el, key, currentCycle, params=[]){
     let [cycle, trigger] = this.private(el, key)
     if(!currentCycle){ currentCycle = cycle }
     if(currentCycle === cycle){
       this.incCycle(el, key)
-      trigger()
+      trigger(...params)
     }
   },
 
