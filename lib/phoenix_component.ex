@@ -1537,14 +1537,14 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Returns the errors for the form field field if the field was used by the client.
+  Returns the errors for the form field if the field was used by the client.
 
   Used inputs are only those inputs that have been focused, interacted with, or
   submitted by the client. For LiveView, this is used to filter errors from the
   `Phoenix.HTML.FormData` implementation to avoid showing "field can't be blank"
   in scenarios where the client hasn't yet interacted with specific fields.
 
-  Used inputs are tracked internally by the client sending sending a sibling key
+  Used inputs are tracked internally by the client sending a sibling key
   derived from each input name, which indicates the inputs that remain  unused
   on the client. For example, a form with email and title fields where only the
   title has been modifed so far on the client, would send the following payload:
@@ -1586,7 +1586,7 @@ defmodule Phoenix.Component do
   """
   def used_input?(%Phoenix.HTML.FormField{field: field, form: form}) do
     cond do
-      !is_map_key(form.params, "#{field}") -> false
+      not is_map_key(form.params, "#{field}") -> false
       is_map_key(form.params, "_unused_#{field}") -> false
       true -> true
     end
