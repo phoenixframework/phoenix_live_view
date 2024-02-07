@@ -233,7 +233,10 @@ let DOM = {
             return callback()
           }
           // no blur, remove the throttle attribute if we are in throttle mode
-          throttle ? this.deletePrivate(el, THROTTLED) : callback()
+          if(throttle) this.deletePrivate(el, THROTTLED)
+          // always call the callback to ensure that the latest event is processed,
+          // even when throttle is active
+          callback()
         }
         let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger)
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
