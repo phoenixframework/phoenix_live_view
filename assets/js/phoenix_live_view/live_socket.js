@@ -96,6 +96,7 @@ import {
   PHX_TRACK_UPLOADS,
   PHX_SESSION,
   PHX_FEEDBACK_FOR,
+  PHX_FEEDBACK_GROUP,
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF,
@@ -879,7 +880,7 @@ export default class LiveSocket {
     }
     this.on("reset", (e) => {
       let form = e.target
-      DOM.resetForm(form, this.binding(PHX_FEEDBACK_FOR))
+      DOM.resetForm(form, this.binding(PHX_FEEDBACK_FOR), this.binding(PHX_FEEDBACK_GROUP))
       let input = Array.from(form.elements).find(el => el.type === "reset")
       if(input){
         // wait until next tick to get updated input value

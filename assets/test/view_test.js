@@ -988,7 +988,7 @@ describe("View + Component", function(){
     view.pushEvent("keyup", input, targetCtx, "click", {})
   })
 
-  test("pushInput", function(){
+  test("pushInput", function(done){
     expect.assertions(6)
     let html =
       `<form id="form" phx-change="validate">
@@ -1044,17 +1044,22 @@ describe("View + Component", function(){
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name, "phx-has-focused", true)
     view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
-    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
-
-    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
-    DOM.putPrivate(last_name, "phx-has-focused", true)
-    view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
-    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    window.requestAnimationFrame(() => {
+      expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+      expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
+  
+      view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
+      DOM.putPrivate(last_name, "phx-has-focused", true)
+      view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
+      window.requestAnimationFrame(() => {
+        expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        done()
+      })
+    })
   })
 
-  test("pushInput sets phx-no-feedback on feedback groups", function(){
+  test("pushInput sets phx-no-feedback on feedback groups", function(done){
     expect.assertions(9)
     let html =
       `<form id="form" phx-change="validate">
@@ -1121,21 +1126,26 @@ describe("View + Component", function(){
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(email, "phx-has-focused", true)
     view.pushInput(email, el, null, "validate", {_target: email.name})
-    expect(el.querySelector(`[phx-feedback-for="${email.name}"]`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
-    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
-    expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeTruthy()
+    window.requestAnimationFrame(() => {
+      expect(el.querySelector(`[phx-feedback-for="${email.name}"]`).classList.contains("phx-no-feedback")).toBeFalsy()
+      expect(el.querySelector(`[phx-feedback-for="${first_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
+      expect(el.querySelector(`[phx-feedback-for="${last_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
+      expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeTruthy()
 
-    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[first_name]"})
-    DOM.putPrivate(first_name, "phx-has-focused", true)
-    view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
-    expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
-    // first_name was focused, the feedback-group should not have the phx-no-feedback class
-    expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeFalsy()
+      view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[first_name]"})
+      DOM.putPrivate(first_name, "phx-has-focused", true)
+      view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
+      window.requestAnimationFrame(() => {
+        expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
+        // first_name was focused, the feedback-group should not have the phx-no-feedback class
+        expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeFalsy()
+        done()
+      })
+    })
   })
 
-  test("pushInput sets phx-no-feedback class on feedback elements for multiple select", function(){
+  test("pushInput sets phx-no-feedback class on feedback elements for multiple select", function(done){
     // a multiple select name attribute contains trailing square brackets [] to capture multiple options
     let multiple_select_name = "user[allergies][]"
     // the phx-feedback-for attribute typically doesn't contain trailing brackets
@@ -1191,13 +1201,18 @@ describe("View + Component", function(){
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name_input, "phx-has-focused", true)
     view.pushInput(first_name_input, el, null, "validate", {_target: "user[first_name]"})
-    expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeTruthy()
-
-    DOM.putPrivate(allergies_select, "phx-has-focused", true)
-    view.pushInput(allergies_select, el, null, "validate", {_target: "user[allergies][]"})
-    expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
-    expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+    window.requestAnimationFrame(() => {
+      expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+      expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeTruthy()
+  
+      DOM.putPrivate(allergies_select, "phx-has-focused", true)
+      view.pushInput(allergies_select, el, null, "validate", {_target: "user[allergies][]"})
+      window.requestAnimationFrame(() => {
+        expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        done()
+      })
+    })
   })
 
   test("adds auto ID to prevent teardown/re-add", () => {

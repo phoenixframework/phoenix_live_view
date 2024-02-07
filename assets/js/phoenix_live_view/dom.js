@@ -22,6 +22,8 @@ import {
   THROTTLED
 } from "./constants"
 
+import JS from "./js"
+
 import {
   logError
 } from "./utils"
@@ -292,67 +294,79 @@ let DOM = {
     }
   },
 
-  maybeHideFeedback(container, inputs, phxFeedbackFor, phxFeedbackGroup){
-    // find all unique forms from the inputs. Form may be null if the input is no longer in DOM
-    let forms = new Set(inputs.map(i => i.form).filter(f => f))
-    let feedbacks = []
-    // if there are multiple inputs with the same name
-    // (for example the default checkbox renders a hidden input as well)
-    // we must only add the no feedback class if none of them have been focused yet
-    let inputNamesFocused = {}
-    // an entry in this object will be true if NO input in the group has been focused yet
-    let feedbackGroups = {}
-
-    forms.forEach(form => {
-      Array.from(form.elements).forEach(input => {
-        const group = input.getAttribute(phxFeedbackGroup)
-        // initialize the group to true if it doesn't exist
-        if(group && !(group in feedbackGroups)){ feedbackGroups[group] = true }
-        // initialize the focused state to false if it doesn't exist
-        if(!(input.name in inputNamesFocused)){ inputNamesFocused[input.name] = false }
-        if(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)){
-          inputNamesFocused[input.name] = true
-          // the input was focused, therefore the group will NOT get phx-no-feedback
-          if(group){ feedbackGroups[group] = false }
-        }
-      })
-    })
-
-    for(const [name, focused] of Object.entries(inputNamesFocused)){
-      if(!focused){
-        feedbacks.push(name)
-        if(name.endsWith("[]")){ feedbacks.push(name.slice(0, -2)) }
-      }
-    }
-
-    for(const [group, noFeedback] of Object.entries(feedbackGroups)){
-      if(noFeedback) feedbacks.push(group)
-    }
-
-    if(feedbacks.length > 0){
-      let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
-      DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
-    }
+  isFeedbackContainer(el, phxFeedbackFor){
+    return el.hasAttribute && el.hasAttribute(phxFeedbackFor)
   },
 
-  resetForm(form, phxFeedbackFor){
-    Array.from(form.elements).forEach(input => {
-      let query = `[${phxFeedbackFor}="${input.id}"],
-                   [${phxFeedbackFor}="${input.name}"],
-                   [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
+  maybeHideFeedback(container, feedbackContainers, phxFeedbackFor, phxFeedbackGroup){
+    // because we can have multiple containers with the same phxFeedbackFor value
+    // we perform the check only once and store the result;
+    // we often have multiple containers, because we push both fromEl and toEl in dompatch
+    // when a container is updated
+    const feedbackResults = {}
+    feedbackContainers.forEach(el => {
+      // skip elements that are not in the DOM
+      if(!container.contains(el)) return
+      const feedback = el.getAttribute(phxFeedbackFor)
+      if(!feedback){
+        // the container previously had phx-feedback-for, but now it doesn't
+        // remove the class from the container (if it exists)
+        JS.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS])
+        return
+      }
+      if(feedbackResults[feedback] === true){
+        this.hideFeedback(el)
+        return
+      }
+      feedbackResults[feedback] = this.shouldHideFeedback(container, feedback, phxFeedbackGroup)
+      if(feedbackResults[feedback] === true){
+        this.hideFeedback(el)
+      }
+    })
+  },
 
+  hideFeedback(container){
+    JS.addOrRemoveClasses(container, [PHX_NO_FEEDBACK_CLASS], [])
+  },
+
+  shouldHideFeedback(container, nameOrGroup, phxFeedbackGroup){
+    const query = `[name="${nameOrGroup}"],
+                   [name="${nameOrGroup}[]"],
+                   [${phxFeedbackGroup}="${nameOrGroup}"]`
+    let focused = false
+    DOM.all(container, query, (input) => {
+      if(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)){
+        focused = true
+      }
+    })
+    return !focused
+  },
+
+  feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup){
+    let query = `[${phxFeedbackFor}="${input.name}"],
+                 [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
+    if(input.getAttribute(phxFeedbackGroup)){
+      query += `,[${phxFeedbackFor}="${input.getAttribute(phxFeedbackGroup)}"]`
+    }
+    return query
+  },
+
+  resetForm(form, phxFeedbackFor, phxFeedbackGroup){
+    Array.from(form.elements).forEach(input => {
+      let query = this.feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup)
       this.deletePrivate(input, PHX_HAS_FOCUSED)
       this.deletePrivate(input, PHX_HAS_SUBMITTED)
       this.all(document, query, feedbackEl => {
-        feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS)
+        JS.addOrRemoveClasses(feedbackEl, [PHX_NO_FEEDBACK_CLASS], [])
       })
     })
   },
 
-  showError(inputEl, phxFeedbackFor){
-    if(inputEl.id || inputEl.name){
-      this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
-        this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
+  showError(inputEl, phxFeedbackFor, phxFeedbackGroup){
+    if(inputEl.name){
+      let query = this.feedbackSelector(inputEl, phxFeedbackFor, phxFeedbackGroup)
+      this.all(document, query, (el) => {
+        JS.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS])
       })
     }
   },
