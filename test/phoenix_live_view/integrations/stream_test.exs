@@ -182,7 +182,7 @@ defmodule Phoenix.LiveView.StreamTest do
 
   describe "within nested lv" do
     test "does not clear stream when parent updates", %{conn: conn} do
-      {:ok, lv, html} = live(conn, "/stream/nested")
+      {:ok, lv, _html} = live(conn, "/stream/nested")
       lv = find_live_child(lv, "nested")
 
       # let the parent update
