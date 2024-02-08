@@ -169,16 +169,21 @@ describe("throttle", function (){
     DOM.dispatchEvent(el, "click")
     expect(calls).toBe(1)
     expect(el.innerText).toBe("now:1")
-    after(250, () => {
+    after(100, () => {
       expect(calls).toBe(1)
-      expect(el.innerText).toBe("now:1")
-      DOM.dispatchEvent(el, "click")
-      DOM.dispatchEvent(el, "click")
-      DOM.dispatchEvent(el, "click")
-      after(250, () => {
+      // now wait another 150ms (after 100ms, so 200 total we expect 2 events)
+      after(150, () => {
         expect(calls).toBe(2)
         expect(el.innerText).toBe("now:2")
-        done()
+        DOM.dispatchEvent(el, "click")
+        DOM.dispatchEvent(el, "click")
+        DOM.dispatchEvent(el, "click")
+        // the first and last event are processed
+        after(250, () => {
+          expect(calls).toBe(4)
+          expect(el.innerText).toBe("now:4")
+          done()
+        })
       })
     })
   })
@@ -255,13 +260,16 @@ describe("throttle keydown", function (){
     el.dispatchEvent(pressA)
 
     expect(keyPresses["a"]).toBe(1)
-    after(250, () => {
+    after(100, () => {
       expect(keyPresses["a"]).toBe(1)
-      el.dispatchEvent(pressA)
-      el.dispatchEvent(pressA)
-      el.dispatchEvent(pressA)
-      expect(keyPresses["a"]).toBe(2)
-      done()
+      after(150, () => {
+        expect(keyPresses["a"]).toBe(2)
+        el.dispatchEvent(pressA)
+        el.dispatchEvent(pressA)
+        el.dispatchEvent(pressA)
+        expect(keyPresses["a"]).toBe(3)
+        done()
+      })
     })
   })
 
