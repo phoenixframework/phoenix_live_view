@@ -1573,7 +1573,8 @@ defmodule Phoenix.LiveViewTest do
           {"open", [path]}
 
         {:unix, _} ->
-          if System.find_executable("cmd.exe") do
+          if path =~ "\\" and System.find_executable("cmd.exe") != nil do
+            # Use cmd.exe for WSL with project dir under Windows path
             {"cmd.exe", ["/c", "start", path]}
           else
             {"xdg-open", [path]}
