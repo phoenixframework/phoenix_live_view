@@ -1055,12 +1055,11 @@ defmodule Phoenix.Component do
   def live_flash(%{} = flash, key), do: Map.get(flash, to_string(key))
 
   @doc """
-  Returns the errors for an upload.
+  Returns errors for the upload as a whole.
 
-  Note this function returns errors that apply to the allowed upload as a whole. For errors that
-  apply to a specific uploaded entry, use `upload_errors/2`.
+  For errors that apply to a specific upload entry, use `upload_errors/2`.
 
-  The following error may be returned:
+  The output is a list. The following error may be returned:
 
   * `:too_many_files` - The number of selected files exceeds the `:max_entries` constraint
 
@@ -1079,9 +1078,11 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Returns the entry errors for an upload.
+  Returns errors for the upload entry.
 
-  The following errors may be returned:
+  For errors that apply to the upload as a whole, use `upload_errors/1`.
+
+  The output is a list. The following errors may be returned:
 
   * `:too_large` - The entry exceeds the `:max_file_size` constraint
   * `:not_accepted` - The entry does not match the `:accept` MIME types
