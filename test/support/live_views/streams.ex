@@ -7,7 +7,24 @@ defmodule Phoenix.LiveViewTest.StreamLive do
 
   def render(%{invalid_consume: true} = assigns) do
     ~H"""
-    <div :for={{id, _user} <- Enum.map(@streams.users, &(&1))} id={id} />
+    <div :for={{id, _user} <- Enum.map(@streams.users, & &1)} id={id} />
+    """
+  end
+
+  def render(%{invalid_ids: true} = assigns) do
+    ~H"""
+    <div id="users" phx-update="stream">
+      <div :for={{id, _user} <- @streams.users} id={"prefixed-#{id}"} />
+    </div>
+    """
+  end
+
+  def render(%{invalid_item: true} = assigns) do
+    ~H"""
+    <div id="users" phx-update="stream">
+      <div :for={{id, _user} <- @streams.users} id={id} />
+      <div id="another-item"></div>
+    </div>
     """
   end
 
@@ -20,7 +37,9 @@ defmodule Phoenix.LiveViewTest.StreamLive do
         <button phx-click="update" phx-value-id={id}>update</button>
         <button phx-click="move-to-first" phx-value-id={id}>make first</button>
         <button phx-click="move-to-last" phx-value-id={id}>make last</button>
-        <button phx-click="move" phx-value-id={id} phx-value-name="moved" phx-value-at="1">move</button>
+        <button phx-click="move" phx-value-id={id} phx-value-name="moved" phx-value-at="1">
+          move
+        </button>
       </div>
     </div>
     <div id="admins" phx-update="stream">
@@ -53,6 +72,8 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     {:ok,
      socket
      |> assign(:invalid_consume, false)
+     |> assign(:invalid_ids, false)
+     |> assign(:invalid_item, false)
      |> stream(:users, @users)
      |> stream(:admins, [user(1, "chris-admin"), user(2, "callan-admin")])}
   end
@@ -134,6 +155,14 @@ defmodule Phoenix.LiveViewTest.StreamLive do
 
   def handle_event("consume-stream-invalid", _, socket) do
     {:noreply, assign(socket, :invalid_consume, true)}
+  end
+
+  def handle_event("stream-invalid-ids", _, socket) do
+    {:noreply, assign(socket, :invalid_ids, true) |> stream(:users, @users)}
+  end
+
+  def handle_event("stream-invalid-item", _, socket) do
+    {:noreply, assign(socket, :invalid_item, true) |> stream(:users, @users)}
   end
 
   def handle_call({:run, func}, _, socket), do: func.(socket)
@@ -286,7 +315,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
   def render(assigns) do
     ~H"""
     <ul phx-update="stream" id="thelist">
-      <li id={id} :for={{id, item} <- @streams.items}>
+      <li :for={{id, item} <- @streams.items} id={id}>
         <%= item.name %>
       </li>
     </ul>
@@ -483,7 +512,12 @@ defmodule Phoenix.LiveViewTest.StreamResetLCLive do
   def render(assigns) do
     ~H"""
     <ul phx-update="stream" id="thelist">
-      <.live_component module={InnerComponent} id={id} item={item} :for={{id, item} <- @streams.items}/>
+      <.live_component
+        :for={{id, item} <- @streams.items}
+        module={InnerComponent}
+        id={id}
+        item={item}
+      />
     </ul>
 
     <button phx-click="reorder">Reorder</button>
@@ -506,8 +540,8 @@ defmodule Phoenix.LiveViewTest.StreamLimitLive do
   def render(assigns) do
     ~H"""
     <form phx-submit="configure">
-      at: <input type="text" name="at" value={@at}/>
-      limit: <input type="text" name="limit" value={@limit}/>
+      at: <input type="text" name="at" value={@at} /> limit:
+      <input type="text" name="limit" value={@limit} />
       <button type="submit">recreate stream</button>
     </form>
 
@@ -588,7 +622,7 @@ defmodule Phoenix.LiveViewTest.StreamNestedLive do
   end
 
   def handle_info(:tick, socket) do
-    {:noreply, update(socket, :foo, & &1 + 1)}
+    {:noreply, update(socket, :foo, &(&1 + 1))}
   end
 
   def render(assigns) do
