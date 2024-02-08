@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.20.4"
+  @version "0.20.5"
 
   def project do
     [
@@ -41,7 +41,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:plug, "~> 1.15"},
       {:phoenix_view, "~> 2.0", optional: true},
       {:phoenix_template, "~> 1.0"},
-      {:phoenix_html, "~> 3.3 or ~> 4.0"},
+      {:phoenix_html, "~> 3.3 or ~> 4.0 or ~> 4.1"},
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},

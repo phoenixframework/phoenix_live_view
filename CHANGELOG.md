@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.20.5 (2024-02-08)
+
+### Deprecations
+  * Deprecate `phx-feedback-group`
+
+### Bug fixes
+  * Fix blur event on phx-debounce being dispatched incorrectly
+  * Fix `open_browser` not working on WSL for project under unix FS
+  * Match browser stream insert ordering behavior in `LiveViewTest`
+  * Fix `phx-click-away` not working when element is partially hidden
+  * Fix `phx-feedback-for` classes not being applied in some cases
+  * Fix form submitter failing to be sent as key/value pair in some cases
+  * Fix null form reference causing errors on some DOM patches
+
 ## 0.20.4 (2024-02-01)
 
 ### Bug fixes
