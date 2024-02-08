@@ -1574,8 +1574,7 @@ defmodule Phoenix.LiveViewTest do
 
         {:unix, _} ->
           if System.find_executable("cmd.exe") do
-            win_path_regex = ~r/\\/
-            if Regex.match?(win_path_regex, path) do
+            if path =~ "\\" do
               # Use cmd.exe for WSL with project dir under windows path
               {"cmd.exe", ["/c", "start", path]}
             else
