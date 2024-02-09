@@ -76,6 +76,10 @@ defmodule Phoenix.LiveView.LayoutTest do
     {:ok, view, _html} = live(conn, "/styled-elements")
     assert page_title(view) == "Styled"
 
+    {:ok, view, _html} = live(conn, "/styled-elements")
+    render_click(view, "#live-push-patch-button")
+    assert page_title(view) == "Styled"
+
     {:ok, no_title_tag_view, _html} = live(conn, "/parent_layout")
     assert page_title(no_title_tag_view) == nil
   end
