@@ -240,6 +240,25 @@ describe("throttle", function (){
       done()
     })
   })
+
+  test("triggers only once when there is only one event", done => {
+    let calls = 0
+    let el = container().querySelector("#throttle-200")
+
+    el.addEventListener("click", e => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
+        calls++
+        el.innerText = `now:${calls}`
+      })
+    })
+    DOM.dispatchEvent(el, "click")
+    expect(calls).toBe(1)
+    expect(el.innerText).toBe("now:1")
+    after(250, () => {
+      expect(calls).toBe(1)
+      done()
+    })
+  })
 })
 
 

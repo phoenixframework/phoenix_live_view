@@ -222,21 +222,25 @@ let DOM = {
       default:
         let timeout = parseInt(value)
         let trigger = (blur) => {
+          const throttled = this.private(el, THROTTLED)
           if(blur){
             // if the input is blurred, we need to cancel the next throttle timeout
             // therefore we store the timer id in the THROTTLED private attribute
-            if(throttle && this.private(el, THROTTLED)){
-              clearTimeout(this.private(el, THROTTLED))
+            if(throttle && throttled !== null){
+              clearTimeout(throttled.timeout)
               this.deletePrivate(el, THROTTLED)
             }
             // on debounce we just trigger the callback
             return callback()
           }
           // no blur, remove the throttle attribute if we are in throttle mode
-          if(throttle) this.deletePrivate(el, THROTTLED)
-          // always call the callback to ensure that the latest event is processed,
-          // even when throttle is active
-          callback()
+          if(throttle){
+            this.deletePrivate(el, THROTTLED)
+            // run callback if there was a throttled event
+            if(throttled && throttled.updated) callback()
+          } else {
+            callback()
+          }
         }
         let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger)
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
@@ -249,6 +253,7 @@ let DOM = {
           }
 
           if(!newKeyDown && this.private(el, THROTTLED)){
+            this.updatePrivate(el, THROTTLED, {}, (existing) => ({...existing, updated: true}))
             return false
           } else {
             callback()
@@ -259,7 +264,7 @@ let DOM = {
             const t = setTimeout(() => {
               if(asyncFilter()){ this.triggerCycle(el, DEBOUNCE_TRIGGER) }
             }, timeout)
-            this.putPrivate(el, THROTTLED, t)
+            this.putPrivate(el, THROTTLED, {timer: t})
           }
         } else {
           setTimeout(() => {
