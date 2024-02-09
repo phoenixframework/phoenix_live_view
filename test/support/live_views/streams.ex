@@ -634,3 +634,32 @@ defmodule Phoenix.LiveViewTest.StreamNestedLive do
     """
   end
 end
+
+defmodule Phoenix.LiveViewTest.HighFrequencyStreamAndNoStreamUpdatesLive do
+  use Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    :timer.send_interval(50, self(), :tick)
+
+    {:ok, assign(socket, :foo, 1) |> stream(:items, [])}
+  end
+
+  def handle_info(:tick, socket) do
+    {:noreply, update(socket, :foo, &(&1 + 1))}
+  end
+
+  def handle_event("insert_item", _, socket) do
+    {:noreply, stream_insert(socket, :items, %{id: System.unique_integer(), name: "Item"})}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div id="mystream" phx-update="stream">
+      <div :for={{id, item} <- @streams.items} id={id}>
+        <%= item.name %>, <%= item.id %>
+      </div>
+    </div>
+    <p><%= @foo %></p>
+    """
+  end
+end
