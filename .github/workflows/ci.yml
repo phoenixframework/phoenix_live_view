@@ -280,7 +280,7 @@ jobs:
           node-version: 18.x
 
       - name: Merge coverage reports
-        run: node cover:merge
+        run: npm install && npm run cover:merge
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
