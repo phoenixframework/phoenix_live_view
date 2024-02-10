@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../test-fixtures");
 const { syncLV, attributeMutations } = require("../utils");
 
 test("toggle_attribute", async ({ page }) => {

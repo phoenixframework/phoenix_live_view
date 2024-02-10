@@ -2,11 +2,24 @@
 // @ts-check
 const { devices } = require("@playwright/test");
 
+/** @type {import("@playwright/test").ReporterDescription} */
+const monocartReporter = ["monocart-reporter", {
+  name: "Phoenix LiveView",
+  outputFile: './test-results/report.html',
+  coverage: {
+    reports: [
+      ["raw", { outputDir: "./raw" }],
+      ["v8"],
+    ],
+    entryFilter: (entry) => entry.url.indexOf("phoenix_live_view.esm.js") !== -1,
+  }
+}]
+
 /** @type {import("@playwright/test").PlaywrightTestConfig} */
 const config = {
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? [["github"], ["html"]] : "list",
+  reporter: process.env.CI ? [["github"], ["html"], monocartReporter] : [["list"], monocartReporter],
   use: {
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
@@ -34,7 +47,8 @@ const config = {
       use: { ...devices["Desktop Safari"] },
     }
   ],
-  outputDir: "test-results"
+  outputDir: "test-results",
+  globalTeardown: require.resolve("./teardown")
 };
 
 module.exports = config;
