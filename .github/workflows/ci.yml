@@ -73,7 +73,14 @@ jobs:
         MIX_ENV: test
 
     - name: Run tests
-      run: mix test
+      run: mix test --cover --export-coverage default
+
+    - uses: actions/upload-artifact@v3
+      if: always()
+      with:
+        name: mix-test-coverage-${{ matrix.otp }}-${{ matrix.elixir }}
+        path: cover/default.coverdata
+        retention-days: 7
 
   npm_test:
     name: npm test
@@ -122,10 +129,14 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: npm install and test
-        run: |
-          cd assets
-          npm install
-          npm test
+        run: npm run js:test
+
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: js-unit-coverage
+          path: assets/coverage/
+          retention-days: 7
 
   e2e_test:
     name: e2e test
@@ -192,4 +203,72 @@ jobs:
         with:
           name: playwright-report
           path: playwright-report/
+          retention-days: 7
+
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: e2e-test-results
+          path: test/e2e/test-results/
+          retention-days: 7
+        
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: mix-e2e-coverage
+          path: cover/e2e.coverdata
+          retention-days: 7
+
+  coverage_report:
+    name: coverage report
+
+    runs-on: ubuntu-latest
+    needs: [mix_test, npm_test, e2e_test]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: 1.16.1
+          otp-version: 26.2
+
+      - name: Download mix unit coverage
+        uses: actions/download-artifact@v3
+        with:
+          name: mix-test-coverage-26.0-1.15.5
+
+      - name: Download mix e2e coverage
+        uses: actions/download-artifact@v3
+        with:
+          name: mix-e2e-coverage
+
+      - name: Generate mix coverage report
+        run: mix test.coverage
+
+      - name: Download js-unit-coverage artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: js-unit-coverage
+
+      - name: Download e2e-test-results artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: e2e-test-results
+
+      - name: Set up Node.js 18.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: 18.x
+
+      - name: Merge coverage reports
+        run: node cover:merge
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: overall-coverage
+          path: cover/
           retention-days: 7
