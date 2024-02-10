@@ -28,7 +28,7 @@
     "monocart-reporter": "^2.3.1"
   },
   "scripts": {
-    "e2e:server": "MIX_ENV=e2e mix run test/e2e/test_helper.exs",
+    "e2e:server": "MIX_ENV=e2e mix test --cover --export-coverage e2e test/e2e/test_helper.exs",
     "e2e:test": "mix assets.build && cd test/e2e && npx playwright test",
     "js:test": "cd assets && npm install && npm run test",
     "test": "npm run js:test && npm run e2e:test",
