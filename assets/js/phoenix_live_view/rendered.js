@@ -296,9 +296,9 @@ export default class Rendered {
   // It is disabled for comprehensions since we must re-render the entire collection
   // and no individual element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}){
-    if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
-    let {[STATIC]: statics} = rendered
-    statics = this.templateStatic(statics, templates)
+    let statics = this.templateStatic(rendered[STATIC], templates)
+    templates = rendered[TEMPLATES] || templates
+    if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, statics, templates, output) }
     let isRoot = rendered[ROOT]
     let prevBuffer = output.buffer
     if(isRoot){ output.buffer = "" }
@@ -310,10 +310,12 @@ export default class Rendered {
       rendered.magicId = this.nextMagicID()
     }
 
-    output.buffer += statics[0]
+    // if the statics is a list of empty strings (if inlining comprehensions),
+    // we skip sending the statics altogether
+    if(statics) { output.buffer += statics[0] }
     for(let i = 1; i < statics.length; i++){
       this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking)
-      output.buffer += statics[i]
+      if(statics) { output.buffer += statics[i] }
     }
 
     // Applies the root tag "skip" optimization if supported, which clears
@@ -340,11 +342,10 @@ export default class Rendered {
     }
   }
 
-  comprehensionToBuffer(rendered, templates, output){
-    let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream} = rendered
+  comprehensionToBuffer(rendered, statics, templates, output){
+    let {[DYNAMICS]: dynamics, [STREAM]: stream} = rendered
     let [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null]
-    statics = this.templateStatic(statics, templates)
-    let compTemplates = templates || rendered[TEMPLATES]
+
     for(let d = 0; d < dynamics.length; d++){
       let dynamic = dynamics[d]
       output.buffer += statics[0]
@@ -354,7 +355,7 @@ export default class Rendered {
         // unless we move the stream diffing away from morphdom),
         // so we can't perform root change tracking.
         let changeTracking = false
-        this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, changeTracking)
+        this.dynamicToBuffer(dynamic[i - 1], templates, output, changeTracking)
         output.buffer += statics[i]
       }
     }
