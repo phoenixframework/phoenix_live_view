@@ -17,41 +17,7 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   debug_errors: false
 )
 
-Mix.ensure_application!(:tools)
-_ = :cover.stop()
-{:ok, cover_pid} = :cover.start()
-
-beams = fn dir ->
-  consolidation_dir = Mix.Project.consolidation_path()
-
-  consolidated =
-    case File.ls(consolidation_dir) do
-      {:ok, files} -> files
-      _ -> []
-    end
-
-  for file <- File.ls!(dir), Path.extname(file) == ".beam" do
-    with true <- file in consolidated,
-         [_ | _] = path <- :code.which(file |> Path.rootname() |> String.to_atom()) do
-      path
-    else
-      _ -> String.to_charlist(Path.join(dir, file))
-    end
-  end
-end
-
-for compile_path <- [Mix.Project.compile_path()] do
-  case :cover.compile_beam(beams.(compile_path)) do
-    results when is_list(results) ->
-      :ok
-
-    {:error, reason} ->
-      Mix.raise(
-        "Failed to cover compile directory #{inspect(Path.relative_to_cwd(compile_path))} " <>
-          "with reason: #{inspect(reason)}"
-      )
-  end
-end
+pid = self()
 
 defmodule Phoenix.LiveViewTest.E2E.ErrorHTML do
   def render(template, _), do: Phoenix.Controller.status_message_from_template(template)
@@ -159,7 +125,7 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   plug Plug.Static, from: System.tmp_dir!(), at: "/tmp"
 
   plug :health_check
-  plug :coverage
+  plug :halt
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
@@ -175,20 +141,13 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
 
   defp health_check(conn, _opts), do: conn
 
-  defp coverage(%{request_path: "/export-coverage"} = conn, _opts) do
-    output = "cover"
-    File.mkdir_p!(output)
-
-    case :cover.export(~c"#{output}/e2e.coverdata") do
-      :ok ->
-        conn |> Plug.Conn.send_resp(200, "OK") |> Plug.Conn.halt()
-
-      {:error, reason} ->
-        conn |> Plug.Conn.send_resp(500, inspect(reason)) |> Plug.Conn.halt()
-    end
+  defp halt(%{request_path: "/halt"}, _opts) do
+    send(unquote(pid), :halt)
+    # this ensure playwright waits until the server force stops
+    Process.sleep(:infinity)
   end
 
-  defp coverage(conn, _opts), do: conn
+  defp halt(conn, _opts), do: conn
 end
 
 {:ok, _} =
@@ -203,5 +162,14 @@ end
 IO.puts "Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}"
 
 unless IEx.started?() do
-  Process.sleep(:infinity)
+  # when running the test server manually, we halt after
+  # reading from stdin
+  spawn(fn ->
+    IO.read(:stdio, :line)
+    send(pid, :halt)
+  end)
+
+  receive do
+    :halt -> :ok
+  end
 end
