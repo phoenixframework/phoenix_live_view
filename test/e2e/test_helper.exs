@@ -17,7 +17,7 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   debug_errors: false
 )
 
-pid = self()
+Process.register(self(), :e2e_helper)
 
 defmodule Phoenix.LiveViewTest.E2E.ErrorHTML do
   def render(template, _), do: Phoenix.Controller.status_message_from_template(template)
@@ -142,7 +142,7 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   defp health_check(conn, _opts), do: conn
 
   defp halt(%{request_path: "/halt"}, _opts) do
-    send(unquote(pid), :halt)
+    send(:e2e_helper, :halt)
     # this ensure playwright waits until the server force stops
     Process.sleep(:infinity)
   end
@@ -166,7 +166,7 @@ unless IEx.started?() do
   # reading from stdin
   spawn(fn ->
     IO.read(:stdio, :line)
-    send(pid, :halt)
+    send(:e2e_helper, :halt)
   end)
 
   receive do
