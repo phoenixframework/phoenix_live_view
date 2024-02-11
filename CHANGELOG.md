@@ -71,6 +71,9 @@
   * Allow `JS.patch` and `JS.navigate` to be tested with `render_click`
   * Support `:supervisor` option to `assign_async` and `start_async`
 
+### Deprecations
+  * Deprecate `phx-update="append"` and `phx-update="prepend"` in favor of `phx-update="stream"`
+
 ## 0.20.1 (2023-10-09)
 
 ### Bug fixes
