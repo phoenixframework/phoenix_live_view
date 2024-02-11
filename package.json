@@ -32,7 +32,7 @@
     "e2e:test": "mix assets.build && cd test/e2e && npx playwright test",
     "js:test": "cd assets && npm install && npm run test",
     "test": "npm run js:test && npm run e2e:test",
-    "cover:merge": "node js-coverage.mjs",
+    "cover:merge": "node test/e2e/merge-coverage.mjs",
     "cover": "npm run test && npm run cover:merge",
     "cover:report": "npx monocart show-report cover/merged-js/index.html"
   }
