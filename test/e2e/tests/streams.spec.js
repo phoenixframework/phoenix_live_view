@@ -192,73 +192,111 @@ test.describe("Issue #2656", () => {
 });
 
 // helper function used below
-const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
+const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => ({ id: el.id, text: el.innerText })));
 
 test.describe("Issue #2994", () => {
   test("can filter and reset a stream", async ({ page }) => {
     await page.goto("/stream/reset");
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Filter" }).click();
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Reset" }).click();
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
   });
 
   test("can reorder stream", async ({ page }) => {
     await page.goto("/stream/reset");
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Reorder" }).click();
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-b", "items-a", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-b", text: "B" },
+      { id: "items-a", text: "A" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
   });
 
   test("can filter and then prepend / append stream", async ({ page }) => {
     await page.goto("/stream/reset");
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Filter" }).click();
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Prepend", exact: true }).click();
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      expect.stringMatching(/items-a-.*/),
-      "items-b",
-      "items-c",
-      "items-d"
+      { id: expect.stringMatching(/items-a-.*/), text: expect.any(String) },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
     ]);
 
     await page.getByRole("button", { name: "Reset" }).click();
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Append", exact: true }).click();
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-a",
-      "items-b",
-      "items-c",
-      "items-d",
-      expect.stringMatching(/items-a-.*/),
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" },
+      { id: expect.stringMatching(/items-a-.*/), text: expect.any(String) }
     ]);
   });
 });
@@ -268,12 +306,22 @@ test.describe("Issue #2982", () => {
     await page.goto("/stream/reset-lc");
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Reorder" }).click();
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-e", "items-a", "items-f", "items-g"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-e", text: "E" },
+      { id: "items-a", text: "A" },
+      { id: "items-f", text: "F" },
+      { id: "items-g", text: "G" },
+    ]);
   });
 });
 
@@ -282,18 +330,29 @@ test.describe("Issue #3023", () => {
     await page.goto("/stream/reset");
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
 
     await page.getByRole("button", { name: "Bulk insert" }).click();
     await syncLV(page);
 
-    await expect(await listItems(page)).toEqual(["items-a", "items-e", "items-f", "items-g", "items-b", "items-c", "items-d"]);
+    await expect(await listItems(page)).toEqual([
+      { id: "items-a", text: "A" },
+      { id: "items-e", text: "E" },
+      { id: "items-f", text: "F" },
+      { id: "items-g", text: "G" },
+      { id: "items-b", text: "B" },
+      { id: "items-c", text: "C" },
+      { id: "items-d", text: "D" }
+    ]);
   });
 });
 
 test.describe("stream limit - issue #2686", () => {
-  const listItems = async (page) => page.locator("ul > li").evaluateAll(list => list.map(el => el.id));
-
   test("limit is enforced on mount, but not dead render", async ({ page, request }) => {
     const html = await (request.get("/stream/limit").then(r => r.text()));
     for (let i = 1; i <= 10; i++) {
@@ -304,11 +363,11 @@ test.describe("stream limit - issue #2686", () => {
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-6",
-      "items-7",
-      "items-8",
-      "items-9",
-      "items-10"
+      { id: "items-6", text: "6" },
+      { id: "items-7", text: "7" },
+      { id: "items-8", text: "8" },
+      { id: "items-9", text: "9" },
+      { id: "items-10", text: "10" }
     ]);
   });
 
@@ -324,22 +383,21 @@ test.describe("stream limit - issue #2686", () => {
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-7",
-      "items-8",
-      "items-9",
-      "items-10",
-      "items-11"
+      { id: "items-7", text: "7" },
+      { id: "items-8", text: "8" },
+      { id: "items-9", text: "9" },
+      { id: "items-10", text: "10" },
+      { id: "items-11", text: "11" }
     ]);
-
     await page.getByRole("button", { name: "add 10", exact: true }).click();
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-17",
-      "items-18",
-      "items-19",
-      "items-20",
-      "items-21"
+      { id: "items-17", text: "17" },
+      { id: "items-18", text: "18" },
+      { id: "items-19", text: "19" },
+      { id: "items-20", text: "20" },
+      { id: "items-21", text: "21" }
     ]);
   });
 
@@ -353,33 +411,33 @@ test.describe("stream limit - issue #2686", () => {
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-10",
-      "items-9",
-      "items-8",
-      "items-7",
-      "items-6"
+      { id: "items-10", text: "10" },
+      { id: "items-9", text: "9" },
+      { id: "items-8", text: "8" },
+      { id: "items-7", text: "7" },
+      { id: "items-6", text: "6" }
     ]);
 
     await page.getByRole("button", { name: "add 1", exact: true }).click();
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-11",
-      "items-10",
-      "items-9",
-      "items-8",
-      "items-7"
+      { id: "items-11", text: "11" },
+      { id: "items-10", text: "10" },
+      { id: "items-9", text: "9" },
+      { id: "items-8", text: "8" },
+      { id: "items-7", text: "7" }
     ]);
 
     await page.getByRole("button", { name: "add 10", exact: true }).click();
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-21",
-      "items-20",
-      "items-19",
-      "items-18",
-      "items-17"
+      { id: "items-21", text: "21" },
+      { id: "items-20", text: "20" },
+      { id: "items-19", text: "19" },
+      { id: "items-18", text: "18" },
+      { id: "items-17", text: "17" }
     ]);
   });
 
@@ -401,7 +459,7 @@ test.describe("stream limit - issue #2686", () => {
     for (let i = 1; i <= 5; i++) {
       await page.getByRole("button", { name: "add 1", exact: true }).click();
       await syncLV(page);
-      items.push(`items-${i}`);
+      items.push({ id: `items-${i}`, text: i.toString() });
       await expect(await listItems(page)).toEqual(items);
     }
 
@@ -410,11 +468,11 @@ test.describe("stream limit - issue #2686", () => {
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-1",
-      "items-2",
-      "items-3",
-      "items-4",
-      "items-5"
+      { id: "items-1", text: "1" },
+      { id: "items-2", text: "2" },
+      { id: "items-3", text: "3" },
+      { id: "items-4", text: "4" },
+      { id: "items-5", text: "5" }
     ]);
 
     // same when bulk inserting
@@ -422,11 +480,11 @@ test.describe("stream limit - issue #2686", () => {
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-1",
-      "items-2",
-      "items-3",
-      "items-4",
-      "items-5"
+      { id: "items-1", text: "1" },
+      { id: "items-2", text: "2" },
+      { id: "items-3", text: "3" },
+      { id: "items-4", text: "4" },
+      { id: "items-5", text: "5" }
     ]);
   });
 
@@ -448,7 +506,7 @@ test.describe("stream limit - issue #2686", () => {
     for (let i = 1; i <= 5; i++) {
       await page.getByRole("button", { name: "add 1", exact: true }).click();
       await syncLV(page);
-      items.unshift(`items-${i}`);
+      items.unshift({ id: `items-${i}`, text: i.toString() });
       await expect(await listItems(page)).toEqual(items);
     }
 
@@ -457,11 +515,11 @@ test.describe("stream limit - issue #2686", () => {
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-5",
-      "items-4",
-      "items-3",
-      "items-2",
-      "items-1"
+      { id: "items-5", text: "5" },
+      { id: "items-4", text: "4" },
+      { id: "items-3", text: "3" },
+      { id: "items-2", text: "2" },
+      { id: "items-1", text: "1" }
     ]);
 
     // same when bulk inserting
@@ -469,11 +527,11 @@ test.describe("stream limit - issue #2686", () => {
     await syncLV(page);
 
     await expect(await listItems(page)).toEqual([
-      "items-5",
-      "items-4",
-      "items-3",
-      "items-2",
-      "items-1"
+      { id: "items-5", text: "5" },
+      { id: "items-4", text: "4" },
+      { id: "items-3", text: "3" },
+      { id: "items-2", text: "2" },
+      { id: "items-1", text: "1" }
     ]);
   });
 
@@ -488,21 +546,21 @@ test.describe("stream limit - issue #2686", () => {
 
     // we tried to insert 10 items
     await expect(await listItems(page)).toEqual([
-      "items-1",
-      "items-10",
-      "items-9",
-      "items-8",
-      "items-7"
+      { id: "items-1", text: "1" },
+      { id: "items-10", text: "10" },
+      { id: "items-9", text: "9" },
+      { id: "items-8", text: "8" },
+      { id: "items-7", text: "7" }
     ]);
 
     await page.getByRole("button", { name: "add 10", exact: true }).click();
     await syncLV(page);
     await expect(await listItems(page)).toEqual([
-      "items-1",
-      "items-20",
-      "items-19",
-      "items-18",
-      "items-17"
+      { id: "items-1", text: "1" },
+      { id: "items-20", text: "20" },
+      { id: "items-19", text: "19" },
+      { id: "items-18", text: "18" },
+      { id: "items-17", text: "17" }
     ]);
 
     await page.locator("input[name='at']").fill("1");
@@ -512,21 +570,21 @@ test.describe("stream limit - issue #2686", () => {
 
     // we tried to insert 10 items
     await expect(await listItems(page)).toEqual([
-      "items-10",
-      "items-5",
-      "items-4",
-      "items-3",
-      "items-2"
+      { id: "items-10", text: "10" },
+      { id: "items-5", text: "5" },
+      { id: "items-4", text: "4" },
+      { id: "items-3", text: "3" },
+      { id: "items-2", text: "2" }
     ]);
 
     await page.getByRole("button", { name: "add 10", exact: true }).click();
     await syncLV(page);
     await expect(await listItems(page)).toEqual([
-      "items-20",
-      "items-5",
-      "items-4",
-      "items-3",
-      "items-2"
+      { id: "items-20", text: "20" },
+      { id: "items-5", text: "5" },
+      { id: "items-4", text: "4" },
+      { id: "items-3", text: "3" },
+      { id: "items-2", text: "2" }
     ]);
   });
 });
@@ -535,35 +593,136 @@ test("any stream insert for elements already in the DOM does not reorder", async
   await page.goto("/stream/reset");
   await syncLV(page);
 
-  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
 
   await page.getByRole("button", { name: "Prepend C" }).click();
   await syncLV(page);
-  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
 
   await page.getByRole("button", { name: "Append C" }).click();
   await syncLV(page);
-  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
 
   await page.getByRole("button", { name: "Insert C at 1" }).click();
   await syncLV(page);
-  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
 
   await page.getByRole("button", { name: "Insert at 1", exact: true }).click();
   await syncLV(page);
   await expect(await listItems(page)).toEqual([
-    "items-a",
-    expect.stringMatching(/items-a-.*/),
-    "items-b",
-    "items-c",
-    "items-d"
+    { id: "items-a", text: "A" },
+    { id: expect.stringMatching(/items-a-.*/), text: expect.any(String) },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
   ]);
 
   await page.getByRole("button", { name: "Reset" }).click();
   await syncLV(page);
-  await expect(await listItems(page)).toEqual(["items-a", "items-b", "items-c", "items-d"]);
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
 
   await page.getByRole("button", { name: "Delete C and insert at 1" }).click();
   await syncLV(page);
-  await expect(await listItems(page)).toEqual(["items-a", "items-c", "items-b", "items-d"]);
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-c", text: "C" },
+    { id: "items-b", text: "B" },
+    { id: "items-d", text: "D" }
+  ]);
+});
+
+test("stream nested in a LiveComponent is properly restored on reset", async ({ page }) => {
+  await page.goto("/stream/nested-component-reset");
+  await syncLV(page);
+
+  const childItems = async (page, id) => page.locator(`#${id} div[phx-update=stream] > *`).evaluateAll(div => div.map(el => ({ id: el.id, text: el.innerText })));
+
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: expect.stringMatching(/A/) },
+    { id: "items-b", text: expect.stringMatching(/B/) },
+    { id: "items-c", text: expect.stringMatching(/C/) },
+    { id: "items-d", text: expect.stringMatching(/D/) }
+  ]);
+
+  for (let id of ["a", "b", "c", "d"]) {
+    await expect(await childItems(page, `items-${id}`)).toEqual([
+      { id: `nested-items-${id}-a`, text: "N-A" },
+      { id: `nested-items-${id}-b`, text: "N-B" },
+      { id: `nested-items-${id}-c`, text: "N-C" },
+      { id: `nested-items-${id}-d`, text: "N-D" },
+    ])
+  }
+
+  // now reorder the nested stream of items-a
+  await page.locator("#items-a button").click();
+  await syncLV(page);
+
+  await expect(await childItems(page, "items-a")).toEqual([
+    { id: "nested-items-a-e", text: "N-E" },
+    { id: "nested-items-a-a", text: "N-A" },
+    { id: "nested-items-a-f", text: "N-F" },
+    { id: "nested-items-a-g", text: "N-G" },
+  ]);
+  // unchanged
+  for (let id of ["b", "c", "d"]) {
+    await expect(await childItems(page, `items-${id}`)).toEqual([
+      { id: `nested-items-${id}-a`, text: "N-A" },
+      { id: `nested-items-${id}-b`, text: "N-B" },
+      { id: `nested-items-${id}-c`, text: "N-C" },
+      { id: `nested-items-${id}-d`, text: "N-D" },
+    ])
+  }
+
+  // now reorder the parent stream
+  await page.locator("#parent-reorder").click();
+  await syncLV(page);
+  await expect(await listItems(page)).toEqual([
+    { id: "items-e", text: expect.stringMatching(/E/) },
+    { id: "items-a", text: expect.stringMatching(/A/) },
+    { id: "items-f", text: expect.stringMatching(/F/) },
+    { id: "items-g", text: expect.stringMatching(/G/) },
+  ]);
+
+  // the new children's stream items have the correct order
+  for (let id of ["e", "f", "g"]) {
+    await expect(await childItems(page, `items-${id}`)).toEqual([
+      { id: `nested-items-${id}-a`, text: "N-A" },
+      { id: `nested-items-${id}-b`, text: "N-B" },
+      { id: `nested-items-${id}-c`, text: "N-C" },
+      { id: `nested-items-${id}-d`, text: "N-D" },
+    ])
+  }
+
+  // Item A has the same children as before, still reordered
+  await expect(await childItems(page, "items-a")).toEqual([
+    { id: "nested-items-a-e", text: "N-E" },
+    { id: "nested-items-a-a", text: "N-A" },
+    { id: "nested-items-a-f", text: "N-F" },
+    { id: "nested-items-a-g", text: "N-G" },
+  ]);
 });
