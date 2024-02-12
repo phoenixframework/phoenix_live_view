@@ -1,4 +1,4 @@
-# Special HTML Attributes
+# `phx-` HTML attributes
 
 A summary of special HTML attributes used in Phoenix LiveView templates.
 Each attribute is linked to its documentation for more details.
