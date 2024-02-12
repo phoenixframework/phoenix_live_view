@@ -1398,7 +1398,7 @@ defmodule Phoenix.LiveView do
 
   > Note: This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
-  > [JS Interop guide](js-interop.html#client-hooks).
+  > [JS Interop guide](js-interop.html#client-hooks-via-phx-hook).
 
   Hooks provide a mechanism to tap into key stages of the LiveView
   lifecycle in order to bind/update assigns, intercept events,
@@ -1504,7 +1504,7 @@ defmodule Phoenix.LiveView do
 
   > Note: This function is for server-side lifecycle callbacks.
   > For client-side hooks, see the
-  > [JS Interop guide](js-interop.html#client-hooks).
+  > [JS Interop guide](js-interop.html#client-hooks-via-phx-hook).
 
   If no hook is found, this function is a no-op.
 
