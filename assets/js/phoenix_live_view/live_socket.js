@@ -251,6 +251,10 @@ export default class LiveSocket {
     this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
   }
 
+  updateNavigationUserdata(callback){
+    Browser.updateCurrentState(state => Object.assign(state, {userData: callback(state.userData)}))
+  }
+
   // private
 
   execJSHookPush(el, phxEvent, data, callback){
@@ -704,7 +708,7 @@ export default class LiveSocket {
       const previousLocation = clone(this.currentLocation)
       // early return if the navigation does not actually navigate anywhere (hashchange)
       if(!this.registerNewLocation(window.location)){ return }
-      this.withNavigationGuard(window.location.href, previousLocation.href, () => {
+      this.withNavigationGuard(window.location.href, previousLocation.href, true, () => {
         let {type, id, root, scroll, userData} = event.state || {}
         let href = window.location.href
 
@@ -785,7 +789,7 @@ export default class LiveSocket {
   }
 
   pushHistoryPatch(href, linkState, targetEl){
-    this.withNavigationGuard(href, this.currentLocation.href, (userData) => {
+    this.withNavigationGuard(href, this.currentLocation.href, false, (userData) => {
       if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href) }
       if(userData) Browser.updateCurrentState(state => Object.assign(state, {userData}))
 
@@ -809,7 +813,7 @@ export default class LiveSocket {
   }
 
   historyRedirect(href, linkState, flash){
-    this.withNavigationGuard(href, this.currentLocation.href, (userData) => {
+    this.withNavigationGuard(href, this.currentLocation.href, false, (userData) => {
       if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href, flash) }
       if(userData) Browser.updateCurrentState(state => Object.assign(state, {userData}))
 
@@ -860,11 +864,11 @@ export default class LiveSocket {
   // Therefore, we push the previous location again, see bindNav for details.
   //
   // When the callback is done, it must call `afterNavigation` with the same arguments (to, from).
-  withNavigationGuard(to, from, callback, cancel = function(){}){
+  withNavigationGuard(to, from, popped, callback, cancel = function(){}){
     // the beforeEach navigation guard can return a promise that must resolve
     // to false in order to cancel the navigation
     // every other value proceeds with the navigation
-    const guardResult = this.navigationCallbacks["beforeEach"](to, from)
+    const guardResult = this.navigationCallbacks["beforeEach"](to, from, popped)
     Promise.resolve(guardResult).then(result => {
       if(result === false){
         cancel()

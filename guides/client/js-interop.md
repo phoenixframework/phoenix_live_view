@@ -372,12 +372,16 @@ let liveSocket = new LiveSocket("/live", Socket, {
   // other options left out
   // ...
   navigation: {
-    beforeEach() {
-      let scrollPositions = {}
-      Array.from(document.querySelectorAll("[data-restore-scroll]")).forEach(el => {
-        scrollPositions[el.id] = el.scrollTop
-      })
-      return { scrollPositions }
+    beforeEach(_to, _from, popped) {
+      // in case of a popstate event, the current state cannot be saved
+      // because the navigation has already happened
+      if (!popped) {
+        let scrollPositions = {}
+        Array.from(document.querySelectorAll("[data-restore-scroll]")).forEach(el => {
+          scrollPositions[el.id] = el.scrollTop
+        })
+        return { scrollPositions }
+      }
     },
     afterEach(_to, _from, userData) {
       // restore scroll positions
@@ -392,7 +396,24 @@ let liveSocket = new LiveSocket("/live", Socket, {
     }
   }
 })
+
+let scrollTimer
+window.addEventListener("scroll", _e => {
+  clearTimeout(scrollTimer)
+  scrollTimer = setTimeout(() => {
+    let scrollPositions = {}
+    Array.from(document.querySelectorAll("[data-restore-scroll]")).forEach(el => {
+      scrollPositions[el.id] = el.scrollTop
+    })
+    liveSocket.updateNavigationUserdata(data => Object.assign(data, {scrollPositions}))
+  }, 100)
+})
 ```
 
 This assumes that all scrollable containers have a `data-restore-scroll` attribute,
 as well as a unique `id`.
+
+Note that due to limitations of the [History API](https://developer.mozilla.org/en-US/docs/Web/API/History_API),
+the data returned by the `beforeEach` callback is not saved when the navigation is triggered by navigating back
+or forward in the history. Therefore, the scroll state needs to be continuously saved while being on the
+current page. This is done in a `scroll` event listener above, which saves the scroll state every 100ms.
