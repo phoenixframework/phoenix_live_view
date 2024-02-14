@@ -523,6 +523,25 @@ defmodule Phoenix.LiveView.StreamTest do
              ~r/a container with phx-update=\"stream\" must only contain stream children with the id set to the `dom_id` of the stream item/
   end
 
+  test "handles high frequency updates properly", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/stream/high-frequency-stream-and-non-stream-updates")
+
+    for _i <- 1..50 do
+      assert lv |> render_hook("insert_item")
+      Process.sleep(10)
+    end
+
+    [{_tag, _attributes, children}] = render(lv) |> Floki.find("#mystream")
+    assert length(children) == 50
+
+    # wait for more updates
+    Process.sleep(100)
+
+    # we should still have 50 items
+    [{_tag, _attributes, children}] = render(lv) |> Floki.find("#mystream")
+    assert length(children) == 50
+  end
+
   describe "limit" do
     test "limit is enforced on mount, but not dead render", %{conn: conn} do
       conn = get(conn, "/stream/limit")

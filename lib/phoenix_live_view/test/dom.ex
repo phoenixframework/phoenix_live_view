@@ -260,14 +260,14 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp deep_merge_diff(_target, source),
     do: source
 
-  defp extract_streams(%{} = source, streams) do
+  def extract_streams(%{} = source, streams) do
     Enum.reduce(source, streams, fn
       {@stream_id, stream}, acc -> [stream | acc]
       {_key, value}, acc -> extract_streams(value, acc)
     end)
   end
 
-  defp extract_streams(_value, acc), do: acc
+  def extract_streams(_value, acc), do: acc
 
   # Diff rendering
 
@@ -408,12 +408,6 @@ defmodule Phoenix.LiveViewTest.DOM do
       !content_changed? ->
         {tag, attrs, updated_appended}
     end
-  end
-
-  # return the children as is if there are no entries in the list of streams;
-  # this could be caused by an update in a parent live view
-  defp apply_phx_update("stream", _html_tree, {tag, attrs, appended_children} = _node, []) do
-    {tag, attrs, appended_children}
   end
 
   defp apply_phx_update("stream", html_tree, {tag, attrs, appended_children} = node, streams) do

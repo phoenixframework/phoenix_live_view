@@ -128,6 +128,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/stream/reset-lc", StreamResetLCLive
     live "/stream/limit", StreamLimitLive
     live "/stream/nested", StreamNestedLive
+    live "/stream/high-frequency-stream-and-non-stream-updates", HighFrequencyStreamAndNoStreamUpdatesLive
     live "/stream/nested-component-reset", StreamNestedComponentResetLive
 
     # healthy

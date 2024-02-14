@@ -726,10 +726,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:ok, view} ->
           rendered = DOM.merge_diff(view.rendered, diff)
           new_view = %ClientProxy{view | rendered: rendered}
+          streams = DOM.extract_streams(rendered, rendered.streams)
 
           %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}
-          |> patch_view(new_view, DOM.render_diff(rendered), rendered.streams)
-          |> detect_added_or_removed_children(new_view, html_before, rendered.streams)
+          |> patch_view(new_view, DOM.render_diff(rendered), streams)
+          |> detect_added_or_removed_children(new_view, html_before, streams)
 
         :error ->
           state
@@ -763,6 +764,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     |> Enum.reduce(state, fn {id, session, static}, acc ->
       case fetch_view_by_id(acc, id) do
         {:ok, view} ->
+          streams = DOM.extract_streams(view.rendered, streams)
           patch_view(acc, view, DOM.inner_html!(html_before, view.id), streams)
 
         :error ->
@@ -770,6 +772,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           child_view = build_child(view, id: id, session_token: session, static_token: static)
 
           {child_view, rendered, _resp} = mount_view(acc, child_view, nil, nil)
+          streams = DOM.extract_streams(rendered, streams)
 
           acc
           |> put_view(child_view, rendered)
