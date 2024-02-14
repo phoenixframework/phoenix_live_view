@@ -143,7 +143,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session,
       test_supervisor: test_supervisor,
       url: url,
-      page_title: root_page_title(root_html)
+      page_title: :unset
     }
 
     try do
@@ -481,6 +481,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     :ok = Phoenix.LiveView.Channel.ping(pid)
     send(self(), {:sync_render_event, el, :upload_progress, payload, from})
     {:reply, :ok, state}
+  end
+
+  def handle_call(:page_title, _from, %{page_title: :unset} = state) do
+    state = %{state | page_title: root_page_title(state.html)}
+    {:reply, {:ok, state.page_title}, state}
   end
 
   def handle_call(:page_title, _from, state) do

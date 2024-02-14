@@ -62,7 +62,7 @@ defmodule Phoenix.LiveView.Comprehension do
   defstruct [:static, :dynamics, :fingerprint, :stream]
 
   @type t :: %__MODULE__{
-          stream: String.t() | atom() | nil,
+          stream: list() | nil,
           static: [String.t()],
           dynamics: [
             [

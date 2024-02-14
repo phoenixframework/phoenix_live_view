@@ -635,6 +635,108 @@ defmodule Phoenix.LiveViewTest.StreamNestedLive do
   end
 end
 
+defmodule Phoenix.LiveViewTest.StreamNestedComponentResetLive do
+  use Phoenix.LiveView
+
+  defmodule InnerComponent do
+    use Phoenix.LiveComponent
+
+    # we already initialized the stream
+    def update(assigns, %{assigns: %{id: _}} = socket) do
+      {:ok, assign(socket, assigns)}
+    end
+
+    # first mount
+    def update(assigns, socket) do
+      socket
+      |> assign(assigns)
+      |> stream(
+        :nested,
+        [
+          %{id: assigns.id <> "-a", name: "N-A"},
+          %{id: assigns.id <> "-b", name: "N-B"},
+          %{id: assigns.id <> "-c", name: "N-C"},
+          %{id: assigns.id <> "-d", name: "N-D"}
+        ],
+        reset: true
+      )
+      |> then(&{:ok, &1})
+    end
+
+    def handle_event("reorder", _, socket) do
+      socket =
+        stream(
+          socket,
+          :nested,
+          [
+            %{id: socket.assigns.id <> "-e", name: "N-E"},
+            %{id: socket.assigns.id <> "-a", name: "N-A"},
+            %{id: socket.assigns.id <> "-f", name: "N-F"},
+            %{id: socket.assigns.id <> "-g", name: "N-G"}
+          ],
+          reset: true
+        )
+
+      {:noreply, socket}
+    end
+
+    def render(assigns) do
+      ~H"""
+      <li id={@id}>
+        <%= @item.name %>
+        <div id={@id <> "-nested"} phx-update="stream" style="display: flex; gap: 4px;">
+          <span :for={{id, item} <- @streams.nested} id={id}><%= item.name %></span>
+        </div>
+        <button phx-click="reorder" phx-target={@myself}>Reorder</button>
+      </li>
+      """
+    end
+  end
+
+  def render(assigns) do
+    ~H"""
+    <ul phx-update="stream" id="thelist">
+      <.live_component
+        :for={{id, item} <- @streams.items}
+        module={InnerComponent}
+        id={id}
+        item={item}
+      />
+    </ul>
+
+    <button phx-click="reorder" id="parent-reorder">Reorder</button>
+    """
+  end
+
+  def mount(_params, _session, socket) do
+    socket
+    |> stream(:items, [
+      %{id: "a", name: "A"},
+      %{id: "b", name: "B"},
+      %{id: "c", name: "C"},
+      %{id: "d", name: "D"}
+    ])
+    |> then(&{:ok, &1})
+  end
+
+  def handle_event("reorder", _, socket) do
+    socket =
+      stream(
+        socket,
+        :items,
+        [
+          %{id: "e", name: "E"},
+          %{id: "a", name: "A"},
+          %{id: "f", name: "F"},
+          %{id: "g", name: "G"}
+        ],
+        reset: true
+      )
+
+    {:noreply, socket}
+  end
+end
+
 defmodule Phoenix.LiveViewTest.HighFrequencyStreamAndNoStreamUpdatesLive do
   use Phoenix.LiveView
 

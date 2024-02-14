@@ -3,11 +3,11 @@
 ## 0.20.5 (2024-02-08)
 
 ### Deprecations
-  * Deprecate `phx-feedback-group`
+  * Deprecate `phx-feedback-group` introduced in the previous release, the goal is to move feedback handling into Elixir and out of the DOM
 
 ### Bug fixes
   * Fix blur event on phx-debounce being dispatched incorrectly
-  * Fix `open_browser` not working on WSL for project under unix FS
+  * Fix `open_browser` not working on WSL for project under UNIX file systems
   * Match browser stream insert ordering behavior in `LiveViewTest`
   * Fix `phx-click-away` not working when element is partially hidden
   * Fix `phx-feedback-for` classes not being applied in some cases
@@ -57,7 +57,7 @@
 ## 0.20.2 (2023-12-18)
 
 ### Bug fixes
-  * Fix javascript error when submitting a form that has in progress uploads
+  * Fix JavaScript error when submitting a form that has in progress uploads
   * Fix JS command `:target` failing to work when used as phx-submit or phx-change with a selector-based target
   * Fix `JS.focus()` failing to focus negative tabindex
   * Fix `LiveViewTest` failing to remove items after stream reset
@@ -66,10 +66,13 @@
 
 ### Enhancements
   * Speed up DOM patching performance 3-30x 🔥
-  * Support `handle_async` Lifecycle callback
+  * Support `handle_async` lifecycle callback
   * Extend visibility checks for phx-click-away to better handle whether an element is visible in the viewport or not
   * Allow `JS.patch` and `JS.navigate` to be tested with `render_click`
   * Support `:supervisor` option to `assign_async` and `start_async`
+
+### Deprecations
+  * Deprecate `phx-update="append"` and `phx-update="prepend"` in favor of `phx-update="stream"`
 
 ## 0.20.1 (2023-10-09)
 
@@ -103,7 +106,7 @@
   * Fix error on form recovery with `auto_upload: true`
   * Fix issue on form recovery where hidden inputs would be selected by mistake
   * Fix form recovery when phx-change is a JS command
-  * Fix stream reset on nested live components with nested streams.
+  * Fix stream reset on nested live components with nested streams
   * Fix window location resetting to null when using nested LiveView on connection error
   * Fix anchors within contenteditable causing LiveSocket disconnects
 

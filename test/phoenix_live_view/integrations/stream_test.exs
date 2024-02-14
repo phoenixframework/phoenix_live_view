@@ -188,13 +188,29 @@ defmodule Phoenix.LiveView.StreamTest do
       # let the parent update
       Process.sleep(100)
 
-      assert ids_in_ul_list(render(lv)) == ["items-a", "items-b", "items-c", "items-d"]
+      assert ul_list_children(render(lv)) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element("button", "Filter") |> render_click()
-      assert ids_in_ul_list(html) == ["items-b", "items-c", "items-d"]
+
+      assert ul_list_children(html) == [
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element("button", "Reset") |> render_click()
-      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      assert ul_list_children(html) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
     end
   end
 
@@ -202,42 +218,97 @@ defmodule Phoenix.LiveView.StreamTest do
     test "can filter and reset a stream", %{conn: conn} do
       {:ok, lv, html} = live(conn, "/stream/reset")
 
-      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+      assert ul_list_children(html) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element("button", "Filter") |> render_click()
-      assert ids_in_ul_list(html) == ["items-b", "items-c", "items-d"]
+
+      assert ul_list_children(html) == [
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element("button", "Reset") |> render_click()
-      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      assert ul_list_children(html) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
     end
 
     test "can reorder stream", %{conn: conn} do
       {:ok, lv, html} = live(conn, "/stream/reset")
 
-      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+      assert ul_list_children(html) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element("button", "Reorder") |> render_click()
-      assert ids_in_ul_list(html) == ["items-b", "items-a", "items-c", "items-d"]
+
+      assert ul_list_children(html) == [
+               {"items-b", "B"},
+               {"items-a", "A"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
     end
 
     test "can filter and then prepend / append stream", %{conn: conn} do
       {:ok, lv, html} = live(conn, "/stream/reset")
 
-      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+      assert ul_list_children(html) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element("button", "Filter") |> render_click()
-      assert ids_in_ul_list(html) == ["items-b", "items-c", "items-d"]
+
+      assert ul_list_children(html) == [
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element(~s(button[phx-click="prepend"]), "Prepend") |> render_click()
-      assert [<<"items-a-", _::binary>>, "items-b", "items-c", "items-d"] = ids_in_ul_list(html)
+
+      assert [
+               {<<"items-a-", _::binary>>, _},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ] = ul_list_children(html)
 
       html = assert lv |> element("button", "Reset") |> render_click()
-      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+      assert ul_list_children(html) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element(~s(button[phx-click="append"]), "Append") |> render_click()
 
-      assert ["items-a", "items-b", "items-c", "items-d", <<"items-a-", _::binary>>] =
-               ids_in_ul_list(html)
+      assert [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"},
+               {<<"items-a-", _::binary>>, _}
+             ] =
+               ul_list_children(html)
     end
   end
 
@@ -332,53 +403,98 @@ defmodule Phoenix.LiveView.StreamTest do
     } do
       {:ok, lv, html} = live(conn, "/stream/reset-lc")
 
-      assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+      assert ul_list_children(html) == [
+               {"items-a", "A"},
+               {"items-b", "B"},
+               {"items-c", "C"},
+               {"items-d", "D"}
+             ]
 
       html = assert lv |> element("button", "Reorder") |> render_click()
-      assert ids_in_ul_list(html) == ["items-e", "items-a", "items-f", "items-g"]
+
+      assert ul_list_children(html) == [
+               {"items-e", "E"},
+               {"items-a", "A"},
+               {"items-f", "F"},
+               {"items-g", "G"}
+             ]
     end
   end
 
   test "issue #3023 - can bulk insert at index != -1", %{conn: conn} do
     {:ok, lv, html} = live(conn, "/stream/reset")
 
-    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
 
     html = assert lv |> element("button", "Bulk insert") |> render_click()
 
-    assert ids_in_ul_list(html) == [
-             "items-a",
-             "items-e",
-             "items-f",
-             "items-g",
-             "items-b",
-             "items-c",
-             "items-d"
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-e", "E"},
+             {"items-f", "F"},
+             {"items-g", "G"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
            ]
   end
 
   test "any stream insert for elements already in the DOM does not reorder", %{conn: conn} do
     {:ok, lv, html} = live(conn, "/stream/reset")
 
-    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
 
     html = assert lv |> element("button", "Prepend C") |> render_click()
-    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
 
     html = assert lv |> element("button", "Append C") |> render_click()
-    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
 
     html = assert lv |> element("button", "Insert C at 1") |> render_click()
-    assert ids_in_ul_list(html) == ["items-a", "items-b", "items-c", "items-d"]
+
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
 
     html = assert lv |> element("button", "Insert at 1") |> render_click()
-    assert ["items-a", _, "items-b", "items-c", "items-d"] = ids_in_ul_list(html)
+
+    assert [{"items-a", "A"}, _, {"items-b", "B"}, {"items-c", "C"}, {"items-d", "D"}] =
+             ul_list_children(html)
 
     html = assert lv |> element("button", "Reset") |> render_click()
-    assert ["items-a", "items-b", "items-c", "items-d"] = ids_in_ul_list(html)
+
+    assert [{"items-a", "A"}, {"items-b", "B"}, {"items-c", "C"}, {"items-d", "D"}] =
+             ul_list_children(html)
 
     html = assert lv |> element("button", "Delete C and insert at 1") |> render_click()
-    assert ["items-a", "items-c", "items-b", "items-d"] = ids_in_ul_list(html)
+
+    assert [{"items-a", "A"}, {"items-c", "C"}, {"items-b", "B"}, {"items-d", "D"}] =
+             ul_list_children(html)
   end
 
   test "stream raises when attempting to consume ahead of for", %{conn: conn} do
@@ -430,185 +546,261 @@ defmodule Phoenix.LiveView.StreamTest do
     test "limit is enforced on mount, but not dead render", %{conn: conn} do
       conn = get(conn, "/stream/limit")
 
-      assert html_response(conn, 200) |> ids_in_ul_list() == [
-               "items-1",
-               "items-2",
-               "items-3",
-               "items-4",
-               "items-5",
-               "items-6",
-               "items-7",
-               "items-8",
-               "items-9",
-               "items-10"
+      assert html_response(conn, 200) |> ul_list_children() == [
+               {"items-1", "1"},
+               {"items-2", "2"},
+               {"items-3", "3"},
+               {"items-4", "4"},
+               {"items-5", "5"},
+               {"items-6", "6"},
+               {"items-7", "7"},
+               {"items-8", "8"},
+               {"items-9", "9"},
+               {"items-10", "10"}
              ]
 
       {:ok, _lv, html} = live(conn)
 
-      assert ids_in_ul_list(html) == [
-               "items-6",
-               "items-7",
-               "items-8",
-               "items-9",
-               "items-10"
+      assert ul_list_children(html) == [
+               {"items-6", "6"},
+               {"items-7", "7"},
+               {"items-8", "8"},
+               {"items-9", "9"},
+               {"items-10", "10"}
              ]
     end
 
     test "removes item at front when appending and limit is negative", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/stream/limit")
 
-      assert lv |> render_hook("configure", %{"at" => "-1", "limit" => "-5"}) |> ids_in_ul_list() ==
+      assert lv
+             |> render_hook("configure", %{"at" => "-1", "limit" => "-5"})
+             |> ul_list_children() ==
                [
-                 "items-6",
-                 "items-7",
-                 "items-8",
-                 "items-9",
-                 "items-10"
+                 {"items-6", "6"},
+                 {"items-7", "7"},
+                 {"items-8", "8"},
+                 {"items-9", "9"},
+                 {"items-10", "10"}
                ]
 
-      assert lv |> render_hook("insert_1") |> ids_in_ul_list() == [
-               "items-7",
-               "items-8",
-               "items-9",
-               "items-10",
-               "items-11"
+      assert lv |> render_hook("insert_1") |> ul_list_children() == [
+               {"items-7", "7"},
+               {"items-8", "8"},
+               {"items-9", "9"},
+               {"items-10", "10"},
+               {"items-11", "11"}
              ]
 
-      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
-               "items-17",
-               "items-18",
-               "items-19",
-               "items-20",
-               "items-21"
+      assert lv |> render_hook("insert_10") |> ul_list_children() == [
+               {"items-17", "17"},
+               {"items-18", "18"},
+               {"items-19", "19"},
+               {"items-20", "20"},
+               {"items-21", "21"}
              ]
     end
 
     test "removes item at back when prepending and limit is positive", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/stream/limit")
 
-      assert lv |> render_hook("configure", %{"at" => "0", "limit" => "5"}) |> ids_in_ul_list() ==
+      assert lv |> render_hook("configure", %{"at" => "0", "limit" => "5"}) |> ul_list_children() ==
                [
-                 "items-10",
-                 "items-9",
-                 "items-8",
-                 "items-7",
-                 "items-6"
+                 {"items-10", "10"},
+                 {"items-9", "9"},
+                 {"items-8", "8"},
+                 {"items-7", "7"},
+                 {"items-6", "6"}
                ]
 
-      assert lv |> render_hook("insert_1") |> ids_in_ul_list() == [
-               "items-11",
-               "items-10",
-               "items-9",
-               "items-8",
-               "items-7"
+      assert lv |> render_hook("insert_1") |> ul_list_children() == [
+               {"items-11", "11"},
+               {"items-10", "10"},
+               {"items-9", "9"},
+               {"items-8", "8"},
+               {"items-7", "7"}
              ]
 
-      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
-               "items-21",
-               "items-20",
-               "items-19",
-               "items-18",
-               "items-17"
+      assert lv |> render_hook("insert_10") |> ul_list_children() == [
+               {"items-21", "21"},
+               {"items-20", "20"},
+               {"items-19", "19"},
+               {"items-18", "18"},
+               {"items-17", "17"}
              ]
     end
 
     test "does nothing if appending and positive limit is reached", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/stream/limit")
 
-      assert lv |> render_hook("configure", %{"at" => "-1", "limit" => "5"}) |> ids_in_ul_list() ==
+      assert lv |> render_hook("configure", %{"at" => "-1", "limit" => "5"}) |> ul_list_children() ==
                [
-                 "items-1",
-                 "items-2",
-                 "items-3",
-                 "items-4",
-                 "items-5"
+                 {"items-1", "1"},
+                 {"items-2", "2"},
+                 {"items-3", "3"},
+                 {"items-4", "4"},
+                 {"items-5", "5"}
                ]
 
       # adding new items should do nothing, as the limit is reached
-      assert lv |> render_hook("insert_1") |> ids_in_ul_list() == [
-               "items-1",
-               "items-2",
-               "items-3",
-               "items-4",
-               "items-5"
+      assert lv |> render_hook("insert_1") |> ul_list_children() == [
+               {"items-1", "1"},
+               {"items-2", "2"},
+               {"items-3", "3"},
+               {"items-4", "4"},
+               {"items-5", "5"}
              ]
 
-      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
-               "items-1",
-               "items-2",
-               "items-3",
-               "items-4",
-               "items-5"
+      assert lv |> render_hook("insert_10") |> ul_list_children() == [
+               {"items-1", "1"},
+               {"items-2", "2"},
+               {"items-3", "3"},
+               {"items-4", "4"},
+               {"items-5", "5"}
              ]
     end
 
     test "does nothing if prepending and negative limit is reached", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/stream/limit")
 
-      assert lv |> render_hook("configure", %{"at" => "0", "limit" => "-5"}) |> ids_in_ul_list() ==
+      assert lv |> render_hook("configure", %{"at" => "0", "limit" => "-5"}) |> ul_list_children() ==
                [
-                 "items-5",
-                 "items-4",
-                 "items-3",
-                 "items-2",
-                 "items-1"
+                 {"items-5", "5"},
+                 {"items-4", "4"},
+                 {"items-3", "3"},
+                 {"items-2", "2"},
+                 {"items-1", "1"}
                ]
 
       # adding new items should do nothing, as the limit is reached
-      assert lv |> render_hook("insert_1") |> ids_in_ul_list() == [
-               "items-5",
-               "items-4",
-               "items-3",
-               "items-2",
-               "items-1"
+      assert lv |> render_hook("insert_1") |> ul_list_children() == [
+               {"items-5", "5"},
+               {"items-4", "4"},
+               {"items-3", "3"},
+               {"items-2", "2"},
+               {"items-1", "1"}
              ]
 
-      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
-               "items-5",
-               "items-4",
-               "items-3",
-               "items-2",
-               "items-1"
+      assert lv |> render_hook("insert_10") |> ul_list_children() == [
+               {"items-5", "5"},
+               {"items-4", "4"},
+               {"items-3", "3"},
+               {"items-2", "2"},
+               {"items-1", "1"}
              ]
     end
 
     test "arbitrary index", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/stream/limit")
 
-      assert lv |> render_hook("configure", %{"at" => "1", "limit" => "5"}) |> ids_in_ul_list() ==
+      assert lv |> render_hook("configure", %{"at" => "1", "limit" => "5"}) |> ul_list_children() ==
                [
-                 "items-1",
-                 "items-10",
-                 "items-9",
-                 "items-8",
-                 "items-7"
+                 {"items-1", "1"},
+                 {"items-10", "10"},
+                 {"items-9", "9"},
+                 {"items-8", "8"},
+                 {"items-7", "7"}
                ]
 
-      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
-               "items-1",
-               "items-20",
-               "items-19",
-               "items-18",
-               "items-17"
+      assert lv |> render_hook("insert_10") |> ul_list_children() == [
+               {"items-1", "1"},
+               {"items-20", "20"},
+               {"items-19", "19"},
+               {"items-18", "18"},
+               {"items-17", "17"}
              ]
 
-      assert lv |> render_hook("configure", %{"at" => "1", "limit" => "-5"}) |> ids_in_ul_list() ==
+      assert lv |> render_hook("configure", %{"at" => "1", "limit" => "-5"}) |> ul_list_children() ==
                [
-                 "items-10",
-                 "items-5",
-                 "items-4",
-                 "items-3",
-                 "items-2"
+                 {"items-10", "10"},
+                 {"items-5", "5"},
+                 {"items-4", "4"},
+                 {"items-3", "3"},
+                 {"items-2", "2"}
                ]
 
-      assert lv |> render_hook("insert_10") |> ids_in_ul_list() == [
-               "items-20",
-               "items-5",
-               "items-4",
-               "items-3",
-               "items-2"
+      assert lv |> render_hook("insert_10") |> ul_list_children() == [
+               {"items-20", "20"},
+               {"items-5", "5"},
+               {"items-4", "4"},
+               {"items-3", "3"},
+               {"items-2", "2"}
              ]
     end
+  end
+
+  @tag skip: "waiting for #3104"
+  test "stream nested in a LiveComponent is properly restored on reset", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/stream/nested-component-reset")
+
+    childItems = fn html, id ->
+      html
+      |> DOM.parse()
+      |> DOM.all("##{id} div[phx-update=stream] > *")
+      |> Enum.map(fn {_tag, _attrs, [text | _children]} = child ->
+        {DOM.attribute(child, "id"), String.trim(text)}
+      end)
+    end
+
+    assert render(lv) |> ul_list_children() == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
+
+    for id <- ["a", "b", "c", "d"] do
+      assert render(lv) |> childItems.("items-#{id}") == [
+               {"nested-items-#{id}-a", "N-A"},
+               {"nested-items-#{id}-b", "N-B"},
+               {"nested-items-#{id}-c", "N-C"},
+               {"nested-items-#{id}-d", "N-D"}
+             ]
+    end
+
+    # now reorder the nested stream of items-a
+    assert lv |> element("#items-a button") |> render_click() |> childItems.("items-a") == [
+             {"nested-items-a-e", "N-E"},
+             {"nested-items-a-a", "N-A"},
+             {"nested-items-a-f", "N-F"},
+             {"nested-items-a-g", "N-G"}
+           ]
+
+    # unchanged
+    for id <- ["b", "c", "d"] do
+      assert render(lv) |> childItems.("items-#{id}") == [
+               {"nested-items-#{id}-a", "N-A"},
+               {"nested-items-#{id}-b", "N-B"},
+               {"nested-items-#{id}-c", "N-C"},
+               {"nested-items-#{id}-d", "N-D"}
+             ]
+    end
+
+    # now reorder the parent stream
+    assert lv |> element("#parent-reorder") |> render_click() |> ul_list_children() == [
+             {"items-e", "E"},
+             {"items-a", "A"},
+             {"items-f", "F"},
+             {"items-g", "G"}
+           ]
+
+    # the new children's stream items have the correct order
+    for id <- ["e", "f", "g"] do
+      assert render(lv) |> childItems.("items-#{id}") == [
+               {"nested-items-#{id}-a", "N-A"},
+               {"nested-items-#{id}-b", "N-B"},
+               {"nested-items-#{id}-c", "N-C"},
+               {"nested-items-#{id}-d", "N-D"}
+             ]
+    end
+
+    # Item A has the same children as before, still reordered
+    assert render(lv) |> childItems.("items-a") == [
+             {"nested-items-a-e", "N-E"},
+             {"nested-items-a-a", "N-A"},
+             {"nested-items-a-f", "N-F"},
+             {"nested-items-a-g", "N-G"}
+           ]
   end
 
   defp assert_pruned_stream(lv) do
@@ -626,10 +818,12 @@ defmodule Phoenix.LiveView.StreamTest do
     end)
   end
 
-  defp ids_in_ul_list(html) do
+  defp ul_list_children(html) do
     html
     |> DOM.parse()
     |> DOM.all("ul > li")
-    |> Enum.map(fn child -> DOM.attribute(child, "id") end)
+    |> Enum.map(fn {_tag, _attrs, [text | _children]} = child ->
+      {DOM.attribute(child, "id"), String.trim(text)}
+    end)
   end
 end
