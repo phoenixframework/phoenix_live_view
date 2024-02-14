@@ -729,7 +729,6 @@ defmodule Phoenix.LiveView.StreamTest do
     end
   end
 
-  @tag skip: "waiting for #3104"
   test "stream nested in a LiveComponent is properly restored on reset", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/stream/nested-component-reset")
 
