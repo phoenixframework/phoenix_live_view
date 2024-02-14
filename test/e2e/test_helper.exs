@@ -57,6 +57,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/stream/reset", StreamResetLive
       live "/stream/reset-lc", StreamResetLCLive
       live "/stream/limit", StreamLimitLive
+      live "/stream/nested-component-reset", StreamNestedComponentResetLive
       live "/healthy/:category", HealthyLive
 
       live "/upload", E2E.UploadLive

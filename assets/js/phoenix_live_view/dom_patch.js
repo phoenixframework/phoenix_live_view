@@ -99,41 +99,8 @@ export default class DOMPatch {
 
     let externalFormTriggered = null
 
-    this.trackBefore("added", container)
-    this.trackBefore("updated", container, container)
-
-    liveSocket.time("morphdom", () => {
-      this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-        inserts.forEach(([key, streamAt, limit]) => {
-          this.streamInserts[key] = {ref, streamAt, limit, reset}
-        })
-        if(reset !== undefined){
-          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
-            this.removeStreamChildElement(child)
-          })
-        }
-        deleteIds.forEach(id => {
-          let child = container.querySelector(`[id="${id}"]`)
-          if(child){ this.removeStreamChildElement(child) }
-        })
-      })
-
-      // clear stream items from the dead render if they are not inserted again
-      if(isJoinPatch){
-        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
-          // make sure to only remove elements owned by the current view
-          // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
-          this.liveSocket.owner(el, (view) => {
-            if(view === this.view){
-              Array.from(el.children).forEach(child => {
-                this.removeStreamChildElement(child)
-              })
-            }
-          })
-        })
-      }
-
-      morphdom(targetContainer, html, {
+    function morph(targetContainer, source){
+      morphdom(targetContainer, source, {
         childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
         getNodeKey: (node) => {
           if(DOM.isPhxDestroyed(node)){ return null }
@@ -151,14 +118,6 @@ export default class DOMPatch {
 
           this.setStreamRef(child, ref)
 
-          // we may need to restore skipped components, see removeStreamChildElement
-          child.querySelectorAll(`[${PHX_MAGIC_ID}][${PHX_SKIP}]`).forEach(el => {
-            const component = this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)]
-            if(component){
-              el.replaceWith(component)
-            }
-          })
-
           // streaming
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
@@ -173,7 +132,16 @@ export default class DOMPatch {
           DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
           if(DOM.isFeedbackContainer(el, phxFeedbackFor)) feedbackContainers.push(el)
           this.trackBefore("added", el)
-          return el
+
+          let morphedEl = el
+          // this is a stream item that was kept on reset, recursively morph it
+          if(!isJoinPatch && this.streamComponentRestore[el.id]){
+            morphedEl = this.streamComponentRestore[el.id]
+            delete this.streamComponentRestore[el.id]
+            morph.bind(this)(morphedEl, el)
+          }
+
+          return morphedEl
         },
         onNodeAdded: (el) => {
           if(el.getAttribute){ this.maybeReOrderStream(el, true) }
@@ -282,6 +250,43 @@ export default class DOMPatch {
           }
         }
       })
+    }
+
+    this.trackBefore("added", container)
+    this.trackBefore("updated", container, container)
+
+    liveSocket.time("morphdom", () => {
+      this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
+        inserts.forEach(([key, streamAt, limit]) => {
+          this.streamInserts[key] = {ref, streamAt, limit, reset}
+        })
+        if(reset !== undefined){
+          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
+            this.removeStreamChildElement(child)
+          })
+        }
+        deleteIds.forEach(id => {
+          let child = container.querySelector(`[id="${id}"]`)
+          if(child){ this.removeStreamChildElement(child) }
+        })
+      })
+
+      // clear stream items from the dead render if they are not inserted again
+      if(isJoinPatch){
+        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
+          // make sure to only remove elements owned by the current view
+          // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
+          this.liveSocket.owner(el, (view) => {
+            if(view === this.view){
+              Array.from(el.children).forEach(child => {
+                this.removeStreamChildElement(child)
+              })
+            }
+          })
+        })
+      }
+
+      morph.bind(this)(targetContainer, html)
     })
 
     if(liveSocket.isDebugEnabled()){ detectDuplicateIds() }
@@ -328,14 +333,14 @@ export default class DOMPatch {
   removeStreamChildElement(child){
     if(!this.maybePendingRemove(child)){
       if(this.streamInserts[child.id]){
-        // we need to store children so we can restore them later
-        // in case they are skipped
-        child.querySelectorAll(`[${PHX_MAGIC_ID}]`).forEach(el => {
-          this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)] = el
-        })
+        // we need to store children so we can morph them later
+        this.streamComponentRestore[child.id] = child
+        child.remove()
+      } else {
+        child.remove()
+        // TODO: check if we really don't want to call discarded for re-added stream items
+        this.onNodeDiscarded(child)
       }
-      child.remove()
-      this.onNodeDiscarded(child)
     }
   }
 
