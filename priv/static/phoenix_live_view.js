@@ -809,18 +809,7 @@ var LiveView = (() => {
           return;
         default:
           let timeout = parseInt(value);
-          let trigger = (blur) => {
-            if (blur) {
-              if (throttle && this.private(el, THROTTLED)) {
-                clearTimeout(this.private(el, THROTTLED));
-                this.deletePrivate(el, THROTTLED);
-              }
-              return callback();
-            }
-            if (throttle)
-              this.deletePrivate(el, THROTTLED);
-            callback();
-          };
+          let trigger = () => throttle ? this.deletePrivate(el, THROTTLED) : callback();
           let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger);
           if (isNaN(timeout)) {
             return logError(`invalid throttle/debounce value: ${value}`);
@@ -861,18 +850,21 @@ var LiveView = (() => {
             });
           }
           if (this.once(el, "bind-debounce")) {
-            el.addEventListener("blur", () => this.triggerCycle(el, DEBOUNCE_TRIGGER, null, [true]));
+            el.addEventListener("blur", () => {
+              clearTimeout(this.private(el, THROTTLED));
+              this.triggerCycle(el, DEBOUNCE_TRIGGER);
+            });
           }
       }
     },
-    triggerCycle(el, key, currentCycle, params = []) {
+    triggerCycle(el, key, currentCycle) {
       let [cycle, trigger] = this.private(el, key);
       if (!currentCycle) {
         currentCycle = cycle;
       }
       if (currentCycle === cycle) {
         this.incCycle(el, key);
-        trigger(...params);
+        trigger();
       }
     },
     once(el, key) {
@@ -2183,38 +2175,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let updates = [];
       let appendPrependUpdates = [];
       let externalFormTriggered = null;
-      this.trackBefore("added", container);
-      this.trackBefore("updated", container, container);
-      liveSocket.time("morphdom", () => {
-        this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-          inserts.forEach(([key, streamAt, limit]) => {
-            this.streamInserts[key] = { ref, streamAt, limit, reset };
-          });
-          if (reset !== void 0) {
-            dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
-              this.removeStreamChildElement(child);
-            });
-          }
-          deleteIds.forEach((id) => {
-            let child = container.querySelector(`[id="${id}"]`);
-            if (child) {
-              this.removeStreamChildElement(child);
-            }
-          });
-        });
-        if (isJoinPatch) {
-          dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => {
-            this.liveSocket.owner(el, (view2) => {
-              if (view2 === this.view) {
-                Array.from(el.children).forEach((child) => {
-                  this.removeStreamChildElement(child);
-                });
-              }
-            });
-          });
-        }
-        morphdom_esm_default(targetContainer, html, {
-          childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
+      function morph(targetContainer2, source) {
+        morphdom_esm_default(targetContainer2, source, {
+          childrenOnly: targetContainer2.getAttribute(PHX_COMPONENT) === null,
           getNodeKey: (node) => {
             if (dom_default.isPhxDestroyed(node)) {
               return null;
@@ -2233,12 +2196,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               return parent.appendChild(child);
             }
             this.setStreamRef(child, ref);
-            child.querySelectorAll(`[${PHX_MAGIC_ID}][${PHX_SKIP}]`).forEach((el) => {
-              const component = this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)];
-              if (component) {
-                el.replaceWith(component);
-              }
-            });
             if (streamAt === 0) {
               parent.insertAdjacentElement("afterbegin", child);
             } else if (streamAt === -1) {
@@ -2253,7 +2210,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (dom_default.isFeedbackContainer(el, phxFeedbackFor))
               feedbackContainers.push(el);
             this.trackBefore("added", el);
-            return el;
+            let morphedEl = el;
+            if (!isJoinPatch && this.streamComponentRestore[el.id]) {
+              morphedEl = this.streamComponentRestore[el.id];
+              delete this.streamComponentRestore[el.id];
+              morph.bind(this)(morphedEl, el);
+            }
+            return morphedEl;
           },
           onNodeAdded: (el) => {
             if (el.getAttribute) {
@@ -2361,6 +2324,38 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           }
         });
+      }
+      this.trackBefore("added", container);
+      this.trackBefore("updated", container, container);
+      liveSocket.time("morphdom", () => {
+        this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
+          inserts.forEach(([key, streamAt, limit]) => {
+            this.streamInserts[key] = { ref, streamAt, limit, reset };
+          });
+          if (reset !== void 0) {
+            dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
+              this.removeStreamChildElement(child);
+            });
+          }
+          deleteIds.forEach((id) => {
+            let child = container.querySelector(`[id="${id}"]`);
+            if (child) {
+              this.removeStreamChildElement(child);
+            }
+          });
+        });
+        if (isJoinPatch) {
+          dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => {
+            this.liveSocket.owner(el, (view2) => {
+              if (view2 === this.view) {
+                Array.from(el.children).forEach((child) => {
+                  this.removeStreamChildElement(child);
+                });
+              }
+            });
+          });
+        }
+        morph.bind(this)(targetContainer, html);
       });
       if (liveSocket.isDebugEnabled()) {
         detectDuplicateIds();
@@ -2399,12 +2394,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     removeStreamChildElement(child) {
       if (!this.maybePendingRemove(child)) {
         if (this.streamInserts[child.id]) {
-          child.querySelectorAll(`[${PHX_MAGIC_ID}]`).forEach((el) => {
-            this.streamComponentRestore[el.getAttribute(PHX_MAGIC_ID)] = el;
-          });
+          this.streamComponentRestore[child.id] = child;
+          child.remove();
+        } else {
+          child.remove();
+          this.onNodeDiscarded(child);
         }
-        child.remove();
-        this.onNodeDiscarded(child);
       }
     }
     getStreamInsert(el) {
