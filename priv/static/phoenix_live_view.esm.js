@@ -2593,6 +2593,14 @@ var Rendered = class {
     let newc = diff[COMPONENTS];
     let cache = {};
     delete diff[COMPONENTS];
+    if (newc) {
+      let prevComponents = this.rendered[COMPONENTS] || {};
+      for (let cid in newc) {
+        if (prevComponents[cid] === void 0) {
+          newc[cid].reset = true;
+        }
+      }
+    }
     this.rendered = this.mutableMerge(this.rendered, diff);
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {};
     if (newc) {
