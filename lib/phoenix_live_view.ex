@@ -723,8 +723,10 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
-    * `:accept` - Required. A list of unique file type specifiers or the
-      atom :any to allow any kind of file. For example, `[".jpeg"]`, `:any`, etc.
+    * `:accept` - Required. A list of unique file extensions (such as ".jpeg") or
+      mime type (such as "image/jpeg" or "image/*"). You may also pass the atom
+      `:any` instead of a list to support to allow any kind of file.
+      For example, `[".jpeg"]`, `:any`, etc.
 
     * `:max_entries` - The maximum number of selected files to allow per
       file input. Defaults to 1.
