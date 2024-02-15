@@ -365,6 +365,12 @@ export default class DOMPatch {
       return
     }
 
+    // check if the element has a parent element;
+    // it doesn't if we are currently recursively morphing (restoring a saved stream child)
+    // because the element is not yet added to the real dom;
+    // reordering does not make sense in that case anyway
+    if(!el.parentElement) return
+
     if(streamAt === 0){
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
     } else if(streamAt > 0){
