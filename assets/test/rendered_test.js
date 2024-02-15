@@ -38,7 +38,10 @@ describe("Rendered", () => {
       const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: 1}}}
       let rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
-      expect(rendered.get()).toEqual({[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: ["c"]}}})
+      expect(rendered.get()).toEqual({[COMPONENTS]: {
+        1: {reset: true, [STATIC]: ["c"]},
+        2: {reset: true, [STATIC]: ["c"]}}
+      })
     })
 
     test("merges components considering old and new links", () => {
@@ -49,8 +52,8 @@ describe("Rendered", () => {
       expect(rendered.get()).toEqual({
         [COMPONENTS]: {
           1: {[STATIC]: ["new"]},
-          2: {[STATIC]: ["old"]},
-          3: {[STATIC]: ["new"]}
+          2: {reset: true, [STATIC]: ["old"]},
+          3: {reset: true, [STATIC]: ["new"]}
         }
       })
     })
@@ -73,10 +76,10 @@ describe("Rendered", () => {
       expect(rendered1.get()).toEqual({
         [COMPONENTS]: {
           1: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
-          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
-          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
-          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
-          5: {0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
+          2: {reset: true, 0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
+          3: {reset: true, 0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
+          4: {reset: true, 0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
+          5: {reset: true, 0: {[STATIC]: ["nested"]}, [STATIC]: ["new"]},
         }
       })
 
@@ -95,10 +98,10 @@ describe("Rendered", () => {
       expect(rendered2.get()).toEqual({
         [COMPONENTS]: {
           1: {0: {[STATIC]: ["newRender"]}, [STATIC]: ["new"]},
-          2: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
-          3: {0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
-          4: {0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
-          5: {0: {[STATIC]: ["newRender"]}, [STATIC]: ["new"]},
+          2: {reset: true, 0: {[STATIC]: ["replaced"]}, [STATIC]: ["old"]},
+          3: {reset: true, 0: {[STATIC]: ["replaced"]}, [STATIC]: ["new"]},
+          4: {reset: true, 0: {[STATIC]: ["nested"]}, [STATIC]: ["old"]},
+          5: {reset: true, 0: {[STATIC]: ["newRender"]}, [STATIC]: ["new"]},
         }
       })
     })
