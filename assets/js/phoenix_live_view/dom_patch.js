@@ -331,14 +331,15 @@ export default class DOMPatch {
   }
 
   removeStreamChildElement(child){
-    if(!this.maybePendingRemove(child)){
-      if(this.streamInserts[child.id]){
-        // we need to store children so we can morph them later
-        this.streamComponentRestore[child.id] = child
+    // we need to store the node if it is actually re-added in the same patch
+    // we do NOT want to execute phx-remove, we do NOT want to call onNodeDiscarded
+    if(this.streamInserts[child.id]){
+      this.streamComponentRestore[child.id] = child
+      child.remove()
+    } else {
+      // only remove the element now if it has no phx-remove binding
+      if(!this.maybePendingRemove(child)){
         child.remove()
-      } else {
-        child.remove()
-        // TODO: check if we really don't want to call discarded for re-added stream items
         this.onNodeDiscarded(child)
       }
     }
