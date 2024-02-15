@@ -403,6 +403,9 @@ export default class Rendered {
     // Both optimization flows apply here. newRender is set based on the onlyCids optimization, and
     // we track a deterministic magicId based on the cid.
     //
+    // changeTracking is about the entire tree
+    // newRender is about the current root in the tree
+    //
     // By default changeTracking is enabled, but we special case the flow where the client is pruning
     // cids and the server adds the component back. In such cases, we explicitly disable changeTracking
     // with resetRender for this cid, then re-enable it after the recursive call to skip the optimization
