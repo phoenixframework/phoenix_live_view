@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.7 (2024-02-15)
+
+### Bug fixes
+  * Fix phx-skip containers leaking into DOM on first patch in some cases (#3117)
+  * Fix phx-feedback-for failing to be properly updated in some cases (#3122)
+
+
 ## 0.20.6 (2024-02-14)
 
 ### Bug fixes

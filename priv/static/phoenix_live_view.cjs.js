@@ -2178,8 +2178,6 @@ var DOMPatch = class {
         },
         onBeforeNodeAdded: (el) => {
           dom_default.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom);
-          if (dom_default.isFeedbackContainer(el, phxFeedbackFor))
-            feedbackContainers.push(el);
           this.trackBefore("added", el);
           let morphedEl = el;
           if (!isJoinPatch && this.streamComponentRestore[el.id]) {
@@ -2193,6 +2191,8 @@ var DOMPatch = class {
           if (el.getAttribute) {
             this.maybeReOrderStream(el, true);
           }
+          if (dom_default.isFeedbackContainer(el, phxFeedbackFor))
+            feedbackContainers.push(el);
           if (el instanceof HTMLImageElement && el.srcset) {
             el.srcset = el.srcset;
           } else if (el instanceof HTMLVideoElement && el.autoplay) {
