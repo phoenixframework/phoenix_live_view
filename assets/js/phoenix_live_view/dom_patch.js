@@ -130,7 +130,6 @@ export default class DOMPatch {
         },
         onBeforeNodeAdded: (el) => {
           DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
-          if(DOM.isFeedbackContainer(el, phxFeedbackFor)) feedbackContainers.push(el)
           this.trackBefore("added", el)
 
           let morphedEl = el
@@ -145,6 +144,7 @@ export default class DOMPatch {
         },
         onNodeAdded: (el) => {
           if(el.getAttribute){ this.maybeReOrderStream(el, true) }
+          if(DOM.isFeedbackContainer(el, phxFeedbackFor)) feedbackContainers.push(el)
 
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
