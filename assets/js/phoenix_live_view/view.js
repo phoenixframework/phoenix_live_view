@@ -90,9 +90,11 @@ let serializeForm = (form, metadata, onlyNames = []) => {
 
   const params = new URLSearchParams()
 
+  let index = 0;
   for(let [key, val] of formData.entries()){
     if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
-      params.append(key, val)
+      // replace foo[][bar] with foo[0][bar] so we can support nesting from a select multiple
+      params.append(key.replace('[][',`[${index++}][`), val)
     }
   }
 
