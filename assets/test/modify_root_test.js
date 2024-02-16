@@ -109,13 +109,13 @@ ${"\t"}class="px-5"><div id="menu">MENU</div></div>`)
   test("does not extract id from inner element", () => {
     const html = "<div>\n  <div id=\"verify-payment-data-component\" data-phx-id=\"phx-F6AZf4FwSR4R50pB-39\" data-phx-skip></div>\n</div>"
     const attrs = {
-      "data-phx-id": "phx-F6AZf4FwSR4R50pB-c-3",
+      "data-phx-id": "c3-phx-F6AZf4FwSR4R50pB",
       "data-phx-component": 3,
       "data-phx-skip": true
     }
 
     let [strippedHTML, _commentBefore, _commentAfter] = modifyRoot(html, attrs, true);
 
-    expect(strippedHTML).toEqual("<div data-phx-id=\"phx-F6AZf4FwSR4R50pB-c-3\" data-phx-component=\"3\" data-phx-skip></div>");
+    expect(strippedHTML).toEqual("<div data-phx-id=\"c3-phx-F6AZf4FwSR4R50pB\" data-phx-component=\"3\" data-phx-skip></div>");
   })
 })

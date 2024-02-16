@@ -294,7 +294,7 @@ export default class Rendered {
 
   nextMagicID(){
     this.magicId++
-    return `${this.parentViewId()}-${this.magicId}`
+    return `m${this.magicId}-${this.parentViewId()}`
   }
 
   // Converts rendered tree to output buffer.
@@ -408,7 +408,7 @@ export default class Rendered {
     // with resetRender for this cid, then re-enable it after the recursive call to skip the optimization
     // for the entire component tree.
     component.newRender = !skip
-    component.magicId = `${this.parentViewId()}-c-${cid}`
+    component.magicId = `c${cid}-${this.parentViewId()}`
     // enable change tracking as long as the component hasn't been reset
     let changeTracking = !component.reset
     let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
