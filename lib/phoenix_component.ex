@@ -2803,7 +2803,7 @@ defmodule Phoenix.Component do
     assigns =
       assigns
       |> assign(:tag, tag)
-      |> assign(:escaped_attrs, Phoenix.LiveView.TagEngine.attributes_escape(rest))
+      |> assign(:escaped_attrs, Phoenix.LiveView.HTMLEngine.attributes_escape(rest))
 
     if assigns.inner_block != [] do
       ~H"""
