@@ -325,7 +325,7 @@ export default class Rendered {
     if(isRoot){
       let skip = false
       let attrs
-      // when a LC is added on the page, we need to re-render the entire LC tree,
+      // When a LC is re-added to the page, we need to re-render the entire LC tree,
       // therefore changeTracking is false; however, we need to keep all the magicIds
       // from any function component so the next time the LC is updated, we can apply
       // the skip optimization
