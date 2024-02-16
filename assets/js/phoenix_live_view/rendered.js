@@ -167,13 +167,6 @@ export default class Rendered {
     let newc = diff[COMPONENTS]
     let cache = {}
     delete diff[COMPONENTS]
-    // we must consider all newly added components as reset for proper change tracking
-    if(newc){
-      let prevComponents = this.rendered[COMPONENTS] || {}
-      for(let cid in newc){
-        if(prevComponents[cid] === undefined){ newc[cid].reset = true }
-      }
-    }
     this.rendered = this.mutableMerge(this.rendered, diff)
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
 
@@ -257,6 +250,8 @@ export default class Rendered {
       let targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
         merged[key] = this.cloneMerge(targetVal, val, pruneMagicId)
+      } else if(val === undefined && isObject(targetVal)){
+        merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId)
       }
     }
     if(pruneMagicId){
@@ -330,7 +325,7 @@ export default class Rendered {
     if(isRoot){
       let skip = false
       let attrs
-      // when a LC is added on the page, we need to re-render the entire LC tree,
+      // When a LC is re-added to the page, we need to re-render the entire LC tree,
       // therefore changeTracking is false; however, we need to keep all the magicIds
       // from any function component so the next time the LC is updated, we can apply
       // the skip optimization
