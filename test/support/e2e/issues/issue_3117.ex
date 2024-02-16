@@ -6,10 +6,14 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3117Live do
   defmodule Row do
     use Phoenix.LiveComponent
 
+    def update(assigns, socket) do
+      {:ok, assign(socket, assigns) |> assign_async(:foo, fn -> {:ok, %{foo: :bar}} end)}
+    end
+
     def render(assigns) do
       ~H"""
       <div id={@id}>
-        Example LC Row
+        Example LC Row <%= inspect(@foo.result) %>
         <.fc />
       </div>
       """
