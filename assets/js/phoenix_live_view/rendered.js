@@ -257,6 +257,8 @@ export default class Rendered {
       let targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
         merged[key] = this.cloneMerge(targetVal, val, pruneMagicId)
+      } else if(val === undefined && isObject(targetVal)){
+        merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId)
       }
     }
     if(pruneMagicId){
