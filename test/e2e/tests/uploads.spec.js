@@ -160,6 +160,7 @@ test("auto upload", async ({ page }) => {
   let changes = attributeMutations(page, "#upload-form input");
   // wait for the change listeners to be ready
   await page.waitForTimeout(50);
+
   await page.locator("#upload-form input").setInputFiles([
     {
       name: "file.txt",

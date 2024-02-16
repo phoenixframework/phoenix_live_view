@@ -70,6 +70,19 @@
  * @param {Object} [opts.localStorage] - An optional Storage compatible object
  * Useful for when LiveView won't have access to `localStorage`.
  * See `opts.sessionStorage` for examples.
+ * 
+ * @param {Object} [opts.navigation] - The optional object for defining navigation guards.
+ * Useful to perform custom logic before navigating away from a LiveView. For example:
+ * 
+ *     navigation: {
+ *       beforeEach(to, from) {
+ *         console.debug(`Navigating to: ${to}; from: ${from}.`)
+ *         // return false to cancel navigation
+ *         if(document.querySelector("form[data-submit-pending]")) {
+ *           return confirm("Do you really want to leave with unsubmitted changes?")
+ *         }
+ *       }
+ *     }
 */
 
 import {
@@ -159,6 +172,7 @@ export default class LiveSocket {
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
     this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
+    this.navigationCallbacks = Object.assign({beforeEach: closure(), afterEach: closure()}, opts.navigation || {})
     this.transitions = new TransitionSet()
     window.addEventListener("pagehide", _e => {
       this.unloaded = true
@@ -236,6 +250,10 @@ export default class LiveSocket {
 
   execJS(el, encodedJS, eventType = null){
     this.owner(el, view => JS.exec(eventType, encodedJS, view, el))
+  }
+
+  updateNavigationUserdata(callback){
+    Browser.updateCurrentState(state => Object.assign(state, {userData: callback(state.userData)}))
   }
 
   // private
@@ -688,22 +706,36 @@ export default class LiveSocket {
       }, 100)
     })
     window.addEventListener("popstate", event => {
+      const previousLocation = clone(this.currentLocation)
+      // early return if the navigation does not actually navigate anywhere (hashchange)
       if(!this.registerNewLocation(window.location)){ return }
-      let {type, id, root, scroll} = event.state || {}
-      let href = window.location.href
+      this.withNavigationGuard(window.location.href, previousLocation.href, true, () => {
+        let {type, id, root, scroll, userData} = event.state || {}
+        let href = window.location.href
 
-      DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true}})
-      this.requestDOMUpdate(() => {
-        if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
-          this.main.pushLinkPatch(href, null, () => {
-            this.maybeScroll(scroll)
-          })
-        } else {
-          this.replaceMain(href, null, () => {
-            if(root){ this.replaceRootHistory() }
-            this.maybeScroll(scroll)
-          })
-        }
+        DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true}})
+        this.requestDOMUpdate(() => {
+          if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
+            this.main.pushLinkPatch(href, null, () => {
+              this.maybeScroll(scroll)
+              this.afterNavigation(href, previousLocation.href, userData)
+            })
+          } else {
+            this.replaceMain(href, null, () => {
+              if(root){ this.replaceRootHistory() }
+              this.maybeScroll(scroll)
+              this.afterNavigation(href, previousLocation.href, userData)
+            })
+          }
+        })
+      }, () => {
+        // the navigation should be aborted
+        // because of the way the history api works, on a popstate we already
+        // navigated from the browser's point of view; therefore we need to
+        // push the previous location back to the history
+        Browser.pushState("push", history.state || {}, previousLocation.href)
+        // we also need to re-register the previous location to `this.currentLocation`
+        this.registerNewLocation(previousLocation)
       })
     }, false)
     window.addEventListener("click", e => {
@@ -758,12 +790,15 @@ export default class LiveSocket {
   }
 
   pushHistoryPatch(href, linkState, targetEl){
-    if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href) }
+    this.withNavigationGuard(href, this.currentLocation.href, false, (userData) => {
+      if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href) }
+      if(userData) Browser.updateCurrentState(state => Object.assign(state, {userData}))
 
-    this.withPageLoading({to: href, kind: "patch"}, done => {
-      this.main.pushLinkPatch(href, targetEl, linkRef => {
-        this.historyPatch(href, linkState, linkRef)
-        done()
+      this.withPageLoading({to: href, kind: "patch"}, done => {
+        this.main.pushLinkPatch(href, targetEl, linkRef => {
+          this.historyPatch(href, linkState, linkRef)
+          done()
+        })
       })
     })
   }
@@ -773,26 +808,33 @@ export default class LiveSocket {
 
     Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
     DOM.dispatchEvent(window, "phx:navigate", {detail: {patch: true, href, pop: false}})
+    const previousLocation = clone(this.currentLocation)
     this.registerNewLocation(window.location)
+    this.afterNavigation(window.location.href, previousLocation.href)
   }
 
   historyRedirect(href, linkState, flash){
-    if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href, flash) }
+    this.withNavigationGuard(href, this.currentLocation.href, false, (userData) => {
+      if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href, flash) }
+      if(userData) Browser.updateCurrentState(state => Object.assign(state, {userData}))
 
-    // convert to full href if only path prefix
-    if(/^\/$|^\/[^\/]+.*$/.test(href)){
-      let {protocol, host} = window.location
-      href = `${protocol}//${host}${href}`
-    }
-    let scroll = window.scrollY
-    this.withPageLoading({to: href, kind: "redirect"}, done => {
-      this.replaceMain(href, flash, (linkRef) => {
-        if(linkRef === this.linkRef){
-          Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
-          DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
-          this.registerNewLocation(window.location)
-        }
-        done()
+      // convert to full href if only path prefix
+      if(/^\/$|^\/[^\/]+.*$/.test(href)){
+        let {protocol, host} = window.location
+        href = `${protocol}//${host}${href}`
+      }
+      let scroll = window.scrollY
+      this.withPageLoading({to: href, kind: "redirect"}, done => {
+        this.replaceMain(href, flash, (linkRef) => {
+          if(linkRef === this.linkRef){
+            Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
+            DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
+            const previousLocation = clone(this.currentLocation)
+            this.registerNewLocation(window.location)
+            this.afterNavigation(window.location.href, previousLocation.href)
+          }
+          done()
+        })
       })
     })
   }
@@ -809,6 +851,40 @@ export default class LiveSocket {
       this.currentLocation = clone(newLocation)
       return true
     }
+  }
+
+  // Every function that performs a navigation must be wrapped by a call to withNavigationGuard.
+  // This ensures that the user can cancel a navigation or store some state to restore
+  // after navigating.
+  //
+  // withNavigationGuard should be called with the href string that is being navigated to,
+  // the href string that is being navigated from, and a callback that performs the navigation.
+  // A third and optional callback will be invoked in case the navigation is canceled. This
+  // callback is currently only used in the "popstate" case, because when popstate is invoked
+  // the navigation already happened (i.e. an entry from the history is already popped).
+  // Therefore, we push the previous location again, see bindNav for details.
+  //
+  // When the callback is done, it must call `afterNavigation` with the same arguments (to, from).
+  withNavigationGuard(to, from, popped, callback, cancel = function(){}){
+    // the beforeEach navigation guard can return a promise that must resolve
+    // to false in order to cancel the navigation
+    // every other value proceeds with the navigation
+    const guardResult = this.navigationCallbacks["beforeEach"](to, from, popped)
+    Promise.resolve(guardResult).then(result => {
+      if(result === false){
+        cancel()
+      } else {
+        callback(result)
+      }
+    })
+  }
+
+  // must be called after a navigation was performed, see `withNavigationGuard`.
+  afterNavigation(to, from, userData){
+    // wait for the DOM to be patched
+    window.requestAnimationFrame(() => {
+      this.navigationCallbacks["afterEach"](to, from, userData)
+    })
   }
 
   bindForms(){
