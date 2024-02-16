@@ -222,7 +222,7 @@ describe("Rendered", () => {
       let rendered = new Rendered("123", simpleDiffResult)
       let [str, streams] = rendered.toString()
       expect(str.trim()).toEqual(
-        `<div data-phx-id="123-1" class="thermostat">
+        `<div data-phx-id="m1-123" class="thermostat">
   <div class="bar cooling">
     <a href="#" phx-click="toggle-mode">cooling</a>
     <span>07:15:04 PM</span>
@@ -234,15 +234,15 @@ describe("Rendered", () => {
       let rendered = new Rendered("123", staticReuseDiff)
       let [str, streams] = rendered.toString()
       expect(str.trim()).toEqual(
-        `<div data-phx-id="123-1">
+        `<div data-phx-id="m1-123">
   <p>
     foo
-    <span>0: <b data-phx-id="123-c-1" data-phx-component="1">FROM index_1 world</b></span><span>1: <b data-phx-id="123-c-2" data-phx-component="2">FROM index_2 world</b></span>
+    <span>0: <b data-phx-id="c1-123" data-phx-component="1">FROM index_1 world</b></span><span>1: <b data-phx-id="c2-123" data-phx-component="2">FROM index_2 world</b></span>
   </p>
 
   <p>
     bar
-    <span>0: <b data-phx-id="123-c-3" data-phx-component="3">FROM index_1 world</b></span><span>1: <b data-phx-id="123-c-4" data-phx-component="4">FROM index_2 world</b></span>
+    <span>0: <b data-phx-id="c3-123" data-phx-component="3">FROM index_1 world</b></span><span>1: <b data-phx-id="c4-123" data-phx-component="4">FROM index_2 world</b></span>
   </p>
 </div>`.trim())
     })
