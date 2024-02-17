@@ -39,18 +39,6 @@ module.exports = {
   // A list of reporter names that Jest uses when writing coverage reports
   coverageReporters: ["none"],
 
-  reporters: [
-    ["jest-monocart-coverage", {
-      name: "Phoenix LiveView JS Unit Coverage",
-      reports: [
-        ["raw", {outputDir: "./raw"}],
-        ["v8"],
-        ["console-summary"]
-      ],
-      outputDir: "./coverage"
-    }]
-  ],
-
   // An object that configures minimum threshold enforcement for coverage results
   // coverageThreshold: undefined,
 
@@ -114,7 +102,18 @@ module.exports = {
   // projects: undefined,
 
   // Use this configuration option to add custom reporters to Jest
-  // reporters: undefined,
+  reporters: [
+    "default",
+    ["jest-monocart-coverage", {
+      name: "Phoenix LiveView JS Unit Coverage",
+      reports: [
+        ["raw", {outputDir: "./raw"}],
+        ["v8"],
+        ["console-summary"]
+      ],
+      outputDir: "./coverage"
+    }]
+  ],
 
   // Automatically reset mock state between every test
   // resetMocks: false,
