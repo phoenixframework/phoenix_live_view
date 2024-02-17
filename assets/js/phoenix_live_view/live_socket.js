@@ -504,25 +504,8 @@ export default class LiveSocket {
     }
   }
 
-  setActiveElement(target){
-    if(this.activeElement === target){ return }
-    this.activeElement = target
-    let cancel = () => {
-      if(target === this.activeElement){ this.activeElement = null }
-      target.removeEventListener("mouseup", this)
-      target.removeEventListener("touchend", this)
-    }
-    target.addEventListener("mouseup", cancel)
-    target.addEventListener("touchend", cancel)
-  }
-
   getActiveElement(){
-    if(document.activeElement === document.body){
-      return this.activeElement || document.activeElement
-    } else {
-      // document.activeElement can be null in Internet Explorer 11
-      return document.activeElement || document.body
-    }
+    return document.activeElement
   }
 
   dropActiveElement(view){
@@ -921,9 +904,6 @@ export default class LiveSocket {
         this.debounce(input, e, type, () => {
           this.withinOwners(dispatcher, view => {
             DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
-            if(!DOM.isTextualInput(input)){
-              this.setActiveElement(input)
-            }
             JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher}])
           })
         })
