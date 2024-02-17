@@ -57,6 +57,7 @@ end
 
 defmodule Phoenix.LiveViewTest.E2E.Hooks do
   import Phoenix.LiveView
+  import Phoenix.Component
 
   require Logger
 
@@ -120,6 +121,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
 
       live "/3026", Issue3026Live
       live "/3040", Issue3040Live
+      live "/3083", Issue3083Live
+      live "/3107", Issue3107Live
       live "/3117", Issue3117Live
       live "/3200/messages", Issue3200.PanelLive, :messages_tab
       live "/3200/settings", Issue3200.PanelLive, :settings_tab
