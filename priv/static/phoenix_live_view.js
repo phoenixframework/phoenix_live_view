@@ -2949,7 +2949,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.childJoins = 0;
       this.loaderTimer = null;
       this.pendingDiffs = [];
-      this.pruningCIDs = [];
       this.redirect = false;
       this.href = null;
       this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
@@ -3356,7 +3355,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     renderContainer(diff, kind) {
       return this.liveSocket.time(`toString diff (${kind})`, () => {
         let tag = this.el.tagName;
-        let cids = diff ? this.rendered.componentCIDs(diff).concat(this.pruningCIDs) : null;
+        let cids = diff ? this.rendered.componentCIDs(diff) : null;
         let [html, streams] = this.rendered.toString(cids);
         return [`<${tag}>${html}</${tag}>`, streams];
       });
@@ -3981,10 +3980,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }).filter(([form, newForm, newCid]) => newForm);
     }
     maybePushComponentsDestroyed(destroyedCIDs) {
-      let willDestroyCIDs = destroyedCIDs.concat(this.pruningCIDs).filter((cid) => {
+      let willDestroyCIDs = destroyedCIDs.filter((cid) => {
         return dom_default.findComponentNodeList(this.el, cid).length === 0;
       });
-      this.pruningCIDs = willDestroyCIDs.concat([]);
       if (willDestroyCIDs.length > 0) {
         willDestroyCIDs.forEach((cid) => this.rendered.resetRender(cid));
         this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }, () => {
@@ -3993,7 +3991,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           });
           if (completelyDestroyCIDs.length > 0) {
             this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }, (resp) => {
-              this.pruningCIDs = this.pruningCIDs.filter((cid) => resp.cids.indexOf(cid) === -1);
               this.rendered.pruneCIDs(resp.cids);
             });
           }

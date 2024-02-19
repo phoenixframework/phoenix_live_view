@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.20.8 (2024-02-19)
+
+### Bug fixes
+  * Fix live uploader issue when a form contained more than one `<.live_file_input>`
+  * Fix phx-remove on re-added stream items trigging the remove when it should not
+  * Fix js error attempting to re-order an element that does not exist in the DOM
+
+### Enhancements
+  * Align LiveViewTest with JavaScript DOM patching behavior for phx-update="ignore" when updating attributes in LiveViewTest
+
 ## 0.20.7 (2024-02-15)
 
 ### Bug fixes
