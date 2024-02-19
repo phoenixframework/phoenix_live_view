@@ -77,7 +77,20 @@ describe("DOM", () => {
       currentLoc = new URL("https://test.local/foo")
       let event = e("/foo")
       event.defaultPrevented = true
-      expect(DOM.isNewPageClick(e, currentLoc)).toBe(false)
+      expect(DOM.isNewPageClick(event, currentLoc)).toBe(false)
+    })
+
+    test("ignores mailto and tel links", () => {
+      expect(DOM.isNewPageClick(e("mailto:foo"), new URL("https://test.local/foo"))).toBe(false)
+      expect(DOM.isNewPageClick(e("tel:1234"), new URL("https://test.local/foo"))).toBe(false)
+    })
+
+    test("ignores contenteditable", () => {
+      let currentLoc
+      currentLoc = new URL("https://test.local/foo")
+      let event = e("/bar")
+      event.target.isContentEditable = true
+      expect(DOM.isNewPageClick(event, currentLoc)).toBe(false)
     })
   })
 
