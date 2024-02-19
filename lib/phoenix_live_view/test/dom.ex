@@ -436,12 +436,12 @@ defmodule Phoenix.LiveViewTest.DOM do
     container_id = attribute(node, "id")
     verify_phx_update_id!("ignore", container_id, node)
 
-    {new_tag, new_attrs, _children} = node
+    {new_tag, new_attrs, new_children} = node
 
     {tag, attrs_before, children_before} =
       case by_id(html_tree, container_id) do
         {_tag, _attrs_before, _children_before} = triplet -> triplet
-        nil -> {new_tag, [], []}
+        nil -> {new_tag, new_attrs, new_children}
       end
 
     merged_attrs =
