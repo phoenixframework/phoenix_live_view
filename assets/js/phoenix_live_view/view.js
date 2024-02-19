@@ -130,7 +130,6 @@ export default class View {
     this.stopCallback = function(){ }
     this.pendingJoinOps = this.parent ? null : []
     this.viewHooks = {}
-    this.uploaders = {}
     this.formSubmits = []
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}

@@ -2350,11 +2350,11 @@ var DOMPatch = class {
     }
   }
   removeStreamChildElement(child) {
-    if (!this.maybePendingRemove(child)) {
-      if (this.streamInserts[child.id]) {
-        this.streamComponentRestore[child.id] = child;
-        child.remove();
-      } else {
+    if (this.streamInserts[child.id]) {
+      this.streamComponentRestore[child.id] = child;
+      child.remove();
+    } else {
+      if (!this.maybePendingRemove(child)) {
         child.remove();
         this.onNodeDiscarded(child);
       }
@@ -2374,6 +2374,9 @@ var DOMPatch = class {
     }
     this.setStreamRef(el, ref);
     if (!reset && !isNew) {
+      return;
+    }
+    if (!el.parentElement) {
       return;
     }
     if (streamAt === 0) {
@@ -2593,14 +2596,6 @@ var Rendered = class {
     let newc = diff[COMPONENTS];
     let cache = {};
     delete diff[COMPONENTS];
-    if (newc) {
-      let prevComponents = this.rendered[COMPONENTS] || {};
-      for (let cid in newc) {
-        if (prevComponents[cid] === void 0) {
-          newc[cid].reset = true;
-        }
-      }
-    }
     this.rendered = this.mutableMerge(this.rendered, diff);
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {};
     if (newc) {
@@ -2666,6 +2661,8 @@ var Rendered = class {
       let targetVal = target[key];
       if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
         merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
+      } else if (val === void 0 && isObject(targetVal)) {
+        merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId);
       }
     }
     if (pruneMagicId) {
@@ -2699,7 +2696,7 @@ var Rendered = class {
   }
   nextMagicID() {
     this.magicId++;
-    return `${this.parentViewId()}-${this.magicId}`;
+    return `m${this.magicId}-${this.parentViewId()}`;
   }
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
     if (rendered[DYNAMICS]) {
@@ -2774,7 +2771,7 @@ var Rendered = class {
     let attrs = { [PHX_COMPONENT]: cid };
     let skip = onlyCids && !onlyCids.has(cid);
     component.newRender = !skip;
-    component.magicId = `${this.parentViewId()}-c-${cid}`;
+    component.magicId = `c${cid}-${this.parentViewId()}`;
     let changeTracking = !component.reset;
     let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs);
     delete component.reset;
@@ -2923,7 +2920,6 @@ var View = class {
     };
     this.pendingJoinOps = this.parent ? null : [];
     this.viewHooks = {};
-    this.uploaders = {};
     this.formSubmits = [];
     this.children = this.parent ? null : {};
     this.root.children[this.id] = {};
@@ -3837,8 +3833,11 @@ var View = class {
           onComplete();
         }
       });
-      this.uploaders[inputEl] = uploader;
       let entries = uploader.entries().map((entry) => entry.toPreflightPayload());
+      if (entries.length === 0) {
+        numFileInputsInProgress--;
+        return;
+      }
       let payload = {
         ref: inputEl.getAttribute(PHX_UPLOAD_REF),
         entries,
