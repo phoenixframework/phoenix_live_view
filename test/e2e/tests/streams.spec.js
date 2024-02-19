@@ -726,3 +726,34 @@ test("stream nested in a LiveComponent is properly restored on reset", async ({ 
     { id: "nested-items-a-g", text: "N-G" },
   ]);
 });
+
+test("phx-remove is handled correctly when restoring nodes", async ({ page }) => {
+  await page.goto("/stream/reset?phx-remove");
+  await syncLV(page);
+
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
+
+  await page.getByRole("button", { name: "Filter" }).click();
+  await syncLV(page);
+
+  await expect(await listItems(page)).toEqual([
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
+
+  await page.getByRole("button", { name: "Reset" }).click();
+  await syncLV(page);
+
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
+});

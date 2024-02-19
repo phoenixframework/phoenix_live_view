@@ -301,7 +301,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
 
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2994
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     socket
     |> stream(:items, [
       %{id: "a", name: "A"},
@@ -309,13 +309,18 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
       %{id: "c", name: "C"},
       %{id: "d", name: "D"}
     ])
+    |> assign(:use_phx_remove, is_map(params) && params["phx-remove"])
     |> then(&{:ok, &1})
   end
 
   def render(assigns) do
     ~H"""
     <ul phx-update="stream" id="thelist">
-      <li :for={{id, item} <- @streams.items} id={id}>
+      <li
+        :for={{id, item} <- @streams.items}
+        id={id}
+        phx-remove={if @use_phx_remove, do: Phoenix.LiveView.JS.hide()}
+      >
         <%= item.name %>
       </li>
     </ul>

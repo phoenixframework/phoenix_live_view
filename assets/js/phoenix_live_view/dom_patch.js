@@ -331,14 +331,15 @@ export default class DOMPatch {
   }
 
   removeStreamChildElement(child){
-    if(!this.maybePendingRemove(child)){
-      if(this.streamInserts[child.id]){
-        // we need to store children so we can morph them later
-        this.streamComponentRestore[child.id] = child
+    // we need to store the node if it is actually re-added in the same patch
+    // we do NOT want to execute phx-remove, we do NOT want to call onNodeDiscarded
+    if(this.streamInserts[child.id]){
+      this.streamComponentRestore[child.id] = child
+      child.remove()
+    } else {
+      // only remove the element now if it has no phx-remove binding
+      if(!this.maybePendingRemove(child)){
         child.remove()
-      } else {
-        child.remove()
-        // TODO: check if we really don't want to call discarded for re-added stream items
         this.onNodeDiscarded(child)
       }
     }
@@ -364,6 +365,12 @@ export default class DOMPatch {
       // we only reorder if the element is new or it's a stream reset
       return
     }
+
+    // check if the element has a parent element;
+    // it doesn't if we are currently recursively morphing (restoring a saved stream child)
+    // because the element is not yet added to the real dom;
+    // reordering does not make sense in that case anyway
+    if(!el.parentElement){ return }
 
     if(streamAt === 0){
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
