@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.9 (2024-02-19)
+
+### Bug fixes
+  * Fix error in LiveViewTest when a `phx-update="ignore"` containing is added dynamically do the DOM
+
 ## 0.20.8 (2024-02-19)
 
 ### Bug fixes
