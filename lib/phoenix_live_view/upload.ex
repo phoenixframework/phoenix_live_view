@@ -337,8 +337,14 @@ defmodule Phoenix.LiveView.Upload do
   @doc """
   Generates a preflight response by calling the `:external` function.
   """
-  def generate_preflight_response(%Socket{} = socket, name, cid) do
+  def generate_preflight_response(%Socket{} = socket, name, cid, refs) do
     %UploadConfig{} = conf = Map.fetch!(socket.assigns.uploads, name)
+
+    # don't send more than max_entries preflight responses
+    refs = for {entry, i} <- Enum.with_index(conf.entries),
+      entry.ref in refs,
+      i < conf.max_entries && not entry.preflighted?,
+      do: entry.ref
 
     client_meta = %{
       max_file_size: conf.max_file_size,
@@ -346,7 +352,7 @@ defmodule Phoenix.LiveView.Upload do
       chunk_size: conf.chunk_size
     }
 
-    {new_socket, new_conf, new_entries} = mark_preflighted(socket, conf)
+    {new_socket, new_conf, new_entries} = mark_preflighted(socket, conf, refs)
 
     case new_conf.external do
       false ->
@@ -357,8 +363,8 @@ defmodule Phoenix.LiveView.Upload do
     end
   end
 
-  defp mark_preflighted(socket, conf) do
-    {new_conf, new_entries} = UploadConfig.mark_preflighted(conf)
+  defp mark_preflighted(socket, conf, refs) do
+    {new_conf, new_entries} = UploadConfig.mark_preflighted(conf, refs)
     new_socket = update_uploads(new_conf, socket)
     {new_socket, new_conf, new_entries}
   end

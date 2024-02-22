@@ -70,7 +70,7 @@ export default class LiveUploader {
   static trackFiles(inputEl, files, dataTransfer){
     if(inputEl.getAttribute("multiple") !== null){
       let newFiles = files.filter(file => !this.activeFiles(inputEl).find(f => Object.is(f, file)))
-      DOM.putPrivate(inputEl, "files", this.activeFiles(inputEl).concat(newFiles))
+      DOM.updatePrivate(inputEl, "files", [], (existing) => existing.concat(newFiles))
       inputEl.value = null
     } else {
       // Reset inputEl files to align output with programmatic changes (i.e. drag and drop)

@@ -357,23 +357,15 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   @doc false
-  def mark_preflighted(%UploadConfig{} = conf) do
-    refs_awaiting = refs_awaiting_preflight(conf)
-
+  def mark_preflighted(%UploadConfig{} = conf, refs) do
     new_entries =
       for entry <- conf.entries do
-        %UploadEntry{entry | preflighted?: entry.preflighted? || entry.ref in refs_awaiting}
+        %UploadEntry{entry | preflighted?: entry.preflighted? || entry.ref in refs}
       end
 
     new_conf = %UploadConfig{conf | entries: new_entries}
 
-    {new_conf, for(ref <- refs_awaiting, do: get_entry_by_ref(new_conf, ref))}
-  end
-
-  defp refs_awaiting_preflight(%UploadConfig{} = conf) do
-    for {entry, i} <- Enum.with_index(conf.entries),
-        i < conf.max_entries && not entry.preflighted?,
-        do: entry.ref
+    {new_conf, for(ref <- refs, do: get_entry_by_ref(new_conf, ref))}
   end
 
   @doc false

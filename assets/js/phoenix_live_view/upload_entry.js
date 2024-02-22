@@ -15,10 +15,9 @@ import DOM from "./dom"
 export default class UploadEntry {
   static isActive(fileEl, file){
     let isNew = file._phxRef === undefined
-    let isPreflightInProgress = UploadEntry.isPreflightInProgress(file)
     let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
     let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
-    return file.size > 0 && (isNew || isActive || !isPreflightInProgress)
+    return file.size > 0 && (isNew || isActive)
   }
 
   static isPreflighted(fileEl, file){
