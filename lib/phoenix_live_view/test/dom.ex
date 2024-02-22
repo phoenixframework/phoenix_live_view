@@ -267,6 +267,11 @@ defmodule Phoenix.LiveViewTest.DOM do
     end)
   end
 
+  # streams can also be in the dynamic part of the diff
+  def extract_streams(source, streams) when is_list(source) do
+    Enum.reduce(source, streams, fn el, acc -> extract_streams(el, acc) end)
+  end
+
   def extract_streams(_value, acc), do: acc
 
   # Diff rendering
