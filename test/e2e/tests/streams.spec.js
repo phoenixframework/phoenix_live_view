@@ -757,3 +757,15 @@ test("phx-remove is handled correctly when restoring nodes", async ({ page }) =>
     { id: "items-d", text: "D" }
   ]);
 });
+
+test("issue #3129 - streams asynchronously assigned and rendered inside a comprehension", async ({ page }) => {
+  await page.goto("/stream/inside-for");
+  await syncLV(page);
+
+  await expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" }
+  ]);
+});

@@ -509,7 +509,7 @@ defmodule Phoenix.LiveView.StreamTest do
     {:ok, lv, _html} = live(conn, "/stream")
 
     assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
-             render_click(lv, "stream-invalid-ids", %{}) |> IO.inspect()
+             render_click(lv, "stream-invalid-ids", %{})
            end) =~
              ~r/a container with phx-update=\"stream\" must only contain stream children with the id set to the `dom_id` of the stream item/
   end
@@ -518,7 +518,7 @@ defmodule Phoenix.LiveView.StreamTest do
     {:ok, lv, _html} = live(conn, "/stream")
 
     assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
-             render_click(lv, "stream-invalid-item", %{}) |> IO.inspect()
+             render_click(lv, "stream-invalid-item", %{})
            end) =~
              ~r/a container with phx-update=\"stream\" must only contain stream children with the id set to the `dom_id` of the stream item/
   end
@@ -800,6 +800,19 @@ defmodule Phoenix.LiveView.StreamTest do
              {"nested-items-a-f", "N-F"},
              {"nested-items-a-g", "N-G"}
            ]
+  end
+
+  test "issue #3129 - streams asynchronously assigned and rendered inside a comprehension", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/stream/inside-for")
+
+    html = render_async(lv)
+
+    assert ul_list_children(html) == [
+              {"items-a", "A"},
+              {"items-b", "B"},
+              {"items-c", "C"},
+              {"items-d", "D"}
+            ]
   end
 
   defp assert_pruned_stream(lv) do

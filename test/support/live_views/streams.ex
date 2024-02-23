@@ -640,6 +640,42 @@ defmodule Phoenix.LiveViewTest.StreamNestedLive do
   end
 end
 
+defmodule Phoenix.LiveViewTest.StreamInsideForLive do
+  # https://github.com/phoenixframework/phoenix_live_view/issues/3129
+  use Phoenix.LiveView
+
+  def mount(_params, _session, socket) do
+    socket
+    |> stream(:items, [])
+    |> start_async(:foo, fn ->
+      Process.sleep(50)
+    end)
+    |> then(&{:ok, &1})
+  end
+
+  def handle_async(:foo, {:ok, _}, socket) do
+    {:noreply,
+     stream(socket, :items, [
+       %{id: "a", name: "A"},
+       %{id: "b", name: "B"},
+       %{id: "c", name: "C"},
+       %{id: "d", name: "D"}
+     ])}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div :for={_i <- [1]}>
+      <ul phx-update="stream" id="thelist">
+        <li :for={{id, item} <- @streams.items} id={id}>
+          <%= item.name %>
+        </li>
+      </ul>
+    </div>
+    """
+  end
+end
+
 defmodule Phoenix.LiveViewTest.StreamNestedComponentResetLive do
   use Phoenix.LiveView
 
