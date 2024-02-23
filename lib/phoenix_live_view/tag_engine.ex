@@ -54,6 +54,11 @@ defmodule Phoenix.LiveView.TagEngine do
               {:attributes, [{binary(), Macro.t()} | Macro.t()]} | {:quoted, Macro.t()}
 
   @doc """
+  Callback invoked to add annotations around the whole body of a template.
+  """
+  @callback annotate_body(caller :: Macro.Env.t()) :: {String.t(), String.t()} | nil
+
+  @doc """
   Renders a component defined by the given function.
 
   This function is rarely invoked directly by users. Instead, it is used by `~H`
@@ -182,16 +187,16 @@ defmodule Phoenix.LiveView.TagEngine do
       caller: Keyword.fetch!(opts, :caller),
       previous_token_slot?: false,
       source: Keyword.fetch!(opts, :source),
-      tag_handler: tag_handler,
-      annotate_tagged_content: Keyword.get(opts, :annotate_tagged_content)
+      tag_handler: tag_handler
     }
   end
 
   ## These callbacks return AST
 
   @impl true
-  def handle_body(%{tokens: tokens, file: file, cont: cont} = state) do
-    tokens = Tokenizer.finalize(tokens, file, cont, state.source)
+  def handle_body(state) do
+    %{tokens: tokens, file: file, cont: cont, source: source, caller: caller} = state
+    tokens = Tokenizer.finalize(tokens, file, cont, source)
 
     token_state =
       state
@@ -200,11 +205,10 @@ defmodule Phoenix.LiveView.TagEngine do
       |> validate_unclosed_tags!("template")
 
     opts = [root: token_state.root || false]
-    %{caller: caller, annotate_tagged_content: annotate_tagged_content} = state
 
     opts =
-      if annotate_tagged_content && caller && has_tags?(tokens) do
-        [body_annotation: annotate_tagged_content.(caller)] ++ opts
+      if body_annotation = caller && has_tags?(tokens) && state.tag_handler.annotate_body(caller) do
+        [body_annotation: body_annotation] ++ opts
       else
         opts
       end
@@ -252,8 +256,7 @@ defmodule Phoenix.LiveView.TagEngine do
            caller: caller,
            source: source,
            indentation: indentation,
-           tag_handler: tag_handler,
-           annotate_tagged_content: annotate_tagged_content
+           tag_handler: tag_handler
          },
          root
        ) do
@@ -269,8 +272,7 @@ defmodule Phoenix.LiveView.TagEngine do
       root: root,
       previous_token_slot?: false,
       indentation: indentation,
-      tag_handler: tag_handler,
-      annotate_tagged_content: annotate_tagged_content
+      tag_handler: tag_handler
     }
   end
 

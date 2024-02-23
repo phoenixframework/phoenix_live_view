@@ -389,17 +389,17 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("<DebugAnno.remote_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.remote_with_root> test/support/live_views/debug_anno.ex:9 --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.remote_with_root> -->"
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.remote_with_root> test/support/live_views/debug_anno.exs:11 --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.remote_with_root> -->"
 
       assert compile("<.local_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->"
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->"
     end
 
     test "nesting" do
       assigns = %{}
 
       assert compile("<DebugAnno.nested value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.nested> test/support/live_views/debug_anno.ex:21 --><div>\n  <!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.DebugAnno.nested> -->"
+               "<!-- <Phoenix.LiveViewTest.DebugAnno.nested> test/support/live_views/debug_anno.exs:23 --><div>\n  <!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.DebugAnno.nested> -->"
     end
   end
 

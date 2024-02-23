@@ -791,8 +791,6 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
-    debug_annotations? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
-
     options = [
       engine: Phoenix.LiveView.TagEngine,
       file: __CALLER__.file,
@@ -800,9 +798,7 @@ defmodule Phoenix.Component do
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
       source: expr,
-      tag_handler: Phoenix.LiveView.HTMLEngine,
-      annotate_tagged_content:
-        debug_annotations? && (&Phoenix.LiveView.HTMLEngine.annotate_tagged_content/1)
+      tag_handler: Phoenix.LiveView.HTMLEngine
     ]
 
     EEx.compile_string(expr, options)

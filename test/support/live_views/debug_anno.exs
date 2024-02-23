@@ -1,5 +1,7 @@
+# Note this file is intentionally a .exs file because it is loaded
+# in the test helper with debug_heex_annotations turned on.
 defmodule Phoenix.LiveViewTest.DebugAnno do
-  use Phoenix.Component, debug_heex_annotations: true
+  use Phoenix.Component
 
   def remote(assigns) do
     ~H"REMOTE COMPONENT: Value: <%= @value %>"

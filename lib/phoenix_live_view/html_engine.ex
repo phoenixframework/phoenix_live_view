@@ -20,7 +20,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @doc false
   defmacro compile(path) do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
-    debug_annotations? = Module.get_attribute(__CALLER__.module, :__debug_annotations__)
     source = File.read!(path)
 
     EEx.compile_string(source,
@@ -30,8 +29,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       trim: trim,
       caller: __CALLER__,
       source: source,
-      tag_handler: __MODULE__,
-      annotate_tagged_content: debug_annotations? && (&annotate_tagged_content/1)
+      tag_handler: __MODULE__
     )
   end
 
@@ -221,14 +219,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp safe_unless_special("data"), do: :data
   defp safe_unless_special(name), do: {:safe, name}
 
-  @doc false
-  def annotate_tagged_content(%Macro.Env{} = caller) do
-    %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
-    line = if line == 0, do: 1, else: line
-    file = Path.relative_to_cwd(file)
+  @impl true
+  def annotate_body(%Macro.Env{} = caller) do
+    if Application.get_env(:phoenix_live_view, :debug_heex_annotations, false) do
+      %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
+      line = if line == 0, do: 1, else: line
+      file = Path.relative_to_cwd(file)
 
-    before = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
-    aft = "</#{inspect(mod)}.#{func}>"
-    {"<!-- #{before} -->", "<!-- #{aft} -->"}
+      before = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
+      aft = "</#{inspect(mod)}.#{func}>"
+      {"<!-- #{before} -->", "<!-- #{aft} -->"}
+    end
   end
 end
