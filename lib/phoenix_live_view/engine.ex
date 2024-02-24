@@ -504,9 +504,8 @@ defmodule Phoenix.LiveView.Engine do
     call = extract_call(left)
 
     args =
-      if classify_taint(call, args) == :live do
-        {args, [opts]} = Enum.split(args, -1)
-
+      with :live <- classify_taint(call, args),
+           {args, [opts]} when is_list(opts) <- Enum.split(args, -1) do
         # The reason we can safely ignore assigns here is because
         # each branch in the live/render constructs are their own
         # rendered struct and, if the rendered has a new fingerprint,
@@ -540,7 +539,7 @@ defmodule Phoenix.LiveView.Engine do
 
         args ++ [opts]
       else
-        args
+        _ -> args
       end
 
     args =
@@ -1315,12 +1314,12 @@ defmodule Phoenix.LiveView.Engine do
   # variables defined in arguments, such as `if var = ... do`.
   # This does not follow Elixir semantics, but yields better
   # optimizations.
-  defp classify_taint(:case, [_, opts]) when is_list(opts), do: :live
-  defp classify_taint(:if, [_, opts]) when is_list(opts), do: :live
-  defp classify_taint(:unless, [_, opts]) when is_list(opts), do: :live
-  defp classify_taint(:cond, [opts]) when is_list(opts), do: :live
-  defp classify_taint(:try, [opts]) when is_list(opts), do: :live
-  defp classify_taint(:receive, [opts]) when is_list(opts), do: :live
+  defp classify_taint(:case, [_, _]), do: :live
+  defp classify_taint(:if, [_, _]), do: :live
+  defp classify_taint(:unless, [_, _]), do: :live
+  defp classify_taint(:cond, [_]), do: :live
+  defp classify_taint(:try, [_]), do: :live
+  defp classify_taint(:receive, [_]), do: :live
 
   # with/for are specially handled during analyze
   defp classify_taint(:with, [_ | _]), do: :live
