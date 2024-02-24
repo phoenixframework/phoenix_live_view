@@ -1715,6 +1715,18 @@ if Version.match?(System.version(), ">= 1.13.0") do
 
       assert_formatter_output(
         """
+        <script phx-no-format><%= raw(js_code()) %></script>
+        """,
+        """
+        <script
+          phx-no-format
+        ><%= raw(js_code()) %></script>
+        """,
+        line_length: 5
+      )
+
+      assert_formatter_output(
+        """
         <span phx-no-format class="underline">Check</span> Messages
         """,
         """

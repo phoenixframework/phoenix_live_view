@@ -170,7 +170,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group(nest(children, :reset))}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, _meta}, context) when name in @languages do
+  defp to_algebra({:tag_block, name, attrs, block, meta}, context) when name in @languages do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
     # Convert the whole block to text as there are no
@@ -194,7 +194,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     doc =
       case lines do
         [] ->
-          empty()
+          line()
 
         _ ->
           text =
@@ -202,7 +202,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
             |> Enum.map(&remove_indentation(&1, indentation))
             |> text_to_algebra(0, [])
 
-          nest(concat(line(), text), 2)
+          case meta do
+            %{mode: :preserve} -> text
+            _ -> concat(nest(concat(line(), text), 2), line())
+          end
       end
 
     group =
@@ -211,7 +214,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         build_attrs(attrs, "", context.opts),
         ">",
         doc,
-        line(),
         "</#{name}>"
       ])
       |> group()
