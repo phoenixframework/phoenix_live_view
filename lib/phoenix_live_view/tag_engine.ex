@@ -483,6 +483,7 @@ defmodule Phoenix.LiveView.TagEngine do
       {false, _tag_meta, _attrs} ->
         state
         |> set_root_on_not_tag()
+        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
         |> update_subengine(:handle_expr, ["=", ast])
 
       {true, new_meta, _new_attrs} ->
@@ -490,6 +491,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
+        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
         |> update_subengine(:handle_expr, ["=", ast])
         |> handle_special_expr(new_meta)
     end
@@ -548,6 +550,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state
     |> pop_substate_from_stack()
+    |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
     |> update_subengine(:handle_expr, ["=", ast])
     |> handle_special_expr(tag_meta)
   end
@@ -620,7 +623,8 @@ defmodule Phoenix.LiveView.TagEngine do
 
     mod = actual_component_module(state.caller, fun)
     store_component_call({mod, fun}, attr_info, [], line, state)
-    call = {fun, [line: line, column: column], __MODULE__}
+    meta = [line: line, column: column]
+    call = {fun, meta, __MODULE__}
 
     ast =
       quote line: line do
@@ -635,6 +639,7 @@ defmodule Phoenix.LiveView.TagEngine do
       {false, _tag_meta, _attrs} ->
         state
         |> set_root_on_not_tag()
+        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
         |> update_subengine(:handle_expr, ["=", ast])
 
       {true, new_meta, _new_attrs} ->
@@ -642,6 +647,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
+        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
         |> update_subengine(:handle_expr, ["=", ast])
         |> handle_special_expr(new_meta)
     end
@@ -682,7 +688,8 @@ defmodule Phoenix.LiveView.TagEngine do
       build_component_assigns({"local component", fun}, attrs, line, tag_meta, state)
 
     store_component_call({mod, fun}, attr_info, slot_info, line, state)
-    call = {fun, [line: line, column: column], __MODULE__}
+    meta = [line: line, column: column]
+    call = {fun, meta, __MODULE__}
 
     ast =
       quote line: line do
@@ -696,6 +703,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state
     |> pop_substate_from_stack()
+    |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
     |> update_subengine(:handle_expr, ["=", ast])
     |> handle_special_expr(tag_meta)
   end

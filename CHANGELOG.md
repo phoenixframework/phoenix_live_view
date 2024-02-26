@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.10
+
+### Bug fixes
+  * Fix stream error when enumerating inside slots
+
 ## 0.20.9 (2024-02-19)
 
 ### Bug fixes

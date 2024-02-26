@@ -1737,6 +1737,13 @@ if Version.match?(System.version(), ">= 1.13.0") do
         """,
         line_length: 5
       )
+
+      assert_formatter_doesnt_change(
+        """
+        <script phx-no-format><%= String.duplicate("a", 200) %></script>
+        """,
+        line_length: 5
+      )
     end
 
     test "respect nesting of children when phx-no-format is present" do
