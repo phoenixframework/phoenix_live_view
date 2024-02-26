@@ -59,6 +59,11 @@ defmodule Phoenix.LiveView.TagEngine do
   @callback annotate_body(caller :: Macro.Env.t()) :: {String.t(), String.t()} | nil
 
   @doc """
+  Callback invoked to add annotations before a function component is invoked.
+  """
+  @callback annotate_caller(file :: String.t(), line :: integer()) :: String.t() | nil
+
+  @doc """
   Renders a component defined by the given function.
 
   This function is rarely invoked directly by users. Instead, it is used by `~H`
@@ -483,7 +488,7 @@ defmodule Phoenix.LiveView.TagEngine do
       {false, _tag_meta, _attrs} ->
         state
         |> set_root_on_not_tag()
-        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
+        |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
 
       {true, new_meta, _new_attrs} ->
@@ -491,9 +496,17 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
-        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
+        |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
         |> handle_special_expr(new_meta)
+    end
+  end
+
+  defp maybe_anno_caller(state, meta, file, line) do
+    if anno = state.tag_handler.annotate_caller(file, line) do
+      update_subengine(state, :handle_text, [meta, anno])
+    else
+      state
     end
   end
 
@@ -550,7 +563,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state
     |> pop_substate_from_stack()
-    |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
+    |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
     |> handle_special_expr(tag_meta)
   end
@@ -639,7 +652,7 @@ defmodule Phoenix.LiveView.TagEngine do
       {false, _tag_meta, _attrs} ->
         state
         |> set_root_on_not_tag()
-        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
+        |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
 
       {true, new_meta, _new_attrs} ->
@@ -647,7 +660,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
-        |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
+        |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
         |> handle_special_expr(new_meta)
     end
@@ -703,7 +716,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state
     |> pop_substate_from_stack()
-    |> update_subengine(:handle_text, [meta, "<!-- #{state.file}:#{line} -->"])
+    |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
     |> handle_special_expr(tag_meta)
   end

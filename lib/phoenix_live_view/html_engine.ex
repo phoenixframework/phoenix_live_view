@@ -231,4 +231,14 @@ defmodule Phoenix.LiveView.HTMLEngine do
       {"<!-- #{before} -->", "<!-- #{aft} -->"}
     end
   end
+
+  @impl true
+  def annotate_caller(file, line) do
+    if Application.get_env(:phoenix_live_view, :debug_heex_annotations, false) do
+      line = if line == 0, do: 1, else: line
+      file = Path.relative_to_cwd(file)
+
+      "<!-- @caller #{file}:#{line} -->"
+    end
+  end
 end
