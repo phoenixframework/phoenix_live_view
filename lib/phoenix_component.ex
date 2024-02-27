@@ -528,8 +528,10 @@ defmodule Phoenix.Component do
   are enabled:
 
   ```html
+  <!-- @caller lib/app_web/home_live.ex:20 -->
   <!-- <AppWeb.CoreComponents.header> lib/app_web/core_components.ex:123 -->
   <header class="p-5">
+    <!-- @caller lib/app_web/home_live.ex:48 -->
     <!-- <AppWeb.CoreComponents.button> lib/app_web/core_components.ex:456 -->
     <button class="px-2 bg-indigo-500 text-white">Click</button>
     <!-- </AppWeb.CoreComponents.button> -->
