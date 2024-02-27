@@ -2907,6 +2907,7 @@ var View = class {
     this.childJoins = 0;
     this.loaderTimer = null;
     this.pendingDiffs = [];
+    this.pendingForms = new Set();
     this.redirect = false;
     this.href = null;
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
@@ -3059,11 +3060,15 @@ var View = class {
       this.rendered = new Rendered(this.id, diff);
       let [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();
-      let forms = this.formsForRecovery(html);
+      let forms = this.formsForRecovery(html).filter(([form, newForm, newCid]) => {
+        return !this.pendingForms.has(form.id);
+      });
       this.joinCount++;
       if (forms.length > 0) {
         forms.forEach(([form, newForm, newCid], i) => {
+          this.pendingForms.add(form.id);
           this.pushFormRecovery(form, newCid, (resp2) => {
+            this.pendingForms.delete(form.id);
             if (i === forms.length - 1) {
               this.onJoinComplete(resp2, html, streams, events);
             }
@@ -3081,6 +3086,7 @@ var View = class {
     });
   }
   onJoinComplete({ live_patch }, html, streams, events) {
+    this.pendingForms.clear();
     if (this.joinCount > 1 || this.parent && !this.parent.isJoinPending()) {
       return this.applyJoinPatch(live_patch, html, streams, events);
     }

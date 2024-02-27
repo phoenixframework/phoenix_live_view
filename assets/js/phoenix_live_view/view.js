@@ -120,6 +120,7 @@ export default class View {
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
+    this.pendingForms = new Set()
     this.redirect = false
     this.href = null
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
@@ -282,12 +283,16 @@ export default class View {
       this.rendered = new Rendered(this.id, diff)
       let [html, streams] = this.renderContainer(null, "join")
       this.dropPendingRefs()
-      let forms = this.formsForRecovery(html)
+      let forms = this.formsForRecovery(html).filter(([form, newForm, newCid]) => {
+        return !this.pendingForms.has(form.id)
+      })
       this.joinCount++
 
       if(forms.length > 0){
         forms.forEach(([form, newForm, newCid], i) => {
+          this.pendingForms.add(form.id)
           this.pushFormRecovery(form, newCid, resp => {
+            this.pendingForms.delete(form.id)
             if(i === forms.length - 1){
               this.onJoinComplete(resp, html, streams, events)
             }
@@ -307,6 +312,9 @@ export default class View {
   }
 
   onJoinComplete({live_patch}, html, streams, events){
+    // we can clear pending form recoveries now that we've joined.
+    // They either all resolved or were abandoned
+    this.pendingForms.clear()
     // In order to provide a better experience, we want to join
     // all LiveViews first and only then apply their patches.
     if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){

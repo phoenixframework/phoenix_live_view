@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.10
+
+### Enhancements
+  * Abandon form recovery if recovery event fails
+
 ## 0.20.9 (2024-02-19)
 
 ### Bug fixes
