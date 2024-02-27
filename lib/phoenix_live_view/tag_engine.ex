@@ -59,7 +59,7 @@ defmodule Phoenix.LiveView.TagEngine do
   @callback annotate_body(caller :: Macro.Env.t()) :: {String.t(), String.t()} | nil
 
   @doc """
-  Callback invoked to add annotations before a function component is invoked.
+  Callback invoked to add caller annotations before a function component is invoked.
   """
   @callback annotate_caller(file :: String.t(), line :: integer()) :: String.t() | nil
 
