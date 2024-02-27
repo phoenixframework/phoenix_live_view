@@ -42,9 +42,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def classify_type(<<first, _::binary>> = name) when first in ?A..?Z,
     do: {:remote_component, name}
 
-  def classify_type("." <> name),
-    do: {:local_component, name}
-
+  def classify_type("."), do: {:error, "a component name is required after ."}
+  def classify_type("." <> name), do: {:local_component, name}
   def classify_type(name), do: {:tag, name}
 
   @impl true

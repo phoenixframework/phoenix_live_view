@@ -279,7 +279,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
         case state.tag_handler.classify_type(name) do
           {:error, message} ->
-            raise_syntax_error!(message, meta, state)
+            raise_syntax_error!(message, %{line: line, column: column}, state)
 
           {type, name} ->
             acc = [{type, name, [], meta} | acc]

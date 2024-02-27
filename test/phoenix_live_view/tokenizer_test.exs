@@ -232,6 +232,17 @@ defmodule Phoenix.LiveView.TokenizerTest do
         tokenize("<")
       end
 
+      message = """
+      nofile:1:2: a component name is required after .
+        |
+      1 | <./typo>
+        |  ^\
+      """
+
+      assert_raise ParseError, message, fn ->
+        tokenize("<./typo>")
+      end
+
       assert_raise ParseError, ~r"nofile:1:5: expected closing `>` or `/>`", fn ->
         tokenize("<foo")
       end
@@ -919,10 +930,10 @@ defmodule Phoenix.LiveView.TokenizerTest do
   describe "reserved component" do
     test "raise on using reserved slot :inner_block" do
       message = """
-      nofile:1:1: the slot name :inner_block is reserved
+      nofile:1:2: the slot name :inner_block is reserved
         |
       1 | <:inner_block>Inner</:inner_block>
-        | ^\
+        |  ^\
       """
 
       assert_raise ParseError, message, fn ->
