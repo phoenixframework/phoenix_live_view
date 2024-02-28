@@ -1189,9 +1189,13 @@ defmodule Phoenix.Component do
   Note that `fun` also provides access to the previously assigned values:
 
       assigns =
-          assigns
-          |> assign_new(:foo, fn -> "foo" end)
-          |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar" end)
+        assigns
+        |> assign_new(:foo, fn -> "foo" end)
+        |> assign_new(:bar, fn %{foo: foo} -> foo <> "bar" end)
+
+  Assigns sharing is performed when possible but not guaranteed. Therefore, you must ensure
+  the result of the function given to `assign_new/3` is the same as if the value was fetched
+  from the parent. Otherwise consider passing values to the child LiveView as part of its session.
   '''
   def assign_new(socket_or_assigns, key, fun)
 
