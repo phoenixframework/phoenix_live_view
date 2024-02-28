@@ -1153,10 +1153,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   var UploadEntry = class {
     static isActive(fileEl, file) {
       let isNew = file._phxRef === void 0;
-      let isPreflightInProgress = UploadEntry.isPreflightInProgress(file);
       let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",");
       let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0;
-      return file.size > 0 && (isNew || isActive || !isPreflightInProgress);
+      return file.size > 0 && (isNew || isActive);
     }
     static isPreflighted(fileEl, file) {
       let preflightedRefs = fileEl.getAttribute(PHX_PREFLIGHTED_REFS).split(",");
@@ -1316,7 +1315,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     static trackFiles(inputEl, files, dataTransfer) {
       if (inputEl.getAttribute("multiple") !== null) {
         let newFiles = files.filter((file) => !this.activeFiles(inputEl).find((f) => Object.is(f, file)));
-        dom_default.putPrivate(inputEl, "files", this.activeFiles(inputEl).concat(newFiles));
+        dom_default.updatePrivate(inputEl, "files", [], (existing) => existing.concat(newFiles));
         inputEl.value = null;
       } else {
         if (dataTransfer && dataTransfer.files.length > 0) {
