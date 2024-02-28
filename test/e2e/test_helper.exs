@@ -92,11 +92,12 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
   end
 
   # these routes use a custom layout and therefore cannot be in the live_session
-  scope "/issues" do
+  scope "/issues", Phoenix.LiveViewTest.E2E do
     pipe_through(:browser)
 
-    live "/3047/a", Phoenix.LiveViewTest.E2E.Issue3047ALive
-    live "/3047/b", Phoenix.LiveViewTest.E2E.Issue3047BLive
+    live "/2965", Issue2965Live
+    live "/3047/a", Issue3047ALive
+    live "/3047/b", Issue3047BLive
   end
 end
 

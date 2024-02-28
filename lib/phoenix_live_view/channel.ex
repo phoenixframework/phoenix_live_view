@@ -219,7 +219,8 @@ defmodule Phoenix.LiveView.Channel do
 
         {ok_or_error, reply, %Socket{} = new_socket} =
           with {:ok, new_socket} <- Upload.put_entries(socket, conf, entries, cid) do
-            Upload.generate_preflight_response(new_socket, conf.name, cid)
+            refs = Enum.map(entries, fn %{"ref" => ref} -> ref end)
+            Upload.generate_preflight_response(new_socket, conf.name, cid, refs)
           end
 
         new_upload_names =

@@ -179,3 +179,33 @@ test("auto upload", async ({ page }) => {
 
   await expect(page.locator("ul li")).toBeVisible();
 });
+
+test("issue 3115 - cancelled upload is not re-added", async ({ page }) => {
+  await page.goto("/upload");
+  await syncLV(page);
+
+  await page.locator("#upload-form input").setInputFiles([
+    {
+      name: "file.txt",
+      mimeType: "text/plain",
+      buffer: Buffer.from("this is a test")
+    }
+  ]);
+  await syncLV(page);
+  // cancel the file
+  await page.getByLabel("cancel").click();
+
+  // add other file
+  await page.locator("#upload-form input").setInputFiles([
+    {
+      name: "file.md",
+      mimeType: "text/markdown",
+      buffer: Buffer.from("## this is a markdown file")
+    }
+  ]);
+  await syncLV(page);
+  await page.getByRole("button", { name: "Upload" }).click();
+
+  // we should see one uploaded file in the list
+  await expect(page.locator("ul li")).toHaveCount(1);
+});
