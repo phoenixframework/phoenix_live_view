@@ -70,6 +70,7 @@ export default class UploadEntry {
   }
 
   cancel(){
+    this.file._preflightInProgress = false
     this._isCancelled = true
     this._isDone = true
     this._onDone()
@@ -94,7 +95,10 @@ export default class UploadEntry {
 
   onElUpdated(){
     let activeRefs = this.fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
-    if(activeRefs.indexOf(this.ref) === -1){ this.cancel() }
+    if(activeRefs.indexOf(this.ref) === -1){
+      LiveUploader.untrackFile(this.fileEl, this.file)
+      this.cancel()
+    }
   }
 
   toPreflightPayload(){

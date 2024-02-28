@@ -1176,6 +1176,7 @@ var UploadEntry = class {
     }
   }
   cancel() {
+    this.file._preflightInProgress = false;
     this._isCancelled = true;
     this._isDone = true;
     this._onDone();
@@ -1199,6 +1200,7 @@ var UploadEntry = class {
   onElUpdated() {
     let activeRefs = this.fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",");
     if (activeRefs.indexOf(this.ref) === -1) {
+      LiveUploader.untrackFile(this.fileEl, this.file);
       this.cancel();
     }
   }
@@ -3866,8 +3868,14 @@ var View = class {
         this.log("upload", () => ["got preflight response", resp]);
         if (resp.error) {
           this.undoRefs(ref);
-          let [entry_ref, reason] = resp.error;
-          this.log("upload", () => [`error for entry ${entry_ref}`, reason]);
+          resp.error.map(([entry_ref, reason]) => {
+            if (dom_default.isAutoUpload(inputEl)) {
+              uploader.entries().find((entry) => entry.ref === entry_ref.toString()).cancel();
+            } else {
+              uploader.entries().map((entry) => entry.cancel());
+            }
+            this.log("upload", () => [`error for entry ${entry_ref}`, reason]);
+          });
         } else {
           let onError = (callback) => {
             this.channel.onError(() => {

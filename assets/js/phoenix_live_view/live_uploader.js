@@ -108,7 +108,7 @@ export default class LiveUploader {
       Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || [])
         .map(file => new UploadEntry(inputEl, file, view))
 
-    // prevent sending duplicate preflight requests 
+    // prevent sending duplicate preflight requests
     LiveUploader.markPreflightInProgress(this._entries)
 
     this.numEntriesInProgress = this._entries.length

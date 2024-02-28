@@ -1073,7 +1073,7 @@ export default class View {
 
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
-      if (entries.length === 0) {
+      if(entries.length === 0) {
         numFileInputsInProgress--
         return
       }
@@ -1090,8 +1090,14 @@ export default class View {
         this.log("upload", () => ["got preflight response", resp])
         if(resp.error){
           this.undoRefs(ref)
-          let [entry_ref, reason] = resp.error
-          this.log("upload", () => [`error for entry ${entry_ref}`, reason])
+          resp.error.map(([entry_ref, reason]) => {
+            if(DOM.isAutoUpload(inputEl)){
+              uploader.entries().find(entry => entry.ref === entry_ref.toString()).cancel()
+            } else {
+              uploader.entries().map(entry => entry.cancel())
+            }
+            this.log("upload", () => [`error for entry ${entry_ref}`, reason])
+          })
         } else {
           let onError = (callback) => {
             this.channel.onError(() => {
