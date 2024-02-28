@@ -1,8 +1,14 @@
 # Changelog
 
-## 0.20.10
+## 0.20.10 (2024-02-28)
+
+### Bug fixes
+  * Fix cancelled uploads being re-added
+  * Fix form submits for previously submitted invalid upload entries causing errors instead of preflighted new upload entries
+  * Fix HTML formatter not respecting phx-no-format for script tags
 
 ### Enhancements
+  * Add additional HEEx debug annotations for the caller locations of function component invocations
   * Abandon form recovery if recovery event fails
 
 ## 0.20.9 (2024-02-19)
