@@ -1139,7 +1139,7 @@ var UploadEntry = class {
   static markPreflightInProgress(file) {
     file._preflightInProgress = true;
   }
-  constructor(fileEl, file, view) {
+  constructor(fileEl, file, view, autoUpload) {
     this.ref = LiveUploader.genFileRef(file);
     this.fileEl = fileEl;
     this.file = file;
@@ -1153,6 +1153,7 @@ var UploadEntry = class {
     };
     this._onElUpdated = this.onElUpdated.bind(this);
     this.fileEl.addEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
+    this.autoUpload = autoUpload;
   }
   metadata() {
     return this.meta;
@@ -1174,6 +1175,9 @@ var UploadEntry = class {
       }
     }
   }
+  isCancelled() {
+    return this._isCancelled;
+  }
   cancel() {
     this.file._preflightInProgress = false;
     this._isCancelled = true;
@@ -1186,9 +1190,12 @@ var UploadEntry = class {
   error(reason = "failed") {
     this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
     this.view.pushFileProgress(this.fileEl, this.ref, { error: reason });
-    if (!dom_default.isAutoUpload(this.fileEl)) {
+    if (!this.isAutoUpload()) {
       LiveUploader.clearFiles(this.fileEl);
     }
+  }
+  isAutoUpload() {
+    return this.autoUpload;
   }
   onDone(callback) {
     this._onDone = () => {
@@ -1313,24 +1320,35 @@ var LiveUploader = class {
     entries.forEach((entry) => UploadEntry.markPreflightInProgress(entry.file));
   }
   constructor(inputEl, view, onComplete) {
+    this.autoUpload = dom_default.isAutoUpload(inputEl);
     this.view = view;
     this.onComplete = onComplete;
-    this._entries = Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || []).map((file) => new UploadEntry(inputEl, file, view));
+    this._entries = Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || []).map((file) => new UploadEntry(inputEl, file, view, this.autoUpload));
     LiveUploader.markPreflightInProgress(this._entries);
     this.numEntriesInProgress = this._entries.length;
+  }
+  isAutoUpload() {
+    return this.autoUpload;
   }
   entries() {
     return this._entries;
   }
   initAdapterUpload(resp, onError, liveSocket) {
     this._entries = this._entries.map((entry) => {
-      entry.zipPostFlight(resp);
-      entry.onDone(() => {
+      if (entry.isCancelled()) {
         this.numEntriesInProgress--;
         if (this.numEntriesInProgress === 0) {
           this.onComplete();
         }
-      });
+      } else {
+        entry.zipPostFlight(resp);
+        entry.onDone(() => {
+          this.numEntriesInProgress--;
+          if (this.numEntriesInProgress === 0) {
+            this.onComplete();
+          }
+        });
+      }
       return entry;
     });
     let groupedEntries = this._entries.reduce((acc, entry) => {
@@ -3820,7 +3838,10 @@ var View = class {
     } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       let [ref, els] = refGenerator();
       let proxyRefGen = () => [ref, els, opts];
-      this.uploadFiles(formEl, targetCtx, ref, cid, (_uploads) => {
+      this.uploadFiles(formEl, targetCtx, ref, cid, (uploads) => {
+        if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
+          return this.undoRefs(ref);
+        }
         let meta = this.extractMeta(formEl);
         let formData = serializeForm(formEl, { submitter, ...meta });
         this.pushWithReply(proxyRefGen, "event", {
@@ -3865,15 +3886,16 @@ var View = class {
       this.log("upload", () => ["sending preflight request", payload]);
       this.pushWithReply(null, "allow_upload", payload, (resp) => {
         this.log("upload", () => ["got preflight response", resp]);
-        if (resp.error) {
+        uploader.entries().forEach((entry) => {
+          if (resp.entries && !resp.entries[entry.ref]) {
+            this.handleFailedEntryPreflight(entry.ref, "failed preflight", uploader);
+          }
+        });
+        if (resp.error || Object.keys(resp.entries).length === 0) {
           this.undoRefs(ref);
-          resp.error.map(([entry_ref, reason]) => {
-            if (dom_default.isAutoUpload(inputEl)) {
-              uploader.entries().find((entry) => entry.ref === entry_ref.toString()).cancel();
-            } else {
-              uploader.entries().map((entry) => entry.cancel());
-            }
-            this.log("upload", () => [`error for entry ${entry_ref}`, reason]);
+          let errors = resp.error || [];
+          errors.map(([entry_ref, reason]) => {
+            this.handleFailedEntryPreflight(entry_ref, reason, uploader);
           });
         } else {
           let onError = (callback) => {
@@ -3887,6 +3909,17 @@ var View = class {
         }
       });
     });
+  }
+  handleFailedEntryPreflight(uploadRef, reason, uploader) {
+    if (uploader.isAutoUpload()) {
+      let entry = uploader.entries().find((entry2) => entry2.ref === uploadRef.toString());
+      if (entry) {
+        entry.cancel();
+      }
+    } else {
+      uploader.entries().map((entry) => entry.cancel());
+    }
+    this.log("upload", () => [`error for entry ${uploadRef}`, reason]);
   }
   dispatchUploads(targetCtx, name, filesOrBlobs) {
     let targetElement = this.targetCtxElement(targetCtx) || this.el;

@@ -102,11 +102,12 @@ export default class LiveUploader {
   }
 
   constructor(inputEl, view, onComplete){
+    this.autoUpload = DOM.isAutoUpload(inputEl)
     this.view = view
     this.onComplete = onComplete
     this._entries =
       Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || [])
-        .map(file => new UploadEntry(inputEl, file, view))
+        .map(file => new UploadEntry(inputEl, file, view, this.autoUpload))
 
     // prevent sending duplicate preflight requests
     LiveUploader.markPreflightInProgress(this._entries)
@@ -114,16 +115,23 @@ export default class LiveUploader {
     this.numEntriesInProgress = this._entries.length
   }
 
+  isAutoUpload(){ return this.autoUpload }
+
   entries(){ return this._entries }
 
   initAdapterUpload(resp, onError, liveSocket){
     this._entries =
       this._entries.map(entry => {
-        entry.zipPostFlight(resp)
-        entry.onDone(() => {
+        if(entry.isCancelled()){
           this.numEntriesInProgress--
           if(this.numEntriesInProgress === 0){ this.onComplete() }
-        })
+        } else {
+          entry.zipPostFlight(resp)
+          entry.onDone(() => {
+            this.numEntriesInProgress--
+            if(this.numEntriesInProgress === 0){ this.onComplete() }
+          })
+        }
         return entry
       })
 

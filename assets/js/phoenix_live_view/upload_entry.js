@@ -10,7 +10,6 @@ import {
 } from "./utils"
 
 import LiveUploader from "./live_uploader"
-import DOM from "./dom"
 
 export default class UploadEntry {
   static isActive(fileEl, file){
@@ -34,7 +33,7 @@ export default class UploadEntry {
     file._preflightInProgress = true
   }
 
-  constructor(fileEl, file, view){
+  constructor(fileEl, file, view, autoUpload){
     this.ref = LiveUploader.genFileRef(file)
     this.fileEl = fileEl
     this.file = file
@@ -44,9 +43,10 @@ export default class UploadEntry {
     this._isDone = false
     this._progress = 0
     this._lastProgressSent = -1
-    this._onDone = function (){ }
+    this._onDone = function(){ }
     this._onElUpdated = this.onElUpdated.bind(this)
     this.fileEl.addEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated)
+    this.autoUpload = autoUpload
   }
 
   metadata(){ return this.meta }
@@ -69,6 +69,8 @@ export default class UploadEntry {
     }
   }
 
+  isCancelled(){ return this._isCancelled }
+
   cancel(){
     this.file._preflightInProgress = false
     this._isCancelled = true
@@ -81,8 +83,10 @@ export default class UploadEntry {
   error(reason = "failed"){
     this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated)
     this.view.pushFileProgress(this.fileEl, this.ref, {error: reason})
-    if(!DOM.isAutoUpload(this.fileEl)){ LiveUploader.clearFiles(this.fileEl) }
+    if(!this.isAutoUpload()){ LiveUploader.clearFiles(this.fileEl) }
   }
+
+  isAutoUpload(){ return this.autoUpload }
 
   //private
 

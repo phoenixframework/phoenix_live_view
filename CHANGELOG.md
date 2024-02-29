@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.11
+
+### Bug fixes
+  * Fix auto uploads with invalid entries incorrectly proceeding with a form submit instead of halting, causing entries in progress errors
+  * Fix auto upload entries failing to be uploaded on submit after moving into a valid state, such as falling within `max_entries`
+  * Fix TagEngine clause warning
+
 ## 0.20.10 (2024-02-28)
 
 ### Bug fixes
