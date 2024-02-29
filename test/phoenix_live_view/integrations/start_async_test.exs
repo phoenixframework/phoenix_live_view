@@ -124,8 +124,8 @@ defmodule Phoenix.LiveView.StartAsyncTest do
     end
 
     test "lv exit brings down asyncs", %{conn: conn} do
+      Process.flag(:trap_exit, true)
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_lv_exit")
-      Process.unlink(lv.pid)
       lv_ref = Process.monitor(lv.pid)
       async_ref = Process.monitor(Process.whereis(:start_async_exit))
       send(lv.pid, :boom)
