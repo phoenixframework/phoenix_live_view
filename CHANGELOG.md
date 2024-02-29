@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.11
+## 0.20.11 (2024-02-29)
 
 ### Bug fixes
   * Fix auto uploads with invalid entries incorrectly proceeding with a form submit instead of halting, causing entries in progress errors
