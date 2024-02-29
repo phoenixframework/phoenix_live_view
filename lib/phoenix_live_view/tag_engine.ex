@@ -502,14 +502,6 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp maybe_anno_caller(state, meta, file, line) do
-    if anno = state.tag_handler.annotate_caller(file, line) do
-      update_subengine(state, :handle_text, [meta, anno])
-    else
-      state
-    end
-  end
-
   # Remote function component (with inner content)
 
   defp handle_token({:remote_component, name, attrs, tag_meta}, state) do
@@ -1360,5 +1352,13 @@ defmodule Phoenix.LiveView.TagEngine do
       column: meta.column,
       file: state.file,
       description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
+  end
+
+  defp maybe_anno_caller(state, meta, file, line) do
+    if anno = state.tag_handler.annotate_caller(file, line) do
+      update_subengine(state, :handle_text, [meta, anno])
+    else
+      state
+    end
   end
 end
