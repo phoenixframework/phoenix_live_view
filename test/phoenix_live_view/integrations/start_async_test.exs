@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
   @endpoint Endpoint
 
   setup do
+    Process.flag(:trap_exit, true)
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
   end
 
@@ -34,7 +35,6 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
     test "lv exit brings down asyncs", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=lv_exit")
-      Process.unlink(lv.pid)
       lv_ref = Process.monitor(lv.pid)
       async_ref = Process.monitor(Process.whereis(:start_async_exit))
       send(lv.pid, :boom)
@@ -45,7 +45,6 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
     test "cancel_async", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=cancel")
-      Process.unlink(lv.pid)
       async_ref = Process.monitor(Process.whereis(:start_async_cancel))
 
       assert render(lv) =~ "result: :loading"
@@ -136,7 +135,6 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
     test "cancel_async", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_cancel")
-      Process.unlink(lv.pid)
       async_ref = Process.monitor(Process.whereis(:start_async_cancel))
 
       Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StartAsyncLive.LC,
