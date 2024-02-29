@@ -1100,7 +1100,7 @@ export default class View {
             this.handleFailedEntryPreflight(entry.ref, "failed preflight", uploader)
           }
         })
-        // for auto uploas, we may have an empty entries response from the server
+        // for auto uploads, we may have an empty entries response from the server
         // for form submits that contain invalid entries
         if(resp.error || Object.keys(resp.entries).length === 0){
           this.undoRefs(ref)
