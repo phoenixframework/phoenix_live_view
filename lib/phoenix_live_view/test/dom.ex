@@ -260,7 +260,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   defp deep_merge_diff(_target, source),
     do: source
 
-  def extract_streams(%{} = source, streams) do
+  def extract_streams(%{} = source, streams) when not is_struct(source) do
     Enum.reduce(source, streams, fn
       {@stream_id, stream}, acc -> [stream | acc]
       {_key, value}, acc -> extract_streams(value, acc)
