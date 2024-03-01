@@ -132,7 +132,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -161,7 +162,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -189,7 +191,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -216,7 +219,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -240,7 +244,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -250,6 +255,30 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       assert new_html =~ ~S( data-update="b")
       refute new_html =~ ~S( add)
       assert new_html =~ ~S( data-add)
+      assert new_html =~ ~S(<div id="1">a</div>)
+    end
+
+    test "patches elements with special characters in id (issue #3144)" do
+      html = """
+      <div data-phx-session="SESSIONMAIN" data-phx-main="true" id="phx-458">
+      <div id="div?param=foo" phx-update="ignore" data-attr="1">
+        <div id="1">a</div>
+      </div>
+      </div>
+      """
+
+      inner_html = """
+      <div id="div?param=foo" phx-update="ignore" data-attr="b">
+        <div id="1" class="foo">b</div>
+      </div>
+      """
+
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+
+      new_html = DOM.to_html(new_html)
+
+      assert new_html =~ ~S(data-attr="b")
       assert new_html =~ ~S(<div id="1">a</div>)
     end
   end

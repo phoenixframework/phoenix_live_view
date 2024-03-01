@@ -569,7 +569,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp by_id(html_tree, id) do
-    html_tree |> Floki.find("##{id}") |> List.first()
+    html_tree |> Floki.find(~s([id="#{id}"])) |> List.first()
   end
 
   def parent_id(html_tree, child_id) do
