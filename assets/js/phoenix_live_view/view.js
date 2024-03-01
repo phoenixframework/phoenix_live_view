@@ -14,6 +14,7 @@ import {
   PHX_CLIENT_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
   PHX_FEEDBACK_FOR,
+  PHX_FEEDBACK_GROUP,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
@@ -104,7 +105,8 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   for(let [key, val] of formData.entries()){
     if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
       let input = elements.find(input => input.name === key)
-      if(!(DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED))){
+      let isUnused = !(DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED))
+      if(isUnused && !(submitter && submitter.name == key)){
         params.append(prependFormDataKey(key, "_unused_"), "")
       }
       params.append(key, val)

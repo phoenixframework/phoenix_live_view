@@ -1049,7 +1049,6 @@ describe("View + Component", function(){
       expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
 
       view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
-      DOM.putPrivate(last_name, "phx-has-focused", true)
       view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
       window.requestAnimationFrame(() => {
         expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
@@ -1133,7 +1132,6 @@ describe("View + Component", function(){
       expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeTruthy()
 
       view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[first_name]"})
-      DOM.putPrivate(first_name, "phx-has-focused", true)
       view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
       window.requestAnimationFrame(() => {
         expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
