@@ -45,7 +45,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:esbuild, "~> 0.2", only: :dev},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
       {:jason, "~> 1.0", optional: true},
-      {:floki, "~> 0.30.0", only: :test},
+      {:floki, "~> 0.36.0", only: :test},
       {:ex_doc, "~> 0.29", only: :docs},
       {:makeup_eex, ">= 0.1.1", only: :docs},
       {:makeup_diff, "~> 0.1", only: :docs},
