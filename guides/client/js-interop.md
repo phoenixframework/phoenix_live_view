@@ -311,7 +311,28 @@ Hooks.Chart = {
 }
 ```
 
-*Note*: remember events pushed from the server via `push_event` are global and will be dispatched
-to all active hooks on the client who are handling that event.
+Events pushed from the server via `push_event` are global and will be dispatched
+to all active hooks on the client who are handling that event. If you need to scope events 
+(for example when pushing from a live component that has siblings on the current live view), 
+then this must be done by namespacing them:
+
+    def update(%{id: id, points: points} = assigns, socket) do
+      socket =
+        socket
+        |> assign(assigns)
+        |> push_event("points-#{id}", points)
+
+      {:ok, socket}
+    end
+
+And then in the client:
+
+```javascript
+Hooks.Chart = {
+  mounted(){
+    this.handleEvent(`points-${this.el.id}`, (points) => MyChartLib.addPoints(points));
+  }
+}
+```
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
