@@ -325,7 +325,7 @@ then this must be done by namespacing them:
       {:ok, socket}
     end
 
-And then in the client:
+And then on the client:
 
 ```javascript
 Hooks.Chart = {
