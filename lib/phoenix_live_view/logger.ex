@@ -96,12 +96,16 @@ defmodule Phoenix.LiveView.Logger do
     level = log_level(socket)
 
     if level && connected?(socket) do
-      Logger.log(level, fn ->
-        [
-          "Replied in ",
-          duration(duration)
-        ]
-      end, metadata)
+      Logger.log(
+        level,
+        fn ->
+          [
+            "Replied in ",
+            duration(duration)
+          ]
+        end,
+        metadata
+      )
     end
 
     :ok
@@ -114,15 +118,19 @@ defmodule Phoenix.LiveView.Logger do
     level = log_level(socket)
 
     if level && connected?(socket) do
-      Logger.log(level, fn ->
-        [
-          "HANDLE PARAMS in ",
-          inspect(socket.view),
-          ?\n,
-          "  Parameters: ",
-          inspect(filter_values(params))
-        ]
-      end, metadata)
+      Logger.log(
+        level,
+        fn ->
+          [
+            "HANDLE PARAMS in ",
+            inspect(socket.view),
+            ?\n,
+            "  Parameters: ",
+            inspect(filter_values(params))
+          ]
+        end,
+        metadata
+      )
     end
 
     :ok
@@ -135,12 +143,16 @@ defmodule Phoenix.LiveView.Logger do
     level = log_level(socket)
 
     if level && connected?(socket) do
-      Logger.log(level, fn ->
-        [
-          "Replied in ",
-          duration(duration)
-        ]
-      end, metadata)
+      Logger.log(
+        level,
+        fn ->
+          [
+            "Replied in ",
+            duration(duration)
+          ]
+        end,
+        metadata
+      )
     end
 
     :ok
@@ -163,7 +175,7 @@ defmodule Phoenix.LiveView.Logger do
           "  Parameters: ",
           inspect(filter_values(params))
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -181,7 +193,7 @@ defmodule Phoenix.LiveView.Logger do
           "Replied in ",
           duration(duration)
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -205,7 +217,7 @@ defmodule Phoenix.LiveView.Logger do
           "\n  Parameters: ",
           inspect(filter_values(params))
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -223,7 +235,7 @@ defmodule Phoenix.LiveView.Logger do
           "Replied in ",
           duration(duration)
         ]
-      end, metadata)
+      end)
     end
 
     :ok
