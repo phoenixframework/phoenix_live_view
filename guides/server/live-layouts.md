@@ -26,7 +26,7 @@ The "root" layout is rendered only on the initial request and
 therefore it has access to the `@conn` assign. The root layout
 is typically defined in your router:
 
-    plug :put_root_layout, html: {MyAppWeb.LayoutView, :root}
+    plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
 
 The root layout can also be set via the `:root_layout` option
 in your router via `Phoenix.LiveView.Router.live_session/2`.
