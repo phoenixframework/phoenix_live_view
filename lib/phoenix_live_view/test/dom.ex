@@ -113,6 +113,8 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def to_text(html_tree), do: Floki.text(html_tree)
 
+  # TODO: rewrite to use Floki.get_by_id/2
+  # currently it does not raise when multiple elements are found
   def by_id!(html_tree, id) do
     case maybe_one(html_tree, "#" <> id) do
       {:ok, node} -> node
@@ -569,7 +571,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   end
 
   defp by_id(html_tree, id) do
-    html_tree |> Floki.find("##{id}") |> List.first()
+    Floki.get_by_id(html_tree, id)
   end
 
   def parent_id(html_tree, child_id) do
