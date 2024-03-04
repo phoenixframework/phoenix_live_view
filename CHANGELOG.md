@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.20.12 (2024-03-04)
+
+### Bug fixes
+  * Do not send Telemetry metadata as Logger event, this avoids the metadata from being accidentally copied to other processes
+  * Ensure LiveViewTest does not crash on IDs with foreign characters, such as question marks
+  * Fix a bug where LiveViewTest could not perform a connected mount on a page with certain streams
+
 ## 0.20.11 (2024-02-29)
 
 ### Bug fixes
