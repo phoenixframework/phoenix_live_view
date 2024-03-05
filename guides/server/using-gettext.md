@@ -54,7 +54,7 @@ LiveViews by default:
     def live_view do
       quote do
         use Phoenix.LiveView,
-          layout: {MyAppWeb.LayoutView, :live}
+          layout: {MyAppWeb.Layouts, :app}
 
         on_mount MyAppWeb.RestoreLocale
         unquote(view_helpers())

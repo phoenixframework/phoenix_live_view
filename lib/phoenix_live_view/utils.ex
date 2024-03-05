@@ -214,7 +214,7 @@ defmodule Phoenix.LiveView.Utils do
 
   def normalize_layout(other, _warn_ctx) do
     raise ArgumentError,
-          ":layout expects a tuple of the form {MyLayoutView, :my_template} or false, " <>
+          ":layout expects a tuple of the form {MyLayouts, :my_template} or false, " <>
             "got: #{inspect(other)}"
   end
 

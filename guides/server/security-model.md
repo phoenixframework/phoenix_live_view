@@ -112,7 +112,7 @@ to run it on all LiveViews by default:
     def live_view do
       quote do
         use Phoenix.LiveView,
-          layout: {MyAppWeb.LayoutView, :live}
+          layout: {MyAppWeb.Layouts, :app}
 
         on_mount MyAppWeb.UserLiveAuth
         unquote(html_helpers())
@@ -241,11 +241,11 @@ using `on_mount` hooks.
 a different root layout, since layouts are not updated between live
 redirects:
 
-    live_session :default, root_layout: {LayoutView, :root} do
+    live_session :default, root_layout: {Layouts, :root} do
       ...
     end
 
-    live_session :admin, root_layout: {LayoutView, :admin} do
+    live_session :admin, root_layout: {Layouts, :admin} do
       ...
     end
 
