@@ -317,7 +317,7 @@ defmodule Phoenix.LiveView do
 
       use Phoenix.LiveView,
         container: {:tr, class: "colorized"},
-        layout: {MyAppWeb.LayoutView, :app},
+        layout: {MyAppWeb.Layouts, :app},
         log: :info
 
   ## Options
