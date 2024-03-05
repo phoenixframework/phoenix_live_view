@@ -77,7 +77,7 @@ their own events too.
 ### Live navigation events
 
 For live page navigation via `<.link navigate={...}>` and `<.link patch={...}>`,
-their server-side equivalents `push_redirect` and `push_patch`, as well as form
+their server-side equivalents `push_navigate` and `push_patch`, as well as form
 submits via `phx-submit`, the JavaScript events `"phx:page-loading-start"` and
 `"phx:page-loading-stop"` are dispatched on window. Additionally, any `phx-`
 event may dispatch page loading events by annotating the DOM element with
