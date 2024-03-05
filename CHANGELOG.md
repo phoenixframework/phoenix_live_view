@@ -46,7 +46,6 @@
   * Fix phx-skip containers leaking into DOM on first patch in some cases (#3117)
   * Fix phx-feedback-for failing to be properly updated in some cases (#3122)
 
-
 ## 0.20.6 (2024-02-14)
 
 ### Bug fixes
@@ -86,6 +85,7 @@
   * Fix click-away being called incorrectly on form submits
   * Fix inconsistencies between LiveViewTest and browser stream implementations
   * Fix phx-feedback-for being reapplied when there are multiple inputs with the same name
+  * Ensure phx-update="ignore" behaves consistently: ypdates from the server to the element's content and attributes are ignored, *except for data attributes*
 
 ### Enhancements
   * Add `JS.toggle_class`
