@@ -4,17 +4,18 @@ defmodule Phoenix.LiveView.Async do
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
   defp validate_function_env(func, op, env) do
-    warn = if Version.match?(System.version(), ">= 1.14.0") do
-      fn msg -> IO.warn(msg, env) end
-    else
-      fn msg -> IO.warn(msg) end
-    end
+    warn =
+      if Version.match?(System.version(), ">= 1.14.0") do
+        fn msg, env -> IO.warn(msg, env) end
+      else
+        fn msg, _env -> IO.warn(msg) end
+      end
 
     # prevent false positives, for example
     # start_async(socket, :foo, function_that_returns_the_anonymous_function(socket))
     if match?({:&, _, _}, func) or match?({:fn, _, _}, func) do
       Macro.prewalk(Macro.expand(func, env), fn
-        {:socket, _, nil} ->
+        {:socket, meta, nil} ->
           warn.(
             """
             you are accessing the LiveView Socket inside a function given to #{op}.
@@ -36,7 +37,8 @@ defmodule Phoenix.LiveView.Async do
                 end)
 
             For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
-            """
+            """,
+            Keyword.take(meta, [:line, :column]) ++ [line: env.line, file: env.file]
           )
 
         other ->
