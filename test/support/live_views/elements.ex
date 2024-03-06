@@ -10,6 +10,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
     <div id="child-component"><.live_component module={Phoenix.LiveViewTest.ElementsComponent} id={1} /></div>
+    <span id="special-char?"></span>
 
     <%# basic render_* %>
     <span id="span-no-attr">This is a span</span>

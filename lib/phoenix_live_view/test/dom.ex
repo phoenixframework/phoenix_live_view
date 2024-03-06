@@ -30,7 +30,23 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def all(html_tree, selector), do: Floki.find(html_tree, selector)
 
-  def maybe_one(html_tree, selector, type \\ :selector) do
+  def maybe_one(html_tree, selector, type \\ :selector)
+
+  def maybe_one(html_tree, "#" <> id_selector = selector, type) do
+    id = String.replace(id_selector, "\\", "")
+
+    case Floki.get_by_id(html_tree, id) do
+      nil ->
+        {:error, :none,
+         "expected #{type} #{inspect(selector)} to return a single element, but got none " <>
+           "within: \n\n" <> inspect_html(html_tree)}
+
+      node ->
+        {:ok, node}
+    end
+  end
+
+  def maybe_one(html_tree, selector, type) do
     case all(html_tree, selector) do
       [node] ->
         {:ok, node}
