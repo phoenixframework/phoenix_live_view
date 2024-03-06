@@ -3,11 +3,78 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  def start_async(%Socket{} = socket, key, func, opts \\ []) when is_function(func, 0) do
-    run_async_task(socket, key, func, :start, opts)
+  defp validate_function_env(func, op, env) do
+    warn = if Version.match?(System.version(), ">= 1.14.0") do
+      fn msg -> IO.warn(msg, env) end
+    else
+      fn msg -> IO.warn(msg) end
+    end
+
+    # prevent false positives, for example
+    # start_async(socket, :foo, function_that_returns_the_anonymous_function(socket))
+    if match?({:&, _, _}, func) or match?({:fn, _, _}, func) do
+      Macro.prewalk(Macro.expand(func, env), fn
+        {:socket, _, nil} ->
+          warn.(
+            """
+            you are accessing the LiveView Socket inside a function given to #{op}.
+
+            This is an expensive operation because the whole socket is copied to the new process.
+
+            Instead of:
+
+                #{op}(socket, :key, fn ->
+                  do_something(socket.assigns.my_assign)
+                end)
+
+            You should do:
+
+                my_assign = socket.assigns.my_assign
+
+                #{op}(socket, :key, fn ->
+                  do_something(my_assign)
+                end)
+
+            For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+            """
+          )
+
+        other ->
+          other
+      end)
+    end
+
+    :ok
   end
 
-  def assign_async(%Socket{} = socket, key_or_keys, func, opts \\ [])
+  def start_async(socket, key, func, opts, env) do
+    validate_function_env(func, :start_async, env)
+
+    quote do
+      Phoenix.LiveView.Async.run_async_task(
+        unquote(socket),
+        unquote(key),
+        unquote(func),
+        :start,
+        unquote(opts)
+      )
+    end
+  end
+
+  def assign_async(socket, key_or_keys, func, opts, env) do
+    validate_function_env(func, :assign_async, env)
+
+    quote do
+      Phoenix.LiveView.Async.assign_async(
+        unquote(socket),
+        unquote(key_or_keys),
+        unquote(func),
+        unquote(opts)
+      )
+    end
+  end
+
+  def assign_async(%Socket{} = socket, key_or_keys, func, opts)
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
              is_function(func, 0) do
     keys = List.wrap(key_or_keys)
@@ -54,18 +121,20 @@ defmodule Phoenix.LiveView.Async do
     |> run_async_task(keys, wrapped_func, :assign, opts)
   end
 
-  defp run_async_task(%Socket{} = socket, key, func, kind, opts) do
+  def run_async_task(%Socket{} = socket, key, func, kind, opts) when is_function(func, 0) do
     if Phoenix.LiveView.connected?(socket) do
       lv_pid = self()
       cid = cid(socket)
-      {:ok, pid} = if supervisor = Keyword.get(opts, :supervisor) do
-        Task.Supervisor.start_child(supervisor, fn ->
-          Process.link(lv_pid)
-          do_async(lv_pid, cid, key, func, kind)
-        end)
-      else
-        Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
-      end
+
+      {:ok, pid} =
+        if supervisor = Keyword.get(opts, :supervisor) do
+          Task.Supervisor.start_child(supervisor, fn ->
+            Process.link(lv_pid)
+            do_async(lv_pid, cid, key, func, kind)
+          end)
+        else
+          Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
+        end
 
       ref =
         :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, key, cid, kind})
