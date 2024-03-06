@@ -5,6 +5,7 @@ defmodule Phoenix.LiveView.Async do
 
   defp validate_function_env(func, op, env) do
     warn =
+      # TODO: Remove conditional once we require Elixir v1.14+
       if Version.match?(System.version(), ">= 1.14.0") do
         fn msg, env -> IO.warn(msg, env) end
       else
