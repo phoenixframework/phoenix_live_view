@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.Async do
     # prevent false positives, for example
     # start_async(socket, :foo, function_that_returns_the_anonymous_function(socket))
     if match?({:&, _, _}, func) or match?({:fn, _, _}, func) do
-      Macro.prewalk(Macro.expand(func, env), fn
+      Macro.prewalk(func, fn
         {:socket, meta, nil} ->
           warn.(
             """
