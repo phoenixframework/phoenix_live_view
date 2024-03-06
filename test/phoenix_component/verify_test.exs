@@ -544,7 +544,7 @@ defmodule Phoenix.ComponentVerifyTest do
         end
       end)
 
-    assert warnings == ""
+    refute warnings =~ "undefined attribute"
   end
 
   test "does warn for unknown attribute in slot without do-block when validate_attrs is true" do

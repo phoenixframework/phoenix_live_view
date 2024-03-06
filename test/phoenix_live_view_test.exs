@@ -344,7 +344,7 @@ defmodule Phoenix.LiveViewUnitTest do
                 end)}
               end
 
-              defp do_something(assigns), do: :ok
+              defp do_something(_assigns), do: :ok
             end
             """)
           end)
@@ -374,7 +374,7 @@ defmodule Phoenix.LiveViewUnitTest do
                 end
               end
 
-              defp do_something(assigns), do: :ok
+              defp do_something(_assigns), do: :ok
             end
             """)
           end)
