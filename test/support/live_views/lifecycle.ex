@@ -208,12 +208,12 @@ defmodule Phoenix.LiveViewTest.HaltConnectedMount do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HooksAttachComponent do
+defmodule Phoenix.LiveViewTest.HooksAttachInfoComponent do
   use Phoenix.LiveComponent
   alias Phoenix.LiveView
 
   def mount(socket) do
-    {:ok, LiveView.attach_hook(socket, :live_component_hook, :handle_event, &__MODULE__.hook/3)}
+    {:ok, LiveView.attach_hook(socket, :live_component_hook, :handle_info, &__MODULE__.hook/3)}
   end
 
   def hook(_, _, _socket) do
@@ -223,25 +223,53 @@ defmodule Phoenix.LiveViewTest.HooksAttachComponent do
   def render(assigns), do: ~H"<div></div>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksDetachComponent do
+defmodule Phoenix.LiveViewTest.HooksDetachInfoComponent do
   use Phoenix.LiveComponent
   alias Phoenix.LiveView
 
   def mount(socket) do
-    {:ok, LiveView.detach_hook(socket, :live_view_hook, :handle_event)}
+    {:ok, LiveView.detach_hook(socket, :live_view_hook, :handle_info)}
   end
 
   def render(assigns), do: ~H"<div></div>"
 end
 
+defmodule Phoenix.LiveViewTest.HooksEventComponent do
+  use Phoenix.LiveComponent
+  alias Phoenix.LiveView
+
+  def mount(socket) do
+    socket = assign(socket, :counter, 0)
+    {:ok, LiveView.attach_hook(socket, :live_component_hook, :handle_event, &__MODULE__.hook/3)}
+  end
+
+  def hook("detach", _, socket),
+    do: {:halt, LiveView.detach_hook(socket, :live_component_hook, :handle_event)}
+
+  def hook(_, _, socket), do: {:halt, assign(socket, :counter, socket.assigns.counter + 1)}
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      <div id="detach-component-hook" phx-click="detach" phx-target={@myself}>Detach</div>
+      <div id="hook" phx-click="event" phx-target={@myself}>counter: <%= @counter %></div>
+    </div>
+    """
+  end
+end
+
 defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{HooksAttachComponent, HooksDetachComponent}
+  alias Phoenix.LiveViewTest.{HooksAttachInfoComponent, HooksDetachInfoComponent}
+  alias Phoenix.LiveViewTest.HooksEventComponent
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
+    type = String.to_existing_atom(params["type"])
+
     {:ok,
      socket
      |> assign(:component, nil)
+     |> assign(:type, type)
      |> attach_hook(:live_view_hook, :handle_event, fn _, _, socket ->
        {:cont, socket}
      end)}
@@ -249,9 +277,10 @@ defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
 
   def handle_event("load", %{"val" => val}, socket) do
     component =
-      case val do
-        "attach" -> HooksAttachComponent
-        "detach" -> HooksDetachComponent
+      case {val, socket.assigns.type} do
+        {"attach", :handle_info} -> HooksAttachInfoComponent
+        {"detach", :handle_info} -> HooksDetachInfoComponent
+        {"attach", :handle_event} -> HooksEventComponent
       end
 
     {:noreply, assign(socket, :component, component)}
@@ -262,7 +291,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
     <button id="attach" phx-click="load" phx-value-val="attach">Load/Attach</button>
     <button id="detach" phx-click="load" phx-value-val="detach">Load/Detach</button>
     <%= if @component do %>
-      <.live_component module={@component} id={:hook} />
+      <.live_component module={@component} id={:hook} type={@type} />
     <% end %>
     """
   end

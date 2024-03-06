@@ -189,7 +189,6 @@ defmodule Phoenix.LiveView.Channel do
                   new_socket
                 end
 
-
               {new_socket, {:ok, {msg.ref, %{}}, state}}
 
             other ->
@@ -727,24 +726,33 @@ defmodule Phoenix.LiveView.Channel do
       fn ->
         component_socket =
           %Socket{redirected: redirected, assigns: assigns} =
-          case component.handle_event(event, val, component_socket) do
-            {:noreply, component_socket} ->
+          case Lifecycle.handle_event(event, val, component_socket) do
+            {:halt, %Socket{} = component_socket} ->
               component_socket
 
-            {:reply, %{} = reply, component_socket} ->
-              Utils.put_reply(component_socket, reply)
+            {:cont, %Socket{} = component_socket} ->
+              case component.handle_event(event, val, component_socket) do
+                {:noreply, component_socket} ->
+                  component_socket
+
+                {:reply, %{} = reply, component_socket} ->
+                  Utils.put_reply(component_socket, reply)
+
+                other ->
+                  raise ArgumentError, """
+                  invalid return from #{inspect(component)}.handle_event/3 callback.
+
+                  Expected one of:
+
+                      {:noreply, %Socket{}}
+                      {:reply, map, %Socket}
+
+                  Got: #{inspect(other)}
+                  """
+              end
 
             other ->
-              raise ArgumentError, """
-              invalid return from #{inspect(component)}.handle_event/3 callback.
-
-              Expected one of:
-
-                  {:noreply, %Socket{}}
-                  {:reply, map, %Socket}
-
-              Got: #{inspect(other)}
-              """
+              raise_bad_callback_response!(other, component_socket.view, :handle_event, 3)
           end
 
         new_component_socket =
