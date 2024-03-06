@@ -93,7 +93,8 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Forces an assign with the given changed map.
   """
-  def force_assign(assigns, nil, key, val), do: Map.put(assigns, key, val)
+  def force_assign(assigns, nil, key, val),
+    do: Map.put(assigns, key, maybe_check_expensive_assign(key, val))
 
   def force_assign(assigns, changed, key, val) do
     # If the current value is a map, we store it in changed so
@@ -101,10 +102,67 @@ defmodule Phoenix.LiveView.Utils do
     # of put_new is important. We want to keep the original value
     # from assigns and not any intermediate ones that may appear.
     current_val = Map.get(assigns, key)
+    maybe_check_expensive_assign(key, val)
     changed_val = if is_map(current_val), do: current_val, else: true
     changed = Map.put_new(changed, key, changed_val)
     Map.put(%{assigns | __changed__: changed}, key, val)
   end
+
+  if Application.compile_env(:phoenix_live_view, :warn_on_expensive_assigns, false) do
+    defp maybe_check_expensive_assign(key, %Phoenix.LiveView.Socket{}) do
+      IO.warn("""
+      you are assigning the LiveView socket itself into the assign #{key}.
+
+      Because of LiveView's change tracking this can lead to more memory usage than expected,
+      as old data won't be cleared in the assign.
+      """)
+    end
+
+    defp maybe_check_expensive_assign(key, %{__changed__: _}) do
+      IO.warn("""
+      you are assigning an assigns map into the assign #{key}.
+
+      Because of LiveView's change tracking this can lead to more memory usage than expected,
+      as old data won't be cleared in the assign.
+      """)
+    end
+
+    defp maybe_check_expensive_assign(_key, val) when is_map(val) and not is_struct(val) do
+      Enum.each(val, fn {key, val} ->
+        maybe_check_expensive_assign(key, val)
+      end)
+    end
+
+    defp maybe_check_expensive_assign(_key, val) when is_list(val) do
+      Enum.each(val, fn val -> maybe_check_expensive_assign(nil, val) end)
+    end
+
+    defp maybe_check_expensive_assign(key, val) when is_function(val) do
+      {:env, function_env} = Function.info(val, :env)
+
+      Enum.each(function_env, fn variable ->
+        cond do
+          match?(%Phoenix.LiveView.Socket{}, variable) ->
+            # TODO: write a more detailed message
+            #       How could we have a better stacktrace?
+            IO.warn("""
+            you are accessing the LiveView socket in the assigned function #{key}.
+
+            Because of LiveView's change tracking this can lead to more memory usage than expected.
+            """)
+
+          match?(%{__changed__: _}, variable) ->
+            IO.warn("""
+            you are accessing an assigns map in the assigned function #{key}.
+
+            Because of LiveView's change tracking this can lead to more memory usage than expected.
+            """)
+        end
+      end)
+    end
+  end
+
+  defp maybe_check_expensive_assign(_key, val), do: val
 
   @doc """
   Clears the changes from the socket assigns.

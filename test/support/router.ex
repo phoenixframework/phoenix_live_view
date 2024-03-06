@@ -47,6 +47,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/live-reload", ReloadLive
     live "/assign_async", AssignAsyncLive
     live "/start_async", StartAsyncLive
+    live "/warn-on-expensive-assigns", WarnOnExpensiveAssignsLive
 
     # controller test
     get "/controller/:type", Controller, :incoming
