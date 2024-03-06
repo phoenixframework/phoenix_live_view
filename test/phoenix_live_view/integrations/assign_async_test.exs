@@ -5,6 +5,8 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.Endpoint
 
+  import ExUnit.CaptureIO
+
   @endpoint Endpoint
 
   setup do
@@ -82,6 +84,18 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render_async(lv, 200) =~ "{:exit, :boom}"
       assert render(lv)
       assert_receive {:exit, _pid, :boom}, 1000
+    end
+
+    test "warns when accessing socket in function at runtime", %{conn: conn} do
+      warnings =
+        capture_io(:stderr, fn ->
+          {:ok, lv, _html} = live(conn, "/assign_async?test=socket_warning")
+
+          render_async(lv)
+        end)
+
+      assert warnings =~
+               "you are accessing the LiveView Socket inside a function given to assign_async"
     end
   end
 

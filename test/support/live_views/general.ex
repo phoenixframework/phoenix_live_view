@@ -424,6 +424,17 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
      end)}
   end
 
+  def mount(%{"test" => "socket_warning"}, _session, socket) do
+    {:ok, assign_async(socket, :data, function_that_returns_the_anonymous_function(socket))}
+  end
+
+  defp function_that_returns_the_anonymous_function(socket) do
+    fn ->
+      Function.identity(socket)
+      {:ok, %{data: 0}}
+    end
+  end
+
   def handle_info(:boom, _socket), do: exit(:boom)
 
   def handle_info(:cancel, socket) do
@@ -586,7 +597,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
     {:ok,
      socket
      |> assign(result: :loading)
-     |> assign_async(:result_task, fn ->
+     |> start_async(:result_task, fn ->
        spawn_link(fn -> exit(:boom) end)
        Process.sleep(100)
        :good
@@ -626,6 +637,20 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
      socket
      |> assign(result: :loading)
      |> start_async(:flash, fn -> "hello" end)}
+  end
+
+  def mount(%{"test" => "socket_warning"}, _session, socket) do
+    {:ok,
+     socket
+     |> assign(result: :loading)
+     |> start_async(:result_task, function_that_returns_the_anonymous_function(socket))}
+  end
+
+  defp function_that_returns_the_anonymous_function(socket) do
+    fn ->
+      Function.identity(socket)
+      :ok
+    end
   end
 
   def handle_params(_unsigned_params, _uri, socket) do

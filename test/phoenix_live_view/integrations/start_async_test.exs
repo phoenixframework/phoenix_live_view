@@ -5,6 +5,8 @@ defmodule Phoenix.LiveView.StartAsyncTest do
   import Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.Endpoint
 
+  import ExUnit.CaptureIO
+
   @endpoint Endpoint
 
   setup do
@@ -65,7 +67,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       Process.register(self(), :start_async_trap_exit_test)
       {:ok, lv, _html} = live(conn, "/start_async?test=trap_exit")
 
-      assert render_async(lv, 200) =~ "result: :loading"
+      assert render_async(lv, 200) =~ "{:exit, :boom}"
       assert render(lv)
       assert_receive {:exit, _pid, :boom}, 1000
     end
@@ -98,6 +100,18 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       {:ok, lv, _html} = live(conn, "/start_async?test=put_flash")
 
       assert render_async(lv) =~ "flash: hello"
+    end
+
+    test "warns when accessing socket in function at runtime", %{conn: conn} do
+      warnings =
+        capture_io(:stderr, fn ->
+          {:ok, lv, _html} = live(conn, "/start_async?test=socket_warning")
+
+          render_async(lv)
+        end)
+
+      assert warnings =~
+               "you are accessing the LiveView Socket inside a function given to start_async"
     end
   end
 
