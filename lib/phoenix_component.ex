@@ -866,12 +866,8 @@ defmodule Phoenix.Component do
 
   ## Options
 
-  * `:session` - a map of binary keys with extra session data to be serialized and sent
-  to the client. All session data currently in the connection is automatically available
-  in LiveViews. You can use this option to provide extra data. Remember all session data is
-  serialized and sent to the client, so you should always keep the data in the session
-  to a minimum. For example, instead of storing a User struct, you should store the "user_id"
-  and load the User when the LiveView mounts.
+  * `:session` - a map of binary keys to merge onto any existing session data.
+  The merged map is passed to the LiveView but is otherwise *not* persisted.
 
   * `:container` - an optional tuple for the HTML tag and DOM attributes to be used for the
   LiveView container. For example: `{:li, style: "color: blue;"}`. By default it uses the module
