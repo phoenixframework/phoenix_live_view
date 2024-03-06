@@ -167,8 +167,6 @@ defmodule Phoenix.LiveView do
 
   alias Phoenix.LiveView.{Socket, LiveStream, Async}
 
-  require Phoenix.LiveView.Async
-
   @type unsigned_params :: map
 
   @doc """
