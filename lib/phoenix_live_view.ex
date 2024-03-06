@@ -100,6 +100,26 @@ defmodule Phoenix.LiveView do
          |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
+  > ### Warning {: .warning}
+  >
+  > When using async operations it is important to not pass the socket into the function
+  > as it will copy the whole socket struct to the Task process, which can be very expensive.
+  >
+  > Instead of:
+  >
+  > ```elixir
+  > assign_async(:org, fn -> {:ok, %{org: fetch_org(socket.assigns.slug)}} end)
+  > ```
+  >
+  > We should do:
+  >
+  > ```elixir
+  > slug = socket.assigns.slug
+  > assign_async(:org, fn -> {:ok, %{org: fetch_org(slug)}} end)
+  > ```
+  >
+  > See: https://hexdocs.pm/elixir/process-anti-patterns.html#sending-unnecessary-data
+
   The state of the async operation is stored in the socket assigns within an
   `Phoenix.LiveView.AsyncResult`. It carries the loading and failed states, as
   well as the result. For example, if we wanted to show the loading states in
