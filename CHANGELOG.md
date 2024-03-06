@@ -85,7 +85,7 @@
   * Fix click-away being called incorrectly on form submits
   * Fix inconsistencies between LiveViewTest and browser stream implementations
   * Fix phx-feedback-for being reapplied when there are multiple inputs with the same name
-  * Ensure phx-update="ignore" behaves consistently: ypdates from the server to the element's content and attributes are ignored, *except for data attributes*
+  * Ensure phx-update="ignore" behaves consistently: updates from the server to the element's content and attributes are ignored, *except for data attributes*
 
 ### Enhancements
   * Add `JS.toggle_class`
