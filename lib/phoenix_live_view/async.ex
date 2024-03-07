@@ -3,51 +3,47 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  # TODO: Remove conditional once we require Elixir v1.14+
-  if Version.match?(System.version(), ">= 1.14.0") do
-    defp warn(msg, env) do
-      IO.warn(msg, env)
-    end
-  else
-    defp warn(msg, _env) do
-      IO.warn(msg)
-    end
-  end
+  defp warn_socket_access(op, warn) do
+    warn.("""
+    you are accessing the LiveView Socket inside a function given to #{op}.
 
-  defp warn_socket_access(op, env) do
-    warn(
-      """
-      you are accessing the LiveView Socket inside a function given to #{op}.
+    This is an expensive operation because the whole socket is copied to the new process.
 
-      This is an expensive operation because the whole socket is copied to the new process.
+    Instead of:
 
-      Instead of:
+        #{op}(socket, :key, fn ->
+          do_something(socket.assigns.my_assign)
+        end)
 
-          #{op}(socket, :key, fn ->
-            do_something(socket.assigns.my_assign)
-          end)
+    You should do:
 
-      You should do:
+        my_assign = socket.assigns.my_assign
 
-          my_assign = socket.assigns.my_assign
+        #{op}(socket, :key, fn ->
+          do_something(my_assign)
+        end)
 
-          #{op}(socket, :key, fn ->
-            do_something(my_assign)
-          end)
-
-      For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
-      """,
-      env
-    )
+    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    """)
   end
 
   defp validate_function_env(func, op, env) do
     # prevent false positives, for example
     # start_async(socket, :foo, function_that_returns_the_anonymous_function(socket))
     if match?({:&, _, _}, func) or match?({:fn, _, _}, func) do
-      Macro.prewalk(Macro.expand(func, env), fn
+      Macro.prewalk(func, fn
         {:socket, meta, nil} ->
-          warn_socket_access(op, Keyword.take(meta, [:line, :column]) ++ [line: env.line, file: env.file])
+          warn_socket_access(op, fn msg ->
+            # TODO: Remove conditional once we require Elixir v1.14+
+            meta =
+              if Version.match?(System.version(), ">= 1.14.0") do
+                Keyword.take(meta, [:line, :column]) ++ [line: env.line, file: env.file]
+              else
+                []
+              end
+
+            IO.warn(msg, meta)
+          end)
 
         other ->
           other
@@ -61,7 +57,7 @@ defmodule Phoenix.LiveView.Async do
     {:env, variables} = Function.info(func, :env)
 
     if Enum.any?(variables, &match?(%Phoenix.LiveView.Socket{}, &1)) do
-      warn_socket_access(op, __ENV__)
+      warn_socket_access(op, fn msg -> IO.warn(msg) end)
     end
   end
 
