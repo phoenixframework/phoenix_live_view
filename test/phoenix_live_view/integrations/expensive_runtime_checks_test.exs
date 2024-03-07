@@ -12,21 +12,6 @@ defmodule Phoenix.LiveViewTest.ExpensiveRuntimeChecksTest do
 
   @endpoint Endpoint
 
-  setup_all do
-    # silence redefining module warnings
-    Application.put_env(:phoenix_live_view, :enable_expensive_runtime_checks, true)
-    base = Phoenix.LiveView.__info__(:compile)[:source] |> Path.dirname()
-
-    # TODO: can we make this better?
-    #       can we get rid of the redefining module warnings?
-    Code.compile_file(Path.join([base, "/phoenix_live_view/async.ex"]))
-
-    on_exit(fn ->
-      Application.put_env(:phoenix_live_view, :enable_expensive_runtime_checks, false)
-      Code.compile_file(Path.join([base, "/phoenix_live_view/async.ex"]))
-    end)
-  end
-
   setup do
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
   end
