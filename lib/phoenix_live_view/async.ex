@@ -27,6 +27,32 @@ defmodule Phoenix.LiveView.Async do
     """)
   end
 
+  # this is not private to prevent the unused function warning as we only
+  # call this function when enable_expensive_runtime_checks is set
+  def warn_assigns_access(op, warn) do
+    warn.("""
+    you are accessing an assigns map inside a function given to #{op}.
+
+    This is an expensive operation because the whole map is copied to the new process.
+
+    Instead of:
+
+        #{op}(socket, :key, fn ->
+          do_something(assigns.my_assign)
+        end)
+
+    You should do:
+
+        my_assign = assigns.my_assign
+
+        #{op}(socket, :key, fn ->
+          do_something(my_assign)
+        end)
+
+    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    """)
+  end
+
   defp validate_function_env(func, op, env) do
     # prevent false positives, for example
     # start_async(socket, :foo, function_that_returns_the_anonymous_function(socket))
@@ -57,8 +83,15 @@ defmodule Phoenix.LiveView.Async do
     defp validate_function_env(func, op) do
       {:env, variables} = Function.info(func, :env)
 
-      if Enum.any?(variables, &match?(%Phoenix.LiveView.Socket{}, &1)) do
-        warn_socket_access(op, fn msg -> IO.warn(msg) end)
+      cond do
+        Enum.any?(variables, &match?(%Phoenix.LiveView.Socket{}, &1)) ->
+          warn_socket_access(op, fn msg -> IO.warn(msg) end)
+
+        Enum.any?(variables, &match?(%{__changed__: _}, &1)) ->
+          warn_assigns_access(op, fn msg -> IO.warn(msg) end)
+
+        true ->
+          :ok
       end
     end
   else
