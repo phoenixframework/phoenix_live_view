@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.13
+
+### Enhancements
+  * Warn when accessing the socket in a function passed to assign_async / start_async
+
 ## 0.20.12 (2024-03-04)
 
 ### Bug fixes
