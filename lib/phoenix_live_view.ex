@@ -1928,10 +1928,8 @@ defmodule Phoenix.LiveView do
         send_update(parent, Component, data)
       end)
   """
-  def assign_async(%Socket{} = socket, key_or_keys, func, opts \\ [])
-      when (is_atom(key_or_keys) or is_list(key_or_keys)) and
-             is_function(func, 0) do
-    Async.assign_async(socket, key_or_keys, func, opts)
+  defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
+    Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)
   end
 
   @doc """
@@ -1943,6 +1941,10 @@ defmodule Phoenix.LiveView do
   of the caller LiveView or LiveComponent.
 
   The task is only started when the socket is connected.
+
+  ## Options
+
+    * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
 
   ## Examples
 
@@ -1965,8 +1967,8 @@ defmodule Phoenix.LiveView do
 
   See the moduledoc for more information.
   """
-  def start_async(%Socket{} = socket, name, func) when is_function(func, 0) do
-    Async.start_async(socket, name, func)
+  defmacro start_async(socket, name, func, opts \\ []) do
+    Async.start_async(socket, name, func, opts, __CALLER__)
   end
 
   @doc """
