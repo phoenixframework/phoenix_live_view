@@ -4,12 +4,57 @@ defmodule Phoenix.LiveView.AsyncTest do
 
   import ExUnit.CaptureIO
 
-  describe "async operations" do
+  describe "async operations - eval_quoted" do
     for fun <- [:assign_async, :start_async] do
       test "warns when passing socket to #{fun} function" do
         warnings =
           capture_io(:stderr, fn ->
-            defmodule AssignAsyncSocket do
+            fun = unquote(fun)
+
+            Code.eval_quoted(quote do
+              require Phoenix.LiveView
+
+              socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+
+              Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
+                socket.assigns.bar
+              end)
+            end)
+          end)
+
+        assert warnings =~
+                 "you are accessing the LiveView Socket inside a function given to #{unquote(fun)}"
+      end
+
+      test "does not warn when accessing socket outside of function passed to #{fun}" do
+        warnings =
+          capture_io(:stderr, fn ->
+            fun = unquote(fun)
+
+            Code.eval_quoted(quote do
+              require Phoenix.LiveView
+
+              socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+              bar = socket.assigns.bar
+
+              Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
+                bar
+              end)
+            end)
+          end)
+
+        refute warnings =~
+                 "you are accessing the LiveView Socket inside a function given to #{unquote(fun)}"
+      end
+    end
+  end
+
+  describe "async operations" do
+    for fun <- [:assign_async, :start_async] do
+      test "warns when passing socket to #{fun} function", %{test: test} do
+        warnings =
+          capture_io(:stderr, fn ->
+            defmodule Module.concat(AssignAsyncSocket, "Test#{:erlang.phash2(test)}") do
               use Phoenix.LiveView
 
               def mount(_params, _session, socket) do
@@ -26,10 +71,10 @@ defmodule Phoenix.LiveView.AsyncTest do
                  "you are accessing the LiveView Socket inside a function given to #{unquote(fun)}"
       end
 
-      test "does not warn when accessing socket outside of function passed to #{fun}" do
+      test "does not warn when accessing socket outside of function passed to #{fun}", %{test: test} do
         warnings =
           capture_io(:stderr, fn ->
-            defmodule AssignAsyncSocket do
+            defmodule Module.concat(AssignAsyncSocket, "Test#{:erlang.phash2(test)}") do
               use Phoenix.LiveView
 
               def mount(_params, _session, socket) do
@@ -49,10 +94,10 @@ defmodule Phoenix.LiveView.AsyncTest do
                  "you are accessing the LiveView Socket inside a function given to #{unquote(fun)}"
       end
 
-      test "does not warn when argument is not a function (#{fun})" do
+      test "does not warn when argument is not a function (#{fun})", %{test: test} do
         warnings =
           capture_io(:stderr, fn ->
-            defmodule AssignAsyncSocket do
+            defmodule Module.concat(AssignAsyncSocket, "Test#{:erlang.phash2(test)}") do
               use Phoenix.LiveView
 
               def mount(_params, _session, socket) do

@@ -58,7 +58,7 @@ defmodule Phoenix.LiveView.Async do
     # start_async(socket, :foo, function_that_returns_the_anonymous_function(socket))
     if match?({:&, _, _}, func) or match?({:fn, _, _}, func) do
       Macro.prewalk(func, fn
-        {:socket, meta, nil} ->
+        {:socket, meta, _} ->
           warn_socket_access(op, fn msg ->
             # TODO: Remove conditional once we require Elixir v1.14+
             meta =
