@@ -48,6 +48,8 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/assign_async", AssignAsyncLive
     live "/start_async", StartAsyncLive
 
+    live "/expensive-runtime-checks", ExpensiveRuntimeChecksLive
+
     # controller test
     get "/controller/:type", Controller, :incoming
     get "/widget", Controller, :widget

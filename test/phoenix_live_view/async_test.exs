@@ -9,19 +9,17 @@ defmodule Phoenix.LiveView.AsyncTest do
       test "warns when passing socket to #{fun} function" do
         warnings =
           capture_io(:stderr, fn ->
-            Code.eval_string("""
             defmodule AssignAsyncSocket do
               use Phoenix.LiveView
 
               def mount(_params, _session, socket) do
-                {:ok, #{unquote(fun)}(socket, :foo, fn ->
+                {:ok, unquote(fun)(socket, :foo, fn ->
                   do_something(socket.assigns)
                 end)}
               end
 
               defp do_something(_socket), do: :ok
             end
-            """)
           end)
 
         assert warnings =~
@@ -31,7 +29,6 @@ defmodule Phoenix.LiveView.AsyncTest do
       test "does not warn when accessing socket outside of function passed to #{fun}" do
         warnings =
           capture_io(:stderr, fn ->
-            Code.eval_string("""
             defmodule AssignAsyncSocket do
               use Phoenix.LiveView
 
@@ -39,14 +36,13 @@ defmodule Phoenix.LiveView.AsyncTest do
                 socket = assign(socket, :foo, :bar)
                 foo = socket.assigns.foo
 
-                {:ok, #{unquote(fun)}(socket, :foo, fn ->
+                {:ok, unquote(fun)(socket, :foo, fn ->
                   do_something(foo)
                 end)}
               end
 
               defp do_something(assigns), do: :ok
             end
-            """)
           end)
 
         refute warnings =~
@@ -56,14 +52,13 @@ defmodule Phoenix.LiveView.AsyncTest do
       test "does not warn when argument is not a function (#{fun})" do
         warnings =
           capture_io(:stderr, fn ->
-            Code.eval_string("""
             defmodule AssignAsyncSocket do
               use Phoenix.LiveView
 
               def mount(_params, _session, socket) do
                 socket = assign(socket, :foo, :bar)
 
-                {:ok, #{unquote(fun)}(socket, :foo, function_that_returns_the_func(socket))}
+                {:ok, unquote(fun)(socket, :foo, function_that_returns_the_func(socket))}
               end
 
               defp function_that_returns_the_func(socket) do
@@ -76,7 +71,6 @@ defmodule Phoenix.LiveView.AsyncTest do
 
               defp do_something(assigns), do: :ok
             end
-            """)
           end)
 
         refute warnings =~

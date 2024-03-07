@@ -53,12 +53,16 @@ defmodule Phoenix.LiveView.Async do
     :ok
   end
 
-  defp validate_function_env(func, op) do
-    {:env, variables} = Function.info(func, :env)
+  if Application.compile_env(:phoenix_live_view, :enable_expensive_runtime_checks, false) do
+    defp validate_function_env(func, op) do
+      {:env, variables} = Function.info(func, :env)
 
-    if Enum.any?(variables, &match?(%Phoenix.LiveView.Socket{}, &1)) do
-      warn_socket_access(op, fn msg -> IO.warn(msg) end)
+      if Enum.any?(variables, &match?(%Phoenix.LiveView.Socket{}, &1)) do
+        warn_socket_access(op, fn msg -> IO.warn(msg) end)
+      end
     end
+  else
+    defp validate_function_env(_func, _op), do: :ok
   end
 
   def start_async(socket, key, func, opts, env) do
