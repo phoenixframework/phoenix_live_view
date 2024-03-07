@@ -569,6 +569,17 @@ defmodule Phoenix.LiveView.ComponentsTest do
                ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" webkitdirectory>|
     end
 
+    test "renders optional capture attribute" do
+      assigns = %{
+        conf: %Phoenix.LiveView.UploadConfig{
+          entries: [%{preflighted?: false, done?: false, ref: "foo"}]
+        }
+      }
+
+      assert t2h(~H|<.live_file_input upload={@conf} capture="user" />|) ==
+               ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" capture="user">|
+    end
+
     test "sets accept from config" do
       assigns = %{
         conf: %Phoenix.LiveView.UploadConfig{
