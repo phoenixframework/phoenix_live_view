@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.Async do
               if Version.match?(System.version(), ">= 1.14.0") do
                 Keyword.take(meta, [:line, :column]) ++ [line: env.line, file: env.file]
               else
-                []
+                Macro.Env.stacktrace(env)
               end
 
             IO.warn(msg, meta)
