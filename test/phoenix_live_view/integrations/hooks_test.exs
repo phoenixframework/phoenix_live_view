@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.HooksTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest

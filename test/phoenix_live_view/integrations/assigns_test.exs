@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.AssignsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Plug.Conn
   import Phoenix.ConnTest
 
