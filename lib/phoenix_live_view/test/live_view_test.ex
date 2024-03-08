@@ -1203,9 +1203,11 @@ defmodule Phoenix.LiveViewTest do
   @doc false
   def __file_input__(view, selector, name, entries, builder) do
     cid = find_cid!(view, selector)
+
     for entry <- entries do
       content = entry[:content]
       size = entry[:size]
+
       if content && size && byte_size(content) != size do
         raise ArgumentError, """
         entry content size must match provided size.
@@ -1892,7 +1894,6 @@ defmodule Phoenix.LiveViewTest do
   redirect, the following will be returned:
 
     * if the navigate is a `live_patch`, the current view will be patched
-      {:error, {:redirect, %{to: url}}}
     * if the navigate is a `live_redirect`, this function will return
       `{:error, {:live_redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
@@ -1962,8 +1963,16 @@ defmodule Phoenix.LiveViewTest do
     %{proxy: {_ref, _topic, pid}} = upload.view
     monitor_ref = Process.monitor(pid)
 
-    case UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view)) do
-      {:ok, _} ->
+    try do
+      case UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view)) do
+        {:ok, _} ->
+          render(upload.view)
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    catch
+      :exit, reason ->
         receive do
           {:DOWN, ^monitor_ref, :process, _pid, {:shutdown, {:live_redirect, opts}}} ->
             {:error, {:live_redirect, opts}}
@@ -1971,11 +1980,8 @@ defmodule Phoenix.LiveViewTest do
           {:DOWN, ^monitor_ref, :process, _pid, {:shutdown, {:redirect, opts}}} ->
             {:error, {:redirect, opts}}
         after
-          0 -> render(upload.view)
+          0 -> exit(reason)
         end
-
-      {:error, reason} ->
-        {:error, reason}
     end
   end
 end
