@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.UploadExternalTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   @endpoint Phoenix.LiveViewTest.Endpoint
 
