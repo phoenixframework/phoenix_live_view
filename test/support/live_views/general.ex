@@ -401,6 +401,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
     {:ok,
      assign_async(socket, :data, fn ->
        Process.register(self(), :lv_exit)
+       send(:assign_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end
@@ -409,6 +410,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
     {:ok,
      assign_async(socket, :data, fn ->
        Process.register(self(), :cancel)
+       send(:assign_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end
@@ -484,6 +486,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
     {:ok,
      assign_async(socket, :lc_data, fn ->
        Process.register(self(), :lc_exit)
+       send(:assign_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end
@@ -492,6 +495,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
     {:ok,
      assign_async(socket, :lc_data, fn ->
        Process.register(self(), :lc_cancel)
+       send(:assign_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end
@@ -566,6 +570,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
      |> assign(result: :loading)
      |> start_async(:result_task, fn ->
        Process.register(self(), :start_async_exit)
+       send(:start_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end
@@ -576,6 +581,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
      |> assign(result: :loading)
      |> start_async(:result_task, fn ->
        Process.register(self(), :start_async_cancel)
+       send(:start_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end
@@ -724,6 +730,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
      |> assign(result: :loading)
      |> start_async(:result_task, fn ->
        Process.register(self(), :start_async_exit)
+       send(:start_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end
@@ -734,6 +741,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
      |> assign(result: :loading)
      |> start_async(:result_task, fn ->
        Process.register(self(), :start_async_cancel)
+       send(:start_async_test_process, :async_ready)
        Process.sleep(:infinity)
      end)}
   end

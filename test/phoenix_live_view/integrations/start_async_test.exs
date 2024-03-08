@@ -34,8 +34,14 @@ defmodule Phoenix.LiveView.StartAsyncTest do
     end
 
     test "lv exit brings down asyncs", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=lv_exit")
       lv_ref = Process.monitor(lv.pid)
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:start_async_exit))
       send(lv.pid, :boom)
 
@@ -44,7 +50,13 @@ defmodule Phoenix.LiveView.StartAsyncTest do
     end
 
     test "cancel_async", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=cancel")
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:start_async_cancel))
 
       assert render(lv) =~ "result: :loading"
@@ -79,19 +91,19 @@ defmodule Phoenix.LiveView.StartAsyncTest do
     test "navigate", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=navigate")
 
-      assert_redirect lv, "/start_async?test=ok"
+      assert_redirect(lv, "/start_async?test=ok")
     end
 
     test "patch", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=patch")
 
-      assert_patch lv, "/start_async?test=ok"
+      assert_patch(lv, "/start_async?test=ok")
     end
 
     test "redirect", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=redirect")
 
-      assert_redirect lv, "/not_found"
+      assert_redirect(lv, "/not_found")
     end
 
     test "put_flash", %{conn: conn} do
@@ -123,9 +135,14 @@ defmodule Phoenix.LiveView.StartAsyncTest do
     end
 
     test "lv exit brings down asyncs", %{conn: conn} do
-      Process.flag(:trap_exit, true)
+      Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_lv_exit")
       lv_ref = Process.monitor(lv.pid)
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:start_async_exit))
       send(lv.pid, :boom)
 
@@ -134,7 +151,13 @@ defmodule Phoenix.LiveView.StartAsyncTest do
     end
 
     test "cancel_async", %{conn: conn} do
+      Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_cancel")
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:start_async_cancel))
 
       Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StartAsyncLive.LC,
@@ -164,25 +187,25 @@ defmodule Phoenix.LiveView.StartAsyncTest do
     test "navigate", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_navigate")
 
-      assert_redirect lv, "/start_async?test=ok"
+      assert_redirect(lv, "/start_async?test=ok")
     end
 
     test "patch", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_patch")
 
-      assert_patch lv, "/start_async?test=ok"
+      assert_patch(lv, "/start_async?test=ok")
     end
 
     test "redirect", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_redirect")
 
-      assert_redirect lv, "/not_found"
+      assert_redirect(lv, "/not_found")
     end
 
     test "navigate with flash", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_navigate_flash")
 
-      flash = assert_redirect lv, "/start_async?test=ok"
+      flash = assert_redirect(lv, "/start_async?test=ok")
       assert %{"info" => "hello"} = flash
     end
   end
