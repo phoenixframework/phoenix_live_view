@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       Process.register(self(), :start_async_trap_exit_test)
       {:ok, lv, _html} = live(conn, "/start_async?test=trap_exit")
 
-      assert render_async(lv, 200) =~ "result: :loading"
+      assert render_async(lv, 200) =~ "{:exit, :boom}"
       assert render(lv)
       assert_receive {:exit, _pid, :boom}, 1000
     end
