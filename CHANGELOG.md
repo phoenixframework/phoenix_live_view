@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.20.13
+## 0.20.13 (2024-03-12)
+
+### Bug fixes
+  * Fix LiveComponent rendering bug causing elements to disappear when a LiveComponent child is removed and added back by the server
 
 ### Enhancements
   * Warn when accessing the socket in a function passed to assign_async / start_async
