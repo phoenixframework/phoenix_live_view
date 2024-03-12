@@ -17,6 +17,8 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   debug_errors: false
 )
 
+Process.register(self(), :e2e_helper)
+
 defmodule Phoenix.LiveViewTest.E2E.ErrorHTML do
   def render(template, _), do: Phoenix.Controller.status_message_from_template(template)
 end
@@ -28,10 +30,11 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script src="/assets/phoenix/phoenix.min.js"></script>
-    <script src="/assets/phoenix_live_view/phoenix_live_view.js"></script>
-    <script>
+    <script type="module">
+      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
+
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
       window.liveSocket = liveSocket
     </script>
@@ -118,6 +121,7 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   plug Plug.Static, from: System.tmp_dir!(), at: "/tmp"
 
   plug :health_check
+  plug :halt
 
   plug Plug.Parsers,
     parsers: [:urlencoded, :multipart, :json],
@@ -132,6 +136,14 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
   end
 
   defp health_check(conn, _opts), do: conn
+
+  defp halt(%{request_path: "/halt"}, _opts) do
+    send(:e2e_helper, :halt)
+    # this ensure playwright waits until the server force stops
+    Process.sleep(:infinity)
+  end
+
+  defp halt(conn, _opts), do: conn
 end
 
 {:ok, _} =
@@ -143,4 +155,15 @@ end
     strategy: :one_for_one
   )
 
-Process.sleep(:infinity)
+unless IEx.started?() do
+  # when running the test server manually, we halt after
+  # reading from stdin
+  spawn(fn ->
+    IO.read(:stdio, :line)
+    send(:e2e_helper, :halt)
+  end)
+
+  receive do
+    :halt -> :ok
+  end
+end
