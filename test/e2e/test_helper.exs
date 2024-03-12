@@ -1,5 +1,5 @@
 Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
-  http: [ip: {127, 0, 0, 1}, port: 4000],
+  http: [ip: {127, 0, 0, 1}, port: 4004],
   # TODO: switch to bandit when Phoenix 1.7 is used
   # adapter: Bandit.PhoenixAdapter,
   server: true,
@@ -98,6 +98,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     live "/2965", Issue2965Live
     live "/3047/a", Issue3047ALive
     live "/3047/b", Issue3047BLive
+    live "/3169", Issue3169Live
   end
 end
 
@@ -143,4 +144,5 @@ end
     strategy: :one_for_one
   )
 
+IO.puts "Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}"
 Process.sleep(:infinity)

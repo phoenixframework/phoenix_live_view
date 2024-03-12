@@ -22,9 +22,9 @@ test("can navigate between LiveViews in the same live session over websocket", a
   await syncLV(page);
 
   await expect(networkEvents).toEqual([
-    { method: "GET", url: "http://localhost:4000/navigation/a" },
-    { method: "GET", url: "http://localhost:4000/assets/phoenix/phoenix.min.js" },
-    { method: "GET", url: "http://localhost:4000/assets/phoenix_live_view/phoenix_live_view.js" },
+    { method: "GET", url: "http://localhost:4004/navigation/a" },
+    { method: "GET", url: "http://localhost:4004/assets/phoenix/phoenix.min.js" },
+    { method: "GET", url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.js" },
   ]);
 
   await expect(webSocketEvents).toEqual([
@@ -126,7 +126,7 @@ test("falls back to http navigation when navigating between live sessions", asyn
   await page.getByRole("link", { name: "LiveView (other session)" }).click();
   await syncLV(page);
 
-  await expect(networkEvents).toEqual(expect.arrayContaining([{ method: "GET", url: "http://localhost:4000/stream" }]));
+  await expect(networkEvents).toEqual(expect.arrayContaining([{ method: "GET", url: "http://localhost:4004/stream" }]));
   await expect(webSocketEvents).toEqual(expect.arrayContaining([
     { type: "sent", payload: expect.stringContaining("phx_leave") },
     { type: "sent", payload: expect.stringContaining("phx_join") },

@@ -26,7 +26,7 @@ defmodule Phoenix.LiveViewTest.Endpoint do
   socket "/live", Phoenix.LiveView.Socket
 
   defoverridable url: 0, script_name: 0, config: 1, config: 2, static_path: 1
-  def url(), do: "http://localhost:4000"
+  def url(), do: "http://localhost:4004"
   def script_name(), do: []
   def static_path(path), do: "/static" <> path
   def config(:live_view), do: [signing_salt: "112345678212345678312345678412"]
