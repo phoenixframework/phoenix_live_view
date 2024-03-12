@@ -220,16 +220,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     @behaviour Mix.Tasks.Format
   end
 
-  # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
-  # @impl Mix.Tasks.Format
-  @doc false
+  @impl Mix.Tasks.Format
   def features(_opts) do
     [sigils: [:H], extensions: [".heex"]]
   end
 
-  # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
-  # @impl Mix.Tasks.Format
-  @doc false
+  @impl Mix.Tasks.Format
   def format(source, opts) do
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
     newlines = :binary.matches(source, ["\r\n", "\n"])

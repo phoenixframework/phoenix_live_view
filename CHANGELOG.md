@@ -7,6 +7,9 @@
 
 ## 0.20.12 (2024-03-04)
 
+### Enhancements
+  * Phoenix LiveView requires Elixir v1.13+
+
 ### Bug fixes
   * Do not send Telemetry metadata as Logger event, this avoids the metadata from being accidentally copied to other processes
   * Ensure LiveViewTest does not crash on IDs with foreign characters, such as question marks
