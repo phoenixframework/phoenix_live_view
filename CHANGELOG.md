@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.14 (2024-03-13)
+
+### Bug fixes
+  * Fix warning caused by optional Floki dependency
+
 ## 0.20.13 (2024-03-12)
 
 ### Bug fixes
