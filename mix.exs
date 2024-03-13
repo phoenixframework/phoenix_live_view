@@ -11,6 +11,7 @@ defmodule Phoenix.LiveView.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
+      xref: [exclude: [Floki]],
       package: package(),
       deps: deps(),
       aliases: aliases(),
