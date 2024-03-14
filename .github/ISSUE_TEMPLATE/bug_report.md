@@ -22,7 +22,10 @@ assignees: ''
 Describe the actual behaviour. If you are seeing an error, include the full message and stacktrace. 
 
 Also please consider providing a single file app that reproduces the behaviour, you can start here:
-https://github.com/wojtekmach/mix_install_examples/blob/main/phoenix_live_view.exs
+https://github.com/phoenixframework/phoenix_live_view/blob/main/.github/single-file-samples/main.exs
+
+For more examples, you can have a look at the directory:
+https://github.com/phoenixframework/phoenix_live_view/blob/main/.github/single-file-samples/
 -->
 
 ### Expected behavior
