@@ -479,7 +479,6 @@ let DOM = {
     if(!DOM.isTextualInput(focused)){ return }
 
     let wasFocused = focused.matches(":focus")
-    if(focused.readOnly){ focused.blur() }
     if(!wasFocused){ focused.focus() }
     if(this.hasSelectionRange(focused)){
       focused.setSelectionRange(selectionStart, selectionEnd)
