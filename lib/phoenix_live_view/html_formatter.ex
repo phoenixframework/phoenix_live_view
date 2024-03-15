@@ -245,9 +245,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
           raise ParseError, line: line, column: column, file: file, description: message
       end
 
-    # If the opening delimiter is a single character, such as ~H"...",
+    # If the opening delimiter is a single character, such as ~H"...", or the formatted code is empty,
     # do not add trailing newline.
-    newline = if match?(<<_>>, opts[:opening_delimiter]), do: [], else: ?\n
+    newline = if match?(<<_>>, opts[:opening_delimiter]) or formatted == [], do: [], else: ?\n
 
     # TODO: Remove IO.iodata_to_binary/1 call on Elixir v1.14+
     IO.iodata_to_binary([formatted, newline])

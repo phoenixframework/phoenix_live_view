@@ -2063,6 +2063,14 @@ if Version.match?(System.version(), ">= 1.13.0") do
       )
     end
 
+    test "does not format when empty" do
+      assert_formatter_doesnt_change("")
+
+      assert_formatter_doesnt_change("", opening_delimiter: "\"")
+
+      assert_formatter_doesnt_change("", opening_delimiter: "\"\"\"")
+    end
+
     # TODO: Remove this `if` when we require Elixir 1.14+
     if function_exported?(EEx, :tokenize, 2) do
       test "handle EEx comments" do
