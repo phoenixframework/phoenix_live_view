@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.AsyncResult do
   @moduledoc ~S'''
-  Provides a datastructure for tracking the state of an async assign.
+  Provides a data structure for tracking the state of an async assign.
 
   See the `Async Operations` section of the `Phoenix.LiveView` docs for more information.
 
