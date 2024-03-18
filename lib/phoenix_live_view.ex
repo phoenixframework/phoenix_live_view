@@ -1799,7 +1799,7 @@ defmodule Phoenix.LiveView do
 
   Behaves just like `stream_delete/3`, but accept the precomputed DOM id,
   which allows deleting from a stream without fetching or building the original
-  stream datas tructure.
+  stream data structure.
 
   ## Examples
 
