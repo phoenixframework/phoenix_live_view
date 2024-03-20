@@ -204,7 +204,8 @@ The above life-cycle callbacks have in-scope access to the following attributes:
     to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is
     defined in, where its value can be either a query selector or an actual DOM element. If the query selector returns
     more than one element it will send the event to all of them, even if all the elements are in the same LiveComponent
-    or LiveView.
+    or LiveView. `pushEventTo` supports passing the node element e.g. `this.el` instead of selector e.g. `"#" + this.el.id`
+    as the first parameter for target.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server
   * `upload(name, files)` - method to inject a list of file-like objects into an uploader.
   * `uploadTo(selectorOrTarget, name, files)` - method to inject a list of file-like objects into an uploader.
