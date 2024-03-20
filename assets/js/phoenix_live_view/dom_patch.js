@@ -198,7 +198,7 @@ export default class DOMPatch {
           if(DOM.isPhxSticky(fromEl)){ return false }
           if(DOM.isIgnored(fromEl, phxUpdate) || (fromEl.form && fromEl.form.isSameNode(externalFormTriggered))){
             this.trackBefore("updated", fromEl, toEl)
-            DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
+            DOM.mergeAttrs(fromEl, toEl, {isIgnored: DOM.isIgnored(fromEl, phxUpdate)})
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
             return false
