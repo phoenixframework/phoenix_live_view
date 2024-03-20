@@ -312,8 +312,8 @@ Hooks.Chart = {
 ```
 
 Events pushed from the server via `push_event` are global and will be dispatched
-to all active hooks on the client who are handling that event. If you need to scope events 
-(for example when pushing from a live component that has siblings on the current live view), 
+to all active hooks on the client who are handling that event. If you need to scope events
+(for example when pushing from a live component that has siblings on the current live view),
 then this must be done by namespacing them:
 
     def update(%{id: id, points: points} = assigns, socket) do

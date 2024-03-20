@@ -108,7 +108,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(
                ~H|<.link href="/users" method="post" csrf_token="123" data-confirm="are you sure?">delete</.link>|
              ) ==
-               ~X"<a href=\"/users\" data-method=\"post\" data-csrf=\"123\" data-to=\"/users\" data-confirm=\"are you sure?\">delete</a>"
+               ~X|<a href="/users" data-method="post" data-csrf="123" data-to="/users" data-confirm="are you sure?">delete</a>|
     end
 
     test "js schemes" do

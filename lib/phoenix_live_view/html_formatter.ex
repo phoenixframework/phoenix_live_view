@@ -220,16 +220,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     @behaviour Mix.Tasks.Format
   end
 
-  # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
-  # @impl Mix.Tasks.Format
-  @doc false
+  @impl Mix.Tasks.Format
   def features(_opts) do
     [sigils: [:H], extensions: [".heex"]]
   end
 
-  # TODO: Add it back after versions before Elixir 1.13 are no longer supported.
-  # @impl Mix.Tasks.Format
-  @doc false
+  @impl Mix.Tasks.Format
   def format(source, opts) do
     line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
     newlines = :binary.matches(source, ["\r\n", "\n"])
@@ -249,9 +245,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
           raise ParseError, line: line, column: column, file: file, description: message
       end
 
-    # If the opening delimiter is a single character, such as ~H"...",
+    # If the opening delimiter is a single character, such as ~H"...", or the formatted code is empty,
     # do not add trailing newline.
-    newline = if match?(<<_>>, opts[:opening_delimiter]), do: [], else: ?\n
+    newline = if match?(<<_>>, opts[:opening_delimiter]) or formatted == [], do: [], else: ?\n
 
     # TODO: Remove IO.iodata_to_binary/1 call on Elixir v1.14+
     IO.iodata_to_binary([formatted, newline])

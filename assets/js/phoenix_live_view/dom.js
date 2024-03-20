@@ -70,7 +70,8 @@ let DOM = {
     let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
     let isDownload = (e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download"))
     let isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank"
-    return wantsNewTab || isTargetBlank || isDownload
+    let isTargetNamedTab = e.target.hasAttribute("target") && !e.target.getAttribute("target").startsWith("_")
+    return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab
   },
 
   isUnloadableFormSubmit(e){
@@ -138,20 +139,27 @@ let DOM = {
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
   },
 
-  findParentCIDs(node, cids){
-    let initial = new Set(cids)
-    let parentCids =
-      cids.reduce((acc, cid) => {
-        let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`
+  findExistingParentCIDs(node, cids){
+    // we only want to find parents that exist on the page
+    // if a cid is not on the page, the only way it can be added back to the page
+    // is if a parent adds it back, therefore if a cid does not exist on the page,
+    // we should not try to render it by itself (because it would be rendered twice,
+    // one by the parent, and a second time by itself)
+    let parentCids = new Set()
+    let childrenCids = new Set()
 
-        this.filterWithinSameLiveView(this.all(node, selector), node)
+    cids.forEach(cid => {
+      this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach(parent => {
+        parentCids.add(cid)
+        this.all(parent, `[${PHX_COMPONENT}]`)
           .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
-          .forEach(childCID => acc.delete(childCID))
+          .forEach(childCID => childrenCids.add(childCID))
+      })
+    })
 
-        return acc
-      }, initial)
+    childrenCids.forEach(childCid => parentCids.delete(childCid))
 
-    return parentCids.size === 0 ? new Set(cids) : parentCids
+    return parentCids
   },
 
   filterWithinSameLiveView(nodes, parent){

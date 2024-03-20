@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.EventTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView.EventTest do
 
       assert_push_event(view, "my-event", %{one: 1})
       assert_push_event(view, "my-event", %{one: 2})
-      assert_redirected(view, "/events")
+      assert_redirect(view, "/events")
     end
 
     test "sends updates with no assigns diff", %{conn: conn} do

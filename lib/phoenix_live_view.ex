@@ -1429,7 +1429,8 @@ defmodule Phoenix.LiveView do
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, `:handle_async`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
-  > Note: only `:after_render` hooks are currently supported in LiveComponents.
+  > Note: only `:after_render` and `:handle_event` hooks are currently supported in
+  > LiveComponents.
 
   ## Return Values
 
@@ -1787,7 +1788,7 @@ defmodule Phoenix.LiveView do
       end
 
   See `stream_delete_by_dom_id/3` to remove an item without requiring the
-  original datastructure.
+  original data structure.
   """
   def stream_delete(%Socket{} = socket, name, item) do
     update_stream(socket, name, &LiveStream.delete_item(&1, item))
@@ -1798,7 +1799,7 @@ defmodule Phoenix.LiveView do
 
   Behaves just like `stream_delete/3`, but accept the precomputed DOM id,
   which allows deleting from a stream without fetching or building the original
-  stream datastructure.
+  stream data structure.
 
   ## Examples
 

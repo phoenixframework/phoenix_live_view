@@ -1209,18 +1209,10 @@ defmodule Phoenix.LiveView.TagEngine do
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 
   defp actual_component_module(env, fun) do
-    case lookup_import(env, {fun, 1}) do
+    case Macro.Env.lookup_import(env, {fun, 1}) do
       [{_, module} | _] -> module
       _ -> env.module
     end
-  end
-
-  # TODO: Use Macro.Env.lookup_import/2 when we require Elixir v1.13+
-  defp lookup_import(%Macro.Env{functions: functions, macros: macros}, {name, arity} = pair)
-       when is_atom(name) and is_integer(arity) do
-    f = for {mod, pairs} <- functions, :ordsets.is_element(pair, pairs), do: {:function, mod}
-    m = for {mod, pairs} <- macros, :ordsets.is_element(pair, pairs), do: {:macro, mod}
-    f ++ m
   end
 
   defp remove_phx_no_break(attrs) do

@@ -544,7 +544,7 @@ export default class View {
     // Otherwise, patch entire LV container.
     if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
-        let parentCids = DOM.findParentCIDs(this.el, this.rendered.componentCIDs(diff))
+        let parentCids = DOM.findExistingParentCIDs(this.el, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
           if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID)){ phxChildrenAdded = true }
         })
