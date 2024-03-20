@@ -668,7 +668,8 @@ var LiveView = (() => {
       let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || e.button && e.button === 1;
       let isDownload = e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download");
       let isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank";
-      return wantsNewTab || isTargetBlank || isDownload;
+      let isTargetNamedTab = e.target.hasAttribute("target") && !e.target.getAttribute("target").startsWith("_");
+      return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab;
     },
     isUnloadableFormSubmit(e) {
       let isDialogSubmit = e.target && e.target.getAttribute("method") === "dialog" || e.submitter && e.submitter.getAttribute("formmethod") === "dialog";
@@ -1037,9 +1038,6 @@ var LiveView = (() => {
         return;
       }
       let wasFocused = focused.matches(":focus");
-      if (focused.readOnly) {
-        focused.blur();
-      }
       if (!wasFocused) {
         focused.focus();
       }
@@ -1088,7 +1086,7 @@ var LiveView = (() => {
         container.childNodes.forEach((childNode) => {
           if (!childNode.id) {
             let isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue.trim() === "";
-            if (!isEmptyTextNode) {
+            if (!isEmptyTextNode && childNode.nodeType !== Node.COMMENT_NODE) {
               logError(`only HTML element tags with an id are allowed inside containers with phx-update.
 
 removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
@@ -2296,7 +2294,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             if (dom_default.isIgnored(fromEl, phxUpdate) || fromEl.form && fromEl.form.isSameNode(externalFormTriggered)) {
               this.trackBefore("updated", fromEl, toEl);
-              dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
+              dom_default.mergeAttrs(fromEl, toEl, { isIgnored: dom_default.isIgnored(fromEl, phxUpdate) });
               updates.push(fromEl);
               dom_default.applyStickyOperations(fromEl);
               return false;
