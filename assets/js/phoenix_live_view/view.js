@@ -818,10 +818,12 @@ export default class View {
     let disableWith = this.binding(PHX_DISABLE_WITH)
     if(opts.loading){ elements = elements.concat(DOM.all(document, opts.loading))}
 
-    elements.forEach(el => {
-      el.classList.add(`phx-${event}-loading`)
+    for(let el of elements){
       el.setAttribute(PHX_REF, newRef)
       el.setAttribute(PHX_REF_SRC, this.el.id)
+      if(opts.submitter && !(el === opts.submitter || el === opts.form)){ continue }
+
+      el.classList.add(`phx-${event}-loading`)
       let disableText = el.getAttribute(disableWith)
       if(disableText !== null){
         if(!el.getAttribute(PHX_DISABLE_WITH_RESTORE)){
@@ -832,7 +834,7 @@ export default class View {
         el.setAttribute(PHX_DISABLED, el.getAttribute(PHX_DISABLED) || el.disabled)
         el.setAttribute("disabled", "")
       }
-    })
+    }
     return [newRef, elements, opts]
   }
 
@@ -1028,7 +1030,7 @@ export default class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply){
-    let refGenerator = () => this.disableForm(formEl, opts)
+    let refGenerator = () => this.disableForm(formEl, {...opts, form: formEl, submitter: submitter})
     let cid = this.targetComponentID(formEl, targetCtx)
     if(LiveUploader.hasUploadsInProgress(formEl)){
       let [ref, _els] = refGenerator()

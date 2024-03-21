@@ -1,5 +1,7 @@
 var LiveView = (() => {
   var __defProp = Object.defineProperty;
+  var __defProps = Object.defineProperties;
+  var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
   var __getOwnPropSymbols = Object.getOwnPropertySymbols;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __propIsEnum = Object.prototype.propertyIsEnumerable;
@@ -15,6 +17,7 @@ var LiveView = (() => {
       }
     return a;
   };
+  var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
   var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
   var __objRest = (source, exclude) => {
     var target = {};
@@ -3653,10 +3656,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (opts.loading) {
         elements = elements.concat(dom_default.all(document, opts.loading));
       }
-      elements.forEach((el) => {
-        el.classList.add(`phx-${event}-loading`);
+      for (let el of elements) {
         el.setAttribute(PHX_REF, newRef);
         el.setAttribute(PHX_REF_SRC, this.el.id);
+        if (opts.submitter && !(el === opts.submitter || el === opts.form)) {
+          continue;
+        }
+        el.classList.add(`phx-${event}-loading`);
         let disableText = el.getAttribute(disableWith);
         if (disableText !== null) {
           if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
@@ -3668,7 +3674,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           el.setAttribute(PHX_DISABLED, el.getAttribute(PHX_DISABLED) || el.disabled);
           el.setAttribute("disabled", "");
         }
-      });
+      }
       return [newRef, elements, opts];
     }
     componentID(el) {
@@ -3859,7 +3865,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts);
     }
     pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-      let refGenerator = () => this.disableForm(formEl, opts);
+      let refGenerator = () => this.disableForm(formEl, __spreadProps(__spreadValues({}, opts), { form: formEl, submitter }));
       let cid = this.targetComponentID(formEl, targetCtx);
       if (LiveUploader.hasUploadsInProgress(formEl)) {
         let [ref, _els] = refGenerator();
