@@ -2922,6 +2922,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   };
 
   // js/phoenix_live_view/view.js
+  var prependFormDataKey = (key, prefix) => {
+    let isArray = key.endsWith("[]");
+    let baseKey = isArray ? key.slice(0, -2) : key;
+    baseKey = baseKey.replace(/(\w+)(\]?$)/, `${prefix}$1$2`);
+    if (isArray) {
+      baseKey += "[]";
+    }
+    return baseKey;
+  };
   var serializeForm = (form, metadata, onlyNames = []) => {
     const _a = metadata, { submitter } = _a, meta = __objRest(_a, ["submitter"]);
     let injectedElement;
@@ -2946,8 +2955,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     });
     toRemove.forEach((key) => formData.delete(key));
     const params = new URLSearchParams();
+    let elements = Array.from(form.elements);
     for (let [key, val] of formData.entries()) {
       if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
+        let input = elements.find((input2) => input2.name === key);
+        let isUnused = !(dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
+        if (isUnused && !(submitter && submitter.name == key)) {
+          params.append(prependFormDataKey(key, "_unused_"), "");
+        }
         params.append(key, val);
       }
     }
