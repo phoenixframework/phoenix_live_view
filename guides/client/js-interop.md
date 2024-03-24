@@ -224,6 +224,9 @@ like this:
 Then a hook callback object could be defined and passed to the socket:
 
 ```javascript
+/**
+ * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+ */
 let Hooks = {}
 Hooks.PhoneNumber = {
   mounted() {
@@ -282,6 +285,9 @@ For example, to implement infinite scrolling, one can pass the current page usin
 And then in the client:
 
 ```javascript
+/**
+ * @type {import("phoenix_live_view").ViewHook}
+ */
 Hooks.InfiniteScroll = {
   page() { return this.el.dataset.page },
   mounted(){
@@ -305,6 +311,9 @@ However, the data attribute approach is not a good approach if you need to frequ
 And then on the client:
 
 ```javascript
+/**
+ * @type {import("phoenix_live_view").ViewHook}
+ */
 Hooks.Chart = {
   mounted(){
     this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
