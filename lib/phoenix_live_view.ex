@@ -1728,6 +1728,7 @@ defmodule Phoenix.LiveView do
 
   @doc """
   Inserts a new item or updates an existing item in the stream.
+
   Returns an updated `socket`.
 
   By default, the item is appended to the parent DOM container.
@@ -1806,6 +1807,7 @@ defmodule Phoenix.LiveView do
 
   @doc ~S'''
   Deletes an item from the stream given its computed DOM id.
+
   Returns an updated `socket`.
 
   Behaves just like `stream_delete/3`, but accept the precomputed DOM id,
