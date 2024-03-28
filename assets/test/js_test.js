@@ -718,4 +718,32 @@ describe("JS", () => {
     })
   })
 
+  describe("focus", () => {
+    test("works like a stack", () => {
+      let view = setupView(`
+      <div id="modal1" tabindex="0" class="modal">modal 1</div>
+      <div id="modal2" tabindex="0" class="modal">modal 2</div>
+      <div id="push1" phx-click='[["push_focus", {"to": "#modal1"}]]'></div>
+      <div id="push2" phx-click='[["push_focus", {"to": "#modal2"}]]'></div>
+      <div id="pop" phx-click='[["pop_focus", {}]]'></div>
+      `)
+      let modal1 = document.querySelector("#modal1")
+      let modal2 = document.querySelector("#modal2")
+      let push1 = document.querySelector("#push1")
+      let push2 = document.querySelector("#push2")
+      let pop = document.querySelector("#pop")
+
+      JS.exec("click", push1.getAttribute("phx-click"), view, push1)
+      JS.exec("click", push2.getAttribute("phx-click"), view, push2)
+
+      JS.exec("click", pop.getAttribute("phx-click"), view, pop)
+      jest.runAllTimers()
+      expect(document.activeElement).toBe(modal2)
+
+      JS.exec("click", pop.getAttribute("phx-click"), view, pop)
+      jest.runAllTimers()
+      expect(document.activeElement).toBe(modal1)
+    })
+  })
+
 })
