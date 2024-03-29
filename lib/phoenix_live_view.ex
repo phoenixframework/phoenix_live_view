@@ -1734,8 +1734,7 @@ defmodule Phoenix.LiveView do
   By default, the item is appended to the parent DOM container.
   The `:at` option may be provided to insert an item at a particular index in
   the collection on the client. If the item already exists in the parent DOM
-  container then it will be updated. In this case the `:at` option will have no
-  effect.
+  container then it will be updated.
 
   See `stream/4` for inserting multiple items at once.
 
