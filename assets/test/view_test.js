@@ -208,41 +208,41 @@ describe("View + DOM", function(){
     view.pushInput(input, el, null, "validate", {_target: input.name})
   })
 
-  test("formsForRecovery", function(){
+  test("getFormsForRecovery", function(){
     let view, html, liveSocket = new LiveSocket("/live", Socket)
 
     html = "<form id=\"my-form\" phx-change=\"cg\"><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     expect(view.joinCount).toBe(0)
-    expect(view.formsForRecovery(html).length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     view.joinCount++
-    expect(view.formsForRecovery(html).length).toBe(1)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(1)
 
     view.joinCount++
-    expect(view.formsForRecovery(html).length).toBe(1)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(1)
 
     html = "<form phx-change=\"cg\" phx-auto-recover=\"ignore\"><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
-    expect(view.formsForRecovery().length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     html = "<form><input name=\"foo\"></form>"
-    view = new View(liveViewDOM(html), liveSocket)
+    view = new View(liveViewDOM(), liveSocket)
     view.joinCount = 2
-    expect(view.formsForRecovery().length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     html = "<form phx-change=\"cg\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
-    expect(view.formsForRecovery().length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     html = "<form id='my-form' phx-change='[[\"push\",{\"event\":\"update\",\"target\":1}]]'><input name=\"foo\" /></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 1
-    const newForms = view.formsForRecovery(html)
-    expect(newForms.length).toBe(1)
-    expect(newForms[0][0].getAttribute('phx-change')).toBe('[[\"push\",{\"event\":\"update\",\"target\":1}]]')
+    const newForms = view.getFormsForRecovery()
+    expect(Object.keys(newForms).length).toBe(1)
+    expect(newForms["my-form"].getAttribute('phx-change')).toBe('[[\"push\",{\"event\":\"update\",\"target\":1}]]')
   })
 
   describe("submitForm", function(){
