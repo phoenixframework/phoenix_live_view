@@ -255,7 +255,7 @@ browser and look at the console or networks tab to view the error logs.
 Most S3 compatible platforms like Cloudflare R2 don't support `POST` when
 uploading files so we need to use `PUT` with a signed URL instead of the
 signed `POST`and send the file straight to the service, to do so we need to
-change the `presign_url/2` function and the `Uploaders.S3` that does the upload.
+change the `presign_upload/2` function and the `Uploaders.S3` that does the upload.
 
 The new `presign_upload/2`:
 
