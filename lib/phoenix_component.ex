@@ -2337,46 +2337,53 @@ defmodule Phoenix.Component do
   The markup for such a schema and association would look like this:
 
   ```heex
-  <.inputs_for :let={ef} field={@form[:emails]}>
-    <input type="hidden" name="mailing_list[emails_sort][]" value={ef.index} />
-    <.input type="text" field={ef[:email]} placeholder="email" />
-    <.input type="text" field={ef[:name]} placeholder="name" />
-    <button
-      name="mailing_list[emails_drop][]"
-      value={ef.index}
-      phx-click={JS.dispatch("change")}
-    >
-      <.icon name="hero-x-mark" class="w-6 h-6 relative top-2" />
-    </button>
-  </.inputs_for>
+  <.form for={@form} phx-change="validate">
+    <.inputs_for :let={ef} field={@form[:emails]}>
+      <input type="hidden" name="mailing_list[emails_sort][]" value={ef.index} />
+      <.input type="text" field={ef[:email]} placeholder="email" />
+      <.input type="text" field={ef[:name]} placeholder="name" />
 
-  <input type="hidden" name="mailing_list[emails_drop][]" />
+      <label>
+        <input
+          type="checkbox"
+          class="hidden"
+          name="mailing_list[emails_drop][]"
+          value={ef.index}
+        />
+        <.icon name="hero-x-mark" class="w-6 h-6 relative top-2" />
+      </label>
+    </.inputs_for>
 
-  <button type="button" name="mailing_list[emails_sort][]" value="new" phx-click={JS.dispatch("change")}>
-    add more
-  </button>
+    <input type="checkbox class="hidden" name="mailing_list[emails_drop][]" />
+
+    <label>
+      <input
+        type="checkbox"
+        class="hidden"
+        name="mailing_list[emails_sort][]"
+        value="new"
+      /> add more
+    </label>
+  </.form>
   ```
 
   We used `inputs_for` to render inputs for the `:emails` association, which
   contains an email address and name input for each child. Within the nested inputs,
   we render a hidden `mailing_list[emails_sort][]` input, which is set to the index of the
   given child. This tells Ecto's cast operation how to sort existing children, or
-  where to insert new children. Next, we render the email and name inputs as usual.
-  Then we render a button containing the "delete" text with the name `mailing_list[emails_drop][]`,
-  containing the index of the child as its value.
+  where to insert new children.
 
-  Like before, this tells Ecto to delete the child at this index when the button is
-  clicked. We use `phx-click={JS.dispatch("change")}` on the button to tell LiveView
-  to treat this button click as a change event, rather than a submit event on the form,
-  which invokes our form's `phx-change` binding.
+  Next, we render the email and name inputs as usual. Then we render a button (which is really
+  just a hidden checkbox so we can take advantage of our change event) containing the "delete"
+  text with the name `mailing_list[emails_drop][]`, containing the index of the child as its value.
+  Like before, this tells Ecto to delete the child at this index when the button is clicked.
 
   Outside the `inputs_for`, we render an empty `mailing_list[emails_drop][]` input,
   to ensure that all children are deleted when saving a form where the user
   dropped all entries. This hidden input is required whenever dropping associations.
 
   Finally, we also render another button with the sort param name `mailing_list[emails_sort][]`
-  and `value="new"` name with accompanied "add more" text. Please note that this button must
-  have `type="button"` to prevent it from submitting the form.
+  and `value="new"` name with accompanied "add more" text.
   Ecto will treat unknown sort params as new children and build a new child.
   This button is optional and only necessary if you want to dyamically add entries.
   You can optionally add a similar button before the `<.inputs_for>`, in the case you want
