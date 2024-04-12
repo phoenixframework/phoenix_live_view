@@ -2342,6 +2342,7 @@ defmodule Phoenix.Component do
     <.input type="text" field={ef[:email]} placeholder="email" />
     <.input type="text" field={ef[:name]} placeholder="name" />
     <button
+      type="button"
       name="mailing_list[emails_drop][]"
       value={ef.index}
       phx-click={JS.dispatch("change")}
