@@ -12,7 +12,7 @@ let simulateView = (liveSocket, events, innerHTML) => {
   document.body.appendChild(el)
 
   let view = new View(el, liveSocket)
-  view.onJoin({rendered: {e: events, s: [innerHTML]}})
+  view.onJoin({rendered: {e: events, s: [innerHTML]}, liveview_version: require("../package.json").version})
   view.isConnected = () => true
   return view
 }
