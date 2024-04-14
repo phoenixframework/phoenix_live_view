@@ -70,7 +70,6 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3200 do
           id="some_unique_message_id"
           message="Example message"
         />
-        <%!-- the phx-target here is the important part --%>
         <form
           id="full_add_message_form"
           phx-change="add_message_change"
