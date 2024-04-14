@@ -4,34 +4,37 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
   alias Phoenix.LiveView.JS
 
   @impl Phoenix.LiveView
-  def mount(_params, _session, socket) do
+  def mount(params, session, socket) do
+    params =
+      case params do
+        :not_mounted_at_router -> session
+        _ -> params
+      end
+
     {:ok,
      socket
-     |> assign(:params, %{
-       "a" => "foo",
-       "b" => "bar",
-       "id" => "test-form",
-       "phx-change" => "validate"
-     })
+     |> assign(
+       :params,
+       Enum.into(params, %{
+         "a" => "foo",
+         "b" => "bar",
+         "id" => "test-form",
+         "phx-change" => "validate"
+       })
+     )
+     |> update_params(params)
      |> assign(:submitted, false)}
   end
 
-  @impl Phoenix.LiveView
-  def handle_params(%{"no-id" => _}, _uri, socket) do
-    {:noreply, update(socket, :params, &Map.delete(&1, "id"))}
+  def update_params(socket, %{"no-id" => _}) do
+    update(socket, :params, &Map.delete(&1, "id"))
   end
 
-  def handle_params(%{"no-change-event" => _}, _uri, socket) do
-    {:noreply, update(socket, :params, &Map.delete(&1, "phx-change"))}
+  def update_params(socket, %{"no-change-event" => _}) do
+    update(socket, :params, &Map.delete(&1, "phx-change"))
   end
 
-  def handle_params(%{"phx-auto-recover" => event}, _uri, socket) do
-    {:noreply, update(socket, :params, &Map.put(&1, "phx-auto-recover", event))}
-  end
-
-  def handle_params(_params, _uri, socket) do
-    {:noreply, socket}
-  end
+  def update_params(socket, _), do: socket
 
   @impl Phoenix.LiveView
   def handle_event("validate", params, socket) do
@@ -76,6 +79,24 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
     </form>
 
     <p :if={@submitted}>Form was submitted!</p>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.NestedFormLive do
+  use Phoenix.LiveView
+
+  def mount(params, _session, socket) do
+    {:ok, assign(socket, :params, params)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <%= live_render(@socket, Phoenix.LiveViewTest.E2E.FormLive,
+      id: "nested",
+      layout: nil,
+      session: @params
+    ) %>
     """
   end
 end

@@ -71,6 +71,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/upload", E2E.UploadLive
       live "/form", E2E.FormLive
       live "/form/dynamic-inputs", E2E.FormDynamicInputsLive
+      live "/form/nested", E2E.NestedFormLive
       live "/js", E2E.JsLive
     end
 
@@ -80,6 +81,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3026", Issue3026Live
       live "/3040", Issue3040Live
       live "/3117", Issue3117Live
+      live "/3200/messages", Issue3200.PanelLive, :messages_tab
+      live "/3200/settings", Issue3200.PanelLive, :settings_tab
     end
   end
 
