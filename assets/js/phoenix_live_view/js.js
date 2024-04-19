@@ -115,7 +115,7 @@ let JS = {
   },
 
   exec_toggle_class(eventType, phxEvent, view, sourceEl, el, {to, names, transition, time}){
-    this.toggleClasses(el, names, transition, view)
+    this.toggleClasses(el, names, transition, time, view)
   },
 
   exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val1, val2]}){
