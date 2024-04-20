@@ -123,34 +123,30 @@ defmodule Phoenix.LiveView.TagEngine do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
-    __inner_block__(do_block, name)
-  end
+    case do_block do
+      [{:->, meta, _} | _] ->
+        inner_fun = {:fn, meta, do_block}
 
-  @doc false
-  # TODO: Make me private once Phoenix.LiveView.Helpers are removed
-  def __inner_block__([{:->, meta, _} | _] = do_block, key) do
-    inner_fun = {:fn, meta, do_block}
+        quote do
+          fn parent_changed, arg ->
+            var!(assigns) =
+              unquote(__MODULE__).__assigns__(var!(assigns), unquote(name), parent_changed)
 
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+            _ = var!(assigns)
+            unquote(inner_fun).(arg)
+          end
+        end
 
-        _ = var!(assigns)
-        unquote(inner_fun).(arg)
-      end
-    end
-  end
+      _ ->
+        quote do
+          fn parent_changed, arg ->
+            var!(assigns) =
+              unquote(__MODULE__).__assigns__(var!(assigns), unquote(name), parent_changed)
 
-  def __inner_block__(do_block, key) do
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(do_block)
-      end
+            _ = var!(assigns)
+            unquote(do_block)
+          end
+        end
     end
   end
 

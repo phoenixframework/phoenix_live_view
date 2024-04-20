@@ -1,5 +1,10 @@
 # Changelog
 
+## -dev
+
+### Removal of previously deprecated functionality
+  * `live_component/2` and `live_component/3` helpers (not the function component) have been removed
+
 ## 0.20.14 (2024-03-13)
 
 ### Bug fixes
@@ -113,6 +118,9 @@
   * Perform client redirect when trying to live nav from dead client to avoid extra round trip
   * Allow regular buttons with name/value attributes to send form events and adjusted dynamic form documentation to reflect this
   * Allow form attribute on `live_file_input`
+
+### Removal of previously deprecated functionality
+  * `live_component/2` and `live_component/3` helpers (not the function component) have been removed
 
 ## 0.20.3 (2024-01-02)
 

@@ -401,20 +401,6 @@ defmodule Phoenix.LiveView.Diff do
     {diff, {fingerprint, children}, pending, components, template}
   end
 
-  # TODO: Remove me when stateless module components are removed
-  defp traverse(
-         socket,
-         %Component{id: nil, component: component, assigns: assigns},
-         fingerprints_tree,
-         pending,
-         components,
-         template,
-         changed?
-       ) do
-    rendered = component_to_rendered(socket, component, assigns, %{})
-    traverse(socket, rendered, fingerprints_tree, pending, components, template, changed?)
-  end
-
   defp traverse(
          socket,
          %Component{} = component,
