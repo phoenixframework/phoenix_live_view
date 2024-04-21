@@ -99,9 +99,13 @@ export default class DOMPatch {
 
     let externalFormTriggered = null
 
-    function morph(targetContainer, source){
+    function morph(targetContainer, source, withChildren=false){
       morphdom(targetContainer, source, {
-        childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
+        // normally, we are running with childrenOnly, as the patch HTML for a LV
+        // does not include the LV attrs (data-phx-session, etc.)
+        // when we are patching a live component, we do want to patch the root element as well;
+        // another case is the recursive patch of a stream item that was kept on reset (-> onBeforeNodeAdded)
+        childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null && !withChildren,
         getNodeKey: (node) => {
           if(DOM.isPhxDestroyed(node)){ return null }
           // If we have a join patch, then by definition there was no PHX_MAGIC_ID.
@@ -137,7 +141,7 @@ export default class DOMPatch {
           if(!isJoinPatch && this.streamComponentRestore[el.id]){
             morphedEl = this.streamComponentRestore[el.id]
             delete this.streamComponentRestore[el.id]
-            morph.bind(this)(morphedEl, el)
+            morph.call(this, morphedEl, el, true)
           }
 
           return morphedEl
@@ -286,7 +290,7 @@ export default class DOMPatch {
         })
       }
 
-      morph.bind(this)(targetContainer, html)
+      morph.call(this, targetContainer, html)
     })
 
     if(liveSocket.isDebugEnabled()){ detectDuplicateIds() }

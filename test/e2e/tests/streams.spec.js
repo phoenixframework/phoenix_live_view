@@ -160,6 +160,32 @@ test("stream reset properly reorders items", async ({ page }) => {
   ]);
 });
 
+test("stream reset updates attributes", async ({ page }) => {
+  await page.goto("/stream");
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-1", text: "chris" },
+    { id: "users-2", text: "callan" }
+  ]);
+
+  await expect(await page.locator("#users-1").getAttribute("data-count")).toEqual("0");
+  await expect(await page.locator("#users-2").getAttribute("data-count")).toEqual("0");
+
+  await page.getByRole("button", { name: "Reorder" }).click();
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-3", text: "peter" },
+    { id: "users-1", text: "chris" },
+    { id: "users-4", text: "mona" }
+  ]);
+
+  await expect(await page.locator("#users-1").getAttribute("data-count")).toEqual("1");
+  await expect(await page.locator("#users-3").getAttribute("data-count")).toEqual("1");
+  await expect(await page.locator("#users-4").getAttribute("data-count")).toEqual("1");
+});
+
 test.describe("Issue #2656", () => {
   test("stream reset works when patching", async ({ page }) => {
     await page.goto("/healthy/fruits");

@@ -31,7 +31,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   def render(assigns) do
     ~H"""
     <div id="users" phx-update="stream">
-      <div :for={{id, user} <- @streams.users} id={id}>
+      <div :for={{id, user} <- @streams.users} id={id} data-count={@count}>
         <%= user.name %>
         <button phx-click="delete" phx-value-id={id}>delete</button>
         <button phx-click="update" phx-value-id={id}>update</button>
@@ -43,7 +43,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
       </div>
     </div>
     <div id="admins" phx-update="stream">
-      <div :for={{id, user} <- @streams.admins} id={id}>
+      <div :for={{id, user} <- @streams.admins} id={id} data-count={@count}>
         <%= user.name %>
         <button phx-click="admin-delete" phx-value-id={id}>delete</button>
         <button phx-click="admin-update" phx-value-id={id}>update</button>
@@ -74,6 +74,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
      |> assign(:invalid_consume, false)
      |> assign(:invalid_ids, false)
      |> assign(:invalid_item, false)
+     |> assign(:count, 0)
      |> stream(:users, @users)
      |> stream(:admins, [user(1, "chris-admin"), user(2, "callan-admin")])}
   end
@@ -113,12 +114,14 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   end
 
   def handle_event("reset-users", _, socket) do
-    {:noreply, stream(socket, :users, [], reset: true)}
+    {:noreply, socket |> update(:count, &(&1 + 1)) |> stream(:users, [], reset: true)}
   end
 
   def handle_event("reset-users-reorder", %{}, socket) do
     {:noreply,
-     stream(socket, :users, [user(3, "peter"), user(1, "chris"), user(4, "mona")], reset: true)}
+     socket
+     |> update(:count, &(&1 + 1))
+     |> stream(:users, [user(3, "peter"), user(1, "chris"), user(4, "mona")], reset: true)}
   end
 
   def handle_event("stream-users", _, socket) do

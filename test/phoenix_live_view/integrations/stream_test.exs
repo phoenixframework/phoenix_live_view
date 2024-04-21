@@ -143,6 +143,32 @@ defmodule Phoenix.LiveView.StreamTest do
            ]
   end
 
+  test "updates attributes on reset", %{conn: conn} do
+    {:ok, lv, _} = live(conn, "/stream")
+
+    assert lv |> render() |> users_in_dom("users") == [
+             {"users-1", "chris"},
+             {"users-2", "callan"}
+           ]
+
+    html = render(lv)
+    assert Floki.find(html, "#users-1") |> Floki.attribute("data-count") == ["0"]
+    assert Floki.find(html, "#users-2") |> Floki.attribute("data-count") == ["0"]
+
+    lv |> render_hook("reset-users-reorder", %{})
+
+    assert lv |> render() |> users_in_dom("users") == [
+             {"users-3", "peter"},
+             {"users-1", "chris"},
+             {"users-4", "mona"}
+           ]
+
+    html = render(lv)
+    assert Floki.find(html, "#users-1") |> Floki.attribute("data-count") == ["1"]
+    assert Floki.find(html, "#users-3") |> Floki.attribute("data-count") == ["1"]
+    assert Floki.find(html, "#users-4") |> Floki.attribute("data-count") == ["1"]
+  end
+
   test "stream reset on patch", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/healthy/fruits")
 
@@ -802,17 +828,19 @@ defmodule Phoenix.LiveView.StreamTest do
            ]
   end
 
-  test "issue #3129 - streams asynchronously assigned and rendered inside a comprehension", %{conn: conn} do
+  test "issue #3129 - streams asynchronously assigned and rendered inside a comprehension", %{
+    conn: conn
+  } do
     {:ok, lv, _html} = live(conn, "/stream/inside-for")
 
     html = render_async(lv)
 
     assert ul_list_children(html) == [
-              {"items-a", "A"},
-              {"items-b", "B"},
-              {"items-c", "C"},
-              {"items-d", "D"}
-            ]
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
   end
 
   defp assert_pruned_stream(lv) do
