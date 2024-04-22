@@ -57,7 +57,19 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
-let serializeForm = (form, metadata, onlyNames = []) => {
+let serializeForm = (formOrInput, metadata, onlyNames = []) => {
+  let form
+  if(formOrInput instanceof HTMLFormElement){
+    form = formOrInput
+  } else if(formOrInput.form instanceof HTMLFormElement){
+    form = formOrInput.form
+  } else {
+    // phx-change without a form -> we create a form on the fly to serialize
+    // the data using FormData
+    form = document.createElement("form")
+    form.appendChild(formOrInput.cloneNode(true))
+  }
+
   const {submitter, ...meta} = metadata
 
   // We must inject the submitter in the order that it exists in the DOM
@@ -928,15 +940,15 @@ export default class View {
 
   pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback){
     let uploads
-    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts)
-    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
+    let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form ? inputEl.form : inputEl, targetCtx, opts)
+    let refGenerator = () => this.putRef([inputEl, inputEl.form].filter(el => el), "change", opts)
     let formData
-    let meta  = this.extractMeta(inputEl.form)
+    let meta  = this.extractMeta(inputEl.form ? inputEl.form : inputEl)
     if(inputEl instanceof HTMLButtonElement){ meta.submitter = inputEl }
     if(inputEl.getAttribute(this.binding("change"))){
-      formData = serializeForm(inputEl.form, {_target: opts._target, ...meta}, [inputEl.name])
+      formData = serializeForm(inputEl, {_target: opts._target, ...meta}, [inputEl.name])
     } else {
-      formData = serializeForm(inputEl.form, {_target: opts._target, ...meta})
+      formData = serializeForm(inputEl, {_target: opts._target, ...meta})
     }
     if(DOM.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0){
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
