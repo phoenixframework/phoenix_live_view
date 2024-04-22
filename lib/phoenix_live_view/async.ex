@@ -171,6 +171,8 @@ defmodule Phoenix.LiveView.Async do
 
     new_assigns =
       Enum.map(keys, fn key ->
+        reset = if is_list(reset), do: key in reset, else: reset
+
         case {reset, socket.assigns} do
           {false, %{^key => %AsyncResult{ok?: true} = existing}} ->
             {key, AsyncResult.loading(existing, keys)}

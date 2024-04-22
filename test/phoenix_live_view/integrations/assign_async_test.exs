@@ -102,7 +102,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_bad_return")
 
       assert render_async(lv) =~
-               "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:lc_data] or {:error, reason}, got: 123\\n&quot;}"
+               "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:lc_data, :other_data] or {:error, reason}, got: 123\\n&quot;}"
 
       assert render(lv)
     end
@@ -111,7 +111,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_bad_ok")
 
       assert render_async(lv) =~
-               "expected assign_async to return map of assigns for all keys\\nin [:lc_data]"
+               "expected assign_async to return map of assigns for all keys\\nin [:lc_data, :other_data]"
 
       assert render(lv)
     end
@@ -133,6 +133,26 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert render(lv) =~ "lc_data: 123"
       assert render_async(lv) =~ "lc_data: 456"
+    end
+
+    test "keeps previous values when using a list for async assign", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
+      rendered = render_async(lv)
+      assert rendered =~ "lc_data: 123"
+      assert rendered =~ "other_data: 555"
+
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+        id: "lc",
+        action: :assign_async_reset,
+        reset: [:other_data]
+      )
+
+      rendered = render(lv)
+      assert rendered =~ "lc_data: 123"
+      assert rendered =~ "other_data loading"
+      rendered = render_async(lv)
+      assert rendered =~ "lc_data: 456"
+      assert rendered =~ "other_data: 999"
     end
 
     test "when using the reset flag", %{conn: conn} do
