@@ -539,7 +539,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp exported?(m, f, a) do
-    function_exported?(m, f, a) || (Code.ensure_loaded?(m) && function_exported?(m, f, a))
+    function_exported?(m, f, a) or (Code.ensure_loaded?(m) and function_exported?(m, f, a))
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
