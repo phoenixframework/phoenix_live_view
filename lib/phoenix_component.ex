@@ -2342,7 +2342,6 @@ defmodule Phoenix.Component do
     <.input type="text" field={ef[:email]} placeholder="email" />
     <.input type="text" field={ef[:name]} placeholder="name" />
     <button
-      type="button"
       name="mailing_list[emails_drop][]"
       value={ef.index}
       phx-click={JS.dispatch("change")}
@@ -2572,16 +2571,35 @@ defmodule Phoenix.Component do
   ```javascript
   // listen on document.body, so it's executed before the default of
   // phoenix_html, which is listening on the window object
+  const RESOLVED_ATTRIBUTE = "data-confirm-resolved";
+
   document.body.addEventListener('phoenix.link.click', function (e) {
     // Prevent default implementation
     e.stopPropagation();
     // Introduce alternative implementation
     var message = e.target.getAttribute("data-confirm");
     if(!message){ return true; }
+
+    // Confirm is resolved execute the click event
+    if (e.target?.hasAttribute(RESOLVED_ATTRIBUTE)) {
+        e.target.removeAttribute(RESOLVED_ATTRIBUTE);
+        return true;
+    }
+
+    // Confirm is needed, preventDefault and show your modal
+    e.preventDefault();
+    e.target?.setAttribute(RESOLVED_ATTRIBUTE, "");
+
     vex.dialog.confirm({
       message: message,
       callback: function (value) {
-        if (value == false) { e.preventDefault(); }
+        if (value == true) {
+            // Customer confirmed, re-trigger the click event.
+            e.target?.click();
+        } else {
+            // Customer canceled
+            e.target?.removeAttribute(RESOLVED_ATTRIBUTE);
+        }
       }
     })
   }, false);
@@ -2869,7 +2887,7 @@ defmodule Phoenix.Component do
       "the optional override for the accept attribute. Defaults to :accept specified by allow_upload"
   )
 
-  attr.(:rest, :global, include: ~w(webkitdirectory required disabled capture form))
+  attr.(:rest, :global, include: ~w(webkitdirectory required disabled))
 
   def live_file_input(%{upload: upload} = assigns) do
     assigns = assign_new(assigns, :accept, fn -> upload.accept != :any && upload.accept end)
