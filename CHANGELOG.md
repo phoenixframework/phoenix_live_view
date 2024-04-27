@@ -9,6 +9,7 @@
   * Fix attributes of stream items are being updated on reset
   * Fix nested LiveView within streams becoming empty when reset
   * Fix `phx-mounted` firing duplicate times, first on dead render, then on live render, leading to errors when a LiveComponent has not yet mounted
+  * Fix `JS.toggle_class` type error
 
 ## 0.20.14 (2024-03-13)
 
