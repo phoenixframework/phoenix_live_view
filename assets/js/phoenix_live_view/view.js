@@ -1258,7 +1258,7 @@ export default class View {
     let input = inputs.find(el => el.type !== "hidden") || inputs[0]
 
     // in the case that there are multiple targets, we count the number of pending recovery events
-    // and only resolve the promise once all events have been processed
+    // and only call the callback once all events have been processed
     let pending = 0
     // withinTargets(phxTarget, callback, dom, viewEl)
     this.withinTargets(phxTarget, (targetView, targetCtx) => {
