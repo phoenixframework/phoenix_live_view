@@ -173,6 +173,8 @@ export default class LiveSocket {
 
   // public
 
+  version(){ return LV_VSN }
+
   isProfileEnabled(){ return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
 
   isDebugEnabled(){ return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true" }

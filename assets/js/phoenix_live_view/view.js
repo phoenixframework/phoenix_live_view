@@ -269,7 +269,7 @@ export default class View {
   }
 
   onJoin(resp){
-    let {rendered, container} = resp
+    let {rendered, container, liveview_version} = resp
     if(container){
       let [tag, attrs] = container
       this.el = DOM.replaceRootContainer(this.el, tag, attrs)
@@ -277,6 +277,10 @@ export default class View {
     this.childJoins = 0
     this.joinPending = true
     this.flash = null
+
+    if(liveview_version !== this.liveSocket.version()){
+      console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`)
+    }
 
     Browser.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS)
     this.applyDiff("mount", rendered, ({diff, events}) => {
