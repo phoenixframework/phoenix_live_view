@@ -1453,10 +1453,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
   };
   var findScrollContainer = (el) => {
+    if (["HTML", "BODY"].indexOf(el.nodeName.toUpperCase()) >= 0)
+      return null;
     if (["scroll", "auto"].indexOf(getComputedStyle(el).overflowY) >= 0)
       return el;
-    if (document.documentElement === el)
-      return null;
     return findScrollContainer(el.parentElement);
   };
   var scrollTop = (scrollContainer) => {
@@ -3186,13 +3186,21 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
       let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
       dom_default.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
-        dom_default.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom);
-        this.maybeAddNewHook(hookEl);
+        if (this.ownsElement(hookEl)) {
+          dom_default.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom);
+          this.maybeAddNewHook(hookEl);
+        }
       });
       dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
-        this.maybeAddNewHook(hookEl);
+        if (this.ownsElement(hookEl)) {
+          this.maybeAddNewHook(hookEl);
+        }
       });
-      dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => this.maybeMounted(el));
+      dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+        if (this.ownsElement(el)) {
+          this.maybeMounted(el);
+        }
+      });
     }
     applyJoinPatch(live_patch, html, streams, events) {
       this.attachTrueDocEl();

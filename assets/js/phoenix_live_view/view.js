@@ -353,17 +353,29 @@ export default class View {
     this.el.setAttribute(PHX_ROOT_ID, this.root.id)
   }
 
+  // this is invoked for dead and live views, so we must filter by
+  // by owner to ensure we aren't duplicating hooks across disconnect
+  // and connected states. This also handles cases where hooks exist
+  // in a root layout with a LV in the body
   execNewMounted(){
     let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
     DOM.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
-      DOM.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom)
-      this.maybeAddNewHook(hookEl)
+      if(this.ownsElement(hookEl)){
+        DOM.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom)
+        this.maybeAddNewHook(hookEl)
+      }
     })
     DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
-      this.maybeAddNewHook(hookEl)
+      if(this.ownsElement(hookEl)){
+        this.maybeAddNewHook(hookEl)
+      }
     })
-    DOM.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, el => this.maybeMounted(el))
+    DOM.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, el => {
+      if(this.ownsElement(el)){
+        this.maybeMounted(el)
+      }
+    })
   }
 
   applyJoinPatch(live_patch, html, streams, events){
