@@ -315,6 +315,7 @@ describe("JS", () => {
       expect(Array.from(modal.classList)).toEqual(["modal"])
       done()
     })
+
     test("with multiple selector", done => {
       let view = setupView(`
       <div id="modal1" class="modal">modal</div>
@@ -335,6 +336,25 @@ describe("JS", () => {
       
       expect(Array.from(modal1.classList)).toEqual(["modal"])
       expect(Array.from(modal2.classList)).toEqual(["modal"])
+      done()
+    })
+
+    test("with transition", done => {
+      let view = setupView(`
+      <button phx-click='[["toggle_class",{"names":["t"],"transition":[["a"],["b"],["c"]]}]]'></button>
+      `)
+      let button = document.querySelector("button")
+
+      expect(Array.from(button.classList)).toEqual([])
+
+      JS.exec("click", button.getAttribute("phx-click"), view, button)
+
+      jest.advanceTimersByTime(100)
+      expect(Array.from(button.classList)).toEqual(["a", "c"])
+
+      jest.runAllTimers()
+      expect(Array.from(button.classList)).toEqual(["c", "t"])
+
       done()
     })
   })
