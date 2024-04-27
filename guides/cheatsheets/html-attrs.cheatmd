@@ -1,0 +1,185 @@
+# `phx-` HTML attributes
+
+A summary of special HTML attributes used in Phoenix LiveView templates.
+Each attribute is linked to its documentation for more details.
+
+## Event Handlers
+{: .col-2}
+
+Attribute values can be:
+
+* An event name for the [`handle_event`](`c:Phoenix.LiveView.handle_event/3`) server callback
+* [JS commands](../client/bindings.md#js-commands) to be executed directly on the client
+
+> Use [`phx-value-*`](../client/bindings.md#click-events) attributes to pass params to the server.
+
+> Use [`phx-debounce` and `phx-throttle`](../client/bindings.md#rate-limiting-events-with-debounce-and-throttle) to control the frequency of events.
+
+### Click
+
+| Attributes                                                                                               |
+|----------------------------------------------------------------------------------------------------------|
+| [`phx-click`](../client/bindings.md#click-events) [`phx-click-away`](../client/bindings.md#click-events) |
+
+### Focus
+
+| Attributes                                                                                                                         |
+|------------------------------------------------------------------------------------------------------------------------------------|
+| [`phx-blur`](../client/bindings.md#focus-and-blur-events) [`phx-focus`](../client/bindings.md#focus-and-blur-events)               |
+| [`phx-window-blur`](../client/bindings.md#focus-and-blur-events) [`phx-window-focus`](../client/bindings.md#focus-and-blur-events) |
+
+### Keyboard
+
+| Attributes                                                                                                      |
+|-----------------------------------------------------------------------------------------------------------------|
+| [`phx-keydown`](../client/bindings.md#key-events) [`phx-keyup`](../client/bindings.md#key-events)               |
+| [`phx-window-keydown`](../client/bindings.md#key-events) [`phx-window-keyup`](../client/bindings.md#key-events) |
+
+> Use the `phx-key` attribute to listen to specific keys.
+
+### Scroll
+
+| Attributes                                                                                                                                                                           |
+|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`phx-viewport-top`](../client/bindings.md#scroll-events-and-infinite-stream-pagination) [`phx-viewport-bottom`](../client/bindings.md#scroll-events-and-infinite-stream-pagination) |
+
+### Example
+
+#### lib/hello_web/live/hello_live.html.heex
+
+```heex
+<button type="button" phx-click="click" phx-value-user={@current_user.id}>Click Me</button>
+<button type="button" phx-click={JS.toggle(to: "#example")}>Toggle</button>
+```
+{: .wrap}
+
+## Form Event Handlers
+{: .col-2}
+
+### On `<form>` elements
+
+| Attribute                                          | Value                                                                      |
+|----------------------------------------------------|----------------------------------------------------------------------------|
+| [`phx-change`](../client/form-bindings.md)         | Event name or [JS commands](../client/bindings.md#js-commands)             |
+| [`phx-submit`](../client/form-bindings.md)         | Event name or [JS commands](../client/bindings.md#js-commands)             |
+| [`phx-auto-recover`](../client/form-bindings.md)   | Event name, [JS commands](../client/bindings.md#js-commands) or `"ignore"` |
+| [`phx-trigger-action`](../client/form-bindings.md) | `true` or `false`                                                          |
+
+### On `<button>` elements
+
+| Attribute                                                                    | Value                                |
+|------------------------------------------------------------------------------|--------------------------------------|
+| [`phx-disable-with`](../client/form-bindings.md#javascript-client-specifics) | Text to show during event submission |
+
+### On container elements
+
+LiveView applies the `phx-no-feedback` CSS class before user interaction.
+
+| Attribute                                                         | Value                                          |
+|-------------------------------------------------------------------|------------------------------------------------|
+| [`phx-feedback-for`](../client/form-bindings.md#error-feedback)   | Form field or group name                       |
+| [`phx-feedback-group`](../client/form-bindings.md#error-feedback) | Arbitrary string to identify a group of fields |
+
+### Form Example
+
+#### lib/hello_web/live/hello_live.html.heex
+
+```heex
+<form phx-change="validate" phx-submit="save">
+  <input type="text" name="name" phx-debounce="500" phx-throttle="500" />
+  <button type="submit" phx-disable-with="Saving...">Save</button>
+</form>
+```
+{: .wrap}
+
+## Socket Connection Lifecycle
+
+| Attribute                                                    | Value                                                                                                                   |
+|--------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| [`phx-connected`](../client/bindings.md#lifecycle-events)    | [JS commands](../client/bindings.md#js-commands) executed after the [`LiveSocket`](../client/js-interop.md) connects    |
+| [`phx-disconnected`](../client/bindings.md#lifecycle-events) | [JS commands](../client/bindings.md#js-commands) executed after the [`LiveSocket`](../client/js-interop.md) disconnects |
+
+#### lib/hello_web/live/hello_live.html.heex
+
+```heex
+<div id="status" class="hidden" phx-disconnected={JS.show()} phx-connected={JS.hide()}>
+  Attempting to reconnect...
+</div>
+```
+
+## DOM Element Lifecycle
+
+| Attribute                                  | Value                                                                                  |
+|--------------------------------------------|----------------------------------------------------------------------------------------|
+| [`phx-mounted`](../client/dom-patching.md) | [JS commands](../client/bindings.md#js-commands) executed after the element is mounted |
+| [`phx-remove`](../client/dom-patching.md)  | [JS commands](../client/bindings.md#js-commands) executed during the element removal   |
+| [`phx-update`](../client/dom-patching.md)  | `"replace"` (default), `"stream"` or `"ignore"`, configures DOM patching behavior      |
+
+#### lib/hello_web/live/hello_live.html.heex
+
+```heex
+<div
+  id="iframe-container"
+  phx-mounted={JS.transition("animate-bounce", time: 2000)}
+  phx-remove={JS.hide(transition: {"transition-all transform ease-in duration-200", "opacity-100", "opacity-0"})}
+>
+  <button type="button" phx-click={JS.exec("phx-remove", to: "#iframe-container")}>Hide</button>
+  <iframe id="iframe" src="https://example.com" phx-update="ignore"></iframe>
+</div>
+```
+
+## Client Hooks
+
+| Attribute                                                       | Value                                                                                           |
+|-----------------------------------------------------------------|-------------------------------------------------------------------------------------------------|
+| [`phx-hook`](../client/js-interop.md#client-hooks-via-phx-hook) | The name of a previously defined JavaScript hook in the [`LiveSocket`](../client/js-interop.md) |
+
+Client hooks provide bidirectional communication between client and server using
+`this.pushEvent` and `this.handleEvent` to send and receive events.
+
+#### lib/hello_web/live/hello_live.html.heex
+
+```heex
+<div id="example" phx-hook="Example">
+  <h1>Events</h1>
+  <ul id="example-events"></ul>
+</div>
+```
+
+#### assets/js/app.js
+
+```javascript
+let Hooks = {}
+Hooks.Example = {
+  // Callbacks
+  mounted()      { this.appendEvent("Mounted") },
+  beforeUpdate() { this.appendEvent("Before Update") },
+  updated()      { this.appendEvent("Updated") },
+  destroyed()    { this.appendEvent("Destroyed") },
+  disconnected() { this.appendEvent("Disconnected") },
+  reconnected()  { this.appendEvent("Reconnected") },
+
+  // Custom Helper
+  appendEvent(name) {
+    console.log(name)
+    let li = document.createElement("li")
+    li.innerText = name
+    this.el.querySelector("#example-events").appendChild(li)
+  }
+}
+
+let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
+```
+
+## Tracking Static Assets
+
+| Attribute                                                  | Value                               |
+|------------------------------------------------------------|-------------------------------------|
+| [`phx-track-static`](`Phoenix.LiveView.static_changed?/1`) | None, used to annotate static files |
+
+#### lib/hello_web/components/layouts/root.html.heex
+
+```heex
+<link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+<script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+```
