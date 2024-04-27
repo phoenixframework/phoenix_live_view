@@ -85,7 +85,7 @@ LiveView applies the `phx-no-feedback` CSS class before user interaction.
 #### lib/hello_web/live/hello_live.html.heex
 
 ```heex
-<form phx-change="validate" phx-submit="save" phx-auto-recover="ignore">
+<form phx-change="validate" phx-submit="save">
   <input type="text" name="name" phx-debounce="500" phx-throttle="500" />
   <button type="submit" phx-disable-with="Saving...">Save</button>
 </form>
