@@ -20,7 +20,10 @@ defmodule Phoenix.LiveView.MixProject do
       homepage_url: "http://www.phoenixframework.org",
       description: """
       Rich, real-time user experiences with server-rendered HTML
-      """
+      """,
+      preferred_cli_env: [
+        docs: :docs
+      ]
     ]
   end
 

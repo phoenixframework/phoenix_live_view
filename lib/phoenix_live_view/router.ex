@@ -159,6 +159,11 @@ defmodule Phoenix.LiveView.Router do
   > your `live` routes to always be directly defined within the main router
   > of your application.
 
+  > #### `live_session` and `scope` {: .warning}
+  >
+  > Aliases set with `Phoenix.Router.scope/2` are not expanded in `live_session` arguments.
+  > You must use the full module name instead.
+
   ## Options
 
     * `:session` - The optional extra session map or MFA tuple to be merged with
