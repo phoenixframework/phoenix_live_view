@@ -1,7 +1,7 @@
 import DOM from "./dom"
 import ARIA from "./aria"
 
-let focusStack = null
+let focusStack = []
 let default_transition_time = 200
 
 let JS = {
@@ -96,13 +96,13 @@ let JS = {
   },
 
   exec_push_focus(eventType, phxEvent, view, sourceEl, el){
-    window.requestAnimationFrame(() => focusStack = el || sourceEl)
+    window.requestAnimationFrame(() => focusStack.push(el || sourceEl))
   },
 
   exec_pop_focus(eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => {
-      if(focusStack){ focusStack.focus() }
-      focusStack = null
+      const el = focusStack.pop()
+      if(el){ el.focus() }
     })
   },
 
