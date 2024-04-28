@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../test-fixtures");
 const { syncLV } = require("../utils");
 
 let webSocketEvents = [];
@@ -24,7 +24,7 @@ test("can navigate between LiveViews in the same live session over websocket", a
   await expect(networkEvents).toEqual([
     { method: "GET", url: "http://localhost:4004/navigation/a" },
     { method: "GET", url: "http://localhost:4004/assets/phoenix/phoenix.min.js" },
-    { method: "GET", url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.js" },
+    { method: "GET", url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js" },
   ]);
 
   await expect(webSocketEvents).toEqual([
