@@ -24,7 +24,7 @@
     "assets/js/phoenix_live_view/*"
   ],
   "devDependencies": {
-    "@playwright/test": "^1.41.2",
+    "@playwright/test": "^1.43.1",
     "monocart-reporter": "^2.3.1"
   },
   "scripts": {
