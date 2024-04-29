@@ -466,36 +466,42 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
       <.async_result :let={data} assign={@lc_data}>
         <:loading>lc_data loading...</:loading>
         <:failed :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:failed>
-
         lc_data: <%= inspect(data) %>
+      </.async_result>
+      <.async_result :let={data} assign={@other_data}>
+        <:loading>other_data loading...</:loading>
+        other_data: <%= inspect(data) %>
       </.async_result>
     </div>
     """
   end
 
   def update(%{test: "bad_return"}, socket) do
-    {:ok, assign_async(socket, :lc_data, fn -> 123 end)}
+    {:ok, assign_async(socket, [:lc_data, :other_data], fn -> 123 end)}
   end
 
   def update(%{test: "bad_ok"}, socket) do
-    {:ok, assign_async(socket, :lc_data, fn -> {:ok, %{bad: 123}} end)}
+    {:ok, assign_async(socket, [:lc_data, :other_data], fn -> {:ok, %{bad: 123}} end)}
   end
 
   def update(%{test: "ok"}, socket) do
-    {:ok, assign_async(socket, :lc_data, fn -> {:ok, %{lc_data: 123}} end)}
+    {:ok,
+     assign_async(socket, [:lc_data, :other_data], fn ->
+       {:ok, %{other_data: 555, lc_data: 123}}
+     end)}
   end
 
   def update(%{test: "raise"}, socket) do
-    {:ok, assign_async(socket, :lc_data, fn -> raise("boom") end)}
+    {:ok, assign_async(socket, [:lc_data, :other_data], fn -> raise("boom") end)}
   end
 
   def update(%{test: "exit"}, socket) do
-    {:ok, assign_async(socket, :lc_data, fn -> exit(:boom) end)}
+    {:ok, assign_async(socket, [:lc_data, :other_data], fn -> exit(:boom) end)}
   end
 
   def update(%{test: "lv_exit"}, socket) do
     {:ok,
-     assign_async(socket, :lc_data, fn ->
+     assign_async(socket, [:lc_data, :other_data], fn ->
        Process.register(self(), :lc_exit)
        send(:assign_async_test_process, :async_ready)
        Process.sleep(:infinity)
@@ -504,7 +510,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
 
   def update(%{test: "cancel"}, socket) do
     {:ok,
-     assign_async(socket, :lc_data, fn ->
+     assign_async(socket, [:lc_data, :other_data], fn ->
        Process.register(self(), :lc_cancel)
        send(:assign_async_test_process, :async_ready)
        Process.sleep(:infinity)
@@ -518,8 +524,12 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
   end
 
   def update(%{action: :assign_async_reset, reset: reset}, socket) do
-    fun = fn -> Process.sleep(50); {:ok, %{lc_data: 456}} end
-    {:ok, assign_async(socket, :lc_data, fun, reset: reset)}
+    fun = fn ->
+      Process.sleep(50)
+      {:ok, %{other_data: 999, lc_data: 456}}
+    end
+
+    {:ok, assign_async(socket, [:lc_data, :other_data], fun, reset: reset)}
   end
 
   def update(%{action: :renew_canceled}, socket) do
