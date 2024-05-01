@@ -1149,7 +1149,7 @@ defmodule Phoenix.Component do
   ## Sharing assigns
 
   It is possible to share assigns between the Plug pipeline and LiveView on disconnected render
-  and between LiveViews when connected.
+  and between parent-child LiveViews when connected.
 
   ### When disconnected
 
