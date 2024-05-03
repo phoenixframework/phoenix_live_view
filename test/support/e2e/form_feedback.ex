@@ -1,5 +1,68 @@
 defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, layout: {__MODULE__, :live}
+
+  def render("live.html", assigns) do
+    ~H"""
+    <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
+    <script src="/assets/phoenix/phoenix.min.js"></script>
+    <script src="/assets/phoenix_live_view/phoenix_live_view.js"></script>
+    <script>
+      let resetFeedbacks = (container, feedbacks) => {
+        feedbacks = feedbacks || Array.from(container.querySelectorAll("[phx-feedback-for]"))
+          .map(el => [el, el.getAttribute("phx-feedback-for")])
+
+        feedbacks.forEach(([feedbackEl, name]) => {
+          let query = `[name="${name}"], [name="${name}[]"]`
+          let isUsed = Array.from(container.querySelectorAll(query)).find(input => window.LiveView.isUsedInput(input))
+          if(isUsed || !feedbackEl.hasAttribute("phx-feedback-for")){
+            feedbackEl.classList.remove("phx-no-feedback")
+          } else {
+            feedbackEl.classList.add("phx-no-feedback")
+          }
+        })
+      }
+
+      let phxFeedbackDom = (dom) => {
+        window.addEventListener("reset", e => resetFeedbacks(document))
+        let feedbacks
+        // extend provided dom options with our own.
+        // accumulate phx-feedback-for containers for each patch and reset feedbacks when patch ends
+        return {
+          onPatchStart(container){
+            feedbacks = []
+            dom.onPatchStart && dom.onPatchStart(container)
+          },
+          onNodeAdded(node){
+            if(node.hasAttribute && node.hasAttribute("phx-feedback-for")){
+              feedbacks.push([node, node.getAttribute("phx-feedback-for")])
+            }
+            dom.onNodeAdded && dom.onNodeAdded(node)
+          },
+          onBeforeElUpdated(from, to){
+            let fromFor = from.getAttribute("phx-feedback-for")
+            let toFor = to.getAttribute("phx-feedback-for")
+            if(fromFor || toFor){ feedbacks.push([from, fromFor || toFor], [to, toFor || fromFor]) }
+
+            dom.onBeforeElUpdated && dom.onBeforeElUpdated(from, to)
+          },
+          onPatchEnd(container){
+            resetFeedbacks(container, feedbacks)
+            dom.onPatchEnd && dom.onPatchEnd(container)
+          }
+        }
+      }
+      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {
+        params: {_csrf_token: csrfToken},
+        dom: phxFeedbackDom({})
+      })
+      liveSocket.connect()
+      window.liveSocket = liveSocket
+    </script>
+
+    <%= @inner_content %>
+    """
+  end
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
