@@ -44,7 +44,7 @@ const attributeMutations = (page, selector) => {
       }).observe(target, { attributes: true, attributeOldValue: true });
     });
   }, id);
-  
+
   return () => {
     // we want to stop observing!
     page.locator(selector).evaluate((_target, id) => window[id](), id);

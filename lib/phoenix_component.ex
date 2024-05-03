@@ -1455,6 +1455,12 @@ defmodule Phoenix.Component do
     * `:as` - the `name` prefix to be used in form inputs
     * `:id` - the `id` prefix to be used in form inputs
     * `:errors` - keyword list of errors (used by maps exclusively)
+    * `:action` - The action that was taken against the form. This value can be
+      used to distinguish between different operations such as the user typing
+      into a form for validation, or submitting a form for a database insert.
+      For example: `to_form(changeset, action: :validate)`,
+      or `to_form(changeset, action: :save)`. The provided action is passed
+      to the underlying `Phoenix.HTML.FormData` implementation options.
 
   The underlying data may accept additional options when
   converted to forms. For example, a map accepts `:errors`
@@ -1470,7 +1476,8 @@ defmodule Phoenix.Component do
   form options.
 
   Errors in a form are only displayed if the changeset's `action`
-  field is set (and it is not set to `:ignore`). Refer to
+  field is set (and it is not set to `:ignore`) and can be filtered
+  by whether the fields have been used on the client or not. Refer to
   [a note on :errors for more information](#form/1-a-note-on-errors).
   """
   def to_form(data_or_params, options \\ [])
@@ -1491,9 +1498,17 @@ defmodule Phoenix.Component do
 
     {_as, options} = Keyword.pop(options, :as)
     {errors, options} = Keyword.pop(options, :errors, data.errors)
+    {action, options} = Keyword.pop(options, :action)
     options = Keyword.merge(data.options, options)
 
-    %{data | errors: errors, id: id, name: name, options: options}
+    %Phoenix.HTML.Form{
+      data
+      | action: action,
+        errors: errors,
+        id: id,
+        name: name,
+        options: options
+    }
   end
 
   def to_form(data, options) do
@@ -1519,6 +1534,62 @@ defmodule Phoenix.Component do
     end
 
     Phoenix.HTML.FormData.to_form(data, options)
+  end
+
+  @doc """
+  Returns the errors for the form field if the field was used by the client.
+
+  Used inputs are only those inputs that have been focused, interacted with, or
+  submitted by the client. For LiveView, this is used to filter errors from the
+  `Phoenix.HTML.FormData` implementation to avoid showing "field can't be blank"
+  in scenarios where the client hasn't yet interacted with specific fields.
+
+  Used inputs are tracked internally by the client sending a sibling key
+  derived from each input name, which indicates the inputs that remain  unused
+  on the client. For example, a form with email and title fields where only the
+  title has been modifed so far on the client, would send the following payload:
+
+      %{
+        "title" => "new title",
+        "email" => "",
+        "_unused_email" => ""
+      }
+
+  The `_unused_email` key indicates that the email field has not been used by the
+  client, which is used to filter errors from the UI.
+
+  ## Examples
+
+  For example, imagine in your template you render a title and email input.
+  On initial load the end-user begins typing the title field. The client will send
+  the entire form payload to the server with the typed title and an empty email.
+
+  The `Phoenix.HTML.FormData` implementation will consider an empty title in
+  this scenario as invalid, but the user shouldn't see the error because they
+  haven't yet used the email input. To handle this `used_input?/1` can be used to
+  filter errors from the client by referencing param metadata to distinguish between
+  used and unused input fields. For non-LiveViews, all inputs are considered used.
+
+  ```heex
+  <input type="text" name={@form[:title].name} value={@form[:title].value} />
+
+  <div :if={used_input?(@form[:title])}>
+    <p :for={error <- @form[:title].errors}><%= error %></p>
+  </div>
+
+  <input type="text" name={@form[:email].name} value={@form[:email].value} />
+
+  <div :if={used_input?(@form[:email])}>
+    <p :for={error <- @form[:email].errors}><%= error %></p>
+  </div>
+  ```
+  """
+  def used_input?(%Phoenix.HTML.FormField{field: field, form: form}) do
+    cond do
+      not is_map_key(form.params, "#{field}") -> false
+      is_map_key(form.params, "_unused_#{field}") -> false
+      true -> true
+    end
   end
 
   @doc """
@@ -2107,17 +2178,25 @@ defmodule Phoenix.Component do
   insert was attempted, and the presence of that action will cause errors to be
   displayed. The same is true for Repo.update/delete.
 
-  If you want to show errors manually you can also set the action yourself,
-  either directly on the `Ecto.Changeset` struct field or by using
+  Error visibility is handled by providing the action to `to_form/2`, which will
+  set the underlying changeset action. You can also set the action manually by
+  directly updating on the `Ecto.Changeset` struct field, or by using
   `Ecto.Changeset.apply_action/2`. Since the action can be arbitrary, you can
   set it to `:validate` or anything else to avoid giving the impression that a
   database operation has actually been attempted.
 
+  ### Displaying errors on used and unused input fields
+
+  Used inputs are only those inputs that have been focused, interacted with, or
+  submitted by the client. In most cases, a user shouldn't receive error feedback
+  for forms they haven't yet interacted with, until they submit the form. Filtering
+  the errors based on used input fields can be done with `used_input?/1`.
+
   ## Example: outside LiveView (regular HTTP requests)
 
   The `form` component can still be used to submit forms outside of LiveView.
-  In such cases, the `action` attribute MUST be given. Without said attribute,
-  the `form` method and csrf token are discarded.
+  In such cases, the standard HTML `action` attribute MUST be given.
+  Without said attribute, the `form` method and csrf token are discarded.
 
   ```heex
   <.form :let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
@@ -2263,10 +2342,10 @@ defmodule Phoenix.Component do
     ~H"""
     <form {@attrs}>
       <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
-        <input name="_method" type="hidden" hidden value={@hidden_method}>
+        <input name="_method" type="hidden" hidden value={@hidden_method} />
       <% end %>
       <%= if @csrf_token do %>
-        <input name="_csrf_token" type="hidden" hidden value={@csrf_token}>
+        <input name="_csrf_token" type="hidden" hidden value={@csrf_token} />
       <% end %>
       <%= render_slot(@inner_block, @form) %>
     </form>
@@ -2690,6 +2769,7 @@ defmodule Phoenix.Component do
       href={@patch}
       data-phx-link="patch"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
+      phx-no-format
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
@@ -2705,6 +2785,7 @@ defmodule Phoenix.Component do
       data-method={if @method != "get", do: @method}
       data-csrf={if @method != "get", do: csrf_token(@csrf_token, @href)}
       data-to={if @method != "get", do: @href}
+      phx-no-format
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
@@ -2942,6 +3023,7 @@ defmodule Phoenix.Component do
       data-phx-entry-ref={@entry.ref}
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
+      phx-no-format
       {@rest} />
     """
   end

@@ -95,8 +95,6 @@ import {
   PHX_THROTTLE,
   PHX_TRACK_UPLOADS,
   PHX_SESSION,
-  PHX_FEEDBACK_FOR,
-  PHX_FEEDBACK_GROUP,
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF,
@@ -116,6 +114,8 @@ import Hooks from "./hooks"
 import LiveUploader from "./live_uploader"
 import View from "./view"
 import JS from "./js"
+
+export let isUsedInput = (el) => DOM.isUsedInput(el)
 
 export default class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -158,7 +158,12 @@ export default class LiveSocket {
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
-    this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
+    this.domCallbacks = Object.assign({
+      onPatchStart: closure(),
+      onPatchEnd: closure(),
+      onNodeAdded: closure(),
+      onBeforeElUpdated: closure()},
+    opts.dom || {})
     this.transitions = new TransitionSet()
     window.addEventListener("pagehide", _e => {
       this.unloaded = true
@@ -172,6 +177,8 @@ export default class LiveSocket {
   }
 
   // public
+
+  isUsedInput(el){ return isUsedInput(el) }
 
   version(){ return LV_VSN }
 
@@ -882,7 +889,7 @@ export default class LiveSocket {
     }
     this.on("reset", (e) => {
       let form = e.target
-      DOM.resetForm(form, this.binding(PHX_FEEDBACK_FOR), this.binding(PHX_FEEDBACK_GROUP))
+      DOM.resetForm(form)
       let input = Array.from(form.elements).find(el => el.type === "reset")
       if(input){
         // wait until next tick to get updated input value

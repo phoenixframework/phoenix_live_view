@@ -274,7 +274,9 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
   }));
 });
 
-test("phx-no-feedback is applied correctly", async ({ page }) => {
+// phx-feedback-for was remoted in LiveView 1.0, but we still test the shim applied in
+// test_helper.exs layout for backwards compatibility
+test("phx-no-feedback is applied correctly for backwards-compatible-shims", async ({ page }) => {
   await page.goto("/form/feedback");
   await syncLV(page);
 
