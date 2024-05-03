@@ -119,6 +119,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     scope "/issues", Phoenix.LiveViewTest.E2E do
       pipe_through(:browser)
 
+      live "/2787", Issue2787Live
       live "/3026", Issue3026Live
       live "/3040", Issue3040Live
       live "/3083", Issue3083Live
