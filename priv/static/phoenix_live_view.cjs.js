@@ -8,7 +8,8 @@ var __export = (target, all) => {
 
 // js/phoenix_live_view/index.js
 __export(exports, {
-  LiveSocket: () => LiveSocket
+  LiveSocket: () => LiveSocket,
+  isUsedInput: () => isUsedInput
 });
 
 // js/phoenix_live_view/constants.js
@@ -56,8 +57,6 @@ var PHX_ROOT_ID = "data-phx-root-id";
 var PHX_VIEWPORT_TOP = "viewport-top";
 var PHX_VIEWPORT_BOTTOM = "viewport-bottom";
 var PHX_TRIGGER_ACTION = "trigger-action";
-var PHX_FEEDBACK_FOR = "feedback-for";
-var PHX_FEEDBACK_GROUP = "feedback-group";
 var PHX_HAS_FOCUSED = "phx-has-focused";
 var FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "datetime-local", "color", "range"];
 var CHECKABLE_INPUTS = ["checkbox", "radio"];
@@ -887,6 +886,9 @@ var DOM = {
   hideFeedback(container) {
     js_default.addOrRemoveClasses(container, [PHX_NO_FEEDBACK_CLASS], []);
   },
+  isUsedInput(el) {
+    return el.nodeType === Node.ELEMENT_NODE && (this.private(el, PHX_HAS_FOCUSED) || this.private(el, PHX_HAS_SUBMITTED));
+  },
   shouldHideFeedback(container, nameOrGroup, phxFeedbackGroup) {
     const query = `[name="${nameOrGroup}"],
                    [name="${nameOrGroup}[]"],
@@ -907,14 +909,10 @@ var DOM = {
     }
     return query;
   },
-  resetForm(form, phxFeedbackFor, phxFeedbackGroup) {
+  resetForm(form) {
     Array.from(form.elements).forEach((input) => {
-      let query = this.feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup);
       this.deletePrivate(input, PHX_HAS_FOCUSED);
       this.deletePrivate(input, PHX_HAS_SUBMITTED);
-      this.all(document, query, (feedbackEl) => {
-        js_default.addOrRemoveClasses(feedbackEl, [PHX_NO_FEEDBACK_CLASS], []);
-      });
     });
   },
   showError(inputEl, phxFeedbackFor, phxFeedbackGroup) {
@@ -2117,6 +2115,7 @@ var DOMPatch = class {
     this.cidPatch = isCid(this.targetCID);
     this.pendingRemoves = [];
     this.phxRemove = this.liveSocket.binding("remove");
+    this.targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container;
     this.callbacks = {
       beforeadded: [],
       beforeupdated: [],
@@ -2147,22 +2146,18 @@ var DOMPatch = class {
     });
   }
   perform(isJoinPatch) {
-    let { view, liveSocket, container, html } = this;
-    let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container;
+    let { view, liveSocket, html, container, targetContainer } = this;
     if (this.isCIDPatch() && !targetContainer) {
       return;
     }
     let focused = liveSocket.getActiveElement();
     let { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
     let phxUpdate = liveSocket.binding(PHX_UPDATE);
-    let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR);
-    let phxFeedbackGroup = liveSocket.binding(PHX_FEEDBACK_GROUP);
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
     let added = [];
-    let feedbackContainers = [];
     let updates = [];
     let appendPrependUpdates = [];
     let externalFormTriggered = null;
@@ -2211,8 +2206,6 @@ var DOMPatch = class {
           if (el.getAttribute) {
             this.maybeReOrderStream(el, true);
           }
-          if (dom_default.isFeedbackContainer(el, phxFeedbackFor))
-            feedbackContainers.push(el);
           if (el instanceof HTMLImageElement && el.srcset) {
             el.srcset = el.srcset;
           } else if (el instanceof HTMLVideoElement && el.autoplay) {
@@ -2251,10 +2244,6 @@ var DOMPatch = class {
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
-          if (dom_default.isFeedbackContainer(fromEl, phxFeedbackFor) || dom_default.isFeedbackContainer(toEl, phxFeedbackFor)) {
-            feedbackContainers.push(fromEl);
-            feedbackContainers.push(toEl);
-          }
           dom_default.cleanChildNodes(toEl, phxUpdate);
           if (this.skipCIDSibling(toEl)) {
             this.maybeReOrderStream(fromEl);
@@ -2356,7 +2345,6 @@ var DOMPatch = class {
         appendPrependUpdates.forEach((update) => update.perform());
       });
     }
-    dom_default.maybeHideFeedback(targetContainer, feedbackContainers, phxFeedbackFor, phxFeedbackGroup);
     liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
     dom_default.dispatchEvent(document, "phx:update");
     added.forEach((el) => this.trackAfter("added", el));
@@ -3224,6 +3212,7 @@ var View = class {
     let removedEls = [];
     let phxChildrenAdded = false;
     let updatedHookIds = new Set();
+    this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
     patch.after("added", (el) => {
       this.liveSocket.triggerDOM("onNodeAdded", [el]);
       let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
@@ -3260,6 +3249,7 @@ var View = class {
     patch.after("transitionsDiscarded", (els) => this.afterElementsRemoved(els, pruneCids));
     patch.perform(isJoinPatch);
     this.afterElementsRemoved(removedEls, pruneCids);
+    this.liveSocket.triggerDOM("onPatchEnd", [patch.targetContainer]);
     return phxChildrenAdded;
   }
   afterElementsRemoved(elements, pruneCids) {
@@ -3776,7 +3766,6 @@ var View = class {
       cid
     };
     this.pushWithReply(refGenerator, "event", event, (resp) => {
-      dom_default.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR), this.liveSocket.binding(PHX_FEEDBACK_GROUP));
       if (dom_default.isUploadInput(inputEl) && dom_default.isAutoUpload(inputEl)) {
         if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
           let [ref, _els] = refGenerator();
@@ -4039,13 +4028,10 @@ var View = class {
   }
   submitForm(form, targetCtx, phxEvent, submitter, opts = {}) {
     dom_default.putPrivate(form, PHX_HAS_SUBMITTED, true);
-    const phxFeedbackFor = this.liveSocket.binding(PHX_FEEDBACK_FOR);
-    const phxFeedbackGroup = this.liveSocket.binding(PHX_FEEDBACK_GROUP);
     const inputs = Array.from(form.elements);
     inputs.forEach((input) => dom_default.putPrivate(input, PHX_HAS_SUBMITTED, true));
     this.liveSocket.blurActiveElement(this);
     this.pushFormSubmit(form, targetCtx, phxEvent, submitter, opts, () => {
-      inputs.forEach((input) => dom_default.showError(input, phxFeedbackFor, phxFeedbackGroup));
       this.liveSocket.restorePreviouslyActiveFocus();
     });
   }
@@ -4055,6 +4041,7 @@ var View = class {
 };
 
 // js/phoenix_live_view/live_socket.js
+var isUsedInput = (el) => dom_default.isUsedInput(el);
 var LiveSocket = class {
   constructor(url, phxSocket, opts = {}) {
     this.unloaded = false;
@@ -4096,7 +4083,12 @@ var LiveSocket = class {
     this.localStorage = opts.localStorage || window.localStorage;
     this.sessionStorage = opts.sessionStorage || window.sessionStorage;
     this.boundTopLevelEvents = false;
-    this.domCallbacks = Object.assign({ onNodeAdded: closure(), onBeforeElUpdated: closure() }, opts.dom || {});
+    this.domCallbacks = Object.assign({
+      onPatchStart: closure(),
+      onPatchEnd: closure(),
+      onNodeAdded: closure(),
+      onBeforeElUpdated: closure()
+    }, opts.dom || {});
     this.transitions = new TransitionSet();
     window.addEventListener("pagehide", (_e) => {
       this.unloaded = true;
@@ -4106,6 +4098,9 @@ var LiveSocket = class {
         window.location.reload();
       }
     });
+  }
+  isUsedInput(el) {
+    return isUsedInput(el);
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
@@ -4819,7 +4814,7 @@ var LiveSocket = class {
     }
     this.on("reset", (e) => {
       let form = e.target;
-      dom_default.resetForm(form, this.binding(PHX_FEEDBACK_FOR), this.binding(PHX_FEEDBACK_GROUP));
+      dom_default.resetForm(form);
       let input = Array.from(form.elements).find((el) => el.type === "reset");
       if (input) {
         window.requestAnimationFrame(() => {
