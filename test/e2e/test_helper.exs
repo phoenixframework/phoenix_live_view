@@ -97,6 +97,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form", E2E.FormLive
       live "/form/dynamic-inputs", E2E.FormDynamicInputsLive
       live "/js", E2E.JsLive
+      live "/select", E2E.SelectLive
     end
 
     scope "/issues", Phoenix.LiveViewTest.E2E do
