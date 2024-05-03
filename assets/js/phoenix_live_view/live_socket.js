@@ -178,8 +178,6 @@ export default class LiveSocket {
 
   // public
 
-  isUsedInput(el){ return isUsedInput(el) }
-
   version(){ return LV_VSN }
 
   isProfileEnabled(){ return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
