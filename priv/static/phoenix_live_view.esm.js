@@ -327,7 +327,7 @@ var ARIA = {
 var aria_default = ARIA;
 
 // js/phoenix_live_view/js.js
-var focusStack = null;
+var focusStack = [];
 var default_transition_time = 200;
 var JS = {
   exec(eventType, phxEvent, view, sourceEl, defaults) {
@@ -404,14 +404,14 @@ var JS = {
     window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
   },
   exec_push_focus(eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => focusStack = el || sourceEl);
+    window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
   },
   exec_pop_focus(eventType, phxEvent, view, sourceEl, el) {
     window.requestAnimationFrame(() => {
-      if (focusStack) {
-        focusStack.focus();
+      const el2 = focusStack.pop();
+      if (el2) {
+        el2.focus();
       }
-      focusStack = null;
     });
   },
   exec_add_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time }) {
@@ -421,7 +421,7 @@ var JS = {
     this.addOrRemoveClasses(el, [], names, transition, time, view);
   },
   exec_toggle_class(eventType, phxEvent, view, sourceEl, el, { to, names, transition, time }) {
-    this.toggleClasses(el, names, transition, view);
+    this.toggleClasses(el, names, transition, time, view);
   },
   exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
     if (el.hasAttribute(attr)) {
@@ -2153,9 +2153,9 @@ var DOMPatch = class {
     let updates = [];
     let appendPrependUpdates = [];
     let externalFormTriggered = null;
-    function morph(targetContainer2, source) {
+    function morph(targetContainer2, source, withChildren = false) {
       morphdom_esm_default(targetContainer2, source, {
-        childrenOnly: targetContainer2.getAttribute(PHX_COMPONENT) === null,
+        childrenOnly: targetContainer2.getAttribute(PHX_COMPONENT) === null && !withChildren,
         getNodeKey: (node) => {
           if (dom_default.isPhxDestroyed(node)) {
             return null;
@@ -2190,7 +2190,7 @@ var DOMPatch = class {
           if (!isJoinPatch && this.streamComponentRestore[el.id]) {
             morphedEl = this.streamComponentRestore[el.id];
             delete this.streamComponentRestore[el.id];
-            morph.bind(this)(morphedEl, el);
+            morph.call(this, morphedEl, el, true);
           }
           return morphedEl;
         },
@@ -2333,7 +2333,7 @@ var DOMPatch = class {
           });
         });
       }
-      morph.bind(this)(targetContainer, html);
+      morph.call(this, targetContainer, html);
     });
     if (liveSocket.isDebugEnabled()) {
       detectDuplicateIds();
@@ -3067,7 +3067,7 @@ var View = class {
     }
   }
   onJoin(resp) {
-    let { rendered, container } = resp;
+    let { rendered, container, liveview_version } = resp;
     if (container) {
       let [tag, attrs] = container;
       this.el = dom_default.replaceRootContainer(this.el, tag, attrs);
@@ -3075,6 +3075,9 @@ var View = class {
     this.childJoins = 0;
     this.joinPending = true;
     this.flash = null;
+    if (liveview_version !== this.liveSocket.version()) {
+      console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`);
+    }
     browser_default.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS);
     this.applyDiff("mount", rendered, ({ diff, events }) => {
       this.rendered = new Rendered(this.id, diff);
@@ -4086,6 +4089,9 @@ var LiveSocket = class {
         window.location.reload();
       }
     });
+  }
+  version() {
+    return "0.20.14";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
