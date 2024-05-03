@@ -1,6 +1,6 @@
 # Changelog
 
-## Backwards imcompatible changes for 1.0
+## Backwards incompatible changes for 1.0
 
 LiveView 1.0 removes the client-based `phx-feedback-for` annotation for showing and hiding input feedback, such as validation errors. This has been replaced by `Phoenix.Component.used_input?/2`, which handles showing and hiding feedback using standard server rendering.
 
