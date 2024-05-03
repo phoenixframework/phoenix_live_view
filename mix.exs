@@ -55,7 +55,9 @@ defmodule Phoenix.LiveView.MixProject do
       {:makeup_diff, "~> 0.1", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4.1", only: :test},
-      {:plug_cowboy, "~> 2.6", only: :e2e}
+      {:plug_cowboy, "~> 2.6", only: :e2e},
+      {:ecto, "~> 3.11", only: :e2e},
+      {:phoenix_ecto, "~> 4.5", only: :e2e}
     ]
   end
 
