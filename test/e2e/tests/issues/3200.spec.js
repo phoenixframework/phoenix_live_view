@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../../test-fixtures");
 const { syncLV } = require("../../utils");
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/3200
