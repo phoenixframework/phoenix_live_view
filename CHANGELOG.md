@@ -6,14 +6,17 @@ LiveView 1.0 removes the client-based `phx-feedback-for` annotation for showing 
 
 A backwards-compatible shim can be used to maintain `phx-feedback-for` in your existing applications:
 
-1. Save the [`phx_feedback_dom.js` shim](https://gist.github.com/chrismccord/c4c60328c6ac5ec29e167bb115315d82) to your local `assets/js/phx_feedback_dom.js`. Then import it into your `assets/js/app.js`, and add a new `dom` option to your `LiveSocket` constructor, or wrap the existing value:
+1. Save the [`phx_feedback_dom.js` shim](https://gist.github.com/chrismccord/c4c60328c6ac5ec29e167bb115315d82) to your local `assets/js/phx_feedback_dom.js`.
+2. Import it into your `assets/js/app.js`.
+3. Add a new `dom` option to your `LiveSocket` constructor, or wrap the existing value:
 
 ```javascript
+import {Socket} from "phoenix";
 import {LiveSocket} from "phoenix_live_view"
 import phxFeedbackDom from "./phx_feedback_dom"
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {
+let liveSocket = new LiveSocket("/live", Socket, {
   params: {_csrf_token: csrfToken},
   dom: phxFeedbackDom({})
 })
@@ -25,10 +28,10 @@ let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, 
   * `live_component/2` and `live_component/3` helpers (not the function component) have been removed
 
 ### Bug fixes
-  * Fix attributes of stream items are being updated on reset
+  * Fix attributes of existing stream items not being updated on reset
   * Fix nested LiveView within streams becoming empty when reset
-  * Fix `phx-mounted` firing duplicate times, first on dead render, then on live render, leading to errors when a LiveComponent has not yet mounted
-  * Fix `JS.toggle_class` type error
+  * Fix `phx-mounted` firing twice, first on dead render, then on live render, leading to errors when a LiveComponent has not yet mounted
+  * Fix `JS.toggle_class` error when used with a transition
 
 ### Enhancements
   * Warn on mismatched client and server versions
