@@ -315,6 +315,7 @@ describe("JS", () => {
       expect(Array.from(modal.classList)).toEqual(["modal"])
       done()
     })
+
     test("with multiple selector", done => {
       let view = setupView(`
       <div id="modal1" class="modal">modal</div>
@@ -335,6 +336,25 @@ describe("JS", () => {
 
       expect(Array.from(modal1.classList)).toEqual(["modal"])
       expect(Array.from(modal2.classList)).toEqual(["modal"])
+      done()
+    })
+
+    test("with transition", done => {
+      let view = setupView(`
+      <button phx-click='[["toggle_class",{"names":["t"],"transition":[["a"],["b"],["c"]]}]]'></button>
+      `)
+      let button = document.querySelector("button")
+
+      expect(Array.from(button.classList)).toEqual([])
+
+      JS.exec("click", button.getAttribute("phx-click"), view, button)
+
+      jest.advanceTimersByTime(100)
+      expect(Array.from(button.classList)).toEqual(["a", "c"])
+
+      jest.runAllTimers()
+      expect(Array.from(button.classList)).toEqual(["c", "t"])
+
       done()
     })
   })
@@ -715,6 +735,34 @@ describe("JS", () => {
       expect(toggle.getAttribute("aria-expanded")).toEqual("true")
       JS.exec("click", toggle.getAttribute("phx-click"), view, toggle)
       expect(toggle.getAttribute("aria-expanded")).toEqual("false")
+    })
+  })
+
+  describe("focus", () => {
+    test("works like a stack", () => {
+      let view = setupView(`
+      <div id="modal1" tabindex="0" class="modal">modal 1</div>
+      <div id="modal2" tabindex="0" class="modal">modal 2</div>
+      <div id="push1" phx-click='[["push_focus", {"to": "#modal1"}]]'></div>
+      <div id="push2" phx-click='[["push_focus", {"to": "#modal2"}]]'></div>
+      <div id="pop" phx-click='[["pop_focus", {}]]'></div>
+      `)
+      let modal1 = document.querySelector("#modal1")
+      let modal2 = document.querySelector("#modal2")
+      let push1 = document.querySelector("#push1")
+      let push2 = document.querySelector("#push2")
+      let pop = document.querySelector("#pop")
+
+      JS.exec("click", push1.getAttribute("phx-click"), view, push1)
+      JS.exec("click", push2.getAttribute("phx-click"), view, push2)
+
+      JS.exec("click", pop.getAttribute("phx-click"), view, pop)
+      jest.runAllTimers()
+      expect(document.activeElement).toBe(modal2)
+
+      JS.exec("click", pop.getAttribute("phx-click"), view, pop)
+      jest.runAllTimers()
+      expect(document.activeElement).toBe(modal1)
     })
   })
 

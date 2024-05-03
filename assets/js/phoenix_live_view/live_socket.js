@@ -180,6 +180,8 @@ export default class LiveSocket {
 
   isUsedInput(el){ return isUsedInput(el) }
 
+  version(){ return LV_VSN }
+
   isProfileEnabled(){ return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
 
   isDebugEnabled(){ return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true" }

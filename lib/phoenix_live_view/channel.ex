@@ -539,7 +539,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp exported?(m, f, a) do
-    function_exported?(m, f, a) || (Code.ensure_loaded?(m) && function_exported?(m, f, a))
+    function_exported?(m, f, a) or (Code.ensure_loaded?(m) and function_exported?(m, f, a))
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
@@ -1301,14 +1301,16 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp reply_mount(result, from, %Session{} = session, route) do
+    lv_vsn = to_string(Application.spec(:phoenix_live_view)[:vsn])
+
     case result do
       {:ok, diff, :mount, new_state} ->
-        reply = put_container(session, route, %{rendered: diff})
+        reply = put_container(session, route, %{rendered: diff, liveview_version: lv_vsn})
         GenServer.reply(from, {:ok, reply})
         {:noreply, post_verified_mount(new_state)}
 
       {:ok, diff, {:live_patch, opts}, new_state} ->
-        reply = put_container(session, route, %{rendered: diff, live_patch: opts})
+        reply = put_container(session, route, %{rendered: diff, live_patch: opts, liveview_version: lv_vsn})
         GenServer.reply(from, {:ok, reply})
         {:noreply, post_verified_mount(new_state)}
 

@@ -128,15 +128,14 @@ defmodule Phoenix.LiveView.Rendered do
 
   @type t :: %__MODULE__{
           static: [String.t()],
-          dynamic:
-            (boolean() ->
-               [
-                 nil
-                 | iodata()
-                 | Phoenix.LiveView.Rendered.t()
-                 | Phoenix.LiveView.Comprehension.t()
-                 | Phoenix.LiveView.Component.t()
-               ]),
+          dynamic: (boolean() ->
+                      [
+                        nil
+                        | iodata()
+                        | Phoenix.LiveView.Rendered.t()
+                        | Phoenix.LiveView.Comprehension.t()
+                        | Phoenix.LiveView.Component.t()
+                      ]),
           fingerprint: integer(),
           root: nil | true | false,
           caller:
@@ -558,10 +557,6 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct(expr, _vars, _assigns, _caller) do
     to_safe(expr, true)
   end
-
-  # TODO: Remove me when live_component/2/3 are removed
-  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}),
-    do: func
 
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, func]}),
     do: func
@@ -1328,10 +1323,6 @@ defmodule Phoenix.LiveView.Engine do
   # Constructs from Phoenix and TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
-
-  # TODO: Remove me when live_component/2/3 are removed
-  defp classify_taint(:live_component, [_, [do: _]]), do: :live
-  defp classify_taint(:live_component, [_, _, [do: _]]), do: :live
 
   # Special forms are forbidden and raise.
   defp classify_taint(:alias, [_]), do: :special_form

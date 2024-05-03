@@ -901,7 +901,7 @@ defmodule Phoenix.LiveView.JS do
   defp class_names(nil), do: []
 
   defp class_names(names) do
-    String.split(names, " ")
+    String.split(names, " ", trim: true)
   end
 
   defp transition_class_names(nil), do: nil

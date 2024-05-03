@@ -20,7 +20,10 @@ defmodule Phoenix.LiveView.MixProject do
       homepage_url: "http://www.phoenixframework.org",
       description: """
       Rich, real-time user experiences with server-rendered HTML
-      """
+      """,
+      preferred_cli_env: [
+        docs: :docs
+      ]
     ]
   end
 
@@ -121,14 +124,17 @@ defmodule Phoenix.LiveView.MixProject do
   defp before_closing_body_tag(_), do: ""
 
   defp extras do
-    ["CHANGELOG.md"] ++ Path.wildcard("guides/*/*.md")
+    ["CHANGELOG.md"] ++
+      Path.wildcard("guides/*/*.md") ++
+      Path.wildcard("guides/cheatsheets/*.cheatmd")
   end
 
   defp groups_for_extras do
     [
-      Introduction: ~r/guides\/introduction\/.?/,
-      "Server-side features": ~r/guides\/server\/.?/,
-      "Client-side integration": ~r/guides\/client\/.?/
+      Introduction: ~r"guides/introduction/",
+      "Server-side features": ~r"guides/server/",
+      "Client-side integration": ~r"guides/client/",
+      Cheatsheets: ~r"guides/cheatsheets/"
     ]
   end
 

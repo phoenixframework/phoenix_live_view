@@ -1200,8 +1200,8 @@ defmodule Phoenix.LiveView do
   To use this functionality, the first step is to annotate which static files
   you want to be tracked by LiveView, with the `phx-track-static`. For example:
 
-      <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/css/app.css")} />
-      <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/js/app.js")}></script>
+      <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+      <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
 
   Now, whenever LiveView connects to the server, it will send a copy `src`
   or `href` attributes of all tracked statics and compare those values with
@@ -1541,6 +1541,7 @@ defmodule Phoenix.LiveView do
 
   @doc ~S"""
   Assigns a new stream to the socket or inserts items into an existing stream.
+  Returns an updated `socket`.
 
   Streams are a mechanism for managing large collections on the client without
   keeping the resources on the server.
@@ -1657,6 +1658,7 @@ defmodule Phoenix.LiveView do
   Now `stream_insert/3` and `stream_delete/3` may be issued and new rows will
   be inserted or deleted from the client.
   """
+  @spec stream(%Socket{}, name :: atom | String.t, items :: Enumerable.t, opts :: Keyword.t) :: %Socket{}
   def stream(%Socket{} = socket, name, items, opts \\ []) do
     if Keyword.has_key?(opts, :dom_id) do
       IO.warn(
@@ -1697,7 +1699,10 @@ defmodule Phoenix.LiveView do
       def update(assigns, socket) do
         {:ok, stream(socket, :songs, ...)}
       end
+
+  Returns an updated `socket`.
   """
+  @spec stream_configure(%Socket{}, name :: atom | String.t, opts :: Keyword.t) :: %Socket{}
   def stream_configure(%Socket{} = socket, name, opts) when is_list(opts) do
     new_socket = ensure_streams(socket)
 
@@ -1723,6 +1728,8 @@ defmodule Phoenix.LiveView do
 
   @doc """
   Inserts a new item or updates an existing item in the stream.
+
+  Returns an updated `socket`.
 
   By default, the item is appended to the parent DOM container.
   The `:at` option may be provided to insert or update an item
@@ -1765,6 +1772,7 @@ defmodule Phoenix.LiveView do
 
   See `stream_delete/3` for more information on deleting items.
   """
+  @spec stream_insert(%Socket{}, name :: atom | String.t, item :: any, opts :: Keyword.t) :: %Socket{}
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
     limit = Keyword.get(opts, :limit)
@@ -1789,13 +1797,18 @@ defmodule Phoenix.LiveView do
 
   See `stream_delete_by_dom_id/3` to remove an item without requiring the
   original data structure.
+
+  Returns an updated `socket`.
   """
+  @spec stream_delete(%Socket{}, name :: atom | String.t, item :: any) :: %Socket{}
   def stream_delete(%Socket{} = socket, name, item) do
     update_stream(socket, name, &LiveStream.delete_item(&1, item))
   end
 
   @doc ~S'''
   Deletes an item from the stream given its computed DOM id.
+
+  Returns an updated `socket`.
 
   Behaves just like `stream_delete/3`, but accept the precomputed DOM id,
   which allows deleting from a stream without fetching or building the original
@@ -1823,6 +1836,7 @@ defmodule Phoenix.LiveView do
         {:noreply, stream_delete_by_dom_id(socket, :songs, dom_id)}
       end
   '''
+  @spec stream_delete_by_dom_id(%Socket{}, name :: atom | String.t, id :: String.t) :: %Socket{}
   def stream_delete_by_dom_id(%Socket{} = socket, name, id) do
     update_stream(socket, name, &LiveStream.delete_item_by_dom_id(&1, id))
   end
@@ -1901,8 +1915,8 @@ defmodule Phoenix.LiveView do
   ## Options
 
     * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
-    * `:reset` - remove previous results during async operation when true. Defaults to false
-
+    * `:reset` - remove previous results during async operation when true. Possible values are
+      `true`, `false`, or a list of keys to reset. Defaults to `false`.
 
   ## Examples
 

@@ -1308,7 +1308,7 @@ defmodule Phoenix.LiveViewTest do
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
-  It always returns `:ok`.
+  It returns the new path.
 
   To assert on the flash message, you can assert on the result of the
   rendered LiveView.

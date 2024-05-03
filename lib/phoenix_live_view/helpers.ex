@@ -1,8 +1,8 @@
 defmodule Phoenix.LiveView.Helpers do
   @moduledoc false
-  import Phoenix.Component
 
-  alias Phoenix.LiveView.{Component, Socket}
+  import Phoenix.Component
+  alias Phoenix.LiveView.Socket
 
   @doc """
   Provides `~L` sigil with HTML safe Live EEx syntax inside source files.
@@ -93,98 +93,14 @@ defmodule Phoenix.LiveView.Helpers do
     ~H|<a {@opts}><%= @content %></a>|
   end
 
-  # TODO: Remove live_component arity checks from Engine
-  @deprecated "Use .live_component (live_component/1) instead"
-  defmacro live_component(component, assigns, do_block \\ []) do
-    if is_assign?(:socket, component) do
-      IO.warn(
-        "passing the @socket to live_component is no longer necessary, " <>
-          "please remove the socket argument",
-        Macro.Env.stacktrace(__CALLER__)
-      )
-    end
-
-    {inner_block, do_block, assigns} =
-      case {do_block, assigns} do
-        {[do: do_block], _} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], assigns}
-        {_, [do: do_block]} -> {rewrite_do!(do_block, :inner_block, __CALLER__), [], []}
-        {_, _} -> {nil, do_block, assigns}
-      end
-
-    if match?({:__aliases__, _, _}, component) or is_atom(component) or is_list(assigns) or
-         is_map(assigns) do
-      quote do
-        Phoenix.LiveView.Helpers.__live_component__(
-          unquote(component).__live__(),
-          unquote(assigns),
-          unquote(inner_block)
-        )
-      end
-    else
-      quote do
-        case unquote(component) do
-          %Phoenix.LiveView.Socket{} ->
-            Phoenix.LiveView.Helpers.__live_component__(
-              unquote(assigns).__live__(),
-              unquote(do_block),
-              unquote(inner_block)
-            )
-
-          component ->
-            Phoenix.LiveView.Helpers.__live_component__(
-              component.__live__(),
-              unquote(assigns),
-              unquote(inner_block)
-            )
-        end
-      end
-    end
-  end
-
-  @doc false
-  def __live_component__(%{kind: :component, module: component}, assigns, inner)
-      when is_list(assigns) or is_map(assigns) do
-    assigns = assigns |> Map.new() |> Map.put_new(:id, nil)
-    assigns = if inner, do: Map.put(assigns, :inner_block, inner), else: assigns
-    id = assigns[:id]
-
-    # TODO: Remove logic from Diff once stateless components are removed.
-    if is_nil(id) do
-      IO.warn(
-        "stateless LiveComponent are deprecated, please pass an :id or use the new function component instead"
-      )
-    end
-
-    %Component{id: id, assigns: assigns, component: component}
-  end
-
-  def __live_component__(%{kind: kind, module: module}, assigns, _inner)
-      when is_list(assigns) or is_map(assigns) do
-    raise "expected #{inspect(module)} to be a component, but it is a #{kind}"
-  end
-
-  defp rewrite_do!(do_block, key, caller) do
-    if Macro.Env.has_var?(caller, {:assigns, nil}) do
-      # TODO: make __inner_block__ private once this is removed.
-      Phoenix.LiveView.TagEngine.__inner_block__(do_block, key)
-    else
-      raise ArgumentError,
-            "cannot use live_component because the assigns var is unbound/unset"
-    end
-  end
-
   @deprecated "Use <.live_title> instead"
   def live_title_tag(title, opts \\ []) do
     assigns = %{title: title, prefix: opts[:prefix], suffix: opts[:suffix]}
 
     ~H"""
-    <Phoenix.Component.live_title prefix={@prefix} suffix={@suffix}><%= @title %></Phoenix.Component.live_title>
+    <Phoenix.Component.live_title prefix={@prefix} suffix={@suffix}>
+      <%= @title %>
+    </Phoenix.Component.live_title>
     """
-  end
-
-  defp is_assign?(assign_name, expression) do
-    match?({:@, _, [{^assign_name, _, _}]}, expression) or
-      match?({^assign_name, _, _}, expression) or
-      match?({{:., _, [{:assigns, _, nil}, ^assign_name]}, _, []}, expression)
   end
 end
