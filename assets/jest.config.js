@@ -26,20 +26,18 @@ module.exports = {
   // coverageDirectory: undefined,
 
   // An array of regexp pattern strings used to skip coverage collection
-  // coveragePathIgnorePatterns: [
-  //   "/node_modules/"
-  // ],
+  coveragePathIgnorePatterns: [
+    "/node_modules/",
+    "/test/"
+  ],
+
+  collectCoverage: true,
 
   // Indicates which provider should be used to instrument code for coverage
   coverageProvider: "v8",
 
   // A list of reporter names that Jest uses when writing coverage reports
-  // coverageReporters: [
-  //   "json",
-  //   "text",
-  //   "lcov",
-  //   "clover"
-  // ],
+  coverageReporters: ["none"],
 
   // An object that configures minimum threshold enforcement for coverage results
   // coverageThreshold: undefined,
@@ -104,7 +102,18 @@ module.exports = {
   // projects: undefined,
 
   // Use this configuration option to add custom reporters to Jest
-  // reporters: undefined,
+  reporters: [
+    "default",
+    ["jest-monocart-coverage", {
+      name: "Phoenix LiveView JS Unit Coverage",
+      reports: [
+        ["raw", {outputDir: "./raw"}],
+        ["v8"],
+        ["console-summary"]
+      ],
+      outputDir: "./coverage"
+    }]
+  ],
 
   // Automatically reset mock state between every test
   // resetMocks: false,

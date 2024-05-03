@@ -5,10 +5,10 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script src="/assets/phoenix/phoenix.min.js"></script>
-    <script src="/assets/phoenix_live_view/phoenix_live_view.js"></script>
-    <script>
+    <script type="module">
+      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
       window.liveSocket = liveSocket
     </script>

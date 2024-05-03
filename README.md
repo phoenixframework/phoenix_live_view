@@ -166,7 +166,12 @@ $ mix deps.get
 $ mix test
 ```
 
-Running the Javascript tests:
+Running all JavaScript tests:
+```bash
+$ npm run test
+```
+
+Running the JavaScript unit tests:
 
 ```bash
 $ cd assets
@@ -174,6 +179,25 @@ $ npm install
 $ npm run test
 # to automatically run tests for files that have been changed
 $ npm run test.watch
+```
+
+or simply:
+
+```bash
+$ npm run js:test
+```
+
+Running the JavaScript end-to-end tests:
+
+```bash
+$ npm run e2e:test
+```
+
+Checking test coverage:
+
+```bash
+$ npm run cover
+$ npm run cover:report
 ```
 
 JS contributions are very welcome, but please do not include an updated `priv/static/phoenix_live_view.js` in pull requests. The maintainers will update it as part of the release process.
