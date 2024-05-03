@@ -4096,9 +4096,6 @@ var LiveSocket = class {
       }
     });
   }
-  isUsedInput(el) {
-    return isUsedInput(el);
-  }
   version() {
     return "0.20.14";
   }

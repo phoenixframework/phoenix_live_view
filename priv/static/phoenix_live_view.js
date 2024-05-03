@@ -4142,9 +4142,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
-    isUsedInput(el) {
-      return isUsedInput(el);
-    }
     version() {
       return "0.20.14";
     }
