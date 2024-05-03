@@ -104,7 +104,7 @@ for (let path of ["/form/nested", "/form"]) {
       await expect(webSocketEvents).toEqual(expect.arrayContaining([
         { type: "sent", payload: expect.stringContaining("phx_join") },
         { type: "received", payload: expect.stringContaining("phx_reply") },
-        { type: "sent", payload: expect.stringMatching(/event.*a=foo&b=test/) },
+        { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
       ]))
     });
 
@@ -168,7 +168,7 @@ for (let path of ["/form/nested", "/form"]) {
       await expect(webSocketEvents).toEqual(expect.arrayContaining([
         { type: "sent", payload: expect.stringContaining("phx_join") },
         { type: "received", payload: expect.stringContaining("phx_reply") },
-        { type: "sent", payload: expect.stringMatching(/event.*a=foo&b=test/) },
+        { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
       ]))
     });
   })
