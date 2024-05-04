@@ -1954,6 +1954,13 @@ defmodule Phoenix.Component do
         type
       end
 
+    opts =
+      if Macro.quoted_literal?(opts) do
+        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
+      else
+        opts
+      end
+
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
         __MODULE__,
