@@ -1356,6 +1356,8 @@ defmodule Phoenix.LiveView do
   @doc """
   Similar to `send_update/3` but the update will be delayed according to the given `time_in_milliseconds`.
 
+  It returns a reference which can be cancelled with `Process.cancel_timer/1`.
+
   ## Examples
 
       def handle_event("cancel-order", _, socket) do
