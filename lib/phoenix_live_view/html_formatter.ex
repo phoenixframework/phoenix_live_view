@@ -216,9 +216,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
-  if Version.match?(System.version(), ">= 1.13.0") do
-    @behaviour Mix.Tasks.Format
-  end
+  @behaviour Mix.Tasks.Format
 
   @impl Mix.Tasks.Format
   def features(_opts) do
