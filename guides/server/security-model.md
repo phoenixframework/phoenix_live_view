@@ -88,7 +88,7 @@ as you would with plug:
 
 We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
 convenience to avoid fetching the `current_user` multiple times across
-LiveViews.
+parent-child LiveViews.
 
 Now we can use the hook whenever relevant. One option is to specify
 the hook in your router under `live_session`:
