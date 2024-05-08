@@ -767,7 +767,7 @@ defmodule Phoenix.Component do
   ```heex
   <.table id="my-table" rows={@users}>
     <:col :for={header <- @headers} :let={user}>
-      <td><%= user[:header] %></td>
+      <td><%= user[header] %></td>
     </:col>
   <table>
   ```
