@@ -22,10 +22,10 @@ let liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
-## 1.0.0-rc
+## 1.0.0-rc.0 🚀 (2024-05-08)
 
 ## Backwards incompatible changes
-  * Remove `phx-feedback-for` in favor of `Phoenix.Component.used_input?`
+  * Remove `phx-feedback-for` in favor of `Phoenix.Component.used_input?`. See the changelog for a backwards compatible `phx-feedback-for` shim to add to existing applications.
 
 ### Removal of previously deprecated functionality
   * `live_component/2` and `live_component/3` helpers (not the function component) have been removed
