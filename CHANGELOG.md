@@ -40,7 +40,7 @@ First, ensure that you are using the latest versions of `:phoenix_ecto` and `:ph
 
 #### Core components
 
-1. Adjust the core components to omit phx-feedback-for attribute and the phx-no-feedback classes.
+1. Adjust the core components to omit the `phx-feedback-for` attribute and the `phx-no-feedback` classes.
 This shows one example for the textarea input, but there are more cases that need to be adjusted accordingly:
 
 ```diff
@@ -75,6 +75,14 @@ This shows one example for the textarea input, but there are more cases that nee
      |> assign_new(:value, fn -> field.value end)
      |> input()
    end
+```
+
+3. You can remove the phx-no-feedback tailwind variant helper from your `tailwind.config.js`:
+
+```diff
+    //
+-   plugin(({addVariant}) => addVariant("phx-no-feedback", [".phx-no-feedback&", ".phx-no-feedback &"])),
+    plugin(({addVariant}) => addVariant("phx-click-loading", [".phx-click-loading&", ".phx-click-loading &"])),
 ```
 
 #### phx.gen.auth
