@@ -22,6 +22,30 @@ let liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
+To use the new `used_input?` approach with a previously generated `phx.gen.auth` system, you will also need to add `current_password` tracking to your user schema with the following two changes to your `user.ex`:
+
+```elixir
+  schema "users" do
+    ...
++   field :current_password, :string, virtual: true, redact: true
+  end
+
+  def validate_current_password(changeset, password) do
++   changeset = cast(changeset, %{current_password: password}, [:current_password])
+
+    if valid_password?(changeset.data, password) do
+      changeset
+    else
+      add_error(changeset, :current_password, "is not valid")
+    end
+  end
+```
+
+## 1.0.0-rc.1
+
+### Bug fixes
+  * Fix used input tracking on checkboxes and hidden inputs
+
 ## 1.0.0-rc.0 🚀 (2024-05-08)
 
 ## Backwards incompatible changes
