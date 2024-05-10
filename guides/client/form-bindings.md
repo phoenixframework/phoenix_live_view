@@ -106,46 +106,23 @@ _Note_: only the individual input is sent as params for an input marked with `ph
 
 ## Error Feedback
 
-For proper error feedback on form updates, the error tags must specify which
-input they belong to. This is accomplished with `phx-feedback-for`.
+For proper error feedback on form updates, LiveView sends special parameters on form events
+starting with `_unused_` to indicate that the input for the specific field has not been interacted with yet.
 
-The `phx-feedback-for` annotation specifies the name (or id, for backwards compatibility) of the input it belongs to. Failing to add the `phx-feedback-for` attribute will result in displaying error messages for form fields that the user has not changed yet (e.g. required
-fields further down on the page).
+When creating a form from these parameters through `Phoenix.Component.to_form/2` or `Phoenix.Component.form/1`,
+`Phoenix.Component.used_input?/1` can be used to filter error messages.
 
 For example, your `MyAppWeb.CoreComponents` may use this function:
 
-    def input(assigns) do
-      ~H"""
-      <div phx-feedback-for={@name}>
-        <input
-          type={@type}
-          name={@name}
-          id={@id || @name}
-          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-          class={[
-            "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
-            "border-zinc-300 focus:border-zinc-400 focus:ring-zinc-800/5",
-          ]}
-          {@rest}
-        />
-        <.error :for={msg <- @errors}><%= msg %></.error>
-      </div>
-      """
-    end
+    def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+      errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
 
-    def error(assigns) do
-      ~H"""
-      <p class="phx-no-feedback:hidden">
-        <Heroicons.exclamation_circle mini class="mt-0.5 h-5 w-5 flex-none fill-rose-500" />
-        <%= render_slot(@inner_block) %>
-      </p>
-      """
-    end
+      assigns
+      |> assign(field: nil, id: assigns.id || field.id)
+      |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
+      |> assign(:errors, Enum.map(errors, &translate_error(&1)))
 
-Now, any DOM container with the `phx-feedback-for` attribute will receive a
-`phx-no-feedback` class in cases where the form fields has yet to receive
-user input/focus. Using new CSS rules or tailwindcss variants allows you
-errors to be shown, hidden, and styled as feedback changes.
+Now, only errors for fields that were interacted with are shown.
 
 ## Number inputs
 
