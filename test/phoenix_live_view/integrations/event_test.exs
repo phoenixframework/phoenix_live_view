@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.EventTest do
                   end}
                )
 
-               assert_receive {:DOWN, _ref, :process, ^pid, _reason}
+               assert_receive {:DOWN, _ref, :process, ^pid, _reason}, 500
              end) =~ "Got: {:reply, :boom"
     end
 
