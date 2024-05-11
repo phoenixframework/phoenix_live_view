@@ -246,7 +246,7 @@ LiveView to a separate module. For these cases, LiveView provides
 
 Components have their own `mount/3` and `handle_event/3` callbacks, as
 well as their own state with change tracking support. Components are also
-lightweight as they "run" in the same process as the parent `LiveView`.
+lightweight as they "run" in the same process as the parent LiveView.
 However, this means an error in a component would cause the whole view to
 fail to render. See `Phoenix.LiveComponent` for a complete rundown on components.
 

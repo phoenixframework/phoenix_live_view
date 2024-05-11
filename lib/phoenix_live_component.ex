@@ -423,7 +423,7 @@ defmodule Phoenix.LiveComponent do
   ## Live patches and live redirects
 
   A template rendered inside a component can use `<.link patch={...}>` and
-  `<.link navigate={...}>`. Patches are always handled by the parent `LiveView`,
+  `<.link navigate={...}>`. Patches are always handled by the parent LiveView,
   as components do not provide `handle_params`.
 
   ## Cost of live components

@@ -908,8 +908,8 @@ defmodule Phoenix.Component do
 
   ## Containers
 
-  When a `LiveView` is rendered, its contents are wrapped in a container. By default,
-  the container is a `div` tag with a handful of `LiveView` specific attributes.
+  When a LiveView is rendered, its contents are wrapped in a container. By default,
+  the container is a `div` tag with a handful of LiveView-specific attributes.
 
   The container can be customized in different ways:
 
@@ -1998,8 +1998,8 @@ defmodule Phoenix.Component do
   @doc """
   A function component for rendering `Phoenix.LiveComponent` within a parent LiveView.
 
-  While `LiveView`s can be nested, each LiveView starts its own process. A `LiveComponent` provides
-  similar functionality to `LiveView`, except they run in the same process as the `LiveView`,
+  While LiveViews can be nested, each LiveView starts its own process. A LiveComponent provides
+  similar functionality to LiveView, except they run in the same process as the LiveView,
   with its own encapsulated state. That's why they are called stateful components.
 
   ## Attributes

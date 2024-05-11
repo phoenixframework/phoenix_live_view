@@ -349,12 +349,12 @@ defmodule Phoenix.LiveView do
     * `:global_prefixes` - the global prefixes to use for components. See
       `Global Attributes` in `Phoenix.Component` for more information.
 
-    * `:layout` - configures the layout the `LiveView` will be rendered in.
+    * `:layout` - configures the layout the LiveView will be rendered in.
       This layout can be overridden by on `c:mount/3` or via the `:layout`
       option in `Phoenix.LiveView.Router.live_session/2`
 
-    * `:log` - configures the log level for the `LiveView`, either false
-      or a Log level
+    * `:log` - configures the log level for the LiveView, either `false`
+      or a log level
 
   """
 
@@ -411,11 +411,11 @@ defmodule Phoenix.LiveView do
     * `:container` - an optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
 
-    * `:layout` - configures the layout the `LiveView` will be rendered in.
+    * `:layout` - configures the layout the LiveView will be rendered in.
       This layout can be overridden by on `c:mount/3` or via the `:layout`
       option in `Phoenix.LiveView.Router.live_session/2`
 
-    * `:log` - configures the log level for the `LiveView`, either false
+    * `:log` - configures the log level for the LiveView, either `false`
       or a log level
 
     * `:on_mount` - a list of tuples with module names and argument to be invoked
