@@ -1564,9 +1564,9 @@ defmodule Phoenix.Component do
   On initial load the end-user begins typing the title field. The client will send
   the entire form payload to the server with the typed title and an empty email.
 
-  The `Phoenix.HTML.FormData` implementation will consider an empty title in
+  The `Phoenix.HTML.FormData` implementation will consider an empty email in
   this scenario as invalid, but the user shouldn't see the error because they
-  haven't yet used the email input. To handle this `used_input?/1` can be used to
+  haven't yet used the email input. To handle this, `used_input?/1` can be used to
   filter errors from the client by referencing param metadata to distinguish between
   used and unused input fields. For non-LiveViews, all inputs are considered used.
 
