@@ -100,11 +100,11 @@ Attribute values can be:
 
 ## DOM Element Lifecycle
 
-| Attribute                                  | Value                                                                                  |
-|--------------------------------------------|----------------------------------------------------------------------------------------|
-| [`phx-mounted`](../client/dom-patching.md) | [JS commands](../client/bindings.md#js-commands) executed after the element is mounted |
-| [`phx-remove`](../client/dom-patching.md)  | [JS commands](../client/bindings.md#js-commands) executed during the element removal   |
-| [`phx-update`](../client/dom-patching.md)  | `"replace"` (default), `"stream"` or `"ignore"`, configures DOM patching behavior      |
+| Attribute                                           | Value                                                                                  |
+|-----------------------------------------------------|----------------------------------------------------------------------------------------|
+| [`phx-mounted`](../client/bindings.md#dom-patching) | [JS commands](../client/bindings.md#js-commands) executed after the element is mounted |
+| [`phx-remove`](../client/bindings.md#dom-patching)  | [JS commands](../client/bindings.md#js-commands) executed during the element removal   |
+| [`phx-update`](../client/bindings.md#dom-patching)  | `"replace"` (default), `"stream"` or `"ignore"`, configures DOM patching behavior      |
 
 #### lib/hello_web/live/hello_live.html.heex
 

@@ -300,6 +300,5 @@ These guides focus on LiveView bindings and client-side integration:
 
 * [Bindings](bindings.md)
 * [Form bindings](form-bindings.md)
-* [DOM patching and temporary assigns](dom-patching.md)
 * [JavaScript interoperability](js-interop.md)
 * [Uploads (External)](uploads-external.md)
