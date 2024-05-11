@@ -286,13 +286,14 @@ split on server-side and client-side:
 These guides focus on server-side functionality:
 
 * [Assigns and HEEx templates](assigns-eex.md)
+* [Deployments](deployments.md)
 * [Error and exception handling](error-handling.md)
-* [Live Layouts](live-layouts.md)
-* [Live Navigation](live-navigation.md)
-* [Security considerations of the LiveView model](security-model.md)
+* [Live layouts](live-layouts.md)
+* [Live navigation](live-navigation.md)
+* [Security considerations](security-model.md)
 * [Telemetry](telemetry.md)
 * [Uploads](uploads.md)
-* [Using Gettext for internationalization](using-gettext.md)
+* [Gettext for internationalization](using-gettext.md)
 
 ### Client-side
 

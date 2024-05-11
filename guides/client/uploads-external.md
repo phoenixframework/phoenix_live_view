@@ -1,4 +1,4 @@
-# External Uploads
+# Uploads (External)
 
 > This guide continues from the configuration started in the
 > server [Uploads guide](uploads.html).
