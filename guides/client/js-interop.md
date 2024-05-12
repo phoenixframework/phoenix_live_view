@@ -253,10 +253,15 @@ and the return value is ignored.
 For example, the following option could be used to guarantee that some attributes set on the client-side are kept intact:
 
 ```javascript
-onBeforeElUpdated(from, to){
-  for (const attr of from.attributes){
-    if (attr.name.startsWith("data-js-")){
-      to.setAttribute(attr.name, attr.value);
+...
+let liveSocket = new LiveSocket("/live", Socket, {
+  params: { _csrf_token: csrfToken },
+  hooks: Hooks,
+  onBeforeElUpdated(from, to) {
+    for (const attr of from.attributes) {
+      if (attr.name.startsWith("data-js-")) {
+        to.setAttribute(attr.name, attr.value);
+      }
     }
   }
 }
