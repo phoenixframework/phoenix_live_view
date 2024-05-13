@@ -1995,7 +1995,7 @@ defmodule Phoenix.LiveView do
   the key passed to `start_async/3`.
 
   The underlying process will be killed with the provided reason, or
-  `{:shutdown, :cancel}`. if no reason is passed. For `assign_async/3`
+  with `{:shutdown, :cancel}` if no reason is passed. For `assign_async/3`
   operations, the `:failed` field will be set to `{:exit, reason}`.
   For `start_async/3`, the `c:handle_async/3` callback will receive
   `{:exit, reason}` as the result.
