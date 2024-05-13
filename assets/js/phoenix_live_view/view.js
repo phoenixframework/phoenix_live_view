@@ -104,7 +104,8 @@ let serializeForm = (form, metadata, onlyNames = []) => {
     if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
       let inputs = elements.filter(input => input.name === key)
       let isUnused = !inputs.some(input => (DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED)))
-      if(isUnused && !(submitter && submitter.name == key)){
+      let hidden = inputs.every(input => input.type === "hidden")
+      if(isUnused && !(submitter && submitter.name == key) && !hidden){
         params.append(prependFormDataKey(key, "_unused_"), "")
       }
       params.append(key, val)
