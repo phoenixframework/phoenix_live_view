@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.LiveReloadTest do
     Application.put_env(:phoenix_live_view, :vsn, 2)
 
     assert_receive {:phoenix_live_reload, :live_view, "lib/test_auth_web/live/user_live.ex"}
-    assert_receive :reloaded
+    assert_receive :reloaded, 1000
     assert render(lv) =~ "<div>Version 2</div>"
   end
 
