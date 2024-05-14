@@ -80,7 +80,7 @@ defmodule Phoenix.LiveView do
 
   ### Async assigns
 
-  The `assign_async/3` function takes a name, a list of keys which will be assigned
+  The `assign_async/3` function takes the socket, a key or list of keys which will be assigned
   asynchronously, and a function. This function will be wrapped in a `task` by
   `assign_async`, making it easy for you to return the result. This function must
   return an `{:ok, assigns}` or `{:error, reason}` tuple, where `assigns` is a map
