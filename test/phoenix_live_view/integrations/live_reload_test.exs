@@ -47,14 +47,13 @@ defmodule Phoenix.LiveView.LiveReloadTest do
     assert render(lv) =~ "<div>Version 2</div>"
   end
 
+  def reload(endpoint, caller) do
+    Phoenix.CodeReloader.reload(endpoint)
+    send(caller, :reloaded)
+  end
+
   test "custom reloader" do
-    caller = self()
-
-    reloader = fn endpoint ->
-      Phoenix.CodeReloader.reload(endpoint)
-      send(caller, :reloaded)
-    end
-
+    reloader = {__MODULE__, :reload, [self()]}
     %{conn: conn, socket: socket} = start([reloader: reloader] ++ @live_reload_config)
 
     Application.put_env(:phoenix_live_view, :vsn, 1)
