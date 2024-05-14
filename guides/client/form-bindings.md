@@ -263,7 +263,7 @@ To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
 To reset a LiveView form, you can use the standard `type="reset"` on a
 form button or input. When clicked, the form inputs will be reset to their
-original values, and Phoenix will hide errors for `phx-feedback-for` elements.
+original values.
 After the form is reset, a `phx-change` event is emitted with the `_target` param
 containing the reset `name`. For example, the following element:
 
