@@ -222,7 +222,9 @@ let DOM = {
 
       case "blur":
         if(this.once(el, "debounce-blur")){
-          el.addEventListener("blur", () => callback())
+          el.addEventListener("blur", () => {
+            if(asyncFilter()){ callback() }
+          })
         }
         return
 
