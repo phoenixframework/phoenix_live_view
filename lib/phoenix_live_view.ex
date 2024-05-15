@@ -1734,8 +1734,9 @@ defmodule Phoenix.LiveView do
   Returns an updated `socket`.
 
   By default, the item is appended to the parent DOM container.
-  The `:at` option may be provided to insert or update an item
-  to a particular index in the collection on the client.
+  The `:at` option may be provided to insert an item at a particular index in
+  the collection on the client. If the item already exists in the parent DOM
+  container then it will be updated in place.
 
   See `stream/4` for inserting multiple items at once.
 
@@ -1754,7 +1755,7 @@ defmodule Phoenix.LiveView do
 
       stream_insert(socket, :songs, %Song{id: 2, title: "Song 2"}, at: 0)
 
-  Or updating an existing song, while also moving it to the top of the collection:
+  Or updating an existing song (in this case the `:at` option has no effect):
 
       stream_insert(socket, :songs, %Song{id: 1, title: "Song 1 updated"}, at: 0)
 
