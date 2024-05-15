@@ -2570,21 +2570,24 @@ defmodule Phoenix.Component do
   a custom javascript implementation:
 
   ```javascript
+  // Compared to a javascript window.confirm, the custom dialog does not block
+  // javascript execution. Therefore to make this work as expected we store
+  // the successful confirmation as an attribute and re-trigger the click event.
+  // On the second click, the `data-confirm-resolved` attribute is set and we proceed.
+  const RESOLVED_ATTRIBUTE = "data-confirm-resolved";
   // listen on document.body, so it's executed before the default of
   // phoenix_html, which is listening on the window object
-  const RESOLVED_ATTRIBUTE = "data-confirm-resolved";
-
   document.body.addEventListener('phoenix.link.click', function (e) {
     // Prevent default implementation
     e.stopPropagation();
     // Introduce alternative implementation
     var message = e.target.getAttribute("data-confirm");
-    if(!message){ return true; }
+    if(!message){ return; }
 
     // Confirm is resolved execute the click event
     if (e.target?.hasAttribute(RESOLVED_ATTRIBUTE)) {
-        e.target.removeAttribute(RESOLVED_ATTRIBUTE);
-        return true;
+      e.target.removeAttribute(RESOLVED_ATTRIBUTE);
+      return;
     }
 
     // Confirm is needed, preventDefault and show your modal
@@ -2595,11 +2598,11 @@ defmodule Phoenix.Component do
       message: message,
       callback: function (value) {
         if (value == true) {
-            // Customer confirmed, re-trigger the click event.
-            e.target?.click();
+          // Customer confirmed, re-trigger the click event.
+          e.target?.click();
         } else {
-            // Customer canceled
-            e.target?.removeAttribute(RESOLVED_ATTRIBUTE);
+          // Customer canceled
+          e.target?.removeAttribute(RESOLVED_ATTRIBUTE);
         }
       }
     })
