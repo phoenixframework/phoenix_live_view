@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.MixProject do
       extras: extras(),
       groups_for_extras: groups_for_extras(),
       groups_for_modules: groups_for_modules(),
-      groups_for_functions: [
+      groups_for_docs: [
         Components: &(&1[:type] == :component),
         Macros: &(&1[:type] == :macro)
       ],
