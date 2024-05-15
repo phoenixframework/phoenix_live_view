@@ -255,12 +255,14 @@ For example, the following option could be used to guarantee that some attribute
 ```javascript
 ...
 let liveSocket = new LiveSocket("/live", Socket, {
-  params: { _csrf_token: csrfToken },
+  params: {_csrf_token: csrfToken},
   hooks: Hooks,
-  onBeforeElUpdated(from, to) {
-    for (const attr of from.attributes) {
-      if (attr.name.startsWith("data-js-")) {
-        to.setAttribute(attr.name, attr.value);
+  dom: {
+    onBeforeElUpdated(from, to) {
+      for (const attr of from.attributes) {
+        if (attr.name.startsWith("data-js-")) {
+          to.setAttribute(attr.name, attr.value);
+        }
       }
     }
   }
