@@ -1267,17 +1267,21 @@ export default class View {
       willDestroyCIDs.forEach(cid => this.rendered.resetRender(cid))
 
       this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
-        // See if any of the cids we wanted to destroy were added back,
-        // if they were added back, we don't actually destroy them.
-        let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
-          return DOM.findComponentNodeList(this.el, cid).length === 0
-        })
-
-        if(completelyDestroyCIDs.length > 0){
-          this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
-            this.rendered.pruneCIDs(resp.cids)
+        // we must wait for pending transitions to complete before determining
+        // if the cids were added back to the DOM in the meantime (#3139)
+        this.liveSocket.requestDOMUpdate(() => {
+          // See if any of the cids we wanted to destroy were added back,
+          // if they were added back, we don't actually destroy them.
+          let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
+            return DOM.findComponentNodeList(this.el, cid).length === 0
           })
-        }
+  
+          if(completelyDestroyCIDs.length > 0){
+            this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+              this.rendered.pruneCIDs(resp.cids)
+            })
+          }
+        })
       })
     }
   }
