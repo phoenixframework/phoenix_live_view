@@ -46,7 +46,7 @@ defmodule Phoenix.LiveView.EventTest do
              |> Component.assign(count: 123)
              |> LiveView.push_event("my-event", %{one: 1})
              |> LiveView.push_event("my-event", %{one: 2})
-             |> LiveView.push_redirect(to: "/events")
+             |> LiveView.push_navigate(to: "/events")
 
            {:reply, :ok, new_socket}
          end}

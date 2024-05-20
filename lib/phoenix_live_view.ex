@@ -707,7 +707,7 @@ defmodule Phoenix.LiveView do
   handling the given `event`. If you need to scope events, then
   this must be done by namespacing them.
 
-  Events pushed during `push_redirect` are currently discarded,
+  Events pushed during `push_navigate` are currently discarded,
   as the LiveView is immediately dismounted.
 
   ## Hook example
@@ -1004,29 +1004,8 @@ defmodule Phoenix.LiveView do
     put_redirect(socket, {:live, :redirect, opts})
   end
 
-  @doc """
-  Annotates the socket for navigation to another LiveView.
-
-  The current LiveView will be shutdown and a new one will be mounted
-  in its place, without reloading the whole page. This can
-  also be used to remount the same LiveView, in case you want to start
-  fresh. If you want to navigate to the same LiveView without remounting
-  it, use `push_patch/2` instead.
-
-  ## Options
-
-    * `:to` - the required path to link to. It must always be a local path
-    * `:replace` - the flag to replace the current history or push a new state.
-      Defaults `false`.
-
-  ## Examples
-
-      {:noreply, push_redirect(socket, to: "/")}
-      {:noreply, push_redirect(socket, to: "/", replace: true)}
-
-  """
-  @doc deprecated: "Use push_navigate/2 instead"
-  # Deprecate in 0.19
+  @doc false
+  @deprecated "Use push_navigate/2 instead"
   def push_redirect(%Socket{} = socket, opts) do
     opts = push_opts!(opts, "push_redirect/2")
     put_redirect(socket, {:live, :redirect, opts})
@@ -1660,7 +1639,8 @@ defmodule Phoenix.LiveView do
   Now `stream_insert/3` and `stream_delete/3` may be issued and new rows will
   be inserted or deleted from the client.
   """
-  @spec stream(%Socket{}, name :: atom | String.t, items :: Enumerable.t, opts :: Keyword.t) :: %Socket{}
+  @spec stream(%Socket{}, name :: atom | String.t(), items :: Enumerable.t(), opts :: Keyword.t()) ::
+          %Socket{}
   def stream(%Socket{} = socket, name, items, opts \\ []) do
     if Keyword.has_key?(opts, :dom_id) do
       IO.warn(
@@ -1704,7 +1684,7 @@ defmodule Phoenix.LiveView do
 
   Returns an updated `socket`.
   """
-  @spec stream_configure(%Socket{}, name :: atom | String.t, opts :: Keyword.t) :: %Socket{}
+  @spec stream_configure(%Socket{}, name :: atom | String.t(), opts :: Keyword.t()) :: %Socket{}
   def stream_configure(%Socket{} = socket, name, opts) when is_list(opts) do
     new_socket = ensure_streams(socket)
 
@@ -1775,7 +1755,8 @@ defmodule Phoenix.LiveView do
 
   See `stream_delete/3` for more information on deleting items.
   """
-  @spec stream_insert(%Socket{}, name :: atom | String.t, item :: any, opts :: Keyword.t) :: %Socket{}
+  @spec stream_insert(%Socket{}, name :: atom | String.t(), item :: any, opts :: Keyword.t()) ::
+          %Socket{}
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
     limit = Keyword.get(opts, :limit)
@@ -1803,7 +1784,7 @@ defmodule Phoenix.LiveView do
 
   Returns an updated `socket`.
   """
-  @spec stream_delete(%Socket{}, name :: atom | String.t, item :: any) :: %Socket{}
+  @spec stream_delete(%Socket{}, name :: atom | String.t(), item :: any) :: %Socket{}
   def stream_delete(%Socket{} = socket, name, item) do
     update_stream(socket, name, &LiveStream.delete_item(&1, item))
   end
@@ -1839,7 +1820,8 @@ defmodule Phoenix.LiveView do
         {:noreply, stream_delete_by_dom_id(socket, :songs, dom_id)}
       end
   '''
-  @spec stream_delete_by_dom_id(%Socket{}, name :: atom | String.t, id :: String.t) :: %Socket{}
+  @spec stream_delete_by_dom_id(%Socket{}, name :: atom | String.t(), id :: String.t()) ::
+          %Socket{}
   def stream_delete_by_dom_id(%Socket{} = socket, name, id) do
     update_stream(socket, name, &LiveStream.delete_item_by_dom_id(&1, id))
   end
