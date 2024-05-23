@@ -2206,7 +2206,7 @@ defmodule Phoenix.Component do
   Without said attribute, the `form` method and csrf token are discarded.
 
   ```heex
-  <.form :let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
+  <.form :let={f} for={@changeset} action={~p"/comments/#{@comment}"}>
     <.input field={f[:body]} />
   </.form>
   ```
