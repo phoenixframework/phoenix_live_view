@@ -467,6 +467,14 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar"}|
     end
 
+    test "submits data passed as phx-value-* attributes", %{live: view} do
+      assert view |> element("#phx-value-form") |> render_submit()
+      assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar", "key" => "val"}|
+
+      assert view |> element("#phx-value-form") |> render_submit(foo: "baz")
+      assert last_event(view) =~ ~s|form-submit: %{"foo" => "baz", "key" => "val"}|
+    end
+
     test "raises on invalid submitter", %{live: view} do
       assert_raise ArgumentError, ~r"invalid form submitter", fn ->
         assert view

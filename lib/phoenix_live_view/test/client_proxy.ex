@@ -1101,7 +1101,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         with {:ok, defaults} <- maybe_submitter(defaults, type, node, element),
              {:ok, value} <- fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
-          {:ok, DOM.deep_merge(Query.decode_done(defaults), value)}
+          {:ok,
+           defaults
+           |> Query.decode_done()
+           |> DOM.deep_merge(DOM.all_values(node))
+           |> DOM.deep_merge(value)}
         else
           {:error, _, _} = error -> error
         end

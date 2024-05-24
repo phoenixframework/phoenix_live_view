@@ -60,7 +60,9 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
 
     <%# forms %>
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>
-    <form id="empty-form" phx-change="form-change" phx-submit="form-submit" phx-value-key="value">
+    <form id="empty-form" phx-change="form-change" phx-submit="form-submit">
+    </form>
+    <form id="phx-value-form" phx-change="form-change" phx-submit="form-submit" phx-value-key="val" phx-value-foo="bar">
     </form>
     <form id="form" phx-change="form-change" phx-submit="form-submit" phx-value-key="value">
       <input value="no-name">
