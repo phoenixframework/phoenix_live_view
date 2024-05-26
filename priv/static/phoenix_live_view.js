@@ -79,7 +79,6 @@ var LiveView = (() => {
   var PHX_PAGE_LOADING = "page-loading";
   var PHX_CONNECTED_CLASS = "phx-connected";
   var PHX_LOADING_CLASS = "phx-loading";
-  var PHX_NO_FEEDBACK_CLASS = "phx-no-feedback";
   var PHX_ERROR_CLASS = "phx-error";
   var PHX_CLIENT_ERROR_CLASS = "phx-client-error";
   var PHX_SERVER_ERROR_CLASS = "phx-server-error";
@@ -892,68 +891,14 @@ var LiveView = (() => {
         el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
       }
     },
-    isFeedbackContainer(el, phxFeedbackFor) {
-      return el.hasAttribute && el.hasAttribute(phxFeedbackFor);
-    },
-    maybeHideFeedback(container, feedbackContainers, phxFeedbackFor, phxFeedbackGroup) {
-      const feedbackResults = {};
-      feedbackContainers.forEach((el) => {
-        if (!container.contains(el))
-          return;
-        const feedback = el.getAttribute(phxFeedbackFor);
-        if (!feedback) {
-          js_default.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS]);
-          return;
-        }
-        if (feedbackResults[feedback] === true) {
-          this.hideFeedback(el);
-          return;
-        }
-        feedbackResults[feedback] = this.shouldHideFeedback(container, feedback, phxFeedbackGroup);
-        if (feedbackResults[feedback] === true) {
-          this.hideFeedback(el);
-        }
-      });
-    },
-    hideFeedback(container) {
-      js_default.addOrRemoveClasses(container, [PHX_NO_FEEDBACK_CLASS], []);
-    },
     isUsedInput(el) {
       return el.nodeType === Node.ELEMENT_NODE && (this.private(el, PHX_HAS_FOCUSED) || this.private(el, PHX_HAS_SUBMITTED));
-    },
-    shouldHideFeedback(container, nameOrGroup, phxFeedbackGroup) {
-      const query = `[name="${nameOrGroup}"],
-                   [name="${nameOrGroup}[]"],
-                   [${phxFeedbackGroup}="${nameOrGroup}"]`;
-      let focused = false;
-      DOM.all(container, query, (input) => {
-        if (this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)) {
-          focused = true;
-        }
-      });
-      return !focused;
-    },
-    feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup) {
-      let query = `[${phxFeedbackFor}="${input.name}"],
-                 [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`;
-      if (input.getAttribute(phxFeedbackGroup)) {
-        query += `,[${phxFeedbackFor}="${input.getAttribute(phxFeedbackGroup)}"]`;
-      }
-      return query;
     },
     resetForm(form) {
       Array.from(form.elements).forEach((input) => {
         this.deletePrivate(input, PHX_HAS_FOCUSED);
         this.deletePrivate(input, PHX_HAS_SUBMITTED);
       });
-    },
-    showError(inputEl, phxFeedbackFor, phxFeedbackGroup) {
-      if (inputEl.name) {
-        let query = this.feedbackSelector(inputEl, phxFeedbackFor, phxFeedbackGroup);
-        this.all(document, query, (el) => {
-          js_default.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS]);
-        });
-      }
     },
     isPhxChild(node) {
       return node.getAttribute && node.getAttribute(PHX_PARENT_ID);
@@ -2946,8 +2891,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     let elements = Array.from(form.elements);
     for (let [key, val] of formData.entries()) {
       if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
-        let input = elements.find((input2) => input2.name === key);
-        let isUnused = !(dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
+        let inputs = elements.filter((input) => input.name === key);
+        let isUnused = !inputs.some((input) => dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
         if (isUnused && !(submitter && submitter.name == key)) {
           params.append(prependFormDataKey(key, "_unused_"), "");
         }
@@ -4607,6 +4552,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     bindClicks() {
       window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
       this.bindClick("click", "click", false);
+      this.bindClick("mousedown", "mousedown", false);
       this.bindClick("mousedown", "capture-click", true);
     }
     bindClick(eventName, bindingName, capture) {
