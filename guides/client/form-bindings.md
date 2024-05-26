@@ -196,7 +196,7 @@ annotate the `phx-trigger-action` with a boolean assign:
 
 ```heex
 <.form :let={f} for={@changeset}
-  action={~p"/users/reset_password"}
+  action={Routes.reset_password_path(@socket, :create)}
   phx-submit="save"
   phx-trigger-action={@trigger_submit}>
 ```

@@ -535,8 +535,8 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
 
     assert_formatter_doesnt_change("""
-    <span><%= link("Edit", to: ~p"/posts/:id/edit") %></span>
-    | <span><%= link("Back", to: ~p"/posts") %></span>
+    <span><%= link("Edit", to: Routes.post_path(@conn, :edit, @post)) %></span>
+    | <span><%= link("Back", to: Routes.post_path(@conn, :index)) %></span>
     """)
   end
 
@@ -813,7 +813,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   test "handle void elements" do
     input = """
     <div>
-    <link rel="shortcut icon" href={~p"/images/favicon.png"} type="image/x-icon">
+    <link rel="shortcut icon" href={Routes.static_path(@conn, "/images/favicon.png")} type="image/x-icon">
     <p>some text</p>
     <br>
     <hr>
@@ -826,7 +826,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     <div>
       <link
         rel="shortcut icon"
-        href={~p"/images/favicon.png"}
+        href={Routes.static_path(@conn, "/images/favicon.png")}
         type="image/x-icon"
       />
       <p>some text</p>
