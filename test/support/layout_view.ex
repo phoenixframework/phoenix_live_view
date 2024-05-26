@@ -2,7 +2,10 @@ defmodule Phoenix.LiveViewTest.LayoutView do
   use Phoenix.View, root: ""
   use Phoenix.Component
 
-  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
+  use Phoenix.VerifiedRoutes,
+    router: Phoenix.LiveViewTest.Router,
+    endpoint: Phoenix.LiveViewTest.Endpoint,
+    statics: ~w(css)
 
   def render("app.html", assigns) do
     # Assert those assigns are always available
@@ -54,12 +57,16 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     <html>
       <head>
         <title>Styled</title>
-        <link rel="stylesheet" href="/css/custom.css"/>
-        <link rel="stylesheet" href={Routes.static_path(@conn, "/css/app.css")}/>
-        <link rel="stylesheet" href="//example.com/a.css"/>
-        <link rel="stylesheet" href="https://example.com/b.css"/>
-        <style>body { background-color: #eee; }</style>
-        <script>console.log("script")</script>
+        <link rel="stylesheet" href="/css/custom.css" />
+        <link rel="stylesheet" href={~p"/css/app.css"} />
+        <link rel="stylesheet" href="//example.com/a.css" />
+        <link rel="stylesheet" href="https://example.com/b.css" />
+        <style>
+          body { background-color: #eee; }
+        </style>
+        <script>
+          console.log("script")
+        </script>
       </head>
       <body>
         <%= @inner_content %>

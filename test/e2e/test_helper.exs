@@ -1,16 +1,13 @@
 Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4004],
-  # TODO: switch to bandit when Phoenix 1.7 is used
-  # adapter: Bandit.PhoenixAdapter,
+  adapter: Bandit.PhoenixAdapter,
   server: true,
   live_view: [signing_salt: "aaaaaaaa"],
   secret_key_base: String.duplicate("a", 64),
   render_errors: [
-    # TODO: uncomment when LV Phoenix 1.7 is used
-    # formats: [
-    #   html: Phoenix.LiveViewTest.E2E.ErrorHTML,
-    # ],
-    view: Phoenix.LiveViewTest.E2E.ErrorHTML,
+    formats: [
+      html: Phoenix.LiveViewTest.E2E.ErrorHTML,
+    ],
     layout: false
   ],
   pubsub_server: Phoenix.LiveViewTest.E2E.PubSub,

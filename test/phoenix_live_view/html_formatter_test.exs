@@ -813,7 +813,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   test "handle void elements" do
     input = """
     <div>
-    <link rel="shortcut icon" href={Routes.static_path(@conn, "/images/favicon.png")} type="image/x-icon">
+    <link rel="shortcut icon" href={~p"/images/favicon.png"} type="image/x-icon">
     <p>some text</p>
     <br>
     <hr>
@@ -824,11 +824,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
 
     expected = """
     <div>
-      <link
-        rel="shortcut icon"
-        href={Routes.static_path(@conn, "/images/favicon.png")}
-        type="image/x-icon"
-      />
+      <link rel="shortcut icon" href={~p"/images/favicon.png"} type="image/x-icon" />
       <p>some text</p>
       <br />
       <hr />
