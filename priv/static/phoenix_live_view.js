@@ -2893,7 +2893,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
         let inputs = elements.filter((input) => input.name === key);
         let isUnused = !inputs.some((input) => dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
-        if (isUnused && !(submitter && submitter.name == key)) {
+        let hidden = inputs.every((input) => input.type === "hidden");
+        if (isUnused && !(submitter && submitter.name == key) && !hidden) {
           params.append(prependFormDataKey(key, "_unused_"), "");
         }
         params.append(key, val);
@@ -4552,7 +4553,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     bindClicks() {
       window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
       this.bindClick("click", "click", false);
-      this.bindClick("mousedown", "mousedown", false);
       this.bindClick("mousedown", "capture-click", true);
     }
     bindClick(eventName, bindingName, capture) {
