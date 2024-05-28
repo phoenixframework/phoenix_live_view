@@ -65,7 +65,7 @@ This shows one example for the textarea input, but there are more cases that nee
 
 ```diff
    def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
-+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
++    errors = if Phoenix.Component.used_input?(field) || field.form.action == :submit, do: field.errors, else: []
 
      assigns
      |> assign(field: nil, id: assigns.id || field.id)
