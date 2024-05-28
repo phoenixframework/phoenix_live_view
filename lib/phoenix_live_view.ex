@@ -862,7 +862,7 @@ defmodule Phoenix.LiveView do
           consume_uploaded_entries(socket, :avatar, fn %{path: path}, _entry ->
             dest = Path.join("priv/static/uploads", Path.basename(path))
             File.cp!(path, dest)
-            {:ok, Routes.static_path(socket, "/uploads/#{Path.basename(dest)}")}
+            {:ok, ~p"/uploads/#{Path.basename(dest)}"}
           end)
         {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
       end
@@ -894,7 +894,7 @@ defmodule Phoenix.LiveView do
               consume_uploaded_entry(socket, entry, fn %{path: path} ->
                 dest = Path.join("priv/static/uploads", Path.basename(path))
                 File.cp!(path, dest)
-                {:ok, Routes.static_path(socket, "/uploads/#{Path.basename(dest)}")}
+                {:ok, ~p"/uploads/#{Path.basename(dest)}"}
               end)
             end
             {:noreply, update(socket, :uploaded_files, &(&1 ++ uploaded_files))}
