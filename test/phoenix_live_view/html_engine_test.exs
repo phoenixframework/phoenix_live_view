@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureIO
+
   import Phoenix.Component
 
   alias Phoenix.LiveView.Tokenizer.ParseError
@@ -1762,6 +1764,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div :foo="something" />
         """)
       end)
+    end
+
+    test "warns when input has id as name" do
+      assert capture_io(:stderr, fn ->
+               eval("""
+               <input name="id" value="foo">
+               """)
+             end) =~
+               "Setting the \"name\" attribute to \"id\" on an input tag overrides the ID of the corresponding form element"
     end
   end
 
