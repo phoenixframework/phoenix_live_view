@@ -46,6 +46,31 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
   end
 end
 
+defmodule Phoenix.LiveViewTest.E2E.Hooks do
+  import Phoenix.LiveView
+  import Phoenix.Component
+
+  require Logger
+
+  def on_mount(:default, _params, _session, socket) do
+    socket
+    |> attach_hook(:eval_handler, :handle_event, &handle_eval_event/3)
+    |> then(&{:cont, &1})
+  end
+
+  # evaluates the given code in the process of the LiveView
+  # see playwright evalLV() function
+  defp handle_eval_event("sandbox:eval", %{"value" => code}, socket) do
+    {result, _} = Code.eval_string(code, [], __ENV__)
+
+    Logger.debug("lv:#{inspect(self())} eval result: #{inspect(result)}")
+
+    {:halt, socket}
+  end
+
+  defp handle_eval_event(_, _, socket), do: {:cont, socket}
+end
+
 defmodule Phoenix.LiveViewTest.E2E.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
@@ -56,7 +81,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     plug :protect_from_forgery
   end
 
-  live_session :default, layout: {Phoenix.LiveViewTest.E2E.Layout, :live} do
+  live_session :default, layout: {Phoenix.LiveViewTest.E2E.Layout, :live}, on_mount: {Phoenix.LiveViewTest.E2E.Hooks, :default} do
     scope "/", Phoenix.LiveViewTest do
       pipe_through(:browser)
 
@@ -72,13 +97,17 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form", E2E.FormLive
       live "/form/dynamic-inputs", E2E.FormDynamicInputsLive
       live "/js", E2E.JsLive
+      live "/select", E2E.SelectLive
     end
 
     scope "/issues", Phoenix.LiveViewTest.E2E do
       pipe_through(:browser)
 
+      live "/2787", Issue2787Live
       live "/3026", Issue3026Live
       live "/3040", Issue3040Live
+      live "/3083", Issue3083Live
+      live "/3107", Issue3107Live
       live "/3117", Issue3117Live
     end
   end
