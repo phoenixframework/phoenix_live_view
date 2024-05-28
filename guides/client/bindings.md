@@ -369,7 +369,7 @@ For example:
 
 ```heex
 <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
-  <%= live_flash(@flash, :info) %>
+  <%= Phoenix.Flash.get(@flash, :info) %>
 </p>
 ```
 
