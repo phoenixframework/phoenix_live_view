@@ -194,11 +194,6 @@ defmodule Phoenix.LiveViewTest do
     Plug.Conn.put_private(conn, :live_view_connect_params, params)
   end
 
-  @deprecated "set the relevant connect_info fields in the connection instead"
-  def put_connect_info(conn, params) when is_map(params) do
-    Plug.Conn.put_private(conn, :live_view_connect_info, params)
-  end
-
   @doc """
   Spawns a connected LiveView process.
 

@@ -113,6 +113,10 @@ generated user module:
 ### Bug fixes
   * Fix used input tracking on checkboxes and hidden inputs
 
+### Deprecations
+  * Deprecate `live_flash` in favor of `Phoenix.Flash.get`
+  * Deprecate `push_redirect` in favor of `push_navigate`
+
 ## 1.0.0-rc.0 🚀 (2024-05-08)
 
 ## Backwards incompatible changes

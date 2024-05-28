@@ -1045,7 +1045,7 @@ defmodule Phoenix.Component do
   <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
   ```
   """
-  @doc deprecated: "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
+  @deprecated "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
   def live_flash(%_struct{} = other, _key) do
     raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
   end

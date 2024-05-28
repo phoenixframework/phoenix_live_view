@@ -297,7 +297,7 @@ defmodule Phoenix.LiveView.Router do
         """
 
       {:root_layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
-        template = Phoenix.LiveView.Utils.normalize_layout(template, "live_session :root_layout")
+        template = Phoenix.LiveView.Utils.normalize_layout(template)
         Map.put(acc, :root_layout, {mod, String.to_atom(template)})
 
       {:root_layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
@@ -314,7 +314,7 @@ defmodule Phoenix.LiveView.Router do
         """
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
-        template = Phoenix.LiveView.Utils.normalize_layout(template, "live_session :layout")
+        template = Phoenix.LiveView.Utils.normalize_layout(template)
         Map.put(acc, :layout, {mod, template})
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->

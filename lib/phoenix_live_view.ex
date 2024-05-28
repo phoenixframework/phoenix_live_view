@@ -426,7 +426,7 @@ defmodule Phoenix.LiveView do
     on_mount = opts[:on_mount] || []
 
     layout =
-      Phoenix.LiveView.Utils.normalize_layout(Keyword.get(opts, :layout, false), "use options")
+      Phoenix.LiveView.Utils.normalize_layout(Keyword.get(opts, :layout, false))
 
     log =
       case Keyword.fetch(opts, :log) do
@@ -1084,15 +1084,6 @@ defmodule Phoenix.LiveView do
     end
   end
 
-  @deprecated "use get_connect_info/2 instead"
-  def get_connect_info(%Socket{private: private} = socket) do
-    if connect_info = private[:connect_info] do
-      if connected?(socket), do: connect_info, else: nil
-    else
-      raise_root_and_mount_only!(socket, "connect_info")
-    end
-  end
-
   @doc """
   Accesses a given connect info key from the socket.
 
@@ -1642,12 +1633,6 @@ defmodule Phoenix.LiveView do
   @spec stream(%Socket{}, name :: atom | String.t(), items :: Enumerable.t(), opts :: Keyword.t()) ::
           %Socket{}
   def stream(%Socket{} = socket, name, items, opts \\ []) do
-    if Keyword.has_key?(opts, :dom_id) do
-      IO.warn(
-        "passing a :dom_id to stream/4 is deprecated. Use stream_configure/3 beforehand instead."
-      )
-    end
-
     socket
     |> ensure_streams()
     |> assign_stream(name, items, opts)
