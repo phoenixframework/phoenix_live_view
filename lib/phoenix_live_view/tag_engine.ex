@@ -1227,7 +1227,9 @@ defmodule Phoenix.LiveView.TagEngine do
             [
               line: attr_meta.line,
               column: attr_meta.column,
-              file: state.file
+              file: state.file,
+              module: state.caller.module,
+              function: state.caller.function
             ]
           else
             Macro.Env.stacktrace(%{state.caller | line: attr_meta.line})
