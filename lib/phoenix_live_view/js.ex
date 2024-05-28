@@ -465,20 +465,20 @@ defmodule Phoenix.LiveView.JS do
   end
 
   @doc """
-  Toggles classes on an element.
+  Adds or removes element classes based on presence.
 
-    * `names` - The string of classes to add.
+    * `names` - A string with one or more class names to toggle.
 
   ## Options
 
-    * `:to` - The optional DOM selector to toggle classes to.
+    * `:to` - The optional DOM selector to target.
       Defaults to the interacted element.
-    * `:transition` - The string of classes to apply before adding classes or
+    * `:transition` - A string of classes to apply before adding classes or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
-    * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time}
+    * `:time` - The time in milliseconds to apply the transition from `:transition`.
+      Defaults to #{@default_transition_time}.
 
   ## Examples
 
