@@ -78,15 +78,8 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
   end
 
   @impl Phoenix.LiveView
-  def mount(params, _session, socket) do
-    {:ok,
-     assign(socket,
-       count: 0,
-       submit_count: 0,
-       validate_count: 0,
-       feedback: true,
-       counters: !params["no_counter"]
-     )}
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, count: 0, submit_count: 0, validate_count: 0, feedback: true)}
   end
 
   @impl Phoenix.LiveView
@@ -118,11 +111,9 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
         display: none;
       }
     </style>
-    <%= if @counters do %>
-      <p>Button Count: <%= @count %></p>
-      <p>Validate Count: <%= @validate_count %></p>
-      <p>Submit Count: <%= @submit_count %></p>
-    <% end %>
+    <p>Button Count: <%= @count %></p>
+    <p>Validate Count: <%= @validate_count %></p>
+    <p>Submit Count: <%= @submit_count %></p>
     <button phx-click="inc" class="bg-blue-500 text-white p-4">+</button>
     <button phx-click="dec" class="bg-blue-500 text-white p-4">-</button>
 
