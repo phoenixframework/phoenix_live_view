@@ -110,6 +110,9 @@ generated user module:
 
 ## 1.0.0-rc.1
 
+### Enhancements
+  * Warn when rendering an input named "id"
+
 ### Bug fixes
   * Fix used input tracking on checkboxes and hidden inputs
 
@@ -119,7 +122,7 @@ generated user module:
 
 ## 1.0.0-rc.0 🚀 (2024-05-08)
 
-## Backwards incompatible changes
+### Backwards incompatible changes
   * Remove `phx-feedback-for` in favor of `Phoenix.Component.used_input?`. See the changelog for a backwards compatible `phx-feedback-for` shim to add to existing applications.
 
 ### Removal of previously deprecated functionality
