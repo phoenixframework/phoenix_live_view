@@ -1570,11 +1570,11 @@ defmodule Phoenix.LiveView do
 
   To empty a stream container on the client, you can pass `:reset` with an empty list:
 
-          stream(socket, :songs, [], reset: true)
+      stream(socket, :songs, [], reset: true)
 
   Or you can replace the entire stream on the client with a new collection:
 
-          stream(socket, :songs, new_songs, reset: true)
+      stream(socket, :songs, new_songs, reset: true)
 
   ## Limiting a stream
 
@@ -1594,6 +1594,11 @@ defmodule Phoenix.LiveView do
   connection was established yet), as it means more data than necessary has been
   loaded. In such cases, you should only load and pass the desired amount of items
   to the stream.
+
+  When inserting single items using `stream_insert/4`, the limit needs to be passed
+  as an option for it to be enforced on the client:
+
+      stream_insert(socket, :songs, song, limit: -10)
 
   ## Required DOM attributes
 
@@ -1698,12 +1703,20 @@ defmodule Phoenix.LiveView do
 
   Returns an updated `socket`.
 
-  By default, the item is appended to the parent DOM container.
-  The `:at` option may be provided to insert an item at a particular index in
-  the collection on the client. If the item already exists in the parent DOM
-  container then it will be updated in place.
-
   See `stream/4` for inserting multiple items at once.
+
+  The following options are supported:
+
+    * `:at` - the index to insert or update the item in the collection on the client.
+      By default, the item is appended to the parent DOM container. This is the same as
+      passing a limit of `-1`.
+      If the item already exists in the parent DOM container then it will be
+      updated in place.
+
+    * `:limit` - the limit of items to maintain in the UI. A limit passed to `stream/4` does
+      not affect subsequent calls to `stream_insert/4`, therefore the limit must be passed
+      here as well in order to be enforced. See `stream/4` for more information on
+      limiting streams.
 
   ## Examples
 
@@ -1720,9 +1733,13 @@ defmodule Phoenix.LiveView do
 
       stream_insert(socket, :songs, %Song{id: 2, title: "Song 2"}, at: 0)
 
-  Or updating an existing song (in this case the `:at` option has no effect):
+  Or update an existing song (in this case the `:at` option has no effect):
 
       stream_insert(socket, :songs, %Song{id: 1, title: "Song 1 updated"}, at: 0)
+
+  Or append a new song while limiting the stream to the last 10 items:
+
+      stream_insert(socket, :songs, %Song{id: 2, title: "Song 2"}, limit: -10)
 
   ## Updating Items
 
