@@ -158,6 +158,7 @@ export default class LiveSocket {
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
+    this.serverCloseRef = null
     this.domCallbacks = Object.assign({
       onPatchStart: closure(),
       onPatchEnd: closure(),
@@ -232,6 +233,12 @@ export default class LiveSocket {
 
   disconnect(callback){
     clearTimeout(this.reloadWithJitterTimer)
+    // remove the socket close listener to avoid trying to handle
+    // a server close event when it is actually caused by us disconnecting
+    if(this.serverCloseRef){
+      this.socket.off(this.serverCloseRef)
+      this.serverCloseRef = null
+    }
     this.socket.disconnect(callback)
   }
 
@@ -519,7 +526,7 @@ export default class LiveSocket {
 
     this.boundTopLevelEvents = true
     // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
-    this.socket.onClose(event => {
+    this.serverCloseRef = this.socket.onClose(event => {
       // failsafe reload if normal closure and we still have a main LV
       if(event && event.code === 1000 && this.main){ return this.reloadWithJitter(this.main) }
     })
