@@ -1,16 +1,16 @@
 # Error and exception handling
 
 As with any other Elixir code, exceptions may happen during the LiveView
-life-cycle. In this section we will describe how LiveView reacts to errors
-at different stages.
+life-cycle. This page describes how LiveView handles errors at different
+stages.
 
 ## Expected scenarios
 
 In this section, we will talk about error cases that you expect to happen
 within your application. For example, a user filling in a form with invalid
 data is expected. In a LiveView, we typically handle those cases by storing
-a change in the LiveView state, which causes the LiveView to be re-rendered
-with the error message.
+the form state in LiveView assigns and rendering any relevant error message
+back to the client.
 
 We may also use `flash` messages for this. For example, imagine you have a
 page to manage all "Team members" in an organization. However, if there is
@@ -71,55 +71,38 @@ user. If there is no such "org_id" or if the user has no access to it, an
 During a regular controller request, this exception will be converted to a
 404 exception and rendered as a custom error page, as
 [detailed here](https://hexdocs.pm/phoenix/custom_error_pages.html).
-To understand how a LiveView reacts to exceptions, we need to consider two
-scenarios: exceptions on mount and during any event.
+LiveView will react to exceptions in three different ways, depending of
+where it is in its life-cycle.
 
-## Common scenarios
+### Exceptions during HTTP mount
 
-Sometimes, it is desirable to have error handling in multiple LiveViews. In
-this case, it is possible to check for an `@error` variable in the templates
-and conditionally render if it is set, or to redirect to a separate error page.
-However another option is to replace the rendering function using
-`Phoenix.LiveView.render_with/2` within a callback or hook such as
-`Phoenix.LiveView.on_mount/1`. This allows common error rendering without
-requiring a redirect or a check in every template.
+When you first access a LiveView, a regular HTTP request is sent to the server
+and processed by the LiveView. The `mount` callback is invoked and then a page
+is rendered. Any exception here is caught, logged, and converted to an exception
+page by Phoenix error views - exactly how it works with controllers too.
 
-For example:
+### Exceptions during connected mount
 
-    def on_mount(:check_errors, params, _session, socket) when is_map_key(params, "invalid") do
-      {:cont, Phoenix.LiveView.render_with(socket, &MyApp.Components.param_error/1)}
-    end
+If the initial HTTP request succeeds, LiveView will connect to the server
+using a stateful connection, typically WebSockets. This spawns a long-running
+lightweight Elixir process on the server, which invokes the `mount` callback
+and renders an updated version of the page.
 
-    def on_mount(:check_errors, _params, _session, socket) do
-      {:cont, socket}
-    end
-
-## Exceptions on mount
-
-Given the code on mount runs both on the initial disconnected render and the
-connected render, an exception on mount will trigger the following events:
-
-Exceptions during disconnected render:
-
-  1. An exception on mount is caught and converted to an exception page
-    by Phoenix error views - pretty much like the way it works with controllers
-
-Exceptions during connected render:
-
-  1. An exception on mount will crash the LiveView process - which will be logged
-  2. Once the client has noticed the crash during `mount`, it will fully reload the page
-  3. Reloading the page will start a disconnected render, that will cause `mount`
-    to be invoked again and most likely raise the same exception. Except this time
-    it will be caught and converted to an exception page by Phoenix error views
+An exception during this stage will crash the LiveView process, which will be logged.
+Once the client notices the crash, it fully reloads the page. This will cause `mount`
+to be invoked again during a regular HTTP request (the exact scenario of the previous
+subsection).
 
 In other words, LiveView will reload the page in case of errors, making it
 fail as if LiveView was not involved in the rendering in the first place.
 
-## Exceptions on events (`handle_info`, `handle_event`, etc)
+### Exceptions after connected mount
 
-If the error happens during an event, the LiveView process will crash. The client
-will notice the error and remount the LiveView - without reloading the page. This
-is enough to update the page and show the user the latest information.
+Once your LiveView is mounted and connected, any error will cause LiveView process
+to crash and be logged. Once the client notices the error, it will remount the LiveView
+over the stateful connection, without reloading the page (the exact scenario of the
+previous subsection). If remounting succeeds, the LiveView goes back to a working
+state, updating the page and showing the user the latest information.
 
 For example, let's say two users try to leave the organization at the same time.
 In this case, both of them see the "Leave" button, but our `leave` function call

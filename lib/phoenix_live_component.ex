@@ -44,8 +44,7 @@ defmodule Phoenix.LiveComponent do
   ### Mount and update
 
   Live components are identified by the component module and their ID.
-  Therefore, two live components with the same module and ID are treated
-  as the same component. We often tie the component ID to some application based ID:
+  We often tie the component ID to some application based ID:
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
@@ -67,7 +66,14 @@ defmodule Phoenix.LiveComponent do
 
       update(assigns, socket) -> render(assigns)
 
-  The given `id` is not automatically used as the DOM ID. If you want to set
+  Two live components with the same module and ID are treated as the same component,
+  regardless of where they are in the page. Therefore, if you change the location
+  of where a component is rendered within its parent LiveView, it won't be remounted.
+  This means you can use live components to implement cards and other elements that
+  can be moved around without losing state. A component is only discarded when the
+  client observes it is removed from the page.
+
+  Finally, the given `id` is not automatically used as the DOM ID. If you want to set
   a DOM ID, it is your responsibility to do so when rendering:
 
       defmodule UserComponent do
