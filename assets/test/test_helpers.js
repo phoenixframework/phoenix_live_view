@@ -25,6 +25,7 @@ export let simulateJoinedView = (el, liveSocket) => {
   let view = new View(el, liveSocket)
   stubChannel(view)
   liveSocket.roots[view.id] = view
+  liveSocket.disconnected = false
   view.isConnected = () => true
   view.onJoin({rendered: {s: [el.innerHTML]}, liveview_version: require("../package.json").version})
   return view
