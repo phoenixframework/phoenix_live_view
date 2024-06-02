@@ -27,15 +27,16 @@ However, one may argue that, if the last member of an organization cannot
 leave it, it may be better to not even show the "Leave" button in the UI
 when the organization has only one member.
 
-Given the button does not appear in the UI, triggering the "leave" when
-the organization has now only one member is an unexpected scenario. This
-means we can probably rewrite the code above to:
+Given the button does not appear in the UI, triggering the "leave" action when
+the organization has only one member is an unexpected scenario. This means we
+can rewrite the code above to:
 
     true = MyApp.Org.leave(socket.assigns.current_org, member)
     {:noreply, socket}
 
-If `leave` returns false by any chance, it will just raise. Or you can
-even provide a `leave!` function that raises a specific exception:
+If `leave` does not return `true`, Elixir will raise a `MatchError`
+exception. Or you could provide a `leave!` function that raises a specific
+exception:
 
     MyApp.Org.leave!(socket.assigns.current_org, member)
     {:noreply, socket}
@@ -64,14 +65,14 @@ check that the user has access to it like this:
     Repo.get!(organizations_query, params["org_id"])
 
 The code above builds a query that returns all organizations that belongs to
-the current user and then validates that the given "org_id" belongs to the
-user. If there is no such "org_id" or if the user has no access to it, an
-`Ecto.NoResultsError` exception is raised.
+the current user and then validates that the given `org_id` belongs to the
+user. If there is no such `org_id` or if the user has no access to it,
+`Repo.get!` will raise an `Ecto.NoResultsError` exception.
 
 During a regular controller request, this exception will be converted to a
 404 exception and rendered as a custom error page, as
 [detailed here](https://hexdocs.pm/phoenix/custom_error_pages.html).
-LiveView will react to exceptions in three different ways, depending of
+LiveView will react to exceptions in three different ways, depending on
 where it is in its life-cycle.
 
 ### Exceptions during HTTP mount
@@ -84,7 +85,7 @@ page by Phoenix error views - exactly how it works with controllers too.
 ### Exceptions during connected mount
 
 If the initial HTTP request succeeds, LiveView will connect to the server
-using a stateful connection, typically WebSockets. This spawns a long-running
+using a stateful connection, typically a WebSocket. This spawns a long-running
 lightweight Elixir process on the server, which invokes the `mount` callback
 and renders an updated version of the page.
 
@@ -98,7 +99,7 @@ fail as if LiveView was not involved in the rendering in the first place.
 
 ### Exceptions after connected mount
 
-Once your LiveView is mounted and connected, any error will cause LiveView process
+Once your LiveView is mounted and connected, any error will cause the LiveView process
 to crash and be logged. Once the client notices the error, it will remount the LiveView
 over the stateful connection, without reloading the page (the exact scenario of the
 previous subsection). If remounting succeeds, the LiveView goes back to a working
