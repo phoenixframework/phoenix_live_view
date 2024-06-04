@@ -979,20 +979,11 @@ var DOM = {
       return true;
     }
     let refSrc = fromEl.getAttribute(PHX_REF_SRC);
-    if (DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null) {
-      if (DOM.isUploadInput(fromEl)) {
-        DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
-      }
-      DOM.putPrivate(fromEl, PHX_REF, toEl);
-      return false;
-    } else {
-      PHX_EVENT_CLASSES.forEach((className) => {
-        fromEl.classList.contains(className) && toEl.classList.add(className);
-      });
-      toEl.setAttribute(PHX_REF, ref);
-      toEl.setAttribute(PHX_REF_SRC, refSrc);
-      return true;
+    if (DOM.isUploadInput(fromEl)) {
+      DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
     }
+    DOM.putPrivate(fromEl, PHX_REF, toEl);
+    return false;
   },
   cleanChildNodes(container, phxUpdate) {
     if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
@@ -2284,6 +2275,11 @@ var DOMPatch = class {
     });
     if (liveSocket.isDebugEnabled()) {
       detectDuplicateIds();
+      Array.from(document.querySelectorAll("input[name=id]")).forEach((node) => {
+        if (node.form) {
+          console.error('Detected an input with name="id" inside a form! This will cause problems when patching the DOM.\n', node);
+        }
+      });
     }
     if (appendPrependUpdates.length > 0) {
       liveSocket.time("post-morph append/prepend restoration", () => {

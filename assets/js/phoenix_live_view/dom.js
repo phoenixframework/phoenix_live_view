@@ -439,18 +439,9 @@ let DOM = {
     if(ref === null){ return true }
     let refSrc = fromEl.getAttribute(PHX_REF_SRC)
 
-    if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
-      if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
-      DOM.putPrivate(fromEl, PHX_REF, toEl)
-      return false
-    } else {
-      PHX_EVENT_CLASSES.forEach(className => {
-        fromEl.classList.contains(className) && toEl.classList.add(className)
-      })
-      toEl.setAttribute(PHX_REF, ref)
-      toEl.setAttribute(PHX_REF_SRC, refSrc)
-      return true
-    }
+    if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
+    DOM.putPrivate(fromEl, PHX_REF, toEl)
+    return false
   },
 
   cleanChildNodes(container, phxUpdate){
