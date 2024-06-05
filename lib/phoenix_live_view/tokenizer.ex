@@ -181,6 +181,10 @@ defmodule Phoenix.LiveView.Tokenizer do
     handle_doctype(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
 
+  defp handle_doctype(<<>>, line, column, _buffer, _acc, state) do
+    raise_syntax_error!("unexpected end of string inside tag", %{line: line, column: column}, state)
+  end
+
   ## handle_script
 
   defp handle_script("</script>" <> rest, line, column, buffer, acc, state) do
@@ -415,7 +419,7 @@ defmodule Phoenix.LiveView.Tokenizer do
         <a class={"foo bar #{@class}"}>Text</a>
     """
 
-    raise ParseError, file: state.file, line: line, column: column, description: message
+    raise_syntax_error!(message, %{line: line, column: column}, state)
   end
 
   defp handle_maybe_tag_open_end(text, line, column, acc, state) do
