@@ -3528,11 +3528,16 @@ var View = class {
       });
     });
   }
-  undoRefs(ref) {
+  undoRefs(ref, onlyEls) {
+    onlyEls = onlyEls ? new Set(onlyEls) : null;
     if (!this.isConnected()) {
       return;
     }
     dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
+      if (onlyEls && !onlyEls.has(el)) {
+        return;
+      }
+      el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
       let disabledVal = el.getAttribute(PHX_DISABLED);
       let readOnlyVal = el.getAttribute(PHX_READONLY);
       el.removeAttribute(PHX_REF);
@@ -3575,6 +3580,7 @@ var View = class {
         continue;
       }
       el.classList.add(`phx-${event}-loading`);
+      el.dispatchEvent(new CustomEvent(`phx:${event}-loading`, { bubbles: true, cancelable: false }));
       let disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
@@ -3708,6 +3714,7 @@ var View = class {
       if (dom_default.isUploadInput(inputEl) && dom_default.isAutoUpload(inputEl)) {
         if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
           let [ref, _els] = refGenerator();
+          this.undoRefs(ref, [inputEl.form]);
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
             callback && callback(resp);
             this.triggerAwaitingSubmit(inputEl.form);
