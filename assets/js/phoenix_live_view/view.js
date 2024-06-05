@@ -813,10 +813,14 @@ export default class View {
     )
   }
 
-  undoRefs(ref){
+  undoRefs(ref, onlyEls){
+    onlyEls = onlyEls ? new Set(onlyEls) : null
     if(!this.isConnected()){ return } // exit if external form triggered
 
     DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
+      if(onlyEls && !onlyEls.has(el)){ return }
+
+      el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
       let disabledVal = el.getAttribute(PHX_DISABLED)
       let readOnlyVal = el.getAttribute(PHX_READONLY)
       // remove refs
@@ -860,6 +864,7 @@ export default class View {
       if(opts.submitter && !(el === opts.submitter || el === opts.form)){ continue }
 
       el.classList.add(`phx-${event}-loading`)
+      el.dispatchEvent(new CustomEvent(`phx:${event}-loading`, {bubbles: true, cancelable: false}))
       let disableText = el.getAttribute(disableWith)
       if(disableText !== null){
         if(!el.getAttribute(PHX_DISABLE_WITH_RESTORE)){
@@ -990,6 +995,7 @@ export default class View {
       if(DOM.isUploadInput(inputEl) && DOM.isAutoUpload(inputEl)){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
           let [ref, _els] = refGenerator()
+          this.undoRefs(ref, [inputEl.form])
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
             callback && callback(resp)
             this.triggerAwaitingSubmit(inputEl.form)
