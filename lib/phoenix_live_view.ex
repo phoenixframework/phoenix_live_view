@@ -758,21 +758,22 @@ defmodule Phoenix.LiveView do
       Defaults `64_000`.
 
     * `:chunk_timeout` - The time in milliseconds to wait before closing the
-      upload channel when a new chunk has not been received. Defaults `10_000`.
+      upload channel when a new chunk has not been received. Defaults to `10_000`.
 
-    * `:external` - The 2-arity function for generating metadata for external
+    * `:external` - A 2-arity function for generating metadata for external
       client uploaders. This function must return either `{:ok, meta, socket}`
       or `{:error, meta, socket}` where meta is a map. See the Uploads section
       for example usage.
 
-    * `:progress` - The optional 3-arity function for receiving progress events
+    * `:progress` - An optional 3-arity function for receiving progress events.
 
     * `:auto_upload` - Instructs the client to upload the file automatically
-      on file selection instead of waiting for form submits. Default false.
+      on file selection instead of waiting for form submits. Defaults to `false`.
 
-    * `:writer` - The `Phoenix.LiveView.UploadWriter` module to use for writing
-      the uploaded chunks. Defaults to writing to a temporary file for consumption.
-      See the `Phoenix.LiveView.UploadWriter` docs for custom usage.
+    * `:writer` - A module implementing the `Phoenix.LiveView.UploadWriter`
+      behaviour to use for writing the uploaded chunks. Defaults to writing to a
+      temporary file for consumption. See the `Phoenix.LiveView.UploadWriter` docs
+      for custom usage.
 
   Raises when a previously allowed upload under the same name is still active.
 
@@ -1518,13 +1519,13 @@ defmodule Phoenix.LiveView do
   Streams are a mechanism for managing large collections on the client without
   keeping the resources on the server.
 
-    * `name` - The string or atom name of the key to place under the
+    * `name` - A string or atom name of the key to place under the
       `@streams` assign.
-    * `items` - The enumerable of items to insert.
+    * `items` - An enumerable of items to insert.
 
   The following options are supported:
 
-    * `:at` - the index to insert or update the items in the
+    * `:at` - The index to insert or update the items in the
       collection on the client. By default `-1` is used, which appends the items
       to the parent DOM container. A value of `0` prepends the items.
 
@@ -1541,10 +1542,10 @@ defmodule Phoenix.LiveView do
 
           stream(socket, :songs, Enum.reverse([song1, song2, song3]), at: 0)
 
-    * `:reset` - the boolean to reset the stream on the client or not. Defaults
+    * `:reset` - A boolean to reset the stream on the client or not. Defaults
       to `false`.
 
-    * `:limit` - the optional positive or negative number of results to limit
+    * `:limit` - An optional positive or negative number of results to limit
       on the UI on the client. As new items are streamed, the UI will remove existing
       items to maintain the limit. For example, to limit the stream to the last 10 items
       in the UI while appending new items, pass a negative value:
@@ -1648,7 +1649,7 @@ defmodule Phoenix.LiveView do
 
   The following options are supported:
 
-    * `:dom_id` - The optional function to generate each stream item's DOM id.
+    * `:dom_id` - An optional function to generate each stream item's DOM id.
       The function accepts each stream item and converts the item to a string id.
       By default, the `:id` field of a map or struct will be used if the item has
       such a field, and will be prefixed by the `name` hyphenated with the id.
@@ -1707,13 +1708,13 @@ defmodule Phoenix.LiveView do
 
   The following options are supported:
 
-    * `:at` - the index to insert or update the item in the collection on the client.
+    * `:at` - The index to insert or update the item in the collection on the client.
       By default, the item is appended to the parent DOM container. This is the same as
       passing a limit of `-1`.
       If the item already exists in the parent DOM container then it will be
       updated in place.
 
-    * `:limit` - the limit of items to maintain in the UI. A limit passed to `stream/4` does
+    * `:limit` - A limit of items to maintain in the UI. A limit passed to `stream/4` does
       not affect subsequent calls to `stream_insert/4`, therefore the limit must be passed
       here as well in order to be enforced. See `stream/4` for more information on
       limiting streams.

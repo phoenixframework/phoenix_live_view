@@ -1599,7 +1599,7 @@ defmodule Phoenix.Component do
 
     * `:root` - The root directory to embed files. Defaults to the current
       module's directory (`__DIR__`)
-    * `:suffix` - The string value to append to embedded function names. By
+    * `:suffix` - A string value to append to embedded function names. By
       default, function names will be the name of the template file excluding
       the format and engine.
 
