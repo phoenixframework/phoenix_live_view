@@ -148,12 +148,12 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:target` - The selector or component ID to push to. This value will
+    * `:target` - A selector or component ID to push to. This value will
       overwrite any `phx-target` attribute present on the element.
-    * `:loading` - The selector to apply the phx loading classes to.
+    * `:loading` - A selector to apply the phx loading classes to.
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
       phx:page-loading-stop events for this push. Defaults to `false`.
-    * `:value` - The map of values to send to the server. These values will be
+    * `:value` - A map of values to send to the server. These values will be
       merged over any `phx-value-*` attributes that are present on the element.
       All keys will be treated as strings when merging.
 
@@ -204,12 +204,12 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to dispatch the event to.
+    * `:to` - An optional DOM selector to dispatch the event to.
       Defaults to the interacted element.
-    * `:detail` - The optional detail map to dispatch along
+    * `:detail` - An optional detail map to dispatch along
       with the client event. The details will be available in the
       `event.detail` attribute for event listeners.
-    * `:bubbles` – The boolean flag to bubble the event or not. Default `true`.
+    * `:bubbles` – A boolean flag to bubble the event or not. Defaults to `true`.
 
   ## Examples
 
@@ -270,19 +270,20 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to toggle.
+    * `:to` - An optional DOM selector to toggle.
       Defaults to the interacted element.
-    * `:in` - The string of classes to apply when toggling in, or
+    * `:in` - A string of classes to apply when toggling in, or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
-    * `:out` - The string of classes to apply when toggling out, or
+    * `:out` - A string of classes to apply when toggling out, or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-100", "opacity-0"}`
-    * `:time` - The time to apply the transition `:in` and `:out` classes.
-      Defaults #{@default_transition_time}
-    * `:display` - The optional display value to set when toggling in. Defaults `"block"`.
+    * `:time` - The time in milliseconds to apply the transition `:in` and `:out` classes.
+      Defaults to #{@default_transition_time}.
+    * `:display` - An optional display value to set when toggling in. Defaults
+      to `"block"`.
 
   When the toggle is complete on the client, a `phx:show-start` or `phx:hide-start`, and
   `phx:show-end` or `phx:hide-end` event will be dispatched to the toggled elements.
@@ -324,15 +325,15 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to show.
+    * `:to` - An optional DOM selector to show.
       Defaults to the interacted element.
-    * `:transition` - The string of classes to apply before showing or
+    * `:transition` - A string of classes to apply before showing or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
-    * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time}
-    * `:display` - The optional display value to set when showing. Defaults `"block"`.
+    * `:time` - The time in milliseconds to apply the transition from `:transition`.
+      Defaults to #{@default_transition_time}.
+    * `:display` - An optional display value to set when showing. Defaults to `"block"`.
 
   During the process, the following events will be dispatched to the shown elements:
 
@@ -374,14 +375,14 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to hide.
+    * `:to` - An optional DOM selector to hide.
       Defaults to the interacted element.
-    * `:transition` - The string of classes to apply before hiding or
+    * `:transition` - A string of classes to apply before hiding or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-100", "opacity-0"}`
-    * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time}
+    * `:time` - The time in milliseconds to apply the transition from `:transition`.
+      Defaults to #{@default_transition_time}.
 
   During the process, the following events will be dispatched to the hidden elements:
 
@@ -420,18 +421,18 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Adds classes to elements.
 
-    * `names` - The string of classes to add.
+    * `names` - A string with one or more class names to add.
 
   ## Options
 
-    * `:to` - The optional DOM selector to add classes to.
+    * `:to` - An optional DOM selector to add classes to.
       Defaults to the interacted element.
-    * `:transition` - The string of classes to apply before adding classes or
+    * `:transition` - A string of classes to apply before adding classes or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
-    * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time}
+    * `:time` - The time in milliseconds to apply the transition from `:transition`.
+      Defaults to #{@default_transition_time}.
 
   ## Examples
 
@@ -471,7 +472,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to target.
+    * `:to` - An optional DOM selector to target.
       Defaults to the interacted element.
     * `:transition` - A string of classes to apply before adding classes or
       a 3-tuple containing the transition class, the class to apply
@@ -512,18 +513,18 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Removes classes from elements.
 
-    * `names` - The string of classes to remove.
+    * `names` - A string with one or more class names to remove.
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove classes from.
+    * `:to` - An optional DOM selector to remove classes from.
       Defaults to the interacted element.
-    * `:transition` - The string of classes to apply before removing classes or
+    * `:transition` - A string of classes to apply before removing classes or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
-    * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time}
+    * `:time` - The time in milliseconds to apply the transition from `:transition`.
+      Defaults to #{@default_transition_time}.
 
   ## Examples
 
@@ -559,20 +560,20 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Transitions elements.
 
-    * `transition` - The string of classes to apply before removing classes or
+    * `transition` - A string of classes to apply before removing classes or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
 
   Transitions are useful for temporarily adding an animation class
-  to element(s), such as for highlighting content changes.
+  to elements, such as for highlighting content changes.
 
   ## Options
 
-    * `:to` - The optional DOM selector to apply transitions to.
+    * `:to` - An optional DOM selector to apply transitions to.
       Defaults to the interacted element.
-    * `:time` - The time to apply the transition from `:transition`.
-      Defaults #{@default_transition_time}
+    * `:time` - The time in milliseconds to apply the transition from `:transition`.
+      Defaults to #{@default_transition_time}.
 
   ## Examples
 
@@ -613,7 +614,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to add attributes to.
+    * `:to` - An optional DOM selector to add attributes to.
       Defaults to the interacted element.
 
   ## Examples
@@ -643,7 +644,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to remove attributes from.
+    * `:to` - An optional DOM selector to remove attributes from.
       Defaults to the interacted element.
 
   ## Examples
@@ -676,7 +677,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to set or remove attributes from.
+    * `:to` - An optional DOM selector to set or remove attributes from.
       Defaults to the interacted element.
 
   ## Examples
@@ -721,7 +722,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to send focus to.
+    * `:to` - An optional DOM selector to send focus to.
       Defaults to the current element.
 
   ## Examples
@@ -743,7 +744,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to focus.
+    * `:to` - An optional DOM selector to focus.
       Defaults to the current element.
 
   ## Examples
@@ -765,7 +766,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:to` - The optional DOM selector to push focus to.
+    * `:to` - An optional DOM selector to push focus to.
       Defaults to the current element.
 
   ## Examples
@@ -799,7 +800,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:replace` - Whether to replace the browser's pushState history. Defaults false.
+    * `:replace` - Whether to replace the browser's pushState history. Defaults to `false`.
 
   ## Examples
 
@@ -829,7 +830,7 @@ defmodule Phoenix.LiveView.JS do
 
   ## Options
 
-    * `:replace` - Whether to replace the browser's pushState history. Defaults false.
+    * `:replace` - Whether to replace the browser's pushState history. Defaults to `false`.
 
   ## Examples
 
@@ -855,13 +856,13 @@ defmodule Phoenix.LiveView.JS do
   end
 
   @doc """
-  Executes JS commands located in element attributes.
+  Executes JS commands located in an element's attribute.
 
     * `attr` - The string attribute where the JS command is specified
 
   ## Options
 
-    * `:to` - The optional DOM selector to fetch the attribute from.
+    * `:to` - An optional DOM selector to fetch the attribute from.
       Defaults to the current element.
 
   ## Examples
