@@ -1469,7 +1469,7 @@ The new implementation will check there is a button at `#term .buttons a`, with 
   - Add `put_live_layout` plug to put the root layout used for live routes
   - Allow `redirect` and `push_redirect` from mount
   - Use acknowledgement tracking to avoid patching inputs until the server has processed the form event
-  - Add css loading states to all phx bound elements with event specific css classes
+  - Add CSS loading states to all phx bound elements with event specific CSS classes
   - Dispatch `phx:page-loading-start` and `phx:page-loading-stop` on window for live navigation, initial page loads, and form submits, for user controlled page loading integration
   - Allow any phx bound element to specify `phx-page-loading` to dispatch loading events above when the event is pushed
   - Add client side latency simulator with new `enableLatencySim(milliseconds)` and `disableLatencySim()`
@@ -1680,7 +1680,7 @@ let liveSocket = new LiveSocket("/live", Socket, {...})
 ## 0.1.1 (2019-08-27)
 
 ### Enhancements
-  - Use optimized `insertAdjacentHTML` for faster append/prepend and proper css animation handling
+  - Use optimized `insertAdjacentHTML` for faster append/prepend and proper CSS animation handling
   - Allow for replacing previously appended/prepended elements by replacing duplicate IDs during append/prepend instead of adding new DOM nodes
 
 ### Bug Fixes
