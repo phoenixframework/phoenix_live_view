@@ -344,8 +344,10 @@ It does not cascade to children.
 
 ## Lifecycle Events
 
-LiveView supports the `phx-connected`, and `phx-disconnected` events to react to
-connection lifecycle events with JS commands. For example, to show an element when the LiveView has lost its connection and hide it when the connection recovers:
+LiveView supports the `phx-connected` and `phx-disconnected` bindings to react
+to connection lifecycle events with JS commands. For example, to show an element
+when the LiveView has lost its connection and hide it when the connection
+recovers:
 
 ```heex
 <div id="status" class="hidden" phx-disconnected={JS.show()} phx-connected={JS.hide()}>
