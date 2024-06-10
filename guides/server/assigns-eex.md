@@ -122,7 +122,7 @@ for LiveViews or LiveComponents:
     end
 
 Instead use the `assign/2`, `assign/3`, `assign_new/3`, and `update/3`
-functions to compute it:
+functions to compute it, which will maintain change tracking:
 
     assign(assigns, sum: assigns.x + assigns.y)
 
