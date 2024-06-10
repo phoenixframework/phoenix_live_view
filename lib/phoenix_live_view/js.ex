@@ -131,7 +131,8 @@ defmodule Phoenix.LiveView.JS do
 
   defstruct ops: []
 
-  @opaque t :: %__MODULE__{}
+  @opaque internal :: []
+  @type t :: %__MODULE__{ops: internal}
 
   @default_transition_time 200
 
@@ -890,7 +891,7 @@ defmodule Phoenix.LiveView.JS do
 
   defp put_op(%JS{ops: ops} = js, kind, args) do
     args = drop_nil_values(args)
-    %JS{js | ops: ops ++ [[kind, args]]}
+    struct!(js, ops: ops ++ [[kind, args]])
   end
 
   defp drop_nil_values(args) when is_list(args) do
