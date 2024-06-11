@@ -2107,7 +2107,13 @@ var DOMPatch = class {
           if (streamAt === 0) {
             parent.insertAdjacentElement("afterbegin", child);
           } else if (streamAt === -1) {
-            parent.appendChild(child);
+            let lastChild = parent.lastElementChild;
+            if (lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)) {
+              let nonStreamChild = Array.from(parent.children).find((c) => !c.hasAttribute(PHX_STREAM_REF));
+              parent.insertBefore(child, nonStreamChild);
+            } else {
+              parent.appendChild(child);
+            }
           } else if (streamAt > 0) {
             let sibling = Array.from(parent.children)[streamAt];
             parent.insertBefore(child, sibling);
@@ -3537,19 +3543,6 @@ var View = class {
       if (onlyEls && !onlyEls.has(el)) {
         return;
       }
-      let detail = { ref, event: phxEvent };
-      if (phxEvent) {
-        el.dispatchEvent(new CustomEvent(`phx:unlock:${phxEvent}`, {
-          detail,
-          bubbles: true,
-          cancelable: false
-        }));
-      }
-      el.dispatchEvent(new CustomEvent("phx:unlock", {
-        detail,
-        bubbles: true,
-        cancelable: false
-      }));
       let disabledVal = el.getAttribute(PHX_DISABLED);
       let readOnlyVal = el.getAttribute(PHX_READONLY);
       el.removeAttribute(PHX_REF);
@@ -3577,6 +3570,19 @@ var View = class {
         }
         dom_default.deletePrivate(el, PHX_REF);
       }
+      let detail = { ref, event: phxEvent };
+      if (phxEvent) {
+        el.dispatchEvent(new CustomEvent(`phx:unlock:${phxEvent}`, {
+          detail,
+          bubbles: true,
+          cancelable: false
+        }));
+      }
+      el.dispatchEvent(new CustomEvent("phx:unlock", {
+        detail,
+        bubbles: true,
+        cancelable: false
+      }));
     });
   }
   putRef(elements, phxEvent, eventType, opts = {}) {
@@ -3592,19 +3598,6 @@ var View = class {
         continue;
       }
       el.classList.add(`phx-${eventType}-loading`);
-      let detail = { event: phxEvent, eventType, ref: newRef, loading: elements };
-      el.dispatchEvent(new CustomEvent(`phx:lock`, {
-        detail,
-        bubbles: true,
-        cancelable: false
-      }));
-      if (phxEvent) {
-        el.dispatchEvent(new CustomEvent(`phx:push-start:${phxEvent}`, {
-          detail,
-          bubbles: true,
-          cancelable: false
-        }));
-      }
       let disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
@@ -3615,6 +3608,38 @@ var View = class {
         }
         el.setAttribute(PHX_DISABLED, el.getAttribute(PHX_DISABLED) || el.disabled);
         el.setAttribute("disabled", "");
+      }
+      let detail = {
+        event: phxEvent,
+        eventType,
+        ref: newRef,
+        loading: elements,
+        unlock: (els) => this.undoRefs(newRef, phxEvent, els),
+        lock: (els, onUnlock) => {
+          els.forEach((el2) => {
+            el2.setAttribute(PHX_REF, newRef);
+            el2.setAttribute(PHX_REF_SRC, this.el.id);
+            if (onUnlock) {
+              el2.addEventListener(`phx:unlock:${phxEvent}`, (e) => {
+                if (e.detail.ref === newRef) {
+                  onUnlock();
+                }
+              });
+            }
+          });
+        }
+      };
+      el.dispatchEvent(new CustomEvent(`phx:lock`, {
+        detail,
+        bubbles: true,
+        cancelable: false
+      }));
+      if (phxEvent) {
+        el.dispatchEvent(new CustomEvent(`phx:lock:${phxEvent}`, {
+          detail,
+          bubbles: true,
+          cancelable: false
+        }));
       }
     }
     return [newRef, elements, opts];
@@ -3804,7 +3829,7 @@ var View = class {
       }
     });
     formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
-    let els = [formEl].concat(disables).concat(buttons).concat(inputs);
+    let els = [formEl].concat(disables).concat(buttons).concat(inputs).reverse();
     return this.putRef(els, phxEvent, "submit", opts);
   }
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
@@ -4537,7 +4562,7 @@ var LiveSocket = class {
     }
   }
   bindClicks() {
-    window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.composedPath()[0] || e.target);
+    window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
     this.bindClick("click", "click", false);
     this.bindClick("mousedown", "capture-click", true);
   }
