@@ -3559,7 +3559,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             this.liveSocket.requestDOMUpdate(() => {
               this.applyDiff("update", resp.diff, ({ diff, reply, events }) => {
                 if (ref !== null) {
-                  this.undoRefs(ref);
+                  this.undoRefs(ref, payload.event);
                 }
                 this.update(diff, events);
                 finish(reply);
@@ -3567,14 +3567,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             });
           } else {
             if (ref !== null) {
-              this.undoRefs(ref);
+              this.undoRefs(ref, payload.event);
             }
             finish(null);
           }
         });
       });
     }
-    undoRefs(ref, onlyEls) {
+    undoRefs(ref, phxEvent, onlyEls) {
       onlyEls = onlyEls ? new Set(onlyEls) : null;
       if (!this.isConnected()) {
         return;
@@ -3583,7 +3583,19 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (onlyEls && !onlyEls.has(el)) {
           return;
         }
-        el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
+        let detail = { ref, event: phxEvent };
+        if (phxEvent) {
+          el.dispatchEvent(new CustomEvent(`phx:unlock:${phxEvent}`, {
+            detail,
+            bubbles: true,
+            cancelable: false
+          }));
+        }
+        el.dispatchEvent(new CustomEvent("phx:unlock", {
+          detail,
+          bubbles: true,
+          cancelable: false
+        }));
         let disabledVal = el.getAttribute(PHX_DISABLED);
         let readOnlyVal = el.getAttribute(PHX_READONLY);
         el.removeAttribute(PHX_REF);
@@ -3613,7 +3625,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
-    putRef(elements, event, opts = {}) {
+    putRef(elements, phxEvent, eventType, opts = {}) {
       let newRef = this.ref++;
       let disableWith = this.binding(PHX_DISABLE_WITH);
       if (opts.loading) {
@@ -3625,8 +3637,20 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (opts.submitter && !(el === opts.submitter || el === opts.form)) {
           continue;
         }
-        el.classList.add(`phx-${event}-loading`);
-        el.dispatchEvent(new CustomEvent(`phx:${event}-loading`, { bubbles: true, cancelable: false }));
+        el.classList.add(`phx-${eventType}-loading`);
+        let detail = { event: phxEvent, eventType, ref: newRef, loading: elements };
+        el.dispatchEvent(new CustomEvent(`phx:lock`, {
+          detail,
+          bubbles: true,
+          cancelable: false
+        }));
+        if (phxEvent) {
+          el.dispatchEvent(new CustomEvent(`phx:push-start:${phxEvent}`, {
+            detail,
+            bubbles: true,
+            cancelable: false
+          }));
+        }
         let disableText = el.getAttribute(disableWith);
         if (disableText !== null) {
           if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
@@ -3672,7 +3696,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.log("hook", () => ["unable to push hook event. LiveView not connected", event, payload]);
         return false;
       }
-      let [ref, els, opts] = this.putRef([el], "hook");
+      let [ref, els, opts] = this.putRef([el], event, "hook");
       this.pushWithReply(() => [ref, els, opts], "event", {
         type: "hook",
         event,
@@ -3712,7 +3736,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return meta;
     }
     pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
-      this.pushWithReply(() => this.putRef([el], type, opts), "event", {
+      this.pushWithReply(() => this.putRef([el], phxEvent, type, opts), "event", {
         type,
         event: phxEvent,
         value: this.extractMeta(el, meta, opts.value),
@@ -3734,7 +3758,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback) {
       let uploads;
       let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts);
-      let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts);
+      let refGenerator = () => this.putRef([inputEl, inputEl.form], phxEvent, "change", opts);
       let formData;
       let meta = this.extractMeta(inputEl.form);
       if (inputEl instanceof HTMLButtonElement) {
@@ -3760,11 +3784,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (dom_default.isUploadInput(inputEl) && dom_default.isAutoUpload(inputEl)) {
           if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
             let [ref, _els] = refGenerator();
-            this.undoRefs(ref, [inputEl.form]);
-            this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
+            this.undoRefs(ref, phxEvent, [inputEl.form]);
+            this.uploadFiles(inputEl.form, phxEvent, targetCtx, ref, cid, (_uploads) => {
               callback && callback(resp);
-              this.triggerAwaitingSubmit(inputEl.form);
-              this.undoRefs(ref);
+              this.triggerAwaitingSubmit(inputEl.form, phxEvent);
+              this.undoRefs(ref, phxEvent);
             });
           }
         } else {
@@ -3772,11 +3796,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
-    triggerAwaitingSubmit(formEl) {
+    triggerAwaitingSubmit(formEl, phxEvent) {
       let awaitingSubmit = this.getScheduledSubmit(formEl);
       if (awaitingSubmit) {
         let [_el, _ref, _opts, callback] = awaitingSubmit;
-        this.cancelSubmit(formEl);
+        this.cancelSubmit(formEl, phxEvent);
         callback();
       }
     }
@@ -3789,17 +3813,17 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       this.formSubmits.push([formEl, ref, opts, callback]);
     }
-    cancelSubmit(formEl) {
+    cancelSubmit(formEl, phxEvent) {
       this.formSubmits = this.formSubmits.filter(([el, ref, _callback]) => {
         if (el.isSameNode(formEl)) {
-          this.undoRefs(ref);
+          this.undoRefs(ref, phxEvent);
           return false;
         } else {
           return true;
         }
       });
     }
-    disableForm(formEl, opts = {}) {
+    disableForm(formEl, phxEvent, opts = {}) {
       let filterIgnored = (el) => {
         let userIgnored = closestPhxBinding(el, `${this.binding(PHX_UPDATE)}=ignore`, el.form);
         return !(userIgnored || closestPhxBinding(el, "data-phx-update=ignore", el.form));
@@ -3826,10 +3850,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
       formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
-      return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts);
+      let els = [formEl].concat(disables).concat(buttons).concat(inputs);
+      return this.putRef(els, phxEvent, "submit", opts);
     }
     pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-      let refGenerator = () => this.disableForm(formEl, __spreadProps(__spreadValues({}, opts), { form: formEl, submitter }));
+      let refGenerator = () => this.disableForm(formEl, phxEvent, __spreadProps(__spreadValues({}, opts), {
+        form: formEl,
+        submitter
+      }));
       let cid = this.targetComponentID(formEl, targetCtx);
       if (LiveUploader.hasUploadsInProgress(formEl)) {
         let [ref, _els] = refGenerator();
@@ -3838,9 +3866,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
         let [ref, els] = refGenerator();
         let proxyRefGen = () => [ref, els, opts];
-        this.uploadFiles(formEl, targetCtx, ref, cid, (uploads) => {
+        this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (uploads) => {
           if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
-            return this.undoRefs(ref);
+            return this.undoRefs(ref, phxEvent);
           }
           let meta = this.extractMeta(formEl);
           let formData = serializeForm(formEl, __spreadValues({ submitter }, meta));
@@ -3862,7 +3890,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }, onReply);
       }
     }
-    uploadFiles(formEl, targetCtx, ref, cid, onComplete) {
+    uploadFiles(formEl, phxEvent, targetCtx, ref, cid, onComplete) {
       let joinCountAtUpload = this.joinCount;
       let inputEls = LiveUploader.activeFileInputs(formEl);
       let numFileInputsInProgress = inputEls.length;
@@ -3892,7 +3920,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           });
           if (resp.error || Object.keys(resp.entries).length === 0) {
-            this.undoRefs(ref);
+            this.undoRefs(ref, phxEvent);
             let errors = resp.error || [];
             errors.map(([entry_ref, reason]) => {
               this.handleFailedEntryPreflight(entry_ref, reason, uploader);
@@ -3957,7 +3985,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     pushLinkPatch(href, targetEl, callback) {
       let linkRef = this.liveSocket.setPendingLink(href);
-      let refGen = targetEl ? () => this.putRef([targetEl], "click") : null;
+      let refGen = targetEl ? () => this.putRef([targetEl], null, "click") : null;
       let fallback = () => this.liveSocket.redirect(window.location.href);
       let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href;
       let push = this.pushWithReply(refGen, "live_patch", { url }, (resp) => {
@@ -4554,7 +4582,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     bindClicks() {
-      window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
+      window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.composedPath()[0] || e.target);
       this.bindClick("click", "click", false);
       this.bindClick("mousedown", "capture-click", true);
     }
