@@ -36,7 +36,8 @@ won't resend the static parts and it will only resend the dynamic
 part if it changes.
 
 The tracking of changes is done via assigns. If the `@title` assign
-changes, then LiveView will execute `expand_title(@title)` and send
+changes, then LiveView will execute the dynamic parts of the template,
+`expand_title(@title)`, and send
 the new content. If `@title` is the same, nothing is executed and
 nothing is sent.
 
@@ -111,20 +112,26 @@ Instead, use a function:
 ```
 
 Similarly, **do not** define variables at the top of your `render` function
-for LiveViews or LiveComponents:
+for LiveViews or LiveComponents. Since LiveView cannot track `sum` or `message`,
+if either value changes, both must be re-rendered by LiveView.
 
     def render(assigns) do
       sum = assigns.x + assigns.y
+      message = assigns.message
 
       ~H"""
-      <%= sum %>
+      <p><%= message %></p>
+
+      <div><%= sum %></div>
       """
     end
 
 Instead use the `assign/2`, `assign/3`, `assign_new/3`, and `update/3`
-functions to compute it, which will maintain change tracking:
+functions to compute it. Any assign defined or updated this way will be marked as
+changed, while other assigns like `@message` will still be tracked by LiveView.
 
     assign(assigns, sum: assigns.x + assigns.y)
+    
 
 The same functions can be used inside function components too:
 
