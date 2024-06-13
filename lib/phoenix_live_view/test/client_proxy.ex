@@ -317,7 +317,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           with {:ok, node} <- select_node(root, element),
                :ok <- maybe_enabled(type, node, element),
                {:ok, event_or_js, fallback} <- maybe_event(type, node, element),
-               {:ok, dom_values} <- maybe_values(type, node, element) do
+               {:ok, dom_values} <- maybe_values(type, root, node, element) do
             case maybe_js_commands(event_or_js, root, view, node, value, dom_values) do
               [] when fallback != [] ->
                 fallback
@@ -1087,20 +1087,29 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_values(:hook, _node, _element), do: {:ok, %{}}
+  defp maybe_values(:hook, _root, _node, _element), do: {:ok, %{}}
 
-  defp maybe_values(type, {tag, _, _} = node, element) when type in [:change, :submit] do
+  defp maybe_values(type, root, {tag, attrs, _} = node, element)
+       when type in [:change, :submit] do
     cond do
       tag == "form" ->
-        defaults =
-          node
-          |> DOM.filter(fn node ->
-            DOM.tag(node) in ~w(input textarea select) and is_nil(DOM.attribute(node, "disabled"))
+        named_fields =
+          case Enum.into(attrs, %{}) do
+            %{"id" => id} -> Floki.find(root, "[form=#{id}]")
+            _ -> []
+          end
+
+        child_fields =
+          DOM.filter(node, fn node ->
+            DOM.tag(node) in ~w(input textarea select) and
+              is_nil(DOM.attribute(node, "disabled"))
           end)
-          |> Enum.reduce(Query.decode_init(), &form_defaults/2)
+
+        fields = Enum.uniq(named_fields ++ child_fields)
+        defaults = Enum.reduce(fields, Query.decode_init(), &form_defaults/2)
 
         with {:ok, defaults} <- maybe_submitter(defaults, type, node, element),
-             {:ok, value} <- fill_in_map(Enum.to_list(element.form_data || %{}), "", node, []) do
+             {:ok, value} <- fill_in_map(Enum.to_list(element.form_data || %{}), "", fields, []) do
           {:ok,
            defaults
            |> Query.decode_done()
@@ -1118,7 +1127,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
-  defp maybe_values(_type, node, _element) do
+  defp maybe_values(_type, _root, node, _element) do
     {:ok, DOM.all_values(node)}
   end
 
