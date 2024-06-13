@@ -112,15 +112,15 @@ Instead, use a function:
 ```
 
 Similarly, **do not** define variables at the top of your `render` function
-for LiveViews or LiveComponents. Since LiveView cannot track `sum` or `message`,
+for LiveViews or LiveComponents. Since LiveView cannot track `sum` or `title`,
 if either value changes, both must be re-rendered by LiveView.
 
     def render(assigns) do
       sum = assigns.x + assigns.y
-      message = assigns.message
+      title = assigns.title
 
       ~H"""
-      <%= message %>
+      <h1><%= title %></h1>
 
       <%= sum %>
       """
@@ -128,7 +128,7 @@ if either value changes, both must be re-rendered by LiveView.
 
 Instead use the `assign/2`, `assign/3`, `assign_new/3`, and `update/3`
 functions to compute it. Any assign defined or updated this way will be marked as
-changed, while other assigns like `@message` will still be tracked by LiveView.
+changed, while other assigns like `@title` will still be tracked by LiveView.
 
     assign(assigns, sum: assigns.x + assigns.y)
     
@@ -137,10 +137,13 @@ The same functions can be used inside function components too:
 
     attr :x, :integer, required: true
     attr :y, :integer, required: true
+    attr :title, :string, required: true
     def sum_component(assigns) do
       assigns = assign(assigns, sum: assigns.x + assigns.y)
 
       ~H"""
+      <h1><%= @title %></h1>
+
       <%= @sum %>
       """
     end
