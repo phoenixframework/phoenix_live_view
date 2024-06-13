@@ -120,9 +120,9 @@ if either value changes, both must be re-rendered by LiveView.
       message = assigns.message
 
       ~H"""
-      <p><%= message %></p>
+      <%= message %>
 
-      <div><%= sum %></div>
+      <%= sum %>
       """
     end
 
