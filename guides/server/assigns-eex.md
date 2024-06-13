@@ -131,7 +131,6 @@ functions to compute it. Any assign defined or updated this way will be marked a
 changed, while other assigns like `@title` will still be tracked by LiveView.
 
     assign(assigns, sum: assigns.x + assigns.y)
-    
 
 The same functions can be used inside function components too:
 
