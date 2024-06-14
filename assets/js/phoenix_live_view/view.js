@@ -60,7 +60,7 @@ export let prependFormDataKey = (key, prefix) => {
   // Remove the "[]" if it's an array
   let baseKey = isArray ? key.slice(0, -2) : key
   // Replace last occurrence of key before a closing bracket or the end with key plus suffix
-  baseKey = baseKey.replace(/(\w+)(\]?$)/, `${prefix}$1$2`)
+  baseKey = baseKey.replace(/([^\[\]]+)(\]?$)/, `${prefix}$1$2`)
   // Add back the "[]" if it was an array
   if(isArray){ baseKey += "[]" }
   return baseKey
