@@ -163,6 +163,13 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
           phx-trigger-action={@trigger_action}>
     </form>
 
+    <form id="named" phx-submit="form-submit-named">
+      <input name="child" />
+    </form>
+    <input form="named" name="foo" />
+    <textarea form="named" name="bar" />
+    <select form="named" name="baz"><option value="c">c</option></select>
+
     <% # @page_title assign is unique %>
     <svg><title>SVG with title</title></svg>
     """
