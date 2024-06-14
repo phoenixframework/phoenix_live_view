@@ -279,7 +279,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   end
 
   # Handle EEX blocks
-  defp to_algebra({:eex_block, expr, block}, context) do
+  defp to_algebra({:eex_block, expr, block, meta}, context) do
     {doc, _stab} =
       Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
         {block, _force_newline?} = trim_block_newlines(block)
@@ -287,7 +287,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         {concat(doc, force_unfit(next_doc)), stab?}
       end)
 
-    {:block, group(concat("<%= #{expr} %>", doc))}
+    {:block, group(concat("<%#{meta.opt} #{expr} %>", doc))}
   end
 
   defp to_algebra({:eex_comment, text}, _context) do
