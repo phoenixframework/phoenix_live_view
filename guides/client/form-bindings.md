@@ -53,8 +53,7 @@ callbacks, to validate and attempt to save the parameter accordingly:
       form =
         %User{}
         |> Accounts.change_user(params)
-        |> Map.put(:action, :insert)
-        |> to_form()
+        |> to_form(action: :validate)
 
       {:noreply, assign(socket, form: form)}
     end
