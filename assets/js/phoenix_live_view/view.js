@@ -2,6 +2,7 @@ import {
   BEFORE_UNLOAD_LOADER_TIMEOUT,
   CHECKABLE_INPUTS,
   CONSECUTIVE_RELOADS,
+  CONSECUTIVE_JOINS,
   PHX_AUTO_RECOVER,
   PHX_COMPONENT,
   PHX_CONNECTED_CLASS,
@@ -149,6 +150,7 @@ export default class View {
     this.formSubmits = []
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}
+    this.maxChildJoinTries = this.liveSocket.maxChildJoinTries
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       let url = this.href && this.expandURL(this.href)
       return {
@@ -298,7 +300,11 @@ export default class View {
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`)
     }
 
+    // reset the consecutive reloads counter (only relevant for the root view)
     Browser.dropLocal(this.liveSocket.localStorage, window.location.pathname, CONSECUTIVE_RELOADS)
+    // reset the consecutive joins and reloads counter for this view (only relevant for the child views)
+    Browser.dropLocal(this.liveSocket.localStorage, this.id, CONSECUTIVE_JOINS)
+    Browser.dropLocal(this.liveSocket.localStorage, this.id, CONSECUTIVE_RELOADS)
     this.applyDiff("mount", rendered, ({diff, events}) => {
       this.rendered = new Rendered(this.id, diff)
       let [html, streams] = this.renderContainer(null, "join")
@@ -740,12 +746,19 @@ export default class View {
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
     this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
     this.log("error", () => ["unable to join", resp])
-    if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
+    if(this.isMain()){
+      // only do a full page refresh if this is the main view,
+      // if it's a child view it will simply be rejoined (automatically by the Phoenix.Socket client)
+      return this.liveSocket.reloadWithJitter(this)
+    } else {
+      // handle the child view failing to join repeatedly
+      this.handleChildJoinError()
+    }
   }
 
   onClose(reason){
     if(this.isDestroyed()){ return }
-    if(this.liveSocket.hasPendingLink() && reason !== "leave"){
+    if(this.isMain() && this.liveSocket.hasPendingLink() && reason !== "leave"){
       return this.liveSocket.reloadWithJitter(this)
     }
     this.destroyAllChildren()
@@ -766,6 +779,31 @@ export default class View {
       } else {
         this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS])
       }
+    }
+  }
+
+  handleChildJoinError(){
+    let joinTries = Browser.updateLocal(this.liveSocket.localStorage, this.id, CONSECUTIVE_JOINS, 0, count => count + 1)
+    let childReloads = Browser.getLocal(this.liveSocket.localStorage, this.id, CONSECUTIVE_RELOADS) || 0
+    // the child join crashed consecutively for more than maxJoinTries, therefore we fallback
+    // to a full reload
+    if(joinTries >= this.maxChildJoinTries){
+      if(childReloads > 0){
+        this.log("error", () => ["child failed to join consecutively, even after reloading the page. We won't try again."])
+        this.destroy()
+        // TODO: check if this is correct
+        this.setContainerClasses(...[PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+        this.execAll(this.binding("disconnected"))
+        // TODO: really check if this is correct
+        //       I added this to prevent the parent from being stuck in the loading state, waiting
+        //       for the child view when we know it won't join because we've given up.
+        this.parent.ackJoin(this)
+        return
+      }
+      this.destroy()
+      Browser.updateLocal(this.liveSocket.localStorage, this.id, CONSECUTIVE_RELOADS, 1, count => count + 1)
+      // this will trigger a full page reload
+      this.liveSocket.reloadWithJitter(this.root)
     }
   }
 

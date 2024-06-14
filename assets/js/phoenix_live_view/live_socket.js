@@ -97,6 +97,7 @@ import {
   PHX_SESSION,
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
+  MAX_CHILD_JOIN_TRIES,
   PHX_REF,
 } from "./constants"
 
@@ -119,6 +120,7 @@ export let isUsedInput = (el) => DOM.isUsedInput(el)
 
 export default class LiveSocket {
   constructor(url, phxSocket, opts = {}){
+    this.disconnected = true
     this.unloaded = false
     if(!phxSocket || phxSocket.constructor.name === "Object"){
       throw new Error(`
@@ -155,6 +157,7 @@ export default class LiveSocket {
     this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN
     this.reloadJitterMax = opts.reloadJitterMax || RELOAD_JITTER_MAX
     this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
+    this.maxChildJoinTries = opts.maxChildJoinTries || MAX_CHILD_JOIN_TRIES
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
@@ -169,6 +172,7 @@ export default class LiveSocket {
       this.unloaded = true
     })
     this.socket.onOpen(() => {
+      this.disconnected = false
       if(this.isUnloaded()){
         // reload page if being restored from back/forward cache and browser does not emit "pageshow"
         window.location.reload()
@@ -230,9 +234,13 @@ export default class LiveSocket {
     }
   }
 
-  disconnect(callback){
+  disconnect(callback = function(){ }){
+    if(this.disconnected){ return callback() }
     clearTimeout(this.reloadWithJitterTimer)
-    this.socket.disconnect(callback)
+    this.socket.disconnect(() => {
+      this.disconnected = true
+      callback()
+    })
   }
 
   replaceTransport(transport){
@@ -307,7 +315,7 @@ export default class LiveSocket {
       if(this.isConnected() && opts.timeout){
         return push().receive("timeout", () => {
           if(view.joinCount === oldJoinCount && !view.isDestroyed()){
-            this.reloadWithJitter(view, () => {
+            this.reloadWithJitter(view.root, () => {
               this.log(view, "timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"])
             })
           }
@@ -329,29 +337,32 @@ export default class LiveSocket {
   }
 
   reloadWithJitter(view, log){
+    // socket.onClose also calls reloadWithJitter,
+    // therefore the this.disconnect() call below would trigger reloadWithJitter again
+    if(this.disconnected){ return }
+    if(view !== view.root){ throw new Error("reloadWithJitter should not be called for child views!") }
     clearTimeout(this.reloadWithJitterTimer)
-    this.disconnect()
-    let minMs = this.reloadJitterMin
-    let maxMs = this.reloadJitterMax
-    let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
-    let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
-    if(tries > this.maxReloads){
-      afterMs = this.failsafeJitter
-    }
-    this.reloadWithJitterTimer = setTimeout(() => {
-      // if view has recovered, such as transport replaced, then cancel
-      if(view.isDestroyed() || view.isConnected()){ return }
-      view.destroy()
-      log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
-      if(tries > this.maxReloads){
+    this.disconnect(() => {
+      let minMs = this.reloadJitterMin
+      let maxMs = this.reloadJitterMax
+      let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
+      let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
+      if(tries >= this.maxReloads){
+        afterMs = this.failsafeJitter
         this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`])
       }
-      if(this.hasPendingLink()){
-        window.location = this.pendingLink
-      } else {
-        window.location.reload()
-      }
-    }, afterMs)
+      this.reloadWithJitterTimer = setTimeout(() => {
+        // if view has recovered, such as transport replaced, then cancel
+        if(view.isDestroyed() || view.isConnected()){ return }
+        view.destroy()
+        log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
+        if(this.hasPendingLink()){
+          window.location = this.pendingLink
+        } else {
+          window.location.reload()
+        }
+      }, afterMs)
+    })
   }
 
   getHookCallbacks(name){

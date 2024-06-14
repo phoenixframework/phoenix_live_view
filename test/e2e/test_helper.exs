@@ -6,7 +6,7 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   secret_key_base: String.duplicate("a", 64),
   render_errors: [
     formats: [
-      html: Phoenix.LiveViewTest.E2E.ErrorHTML,
+      html: Phoenix.LiveViewTest.E2E.ErrorHTML
     ],
     layout: false
   ],
@@ -23,10 +23,17 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Layout do
   use Phoenix.Component
 
+  def render("root.html", assigns) do
+    ~H"""
+    <%!-- no doctype -> quirks mode --%> <!DOCTYPE html> <%= @inner_content %>
+    """
+  end
+
   def render("live.html", assigns) do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
-    <script src="/assets/phoenix/phoenix.min.js"></script>
+    <script src="/assets/phoenix/phoenix.min.js">
+    </script>
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
 
@@ -51,6 +58,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :protect_from_forgery
+    plug :put_root_layout, html: {Phoenix.LiveViewTest.E2E.Layout, :root}
   end
 
   live_session :default, layout: {Phoenix.LiveViewTest.E2E.Layout, :live} do
@@ -95,6 +103,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     pipe_through(:browser)
 
     live "/form/feedback", FormFeedbackLive
+    live "/errors", ErrorLive
 
     scope "/issues" do
       live "/2965", Issue2965Live
@@ -156,7 +165,7 @@ end
     strategy: :one_for_one
   )
 
-IO.puts "Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}"
+IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
 
 unless IEx.started?() do
   # when running the test server manually, we halt after
