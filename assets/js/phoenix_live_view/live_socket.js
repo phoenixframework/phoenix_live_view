@@ -639,28 +639,23 @@ export default class LiveSocket {
 
   bindClicks(){
     window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
-    this.bindClick("click", "click", false)
-    this.bindClick("mousedown", "capture-click", true)
+    this.bindClick("click", "click")
   }
 
-  bindClick(eventName, bindingName, capture){
+  bindClick(eventName, bindingName){
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
       let target = null
-      if(capture){
-        target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
-      } else {
-        // a synthetic click event (detail 0) will not have caused a mousedown event,
-        // therefore the clickStartedAtTarget is stale
-        if(e.detail === 0) this.clickStartedAtTarget = e.target
-        let clickStartedAtTarget = this.clickStartedAtTarget || e.target
-        target = closestPhxBinding(clickStartedAtTarget, click)
-        this.dispatchClickAway(e, clickStartedAtTarget)
-        this.clickStartedAtTarget = null
-      }
+      // a synthetic click event (detail 0) will not have caused a mousedown event,
+      // therefore the clickStartedAtTarget is stale
+      if(e.detail === 0) this.clickStartedAtTarget = e.target
+      let clickStartedAtTarget = this.clickStartedAtTarget || e.target
+      target = closestPhxBinding(clickStartedAtTarget, click)
+      this.dispatchClickAway(e, clickStartedAtTarget)
+      this.clickStartedAtTarget = null
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
-        if(!capture && DOM.isNewPageClick(e, window.location)){ this.unload() }
+        if(DOM.isNewPageClick(e, window.location)){ this.unload() }
         return
       }
 
@@ -674,7 +669,7 @@ export default class LiveSocket {
           JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
-    }, capture)
+    }, false)
   }
 
   dispatchClickAway(e, clickStartedAt){

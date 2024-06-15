@@ -119,6 +119,9 @@ generated user module:
 ### Deprecations
   * Deprecate `live_flash` in favor of `Phoenix.Flash.get`
   * Deprecate `push_redirect` in favor of `push_navigate`
+  
+### Removal of previously deprecated functionality
+  * `phx-capture-click` has been removed (deprecated in 0.17.0)
 
 ## 1.0.0-rc.0 🚀 (2024-05-08)
 
