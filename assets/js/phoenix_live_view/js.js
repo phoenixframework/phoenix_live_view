@@ -1,10 +1,51 @@
 import DOM from "./dom"
 import ARIA from "./aria"
+import {PHX_SCOPE} from "./constants"
 
 let focusStack = []
 let default_transition_time = 200
 
 let JS = {
+  bind(hook){
+    return {
+      exec(encodedJS){
+        hook.liveSocket.execJS(hook.el, encodedJS, "hook")
+      },
+      show(el, opts = {}){
+        let owner = hook.liveSocket.owner(el)
+        JS.show("hook", owner, el, opts.display, opts.transition, opts.time)
+      },
+      hide(el, opts = {}){
+        let owner = hook.liveSocket.owner(el)
+        JS.hide("hook", owner, el, opts.display, opts.transition, opts.time)
+      },
+      toggle(el, opts = {}){
+        let owner = hook.liveSocket.owner(el)
+        JS.toggle("hook", owner, el, opts.display, opts.in, opts.out, opts.time)
+      },
+      addClass(el, names){
+        let owner = hook.liveSocket.owner(el)
+        JS.addOrRemoveClasses(el, names, [], opts.transition, opts.time, owner)
+      },
+      removeClass(el, names){
+        let owner = hook.liveSocket.owner(el)
+        JS.addOrRemoveClasses(el, [], names, opts.transition, opts.time, owner)
+      },
+      toggleClass(el, names){
+        let owner = hook.liveSocket.owner(el)
+        JS.toggleClasses(el, names, opts.transition, opts.time, owner)
+      },
+      transition(el, names){
+        let owner = hook.liveSocket.owner(el)
+        JS.addOrRemoveClasses(el, [], [], opts.transition, opts.time, owner)
+      },
+      setAttribute(el, attr, val){ JS.setOrRemoveAttrs(el, [[attr, val]], []) },
+      removeAttribute(el, attr){ JS.setOrRemoveAttrs(el, [], [attr]) },
+      toggleAttr(el, attr, val1, val2){ JS.toggleAttr(el, attr, val1, val2) },
+    }
+  },
+
+  // private
   exec(eventType, phxEvent, view, sourceEl, defaults){
     let [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
     let commands = phxEvent.charAt(0) === "[" ?
@@ -119,21 +160,7 @@ let JS = {
   },
 
   exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val1, val2]}){
-    if(el.hasAttribute(attr)){
-      if(val2 !== undefined){
-        // toggle between val1 and val2
-        if(el.getAttribute(attr) === val1){
-          this.setOrRemoveAttrs(el, [[attr, val2]], [])
-        } else {
-          this.setOrRemoveAttrs(el, [[attr, val1]], [])
-        }
-      } else {
-        // remove attr
-        this.setOrRemoveAttrs(el, [], [attr])
-      }
-    } else {
-      this.setOrRemoveAttrs(el, [[attr, val1]], [])
-    }
+    this.toggleAttr(el, attr, val1, val2)
   },
 
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition}){
@@ -235,6 +262,24 @@ let JS = {
       let newRemoves = classes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
       this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view)
     })
+  },
+
+  toggleAttr(el, attr, val1, val2){
+    if(el.hasAttribute(attr)){
+      if(val2 !== undefined){
+        // toggle between val1 and val2
+        if(el.getAttribute(attr) === val1){
+          this.setOrRemoveAttrs(el, [[attr, val2]], [])
+        } else {
+          this.setOrRemoveAttrs(el, [[attr, val1]], [])
+        }
+      } else {
+        // remove attr
+        this.setOrRemoveAttrs(el, [], [attr])
+      }
+    } else {
+      this.setOrRemoveAttrs(el, [[attr, val1]], [])
+    }
   },
 
   addOrRemoveClasses(el, adds, removes, transition, time, view){

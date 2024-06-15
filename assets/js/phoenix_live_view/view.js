@@ -618,11 +618,17 @@ export default class View {
 
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
-  addHook(el){
+  addHook(el, callbacks){
     if(ViewHook.elementID(el) || !el.getAttribute){ return }
     let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
     if(hookName && !this.ownsElement(el)){ return }
-    let callbacks = this.liveSocket.getHookCallbacks(hookName)
+    callbacks = callbacks || this.liveSocket.getHookCallbacks(hookName)
+    let wc = false
+
+    // test for web component
+    if(/^[a-z]+-[a-z]+/.test(el.tagName.toLowerCase())){
+      wc = true
+    }
 
     if(callbacks){
       if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }

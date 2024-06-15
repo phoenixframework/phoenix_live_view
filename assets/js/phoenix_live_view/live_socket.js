@@ -444,7 +444,7 @@ export default class LiveSocket {
 
   owner(childEl, callback){
     let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el)) || this.main
-    if(view){ callback(view) }
+    return view && callback ? callback(view) : view
   }
 
   withinOwners(childEl, callback){
@@ -532,6 +532,7 @@ export default class LiveSocket {
       }
     }, true)
     if(!dead){ this.bindNav() }
+    this.bindHooks()
     this.bindClicks()
     if(!dead){ this.bindForms() }
     this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
@@ -628,6 +629,13 @@ export default class LiveSocket {
         }
       })
     }
+  }
+
+  bindHooks(){
+    window.addEventListener("phx:_create_hook", e => {
+      let {el, callbacks, reply} = e.detail
+      this.owner(el, view => reply(view.addHook(el, callbacks)))
+    })
   }
 
   bindClicks(){
