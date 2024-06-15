@@ -885,6 +885,15 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp root(state, view), do: DOM.by_id!(state.html, view.id)
 
+  defp select_node_from_list(node_list, %Element{selector: selector, text_filter: nil}) do
+    DOM.maybe_one(node_list, selector)
+  end
+
+  defp select_node_from_list(node_list, %Element{selector: selector, text_filter: text_filter}) do
+    nodes = DOM.all(node_list, selector)
+    select_node_by_text(node_list, nodes, text_filter, selector)
+  end
+
   defp select_node(root, %Element{selector: selector, text_filter: nil}) do
     root
     |> DOM.child_nodes()
@@ -897,6 +906,18 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       |> DOM.child_nodes()
       |> DOM.all(selector)
 
+    select_node_by_text(root, nodes, text_filter, selector)
+  end
+
+  defp select_node(root, {_, _, selector}) do
+    if selector do
+      root |> DOM.child_nodes() |> DOM.maybe_one(selector)
+    else
+      {:ok, root}
+    end
+  end
+
+  defp select_node_by_text(root, nodes, text_filter, selector) do
     filtered_nodes = Enum.filter(nodes, &(DOM.to_text(&1) =~ text_filter))
 
     case {nodes, filtered_nodes} do
@@ -924,14 +945,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
          "selector #{inspect(selector)} returned #{length(nodes)} elements " <>
            "and #{length(filtered_nodes)} of them matched the text filter #{inspect(text_filter)}: \n\n " <>
            DOM.inspect_html(filtered_nodes)}
-    end
-  end
-
-  defp select_node(root, {_, _, selector}) do
-    if selector do
-      root |> DOM.child_nodes() |> DOM.maybe_one(selector)
-    else
-      {:ok, root}
     end
   end
 
@@ -1093,23 +1106,31 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
        when type in [:change, :submit] do
     cond do
       tag == "form" ->
-        named_fields =
+        form_inputs = filtered_inputs(node)
+
+        named_inputs =
           case Enum.into(attrs, %{}) do
             %{"id" => id} -> Floki.find(root, "[form=#{id}]")
             _ -> []
           end
 
-        child_fields =
-          DOM.filter(node, fn node ->
-            DOM.tag(node) in ~w(input textarea select) and
-              is_nil(DOM.attribute(node, "disabled"))
-          end)
+        named_btns = DOM.filter(named_inputs, fn node -> DOM.tag(node) == "button" end)
+        named_inputs = filtered_inputs(named_inputs)
 
-        fields = Enum.uniq(named_fields ++ child_fields)
-        defaults = Enum.reduce(fields, Query.decode_init(), &form_defaults/2)
+        # All inputs including buttons
+        # Remove the named inputs first to remove any possible
+        # duplicates if the child inputs also had a form attribite.
+        all_inputs = (form_inputs -- named_inputs) ++ named_inputs
+        all_inputs = (all_inputs -- named_btns) ++ named_btns
 
-        with {:ok, defaults} <- maybe_submitter(defaults, type, node, element),
-             {:ok, value} <- fill_in_map(Enum.to_list(element.form_data || %{}), "", fields, []) do
+        # All inputs excluding buttons
+        value_inputs = (form_inputs -- named_inputs) ++ named_inputs
+
+        defaults = Enum.reduce(value_inputs, Query.decode_init(), &form_defaults/2)
+
+        with {:ok, defaults} <- maybe_submitter(defaults, type, {node, all_inputs}, element),
+             {:ok, value} <-
+               fill_in_map(Enum.to_list(element.form_data || %{}), "", value_inputs, []) do
           {:ok,
            defaults
            |> Query.decode_done()
@@ -1131,16 +1152,35 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, DOM.all_values(node)}
   end
 
-  defp maybe_submitter(defaults, :submit, form, %Element{meta: %{submitter: element}}) do
-    collect_submitter(form, element, defaults)
+  defp filtered_inputs(nodes) do
+    DOM.filter(nodes, fn node ->
+      DOM.tag(node) in ~w(input textarea select) and
+        is_nil(DOM.attribute(node, "disabled"))
+    end)
+  end
+
+  defp maybe_submitter(defaults, :submit, {form, inputs}, %Element{meta: %{submitter: element}}) do
+    collect_submitter({form, inputs}, element, defaults)
   end
 
   defp maybe_submitter(defaults, _, _, _), do: {:ok, defaults}
 
-  defp collect_submitter(form, element, defaults) do
+  defp collect_submitter({form, inputs}, element, defaults) do
+    # Check the form for the submitter first
     case select_node(form, element) do
-      {:ok, node} -> collect_submitter(node, form, element, defaults)
-      {:error, _, msg} -> {:error, :invalid, "invalid form submitter, " <> msg}
+      {:ok, node} ->
+        collect_submitter(node, form, element, defaults)
+
+      {:error, _, msg} ->
+        # If the form did not have the submitter
+        # then check the inputs instead.
+        case select_node_from_list(inputs, element) do
+          {:ok, node} ->
+            collect_submitter(node, inputs, element, defaults)
+
+          {:error, _, _} ->
+            {:error, :invalid, "invalid form submitter, " <> msg}
+        end
     end
   end
 
