@@ -777,7 +777,11 @@ var DOM = {
         return callback();
       case "blur":
         if (this.once(el, "debounce-blur")) {
-          el.addEventListener("blur", () => callback());
+          el.addEventListener("blur", () => {
+            if (asyncFilter()) {
+              callback();
+            }
+          });
         }
         return;
       default:
@@ -2186,6 +2190,11 @@ var DOMPatch = class {
             return false;
           }
           if (dom_default.isPhxSticky(fromEl)) {
+            [PHX_SESSION, PHX_STATIC, PHX_ROOT_ID].map((attr) => [attr, fromEl.getAttribute(attr), toEl.getAttribute(attr)]).forEach(([attr, fromVal, toVal]) => {
+              if (toVal && fromVal !== toVal) {
+                fromEl.setAttribute(attr, toVal);
+              }
+            });
             return false;
           }
           if (dom_default.isIgnored(fromEl, phxUpdate) || fromEl.form && fromEl.form.isSameNode(externalFormTriggered)) {
@@ -2822,7 +2831,7 @@ var ViewHook = class {
 var prependFormDataKey = (key, prefix) => {
   let isArray = key.endsWith("[]");
   let baseKey = isArray ? key.slice(0, -2) : key;
-  baseKey = baseKey.replace(/(\w+)(\]?$)/, `${prefix}$1$2`);
+  baseKey = baseKey.replace(/([^\[\]]+)(\]?$)/, `${prefix}$1$2`);
   if (isArray) {
     baseKey += "[]";
   }
@@ -2901,6 +2910,7 @@ var View = class {
     this.formSubmits = [];
     this.children = this.parent ? null : {};
     this.root.children[this.id] = {};
+    this.formsForRecovery = {};
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       let url = this.href && this.expandURL(this.href);
       return {
@@ -2997,19 +3007,19 @@ var View = class {
   }) {
     this.liveSocket.transition(time, onStart, onDone);
   }
-  withinTargets(phxTarget, callback) {
+  withinTargets(phxTarget, callback, dom = document, viewEl) {
     if (phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement) {
       return this.liveSocket.owner(phxTarget, (view) => callback(view, phxTarget));
     }
     if (isCid(phxTarget)) {
-      let targets = dom_default.findComponentNodeList(this.el, phxTarget);
+      let targets = dom_default.findComponentNodeList(viewEl || this.el, phxTarget);
       if (targets.length === 0) {
         logError(`no component found matching phx-target of ${phxTarget}`);
       } else {
         callback(this, parseInt(phxTarget));
       }
     } else {
-      let targets = Array.from(document.querySelectorAll(phxTarget));
+      let targets = Array.from(dom.querySelectorAll(phxTarget));
       if (targets.length === 0) {
         logError(`nothing found matching the phx-target selector "${phxTarget}"`);
       }
@@ -3020,7 +3030,7 @@ var View = class {
     this.log(type, () => ["", clone(rawDiff)]);
     let { diff, reply, events, title } = Rendered.extract(rawDiff);
     callback({ diff, reply, events });
-    if (title) {
+    if (typeof title === "string") {
       window.requestAnimationFrame(() => dom_default.putTitle(title));
     }
   }
@@ -3033,6 +3043,9 @@ var View = class {
     this.childJoins = 0;
     this.joinPending = true;
     this.flash = null;
+    if (this.root === this) {
+      this.formsForRecovery = this.getFormsForRecovery();
+    }
     if (liveview_version !== this.liveSocket.version()) {
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`);
     }
@@ -3041,23 +3054,10 @@ var View = class {
       this.rendered = new Rendered(this.id, diff);
       let [html, streams] = this.renderContainer(null, "join");
       this.dropPendingRefs();
-      let forms = this.formsForRecovery(html).filter(([form, newForm, newCid]) => {
-        return !this.pendingForms.has(form.id);
-      });
       this.joinCount++;
-      if (forms.length > 0) {
-        forms.forEach(([form, newForm, newCid], i) => {
-          this.pendingForms.add(form.id);
-          this.pushFormRecovery(form, newCid, (resp2) => {
-            this.pendingForms.delete(form.id);
-            if (i === forms.length - 1) {
-              this.onJoinComplete(resp2, html, streams, events);
-            }
-          });
-        });
-      } else {
+      this.maybeRecoverForms(html, () => {
         this.onJoinComplete(resp, html, streams, events);
-      }
+      });
     });
   }
   dropPendingRefs() {
@@ -3067,7 +3067,6 @@ var View = class {
     });
   }
   onJoinComplete({ live_patch }, html, streams, events) {
-    this.pendingForms.clear();
     if (this.joinCount > 1 || this.parent && !this.parent.isJoinPending()) {
       return this.applyJoinPatch(live_patch, html, streams, events);
     }
@@ -3228,6 +3227,33 @@ var View = class {
   joinNewChildren() {
     dom_default.findPhxChildren(this.el, this.id).forEach((el) => this.joinChild(el));
   }
+  maybeRecoverForms(html, callback) {
+    const phxChange = this.binding("change");
+    const oldForms = this.root.formsForRecovery;
+    let template = document.createElement("template");
+    template.innerHTML = html;
+    const rootEl = template.content.firstElementChild;
+    rootEl.id = this.id;
+    rootEl.setAttribute(PHX_ROOT_ID, this.root.id);
+    rootEl.setAttribute(PHX_SESSION, this.getSession());
+    rootEl.setAttribute(PHX_STATIC, this.getStatic());
+    rootEl.setAttribute(PHX_PARENT_ID, this.parent ? this.parent.id : null);
+    const formsToRecover = dom_default.all(template.content, "form").filter((newForm) => newForm.id && oldForms[newForm.id]).filter((newForm) => !this.pendingForms.has(newForm.id)).filter((newForm) => oldForms[newForm.id].getAttribute(phxChange) === newForm.getAttribute(phxChange)).map((newForm) => {
+      return [oldForms[newForm.id], newForm];
+    });
+    if (formsToRecover.length === 0) {
+      return callback();
+    }
+    formsToRecover.forEach(([oldForm, newForm], i) => {
+      this.pendingForms.add(newForm.id);
+      this.pushFormRecovery(oldForm, newForm, template.content, () => {
+        this.pendingForms.delete(newForm.id);
+        if (i === formsToRecover.length - 1) {
+          callback();
+        }
+      });
+    });
+  }
   getChildById(id) {
     return this.root.children[this.id][id];
   }
@@ -3271,6 +3297,8 @@ var View = class {
     }
   }
   onAllChildJoinsComplete() {
+    this.pendingForms.clear();
+    this.formsForRecovery = {};
     this.joinCallback(() => {
       this.pendingJoinOps.forEach(([view, op]) => {
         if (!view.isDestroyed()) {
@@ -3910,18 +3938,27 @@ var View = class {
       return null;
     }
   }
-  pushFormRecovery(form, newCid, callback) {
-    this.liveSocket.withinOwners(form, (view, targetCtx) => {
-      let phxChange = this.binding("change");
-      let inputs = Array.from(form.elements).filter((el) => dom_default.isFormInput(el) && el.name && !el.hasAttribute(phxChange));
-      if (inputs.length === 0) {
-        return;
-      }
-      inputs.forEach((input2) => input2.hasAttribute(PHX_UPLOAD_REF) && LiveUploader.clearFiles(input2));
-      let input = inputs.find((el) => el.type !== "hidden") || inputs[0];
-      let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"));
-      js_default.exec("change", phxEvent, view, input, ["push", { _target: input.name, newCid, callback }]);
-    });
+  pushFormRecovery(oldForm, newForm, templateDom, callback) {
+    const phxChange = this.binding("change");
+    const phxTarget = newForm.getAttribute(this.binding("target")) || newForm;
+    const phxEvent = newForm.getAttribute(this.binding(PHX_AUTO_RECOVER)) || newForm.getAttribute(this.binding("change"));
+    const inputs = Array.from(oldForm.elements).filter((el) => dom_default.isFormInput(el) && el.name && !el.hasAttribute(phxChange));
+    if (inputs.length === 0) {
+      return;
+    }
+    inputs.forEach((input2) => input2.hasAttribute(PHX_UPLOAD_REF) && LiveUploader.clearFiles(input2));
+    let input = inputs.find((el) => el.type !== "hidden") || inputs[0];
+    let pending = 0;
+    this.withinTargets(phxTarget, (targetView, targetCtx) => {
+      const cid = this.targetComponentID(newForm, targetCtx);
+      pending++;
+      targetView.pushInput(input, targetCtx, cid, phxEvent, { _target: input.name }, () => {
+        pending--;
+        if (pending === 0) {
+          callback();
+        }
+      });
+    }, templateDom, templateDom);
   }
   pushLinkPatch(href, targetEl, callback) {
     let linkRef = this.liveSocket.setPendingLink(href);
@@ -3947,22 +3984,15 @@ var View = class {
       fallback();
     }
   }
-  formsForRecovery(html) {
+  getFormsForRecovery() {
     if (this.joinCount === 0) {
-      return [];
+      return {};
     }
     let phxChange = this.binding("change");
-    let template = document.createElement("template");
-    template.innerHTML = html;
-    return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id && this.ownsElement(form)).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").map((form) => {
-      const phxChangeValue = CSS.escape(form.getAttribute(phxChange));
-      let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${phxChangeValue}"]`);
-      if (newForm) {
-        return [form, newForm, this.targetComponentID(newForm)];
-      } else {
-        return [form, form, this.targetComponentID(form)];
-      }
-    }).filter(([form, newForm, newCid]) => newForm);
+    return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id).filter((form) => form.elements.length > 0).filter((form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore").map((form) => form.cloneNode(true)).reduce((acc, form) => {
+      acc[form.id] = form;
+      return acc;
+    }, {});
   }
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
@@ -3971,14 +4001,16 @@ var View = class {
     if (willDestroyCIDs.length > 0) {
       willDestroyCIDs.forEach((cid) => this.rendered.resetRender(cid));
       this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }, () => {
-        let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
-          return dom_default.findComponentNodeList(this.el, cid).length === 0;
-        });
-        if (completelyDestroyCIDs.length > 0) {
-          this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }, (resp) => {
-            this.rendered.pruneCIDs(resp.cids);
+        this.liveSocket.requestDOMUpdate(() => {
+          let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
+            return dom_default.findComponentNodeList(this.el, cid).length === 0;
           });
-        }
+          if (completelyDestroyCIDs.length > 0) {
+            this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }, (resp) => {
+              this.rendered.pruneCIDs(resp.cids);
+            });
+          }
+        });
       });
     }
   }
@@ -4043,6 +4075,7 @@ var LiveSocket = class {
     this.localStorage = opts.localStorage || window.localStorage;
     this.sessionStorage = opts.sessionStorage || window.sessionStorage;
     this.boundTopLevelEvents = false;
+    this.serverCloseRef = null;
     this.domCallbacks = Object.assign({
       onPatchStart: closure(),
       onPatchEnd: closure(),
@@ -4121,6 +4154,10 @@ var LiveSocket = class {
   }
   disconnect(callback) {
     clearTimeout(this.reloadWithJitterTimer);
+    if (this.serverCloseRef) {
+      this.socket.off(this.serverCloseRef);
+      this.serverCloseRef = null;
+    }
     this.socket.disconnect(callback);
   }
   replaceTransport(transport) {
@@ -4405,7 +4442,7 @@ var LiveSocket = class {
       return;
     }
     this.boundTopLevelEvents = true;
-    this.socket.onClose((event) => {
+    this.serverCloseRef = this.socket.onClose((event) => {
       if (event && event.code === 1e3 && this.main) {
         return this.reloadWithJitter(this.main);
       }
@@ -4523,26 +4560,21 @@ var LiveSocket = class {
   }
   bindClicks() {
     window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
-    this.bindClick("click", "click", false);
-    this.bindClick("mousedown", "capture-click", true);
+    this.bindClick("click", "click");
   }
-  bindClick(eventName, bindingName, capture) {
+  bindClick(eventName, bindingName) {
     let click = this.binding(bindingName);
     window.addEventListener(eventName, (e) => {
       let target = null;
-      if (capture) {
-        target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`);
-      } else {
-        if (e.detail === 0)
-          this.clickStartedAtTarget = e.target;
-        let clickStartedAtTarget = this.clickStartedAtTarget || e.target;
-        target = closestPhxBinding(clickStartedAtTarget, click);
-        this.dispatchClickAway(e, clickStartedAtTarget);
-        this.clickStartedAtTarget = null;
-      }
+      if (e.detail === 0)
+        this.clickStartedAtTarget = e.target;
+      let clickStartedAtTarget = this.clickStartedAtTarget || e.target;
+      target = closestPhxBinding(clickStartedAtTarget, click);
+      this.dispatchClickAway(e, clickStartedAtTarget);
+      this.clickStartedAtTarget = null;
       let phxEvent = target && target.getAttribute(click);
       if (!phxEvent) {
-        if (!capture && dom_default.isNewPageClick(e, window.location)) {
+        if (dom_default.isNewPageClick(e, window.location)) {
           this.unload();
         }
         return;
@@ -4558,7 +4590,7 @@ var LiveSocket = class {
           js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
         });
       });
-    }, capture);
+    }, false);
   }
   dispatchClickAway(e, clickStartedAt) {
     let phxClickAway = this.binding("click-away");
