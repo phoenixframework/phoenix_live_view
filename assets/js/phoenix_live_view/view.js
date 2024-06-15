@@ -264,7 +264,7 @@ export default class View {
   //  * a CID (Component ID), then we first search the component's element in the DOM
   //  * a selector, then we search the selector in the DOM and call the callback
   //    for each element found with the corresponding owner view
-  withinTargets(phxTarget, callback, dom=document, viewEl){
+  withinTargets(phxTarget, callback, dom = document, viewEl){
     // in the form recovery case we search in a template fragment instead of
     // the real dom, therefore we optionally pass dom and viewEl
 
