@@ -1099,16 +1099,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             _ -> []
           end
 
-        child_fields =
-          DOM.filter(node, fn node ->
+        fields =
+          (named_fields ++ node)
+          |> DOM.filter(fn node ->
             DOM.tag(node) in ~w(input textarea select) and
               is_nil(DOM.attribute(node, "disabled"))
           end)
+          |> Enum.uniq()
 
-        fields = Enum.uniq(named_fields ++ child_fields)
         defaults = Enum.reduce(fields, Query.decode_init(), &form_defaults/2)
 
-        with {:ok, defaults} <- maybe_submitter(defaults, type, node, element),
+        with {:ok, defaults} <- maybe_submitter(defaults, type, {root, node}, element),
              {:ok, value} <- fill_in_map(Enum.to_list(element.form_data || %{}), "", fields, []) do
           {:ok,
            defaults
@@ -1131,20 +1132,34 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:ok, DOM.all_values(node)}
   end
 
-  defp maybe_submitter(defaults, :submit, form, %Element{meta: %{submitter: element}}) do
-    collect_submitter(form, element, defaults)
+  defp maybe_submitter(defaults, :submit, {root, form}, %Element{meta: %{submitter: element}}) do
+    collect_submitter({root, form}, element, defaults)
   end
 
   defp maybe_submitter(defaults, _, _, _), do: {:ok, defaults}
 
-  defp collect_submitter(form, element, defaults) do
+  defp collect_submitter({root, form}, element, defaults) do
+    # Check the form for the submitter first
     case select_node(form, element) do
-      {:ok, node} -> collect_submitter(node, form, element, defaults)
-      {:error, _, msg} -> {:error, :invalid, "invalid form submitter, " <> msg}
+      {:ok, node} ->
+        collect_submitter(node, form, element, defaults)
+
+      {:error, _, msg} ->
+        # If the form did not have the submitter
+        # then check the rest of the DOM.
+        case select_node(root, element) do
+          {:ok, node} ->
+            collect_submitter(node, form, element, defaults)
+
+          {:error, _, _} ->
+            {:error, :invalid, "invalid form submitter, " <> msg}
+        end
     end
   end
 
   defp collect_submitter(node, form, element, defaults) do
+    form_id = DOM.attribute(form, "id")
+    form_name = DOM.attribute(node, "form")
     name = DOM.attribute(node, "name")
 
     cond do
@@ -1152,7 +1167,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {:error, :invalid,
          "form submitter selected by #{inspect(element.selector)} must have a name"}
 
-      submitter?(node) and is_nil(DOM.attribute(node, "disabled")) ->
+      submitter?(node) and is_nil(DOM.attribute(node, "disabled")) and (!form_name or form_name == form_id) ->
         {:ok, Plug.Conn.Query.decode_each({name, DOM.attribute(node, "value")}, defaults)}
 
       true ->

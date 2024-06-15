@@ -628,13 +628,18 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert conn.query_string == "foo=bar"
     end
 
-    test "named form", %{live: view, conn: conn} do
-      view |> form("#named", %{foo: "a", bar: "b", baz: "c", child: "cc"}) |> render_submit()
+    test "named form", %{live: view, conn: _conn} do
+      view
+      |> form("#named", %{foo: "a", bar: "b", baz: "c", child: "cc"})
+      |> put_submitter("[name=btn]")
+      |> render_submit()
+
       assert last_event(view) =~ ~s|form-submit-named: %{|
       assert last_event(view) =~ ~s|"foo" => "a"|
       assert last_event(view) =~ ~s|"bar" => "b"|
       assert last_event(view) =~ ~s|"baz" => "c"|
       assert last_event(view) =~ ~s|"child" => "cc"|
+      assert last_event(view) =~ ~s|"btn" => "x"|
     end
   end
 

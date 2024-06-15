@@ -169,6 +169,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <input form="named" name="foo" />
     <textarea form="named" name="bar" />
     <select form="named" name="baz"><option value="c">c</option></select>
+    <button form="named" name="btn" type="submit" value="x">Submit</button>
 
     <% # @page_title assign is unique %>
     <svg><title>SVG with title</title></svg>
