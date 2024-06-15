@@ -281,7 +281,15 @@ export default class DOMPatch {
       morph.call(this, targetContainer, html)
     })
 
-    if(liveSocket.isDebugEnabled()){ detectDuplicateIds() }
+    if(liveSocket.isDebugEnabled()){
+      detectDuplicateIds()
+      // warn if there are any inputs named "id"
+      Array.from(document.querySelectorAll("input[name=id]")).forEach(node => {
+        if(node.form){
+          console.error("Detected an input with name=\"id\" inside a form! This will cause problems when patching the DOM.\n", node)
+        }
+      })
+    }
 
     if(appendPrependUpdates.length > 0){
       liveSocket.time("post-morph append/prepend restoration", () => {

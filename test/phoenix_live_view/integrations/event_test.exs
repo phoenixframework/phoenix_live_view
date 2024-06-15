@@ -46,7 +46,7 @@ defmodule Phoenix.LiveView.EventTest do
              |> Component.assign(count: 123)
              |> LiveView.push_event("my-event", %{one: 1})
              |> LiveView.push_event("my-event", %{one: 2})
-             |> LiveView.push_redirect(to: "/events")
+             |> LiveView.push_navigate(to: "/events")
 
            {:reply, :ok, new_socket}
          end}
@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView.EventTest do
                   end}
                )
 
-               assert_receive {:DOWN, _ref, :process, ^pid, _reason}
+               assert_receive {:DOWN, _ref, :process, ^pid, _reason}, 500
              end) =~ "Got: {:reply, :boom"
     end
 

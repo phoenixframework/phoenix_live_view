@@ -767,7 +767,7 @@ defmodule Phoenix.Component do
   ```heex
   <.table id="my-table" rows={@users}>
     <:col :for={header <- @headers} :let={user}>
-      <td><%= user[:header] %></td>
+      <td><%= user[header] %></td>
     </:col>
   <table>
   ```
@@ -1045,7 +1045,7 @@ defmodule Phoenix.Component do
   <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
   ```
   """
-  @doc deprecated: "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
+  @deprecated "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
   def live_flash(%_struct{} = other, _key) do
     raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
   end
@@ -1149,7 +1149,7 @@ defmodule Phoenix.Component do
   ## Sharing assigns
 
   It is possible to share assigns between the Plug pipeline and LiveView on disconnected render
-  and between LiveViews when connected.
+  and between parent-child LiveViews when connected.
 
   ### When disconnected
 
@@ -1564,9 +1564,9 @@ defmodule Phoenix.Component do
   On initial load the end-user begins typing the title field. The client will send
   the entire form payload to the server with the typed title and an empty email.
 
-  The `Phoenix.HTML.FormData` implementation will consider an empty title in
+  The `Phoenix.HTML.FormData` implementation will consider an empty email in
   this scenario as invalid, but the user shouldn't see the error because they
-  haven't yet used the email input. To handle this `used_input?/1` can be used to
+  haven't yet used the email input. To handle this, `used_input?/1` can be used to
   filter errors from the client by referencing param metadata to distinguish between
   used and unused input fields. For non-LiveViews, all inputs are considered used.
 
@@ -1599,7 +1599,7 @@ defmodule Phoenix.Component do
 
     * `:root` - The root directory to embed files. Defaults to the current
       module's directory (`__DIR__`)
-    * `:suffix` - The string value to append to embedded function names. By
+    * `:suffix` - A string value to append to embedded function names. By
       default, function names will be the name of the template file excluding
       the format and engine.
 
@@ -1954,6 +1954,13 @@ defmodule Phoenix.Component do
         type
       end
 
+    opts =
+      if Macro.quoted_literal?(opts) do
+        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
+      else
+        opts
+      end
+
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
         __MODULE__,
@@ -2199,7 +2206,7 @@ defmodule Phoenix.Component do
   Without said attribute, the `form` method and csrf token are discarded.
 
   ```heex
-  <.form :let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
+  <.form :let={f} for={@changeset} action={~p"/comments/#{@comment}"}>
     <.input field={f[:body]} />
   </.form>
   ```
@@ -2649,6 +2656,11 @@ defmodule Phoenix.Component do
   a custom javascript implementation:
 
   ```javascript
+  // Compared to a javascript window.confirm, the custom dialog does not block
+  // javascript execution. Therefore to make this work as expected we store
+  // the successful confirmation as an attribute and re-trigger the click event.
+  // On the second click, the `data-confirm-resolved` attribute is set and we proceed.
+  const RESOLVED_ATTRIBUTE = "data-confirm-resolved";
   // listen on document.body, so it's executed before the default of
   // phoenix_html, which is listening on the window object
   document.body.addEventListener('phoenix.link.click', function (e) {
@@ -2656,11 +2668,28 @@ defmodule Phoenix.Component do
     e.stopPropagation();
     // Introduce alternative implementation
     var message = e.target.getAttribute("data-confirm");
-    if(!message){ return true; }
+    if(!message){ return; }
+
+    // Confirm is resolved execute the click event
+    if (e.target?.hasAttribute(RESOLVED_ATTRIBUTE)) {
+      e.target.removeAttribute(RESOLVED_ATTRIBUTE);
+      return;
+    }
+
+    // Confirm is needed, preventDefault and show your modal
+    e.preventDefault();
+    e.target?.setAttribute(RESOLVED_ATTRIBUTE, "");
+
     vex.dialog.confirm({
       message: message,
       callback: function (value) {
-        if (value == false) { e.preventDefault(); }
+        if (value == true) {
+          // Customer confirmed, re-trigger the click event.
+          e.target?.click();
+        } else {
+          // Customer canceled
+          e.target?.removeAttribute(RESOLVED_ATTRIBUTE);
+        }
       }
     })
   }, false);

@@ -216,9 +216,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
-  if Version.match?(System.version(), ">= 1.13.0") do
-    @behaviour Mix.Tasks.Format
-  end
+  @behaviour Mix.Tasks.Format
 
   @impl Mix.Tasks.Format
   def features(_opts) do
@@ -503,48 +501,48 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     to_tree(tokens, [{:eex_comment, text} | buffer], stack, source)
   end
 
-  defp to_tree([{:eex, :start_expr, expr, _meta} | tokens], buffer, stack, source) do
-    to_tree(tokens, [], [{:eex_block, expr, buffer} | stack], source)
+  defp to_tree([{:eex, :start_expr, expr, meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [], [{:eex_block, expr, meta, buffer} | stack], source)
   end
 
   defp to_tree(
          [{:eex, :middle_expr, middle_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer, middle_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
          source
        ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
-    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack], source)
+    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], source)
   end
 
   defp to_tree(
          [{:eex, :middle_expr, middle_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer} | stack],
          source
        ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr}]
-    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack], source)
+    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], source)
   end
 
   defp to_tree(
          [{:eex, :end_expr, end_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer, middle_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
          source
        ) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
-    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack, source)
+    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, source)
   end
 
   defp to_tree(
          [{:eex, :end_expr, end_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer} | stack],
          source
        ) do
     block = [{Enum.reverse(buffer), end_expr}]
-    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack, source)
+    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, source)
   end
 
   defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, source) do

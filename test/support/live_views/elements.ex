@@ -5,13 +5,13 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
 
   def render(assigns) do
     ~H"""
-    <%# lookups %>
+    <% # lookups %>
     <div id="last-event"><%= @event %></div>
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
     <div id="child-component"><.live_component module={Phoenix.LiveViewTest.ElementsComponent} id={1} /></div>
 
-    <%# basic render_* %>
+    <% # basic render_* %>
     <span id="span-no-attr">This is a span</span>
 
     <span id="span-blur-no-value" phx-blur="span-blur">This is a span</span>
@@ -39,13 +39,13 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <span id="span-click-value" phx-click="span-click" value="123" phx-value-extra="&lt;456&gt;">This is a span</span>
     <span id="span-click-phx-value" phx-click="span-click" phx-value-foo="123" phx-value-bar="456">This is a span</span>
 
-    <%# link handling %>
+    <% # link handling %>
     <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
     <a href="/" id="redirect-a">Regular Link</a>
     <.link navigate="/example" id="live-redirect-a">Live redirect</.link>
     <.link navigate="/example" id="live-redirect-replace-a" replace>Live redirect</.link>
-    <%# unrelated phx-click does not disable patching %>
+    <% # unrelated phx-click does not disable patching %>
     <.link patch="/elements?from=uri" id="live-patch-a" phx-click={JS.dispatch("noop")}>Live patch</.link>
 
     <button type="button" id="live-patch-button" phx-click={JS.patch("/elements?from=uri")}>Live patch button</button>
@@ -54,13 +54,15 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <button type="button" id="live-redirect-replace-button" phx-click={JS.navigate("/example", replace: true)}>Live redirect</button>
     <button type="button" id="live-redirect-patch-button" phx-click={JS.navigate("/example", replace: true) |> JS.patch("/elements?from=uri")}>Last one wins</button>
 
-    <%# hooks %>
+    <% # hooks %>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
     <section phx-hook="Example" id="hook-section-2" class="idless-hook">Section</section>
 
-    <%# forms %>
+    <% # forms %>
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>
-    <form id="empty-form" phx-change="form-change" phx-submit="form-submit" phx-value-key="value">
+    <form id="empty-form" phx-change="form-change" phx-submit="form-submit">
+    </form>
+    <form id="phx-value-form" phx-change="form-change" phx-submit="form-submit" phx-value-key="val" phx-value-foo="bar">
     </form>
     <form id="form" phx-change="form-change" phx-submit="form-submit" phx-value-key="value">
       <input value="no-name">
@@ -161,7 +163,15 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
           phx-trigger-action={@trigger_action}>
     </form>
 
-    <%# @page_title assign is unique %>
+    <form id="named" phx-submit="form-submit-named">
+      <input name="child" />
+    </form>
+    <input form="named" name="foo" />
+    <textarea form="named" name="bar" />
+    <select form="named" name="baz"><option value="c">c</option></select>
+    <button form="named" name="btn" type="submit" value="x">Submit</button>
+
+    <% # @page_title assign is unique %>
     <svg><title>SVG with title</title></svg>
     """
   end

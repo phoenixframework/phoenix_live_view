@@ -1,5 +1,5 @@
 const { test, expect } = require("../test-fixtures");
-const { syncLV } = require("../utils");
+const { syncLV, evalLV } = require("../utils");
 
 const usersInDom = async (page, parent) => {
   return await page.locator(`#${parent} > *`)
@@ -793,5 +793,30 @@ test("issue #3129 - streams asynchronously assigned and rendered inside a compre
     { id: "items-b", text: "B" },
     { id: "items-c", text: "C" },
     { id: "items-d", text: "D" }
+  ]);
+});
+
+test("issue #3260 - supports non-stream items with id in stream container", async ({ page }) => {
+  await page.goto("/stream?empty_item");
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-1", text: "chris" },
+    { id: "users-2", text: "callan" },
+    { id: "users-empty", text: "Empty!" }
+  ]);
+  
+  await expect(page.getByText("Empty")).not.toBeVisible();
+  await evalLV(page, `socket.view.handle_event("reset-users", %{}, socket)`);
+  await expect(page.getByText("Empty")).toBeVisible();
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-empty", text: "Empty!" }
+  ]);
+
+  await evalLV(page, `socket.view.handle_event("append-users", %{}, socket)`);
+  await expect(page.getByText("Empty")).not.toBeVisible();
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-empty", text: "Empty!" },
+    { id: "users-4", text: "foo" },
+    { id: "users-3", text: "last_user" }
   ]);
 });

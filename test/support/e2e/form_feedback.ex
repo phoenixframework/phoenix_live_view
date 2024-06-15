@@ -4,7 +4,8 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
   def render("live.html", assigns) do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
-    <script src="/assets/phoenix/phoenix.min.js"></script>
+    <script src="/assets/phoenix/phoenix.min.js">
+    </script>
     <script type="module">
       import {LiveSocket, isUsedInput} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
       let resetFeedbacks = (container, feedbacks) => {
@@ -25,6 +26,10 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
       let phxFeedbackDom = (dom) => {
         window.addEventListener("reset", e => resetFeedbacks(document))
         let feedbacks
+        let submitPending = false
+        let inputPending = false
+        window.addEventListener("submit", e => submitPending = e.target)
+        window.addEventListener("input", e => inputPending = e.target)
         // extend provided dom options with our own.
         // accumulate phx-feedback-for containers for each patch and reset feedbacks when patch ends
         return {
@@ -47,6 +52,14 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
           },
           onPatchEnd(container){
             resetFeedbacks(container, feedbacks)
+            // we might not find some feedback nodes if they are skipped in the patch
+            // therefore we explicitly reset feedbacks for all nodes when the patch
+            // follows a submit or input event
+            if(inputPending || submitPending){
+              resetFeedbacks(container)
+              inputPending = null
+              submitPending = null
+            }
             dom.onPatchEnd && dom.onPatchEnd(container)
           }
         }
@@ -106,9 +119,8 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
 
     <.myform />
 
-    <div phx-feedback-for={@feedback && "myfeedback"} data-feedback-container>
-      I am visible, because phx-no-feedback is not set for myfeedback!
-    </div>
+    <% # render inside function component to trigger the phx-magic-id optimization %>
+    <.myfeedback feedback={@feedback} />
 
     <button phx-click="toggle-feedback">Toggle feedback</button>
     """
@@ -124,6 +136,14 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
       <button type="submit">Submit</button>
       <button type="reset">Reset</button>
     </form>
+    """
+  end
+
+  defp myfeedback(assigns) do
+    ~H"""
+    <div phx-feedback-for={@feedback && "myfeedback"} data-feedback-container>
+      I am visible, because phx-no-feedback is not set for myfeedback!
+    </div>
     """
   end
 

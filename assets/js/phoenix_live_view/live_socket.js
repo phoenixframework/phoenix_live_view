@@ -158,6 +158,7 @@ export default class LiveSocket {
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
+    this.serverCloseRef = null
     this.domCallbacks = Object.assign({
       onPatchStart: closure(),
       onPatchEnd: closure(),
@@ -232,6 +233,12 @@ export default class LiveSocket {
 
   disconnect(callback){
     clearTimeout(this.reloadWithJitterTimer)
+    // remove the socket close listener to avoid trying to handle
+    // a server close event when it is actually caused by us disconnecting
+    if(this.serverCloseRef){
+      this.socket.off(this.serverCloseRef)
+      this.serverCloseRef = null
+    }
     this.socket.disconnect(callback)
   }
 
@@ -519,7 +526,7 @@ export default class LiveSocket {
 
     this.boundTopLevelEvents = true
     // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
-    this.socket.onClose(event => {
+    this.serverCloseRef = this.socket.onClose(event => {
       // failsafe reload if normal closure and we still have a main LV
       if(event && event.code === 1000 && this.main){ return this.reloadWithJitter(this.main) }
     })
@@ -632,28 +639,23 @@ export default class LiveSocket {
 
   bindClicks(){
     window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
-    this.bindClick("click", "click", false)
-    this.bindClick("mousedown", "capture-click", true)
+    this.bindClick("click", "click")
   }
 
-  bindClick(eventName, bindingName, capture){
+  bindClick(eventName, bindingName){
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
       let target = null
-      if(capture){
-        target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
-      } else {
-        // a synthetic click event (detail 0) will not have caused a mousedown event,
-        // therefore the clickStartedAtTarget is stale
-        if(e.detail === 0) this.clickStartedAtTarget = e.target
-        let clickStartedAtTarget = this.clickStartedAtTarget || e.target
-        target = closestPhxBinding(clickStartedAtTarget, click)
-        this.dispatchClickAway(e, clickStartedAtTarget)
-        this.clickStartedAtTarget = null
-      }
+      // a synthetic click event (detail 0) will not have caused a mousedown event,
+      // therefore the clickStartedAtTarget is stale
+      if(e.detail === 0) this.clickStartedAtTarget = e.target
+      let clickStartedAtTarget = this.clickStartedAtTarget || e.target
+      target = closestPhxBinding(clickStartedAtTarget, click)
+      this.dispatchClickAway(e, clickStartedAtTarget)
+      this.clickStartedAtTarget = null
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
-        if(!capture && DOM.isNewPageClick(e, window.location)){ this.unload() }
+        if(DOM.isNewPageClick(e, window.location)){ this.unload() }
         return
       }
 
@@ -667,7 +669,7 @@ export default class LiveSocket {
           JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
-    }, capture)
+    }, false)
   }
 
   dispatchClickAway(e, clickStartedAt){

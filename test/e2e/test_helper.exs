@@ -1,16 +1,13 @@
 Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 4004],
-  # TODO: switch to bandit when Phoenix 1.7 is used
-  # adapter: Bandit.PhoenixAdapter,
+  adapter: Bandit.PhoenixAdapter,
   server: true,
   live_view: [signing_salt: "aaaaaaaa"],
   secret_key_base: String.duplicate("a", 64),
   render_errors: [
-    # TODO: uncomment when LV Phoenix 1.7 is used
-    # formats: [
-    #   html: Phoenix.LiveViewTest.E2E.ErrorHTML,
-    # ],
-    view: Phoenix.LiveViewTest.E2E.ErrorHTML,
+    formats: [
+      html: Phoenix.LiveViewTest.E2E.ErrorHTML,
+    ],
     layout: false
   ],
   pubsub_server: Phoenix.LiveViewTest.E2E.PubSub,
@@ -29,7 +26,8 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
   def render("live.html", assigns) do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
-    <script src="/assets/phoenix/phoenix.min.js"></script>
+    <script src="/assets/phoenix/phoenix.min.js">
+    </script>
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
 
@@ -46,6 +44,34 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
   end
 end
 
+defmodule Phoenix.LiveViewTest.E2E.Hooks do
+  import Phoenix.LiveView
+
+  require Logger
+
+  def on_mount(:default, _params, _session, socket) do
+    socket
+    |> attach_hook(:eval_handler, :handle_event, &handle_eval_event/3)
+    |> then(&{:cont, &1})
+  end
+
+  # evaluates the given code in the process of the LiveView
+  # see playwright evalLV() function
+  defp handle_eval_event("sandbox:eval", %{"value" => code}, socket) do
+    {result, _} = Code.eval_string(code, [socket: socket], __ENV__)
+
+    Logger.debug("lv:#{inspect(self())} eval result: #{inspect(result)}")
+
+    case result do
+      {:noreply, %Phoenix.LiveView.Socket{} = socket} -> {:halt, socket}
+      %Phoenix.LiveView.Socket{} = socket -> {:halt, socket}
+      _ -> {:halt, socket}
+    end
+  end
+
+  defp handle_eval_event(_, _, socket), do: {:cont, socket}
+end
+
 defmodule Phoenix.LiveViewTest.E2E.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
@@ -56,7 +82,9 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     plug :protect_from_forgery
   end
 
-  live_session :default, layout: {Phoenix.LiveViewTest.E2E.Layout, :live} do
+  live_session :default,
+    layout: {Phoenix.LiveViewTest.E2E.Layout, :live},
+    on_mount: {Phoenix.LiveViewTest.E2E.Hooks, :default} do
     scope "/", Phoenix.LiveViewTest do
       pipe_through(:browser)
 
@@ -83,6 +111,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3117", Issue3117Live
       live "/3200/messages", Issue3200.PanelLive, :messages_tab
       live "/3200/settings", Issue3200.PanelLive, :settings_tab
+      live "/3194", Issue3194Live
+      live "/3194/other", Issue3194Live.OtherLive
     end
   end
 
@@ -162,7 +192,7 @@ end
     strategy: :one_for_one
   )
 
-IO.puts "Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}"
+IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
 
 unless IEx.started?() do
   # when running the test server manually, we halt after

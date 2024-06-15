@@ -23,7 +23,7 @@ except for the following LiveView specific options:
     section below for details.
   * `uploaders` – a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
-    [External Uploads guide](uploads-external.md) for details.
+    [External uploads guide](uploads-external.md) for details.
 
 ## Debugging Client Events
 
@@ -97,6 +97,7 @@ key, with a value that depends on the triggering event:
   - `"patch"` - the event was triggered by a patch
   - `"initial"` - the event was triggered by initial page load
   - `"element"` - the event was triggered by a `phx-` bound element, such as `phx-click`
+  - `"error"` - the event was triggered by an error, such as a view crash or socket disconnection
 
 For all kinds of page loading events, all but `"element"` will receive an additional `to`
 key in the info metadata pointing to the href associated with the page load.
@@ -253,10 +254,17 @@ and the return value is ignored.
 For example, the following option could be used to guarantee that some attributes set on the client-side are kept intact:
 
 ```javascript
-onBeforeElUpdated(from, to){
-  for (const attr of from.attributes){
-    if (attr.name.startsWith("data-js-")){
-      to.setAttribute(attr.name, attr.value);
+...
+let liveSocket = new LiveSocket("/live", Socket, {
+  params: {_csrf_token: csrfToken},
+  hooks: Hooks,
+  dom: {
+    onBeforeElUpdated(from, to) {
+      for (const attr of from.attributes) {
+        if (attr.name.startsWith("data-js-")) {
+          to.setAttribute(attr.name, attr.value);
+        }
+      }
     }
   }
 }

@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.20.14"
+  @version "1.0.0-rc.0"
 
   def project do
     [
@@ -55,7 +55,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:makeup_diff, "~> 0.1", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4.1", only: :test},
-      {:plug_cowboy, "~> 2.6", only: :e2e}
+      {:bandit, "~> 1.5", only: :e2e}
     ]
   end
 
@@ -68,7 +68,7 @@ defmodule Phoenix.LiveView.MixProject do
       extras: extras(),
       groups_for_extras: groups_for_extras(),
       groups_for_modules: groups_for_modules(),
-      groups_for_functions: [
+      groups_for_docs: [
         Components: &(&1[:type] == :component),
         Macros: &(&1[:type] == :macro)
       ],

@@ -60,7 +60,7 @@ export let prependFormDataKey = (key, prefix) => {
   // Remove the "[]" if it's an array
   let baseKey = isArray ? key.slice(0, -2) : key
   // Replace last occurrence of key before a closing bracket or the end with key plus suffix
-  baseKey = baseKey.replace(/(\w+)(\]?$)/, `${prefix}$1$2`)
+  baseKey = baseKey.replace(/([^\[\]]+)(\]?$)/, `${prefix}$1$2`)
   // Add back the "[]" if it was an array
   if(isArray){ baseKey += "[]" }
   return baseKey
@@ -102,9 +102,10 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   let elements = Array.from(form.elements)
   for(let [key, val] of formData.entries()){
     if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
-      let input = elements.find(input => input.name === key)
-      let isUnused = !(DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED))
-      if(isUnused && !(submitter && submitter.name == key)){
+      let inputs = elements.filter(input => input.name === key)
+      let isUnused = !inputs.some(input => (DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED)))
+      let hidden = inputs.every(input => input.type === "hidden")
+      if(isUnused && !(submitter && submitter.name == key) && !hidden){
         params.append(prependFormDataKey(key, "_unused_"), "")
       }
       params.append(key, val)
@@ -290,7 +291,7 @@ export default class View {
     this.log(type, () => ["", clone(rawDiff)])
     let {diff, reply, events, title} = Rendered.extract(rawDiff)
     callback({diff, reply, events})
-    if(title){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
+    if(typeof title === "string"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
   }
 
   onJoin(resp){
@@ -868,10 +869,14 @@ export default class View {
     )
   }
 
-  undoRefs(ref){
+  undoRefs(ref, onlyEls){
+    onlyEls = onlyEls ? new Set(onlyEls) : null
     if(!this.isConnected()){ return } // exit if external form triggered
 
     DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
+      if(onlyEls && !onlyEls.has(el)){ return }
+
+      el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
       let disabledVal = el.getAttribute(PHX_DISABLED)
       let readOnlyVal = el.getAttribute(PHX_READONLY)
       // remove refs
@@ -915,6 +920,7 @@ export default class View {
       if(opts.submitter && !(el === opts.submitter || el === opts.form)){ continue }
 
       el.classList.add(`phx-${event}-loading`)
+      el.dispatchEvent(new CustomEvent(`phx:${event}-loading`, {bubbles: true, cancelable: false}))
       let disableText = el.getAttribute(disableWith)
       if(disableText !== null){
         if(!el.getAttribute(PHX_DISABLE_WITH_RESTORE)){
@@ -1045,6 +1051,7 @@ export default class View {
       if(DOM.isUploadInput(inputEl) && DOM.isAutoUpload(inputEl)){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
           let [ref, _els] = refGenerator()
+          this.undoRefs(ref, [inputEl.form])
           this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
             callback && callback(resp)
             this.triggerAwaitingSubmit(inputEl.form)
@@ -1325,17 +1332,21 @@ export default class View {
       willDestroyCIDs.forEach(cid => this.rendered.resetRender(cid))
 
       this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
-        // See if any of the cids we wanted to destroy were added back,
-        // if they were added back, we don't actually destroy them.
-        let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
-          return DOM.findComponentNodeList(this.el, cid).length === 0
-        })
-
-        if(completelyDestroyCIDs.length > 0){
-          this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
-            this.rendered.pruneCIDs(resp.cids)
+        // we must wait for pending transitions to complete before determining
+        // if the cids were added back to the DOM in the meantime (#3139)
+        this.liveSocket.requestDOMUpdate(() => {
+          // See if any of the cids we wanted to destroy were added back,
+          // if they were added back, we don't actually destroy them.
+          let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
+            return DOM.findComponentNodeList(this.el, cid).length === 0
           })
-        }
+  
+          if(completelyDestroyCIDs.length > 0){
+            this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+              this.rendered.pruneCIDs(resp.cids)
+            })
+          }
+        })
       })
     }
   }

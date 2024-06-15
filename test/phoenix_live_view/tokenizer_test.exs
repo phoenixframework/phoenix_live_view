@@ -48,6 +48,12 @@ defmodule Phoenix.LiveView.TokenizerTest do
                 %{column: 4, line: 3, closing: :void, tag_name: "br", inner_location: {3, 10}}}
              ]
     end
+
+    test "incomplete" do
+      assert_raise ParseError, ~r/unexpected end of string inside tag/, fn ->
+        tokenize("<!doctype html")
+      end
+    end
   end
 
   describe "comment" do

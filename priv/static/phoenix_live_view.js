@@ -79,7 +79,6 @@ var LiveView = (() => {
   var PHX_PAGE_LOADING = "page-loading";
   var PHX_CONNECTED_CLASS = "phx-connected";
   var PHX_LOADING_CLASS = "phx-loading";
-  var PHX_NO_FEEDBACK_CLASS = "phx-no-feedback";
   var PHX_ERROR_CLASS = "phx-error";
   var PHX_CLIENT_ERROR_CLASS = "phx-client-error";
   var PHX_SERVER_ERROR_CLASS = "phx-server-error";
@@ -892,68 +891,14 @@ var LiveView = (() => {
         el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll");
       }
     },
-    isFeedbackContainer(el, phxFeedbackFor) {
-      return el.hasAttribute && el.hasAttribute(phxFeedbackFor);
-    },
-    maybeHideFeedback(container, feedbackContainers, phxFeedbackFor, phxFeedbackGroup) {
-      const feedbackResults = {};
-      feedbackContainers.forEach((el) => {
-        if (!container.contains(el))
-          return;
-        const feedback = el.getAttribute(phxFeedbackFor);
-        if (!feedback) {
-          js_default.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS]);
-          return;
-        }
-        if (feedbackResults[feedback] === true) {
-          this.hideFeedback(el);
-          return;
-        }
-        feedbackResults[feedback] = this.shouldHideFeedback(container, feedback, phxFeedbackGroup);
-        if (feedbackResults[feedback] === true) {
-          this.hideFeedback(el);
-        }
-      });
-    },
-    hideFeedback(container) {
-      js_default.addOrRemoveClasses(container, [PHX_NO_FEEDBACK_CLASS], []);
-    },
     isUsedInput(el) {
       return el.nodeType === Node.ELEMENT_NODE && (this.private(el, PHX_HAS_FOCUSED) || this.private(el, PHX_HAS_SUBMITTED));
-    },
-    shouldHideFeedback(container, nameOrGroup, phxFeedbackGroup) {
-      const query = `[name="${nameOrGroup}"],
-                   [name="${nameOrGroup}[]"],
-                   [${phxFeedbackGroup}="${nameOrGroup}"]`;
-      let focused = false;
-      DOM.all(container, query, (input) => {
-        if (this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)) {
-          focused = true;
-        }
-      });
-      return !focused;
-    },
-    feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup) {
-      let query = `[${phxFeedbackFor}="${input.name}"],
-                 [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`;
-      if (input.getAttribute(phxFeedbackGroup)) {
-        query += `,[${phxFeedbackFor}="${input.getAttribute(phxFeedbackGroup)}"]`;
-      }
-      return query;
     },
     resetForm(form) {
       Array.from(form.elements).forEach((input) => {
         this.deletePrivate(input, PHX_HAS_FOCUSED);
         this.deletePrivate(input, PHX_HAS_SUBMITTED);
       });
-    },
-    showError(inputEl, phxFeedbackFor, phxFeedbackGroup) {
-      if (inputEl.name) {
-        let query = this.feedbackSelector(inputEl, phxFeedbackFor, phxFeedbackGroup);
-        this.all(document, query, (el) => {
-          js_default.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS]);
-        });
-      }
     },
     isPhxChild(node) {
       return node.getAttribute && node.getAttribute(PHX_PARENT_ID);
@@ -1066,20 +1011,11 @@ var LiveView = (() => {
         return true;
       }
       let refSrc = fromEl.getAttribute(PHX_REF_SRC);
-      if (DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null) {
-        if (DOM.isUploadInput(fromEl)) {
-          DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
-        }
-        DOM.putPrivate(fromEl, PHX_REF, toEl);
-        return false;
-      } else {
-        PHX_EVENT_CLASSES.forEach((className) => {
-          fromEl.classList.contains(className) && toEl.classList.add(className);
-        });
-        toEl.setAttribute(PHX_REF, ref);
-        toEl.setAttribute(PHX_REF_SRC, refSrc);
-        return true;
+      if (DOM.isUploadInput(fromEl)) {
+        DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
       }
+      DOM.putPrivate(fromEl, PHX_REF, toEl);
+      return false;
     },
     cleanChildNodes(container, phxUpdate) {
       if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
@@ -2371,6 +2307,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
       if (liveSocket.isDebugEnabled()) {
         detectDuplicateIds();
+        Array.from(document.querySelectorAll("input[name=id]")).forEach((node) => {
+          if (node.form) {
+            console.error('Detected an input with name="id" inside a form! This will cause problems when patching the DOM.\n', node);
+          }
+        });
       }
       if (appendPrependUpdates.length > 0) {
         liveSocket.time("post-morph append/prepend restoration", () => {
@@ -2946,9 +2887,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     let elements = Array.from(form.elements);
     for (let [key, val] of formData.entries()) {
       if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
-        let input = elements.find((input2) => input2.name === key);
-        let isUnused = !(dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
-        if (isUnused && !(submitter && submitter.name == key)) {
+        let inputs = elements.filter((input) => input.name === key);
+        let isUnused = !inputs.some((input) => dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
+        let hidden = inputs.every((input) => input.type === "hidden");
+        if (isUnused && !(submitter && submitter.name == key) && !hidden) {
           params.append(prependFormDataKey(key, "_unused_"), "");
         }
         params.append(key, val);
@@ -3632,11 +3574,16 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       });
     }
-    undoRefs(ref) {
+    undoRefs(ref, onlyEls) {
+      onlyEls = onlyEls ? new Set(onlyEls) : null;
       if (!this.isConnected()) {
         return;
       }
       dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
+        if (onlyEls && !onlyEls.has(el)) {
+          return;
+        }
+        el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
         let disabledVal = el.getAttribute(PHX_DISABLED);
         let readOnlyVal = el.getAttribute(PHX_READONLY);
         el.removeAttribute(PHX_REF);
@@ -3679,6 +3626,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           continue;
         }
         el.classList.add(`phx-${event}-loading`);
+        el.dispatchEvent(new CustomEvent(`phx:${event}-loading`, { bubbles: true, cancelable: false }));
         let disableText = el.getAttribute(disableWith);
         if (disableText !== null) {
           if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
@@ -3812,6 +3760,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (dom_default.isUploadInput(inputEl) && dom_default.isAutoUpload(inputEl)) {
           if (LiveUploader.filesAwaitingPreflight(inputEl).length > 0) {
             let [ref, _els] = refGenerator();
+            this.undoRefs(ref, [inputEl.form]);
             this.uploadFiles(inputEl.form, targetCtx, ref, cid, (_uploads) => {
               callback && callback(resp);
               this.triggerAwaitingSubmit(inputEl.form);
@@ -4142,11 +4091,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
-    isUsedInput(el) {
-      return isUsedInput(el);
-    }
     version() {
-      return "0.20.14";
+      return "1.0.0-rc.0";
     }
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";

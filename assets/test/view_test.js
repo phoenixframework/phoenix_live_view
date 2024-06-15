@@ -42,6 +42,27 @@ describe("View + DOM", function(){
     expect(view.rendered.get()).toEqual(updateDiff)
   })
 
+  test("applyDiff can set title to falsy values", async () => {
+    document.title = "Foo"
+
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let updateDiff = {
+      s: ["<h2>", "</h2>"],
+      fingerprint: 123,
+      t: ""
+    }
+
+    let view = simulateJoinedView(el, liveSocket)
+    view.applyDiff("update", updateDiff, ({diff, events}) => view.update(diff, events))
+
+    expect(view.el.firstChild.tagName).toBe("H2")
+    expect(view.rendered.get()).toEqual(updateDiff)
+
+    await new Promise(requestAnimationFrame)
+    expect(document.title).toBe("")
+  })
+
   test("pushWithReply", function(){
     expect.assertions(1)
 
@@ -1028,11 +1049,11 @@ describe("View + Component", function(){
                 <form id="form" phx-change="validate">
                   <label for="first_name">First Name</label>
                   <input id="first_name" value="" name="user[first_name]" />
-                  <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
+                  <span class="feedback">can't be blank</span>
 
                   <label for="last_name">Last Name</label>
                   <input id="last_name" value="" name="user[last_name]" />
-                  <span class="feedback" phx-feedback-for="user[last_name]">can't be blank</span>
+                  <span class="feedback">can't be blank</span>
                 </form>
                 `],
                 fingerprint: 345

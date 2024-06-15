@@ -1,4 +1,4 @@
-# External Uploads
+# External uploads
 
 > This guide continues from the configuration started in the
 > server [Uploads guide](uploads.html).
@@ -243,7 +243,7 @@ let liveSocket = new LiveSocket("/live",
 ```
 
 Now "S3" returned from the server will match the one in the client.
-To debug client-side javascript when trying to upload, you can inspect your
+To debug client-side JavaScript when trying to upload, you can inspect your
 browser and look at the console or networks tab to view the error logs.
 
 ### Direct to S3-Compatible

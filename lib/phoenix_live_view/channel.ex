@@ -344,7 +344,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({:phoenix_live_reload, _topic, _changed_file}, %{socket: socket} = state) do
-    Phoenix.CodeReloader.reload(socket.endpoint)
+    {mod, fun, args} = socket.private.phoenix_reloader
+    apply(mod, fun, [socket.endpoint | args])
 
     new_socket =
       Enum.reduce(socket.assigns, socket, fn {key, val}, socket ->
@@ -1310,7 +1311,13 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, post_verified_mount(new_state)}
 
       {:ok, diff, {:live_patch, opts}, new_state} ->
-        reply = put_container(session, route, %{rendered: diff, live_patch: opts, liveview_version: lv_vsn})
+        reply =
+          put_container(session, route, %{
+            rendered: diff,
+            live_patch: opts,
+            liveview_version: lv_vsn
+          })
+
         GenServer.reply(from, {:ok, reply})
         {:noreply, post_verified_mount(new_state)}
 
@@ -1522,9 +1529,13 @@ defmodule Phoenix.LiveView.Channel do
 
     if live_reload_config[:notify][:live_view] do
       state.socket.endpoint.subscribe("live_view")
-    end
 
-    {:noreply, state}
+      reloader = live_reload_config[:reloader] || {Phoenix.CodeReloader, :reload, []}
+      state = put_in(state.socket.private[:phoenix_reloader], reloader)
+      {:noreply, state}
+    else
+      {:noreply, state}
+    end
   end
 
   defp maybe_subscribe_to_live_reload(response), do: response
