@@ -42,6 +42,27 @@ describe("View + DOM", function(){
     expect(view.rendered.get()).toEqual(updateDiff)
   })
 
+  test("applyDiff can set title to falsy values", async () => {
+    document.title = "Foo"
+
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let updateDiff = {
+      s: ["<h2>", "</h2>"],
+      fingerprint: 123,
+      t: ""
+    }
+
+    let view = simulateJoinedView(el, liveSocket)
+    view.applyDiff("update", updateDiff, ({diff, events}) => view.update(diff, events))
+
+    expect(view.el.firstChild.tagName).toBe("H2")
+    expect(view.rendered.get()).toEqual(updateDiff)
+
+    await new Promise(requestAnimationFrame)
+    expect(document.title).toBe("")
+  })
+
   test("pushWithReply", function(){
     expect.assertions(1)
 
