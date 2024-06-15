@@ -97,6 +97,7 @@ key, with a value that depends on the triggering event:
   - `"patch"` - the event was triggered by a patch
   - `"initial"` - the event was triggered by initial page load
   - `"element"` - the event was triggered by a `phx-` bound element, such as `phx-click`
+  - `"error"` - the event was triggered by an error, such as a view crash or socket disconnection
 
 For all kinds of page loading events, all but `"element"` will receive an additional `to`
 key in the info metadata pointing to the href associated with the page load.
