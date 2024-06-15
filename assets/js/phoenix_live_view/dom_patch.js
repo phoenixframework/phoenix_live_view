@@ -187,7 +187,16 @@ export default class DOMPatch {
             this.maybeReOrderStream(fromEl)
             return false
           }
-          if(DOM.isPhxSticky(fromEl)){ return false }
+          if(DOM.isPhxSticky(fromEl)){
+            [PHX_SESSION, PHX_STATIC, PHX_ROOT_ID]
+              .map(attr => [attr, fromEl.getAttribute(attr), toEl.getAttribute(attr)])
+              .forEach(([attr, fromVal, toVal]) => {
+                if(fromVal !== toVal){ fromEl.setAttribute(attr, toVal)
+                }
+              })
+
+            return false
+          }
           if(DOM.isIgnored(fromEl, phxUpdate) || (fromEl.form && fromEl.form.isSameNode(externalFormTriggered))){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeAttrs(fromEl, toEl, {isIgnored: DOM.isIgnored(fromEl, phxUpdate)})
