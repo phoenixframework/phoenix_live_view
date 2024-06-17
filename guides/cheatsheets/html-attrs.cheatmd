@@ -71,6 +71,15 @@ Attribute values can be:
 |------------------------------------------------------------------------------|--------------------------------------|
 | [`phx-disable-with`](../client/form-bindings.md#javascript-client-specifics) | Text to show during event submission |
 
+### On container elements
+
+LiveView applies the `phx-no-feedback` CSS class before user interaction.
+
+| Attribute                                                         | Value                                          |
+|-------------------------------------------------------------------|------------------------------------------------|
+| [`phx-feedback-for`](../client/form-bindings.md#error-feedback)   | Form field or group name                       |
+| [`phx-feedback-group`](../client/form-bindings.md#error-feedback) | Arbitrary string to identify a group of fields |
+
 ### Form Example
 
 #### lib/hello_web/live/hello_live.html.heex

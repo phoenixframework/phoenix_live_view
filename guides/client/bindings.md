@@ -17,7 +17,7 @@ callback, for example:
 |------------------------|------------|
 | [Params](#click-events) | `phx-value-*` |
 | [Click Events](#click-events) | `phx-click`, `phx-click-away` |
-| [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
+| [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-feedback-group`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
 | [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
 | [Scroll Events](#scroll-events-and-infinite-stream-pagination) | `phx-viewport-top`, `phx-viewport-bottom` |

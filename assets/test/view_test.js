@@ -1049,11 +1049,11 @@ describe("View + Component", function(){
                 <form id="form" phx-change="validate">
                   <label for="first_name">First Name</label>
                   <input id="first_name" value="" name="user[first_name]" />
-                  <span class="feedback">can't be blank</span>
+                  <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
 
                   <label for="last_name">Last Name</label>
                   <input id="last_name" value="" name="user[last_name]" />
-                  <span class="feedback">can't be blank</span>
+                  <span class="feedback" phx-feedback-for="user[last_name]">can't be blank</span>
                 </form>
                 `],
                 fingerprint: 345
