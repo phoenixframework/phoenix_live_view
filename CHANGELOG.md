@@ -11,7 +11,6 @@
   * Fix warnings on Elixir 1.17
 
 ### Bug fixes
-  * Fix used input tracking on checkboxes and hidden inputs
   * Fix attributes of existing stream items not being updated on reset
   * Fix nested LiveView within streams becoming empty when reset
   * Fix `phx-mounted` firing twice, first on dead render, then on live render, leading to errors when a LiveComponent has not yet mounted
