@@ -191,8 +191,7 @@ export default class DOMPatch {
             [PHX_SESSION, PHX_STATIC, PHX_ROOT_ID]
               .map(attr => [attr, fromEl.getAttribute(attr), toEl.getAttribute(attr)])
               .forEach(([attr, fromVal, toVal]) => {
-                if(fromVal !== toVal){ fromEl.setAttribute(attr, toVal)
-                }
+                if(toVal && fromVal !== toVal){ fromEl.setAttribute(attr, toVal) }
               })
 
             return false

@@ -2223,7 +2223,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             if (dom_default.isPhxSticky(fromEl)) {
               [PHX_SESSION, PHX_STATIC, PHX_ROOT_ID].map((attr) => [attr, fromEl.getAttribute(attr), toEl.getAttribute(attr)]).forEach(([attr, fromVal, toVal]) => {
-                if (fromVal !== toVal) {
+                if (toVal && fromVal !== toVal) {
                   fromEl.setAttribute(attr, toVal);
                 }
               });
