@@ -112,9 +112,17 @@ generated user module:
 
 ### Enhancements
   * Warn when rendering an input named "id"
+  * Allow form recovery to work on forms in nested LiveViews
+  * Allow using form/3 with inputs outside the form
+  * Allow setting page title to an empty string
+  * Fix warnings on Elixir 1.17
 
 ### Bug fixes
   * Fix used input tracking on checkboxes and hidden inputs
+  * Fix phx-debounce=blur incorrectly sending change event to the next page in some cirumstances
+  * Fix race condition when destroying Live Components while transitions are still running
+  * Fix page reload when disconnecting LiveSocket if using Bandit
+  * Fix formatter changing `<%` to `<%=` when it shouldn't
 
 ### Deprecations
   * Deprecate `live_flash` in favor of `Phoenix.Flash.get`
@@ -136,6 +144,8 @@ generated user module:
   * Fix nested LiveView within streams becoming empty when reset
   * Fix `phx-mounted` firing twice, first on dead render, then on live render, leading to errors when a LiveComponent has not yet mounted
   * Fix `JS.toggle_class` error when used with a transition
+  * Fix updated form values not being sent in some circumstances when phx-trigger-action is used
+  * Fix phx-viewport bindings when html or body element has overflow property
 
 ### Enhancements
   * Warn on mismatched client and server versions
