@@ -6,15 +6,10 @@ import View from "phoenix_live_view/view"
 import {
   PHX_LOADING_CLASS,
   PHX_ERROR_CLASS,
-  PHX_SERVER_ERROR_CLASS,
-  PHX_HAS_FOCUSED
+  PHX_SERVER_ERROR_CLASS
 } from "phoenix_live_view/constants"
 
 import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
-
-let simulateUsedInput = (input) => {
-  DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
-}
 
 describe("View + DOM", function(){
   beforeEach(() => {
@@ -212,13 +207,13 @@ describe("View + DOM", function(){
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
     let input = el.querySelector("input")
-    simulateUsedInput(input)
+
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(_evt, payload, _timeout){
         expect(payload.type).toBe("form")
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe("increment=1&_unused_note=&note=2&_target=increment")
+        expect(payload.value).toBe("increment=1&note=2&_target=increment")
         return {
           receive(){ return this }
         }
@@ -1020,6 +1015,7 @@ describe("View + Component", function(){
   })
 
   test("pushInput", function(done){
+    expect.assertions(6)
     let html =
       `<form id="form" phx-change="validate">
       <label for="first_name">First Name</label>
@@ -1031,7 +1027,6 @@ describe("View + Component", function(){
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM(html)
     let view = simulateJoinedView(el, liveSocket, html)
-    Array.from(view.el.querySelectorAll("input")).forEach(input => simulateUsedInput(input))
     let channelStub = {
       validate: "",
       nextValidate(payload){
@@ -1076,9 +1071,171 @@ describe("View + Component", function(){
     DOM.putPrivate(first_name, "phx-has-focused", true)
     view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
     window.requestAnimationFrame(() => {
+      expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+      expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
+  
       view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
+      DOM.putPrivate(last_name, "phx-has-focused", true)
       view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
       window.requestAnimationFrame(() => {
+        expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        done()
+      })
+    })
+  })
+
+  test("pushInput sets phx-no-feedback on feedback groups", function(done){
+    expect.assertions(9)
+    let html =
+      `<form id="form" phx-change="validate">
+      <div phx-feedback-for="mygroup"></div>
+      <label for="first_name">First Name</label>
+      <input id="first_name" value="" name="user[first_name]" />
+
+      <label for="last_name">Last Name</label>
+      <input id="last_name" value="" name="user[last_name]" />
+
+      <label for="email">Email</label>
+      <input id="email" value="" name="user[email]" />
+    </form>`
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM(html)
+    let view = simulateJoinedView(el, liveSocket, html)
+    let channelStub = {
+      validate: "",
+      nextValidate(payload){
+        this.validate = Object.entries(payload)
+          .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value) : ""}`)
+          .join("&")
+      },
+      push(_evt, payload, _timeout){
+        expect(payload.value).toBe(this.validate)
+        return {
+          receive(status, cb){
+            if(status === "ok"){
+              let diff = {
+                s: [`
+                <form id="form" phx-change="validate">
+                  <div phx-feedback-for="mygroup"></div>
+
+                  <label for="first_name">First Name</label>
+                  <input id="first_name" value="" name="user[first_name]" phx-feedback-group="mygroup" />
+                  <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
+
+                  <label for="last_name">Last Name</label>
+                  <input id="last_name" value="" name="user[last_name]" phx-feedback-group="mygroup" />
+                  <span class="feedback" phx-feedback-for="user[last_name]">can't be blank</span>
+
+                  <label for="email">Email</label>
+                  <input id="email" value="" name="user[email]" />
+                  <span class="feedback" phx-feedback-for="user[email]">can't be blank</span>
+                </form>
+                `],
+                fingerprint: 345
+              }
+              cb({diff: diff})
+              return this
+            } else {
+              return this
+            }
+          }
+        }
+      }
+    }
+    view.channel = channelStub
+
+    let first_name = view.el.querySelector("#first_name")
+    let last_name = view.el.querySelector("#last_name")
+    let email = view.el.querySelector("#email")
+    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[email]"})
+    // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
+    DOM.putPrivate(email, "phx-has-focused", true)
+    view.pushInput(email, el, null, "validate", {_target: email.name})
+    window.requestAnimationFrame(() => {
+      expect(el.querySelector(`[phx-feedback-for="${email.name}"]`).classList.contains("phx-no-feedback")).toBeFalsy()
+      expect(el.querySelector(`[phx-feedback-for="${first_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
+      expect(el.querySelector(`[phx-feedback-for="${last_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
+      expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeTruthy()
+
+      view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[first_name]"})
+      DOM.putPrivate(first_name, "phx-has-focused", true)
+      view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
+      window.requestAnimationFrame(() => {
+        expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
+        // first_name was focused, the feedback-group should not have the phx-no-feedback class
+        expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeFalsy()
+        done()
+      })
+    })
+  })
+
+  test("pushInput sets phx-no-feedback class on feedback elements for multiple select", function(done){
+    // a multiple select name attribute contains trailing square brackets [] to capture multiple options
+    let multiple_select_name = "user[allergies][]"
+    // the phx-feedback-for attribute typically doesn't contain trailing brackets
+    // because its value is often set with the result of Phoenix.HTML.input_name/2
+    let multiple_select_phx_feedback_for_name = "user[allergies]"
+    let html =
+      `<form id="form" phx-change="validate">
+      <label for="first_name">First Name</label>
+      <input id="first_name" value="" name="user[first_name]" />
+
+      <label for="allergies">Allergies</label>
+      <select id="allergies" name="${multiple_select_name}" multiple="">
+        <option value="milk">Milk</option>
+        <option value="peanuts">Peanuts</option>
+        <option value="wheat">Wheat</option>
+      </select>
+    </form>`
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM(html)
+    let view = simulateJoinedView(el, liveSocket, html)
+    let channelStub = {
+      push(_evt, _payload, _timeout){
+        return {
+          receive(_status, cb){
+            let diff = {
+              s: [`
+              <form id="form" phx-change="validate">
+                <label for="first_name">First Name</label>
+                <input id="first_name" value="" name="user[first_name]" />
+                <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
+
+                <label for="allergies">Allergies</label>
+                <select id="allergies" name="${multiple_select_name}" multiple="">
+                  <option value="milk">Milk</option>
+                  <option value="peanuts">Peanuts</option>
+                  <option value="wheat">Wheat</option>
+                </select>
+                <span class="feedback" phx-feedback-for="${multiple_select_phx_feedback_for_name}">can't be blank</span>
+              </form>
+              `],
+              fingerprint: 345
+            }
+            cb({diff})
+            return this
+          }
+        }
+      }
+    }
+    view.channel = channelStub
+
+    let first_name_input = view.el.querySelector("input#first_name")
+    let allergies_select = view.el.querySelector("select#allergies")
+    // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
+    DOM.putPrivate(first_name_input, "phx-has-focused", true)
+    view.pushInput(first_name_input, el, null, "validate", {_target: "user[first_name]"})
+    window.requestAnimationFrame(() => {
+      expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+      expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeTruthy()
+  
+      DOM.putPrivate(allergies_select, "phx-has-focused", true)
+      view.pushInput(allergies_select, el, null, "validate", {_target: "user[allergies][]"})
+      window.requestAnimationFrame(() => {
+        expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
+        expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeFalsy()
         done()
       })
     })

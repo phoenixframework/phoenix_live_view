@@ -13,6 +13,8 @@ import {
   PHX_ERROR_CLASS,
   PHX_CLIENT_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
+  PHX_FEEDBACK_FOR,
+  PHX_FEEDBACK_GROUP,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
@@ -55,17 +57,6 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
-export let prependFormDataKey = (key, prefix) => {
-  let isArray = key.endsWith("[]")
-  // Remove the "[]" if it's an array
-  let baseKey = isArray ? key.slice(0, -2) : key
-  // Replace last occurrence of key before a closing bracket or the end with key plus suffix
-  baseKey = baseKey.replace(/([^\[\]]+)(\]?$)/, `${prefix}$1$2`)
-  // Add back the "[]" if it was an array
-  if(isArray){ baseKey += "[]" }
-  return baseKey
-}
-
 let serializeForm = (form, metadata, onlyNames = []) => {
   const {submitter, ...meta} = metadata
 
@@ -99,15 +90,8 @@ let serializeForm = (form, metadata, onlyNames = []) => {
 
   const params = new URLSearchParams()
 
-  let elements = Array.from(form.elements)
   for(let [key, val] of formData.entries()){
     if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
-      let inputs = elements.filter(input => input.name === key)
-      let isUnused = !inputs.some(input => (DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED)))
-      let hidden = inputs.every(input => input.type === "hidden")
-      if(isUnused && !(submitter && submitter.name == key) && !hidden){
-        params.append(prependFormDataKey(key, "_unused_"), "")
-      }
       params.append(key, val)
     }
   }
@@ -445,8 +429,6 @@ export default class View {
     let phxChildrenAdded = false
     let updatedHookIds = new Set()
 
-    this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer])
-
     patch.after("added", el => {
       this.liveSocket.triggerDOM("onNodeAdded", [el])
       let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
@@ -481,8 +463,6 @@ export default class View {
     patch.perform(isJoinPatch)
     this.afterElementsRemoved(removedEls, pruneCids)
 
-
-    this.liveSocket.triggerDOM("onPatchEnd", [patch.targetContainer])
     return phxChildrenAdded
   }
 
@@ -1048,6 +1028,7 @@ export default class View {
       cid: cid
     }
     this.pushWithReply(refGenerator, "event", event, resp => {
+      DOM.showError(inputEl, this.liveSocket.binding(PHX_FEEDBACK_FOR), this.liveSocket.binding(PHX_FEEDBACK_GROUP))
       if(DOM.isUploadInput(inputEl) && DOM.isAutoUpload(inputEl)){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
           let [ref, _els] = refGenerator()
@@ -1360,10 +1341,13 @@ export default class View {
 
   submitForm(form, targetCtx, phxEvent, submitter, opts = {}){
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true)
+    const phxFeedbackFor = this.liveSocket.binding(PHX_FEEDBACK_FOR)
+    const phxFeedbackGroup = this.liveSocket.binding(PHX_FEEDBACK_GROUP)
     const inputs = Array.from(form.elements)
     inputs.forEach(input => DOM.putPrivate(input, PHX_HAS_SUBMITTED, true))
     this.liveSocket.blurActiveElement(this)
     this.pushFormSubmit(form, targetCtx, phxEvent, submitter, opts, () => {
+      inputs.forEach(input => DOM.showError(input, phxFeedbackFor, phxFeedbackGroup))
       this.liveSocket.restorePreviouslyActiveFocus()
     })
   }

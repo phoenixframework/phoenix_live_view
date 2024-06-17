@@ -1,6 +1,8 @@
 import {
   PHX_COMPONENT,
   PHX_DISABLE_WITH,
+  PHX_FEEDBACK_FOR,
+  PHX_FEEDBACK_GROUP,
   PHX_PRUNE,
   PHX_ROOT_ID,
   PHX_SESSION,
@@ -51,7 +53,6 @@ export default class DOMPatch {
     this.cidPatch = isCid(this.targetCID)
     this.pendingRemoves = []
     this.phxRemove = this.liveSocket.binding("remove")
-    this.targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: [],
@@ -78,17 +79,21 @@ export default class DOMPatch {
   }
 
   perform(isJoinPatch){
-    let {view, liveSocket, html, container, targetContainer} = this
+    let {view, liveSocket, container, html} = this
+    let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
     if(this.isCIDPatch() && !targetContainer){ return }
 
     let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
+    let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
+    let phxFeedbackGroup = liveSocket.binding(PHX_FEEDBACK_GROUP)
     let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
+    let feedbackContainers = []
     let updates = []
     let appendPrependUpdates = []
 
@@ -143,6 +148,7 @@ export default class DOMPatch {
         },
         onNodeAdded: (el) => {
           if(el.getAttribute){ this.maybeReOrderStream(el, true) }
+          if(DOM.isFeedbackContainer(el, phxFeedbackFor)) feedbackContainers.push(el)
 
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
@@ -181,6 +187,12 @@ export default class DOMPatch {
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
+          // mark both from and to els as feedback containers, as we don't know yet which one will be used
+          // and we also need to remove the phx-no-feedback class when the phx-feedback-for attribute is removed
+          if(DOM.isFeedbackContainer(fromEl, phxFeedbackFor) || DOM.isFeedbackContainer(toEl, phxFeedbackFor)){
+            feedbackContainers.push(fromEl)
+            feedbackContainers.push(toEl)
+          }
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
             // if this is a live component used in a stream, we may need to reorder it
@@ -296,6 +308,8 @@ export default class DOMPatch {
         appendPrependUpdates.forEach(update => update.perform())
       })
     }
+
+    DOM.maybeHideFeedback(targetContainer, feedbackContainers, phxFeedbackFor, phxFeedbackGroup)
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")

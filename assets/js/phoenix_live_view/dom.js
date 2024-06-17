@@ -342,11 +342,6 @@ let DOM = {
     JS.addOrRemoveClasses(container, [PHX_NO_FEEDBACK_CLASS], [])
   },
 
-  isUsedInput(el){
-    return(el.nodeType === Node.ELEMENT_NODE &&
-      (this.private(el, PHX_HAS_FOCUSED) || this.private(el, PHX_HAS_SUBMITTED)))
-  },
-
   shouldHideFeedback(container, nameOrGroup, phxFeedbackGroup){
     const query = `[name="${nameOrGroup}"],
                    [name="${nameOrGroup}[]"],
@@ -369,10 +364,14 @@ let DOM = {
     return query
   },
 
-  resetForm(form){
+  resetForm(form, phxFeedbackFor, phxFeedbackGroup){
     Array.from(form.elements).forEach(input => {
+      let query = this.feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup)
       this.deletePrivate(input, PHX_HAS_FOCUSED)
       this.deletePrivate(input, PHX_HAS_SUBMITTED)
+      this.all(document, query, feedbackEl => {
+        JS.addOrRemoveClasses(feedbackEl, [PHX_NO_FEEDBACK_CLASS], [])
+      })
     })
   },
 

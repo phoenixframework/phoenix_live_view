@@ -104,7 +104,7 @@ for (let path of ["/form/nested", "/form"]) {
       await expect(webSocketEvents).toEqual(expect.arrayContaining([
         { type: "sent", payload: expect.stringContaining("phx_join") },
         { type: "received", payload: expect.stringContaining("phx_reply") },
-        { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
+        { type: "sent", payload: expect.stringMatching(/event.*a=foo&b=test/) },
       ]))
     });
 
@@ -168,7 +168,7 @@ for (let path of ["/form/nested", "/form"]) {
       await expect(webSocketEvents).toEqual(expect.arrayContaining([
         { type: "sent", payload: expect.stringContaining("phx_join") },
         { type: "received", payload: expect.stringContaining("phx_reply") },
-        { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
+        { type: "sent", payload: expect.stringMatching(/event.*a=foo&b=test/) },
       ]))
     });
   })
@@ -276,9 +276,7 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
   }));
 });
 
-// phx-feedback-for was removed in LiveView 1.0, but we still test the shim applied in
-// test_helper.exs layout for backwards compatibility
-test("phx-no-feedback is applied correctly for backwards-compatible-shims", async ({ page }) => {
+test("phx-no-feedback is applied correctly", async ({ page }) => {
   await page.goto("/form/feedback");
   await syncLV(page);
 
