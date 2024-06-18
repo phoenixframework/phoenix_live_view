@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.20.15
+## 0.20.15 (2024-06-18)
 
 ### Enhancements
   * Warn when rendering an input named "id"
