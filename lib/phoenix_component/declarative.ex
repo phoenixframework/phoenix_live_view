@@ -525,7 +525,7 @@ defmodule Phoenix.Component.Declarative do
   defp invalid_attr_message(:examples, _), do: nil
 
   defp invalid_attr_message(_key, nil),
-    do: "The supported options are: [:required, :default, :values, :examples]"
+    do: "The supported options are: [:required, :default, :values, :examples, :include]"
 
   defp invalid_attr_message(_key, _slot),
     do: "The supported options inside slots are: [:required]"
