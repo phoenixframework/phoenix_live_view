@@ -4093,7 +4093,7 @@ var LiveSocket = class {
     });
   }
   version() {
-    return "1.0.0-rc.0";
+    return "1.0.0-rc.1";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";

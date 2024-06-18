@@ -108,7 +108,7 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
-## 1.0.0-rc.1
+## 1.0.0-rc.1 (2024-06-18)
 
 ### Enhancements
   * Warn when rendering an input named "id"
@@ -127,7 +127,7 @@ generated user module:
 ### Deprecations
   * Deprecate `live_flash` in favor of `Phoenix.Flash.get`
   * Deprecate `push_redirect` in favor of `push_navigate`
-  
+
 ### Removal of previously deprecated functionality
   * `phx-capture-click` has been removed (deprecated in 0.17.0)
 
