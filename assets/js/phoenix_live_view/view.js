@@ -897,8 +897,12 @@ export default class View {
         eventType: eventType,
         ref: newRef,
         loading: elements,
-        unlock: (els) => this.undoRefs(newRef, phxEvent, els),
+        unlock: (els) => {
+          els = Array.isArray(els) ? els : [els]
+          this.undoRefs(newRef, phxEvent, els)
+        },
         lock: (els, onUnlock) => {
+          els = Array.isArray(els) ? els : [els]
           els.forEach(el => {
             el.setAttribute(PHX_REF, newRef)
             el.setAttribute(PHX_REF_SRC, this.el.id)
