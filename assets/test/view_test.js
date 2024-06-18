@@ -973,8 +973,8 @@ describe("View + Component", function(){
     expect(view.targetComponentID(form, targetCtx)).toBe(0)
   })
 
-  test("pushEvent", (done) => {
-    expect.assertions(10)
+  test("pushEvent", () => {
+    expect.assertions(12)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
@@ -995,19 +995,27 @@ describe("View + Component", function(){
     }
     view.channel = channelStub
 
+    input.addEventListener("phx:lock:myevent", (e) => {
+      expect(e.target).toBe(input)
+    })
+    input.addEventListener("phx:unlock:myevent", (e) => {
+      expect(e.target).toBe(input)
+    })
     input.addEventListener("phx:lock", (e) => {
       let {lock, unlock} = e.detail
       expect(typeof lock).toBe("function")
       expect(view.el.getAttribute("data-phx-ref")).toBe(null)
       // lock accepts unlock function to fire, which will done() the test
-      lock(view.el, () => done())
+      lock(view.el, (e) => {
+        expect(e.detail.event).toBe("myevent")
+      })
       expect(e.target).toBe(input)
       expect(input.getAttribute("data-phx-ref")).toBe("0")
       expect(view.el.getAttribute("data-phx-ref")).toBe("0")
       unlock(view.el)
       expect(view.el.getAttribute("data-phx-ref")).toBe(null)
     })
-    view.pushEvent("keyup", input, targetCtx, "click", {})
+    view.pushEvent("keyup", input, targetCtx, "myevent", {})
   })
 
   test("pushInput", function(done){

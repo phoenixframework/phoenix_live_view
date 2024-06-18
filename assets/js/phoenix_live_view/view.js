@@ -908,7 +908,7 @@ export default class View {
             el.setAttribute(PHX_REF_SRC, this.el.id)
             if(onUnlock){
               el.addEventListener(`phx:unlock:${phxEvent}`, e => {
-                if(e.detail.ref === newRef){ onUnlock() }
+                if(e.detail.ref === newRef){ onUnlock(e) }
               })
             }
           })
