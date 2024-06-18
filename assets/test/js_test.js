@@ -27,7 +27,7 @@ describe("JS", () => {
       view = setupView(`<div id="modal">modal</div>`)
       modal = view.el.querySelector("#modal")
       let hook = new ViewHook(view, view.el, {})
-      js = JS.bind(hook)
+      js = hook.js()
     })
 
     test("exec", done => {
