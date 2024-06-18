@@ -1,5 +1,5 @@
 import {Socket} from "phoenix"
-import LiveSocket from "phoenix_live_view/live_socket"
+import {LiveSocket, createHook} from "phoenix_live_view/index"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
@@ -819,6 +819,19 @@ describe("View Hooks", function(){
     view.update({s: ["<div></div>"], fingerprint: 123}, [])
     expect(upcaseWasDestroyed).toBe(true)
     expect(hookLiveSocket).toBeDefined()
+  })
+
+  test("createHook", async () => {
+    let liveSocket = new LiveSocket("/live", Socket, {})
+    let el = liveViewDOM()
+    let view = simulateJoinedView(el, liveSocket)
+    liveSocket.test = "testing createHook"
+    liveSocket.bindTopLevelEvents()
+
+    let myMounted = function(){}
+    let hook = await createHook(el, {mounted: myMounted})
+    expect(typeof hook.pushEvent).toBe("function")
+    expect(hook.mounted).toBe(myMounted)
   })
 
   test("view destroyed", async () => {
