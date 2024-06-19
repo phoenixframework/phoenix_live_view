@@ -3090,21 +3090,21 @@ var View = class {
     this.el = dom_default.byId(this.id);
     this.el.setAttribute(PHX_ROOT_ID, this.root.id);
   }
-  execNewMounted() {
+  execNewMounted(parent = this.el) {
     let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
     let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
-    dom_default.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
+    dom_default.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
       if (this.ownsElement(hookEl)) {
         dom_default.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom);
         this.maybeAddNewHook(hookEl);
       }
     });
-    dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
+    dom_default.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
       if (this.ownsElement(hookEl)) {
         this.maybeAddNewHook(hookEl);
       }
     });
-    dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+    dom_default.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
       if (this.ownsElement(el)) {
         this.maybeMounted(el);
       }
@@ -3595,6 +3595,7 @@ var View = class {
       if (toEl) {
         let hook = this.triggerBeforeUpdateHook(el, toEl);
         DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement());
+        this.execNewMounted(el);
         if (hook) {
           hook.__updated();
         }

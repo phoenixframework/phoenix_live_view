@@ -374,21 +374,21 @@ export default class View {
   // by owner to ensure we aren't duplicating hooks across disconnect
   // and connected states. This also handles cases where hooks exist
   // in a root layout with a LV in the body
-  execNewMounted(){
+  execNewMounted(parent = this.el){
     let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
-    DOM.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
+    DOM.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
       if(this.ownsElement(hookEl)){
         DOM.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom)
         this.maybeAddNewHook(hookEl)
       }
     })
-    DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
+    DOM.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
       if(this.ownsElement(hookEl)){
         this.maybeAddNewHook(hookEl)
       }
     })
-    DOM.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, el => {
+    DOM.all(parent, `[${this.binding(PHX_MOUNTED)}]`, el => {
       if(this.ownsElement(el)){
         this.maybeMounted(el)
       }
@@ -902,6 +902,7 @@ export default class View {
       if(toEl){
         let hook = this.triggerBeforeUpdateHook(el, toEl)
         DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement())
+        this.execNewMounted(el)
         if(hook){ hook.__updated() }
         DOM.deletePrivate(el, PHX_REF)
       }
