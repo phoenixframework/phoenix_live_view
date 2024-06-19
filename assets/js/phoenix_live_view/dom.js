@@ -436,16 +436,6 @@ let DOM = {
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
   },
 
-  syncPendingRef(fromEl, toEl, disableWith){
-    let ref = fromEl.getAttribute(PHX_REF)
-    if(ref === null){ return true }
-    let refSrc = fromEl.getAttribute(PHX_REF_SRC)
-
-    if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
-    DOM.putPrivate(fromEl, PHX_REF, toEl)
-    return false
-  },
-
   cleanChildNodes(container, phxUpdate){
     if(DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])){
       let toRemove = []

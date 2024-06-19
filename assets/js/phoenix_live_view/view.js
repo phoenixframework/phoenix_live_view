@@ -481,7 +481,6 @@ export default class View {
     patch.perform(isJoinPatch)
     this.afterElementsRemoved(removedEls, pruneCids)
 
-
     this.liveSocket.triggerDOM("onPatchEnd", [patch.targetContainer])
     return phxChildrenAdded
   }
@@ -1340,7 +1339,7 @@ export default class View {
           let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
             return DOM.findComponentNodeList(this.el, cid).length === 0
           })
-  
+
           if(completelyDestroyCIDs.length > 0){
             this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
               this.rendered.pruneCIDs(resp.cids)

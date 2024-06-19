@@ -963,18 +963,6 @@ var DOM = {
   isNowTriggerFormExternal(el, phxTriggerExternal) {
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null;
   },
-  syncPendingRef(fromEl, toEl, disableWith) {
-    let ref = fromEl.getAttribute(PHX_REF);
-    if (ref === null) {
-      return true;
-    }
-    let refSrc = fromEl.getAttribute(PHX_REF_SRC);
-    if (DOM.isUploadInput(fromEl)) {
-      DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
-    }
-    DOM.putPrivate(fromEl, PHX_REF, toEl);
-    return false;
-  },
   cleanChildNodes(container, phxUpdate) {
     if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
       let toRemove = [];
@@ -1850,8 +1838,11 @@ function morphdomFactory(morphAttrs2) {
         delete fromNodesLookup[toElKey];
       }
       if (!childrenOnly2) {
-        if (onBeforeElUpdated(fromEl, toEl) === false) {
+        var beforeUpdateResult = onBeforeElUpdated(fromEl, toEl);
+        if (beforeUpdateResult === false) {
           return;
+        } else if (beforeUpdateResult instanceof HTMLElement) {
+          fromEl = beforeUpdateResult;
         }
         morphAttrs2(fromEl, toEl);
         onElUpdated(fromEl);
@@ -2079,7 +2070,6 @@ var DOMPatch = class {
     let focused = liveSocket.getActiveElement();
     let { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
     let phxUpdate = liveSocket.binding(PHX_UPDATE);
-    let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
@@ -2193,13 +2183,16 @@ var DOMPatch = class {
           if (fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)) {
             return false;
           }
-          if (!dom_default.syncPendingRef(fromEl, toEl, disableWith)) {
+          if (fromEl.hasAttribute(PHX_REF)) {
             if (dom_default.isUploadInput(fromEl)) {
+              dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
               this.trackBefore("updated", fromEl, toEl);
               updates.push(fromEl);
             }
             dom_default.applyStickyOperations(fromEl);
-            return false;
+            let clone2 = dom_default.private(fromEl, PHX_REF) || fromEl.cloneNode(true);
+            dom_default.putPrivate(fromEl, PHX_REF, clone2);
+            fromEl = clone2;
           }
           if (dom_default.isPhxChild(toEl)) {
             let prevSession = fromEl.getAttribute(PHX_SESSION);
@@ -2231,7 +2224,7 @@ var DOMPatch = class {
             dom_default.syncAttrsToProps(toEl);
             dom_default.applyStickyOperations(toEl);
             this.trackBefore("updated", fromEl, toEl);
-            return true;
+            return fromEl;
           }
         }
       });
