@@ -23,11 +23,9 @@ import {PHX_VIEW_SELECTOR} from "./constants"
  * @example
  *
  * class MyComponent extends HTMLElement {
- *   constructor(){
- *    super()
- *    createHook(this, {}).then(hook => {
- *      hook.pushEvent(...)
- *    })
+ *   connectedCallback(){
+ *     let onLiveViewMounted = () => this.hook.pushEvent(...))
+ *     this.hook = createHook(this, {mounted: onLiveViewMounted})
  *   }
  * }
  *
