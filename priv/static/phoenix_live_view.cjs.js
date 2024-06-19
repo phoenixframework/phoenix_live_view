@@ -3577,10 +3577,13 @@ var View = class {
       if (onlyEls && !onlyEls.has(el)) {
         return;
       }
-      this.undoElRef(el);
+      this.undoElRef(el, ref);
     });
   }
-  undoElRef(el) {
+  undoElRef(el, ref) {
+    if (!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)) {
+      return;
+    }
     el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
     let disabledVal = el.getAttribute(PHX_DISABLED);
     let readOnlyVal = el.getAttribute(PHX_READONLY);
@@ -3604,9 +3607,7 @@ var View = class {
     if (toEl) {
       let hook = this.triggerBeforeUpdateHook(el, toEl);
       DOMPatch.patchEl(el, toEl, this.liveSocket);
-      dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => {
-        this.undoElRef(el2);
-      });
+      dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => this.undoElRef(el2, ref));
       this.execNewMounted(el);
       if (hook) {
         hook.__updated();

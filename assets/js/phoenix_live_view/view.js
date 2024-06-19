@@ -874,11 +874,13 @@ export default class View {
 
     DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
       if(onlyEls && !onlyEls.has(el)){ return }
-      this.undoElRef(el)
+      this.undoElRef(el, ref)
     })
   }
 
-  undoElRef(el){
+  undoElRef(el, ref){
+    if(!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)){ return }
+
     el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
     let disabledVal = el.getAttribute(PHX_DISABLED)
     let readOnlyVal = el.getAttribute(PHX_READONLY)
@@ -906,7 +908,7 @@ export default class View {
     if(toEl){
       let hook = this.triggerBeforeUpdateHook(el, toEl)
       DOMPatch.patchEl(el, toEl, this.liveSocket)
-      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el))
+      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
       this.execNewMounted(el)
       if(hook){ hook.__updated() }
       DOM.deletePrivate(el, PHX_REF)
