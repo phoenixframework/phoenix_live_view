@@ -874,40 +874,46 @@ export default class View {
 
     DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
       if(onlyEls && !onlyEls.has(el)){ return }
-
-      el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
-      let disabledVal = el.getAttribute(PHX_DISABLED)
-      let readOnlyVal = el.getAttribute(PHX_READONLY)
-      // remove refs
-      el.removeAttribute(PHX_REF)
-      el.removeAttribute(PHX_REF_SRC)
-      // restore inputs
-      if(readOnlyVal !== null){
-        el.readOnly = readOnlyVal === "true" ? true : false
-        el.removeAttribute(PHX_READONLY)
-      }
-      if(disabledVal !== null){
-        el.disabled = disabledVal === "true" ? true : false
-        el.removeAttribute(PHX_DISABLED)
-      }
-      // remove classes
-      PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
-      // restore disables
-      let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
-      if(disableRestore !== null){
-        el.innerText = disableRestore
-        el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
-      }
-      let toEl = DOM.private(el, PHX_REF)
-      if(toEl){
-        let hook = this.triggerBeforeUpdateHook(el, toEl)
-        DOMPatch.patchEl(el, toEl, this.liveSocket)
-        this.execNewMounted(el)
-        if(hook){ hook.__updated() }
-        DOM.deletePrivate(el, PHX_REF)
-      }
+      this.undoElRef(el)
     })
   }
+
+  undoElRef(el){
+    el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
+    let disabledVal = el.getAttribute(PHX_DISABLED)
+    let readOnlyVal = el.getAttribute(PHX_READONLY)
+    // remove refs
+    el.removeAttribute(PHX_REF)
+    el.removeAttribute(PHX_REF_SRC)
+    // restore inputs
+    if(readOnlyVal !== null){
+      el.readOnly = readOnlyVal === "true" ? true : false
+      el.removeAttribute(PHX_READONLY)
+    }
+    if(disabledVal !== null){
+      el.disabled = disabledVal === "true" ? true : false
+      el.removeAttribute(PHX_DISABLED)
+    }
+    // remove classes
+    PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
+    // restore disables
+    let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
+    if(disableRestore !== null){
+      el.innerText = disableRestore
+      el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
+    }
+    let toEl = DOM.private(el, PHX_REF)
+    if(toEl){
+      let hook = this.triggerBeforeUpdateHook(el, toEl)
+      DOMPatch.patchEl(el, toEl, this.liveSocket)
+      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el))
+      this.execNewMounted(el)
+      if(hook){ hook.__updated() }
+      DOM.deletePrivate(el, PHX_REF)
+    }
+  }
+
+
 
   putRef(elements, event, opts = {}){
     let newRef = this.ref++

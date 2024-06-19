@@ -3609,36 +3609,42 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (onlyEls && !onlyEls.has(el)) {
           return;
         }
-        el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
-        let disabledVal = el.getAttribute(PHX_DISABLED);
-        let readOnlyVal = el.getAttribute(PHX_READONLY);
-        el.removeAttribute(PHX_REF);
-        el.removeAttribute(PHX_REF_SRC);
-        if (readOnlyVal !== null) {
-          el.readOnly = readOnlyVal === "true" ? true : false;
-          el.removeAttribute(PHX_READONLY);
-        }
-        if (disabledVal !== null) {
-          el.disabled = disabledVal === "true" ? true : false;
-          el.removeAttribute(PHX_DISABLED);
-        }
-        PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));
-        let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE);
-        if (disableRestore !== null) {
-          el.innerText = disableRestore;
-          el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
-        }
-        let toEl = dom_default.private(el, PHX_REF);
-        if (toEl) {
-          let hook = this.triggerBeforeUpdateHook(el, toEl);
-          DOMPatch.patchEl(el, toEl, this.liveSocket);
-          this.execNewMounted(el);
-          if (hook) {
-            hook.__updated();
-          }
-          dom_default.deletePrivate(el, PHX_REF);
-        }
+        this.undoElRef(el);
       });
+    }
+    undoElRef(el) {
+      el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
+      let disabledVal = el.getAttribute(PHX_DISABLED);
+      let readOnlyVal = el.getAttribute(PHX_READONLY);
+      el.removeAttribute(PHX_REF);
+      el.removeAttribute(PHX_REF_SRC);
+      if (readOnlyVal !== null) {
+        el.readOnly = readOnlyVal === "true" ? true : false;
+        el.removeAttribute(PHX_READONLY);
+      }
+      if (disabledVal !== null) {
+        el.disabled = disabledVal === "true" ? true : false;
+        el.removeAttribute(PHX_DISABLED);
+      }
+      PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));
+      let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE);
+      if (disableRestore !== null) {
+        el.innerText = disableRestore;
+        el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
+      }
+      let toEl = dom_default.private(el, PHX_REF);
+      if (toEl) {
+        let hook = this.triggerBeforeUpdateHook(el, toEl);
+        DOMPatch.patchEl(el, toEl, this.liveSocket);
+        dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => {
+          this.undoElRef(el2);
+        });
+        this.execNewMounted(el);
+        if (hook) {
+          hook.__updated();
+        }
+        dom_default.deletePrivate(el, PHX_REF);
+      }
     }
     putRef(elements, event, opts = {}) {
       let newRef = this.ref++;
