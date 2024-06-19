@@ -921,8 +921,6 @@ export default class View {
     }
   }
 
-
-
   putRef(elements, event, opts = {}){
     let newRef = this.ref++
     let disableWith = this.binding(PHX_DISABLE_WITH)
