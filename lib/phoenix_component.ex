@@ -2372,10 +2372,10 @@ defmodule Phoenix.Component do
 
   ```heex
   <.form
-    :let={f}
+    for={@form}
     phx-change="change_name"
   >
-    <.inputs_for :let={f_nested} field={f[:nested]}>
+    <.inputs_for :let={f_nested} field={@form[:nested]}>
       <.input type="text" field={f_nested[:name]} />
     </.inputs_for>
   </.form>
