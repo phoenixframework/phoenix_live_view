@@ -1,9 +1,7 @@
 var LiveView = (() => {
   var __defProp = Object.defineProperty;
   var __defProps = Object.defineProperties;
-  var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
   var __getOwnPropDescs = Object.getOwnPropertyDescriptors;
-  var __getOwnPropNames = Object.getOwnPropertyNames;
   var __getOwnPropSymbols = Object.getOwnPropertySymbols;
   var __hasOwnProp = Object.prototype.hasOwnProperty;
   var __propIsEnum = Object.prototype.propertyIsEnumerable;
@@ -20,6 +18,7 @@ var LiveView = (() => {
     return a;
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
+  var __markAsModule = (target) => __defProp(target, "__esModule", { value: true });
   var __objRest = (source, exclude) => {
     var target = {};
     for (var prop in source)
@@ -33,18 +32,10 @@ var LiveView = (() => {
     return target;
   };
   var __export = (target, all) => {
+    __markAsModule(target);
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
   };
-  var __copyProps = (to, from, except, desc) => {
-    if (from && typeof from === "object" || typeof from === "function") {
-      for (let key of __getOwnPropNames(from))
-        if (!__hasOwnProp.call(to, key) && key !== except)
-          __defProp(to, key, { get: () => from[key], enumerable: !(desc = __getOwnPropDesc(from, key)) || desc.enumerable });
-    }
-    return to;
-  };
-  var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
   // js/phoenix_live_view/index.js
   var phoenix_live_view_exports = {};
@@ -204,7 +195,7 @@ var LiveView = (() => {
     return type === "number" || type === "string" && /^(0|[1-9]\d*)$/.test(cid);
   };
   function detectDuplicateIds() {
-    let ids = /* @__PURE__ */ new Set();
+    let ids = new Set();
     let elems = document.querySelectorAll("*[id]");
     for (let i = 0, len = elems.length; i < len; i++) {
       if (ids.has(elems[i].id)) {
@@ -398,15 +389,12 @@ var LiveView = (() => {
     isVisible(el) {
       return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
     },
-    // returns true if any part of the element is inside the viewport
     isInViewport(el) {
       const rect = el.getBoundingClientRect();
       const windowHeight = window.innerHeight || document.documentElement.clientHeight;
       const windowWidth = window.innerWidth || document.documentElement.clientWidth;
       return rect.right > 0 && rect.bottom > 0 && rect.left < windowWidth && rect.top < windowHeight;
     },
-    // private
-    // commands
     exec_exec(eventType, phxEvent, view, sourceEl, el, { attr, to }) {
       let nodes = to ? dom_default.all(document, to) : [sourceEl];
       nodes.forEach((node) => {
@@ -511,7 +499,6 @@ var LiveView = (() => {
     exec_remove_attr(eventType, phxEvent, view, sourceEl, el, { attr }) {
       this.setOrRemoveAttrs(el, [], [attr]);
     },
-    // utils for commands
     show(eventType, view, el, display, transition, time) {
       if (!this.isVisible(el)) {
         this.toggle(eventType, view, el, display, transition, null, time);
@@ -745,8 +732,8 @@ var LiveView = (() => {
       return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`);
     },
     findExistingParentCIDs(node, cids) {
-      let parentCids = /* @__PURE__ */ new Set();
-      let childrenCids = /* @__PURE__ */ new Set();
+      let parentCids = new Set();
+      let childrenCids = new Set();
       cids.forEach((cid) => {
         this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach((parent) => {
           parentCids.add(cid);
@@ -949,9 +936,6 @@ var LiveView = (() => {
         return cloned;
       }
     },
-    // merge attributes from source to target
-    // if an element is ignored, we only merge data attributes
-    // including removing data attributes that are no longer in the source
     mergeAttrs(target, source, opts = {}) {
       let exclude = new Set(opts.exclude || []);
       let isIgnored = opts.isIgnored;
@@ -1066,7 +1050,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     },
     replaceRootContainer(container, tagName, attrs) {
-      let retainedAttrs = /* @__PURE__ */ new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID]);
+      let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID]);
       if (container.tagName.toLowerCase() === tagName.toLowerCase()) {
         Array.from(container.attributes).filter((attr) => !retainedAttrs.has(attr.name.toLowerCase())).forEach((attr) => container.removeAttribute(attr.name));
         Object.keys(attrs).filter((name) => !retainedAttrs.has(name.toLowerCase())).forEach((attr) => container.setAttribute(attr, attrs[attr]));
@@ -1193,7 +1177,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     isAutoUpload() {
       return this.autoUpload;
     }
-    //private
     onDone(callback) {
       this._onDone = () => {
         this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated);
@@ -1236,7 +1219,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
 
   // js/phoenix_live_view/live_uploader.js
   var liveUploaderFileRef = 0;
-  var LiveUploader = class _LiveUploader {
+  var LiveUploader = class {
     static genFileRef(file) {
       let ref = file._phxRef;
       if (ref !== void 0) {
@@ -1320,8 +1303,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.autoUpload = dom_default.isAutoUpload(inputEl);
       this.view = view;
       this.onComplete = onComplete;
-      this._entries = Array.from(_LiveUploader.filesAwaitingPreflight(inputEl) || []).map((file) => new UploadEntry(inputEl, file, view, this.autoUpload));
-      _LiveUploader.markPreflightInProgress(this._entries);
+      this._entries = Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || []).map((file) => new UploadEntry(inputEl, file, view, this.autoUpload));
+      LiveUploader.markPreflightInProgress(this._entries);
       this.numEntriesInProgress = this._entries.length;
     }
     isAutoUpload() {
@@ -1558,7 +1541,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   // js/phoenix_live_view/dom_post_morph_restorer.js
   var DOMPostMorphRestorer = class {
     constructor(containerBefore, containerAfter, updateType) {
-      let idsBefore = /* @__PURE__ */ new Set();
+      let idsBefore = new Set();
       let idsAfter = new Set([...containerAfter.children].map((child) => child.id));
       let elementsToModify = [];
       Array.from(containerBefore.children).forEach((child) => {
@@ -1575,12 +1558,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.elementsToModify = elementsToModify;
       this.elementIdsToAdd = [...idsAfter].filter((id) => !idsBefore.has(id));
     }
-    // We do the following to optimize append/prepend operations:
-    //   1) Track ids of modified elements & of new elements
-    //   2) All the modified elements are put back in the correct position in the DOM tree
-    //      by storing the id of their previous sibling
-    //   3) New elements are going to be put in the right place by morphdom during append.
-    //      For prepend, we move them to the first position in the container
     perform() {
       let container = dom_default.byId(this.containerId);
       this.elementsToModify.forEach((elementToModify) => {
@@ -1750,12 +1727,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       syncBooleanAttrProp(fromEl, toEl, "selected");
     },
-    /**
-     * The "value" attribute is special for the <input> element since it sets
-     * the initial value. Changing the "value" attribute without changing the
-     * "value" property will have no effect since it is only used to the set the
-     * initial value.  Similar for the "checked" attribute, and "disabled".
-     */
     INPUT: function(fromEl, toEl) {
       syncBooleanAttrProp(fromEl, toEl, "checked");
       syncBooleanAttrProp(fromEl, toEl, "disabled");
@@ -1851,7 +1822,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return parent.appendChild(child);
       };
       var childrenOnly = options.childrenOnly === true;
-      var fromNodesLookup = /* @__PURE__ */ Object.create(null);
+      var fromNodesLookup = Object.create(null);
       var keyedRemovalList = [];
       function addKeyedRemoval(key) {
         keyedRemovalList.push(key);
@@ -1923,12 +1894,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           if (curFromNodeKey = getNodeKey(curFromNodeChild)) {
             addKeyedRemoval(curFromNodeKey);
           } else {
-            removeNode(
-              curFromNodeChild,
-              fromEl,
-              true
-              /* skip keyed nodes */
-            );
+            removeNode(curFromNodeChild, fromEl, true);
           }
           curFromNodeChild = fromNextSibling;
         }
@@ -1989,12 +1955,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
                           if (curFromNodeKey) {
                             addKeyedRemoval(curFromNodeKey);
                           } else {
-                            removeNode(
-                              curFromNodeChild,
-                              fromEl,
-                              true
-                              /* skip keyed nodes */
-                            );
+                            removeNode(curFromNodeChild, fromEl, true);
                           }
                           curFromNodeChild = matchingFromEl;
                           curFromNodeKey = getNodeKey(curFromNodeChild);
@@ -2025,12 +1986,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               if (curFromNodeKey) {
                 addKeyedRemoval(curFromNodeKey);
               } else {
-                removeNode(
-                  curFromNodeChild,
-                  fromEl,
-                  true
-                  /* skip keyed nodes */
-                );
+                removeNode(curFromNodeChild, fromEl, true);
               }
               curFromNodeChild = fromNextSibling;
             }
@@ -2188,10 +2144,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let externalFormTriggered = null;
       function morph(targetContainer2, source, withChildren = false) {
         morphdom_esm_default(targetContainer2, source, {
-          // normally, we are running with childrenOnly, as the patch HTML for a LV
-          // does not include the LV attrs (data-phx-session, etc.)
-          // when we are patching a live component, we do want to patch the root element as well;
-          // another case is the recursive patch of a stream item that was kept on reset (-> onBeforeNodeAdded)
           childrenOnly: targetContainer2.getAttribute(PHX_COMPONENT) === null && !withChildren,
           getNodeKey: (node) => {
             if (dom_default.isPhxDestroyed(node)) {
@@ -2202,11 +2154,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             return node.id || node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
           },
-          // skip indexing from children when container is stream
           skipFromChildren: (from) => {
             return from.getAttribute(phxUpdate) === PHX_STREAM;
           },
-          // tell morphdom how to add a child
           addChild: (parent, child) => {
             let { ref, streamAt } = this.getStreamInsert(child);
             if (ref === void 0) {
@@ -2521,7 +2471,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   };
 
   // js/phoenix_live_view/rendered.js
-  var VOID_TAGS = /* @__PURE__ */ new Set([
+  var VOID_TAGS = new Set([
     "area",
     "base",
     "br",
@@ -2539,7 +2489,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     "track",
     "wbr"
   ]);
-  var quoteChars = /* @__PURE__ */ new Set(["'", '"']);
+  var quoteChars = new Set(["'", '"']);
   var modifyRoot = (html, attrs, clearInnerHTML) => {
     let i = 0;
     let insideComment = false;
@@ -2633,7 +2583,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs) {
       onlyCids = onlyCids ? new Set(onlyCids) : null;
-      let output = { buffer: "", components, onlyCids, streams: /* @__PURE__ */ new Set() };
+      let output = { buffer: "", components, onlyCids, streams: new Set() };
       this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs);
       return [output.buffer, output.streams];
     }
@@ -2716,14 +2666,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         target.newRender = true;
       }
     }
-    // Merges cid trees together, copying statics from source tree.
-    //
-    // The `pruneMagicId` is passed to control pruning the magicId of the
-    // target. We must always prune the magicId when we are sharing statics
-    // from another component. If not pruning, we replicate the logic from
-    // mutableMerge, where we set newRender to true if there is a root
-    // (effectively forcing the new version to be rendered instead of skipped)
-    //
     cloneMerge(target, source, pruneMagicId) {
       let merged = __spreadValues(__spreadValues({}, target), source);
       for (let key in merged) {
@@ -2751,7 +2693,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     pruneCIDs(cids) {
       cids.forEach((cid) => delete this.rendered[COMPONENTS][cid]);
     }
-    // private
     get() {
       return this.rendered;
     }
@@ -2769,11 +2710,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.magicId++;
       return `m${this.magicId}-${this.parentViewId()}`;
     }
-    // Converts rendered tree to output buffer.
-    //
-    // changeTracking controls if we can apply the PHX_SKIP optimization.
-    // It is disabled for comprehensions since we must re-render the entire collection
-    // and no individual element is tracked inside the comprehension.
     toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
       if (rendered[DYNAMICS]) {
         return this.comprehensionToBuffer(rendered, templates, output);
@@ -2835,7 +2771,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (typeof rendered === "number") {
         let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids);
         output.buffer += str;
-        output.streams = /* @__PURE__ */ new Set([...output.streams, ...streams]);
+        output.streams = new Set([...output.streams, ...streams]);
       } else if (isObject(rendered)) {
         this.toOutputBuffer(rendered, templates, output, changeTracking, {});
       } else {
@@ -2868,7 +2804,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.__view = view;
       this.liveSocket = view.liveSocket;
       this.__callbacks = callbacks;
-      this.__listeners = /* @__PURE__ */ new Set();
+      this.__listeners = new Set();
       this.__isDisconnected = false;
       this.el = el;
       this.el.phxHookId = this.constructor.makeID();
@@ -2986,7 +2922,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     return params.toString();
   };
-  var View = class _View {
+  var View = class {
     constructor(el, liveSocket, parentView, flash, liveReferer) {
       this.isDead = false;
       this.liveSocket = liveSocket;
@@ -2999,7 +2935,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.childJoins = 0;
       this.loaderTimer = null;
       this.pendingDiffs = [];
-      this.pendingForms = /* @__PURE__ */ new Set();
+      this.pendingForms = new Set();
       this.redirect = false;
       this.href = null;
       this.joinCount = this.parent ? this.parent.joinCount - 1 : 0;
@@ -3078,13 +3014,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.channel.leave().receive("ok", onFinished).receive("error", onFinished).receive("timeout", onFinished);
     }
     setContainerClasses(...classes) {
-      this.el.classList.remove(
-        PHX_CONNECTED_CLASS,
-        PHX_LOADING_CLASS,
-        PHX_ERROR_CLASS,
-        PHX_CLIENT_ERROR_CLASS,
-        PHX_SERVER_ERROR_CLASS
-      );
+      this.el.classList.remove(PHX_CONNECTED_CLASS, PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS, PHX_SERVER_ERROR_CLASS);
       this.el.classList.add(...classes);
     }
     showLoader(timeout) {
@@ -3118,12 +3048,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }) {
       this.liveSocket.transition(time, onStart, onDone);
     }
-    // calls the callback with the view and target element for the given phxTarget
-    // targets can be:
-    //  * an element itself, then it is simply passed to liveSocket.owner;
-    //  * a CID (Component ID), then we first search the component's element in the DOM
-    //  * a selector, then we search the selector in the DOM and call the callback
-    //    for each element found with the corresponding owner view
     withinTargets(phxTarget, callback, dom = document, viewEl) {
       if (phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement) {
         return this.liveSocket.owner(phxTarget, (view) => callback(view, phxTarget));
@@ -3214,10 +3138,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.el = dom_default.byId(this.id);
       this.el.setAttribute(PHX_ROOT_ID, this.root.id);
     }
-    // this is invoked for dead and live views, so we must filter by
-    // by owner to ensure we aren't duplicating hooks across disconnect
-    // and connected states. This also handles cases where hooks exist
-    // in a root layout with a LV in the body
     execNewMounted() {
       let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
       let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
@@ -3284,7 +3204,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     performPatch(patch, pruneCids, isJoinPatch = false) {
       let removedEls = [];
       let phxChildrenAdded = false;
-      let updatedHookIds = /* @__PURE__ */ new Set();
+      let updatedHookIds = new Set();
       this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
       patch.after("added", (el) => {
         this.liveSocket.triggerDOM("onNodeAdded", [el]);
@@ -3359,13 +3279,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       rootEl.setAttribute(PHX_SESSION, this.getSession());
       rootEl.setAttribute(PHX_STATIC, this.getStatic());
       rootEl.setAttribute(PHX_PARENT_ID, this.parent ? this.parent.id : null);
-      const formsToRecover = (
-        // we go over all forms in the new DOM; because this is only the HTML for the current
-        // view, we can be sure that all forms are owned by this view:
-        dom_default.all(template.content, "form").filter((newForm) => newForm.id && oldForms[newForm.id]).filter((newForm) => !this.pendingForms.has(newForm.id)).filter((newForm) => oldForms[newForm.id].getAttribute(phxChange) === newForm.getAttribute(phxChange)).map((newForm) => {
-          return [oldForms[newForm.id], newForm];
-        })
-      );
+      const formsToRecover = dom_default.all(template.content, "form").filter((newForm) => newForm.id && oldForms[newForm.id]).filter((newForm) => !this.pendingForms.has(newForm.id)).filter((newForm) => oldForms[newForm.id].getAttribute(phxChange) === newForm.getAttribute(phxChange)).map((newForm) => {
+        return [oldForms[newForm.id], newForm];
+      });
       if (formsToRecover.length === 0) {
         return callback();
       }
@@ -3401,7 +3317,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     joinChild(el) {
       let child = this.getChildById(el.id);
       if (!child) {
-        let view = new _View(el, this.liveSocket, this);
+        let view = new View(el, this.liveSocket, this);
         this.root.children[this.id][view.id] = view;
         view.join();
         this.childJoins++;
@@ -4201,15 +4117,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.sessionStorage = opts.sessionStorage || window.sessionStorage;
       this.boundTopLevelEvents = false;
       this.serverCloseRef = null;
-      this.domCallbacks = Object.assign(
-        {
-          onPatchStart: closure(),
-          onPatchEnd: closure(),
-          onNodeAdded: closure(),
-          onBeforeElUpdated: closure()
-        },
-        opts.dom || {}
-      );
+      this.domCallbacks = Object.assign({
+        onPatchStart: closure(),
+        onPatchEnd: closure(),
+        onNodeAdded: closure(),
+        onBeforeElUpdated: closure()
+      }, opts.dom || {});
       this.transitions = new TransitionSet();
       window.addEventListener("pagehide", (_e) => {
         this.unloaded = true;
@@ -4220,9 +4133,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
-    // public
     version() {
-      return "1.0.0-rc.1";
+      return "1.0.0-rc.2";
     }
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
@@ -4297,7 +4209,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     execJS(el, encodedJS, eventType = null) {
       this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
     }
-    // private
     execJSHookPush(el, phxEvent, data, callback) {
       this.withinOwners(el, (view) => {
         js_default.exec("hook", phxEvent, view, el, ["push", { data, callback }]);
@@ -4975,7 +4886,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   };
   var TransitionSet = class {
     constructor() {
-      this.transitions = /* @__PURE__ */ new Set();
+      this.transitions = new Set();
       this.pendingOps = [];
     }
     reset() {
@@ -5018,5 +4929,5 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
   };
-  return __toCommonJS(phoenix_live_view_exports);
+  return phoenix_live_view_exports;
 })();
