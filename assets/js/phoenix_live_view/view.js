@@ -124,6 +124,11 @@ let serializeForm = (form, metadata, onlyNames = []) => {
 }
 
 export default class View {
+  static closestView(el){
+    let liveViewEl = el.closest(PHX_VIEW_SELECTOR)
+    return liveViewEl ? DOM.private(liveViewEl, "view") : null
+  }
+
   constructor(el, liveSocket, parentView, flash, liveReferer){
     this.isDead = false
     this.liveSocket = liveSocket
@@ -131,6 +136,7 @@ export default class View {
     this.parent = parentView
     this.root = parentView ? parentView.root : this
     this.el = el
+    DOM.putPrivate(this.el, "view", this)
     this.id = this.el.id
     this.ref = 0
     this.childJoins = 0
@@ -493,7 +499,7 @@ export default class View {
     let destroyedCIDs = []
     elements.forEach(parent => {
       let components = DOM.all(parent, `[${PHX_COMPONENT}]`)
-      let hooks = DOM.all(parent, `[${this.binding(PHX_HOOK)}]`)
+      let hooks = DOM.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-hook]`)
       components.concat(parent).forEach(el => {
         let cid = this.componentID(el)
         if(isCid(cid) && destroyedCIDs.indexOf(cid) === -1){ destroyedCIDs.push(cid) }
@@ -618,19 +624,33 @@ export default class View {
 
   getHook(el){ return this.viewHooks[ViewHook.elementID(el)] }
 
-  addHook(el, callbacks){
-    if(ViewHook.elementID(el) || !el.getAttribute){ return }
-    let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
-    if(hookName && !this.ownsElement(el)){ return }
-    callbacks = callbacks || this.liveSocket.getHookCallbacks(hookName)
+  addHook(el){
+    let hookElId = ViewHook.elementID(el)
 
-    if(callbacks){
-      if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }
-      let hook = new ViewHook(this, el, callbacks)
-      this.viewHooks[ViewHook.elementID(hook.el)] = hook
+    if(hookElId && !this.viewHooks[hookElId]){
+      // hook created, but not attached (createHook for web component)
+      let hook = DOM.getCustomElHook(el) || logError(`no hook found for custom element: ${el.id}`)
+      this.viewHooks[hookElId] = hook
+      hook.__attachView(this)
       return hook
-    } else if(hookName !== null){
-      logError(`unknown hook found for "${hookName}"`, el)
+    }
+    else if(hookElId || !el.getAttribute){
+      // no hook found
+      return
+    } else {
+      // new hook found with phx-hook attribute
+      let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
+      if(hookName && !this.ownsElement(el)){ return }
+      let callbacks = this.liveSocket.getHookCallbacks(hookName)
+
+      if(callbacks){
+        if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }
+        let hook = new ViewHook(this, el, callbacks)
+        this.viewHooks[ViewHook.elementID(hook.el)] = hook
+        return hook
+      } else if(hookName !== null){
+        logError(`unknown hook found for "${hookName}"`, el)
+      }
     }
   }
 

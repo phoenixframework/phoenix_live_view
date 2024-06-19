@@ -186,6 +186,10 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          // maintain the hooks created with createHook
+          if(fromEl.hasAttribute("data-phx-hook") && !toEl.hasAttribute("data-phx-hook")){
+            toEl.setAttribute("data-phx-hook", fromEl.getAttribute("data-phx-hook"))
+          }
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){

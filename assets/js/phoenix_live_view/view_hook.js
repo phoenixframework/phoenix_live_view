@@ -1,19 +1,33 @@
 import JS from "./js"
+import DOM from "./dom"
+
+const HOOK_ID = "hookId"
 
 let viewHookID = 1
 export default class ViewHook {
   static makeID(){ return viewHookID++ }
-  static elementID(el){ return el.phxHookId }
+  static elementID(el){ return DOM.private(el, HOOK_ID) }
 
   constructor(view, el, callbacks){
-    this.__view = view
-    this.liveSocket = view.liveSocket
+    this.el = el
+    this.__attachView(view)
     this.__callbacks = callbacks
     this.__listeners = new Set()
     this.__isDisconnected = false
-    this.el = el
-    this.el.phxHookId = this.constructor.makeID()
+    DOM.putPrivate(this.el, HOOK_ID, this.constructor.makeID())
     for(let key in this.__callbacks){ this[key] = this.__callbacks[key] }
+  }
+
+  __attachView(view){
+    if(view){
+      this.__view = () => view
+      this.liveSocket = view.liveSocket
+    } else {
+      this.__view = () => {
+        throw new Error(`hook not yet attached to a live view: ${this.el.outerHTML}`)
+      }
+      this.liveSocket = null
+    }
   }
 
   __mounted(){ this.mounted && this.mounted() }
@@ -48,7 +62,7 @@ export default class ViewHook {
        * @param {string} encodedJS - The encoded JavaScript string to execute.
        */
       exec(encodedJS){
-        hook.liveSocket.execJS(hook.el, encodedJS, "hook")
+        hook.__view().liveSocket.execJS(hook.el, encodedJS, "hook")
       },
 
       /**
@@ -61,7 +75,7 @@ export default class ViewHook {
        * @param {number} [opts.time] - The transition duration in milliseconds. Defaults 200.
        */
       show(el, opts = {}){
-        let owner = hook.liveSocket.owner(el)
+        let owner = hook.__view().liveSocket.owner(el)
         JS.show("hook", owner, el, opts.display, opts.transition, opts.time)
       },
 
@@ -74,7 +88,7 @@ export default class ViewHook {
        * @param {number} [opts.time] - The transition duration in milliseconds. Defaults 200.
        */
       hide(el, opts = {}){
-        let owner = hook.liveSocket.owner(el)
+        let owner = hook.__view().liveSocket.owner(el)
         JS.hide("hook", owner, el, null, opts.transition, opts.time)
       },
 
@@ -101,7 +115,7 @@ export default class ViewHook {
        * @param {number} [opts.time] - The transition duration in milliseconds.
        */
       toggle(el, opts = {}){
-        let owner = hook.liveSocket.owner(el)
+        let owner = hook.__view().liveSocket.owner(el)
         opts.in = JS.transitionClasses(opts.in)
         opts.out = JS.transitionClasses(opts.out)
         JS.toggle("hook", owner, el, opts.display, opts.in, opts.out, opts.time)
@@ -124,7 +138,7 @@ export default class ViewHook {
        */
       addClass(el, names, opts = {}){
         names = Array.isArray(names) ? names : names.split(" ")
-        let owner = hook.liveSocket.owner(el)
+        let owner = hook.__view().liveSocket.owner(el)
         JS.addOrRemoveClasses(el, names, [], opts.transition, opts.time, owner)
       },
 
@@ -146,7 +160,7 @@ export default class ViewHook {
       removeClass(el, names, opts = {}){
         opts.transition = JS.transitionClasses(opts.transition)
         names = Array.isArray(names) ? names : names.split(" ")
-        let owner = hook.liveSocket.owner(el)
+        let owner = hook.__view().liveSocket.owner(el)
         JS.addOrRemoveClasses(el, [], names, opts.transition, opts.time, owner)
       },
 
@@ -168,7 +182,7 @@ export default class ViewHook {
       toggleClass(el, names, opts = {}){
         opts.transition = JS.transitionClasses(opts.transition)
         names = Array.isArray(names) ? names : names.split(" ")
-        let owner = hook.liveSocket.owner(el)
+        let owner = hook.__view().liveSocket.owner(el)
         JS.toggleClasses(el, names, opts.transition, opts.time, owner)
       },
 
@@ -187,7 +201,7 @@ export default class ViewHook {
        * @param {number} [opts.time] - The transition duration in milliseconds.
        */
       transition(el, transition, opts = {}){
-        let owner = hook.liveSocket.owner(el)
+        let owner = hook.__view().liveSocket.owner(el)
         JS.addOrRemoveClasses(el, [], [], JS.transitionClasses(transition), opts.time, owner)
       },
 
@@ -221,11 +235,11 @@ export default class ViewHook {
   }
 
   pushEvent(event, payload = {}, onReply = function (){ }){
-    return this.__view.pushHookEvent(this.el, null, event, payload, onReply)
+    return this.__view().pushHookEvent(this.el, null, event, payload, onReply)
   }
 
   pushEventTo(phxTarget, event, payload = {}, onReply = function (){ }){
-    return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+    return this.__view().withinTargets(phxTarget, (view, targetCtx) => {
       return view.pushHookEvent(this.el, targetCtx, event, payload, onReply)
     })
   }
@@ -244,11 +258,11 @@ export default class ViewHook {
   }
 
   upload(name, files){
-    return this.__view.dispatchUploads(null, name, files)
+    return this.__view().dispatchUploads(null, name, files)
   }
 
   uploadTo(phxTarget, name, files){
-    return this.__view.withinTargets(phxTarget, (view, targetCtx) => {
+    return this.__view().withinTargets(phxTarget, (view, targetCtx) => {
       view.dispatchUploads(targetCtx, name, files)
     })
   }

@@ -11,6 +11,7 @@ import {
 } from "phoenix_live_view/constants"
 
 import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
+import { expect } from "@playwright/test"
 
 let simulateUsedInput = (input) => {
   DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
@@ -821,17 +822,21 @@ describe("View Hooks", function(){
     expect(hookLiveSocket).toBeDefined()
   })
 
-  test("createHook", async () => {
+  test("createHook", (done) => {
     let liveSocket = new LiveSocket("/live", Socket, {})
     let el = liveViewDOM()
+    customElements.define("custom-el", class extends HTMLElement {
+      connectedCallback(){
+        this.hook = createHook(this, {mounted: () => {
+          expect(this.hook.liveSocket).toBeTruthy()
+          done()
+        }})
+        expect(this.hook.liveSocket).toBe(null)
+      }
+    })
+    let customEl = document.createElement("custom-el")
+    el.appendChild(customEl)
     let view = simulateJoinedView(el, liveSocket)
-    liveSocket.test = "testing createHook"
-    liveSocket.bindTopLevelEvents()
-
-    let myMounted = function(){}
-    let hook = await createHook(el, {mounted: myMounted})
-    expect(typeof hook.pushEvent).toBe("function")
-    expect(hook.mounted).toBe(myMounted)
   })
 
   test("view destroyed", async () => {

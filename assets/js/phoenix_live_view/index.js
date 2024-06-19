@@ -9,6 +9,10 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 import LiveSocket, {isUsedInput} from "./live_socket"
 import JS from "./js"
+import DOM from "./dom"
+import ViewHook from "./view_hook"
+import View from "./view"
+import {PHX_VIEW_SELECTOR} from "./constants"
 
 /** Creates a ViewHook instance for the given element and callbacks.
  *
@@ -30,11 +34,12 @@ import JS from "./js"
  * @returns {Promise} Returns a promise that resolves with the ViewHook instance.
  */
 let createHook = (el, callbacks = {}) => {
-  return new Promise((resolve) => {
-    window.dispatchEvent(new CustomEvent("phx:_create_hook", {
-      detail: {el, callbacks, reply: (hook) => resolve(hook)}
-    }))
-  })
+  let existingHook = DOM.getCustomElHook(el)
+  if(existingHook){ return existingHook }
+
+  let hook = new ViewHook(View.closestView(el), el, callbacks)
+  DOM.putCustomElHook(el, hook)
+  return hook
 }
 
 export {

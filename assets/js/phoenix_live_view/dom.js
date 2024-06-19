@@ -176,6 +176,20 @@ let DOM = {
     }
   },
 
+  putCustomElHook(el, hook){
+    if(el.isConnected){
+      el.setAttribute("data-phx-hook", "")
+    } else {
+      console.error(`
+        hook attached to non-connected DOM element
+        ensure you are calling createHook within your connectedCallback .${el.outerHTML}
+      `)
+    }
+    this.putPrivate(el, "custom-hook", hook)
+  },
+
+  getCustomElHook(el){ return this.private(el, "custom-hook") },
+
   private(el, key){ return el[PHX_PRIVATE] && el[PHX_PRIVATE][key] },
 
   deletePrivate(el, key){ el[PHX_PRIVATE] && delete (el[PHX_PRIVATE][key]) },
