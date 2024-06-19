@@ -26,11 +26,11 @@ import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
 export default class DOMPatch {
-  static patchEl(fromEl, toEl, liveSocket){
+  static patchWithClonedTree(fromEl, clonedTree, liveSocket){
     let activeElement  = liveSocket.getActiveElement()
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
 
-    morphdom(fromEl, toEl, {
+    morphdom(fromEl, clonedTree, {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl, toEl) => {
         if(DOM.isIgnored(fromEl, phxUpdate)){ return false }

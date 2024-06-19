@@ -904,10 +904,16 @@ export default class View {
       el.innerText = disableRestore
       el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
     }
-    let toEl = DOM.private(el, PHX_REF)
-    if(toEl){
-      let hook = this.triggerBeforeUpdateHook(el, toEl)
-      DOMPatch.patchEl(el, toEl, this.liveSocket)
+    // Check for cloned PHX_REF element that has been morphed behind
+    // the scenes while this element was locked in the DOM.
+    // When we apply the cloned tree to the active DOM element, we must
+    //
+    //   1. execute pending mounted hooks for nodes now in the DOM
+    //   2. undo any ref inside the cloned tree that has since been ack'd
+    let clonedTree = DOM.private(el, PHX_REF)
+    if(clonedTree){
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
       DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
       this.execNewMounted(el)
       if(hook){ hook.__updated() }

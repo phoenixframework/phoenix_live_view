@@ -2021,17 +2021,17 @@ var morphdom_esm_default = morphdom;
 
 // js/phoenix_live_view/dom_patch.js
 var DOMPatch = class {
-  static patchEl(fromEl, toEl, liveSocket) {
+  static patchWithClonedTree(fromEl, clonedTree, liveSocket) {
     let activeElement = liveSocket.getActiveElement();
     let phxUpdate = liveSocket.binding(PHX_UPDATE);
-    morphdom_esm_default(fromEl, toEl, {
+    morphdom_esm_default(fromEl, clonedTree, {
       childrenOnly: false,
-      onBeforeElUpdated: (fromEl2, toEl2) => {
+      onBeforeElUpdated: (fromEl2, toEl) => {
         if (dom_default.isIgnored(fromEl2, phxUpdate)) {
           return false;
         }
         if (activeElement && activeElement.isSameNode(fromEl2) && dom_default.isFormInput(fromEl2)) {
-          dom_default.mergeFocusedInput(fromEl2, toEl2);
+          dom_default.mergeFocusedInput(fromEl2, toEl);
           return false;
         }
       }
@@ -3603,10 +3603,10 @@ var View = class {
       el.innerText = disableRestore;
       el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
     }
-    let toEl = dom_default.private(el, PHX_REF);
-    if (toEl) {
-      let hook = this.triggerBeforeUpdateHook(el, toEl);
-      DOMPatch.patchEl(el, toEl, this.liveSocket);
+    let clonedTree = dom_default.private(el, PHX_REF);
+    if (clonedTree) {
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree);
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
       dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => this.undoElRef(el2, ref));
       this.execNewMounted(el);
       if (hook) {
