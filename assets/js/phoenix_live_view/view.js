@@ -677,6 +677,7 @@ export default class View {
     if(ViewHook.elementID(el) || !el.getAttribute){ return }
     let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
     if(hookName && !this.ownsElement(el)){ return }
+    if(hookName && !document.contains(el)){ return }
     let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
     if(callbacks){

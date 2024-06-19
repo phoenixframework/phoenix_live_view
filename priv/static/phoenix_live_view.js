@@ -3387,6 +3387,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (hookName && !this.ownsElement(el)) {
         return;
       }
+      if (hookName && !document.contains(el)) {
+        return;
+      }
       let callbacks = this.liveSocket.getHookCallbacks(hookName);
       if (callbacks) {
         if (!el.id) {
