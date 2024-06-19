@@ -677,7 +677,6 @@ export default class View {
     if(ViewHook.elementID(el) || !el.getAttribute){ return }
     let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
     if(hookName && !this.ownsElement(el)){ return }
-    if(hookName && !document.contains(el)){ return }
     let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
     if(callbacks){
@@ -902,7 +901,7 @@ export default class View {
       let toEl = DOM.private(el, PHX_REF)
       if(toEl){
         let hook = this.triggerBeforeUpdateHook(el, toEl)
-        DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement())
+        DOMPatch.patchEl(el, toEl, this.liveSocket)
         this.execNewMounted(el)
         if(hook){ hook.__updated() }
         DOM.deletePrivate(el, PHX_REF)

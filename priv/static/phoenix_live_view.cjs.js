@@ -2021,10 +2021,15 @@ var morphdom_esm_default = morphdom;
 
 // js/phoenix_live_view/dom_patch.js
 var DOMPatch = class {
-  static patchEl(fromEl, toEl, activeElement) {
+  static patchEl(fromEl, toEl, liveSocket) {
+    let activeElement = liveSocket.getActiveElement();
+    let phxUpdate = liveSocket.binding(PHX_UPDATE);
     morphdom_esm_default(fromEl, toEl, {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl2, toEl2) => {
+        if (dom_default.isIgnored(fromEl2, phxUpdate)) {
+          return false;
+        }
         if (activeElement && activeElement.isSameNode(fromEl2) && dom_default.isFormInput(fromEl2)) {
           dom_default.mergeFocusedInput(fromEl2, toEl2);
           return false;
@@ -3355,9 +3360,6 @@ var View = class {
     if (hookName && !this.ownsElement(el)) {
       return;
     }
-    if (hookName && !document.contains(el)) {
-      return;
-    }
     let callbacks = this.liveSocket.getHookCallbacks(hookName);
     if (callbacks) {
       if (!el.id) {
@@ -3597,7 +3599,7 @@ var View = class {
       let toEl = dom_default.private(el, PHX_REF);
       if (toEl) {
         let hook = this.triggerBeforeUpdateHook(el, toEl);
-        DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement());
+        DOMPatch.patchEl(el, toEl, this.liveSocket);
         this.execNewMounted(el);
         if (hook) {
           hook.__updated();
