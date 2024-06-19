@@ -208,6 +208,12 @@ export default class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
+          // If the element has  PHX_REF, it is locked and awaiting an ack.
+          // If it's locked, we clone the fromEl tree and instruct morphdom to use
+          // the cloned tree as the source of the morph for this branch from here on out.
+          // We keep a reference to the cloned tree in the element's private data, and
+          // on ack (view.undoRefs), we morph the cloned tree with the true fromEl in the DOM to
+          // apply any changes that happened while the element was locked.
           if(fromEl.hasAttribute(PHX_REF)){
             if(DOM.isUploadInput(fromEl)){
               DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
