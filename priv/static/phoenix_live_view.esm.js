@@ -963,27 +963,6 @@ var DOM = {
   isNowTriggerFormExternal(el, phxTriggerExternal) {
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null;
   },
-  syncPendingRef(fromEl, toEl, disableWith) {
-    let ref = fromEl.getAttribute(PHX_REF);
-    if (ref === null) {
-      return true;
-    }
-    let refSrc = fromEl.getAttribute(PHX_REF_SRC);
-    if (DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null) {
-      if (DOM.isUploadInput(fromEl)) {
-        DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
-      }
-      DOM.putPrivate(fromEl, PHX_REF, toEl);
-      return false;
-    } else {
-      PHX_EVENT_CLASSES.forEach((className) => {
-        fromEl.classList.contains(className) && toEl.classList.add(className);
-      });
-      toEl.setAttribute(PHX_REF, ref);
-      toEl.setAttribute(PHX_REF_SRC, refSrc);
-      return true;
-    }
-  },
   cleanChildNodes(container, phxUpdate) {
     if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
       let toRemove = [];
@@ -2028,12 +2007,17 @@ var morphdom_esm_default = morphdom;
 
 // js/phoenix_live_view/dom_patch.js
 var DOMPatch = class {
-  static patchEl(fromEl, toEl, activeElement) {
-    morphdom_esm_default(fromEl, toEl, {
+  static patchWithClonedTree(fromEl, clonedTree, liveSocket) {
+    let activeElement = liveSocket.getActiveElement();
+    let phxUpdate = liveSocket.binding(PHX_UPDATE);
+    morphdom_esm_default(fromEl, clonedTree, {
       childrenOnly: false,
-      onBeforeElUpdated: (fromEl2, toEl2) => {
+      onBeforeElUpdated: (fromEl2, toEl) => {
+        if (dom_default.isIgnored(fromEl2, phxUpdate)) {
+          return false;
+        }
         if (activeElement && activeElement.isSameNode(fromEl2) && dom_default.isFormInput(fromEl2)) {
-          dom_default.mergeFocusedInput(fromEl2, toEl2);
+          dom_default.mergeFocusedInput(fromEl2, toEl);
           return false;
         }
       }
@@ -2091,7 +2075,6 @@ var DOMPatch = class {
     let focused = liveSocket.getActiveElement();
     let { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
     let phxUpdate = liveSocket.binding(PHX_UPDATE);
-    let disableWith = liveSocket.binding(PHX_DISABLE_WITH);
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
@@ -2205,13 +2188,16 @@ var DOMPatch = class {
           if (fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)) {
             return false;
           }
-          if (!dom_default.syncPendingRef(fromEl, toEl, disableWith)) {
+          if (fromEl.hasAttribute(PHX_REF)) {
             if (dom_default.isUploadInput(fromEl)) {
+              dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
               this.trackBefore("updated", fromEl, toEl);
               updates.push(fromEl);
             }
             dom_default.applyStickyOperations(fromEl);
-            return false;
+            let clone2 = dom_default.private(fromEl, PHX_REF) || fromEl.cloneNode(true);
+            dom_default.putPrivate(fromEl, PHX_REF, clone2);
+            fromEl = clone2;
           }
           if (dom_default.isPhxChild(toEl)) {
             let prevSession = fromEl.getAttribute(PHX_SESSION);
@@ -2243,7 +2229,7 @@ var DOMPatch = class {
             dom_default.syncAttrsToProps(toEl);
             dom_default.applyStickyOperations(toEl);
             this.trackBefore("updated", fromEl, toEl);
-            return true;
+            return fromEl;
           }
         }
       });
@@ -3095,21 +3081,21 @@ var View = class {
     this.el = dom_default.byId(this.id);
     this.el.setAttribute(PHX_ROOT_ID, this.root.id);
   }
-  execNewMounted() {
+  execNewMounted(parent = this.el) {
     let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
     let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
-    dom_default.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
+    dom_default.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
       if (this.ownsElement(hookEl)) {
         dom_default.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom);
         this.maybeAddNewHook(hookEl);
       }
     });
-    dom_default.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
+    dom_default.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
       if (this.ownsElement(hookEl)) {
         this.maybeAddNewHook(hookEl);
       }
     });
-    dom_default.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+    dom_default.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
       if (this.ownsElement(el)) {
         this.maybeMounted(el);
       }
@@ -3577,35 +3563,43 @@ var View = class {
       if (onlyEls && !onlyEls.has(el)) {
         return;
       }
-      el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
-      let disabledVal = el.getAttribute(PHX_DISABLED);
-      let readOnlyVal = el.getAttribute(PHX_READONLY);
-      el.removeAttribute(PHX_REF);
-      el.removeAttribute(PHX_REF_SRC);
-      if (readOnlyVal !== null) {
-        el.readOnly = readOnlyVal === "true" ? true : false;
-        el.removeAttribute(PHX_READONLY);
-      }
-      if (disabledVal !== null) {
-        el.disabled = disabledVal === "true" ? true : false;
-        el.removeAttribute(PHX_DISABLED);
-      }
-      PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));
-      let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE);
-      if (disableRestore !== null) {
-        el.innerText = disableRestore;
-        el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
-      }
-      let toEl = dom_default.private(el, PHX_REF);
-      if (toEl) {
-        let hook = this.triggerBeforeUpdateHook(el, toEl);
-        DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement());
-        if (hook) {
-          hook.__updated();
-        }
-        dom_default.deletePrivate(el, PHX_REF);
-      }
+      this.undoElRef(el, ref);
     });
+  }
+  undoElRef(el, ref) {
+    if (!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)) {
+      return;
+    }
+    el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
+    let disabledVal = el.getAttribute(PHX_DISABLED);
+    let readOnlyVal = el.getAttribute(PHX_READONLY);
+    el.removeAttribute(PHX_REF);
+    el.removeAttribute(PHX_REF_SRC);
+    if (readOnlyVal !== null) {
+      el.readOnly = readOnlyVal === "true" ? true : false;
+      el.removeAttribute(PHX_READONLY);
+    }
+    if (disabledVal !== null) {
+      el.disabled = disabledVal === "true" ? true : false;
+      el.removeAttribute(PHX_DISABLED);
+    }
+    PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));
+    let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE);
+    if (disableRestore !== null) {
+      el.innerText = disableRestore;
+      el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
+    }
+    let clonedTree = dom_default.private(el, PHX_REF);
+    if (clonedTree) {
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree);
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
+      dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => this.undoElRef(el2, ref));
+      this.execNewMounted(el);
+      if (hook) {
+        hook.__updated();
+      }
+      dom_default.deletePrivate(el, PHX_REF);
+    }
   }
   putRef(elements, event, opts = {}) {
     let newRef = this.ref++;
@@ -4073,7 +4067,6 @@ var LiveSocket = class {
     this.localStorage = opts.localStorage || window.localStorage;
     this.sessionStorage = opts.sessionStorage || window.sessionStorage;
     this.boundTopLevelEvents = false;
-    this.boundEventNames = new Set();
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign({
       onPatchStart: closure(),
@@ -4092,7 +4085,7 @@ var LiveSocket = class {
     });
   }
   version() {
-    return "1.0.0-rc.2";
+    return "1.0.0-rc.1";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
@@ -4355,12 +4348,6 @@ var LiveSocket = class {
       elements = elements.filter((el) => !dom_default.isChildOfAny(el, stickies));
     }
     elements.forEach((el) => {
-      for (let event of this.boundEventNames) {
-        el.addEventListener(event, (e) => {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-        }, true);
-      }
       this.execJS(el, el.getAttribute(removeAttr), "remove");
     });
   }
@@ -4489,8 +4476,8 @@ var LiveSocket = class {
         js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
       }
     });
-    this.on("dragover", (e) => e.preventDefault());
-    this.on("drop", (e) => {
+    window.addEventListener("dragover", (e) => e.preventDefault());
+    window.addEventListener("drop", (e) => {
       e.preventDefault();
       let dropTargetId = maybe(closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)), (trueTarget) => {
         return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET));
@@ -4564,7 +4551,7 @@ var LiveSocket = class {
     }
   }
   bindClicks() {
-    this.on("mousedown", (e) => this.clickStartedAtTarget = e.target);
+    window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
     this.bindClick("click", "click");
   }
   bindClick(eventName, bindingName) {
@@ -4762,7 +4749,7 @@ var LiveSocket = class {
           });
         });
       }
-    });
+    }, true);
     this.on("submit", (e) => {
       let phxEvent = e.target.getAttribute(this.binding("submit"));
       if (!phxEvent) {
@@ -4776,7 +4763,7 @@ var LiveSocket = class {
       this.withinOwners(e.target, (view) => {
         js_default.exec("submit", phxEvent, view, e.target, ["push", { submitter: e.submitter }]);
       });
-    });
+    }, false);
     for (let type of ["change", "input"]) {
       this.on(type, (e) => {
         let phxChange = this.binding("change");
@@ -4807,7 +4794,7 @@ var LiveSocket = class {
             js_default.exec("change", phxEvent, view, input, ["push", { _target: e.target.name, dispatcher }]);
           });
         });
-      });
+      }, false);
     }
     this.on("reset", (e) => {
       let form = e.target;
@@ -4841,7 +4828,6 @@ var LiveSocket = class {
     this.silenced = false;
   }
   on(event, callback) {
-    this.boundEventNames.add(event);
     window.addEventListener(event, (e) => {
       if (!this.silenced) {
         callback(e);

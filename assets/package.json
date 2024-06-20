@@ -10,7 +10,7 @@
     "test.watch": "jest --watch"
   },
   "dependencies": {
-    "morphdom": "git+https://github.com/patrick-steele-idem/morphdom.git#cm-before-from-el"
+    "morphdom": "2.7.3"
   },
   "devDependencies": {
     "@babel/cli": "7.23.4",
