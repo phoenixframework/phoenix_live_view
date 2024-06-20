@@ -108,6 +108,14 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.0-rc.3 (2024-06-20)
+
+### Bug fixes
+  * Fix issue where locked data-phx-ref containers would still be patched in some cases
+  * Fix issue where locked data-phx-ref containers would fail to have pending updates like streams applied after acknowledgment
+  * Fix issue where a LiveComponent issuing live navigation sends an acknowledgement too early before its parent LiveView handle_params diff is sent
+  * Fix issue allowing phx-remove elements to remain interactive while transitioning out from the page
+
 ## 1.0.0-rc.2 (2024-06-19)
 
 ### Bug fixes
