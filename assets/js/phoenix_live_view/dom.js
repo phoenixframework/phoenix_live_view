@@ -4,7 +4,6 @@ import {
   DEBOUNCE_TRIGGER,
   FOCUSABLE_INPUTS,
   PHX_COMPONENT,
-  PHX_EVENT_CLASSES,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_MAIN,
@@ -434,25 +433,6 @@ let DOM = {
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
-  },
-
-  syncPendingRef(fromEl, toEl, disableWith){
-    let ref = fromEl.getAttribute(PHX_REF)
-    if(ref === null){ return true }
-    let refSrc = fromEl.getAttribute(PHX_REF_SRC)
-
-    if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
-      if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
-      DOM.putPrivate(fromEl, PHX_REF, toEl)
-      return false
-    } else {
-      PHX_EVENT_CLASSES.forEach(className => {
-        fromEl.classList.contains(className) && toEl.classList.add(className)
-      })
-      toEl.setAttribute(PHX_REF, ref)
-      toEl.setAttribute(PHX_REF_SRC, refSrc)
-      return true
-    }
   },
 
   cleanChildNodes(container, phxUpdate){

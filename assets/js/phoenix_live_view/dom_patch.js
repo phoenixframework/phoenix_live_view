@@ -9,6 +9,7 @@ import {
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
+  PHX_REF,
   PHX_STREAM,
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
@@ -25,10 +26,14 @@ import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
 export default class DOMPatch {
-  static patchEl(fromEl, toEl, activeElement){
-    morphdom(fromEl, toEl, {
+  static patchWithClonedTree(fromEl, clonedTree, liveSocket){
+    let activeElement  = liveSocket.getActiveElement()
+    let phxUpdate = liveSocket.binding(PHX_UPDATE)
+
+    morphdom(fromEl, clonedTree, {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl, toEl) => {
+        if(DOM.isIgnored(fromEl, phxUpdate)){ return false }
         if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
           DOM.mergeFocusedInput(fromEl, toEl)
           return false
@@ -84,7 +89,6 @@ export default class DOMPatch {
     let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
-    let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
@@ -204,13 +208,22 @@ export default class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          if(!DOM.syncPendingRef(fromEl, toEl, disableWith)){
+          // If the element has  PHX_REF, it is locked and awaiting an ack.
+          // If it's locked, we clone the fromEl tree and instruct morphdom to use
+          // the cloned tree as the source of the morph for this branch from here on out.
+          // We keep a reference to the cloned tree in the element's private data, and
+          // on ack (view.undoRefs), we morph the cloned tree with the true fromEl in the DOM to
+          // apply any changes that happened while the element was locked.
+          if(fromEl.hasAttribute(PHX_REF)){
             if(DOM.isUploadInput(fromEl)){
+              DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
               this.trackBefore("updated", fromEl, toEl)
               updates.push(fromEl)
             }
             DOM.applyStickyOperations(fromEl)
-            return false
+            let clone = DOM.private(fromEl, PHX_REF) || fromEl.cloneNode(true)
+            DOM.putPrivate(fromEl, PHX_REF, clone)
+            fromEl = clone
           }
 
           // nested view handling
@@ -246,7 +259,7 @@ export default class DOMPatch {
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
             this.trackBefore("updated", fromEl, toEl)
-            return true
+            return fromEl
           }
         }
       })
