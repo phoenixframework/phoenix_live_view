@@ -720,7 +720,7 @@ var DOM = {
   },
   withinSameLiveView(node, parent) {
     while (node = node.parentNode) {
-      if (node.isSameNode(parent)) {
+      if (node.isSameNode(parent) || node.id && node.id === parent.id) {
         return true;
       }
       if (node.getAttribute(PHX_SESSION) !== null) {
