@@ -2066,6 +2066,14 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_doesnt_change("", opening_delimiter: "\"\"\"")
   end
 
+  test "doesn't convert <% to <%=" do
+    assert_formatter_doesnt_change("""
+    <% fun = fn assigns -> %>
+      <hr />
+    <% end %>
+    """)
+  end
+
   # TODO: Remove this `if` when we require Elixir 1.14+
   if function_exported?(EEx, :tokenize, 2) do
     test "handle EEx comments" do

@@ -287,15 +287,19 @@ LiveView is mounted, even after `live_redirect`s.
 
 The important concepts to keep in mind are:
 
-  * If you have both LiveViews and regular web requests, then any
-    authorization logic in your plugs must be replicated in your LiveView.
-    Code that executes on the `mount` callback always runs on both live
-    and regular web requests to that LiveView
+  * Your authentication logic (logging the user in) is typically part of
+    your regular web request pipeline and it is shared by both controllers
+    and LiveViews. Authentication then stores the user information in the
+    session. Regular web requests use `plug` to read the user from a session,
+    LiveViews read it inside an `on_mount` callback. This is typically a
+    single database lookup on both cases. Running `mix phx.gen.auth` sets
+    up all that is necessary
 
-  * All actions (events) must also be explicitly authorized by
-    checking permissions. Those permissions are often domain/business
-    specific, and typically happen in your context modules. This is
-    also a requirement for regular requests and responses
+  * Once authenticated, your authorization logic in LiveViews will happen
+    both during `mount` (such as "can the user see this page?") and during
+    events (like "can the user delete this item?"). Those rules are often
+    domain/business specific, and typically happen in your context modules.
+    This is also a requirement for regular requests and responses
 
   * `live_session` can be used to draw boundaries between groups of
     LiveViews. While you could use `live_session` to draw lines between

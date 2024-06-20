@@ -158,6 +158,8 @@ export default class LiveSocket {
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
+    this.boundEventNames = new Set()
+    this.serverCloseRef = null
     this.domCallbacks = Object.assign({
       onPatchStart: closure(),
       onPatchEnd: closure(),
@@ -232,6 +234,12 @@ export default class LiveSocket {
 
   disconnect(callback){
     clearTimeout(this.reloadWithJitterTimer)
+    // remove the socket close listener to avoid trying to handle
+    // a server close event when it is actually caused by us disconnecting
+    if(this.serverCloseRef){
+      this.socket.off(this.serverCloseRef)
+      this.serverCloseRef = null
+    }
     this.socket.disconnect(callback)
   }
 
@@ -430,6 +438,14 @@ export default class LiveSocket {
       elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
     }
     elements.forEach(el => {
+      // prevent all listeners we care about from bubbling to window
+      // since we are removing the element
+      for(let event of this.boundEventNames){
+        el.addEventListener(event, e => {
+          e.preventDefault()
+          e.stopImmediatePropagation()
+        }, true)
+      }
       this.execJS(el, el.getAttribute(removeAttr), "remove")
     })
   }
@@ -519,7 +535,7 @@ export default class LiveSocket {
 
     this.boundTopLevelEvents = true
     // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
-    this.socket.onClose(event => {
+    this.serverCloseRef = this.socket.onClose(event => {
       // failsafe reload if normal closure and we still have a main LV
       if(event && event.code === 1000 && this.main){ return this.reloadWithJitter(this.main) }
     })
@@ -555,8 +571,8 @@ export default class LiveSocket {
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
-    window.addEventListener("dragover", e => e.preventDefault())
-    window.addEventListener("drop", e => {
+    this.on("dragover", e => e.preventDefault())
+    this.on("drop", e => {
       e.preventDefault()
       let dropTargetId = maybe(closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)), trueTarget => {
         return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET))
@@ -631,29 +647,24 @@ export default class LiveSocket {
   }
 
   bindClicks(){
-    window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
-    this.bindClick("click", "click", false)
-    this.bindClick("mousedown", "capture-click", true)
+    this.on("mousedown", e => this.clickStartedAtTarget = e.target)
+    this.bindClick("click", "click")
   }
 
-  bindClick(eventName, bindingName, capture){
+  bindClick(eventName, bindingName){
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
       let target = null
-      if(capture){
-        target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
-      } else {
-        // a synthetic click event (detail 0) will not have caused a mousedown event,
-        // therefore the clickStartedAtTarget is stale
-        if(e.detail === 0) this.clickStartedAtTarget = e.target
-        let clickStartedAtTarget = this.clickStartedAtTarget || e.target
-        target = closestPhxBinding(clickStartedAtTarget, click)
-        this.dispatchClickAway(e, clickStartedAtTarget)
-        this.clickStartedAtTarget = null
-      }
+      // a synthetic click event (detail 0) will not have caused a mousedown event,
+      // therefore the clickStartedAtTarget is stale
+      if(e.detail === 0) this.clickStartedAtTarget = e.target
+      let clickStartedAtTarget = this.clickStartedAtTarget || e.target
+      target = closestPhxBinding(clickStartedAtTarget, click)
+      this.dispatchClickAway(e, clickStartedAtTarget)
+      this.clickStartedAtTarget = null
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
-        if(!capture && DOM.isNewPageClick(e, window.location)){ this.unload() }
+        if(DOM.isNewPageClick(e, window.location)){ this.unload() }
         return
       }
 
@@ -667,7 +678,7 @@ export default class LiveSocket {
           JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
-    }, capture)
+    }, false)
   }
 
   dispatchClickAway(e, clickStartedAt){
@@ -838,7 +849,7 @@ export default class LiveSocket {
           })
         })
       }
-    }, true)
+    })
 
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
@@ -851,7 +862,7 @@ export default class LiveSocket {
       this.withinOwners(e.target, view => {
         JS.exec("submit", phxEvent, view, e.target, ["push", {submitter: e.submitter}])
       })
-    }, false)
+    })
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
@@ -883,7 +894,7 @@ export default class LiveSocket {
             JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher}])
           })
         })
-      }, false)
+      })
     }
     this.on("reset", (e) => {
       let form = e.target
@@ -921,6 +932,7 @@ export default class LiveSocket {
   }
 
   on(event, callback){
+    this.boundEventNames.add(event)
     window.addEventListener(event, e => {
       if(!this.silenced){ callback(e) }
     })

@@ -349,12 +349,12 @@ defmodule Phoenix.LiveView do
     * `:global_prefixes` - the global prefixes to use for components. See
       `Global Attributes` in `Phoenix.Component` for more information.
 
-    * `:layout` - configures the layout the `LiveView` will be rendered in.
+    * `:layout` - configures the layout the LiveView will be rendered in.
       This layout can be overridden by on `c:mount/3` or via the `:layout`
       option in `Phoenix.LiveView.Router.live_session/2`
 
-    * `:log` - configures the log level for the `LiveView`, either false
-      or a Log level
+    * `:log` - configures the log level for the LiveView, either `false`
+      or a log level
 
   """
 
@@ -411,11 +411,11 @@ defmodule Phoenix.LiveView do
     * `:container` - an optional tuple for the HTML tag and DOM attributes to
       be used for the LiveView container. For example: `{:li, style: "color: blue;"}`.
 
-    * `:layout` - configures the layout the `LiveView` will be rendered in.
+    * `:layout` - configures the layout the LiveView will be rendered in.
       This layout can be overridden by on `c:mount/3` or via the `:layout`
       option in `Phoenix.LiveView.Router.live_session/2`
 
-    * `:log` - configures the log level for the `LiveView`, either false
+    * `:log` - configures the log level for the LiveView, either `false`
       or a log level
 
     * `:on_mount` - a list of tuples with module names and argument to be invoked
@@ -758,21 +758,22 @@ defmodule Phoenix.LiveView do
       Defaults `64_000`.
 
     * `:chunk_timeout` - The time in milliseconds to wait before closing the
-      upload channel when a new chunk has not been received. Defaults `10_000`.
+      upload channel when a new chunk has not been received. Defaults to `10_000`.
 
-    * `:external` - The 2-arity function for generating metadata for external
+    * `:external` - A 2-arity function for generating metadata for external
       client uploaders. This function must return either `{:ok, meta, socket}`
       or `{:error, meta, socket}` where meta is a map. See the Uploads section
       for example usage.
 
-    * `:progress` - The optional 3-arity function for receiving progress events
+    * `:progress` - An optional 3-arity function for receiving progress events.
 
     * `:auto_upload` - Instructs the client to upload the file automatically
-      on file selection instead of waiting for form submits. Default false.
+      on file selection instead of waiting for form submits. Defaults to `false`.
 
-    * `:writer` - The `Phoenix.LiveView.UploadWriter` module to use for writing
-      the uploaded chunks. Defaults to writing to a temporary file for consumption.
-      See the `Phoenix.LiveView.UploadWriter` docs for custom usage.
+    * `:writer` - A module implementing the `Phoenix.LiveView.UploadWriter`
+      behaviour to use for writing the uploaded chunks. Defaults to writing to a
+      temporary file for consumption. See the `Phoenix.LiveView.UploadWriter` docs
+      for custom usage.
 
   Raises when a previously allowed upload under the same name is still active.
 
@@ -1463,6 +1464,9 @@ defmodule Phoenix.LiveView do
   Replying to a client event:
 
       # JavaScript:
+      # /**
+      #  * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+      #  */
       # let Hooks = {}
       # Hooks.ClientHook = {
       #   mounted() {
@@ -1518,13 +1522,13 @@ defmodule Phoenix.LiveView do
   Streams are a mechanism for managing large collections on the client without
   keeping the resources on the server.
 
-    * `name` - The string or atom name of the key to place under the
+    * `name` - A string or atom name of the key to place under the
       `@streams` assign.
-    * `items` - The enumerable of items to insert.
+    * `items` - An enumerable of items to insert.
 
   The following options are supported:
 
-    * `:at` - the index to insert or update the items in the
+    * `:at` - The index to insert or update the items in the
       collection on the client. By default `-1` is used, which appends the items
       to the parent DOM container. A value of `0` prepends the items.
 
@@ -1541,10 +1545,10 @@ defmodule Phoenix.LiveView do
 
           stream(socket, :songs, Enum.reverse([song1, song2, song3]), at: 0)
 
-    * `:reset` - the boolean to reset the stream on the client or not. Defaults
+    * `:reset` - A boolean to reset the stream on the client or not. Defaults
       to `false`.
 
-    * `:limit` - the optional positive or negative number of results to limit
+    * `:limit` - An optional positive or negative number of results to limit
       on the UI on the client. As new items are streamed, the UI will remove existing
       items to maintain the limit. For example, to limit the stream to the last 10 items
       in the UI while appending new items, pass a negative value:
@@ -1609,8 +1613,12 @@ defmodule Phoenix.LiveView do
        along with a unique DOM id.
     2. Each stream item must include its DOM id on the item's element.
 
-  > **Note**: Failing to place `phx-update="stream"` on the **immediate parent** for
+  > #### Note {: .warning}
+  > Failing to place `phx-update="stream"` on the **immediate parent** for
   > **each stream** will result in broken behavior.
+  >
+  > Also, do not alter the generated DOM ids, e.g., by prefixing them. Doing so will
+  > result in broken behavior.
 
   When consuming a stream in a template, the DOM id and item is passed as a tuple,
   allowing convenient inclusion of the DOM id for each item. For example:
@@ -1628,12 +1636,56 @@ defmodule Phoenix.LiveView do
     </tbody>
   </table>
   ```
+
   We consume the stream in a for comprehension by referencing the
   `@streams.songs` assign. We used the computed DOM id to populate
   the `<tr>` id, then we render the table row as usual.
 
   Now `stream_insert/3` and `stream_delete/3` may be issued and new rows will
   be inserted or deleted from the client.
+
+  ## Handling the empty case
+
+  When rendering a list of items, it is common to show a message for the empty case.
+  But when using streams, we cannot rely on `Enum.empty?/1` or similar approaches to
+  check if the list is empty. Instead we can use the CSS `:only-child` selector
+  and show the message client side:
+
+  ```heex
+  <table>
+    <tbody id="songs" phx-update="stream">
+      <tr id="songs-empty" class="only:block hidden">
+        <td colspan="2">No songs found</td>
+      </tr>
+      <tr
+        :for={{dom_id, song} <- @streams.songs}
+        id={dom_id}
+      >
+        <td><%= song.title %></td>
+        <td><%= song.duration %></td>
+      </tr>
+    </tbody>
+  </table>
+  ```
+
+  ## Non-stream items in stream containers
+
+  In the section on handling the empty case, we showed how to render a message when
+  the stream is empty by rendering a non-stream item inside the stream container.
+
+  Note that for non-stream items inside a `phx-update="stream"` container, the following
+  needs to be considered:
+
+    1. Items can be added and updated, but not removed, even if the stream is reset.
+
+  This means that if you try to conditionally render a non-stream item inside a stream container,
+  it won't be removed if it was rendered once.
+
+    2. Items are affected by the `:at` option.
+
+  For example, when you render a non-stream item at the beginning of the stream container and then
+  prepend items (with `at: 0`) to the stream, the non-stream item will be pushed down.
+
   """
   @spec stream(%Socket{}, name :: atom | String.t(), items :: Enumerable.t(), opts :: Keyword.t()) ::
           %Socket{}
@@ -1648,7 +1700,7 @@ defmodule Phoenix.LiveView do
 
   The following options are supported:
 
-    * `:dom_id` - The optional function to generate each stream item's DOM id.
+    * `:dom_id` - An optional function to generate each stream item's DOM id.
       The function accepts each stream item and converts the item to a string id.
       By default, the `:id` field of a map or struct will be used if the item has
       such a field, and will be prefixed by the `name` hyphenated with the id.
@@ -1707,13 +1759,13 @@ defmodule Phoenix.LiveView do
 
   The following options are supported:
 
-    * `:at` - the index to insert or update the item in the collection on the client.
+    * `:at` - The index to insert or update the item in the collection on the client.
       By default, the item is appended to the parent DOM container. This is the same as
       passing a limit of `-1`.
       If the item already exists in the parent DOM container then it will be
       updated in place.
 
-    * `:limit` - the limit of items to maintain in the UI. A limit passed to `stream/4` does
+    * `:limit` - A limit of items to maintain in the UI. A limit passed to `stream/4` does
       not affect subsequent calls to `stream_insert/4`, therefore the limit must be passed
       here as well in order to be enforced. See `stream/4` for more information on
       limiting streams.

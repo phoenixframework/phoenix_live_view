@@ -198,10 +198,10 @@ defmodule Phoenix.LiveViewTest do
   Spawns a connected LiveView process.
 
   If a `path` is given, then a regular `get(conn, path)`
-  is done and the page is upgraded to a `LiveView`. If
+  is done and the page is upgraded to a LiveView. If
   no path is given, it assumes a previously rendered
   `%Plug.Conn{}` is given, which will be converted to
-  a `LiveView` immediately.
+  a LiveView immediately.
 
   ## Examples
 

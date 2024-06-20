@@ -292,7 +292,7 @@ The `Phoenix.LiveView.JS.push/3` command is particularly powerful in allowing yo
 <button phx-click="clicked">click</button>
 ```
 
-Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targeted, which element should receive css loading state classes, etc. This can be accomplished with options on the JS push command. For example:
+Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targeted, which element should receive CSS loading state classes, etc. This can be accomplished with options on the JS push command. For example:
 
 ```heex
 <button phx-click={JS.push("clicked", target: @myself, loading: ".container")}>click</button>
@@ -344,8 +344,10 @@ It does not cascade to children.
 
 ## Lifecycle Events
 
-LiveView supports the `phx-connected`, and `phx-disconnected` events to react to
-connection lifecycle events with JS commands. For example, to show an element when the LiveView has lost its connection and hide it when the connection recovers:
+LiveView supports the `phx-connected` and `phx-disconnected` bindings to react
+to connection lifecycle events with JS commands. For example, to show an element
+when the LiveView has lost its connection and hide it when the connection
+recovers:
 
 ```heex
 <div id="status" class="hidden" phx-disconnected={JS.show()} phx-connected={JS.hide()}>
@@ -375,7 +377,7 @@ For example:
 
 ## Loading states and errors
 
-All `phx-` event bindings apply their own css classes when pushed. For example
+All `phx-` event bindings apply their own CSS classes when pushed. For example
 the following markup:
 
 ```heex
@@ -383,12 +385,12 @@ the following markup:
 ```
 
 On click, would receive the `phx-click-loading` class, and on keydown would receive
-the `phx-keydown-loading` class. The css loading classes are maintained until an
+the `phx-keydown-loading` class. The CSS loading classes are maintained until an
 acknowledgement is received on the client for the pushed event.
 
 In the case of forms, when a `phx-change` is sent to the server, the input element
 which emitted the change receives the `phx-change-loading` class, along with the
-parent form tag. The following events receive css loading classes:
+parent form tag. The following events receive CSS loading classes:
 
   - `phx-click` - `phx-click-loading`
   - `phx-change` - `phx-change-loading`
@@ -471,7 +473,7 @@ Our `paginate_posts` function fetches a page of posts, and determines if the use
 </div>
 ```
 
-There's not much here, but that's the point! This little snippet of UI is driving a fully virtualized list with bidirectional infinite scrolling. We use the `phx-viewport-top` binding to send the `"prev-page"` event to the LiveView, but only if the user is beyond the first page. It doesn't make sense to load negative page results, so we remove the binding entirely in those cases. Next, we wire up `phx-viewport-bottom` to send the `"next-page"` event, but only if we've yet to reach the end of the timeline. Finally, we conditionally apply some css classes which sets a large top and bottom padding to twice the viewport height based on the current pagination for smooth scrolling.
+There's not much here, but that's the point! This little snippet of UI is driving a fully virtualized list with bidirectional infinite scrolling. We use the `phx-viewport-top` binding to send the `"prev-page"` event to the LiveView, but only if the user is beyond the first page. It doesn't make sense to load negative page results, so we remove the binding entirely in those cases. Next, we wire up `phx-viewport-bottom` to send the `"next-page"` event, but only if we've yet to reach the end of the timeline. Finally, we conditionally apply some CSS classes which sets a large top and bottom padding to twice the viewport height based on the current pagination for smooth scrolling.
 
 To complete our solution, we only need to handle the `"prev-page"` and `"next-page"` events in the LiveView:
 

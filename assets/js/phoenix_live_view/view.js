@@ -60,7 +60,7 @@ export let prependFormDataKey = (key, prefix) => {
   // Remove the "[]" if it's an array
   let baseKey = isArray ? key.slice(0, -2) : key
   // Replace last occurrence of key before a closing bracket or the end with key plus suffix
-  baseKey = baseKey.replace(/(\w+)(\]?$)/, `${prefix}$1$2`)
+  baseKey = baseKey.replace(/([^\[\]]+)(\]?$)/, `${prefix}$1$2`)
   // Add back the "[]" if it was an array
   if(isArray){ baseKey += "[]" }
   return baseKey
@@ -155,6 +155,7 @@ export default class View {
     this.formSubmits = []
     this.children = this.parent ? null : {}
     this.root.children[this.id] = {}
+    this.formsForRecovery = {}
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       let url = this.href && this.expandURL(this.href)
       return {
@@ -264,20 +265,29 @@ export default class View {
     this.liveSocket.transition(time, onStart, onDone)
   }
 
-  withinTargets(phxTarget, callback){
+  // calls the callback with the view and target element for the given phxTarget
+  // targets can be:
+  //  * an element itself, then it is simply passed to liveSocket.owner;
+  //  * a CID (Component ID), then we first search the component's element in the DOM
+  //  * a selector, then we search the selector in the DOM and call the callback
+  //    for each element found with the corresponding owner view
+  withinTargets(phxTarget, callback, dom = document, viewEl){
+    // in the form recovery case we search in a template fragment instead of
+    // the real dom, therefore we optionally pass dom and viewEl
+
     if(phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement){
       return this.liveSocket.owner(phxTarget, view => callback(view, phxTarget))
     }
 
     if(isCid(phxTarget)){
-      let targets = DOM.findComponentNodeList(this.el, phxTarget)
+      let targets = DOM.findComponentNodeList(viewEl || this.el, phxTarget)
       if(targets.length === 0){
         logError(`no component found matching phx-target of ${phxTarget}`)
       } else {
         callback(this, parseInt(phxTarget))
       }
     } else {
-      let targets = Array.from(document.querySelectorAll(phxTarget))
+      let targets = Array.from(dom.querySelectorAll(phxTarget))
       if(targets.length === 0){ logError(`nothing found matching the phx-target selector "${phxTarget}"`) }
       targets.forEach(target => this.liveSocket.owner(target, view => callback(view, target)))
     }
@@ -287,7 +297,7 @@ export default class View {
     this.log(type, () => ["", clone(rawDiff)])
     let {diff, reply, events, title} = Rendered.extract(rawDiff)
     callback({diff, reply, events})
-    if(title){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
+    if(typeof title === "string"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
   }
 
   onJoin(resp){
@@ -299,6 +309,9 @@ export default class View {
     this.childJoins = 0
     this.joinPending = true
     this.flash = null
+    if(this.root === this){
+      this.formsForRecovery = this.getFormsForRecovery()
+    }
 
     if(liveview_version !== this.liveSocket.version()){
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`)
@@ -309,24 +322,11 @@ export default class View {
       this.rendered = new Rendered(this.id, diff)
       let [html, streams] = this.renderContainer(null, "join")
       this.dropPendingRefs()
-      let forms = this.formsForRecovery(html).filter(([form, newForm, newCid]) => {
-        return !this.pendingForms.has(form.id)
-      })
       this.joinCount++
 
-      if(forms.length > 0){
-        forms.forEach(([form, newForm, newCid], i) => {
-          this.pendingForms.add(form.id)
-          this.pushFormRecovery(form, newCid, resp => {
-            this.pendingForms.delete(form.id)
-            if(i === forms.length - 1){
-              this.onJoinComplete(resp, html, streams, events)
-            }
-          })
-        })
-      } else {
+      this.maybeRecoverForms(html, () => {
         this.onJoinComplete(resp, html, streams, events)
-      }
+      })
     })
   }
 
@@ -338,9 +338,6 @@ export default class View {
   }
 
   onJoinComplete({live_patch}, html, streams, events){
-    // we can clear pending form recoveries now that we've joined.
-    // They either all resolved or were abandoned
-    this.pendingForms.clear()
     // In order to provide a better experience, we want to join
     // all LiveViews first and only then apply their patches.
     if(this.joinCount > 1 || (this.parent && !this.parent.isJoinPending())){
@@ -383,21 +380,21 @@ export default class View {
   // by owner to ensure we aren't duplicating hooks across disconnect
   // and connected states. This also handles cases where hooks exist
   // in a root layout with a LV in the body
-  execNewMounted(){
+  execNewMounted(parent = this.el){
     let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
-    DOM.all(this.el, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
+    DOM.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
       if(this.ownsElement(hookEl)){
         DOM.maybeAddPrivateHooks(hookEl, phxViewportTop, phxViewportBottom)
         this.maybeAddNewHook(hookEl)
       }
     })
-    DOM.all(this.el, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
+    DOM.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
       if(this.ownsElement(hookEl)){
         this.maybeAddNewHook(hookEl)
       }
     })
-    DOM.all(this.el, `[${this.binding(PHX_MOUNTED)}]`, el => {
+    DOM.all(parent, `[${this.binding(PHX_MOUNTED)}]`, el => {
       if(this.ownsElement(el)){
         this.maybeMounted(el)
       }
@@ -490,7 +487,6 @@ export default class View {
     patch.perform(isJoinPatch)
     this.afterElementsRemoved(removedEls, pruneCids)
 
-
     this.liveSocket.triggerDOM("onPatchEnd", [patch.targetContainer])
     return phxChildrenAdded
   }
@@ -519,6 +515,60 @@ export default class View {
 
   joinNewChildren(){
     DOM.findPhxChildren(this.el, this.id).forEach(el => this.joinChild(el))
+  }
+
+  maybeRecoverForms(html, callback){
+    const phxChange = this.binding("change")
+    const oldForms = this.root.formsForRecovery
+    // So why do we create a template element here?
+    // One way to recover forms would be to immediately apply the mount
+    // patch and then afterwards recover the forms. However, this would
+    // cause a flicker, because the mount patch would remove the form content
+    // until it is restored. Therefore LV decided to do form recovery with the
+    // raw HTML before it is applied and delay the mount patch until the form
+    // recovery events are done.
+    let template = document.createElement("template")
+    template.innerHTML = html
+    // because we work with a template element, we must manually copy the attributes
+    // otherwise the owner / target helpers don't work properly
+    const rootEl = template.content.firstElementChild
+    rootEl.id = this.id
+    rootEl.setAttribute(PHX_ROOT_ID, this.root.id)
+    rootEl.setAttribute(PHX_SESSION, this.getSession())
+    rootEl.setAttribute(PHX_STATIC, this.getStatic())
+    rootEl.setAttribute(PHX_PARENT_ID, this.parent ? this.parent.id : null)
+
+    // we go over all form elements in the new HTML for the LV
+    // and look for old forms in the `formsForRecovery` object;
+    // the formsForRecovery can also contain forms from child views
+    const formsToRecover =
+      // we go over all forms in the new DOM; because this is only the HTML for the current
+      // view, we can be sure that all forms are owned by this view:
+      DOM.all(template.content, "form")
+        // only recover forms that have an id and are in the old DOM
+        .filter(newForm => newForm.id && oldForms[newForm.id])
+        // abandon forms we already tried to recover to prevent looping a failed state
+        .filter(newForm => !this.pendingForms.has(newForm.id))
+        // only recover if the form has the same phx-change value
+        .filter(newForm => oldForms[newForm.id].getAttribute(phxChange) === newForm.getAttribute(phxChange))
+        .map(newForm => {
+          return [oldForms[newForm.id], newForm]
+        })
+
+    if(formsToRecover.length === 0){
+      return callback()
+    }
+
+    formsToRecover.forEach(([oldForm, newForm], i) => {
+      this.pendingForms.add(newForm.id)
+      this.pushFormRecovery(oldForm, newForm, template.content, () => {
+        this.pendingForms.delete(newForm.id)
+        // we only call the callback once all forms have been recovered
+        if(i === formsToRecover.length - 1){
+          callback()
+        }
+      })
+    })
   }
 
   getChildById(id){ return this.root.children[this.id][id] }
@@ -565,6 +615,11 @@ export default class View {
   }
 
   onAllChildJoinsComplete(){
+    // we can clear pending form recoveries now that we've joined.
+    // They either all resolved or were abandoned
+    this.pendingForms.clear()
+    // we can also clear the formsForRecovery object to not keep old form elements around
+    this.formsForRecovery = {}
     this.joinCallback(() => {
       this.pendingJoinOps.forEach(([view, op]) => {
         if(!view.isDestroyed()){ op() }
@@ -839,50 +894,64 @@ export default class View {
 
     DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
       if(onlyEls && !onlyEls.has(el)){ return }
+      this.undoElRef(el, phxEvent, ref)
+    })
+  }
 
-      let disabledVal = el.getAttribute(PHX_DISABLED)
-      let readOnlyVal = el.getAttribute(PHX_READONLY)
-      // remove refs
-      el.removeAttribute(PHX_REF)
-      el.removeAttribute(PHX_REF_SRC)
-      // restore inputs
-      if(readOnlyVal !== null){
-        el.readOnly = readOnlyVal === "true" ? true : false
-        el.removeAttribute(PHX_READONLY)
-      }
-      if(disabledVal !== null){
-        el.disabled = disabledVal === "true" ? true : false
-        el.removeAttribute(PHX_DISABLED)
-      }
-      // remove classes
-      PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
-      // restore disables
-      let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
-      if(disableRestore !== null){
-        el.innerText = disableRestore
-        el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
-      }
-      let toEl = DOM.private(el, PHX_REF)
-      if(toEl){
-        let hook = this.triggerBeforeUpdateHook(el, toEl)
-        DOMPatch.patchEl(el, toEl, this.liveSocket.getActiveElement())
-        if(hook){ hook.__updated() }
-        DOM.deletePrivate(el, PHX_REF)
-      }
-      let detail = {ref, event: phxEvent}
-      if(phxEvent){
-        el.dispatchEvent(new CustomEvent(`phx:unlock:${phxEvent}`, {
-          detail: detail,
-          bubbles: true,
-          cancelable: false
-        }))
-      }
-      el.dispatchEvent(new CustomEvent("phx:unlock", {
+  undoElRef(el, phxEvent, ref){
+    if(!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)){ return }
+
+    el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
+    let disabledVal = el.getAttribute(PHX_DISABLED)
+    let readOnlyVal = el.getAttribute(PHX_READONLY)
+    // remove refs
+    el.removeAttribute(PHX_REF)
+    el.removeAttribute(PHX_REF_SRC)
+    // restore inputs
+    if(readOnlyVal !== null){
+      el.readOnly = readOnlyVal === "true" ? true : false
+      el.removeAttribute(PHX_READONLY)
+    }
+    if(disabledVal !== null){
+      el.disabled = disabledVal === "true" ? true : false
+      el.removeAttribute(PHX_DISABLED)
+    }
+    // remove classes
+    PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
+    // restore disables
+    let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
+    if(disableRestore !== null){
+      el.innerText = disableRestore
+      el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
+    }
+    // Check for cloned PHX_REF element that has been morphed behind
+    // the scenes while this element was locked in the DOM.
+    // When we apply the cloned tree to the active DOM element, we must
+    //
+    //   1. execute pending mounted hooks for nodes now in the DOM
+    //   2. undo any ref inside the cloned tree that has since been ack'd
+    let clonedTree = DOM.private(el, PHX_REF)
+    if(clonedTree){
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
+      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, phxEvent, ref))
+      this.execNewMounted(el)
+      if(hook){ hook.__updated() }
+      DOM.deletePrivate(el, PHX_REF)
+    }
+    let detail = {ref, event: phxEvent}
+    if(phxEvent){
+      el.dispatchEvent(new CustomEvent(`phx:unlock:${phxEvent}`, {
         detail: detail,
         bubbles: true,
         cancelable: false
       }))
-    })
+    }
+    el.dispatchEvent(new CustomEvent("phx:unlock", {
+      detail: detail,
+      bubbles: true,
+      cancelable: false
+    }))    
   }
 
   putRef(elements, phxEvent, eventType, opts = {}){
@@ -1265,19 +1334,33 @@ export default class View {
     }
   }
 
-  pushFormRecovery(form, newCid, callback){
-    this.liveSocket.withinOwners(form, (view, targetCtx) => {
-      let phxChange = this.binding("change")
-      let inputs = Array.from(form.elements).filter(el => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange))
-      if(inputs.length === 0){ return }
+  pushFormRecovery(oldForm, newForm, templateDom, callback){
+    // we are only recovering forms inside the current view, therefore it is safe to
+    // skip withinOwners here and always use this when referring to the view
+    const phxChange = this.binding("change")
+    const phxTarget = newForm.getAttribute(this.binding("target")) || newForm
+    const phxEvent = newForm.getAttribute(this.binding(PHX_AUTO_RECOVER)) || newForm.getAttribute(this.binding("change"))
+    const inputs = Array.from(oldForm.elements).filter(el => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange))
+    if(inputs.length === 0){ return }
 
-      // we must clear tracked uploads before recovery as they no longer have valid refs
-      inputs.forEach(input => input.hasAttribute(PHX_UPLOAD_REF) && LiveUploader.clearFiles(input))
-      let input = inputs.find(el => el.type !== "hidden") || inputs[0]
+    // we must clear tracked uploads before recovery as they no longer have valid refs
+    inputs.forEach(input => input.hasAttribute(PHX_UPLOAD_REF) && LiveUploader.clearFiles(input))
+    // pushInput assumes that there is a source element that initiated the change;
+    // because this is not the case when we recover forms, we provide the first input we find
+    let input = inputs.find(el => el.type !== "hidden") || inputs[0]
 
-      let phxEvent = form.getAttribute(this.binding(PHX_AUTO_RECOVER)) || form.getAttribute(this.binding("change"))
-      JS.exec("change", phxEvent, view, input, ["push", {_target: input.name, newCid: newCid, callback: callback}])
-    })
+    // in the case that there are multiple targets, we count the number of pending recovery events
+    // and only call the callback once all events have been processed
+    let pending = 0
+    // withinTargets(phxTarget, callback, dom, viewEl)
+    this.withinTargets(phxTarget, (targetView, targetCtx) => {
+      const cid = this.targetComponentID(newForm, targetCtx)
+      pending++
+      targetView.pushInput(input, targetCtx, cid, phxEvent, {_target: input.name}, () => {
+        pending--
+        if(pending === 0){ callback() }
+      })
+    }, templateDom, templateDom)
   }
 
   pushLinkPatch(href, targetEl, callback){
@@ -1307,31 +1390,20 @@ export default class View {
     }
   }
 
-  formsForRecovery(html){
-    if(this.joinCount === 0){ return [] }
+  getFormsForRecovery(){
+    if(this.joinCount === 0){ return {} }
 
     let phxChange = this.binding("change")
-    let template = document.createElement("template")
-    template.innerHTML = html
 
-    return (
-      DOM.all(this.el, `form[${phxChange}]`)
-        .filter(form => form.id && this.ownsElement(form))
-        .filter(form => form.elements.length > 0)
-        .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
-        .map(form => {
-          // attribute given via JS module needs to be escaped as it contains the symbols []",
-          // which result in an invalid css selector otherwise.
-          const phxChangeValue = CSS.escape(form.getAttribute(phxChange))
-          let newForm = template.content.querySelector(`form[id="${form.id}"][${phxChange}="${phxChangeValue}"]`)
-          if(newForm){
-            return [form, newForm, this.targetComponentID(newForm)]
-          } else {
-            return [form, form, this.targetComponentID(form)]
-          }
-        })
-        .filter(([form, newForm, newCid]) => newForm)
-    )
+    return DOM.all(this.el, `form[${phxChange}]`)
+      .filter(form => form.id)
+      .filter(form => form.elements.length > 0)
+      .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
+      .map(form => form.cloneNode(true))
+      .reduce((acc, form) => {
+        acc[form.id] = form
+        return acc
+      }, {})
   }
 
   maybePushComponentsDestroyed(destroyedCIDs){
@@ -1345,17 +1417,21 @@ export default class View {
       willDestroyCIDs.forEach(cid => this.rendered.resetRender(cid))
 
       this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
-        // See if any of the cids we wanted to destroy were added back,
-        // if they were added back, we don't actually destroy them.
-        let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
-          return DOM.findComponentNodeList(this.el, cid).length === 0
-        })
-
-        if(completelyDestroyCIDs.length > 0){
-          this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
-            this.rendered.pruneCIDs(resp.cids)
+        // we must wait for pending transitions to complete before determining
+        // if the cids were added back to the DOM in the meantime (#3139)
+        this.liveSocket.requestDOMUpdate(() => {
+          // See if any of the cids we wanted to destroy were added back,
+          // if they were added back, we don't actually destroy them.
+          let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
+            return DOM.findComponentNodeList(this.el, cid).length === 0
           })
-        }
+
+          if(completelyDestroyCIDs.length > 0){
+            this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+              this.rendered.pruneCIDs(resp.cids)
+            })
+          }
+        })
       })
     }
   }

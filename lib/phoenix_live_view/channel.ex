@@ -663,8 +663,14 @@ defmodule Phoenix.LiveView.Channel do
       {diff, new_components, {redirected, flash}} ->
         new_state = %{state | components: new_components}
 
+        # If there is a redirect, we don't send the ack (the ref) with the
+        # component diff, because otherwise the user may see transient
+        # state (such as the component unlocking refs just to be
+        # removed). The ref is sent with the redirect.
         if redirected do
-          handle_redirect(new_state, redirected, flash, nil, ref && {diff, ref})
+          new_state
+          |> push_diff(diff, nil)
+          |> handle_redirect(redirected, flash, ref)
         else
           {:noreply, push_diff(new_state, diff, ref)}
         end
@@ -814,10 +820,7 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp maybe_push_pending_diff_ack(state, nil), do: state
-  defp maybe_push_pending_diff_ack(state, {diff, ref}), do: push_diff(state, diff, ref)
-
-  defp handle_redirect(new_state, result, flash, ref, pending_diff_ack \\ nil) do
+  defp handle_redirect(new_state, result, flash, ref) do
     %{socket: new_socket} = new_state
     root_pid = new_socket.root_pid
 
@@ -846,7 +849,7 @@ defmodule Phoenix.LiveView.Channel do
 
         new_state
         |> push_pending_events_on_redirect(new_socket)
-        |> push_live_redirect(opts, ref, pending_diff_ack)
+        |> push_live_redirect(opts, ref)
         |> stop_shutdown_redirect(:live_redirect, opts)
 
       {:live, :patch, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
@@ -854,7 +857,6 @@ defmodule Phoenix.LiveView.Channel do
 
         new_state
         |> drop_redirect()
-        |> maybe_push_pending_diff_ack(pending_diff_ack)
         |> Map.update!(:socket, &Utils.replace_flash(&1, flash))
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
@@ -865,7 +867,6 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply,
          new_state
          |> drop_redirect()
-         |> maybe_push_pending_diff_ack(pending_diff_ack)
          |> push_diff(diff, ref)}
     end
   end
@@ -921,15 +922,11 @@ defmodule Phoenix.LiveView.Channel do
     reply(state, ref, :ok, %{redirect: opts})
   end
 
-  defp push_live_redirect(state, opts, nil = _ref, {_diff, ack_ref}) do
-    reply(state, ack_ref, :ok, %{live_redirect: opts})
-  end
-
-  defp push_live_redirect(state, opts, nil = _ref, _pending_diff_ack) do
+  defp push_live_redirect(state, opts, nil = _ref) do
     push(state, "live_redirect", opts)
   end
 
-  defp push_live_redirect(state, opts, ref, _pending_diff_ack) do
+  defp push_live_redirect(state, opts, ref) do
     reply(state, ref, :ok, %{live_redirect: opts})
   end
 

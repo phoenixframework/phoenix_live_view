@@ -166,19 +166,19 @@ defmodule Phoenix.LiveView.Router do
 
   ## Options
 
-    * `:session` - The optional extra session map or MFA tuple to be merged with
+    * `:session` - An optional extra session map or MFA tuple to be merged with
       the LiveView session. For example, `%{"admin" => true}` or `{MyMod, :session, []}`.
       For MFA, the function is invoked and the `Plug.Conn` struct is prepended
       to the arguments list.
 
-    * `:root_layout` - The optional root layout tuple for the initial HTTP render to
+    * `:root_layout` - An optional root layout tuple for the initial HTTP render to
       override any existing root layout set in the router.
 
-    * `:on_mount` - The optional list of hooks to attach to the mount lifecycle _of
+    * `:on_mount` - An optional list of hooks to attach to the mount lifecycle _of
       each LiveView in the session_. See `Phoenix.LiveView.on_mount/1`. Passing a
       single value is also accepted.
 
-    * `:layout` - The optional layout the LiveView will be rendered in. Setting
+    * `:layout` - An optional layout the LiveView will be rendered in. Setting
       this option overrides the layout via `use Phoenix.LiveView`. This option
       may be overridden inside a LiveView by returning `{:ok, socket, layout: ...}`
       from the mount callback
