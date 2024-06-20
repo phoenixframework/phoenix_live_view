@@ -163,6 +163,11 @@ generated user module:
 ### Enhancements
   * Warn on mismatched client and server versions
 
+## 0.20.16 (2024-06-20)
+
+### Bug fixes
+* Fix bug introduced in 0.20.15 causing incorrect patching on form elements when awaiting acknowledgements
+
 ## 0.20.15 (2024-06-18)
 
 ### Enhancements
