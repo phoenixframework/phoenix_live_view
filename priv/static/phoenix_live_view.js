@@ -1905,8 +1905,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           delete fromNodesLookup[toElKey];
         }
         if (!childrenOnly2) {
-          if (onBeforeElUpdated(fromEl, toEl) === false) {
+          var beforeUpdateResult = onBeforeElUpdated(fromEl, toEl);
+          if (beforeUpdateResult === false) {
             return;
+          } else if (beforeUpdateResult instanceof HTMLElement) {
+            fromEl = beforeUpdateResult;
           }
           morphAttrs2(fromEl, toEl);
           onElUpdated(fromEl);
@@ -4116,6 +4119,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.localStorage = opts.localStorage || window.localStorage;
       this.sessionStorage = opts.sessionStorage || window.sessionStorage;
       this.boundTopLevelEvents = false;
+      this.boundEventNames = new Set();
       this.serverCloseRef = null;
       this.domCallbacks = Object.assign({
         onPatchStart: closure(),
@@ -4397,6 +4401,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         elements = elements.filter((el) => !dom_default.isChildOfAny(el, stickies));
       }
       elements.forEach((el) => {
+        for (let event of this.boundEventNames) {
+          el.addEventListener(event, (e) => {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }, true);
+        }
         this.execJS(el, el.getAttribute(removeAttr), "remove");
       });
     }
@@ -4525,8 +4535,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
         }
       });
-      window.addEventListener("dragover", (e) => e.preventDefault());
-      window.addEventListener("drop", (e) => {
+      this.on("dragover", (e) => e.preventDefault());
+      this.on("drop", (e) => {
         e.preventDefault();
         let dropTargetId = maybe(closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)), (trueTarget) => {
           return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET));
@@ -4600,7 +4610,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     bindClicks() {
-      window.addEventListener("mousedown", (e) => this.clickStartedAtTarget = e.target);
+      this.on("mousedown", (e) => this.clickStartedAtTarget = e.target);
       this.bindClick("click", "click");
     }
     bindClick(eventName, bindingName) {
@@ -4798,7 +4808,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             });
           });
         }
-      }, true);
+      });
       this.on("submit", (e) => {
         let phxEvent = e.target.getAttribute(this.binding("submit"));
         if (!phxEvent) {
@@ -4812,7 +4822,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.withinOwners(e.target, (view) => {
           js_default.exec("submit", phxEvent, view, e.target, ["push", { submitter: e.submitter }]);
         });
-      }, false);
+      });
       for (let type of ["change", "input"]) {
         this.on(type, (e) => {
           let phxChange = this.binding("change");
@@ -4843,7 +4853,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               js_default.exec("change", phxEvent, view, input, ["push", { _target: e.target.name, dispatcher }]);
             });
           });
-        }, false);
+        });
       }
       this.on("reset", (e) => {
         let form = e.target;
@@ -4877,6 +4887,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.silenced = false;
     }
     on(event, callback) {
+      this.boundEventNames.add(event);
       window.addEventListener(event, (e) => {
         if (!this.silenced) {
           callback(e);

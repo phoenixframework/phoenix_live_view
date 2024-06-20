@@ -158,6 +158,7 @@ export default class LiveSocket {
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
+    this.boundEventNames = new Set()
     this.serverCloseRef = null
     this.domCallbacks = Object.assign({
       onPatchStart: closure(),
@@ -437,6 +438,14 @@ export default class LiveSocket {
       elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
     }
     elements.forEach(el => {
+      // prevent all listeners we care about from bubbling to window
+      // since we are removing the element
+      for(let event of this.boundEventNames){
+        el.addEventListener(event, e => {
+          e.preventDefault()
+          e.stopImmediatePropagation()
+        }, true)
+      }
       this.execJS(el, el.getAttribute(removeAttr), "remove")
     })
   }
@@ -562,8 +571,8 @@ export default class LiveSocket {
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
-    window.addEventListener("dragover", e => e.preventDefault())
-    window.addEventListener("drop", e => {
+    this.on("dragover", e => e.preventDefault())
+    this.on("drop", e => {
       e.preventDefault()
       let dropTargetId = maybe(closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)), trueTarget => {
         return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET))
@@ -638,7 +647,7 @@ export default class LiveSocket {
   }
 
   bindClicks(){
-    window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
+    this.on("mousedown", e => this.clickStartedAtTarget = e.target)
     this.bindClick("click", "click")
   }
 
@@ -840,7 +849,7 @@ export default class LiveSocket {
           })
         })
       }
-    }, true)
+    })
 
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
@@ -853,7 +862,7 @@ export default class LiveSocket {
       this.withinOwners(e.target, view => {
         JS.exec("submit", phxEvent, view, e.target, ["push", {submitter: e.submitter}])
       })
-    }, false)
+    })
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
@@ -885,7 +894,7 @@ export default class LiveSocket {
             JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher}])
           })
         })
-      }, false)
+      })
     }
     this.on("reset", (e) => {
       let form = e.target
@@ -923,6 +932,7 @@ export default class LiveSocket {
   }
 
   on(event, callback){
+    this.boundEventNames.add(event)
     window.addEventListener(event, e => {
       if(!this.silenced){ callback(e) }
     })
