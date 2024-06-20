@@ -434,7 +434,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert html =~ "Redirect: none"
 
       assert view |> element("#chris") |> render_click(%{"op" => "push_patch"}) =~
-               "Redirect: none"
+               "Redirect: patch"
 
       assert_patch(view, "/components?redirect=patch")
     end

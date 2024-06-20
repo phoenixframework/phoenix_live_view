@@ -108,6 +108,11 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.0-rc.2 (2024-06-19)
+
+### Bug fixes
+  * Fix bug introduced in rc.1 causing incorrect patching on form elements when awaiting acknowledgements
+
 ## 1.0.0-rc.1 (2024-06-18)
 
 ### Enhancements
