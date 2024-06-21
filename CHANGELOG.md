@@ -108,6 +108,13 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.0-rc.5 (2024-06-21)
+
+### Bug fixes
+  * Fix form recovery when targeting LiveComponents
+  * Fix formatter incorrectly formatting script tags
+  * Fix client version mismatch warning for rc.3
+
 ## 1.0.0-rc.4 (2024-06-20)
 
 ### Bug fixes
