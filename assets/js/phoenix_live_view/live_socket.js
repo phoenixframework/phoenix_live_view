@@ -460,7 +460,7 @@ export default class LiveSocket {
 
   owner(childEl, callback){
     let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el)) || this.main
-    if(view){ callback(view) }
+    return view && callback ? callback(view) : view
   }
 
   withinOwners(childEl, callback){

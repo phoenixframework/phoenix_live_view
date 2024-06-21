@@ -5,6 +5,7 @@ let focusStack = []
 let default_transition_time = 200
 
 let JS = {
+  // private
   exec(eventType, phxEvent, view, sourceEl, defaults){
     let [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
     let commands = phxEvent.charAt(0) === "[" ?
@@ -119,21 +120,7 @@ let JS = {
   },
 
   exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val1, val2]}){
-    if(el.hasAttribute(attr)){
-      if(val2 !== undefined){
-        // toggle between val1 and val2
-        if(el.getAttribute(attr) === val1){
-          this.setOrRemoveAttrs(el, [[attr, val2]], [])
-        } else {
-          this.setOrRemoveAttrs(el, [[attr, val1]], [])
-        }
-      } else {
-        // remove attr
-        this.setOrRemoveAttrs(el, [], [attr])
-      }
-    } else {
-      this.setOrRemoveAttrs(el, [[attr, val1]], [])
-    }
+    this.toggleAttr(el, attr, val1, val2)
   },
 
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition}){
@@ -237,6 +224,24 @@ let JS = {
     })
   },
 
+  toggleAttr(el, attr, val1, val2){
+    if(el.hasAttribute(attr)){
+      if(val2 !== undefined){
+        // toggle between val1 and val2
+        if(el.getAttribute(attr) === val1){
+          this.setOrRemoveAttrs(el, [[attr, val2]], [])
+        } else {
+          this.setOrRemoveAttrs(el, [[attr, val1]], [])
+        }
+      } else {
+        // remove attr
+        this.setOrRemoveAttrs(el, [], [attr])
+      }
+    } else {
+      this.setOrRemoveAttrs(el, [[attr, val1]], [])
+    }
+  },
+
   addOrRemoveClasses(el, adds, removes, transition, time, view){
     time = time || default_transition_time
     let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []]
@@ -293,6 +298,16 @@ let JS = {
 
   defaultDisplay(el){
     return {tr: "table-row", td: "table-cell"}[el.tagName.toLowerCase()] || "block"
+  },
+
+  transitionClasses(val){
+    if(!val){ return null }
+
+    let [trans, tStart, tEnd] = Array.isArray(val) ? val : [val.split(" "), [], []]
+    trans = Array.isArray(trans) ? trans : trans.split(" ")
+    tStart = Array.isArray(tStart) ? tStart : tStart.split(" ")
+    tEnd = Array.isArray(tEnd) ? tEnd : tEnd.split(" ")
+    return [trans, tStart, tEnd]
   }
 }
 

@@ -125,7 +125,13 @@ export default class DOMPatch {
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
           } else if(streamAt === -1){
-            parent.appendChild(child)
+            let lastChild = parent.lastElementChild
+            if(lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)){
+              let nonStreamChild = Array.from(parent.children).find(c => !c.hasAttribute(PHX_STREAM_REF))
+              parent.insertBefore(child, nonStreamChild)
+            } else {
+              parent.appendChild(child)
+            }
           } else if(streamAt > 0){
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
@@ -184,6 +190,10 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          // maintain the hooks created with createHook
+          if(fromEl.hasAttribute("data-phx-hook") && !toEl.hasAttribute("data-phx-hook")){
+            toEl.setAttribute("data-phx-hook", fromEl.getAttribute("data-phx-hook"))
+          }
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){

@@ -1,5 +1,5 @@
 import {Socket} from "phoenix"
-import LiveSocket from "phoenix_live_view/live_socket"
+import {LiveSocket, createHook} from "phoenix_live_view/index"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
@@ -11,6 +11,7 @@ import {
 } from "phoenix_live_view/constants"
 
 import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
+import { expect } from "@playwright/test"
 
 let simulateUsedInput = (input) => {
   DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
@@ -842,6 +843,23 @@ describe("View Hooks", function(){
     expect(hookLiveSocket).toBeDefined()
   })
 
+  test("createHook", (done) => {
+    let liveSocket = new LiveSocket("/live", Socket, {})
+    let el = liveViewDOM()
+    customElements.define("custom-el", class extends HTMLElement {
+      connectedCallback(){
+        this.hook = createHook(this, {mounted: () => {
+          expect(this.hook.liveSocket).toBeTruthy()
+          done()
+        }})
+        expect(this.hook.liveSocket).toBe(null)
+      }
+    })
+    let customEl = document.createElement("custom-el")
+    el.appendChild(customEl)
+    let view = simulateJoinedView(el, liveSocket)
+  })
+
   test("view destroyed", async () => {
     let values = []
     let Hooks = {
@@ -994,8 +1012,8 @@ describe("View + Component", function(){
     expect(view.targetComponentID(form, targetCtx)).toBe(0)
   })
 
-  test("pushEvent", function(){
-    expect.assertions(4)
+  test("pushEvent", () => {
+    expect.assertions(12)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
@@ -1016,7 +1034,27 @@ describe("View + Component", function(){
     }
     view.channel = channelStub
 
-    view.pushEvent("keyup", input, targetCtx, "click", {})
+    input.addEventListener("phx:lock:myevent", (e) => {
+      expect(e.target).toBe(input)
+    })
+    input.addEventListener("phx:unlock:myevent", (e) => {
+      expect(e.target).toBe(input)
+    })
+    input.addEventListener("phx:lock", (e) => {
+      let {lock, unlock} = e.detail
+      expect(typeof lock).toBe("function")
+      expect(view.el.getAttribute("data-phx-ref")).toBe(null)
+      // lock accepts unlock function to fire, which will done() the test
+      lock(view.el, (e) => {
+        expect(e.detail.event).toBe("myevent")
+      })
+      expect(e.target).toBe(input)
+      expect(input.getAttribute("data-phx-ref")).toBe("0")
+      expect(view.el.getAttribute("data-phx-ref")).toBe("0")
+      unlock(view.el)
+      expect(view.el.getAttribute("data-phx-ref")).toBe(null)
+    })
+    view.pushEvent("keyup", input, targetCtx, "myevent", {})
   })
 
   test("pushInput", function(done){
