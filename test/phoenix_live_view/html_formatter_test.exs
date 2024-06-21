@@ -1183,6 +1183,26 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
+  test "formats eex blocks within script tag" do
+    assert_formatter_doesnt_change("""
+    <script>
+      var foo = 1;
+      <%= if @bar do %>
+      var bar = 2;
+      <% end %>
+    </script>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <script>
+      var foo = 1;
+      <% if @bar do %>
+      var bar = 2;
+      <% end %>
+    </script>
+    """)
+  end
+
   test "formats style tag" do
     input = """
     <div>

@@ -267,7 +267,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   end
 
   # Handle EEX blocks within preserve tags
-  defp to_algebra({:eex_block, expr, block}, %{mode: :preserve} = context) do
+  defp to_algebra({:eex_block, expr, block, meta}, %{mode: :preserve} = context) do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
         children = block_to_algebra(block, context)
@@ -275,7 +275,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         concat([doc, children, expr])
       end)
 
-    {:block, group(concat("<%= #{expr} %>", doc))}
+    {:block, group(concat("<%#{meta.opt} #{expr} %>", doc))}
   end
 
   # Handle EEX blocks
