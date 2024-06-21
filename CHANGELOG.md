@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.20.17
+
+### Bug fixes
+* Fix formatter adding newlines in script tags
+
 ## 0.20.16 (2024-06-20)
 
 ### Bug fixes
