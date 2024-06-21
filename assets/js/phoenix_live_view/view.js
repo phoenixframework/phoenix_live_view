@@ -555,7 +555,11 @@ export default class View {
 
     formsToRecover.forEach(([oldForm, newForm], i) => {
       this.pendingForms.add(newForm.id)
-      this.pushFormRecovery(oldForm, newForm, template.content, () => {
+      // it is important to use the firstElementChild of the template content
+      // because when traversing a documentFragment using parentNode, we won't ever arrive at
+      // the fragment; as the template is always a LiveView, we can be sure that there is only
+      // one child on the root level
+      this.pushFormRecovery(oldForm, newForm, template.content.firstElementChild, () => {
         this.pendingForms.delete(newForm.id)
         // we only call the callback once all forms have been recovered
         if(i === formsToRecover.length - 1){

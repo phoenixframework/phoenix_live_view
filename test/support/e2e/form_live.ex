@@ -3,6 +3,44 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
 
   alias Phoenix.LiveView.JS
 
+  defmodule FormComponent do
+    use Phoenix.LiveComponent
+
+    @impl Phoenix.LiveComponent
+    def mount(socket) do
+      {:ok, assign(socket, :submitted, false)}
+    end
+
+    @impl Phoenix.LiveComponent
+    def handle_event("validate", params, socket) do
+      {:noreply, assign(socket, :params, Map.merge(socket.assigns.params, params))}
+    end
+
+    def handle_event("save", _params, socket) do
+      {:noreply, assign(socket, :submitted, true)}
+    end
+
+    def handle_event("custom-recovery", _params, socket) do
+      {:noreply,
+       assign(
+         socket,
+         :params,
+         Map.merge(socket.assigns.params, %{"b" => "custom value from server"})
+       )}
+    end
+
+    @impl Phoenix.LiveComponent
+    def render(assigns) do
+      ~H"""
+      <div>
+        <Phoenix.LiveViewTest.E2E.FormLive.my_form params={@params} phx-target={@myself} />
+
+        <p :if={@submitted}>LC Form was submitted!</p>
+      </div>
+      """
+    end
+  end
+
   @impl Phoenix.LiveView
   def mount(params, session, socket) do
     params =
@@ -61,11 +99,26 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
+    <.my_form :if={!@params["live-component"]} params={@params} />
+    <.live_component
+      :if={@params["live-component"]}
+      id="form-component"
+      module={__MODULE__.FormComponent}
+      params={@params}
+    />
+
+    <p :if={@submitted}>Form was submitted!</p>
+    """
+  end
+
+  def my_form(assigns) do
+    ~H"""
     <form
       id={@params["id"]}
       phx-submit="save"
       phx-change={@params["phx-change"]}
       phx-auto-recover={@params["phx-auto-recover"]}
+      phx-target={assigns[:"phx-target"]}
     >
       <input type="text" name="a" readonly value={@params["a"]} />
       <input type="text" name="b" value={@params["b"]} />
@@ -77,8 +130,6 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
         Non-form Button
       </button>
     </form>
-
-    <p :if={@submitted}>Form was submitted!</p>
     """
   end
 end
