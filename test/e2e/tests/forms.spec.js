@@ -69,109 +69,112 @@ for (let path of ["/form/nested", "/form"]) {
     });
   });
 
-  test.describe(`${path} - form recovery`, () => {
-    test("form state is recovered when socket reconnects", async ({ page }) => {
-      let webSocketEvents = [];
-      page.on("websocket", ws => {
-        ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
-        ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
-        ws.on("close", () => webSocketEvents.push({ type: "close" }));
+  for (let additionalParams of ["live-component", ""]) {
+    let append = additionalParams.length ? ` ${additionalParams}` : "";
+    test.describe(`${path}${append} - form recovery`, () => {
+      test("form state is recovered when socket reconnects", async ({ page }) => {
+        let webSocketEvents = [];
+        page.on("websocket", ws => {
+          ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
+          ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
+          ws.on("close", () => webSocketEvents.push({ type: "close" }));
+        });
+
+        await page.goto(path + "?" + additionalParams);
+        await syncLV(page);
+
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
+
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+        await expect(webSocketEvents).toEqual(expect.arrayContaining([
+          { type: "sent", payload: expect.stringContaining("phx_join") },
+          { type: "received", payload: expect.stringContaining("phx_reply") },
+          { type: "close" },
+        ]))
+
+        webSocketEvents = [];
+
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+        await expect(page.locator("input[name=b]")).toHaveValue("test");
+
+        await expect(webSocketEvents).toEqual(expect.arrayContaining([
+          { type: "sent", payload: expect.stringContaining("phx_join") },
+          { type: "received", payload: expect.stringContaining("phx_reply") },
+          { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
+        ]))
       });
 
-      await page.goto(path);
-      await syncLV(page);
+      test("does not recover when form is missing id", async ({ page }) => {
+        await page.goto(`${path}?no-id&${additionalParams}`);
+        await syncLV(page);
 
-      await page.locator("input[name=b]").fill("test");
-      await syncLV(page);
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
 
-      await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-      await expect(page.locator(".phx-loading")).toHaveCount(1);
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
 
-      await expect(webSocketEvents).toEqual(expect.arrayContaining([
-        { type: "sent", payload: expect.stringContaining("phx_join") },
-        { type: "received", payload: expect.stringContaining("phx_reply") },
-        { type: "close" },
-      ]))
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
 
-      webSocketEvents = [];
-
-      await page.evaluate(() => window.liveSocket.connect());
-      await syncLV(page);
-      await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-      await expect(page.locator("input[name=b]")).toHaveValue("test");
-
-      await expect(webSocketEvents).toEqual(expect.arrayContaining([
-        { type: "sent", payload: expect.stringContaining("phx_join") },
-        { type: "received", payload: expect.stringContaining("phx_reply") },
-        { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
-      ]))
-    });
-
-    test("does not recover when form is missing id", async ({ page }) => {
-      await page.goto(`${path}?no-id`);
-      await syncLV(page);
-
-      await page.locator("input[name=b]").fill("test");
-      await syncLV(page);
-
-      await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-      await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-      await page.evaluate(() => window.liveSocket.connect());
-      await syncLV(page);
-      await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-      await expect(page.locator("input[name=b]")).toHaveValue("bar");
-    });
-
-    test("does not recover when form is missing phx-change", async ({ page }) => {
-      await page.goto(`${path}?no-change-event`);
-      await syncLV(page);
-
-      await page.locator("input[name=b]").fill("test");
-      await syncLV(page);
-
-      await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-      await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-      await page.evaluate(() => window.liveSocket.connect());
-      await syncLV(page);
-      await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-      await expect(page.locator("input[name=b]")).toHaveValue("bar");
-    });
-
-    test("phx-auto-recover", async ({ page }) => {
-      await page.goto(`${path}?phx-auto-recover=custom-recovery`);
-      await syncLV(page);
-
-      await page.locator("input[name=b]").fill("test");
-      await syncLV(page);
-
-      await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-      await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-      let webSocketEvents = [];
-      page.on("websocket", ws => {
-        ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
-        ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
-        ws.on("close", () => webSocketEvents.push({ type: "close" }));
+        await expect(page.locator("input[name=b]")).toHaveValue("bar");
       });
 
-      await page.evaluate(() => window.liveSocket.connect());
-      await syncLV(page);
-      await expect(page.locator(".phx-loading")).toHaveCount(0);
+      test("does not recover when form is missing phx-change", async ({ page }) => {
+        await page.goto(`${path}?no-change-event&${additionalParams}`);
+        await syncLV(page);
 
-      await expect(page.locator("input[name=b]")).toHaveValue("custom value from server");
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
 
-      await expect(webSocketEvents).toEqual(expect.arrayContaining([
-        { type: "sent", payload: expect.stringContaining("phx_join") },
-        { type: "received", payload: expect.stringContaining("phx_reply") },
-        { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
-      ]))
-    });
-  })
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+        await expect(page.locator("input[name=b]")).toHaveValue("bar");
+      });
+
+      test("phx-auto-recover", async ({ page }) => {
+        await page.goto(`${path}?phx-auto-recover=custom-recovery&${additionalParams}`);
+        await syncLV(page);
+
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
+
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+        let webSocketEvents = [];
+        page.on("websocket", ws => {
+          ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
+          ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
+          ws.on("close", () => webSocketEvents.push({ type: "close" }));
+        });
+
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+        await expect(page.locator("input[name=b]")).toHaveValue("custom value from server");
+
+        await expect(webSocketEvents).toEqual(expect.arrayContaining([
+          { type: "sent", payload: expect.stringContaining("phx_join") },
+          { type: "received", payload: expect.stringContaining("phx_reply") },
+          { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
+        ]))
+      });
+    })
+  }
 
   test(`${path} - can submit form with button that has phx-click`, async ({ page }) => {
     await page.goto(`${path}?phx-auto-recover=custom-recovery`);
