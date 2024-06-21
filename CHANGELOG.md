@@ -108,6 +108,11 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.0-rc.4 (2024-06-20)
+
+### Bug fixes
+  * Fix bug allowing focused input to be overwritten on acknowledgement
+
 ## 1.0.0-rc.3 (2024-06-20)
 
 ### Bug fixes

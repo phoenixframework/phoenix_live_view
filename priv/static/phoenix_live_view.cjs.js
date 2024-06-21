@@ -1852,11 +1852,8 @@ function morphdomFactory(morphAttrs2) {
         delete fromNodesLookup[toElKey];
       }
       if (!childrenOnly2) {
-        var beforeUpdateResult = onBeforeElUpdated(fromEl, toEl);
-        if (beforeUpdateResult === false) {
+        if (onBeforeElUpdated(fromEl, toEl) === false) {
           return;
-        } else if (beforeUpdateResult instanceof HTMLElement) {
-          fromEl = beforeUpdateResult;
         }
         morphAttrs2(fromEl, toEl);
         onElUpdated(fromEl);
@@ -2202,6 +2199,8 @@ var DOMPatch = class {
           if (fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)) {
             return false;
           }
+          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
+          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
           if (fromEl.hasAttribute(PHX_REF)) {
             if (dom_default.isUploadInput(fromEl)) {
               dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
@@ -2211,7 +2210,9 @@ var DOMPatch = class {
             dom_default.applyStickyOperations(fromEl);
             let clone2 = dom_default.private(fromEl, PHX_REF) || fromEl.cloneNode(true);
             dom_default.putPrivate(fromEl, PHX_REF, clone2);
-            fromEl = clone2;
+            if (!isFocusedFormEl) {
+              fromEl = clone2;
+            }
           }
           if (dom_default.isPhxChild(toEl)) {
             let prevSession = fromEl.getAttribute(PHX_SESSION);
@@ -2224,8 +2225,6 @@ var DOMPatch = class {
             return false;
           }
           dom_default.copyPrivates(toEl, fromEl);
-          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
-          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
           if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
             this.trackBefore("updated", fromEl, toEl);
             dom_default.mergeFocusedInput(fromEl, toEl);

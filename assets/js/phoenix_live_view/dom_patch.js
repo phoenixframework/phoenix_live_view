@@ -214,6 +214,8 @@ export default class DOMPatch {
           // We keep a reference to the cloned tree in the element's private data, and
           // on ack (view.undoRefs), we morph the cloned tree with the true fromEl in the DOM to
           // apply any changes that happened while the element was locked.
+          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
+          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
           if(fromEl.hasAttribute(PHX_REF)){
             if(DOM.isUploadInput(fromEl)){
               DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
@@ -223,7 +225,9 @@ export default class DOMPatch {
             DOM.applyStickyOperations(fromEl)
             let clone = DOM.private(fromEl, PHX_REF) || fromEl.cloneNode(true)
             DOM.putPrivate(fromEl, PHX_REF, clone)
-            fromEl = clone
+            if(!isFocusedFormEl){
+              fromEl = clone
+            }
           }
 
           // nested view handling
@@ -239,9 +243,7 @@ export default class DOMPatch {
           // input handling
           DOM.copyPrivates(toEl, fromEl)
 
-          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           // skip patching focused inputs unless focus is a select that has changed options
-          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
           if(isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeFocusedInput(fromEl, toEl)
