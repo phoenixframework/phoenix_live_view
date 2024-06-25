@@ -49,6 +49,7 @@ import {
 
 import Browser from "./browser"
 import DOM from "./dom"
+import Ref from "./ref"
 import DOMPatch from "./dom_patch"
 import LiveUploader from "./live_uploader"
 import Rendered from "./rendered"
@@ -133,6 +134,7 @@ export default class View {
     this.el = el
     this.id = this.el.id
     this.ref = 0
+    this.lastRefAck
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
@@ -848,6 +850,7 @@ export default class View {
     return (
       this.liveSocket.wrapPush(this, {timeout: true}, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+          if(ref !== null){ this.lastRefAck = ref }
           let finish = (hookReply) => {
             if(resp.redirect){ this.onRedirect(resp.redirect) }
             if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
@@ -872,6 +875,25 @@ export default class View {
     )
   }
 
+  applyStashedClones(targetEl){
+    if(this.lastRefAck === null || this.lastRefAck === this.ref){ return }
+    let elRef = new Ref(targetEl)
+    console.log("apply stashes for ", this.lastRefAck)
+
+    DOM.all(document, `[${PHX_REF_SRC}="${elRef.src()}"][${PHX_REF}]`, el => {
+      let elRef = new Ref(el)
+      elRef.clones().forEach(({clone: clonedTree, ref: cloneRef}) => {
+        let hook = this.triggerBeforeUpdateHook(el, clonedTree)
+        console.log("apply clone", clonedTree.outerHTML)
+        DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
+        // DOM.all(el, `[${PHX_REF_SRC}="${elRef.src()}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
+        this.execNewMounted(el)
+        if(hook){ hook.__updated() }
+        elRef.deleteClone(cloneRef)
+      })
+    })
+  }
+
   undoRefs(ref, onlyEls){
     onlyEls = onlyEls ? new Set(onlyEls) : null
     if(!this.isConnected()){ return } // exit if external form triggered
@@ -883,7 +905,23 @@ export default class View {
   }
 
   undoElRef(el, ref){
-    if(!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)){ return }
+    let elRef = new Ref(el)
+    // Check for cloned PHX_REF element that has been morphed behind
+    // the scenes while this element was locked in the DOM.
+    // When we apply the cloned tree to the active DOM element, we must
+    //
+    //   1. execute pending mounted hooks for nodes now in the DOM
+    //   2. undo any ref inside the cloned tree that has since been ack'd
+    elRef.clones().forEach(({clone: clonedTree, ref: cloneRef}) => {
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
+      // DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
+      this.execNewMounted(el)
+      if(hook){ hook.__updated() }
+      console.log("delete", cloneRef, ref)
+      elRef.deleteClone(cloneRef)
+    })
+    console.log("delete", ref)
 
     el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
     let disabledVal = el.getAttribute(PHX_DISABLED)
@@ -907,21 +945,6 @@ export default class View {
     if(disableRestore !== null){
       el.innerText = disableRestore
       el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
-    }
-    // Check for cloned PHX_REF element that has been morphed behind
-    // the scenes while this element was locked in the DOM.
-    // When we apply the cloned tree to the active DOM element, we must
-    //
-    //   1. execute pending mounted hooks for nodes now in the DOM
-    //   2. undo any ref inside the cloned tree that has since been ack'd
-    let clonedTree = DOM.private(el, PHX_REF)
-    if(clonedTree){
-      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
-      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
-      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
-      this.execNewMounted(el)
-      if(hook){ hook.__updated() }
-      DOM.deletePrivate(el, PHX_REF)
     }
   }
 

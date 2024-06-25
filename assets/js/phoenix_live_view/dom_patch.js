@@ -10,6 +10,7 @@ import {
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
   PHX_REF,
+  PHX_REF_SRC,
   PHX_STREAM,
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
@@ -22,6 +23,7 @@ import {
 } from "./utils"
 
 import DOM from "./dom"
+import Ref from "./ref"
 import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
@@ -34,10 +36,17 @@ export default class DOMPatch {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl, toEl) => {
         if(DOM.isIgnored(fromEl, phxUpdate)){ return false }
-        if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
-          DOM.mergeFocusedInput(fromEl, toEl)
-          return false
+        if(fromEl.hasAttribute(PHX_REF)){
+          toEl.setAttribute(PHX_REF, fromEl.getAttribute(PHX_REF))
+          toEl.setAttribute(PHX_REF_SRC, fromEl.getAttribute(PHX_REF_SRC))
+          if(DOM.isFormInput(fromEl)){
+            toEl.value = fromEl.value
+          }
         }
+        // if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
+        //   DOM.mergeFocusedInput(fromEl, toEl)
+        //   return false
+        // }
       }
     })
   }
@@ -216,16 +225,18 @@ export default class DOMPatch {
           // apply any changes that happened while the element was locked.
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
-          if(fromEl.hasAttribute(PHX_REF)){
+          if(fromEl.hasAttribute(PHX_REF) && view.el.contains(fromEl)){
+            toEl.setAttribute(PHX_REF, fromEl.getAttribute(PHX_REF))
+            toEl.setAttribute(PHX_REF_SRC, fromEl.getAttribute(PHX_REF_SRC))
+            let elRef = new Ref(fromEl)
             if(DOM.isUploadInput(fromEl)){
               DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
               this.trackBefore("updated", fromEl, toEl)
               updates.push(fromEl)
             }
             DOM.applyStickyOperations(fromEl)
-            let clone = DOM.private(fromEl, PHX_REF) || fromEl.cloneNode(true)
-            DOM.putPrivate(fromEl, PHX_REF, clone)
-            if(!isFocusedFormEl){
+            let clone = elRef.stashClone()
+            if(clone){
               fromEl = clone
             }
           }

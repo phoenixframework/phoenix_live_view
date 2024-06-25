@@ -571,6 +571,11 @@ export default class LiveSocket {
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
+    this.on("blur", e => {
+      if(e.target.form && e.target.form.hasAttribute(PHX_REF)){
+        this.owner(e.target.form, view => view.applyStashedClones(e.target.form))
+      }
+    }, true)
     this.on("dragover", e => e.preventDefault())
     this.on("drop", e => {
       e.preventDefault()
@@ -931,11 +936,11 @@ export default class LiveSocket {
     this.silenced = false
   }
 
-  on(event, callback){
+  on(event, callback, capture){
     this.boundEventNames.add(event)
     window.addEventListener(event, e => {
       if(!this.silenced){ callback(e) }
-    })
+    }, capture)
   }
 }
 
