@@ -18,7 +18,7 @@ var PHX_COMPONENT = "data-phx-component";
 var PHX_LIVE_LINK = "data-phx-link";
 var PHX_TRACK_STATIC = "track-static";
 var PHX_LINK_STATE = "data-phx-link-state";
-var PHX_REF = "data-phx-ref";
+var PHX_REF_LOADING = "data-phx-ref-loading";
 var PHX_REF_SRC = "data-phx-ref-src";
 var PHX_REF_LOCK = "data-phx-ref-lock";
 var PHX_TRACK_UPLOADS = "track-uploads";
@@ -80,7 +80,7 @@ var DEFAULTS = {
   debounce: 300,
   throttle: 300
 };
-var PHX_PENDING_ATTRS = [PHX_REF, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING];
+var PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING];
 var DYNAMICS = "d";
 var STATIC = "s";
 var ROOT = "r";
@@ -737,7 +737,7 @@ var DOM = {
     }
   },
   syncPendingAttrs(fromEl, toEl) {
-    if (!fromEl.hasAttribute(PHX_REF)) {
+    if (!fromEl.hasAttribute(PHX_REF_SRC)) {
       return;
     }
     PHX_EVENT_CLASSES.forEach((className) => {
@@ -2204,7 +2204,7 @@ var DOMPatch = class {
           }
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
           let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
-          if (fromEl.hasAttribute(PHX_REF)) {
+          if (fromEl.hasAttribute(PHX_REF_SRC)) {
             if (dom_default.isUploadInput(fromEl)) {
               dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
               this.trackBefore("updated", fromEl, toEl);
@@ -3064,8 +3064,8 @@ var View = class {
     });
   }
   dropPendingRefs() {
-    dom_default.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"][${PHX_REF}]`, (el) => {
-      el.removeAttribute(PHX_REF);
+    dom_default.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"]`, (el) => {
+      el.removeAttribute(PHX_REF_LOADING);
       el.removeAttribute(PHX_REF_SRC);
       el.removeAttribute(PHX_REF_LOCK);
     });
@@ -3579,7 +3579,7 @@ var View = class {
     if (!this.isConnected()) {
       return;
     }
-    dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, (el) => {
+    dom_default.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"]`, (el) => {
       if (onlyEls && !onlyEls.has(el)) {
         return;
       }
@@ -3587,26 +3587,35 @@ var View = class {
     });
   }
   undoElRef(el, ref) {
-    if (!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)) {
+    let loadingRef = el.hasAttribute(PHX_REF_LOADING) ? parseInt(el.getAttribute(PHX_REF_LOADING), 10) : null;
+    let lockRef = el.hasAttribute(PHX_REF_LOCK) ? parseInt(el.getAttribute(PHX_REF_LOCK), 10) : null;
+    if (loadingRef !== null && loadingRef > ref && (lockRef !== null && lockRef > ref)) {
       return;
     }
-    let clonedTree = dom_default.private(el, PHX_REF_LOCK);
-    if (clonedTree) {
-      let hook = this.triggerBeforeUpdateHook(el, clonedTree);
-      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
-      dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => this.undoElRef(el2, ref));
-      this.execNewMounted(el);
-      if (hook) {
-        hook.__updated();
+    if (lockRef !== null && lockRef <= ref) {
+      let clonedTree = dom_default.private(el, PHX_REF_LOCK);
+      if (clonedTree) {
+        let hook = this.triggerBeforeUpdateHook(el, clonedTree);
+        DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
+        dom_default.all(el, `[${PHX_REF_SRC}="${this.refSrc()}"]`, (el2) => this.undoElRef(el2, ref));
+        this.execNewMounted(el);
+        if (hook) {
+          hook.__updated();
+        }
+        dom_default.deletePrivate(el, PHX_REF_LOCK);
       }
-      dom_default.deletePrivate(el, PHX_REF_LOCK);
+      el.removeAttribute(PHX_REF_LOCK);
+      el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
     }
-    el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
+    if ((loadingRef === null || loadingRef <= ref) && (lockRef === null || lockRef <= ref)) {
+      el.removeAttribute(PHX_REF_SRC);
+    }
+    if (loadingRef === null || loadingRef > ref) {
+      return;
+    }
+    el.removeAttribute(PHX_REF_LOADING);
     let disabledVal = el.getAttribute(PHX_DISABLED);
     let readOnlyVal = el.getAttribute(PHX_READONLY);
-    el.removeAttribute(PHX_REF);
-    el.removeAttribute(PHX_REF_SRC);
-    el.removeAttribute(PHX_REF_LOCK);
     if (readOnlyVal !== null) {
       el.readOnly = readOnlyVal === "true" ? true : false;
       el.removeAttribute(PHX_READONLY);
@@ -3615,7 +3624,12 @@ var View = class {
       el.disabled = disabledVal === "true" ? true : false;
       el.removeAttribute(PHX_DISABLED);
     }
-    PHX_EVENT_CLASSES.forEach((className) => dom_default.removeClass(el, className));
+    PHX_EVENT_CLASSES.forEach((className) => {
+      if (className === "phx-submit-loading" && lockRef !== null && lockRef > ref) {
+        return;
+      }
+      dom_default.removeClass(el, className);
+    });
     let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE);
     if (disableRestore !== null) {
       el.innerText = disableRestore;
@@ -3635,15 +3649,17 @@ var View = class {
       elements = elements.concat(loadingEls);
     }
     for (let { el, lock, loading } of elements) {
+      if (!lock && !loading) {
+        throw new Error("putRef requires lock or loading");
+      }
       el.setAttribute(PHX_REF_SRC, this.refSrc());
-      el.setAttribute(PHX_REF, newRef);
+      if (loading) {
+        el.setAttribute(PHX_REF_LOADING, newRef);
+      }
       if (lock) {
         el.setAttribute(PHX_REF_LOCK, newRef);
       }
-      if (opts.submitter && !(el === opts.submitter || el === opts.form)) {
-        continue;
-      }
-      if (!loading) {
+      if (!loading || opts.submitter && !(el === opts.submitter || el === opts.form)) {
         continue;
       }
       el.classList.add(`phx-${event}-loading`);
@@ -3880,7 +3896,7 @@ var View = class {
           cid
         }, onReply);
       });
-    } else if (!(formEl.hasAttribute(PHX_REF) && formEl.classList.contains("phx-submit-loading"))) {
+    } else if (!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))) {
       let meta = this.extractMeta(formEl);
       let formData = serializeForm(formEl, { submitter, ...meta });
       this.pushWithReply(refGenerator, "event", {
@@ -4622,7 +4638,7 @@ var LiveSocket = class {
       if (target.getAttribute("href") === "#") {
         e.preventDefault();
       }
-      if (target.hasAttribute(PHX_REF)) {
+      if (target.hasAttribute(PHX_REF_SRC)) {
         return;
       }
       this.debounce(target, e, "click", () => {

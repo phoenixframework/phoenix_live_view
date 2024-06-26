@@ -20,7 +20,7 @@ import {
   PHX_PARENT_ID,
   PHX_PROGRESS,
   PHX_READONLY,
-  PHX_REF,
+  PHX_REF_LOADING,
   PHX_REF_SRC,
   PHX_REF_LOCK,
   PHX_ROOT_ID,
@@ -326,8 +326,8 @@ export default class View {
   }
 
   dropPendingRefs(){
-    DOM.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"][${PHX_REF}]`, el => {
-      el.removeAttribute(PHX_REF)
+    DOM.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"]`, el => {
+      el.removeAttribute(PHX_REF_LOADING)
       el.removeAttribute(PHX_REF_SRC)
       el.removeAttribute(PHX_REF_LOCK)
     })
@@ -878,14 +878,17 @@ export default class View {
     onlyEls = onlyEls ? new Set(onlyEls) : null
     if(!this.isConnected()){ return } // exit if external form triggered
 
-    DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}="${ref}"]`, el => {
+    DOM.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"]`, el => {
       if(onlyEls && !onlyEls.has(el)){ return }
       this.undoElRef(el, ref)
     })
   }
 
   undoElRef(el, ref){
-    if(!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)){ return }
+    let loadingRef = el.hasAttribute(PHX_REF_LOADING) ? parseInt(el.getAttribute(PHX_REF_LOADING), 10) : null
+    let lockRef = el.hasAttribute(PHX_REF_LOCK) ? parseInt(el.getAttribute(PHX_REF_LOCK), 10) : null
+
+    if((loadingRef !== null && loadingRef > ref) && (lockRef !== null && lockRef > ref)){ return }
 
     // Check for cloned PHX_REF_LOCK element that has been morphed behind
     // the scenes while this element was locked in the DOM.
@@ -893,23 +896,30 @@ export default class View {
     //
     //   1. execute pending mounted hooks for nodes now in the DOM
     //   2. undo any ref inside the cloned tree that has since been ack'd
-    let clonedTree = DOM.private(el, PHX_REF_LOCK)
-    if(clonedTree){
-      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
-      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
-      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
-      this.execNewMounted(el)
-      if(hook){ hook.__updated() }
-      DOM.deletePrivate(el, PHX_REF_LOCK)
+    if(lockRef !== null && lockRef <= ref){
+      let clonedTree = DOM.private(el, PHX_REF_LOCK)
+      if(clonedTree){
+        let hook = this.triggerBeforeUpdateHook(el, clonedTree)
+        DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
+        DOM.all(el, `[${PHX_REF_SRC}="${this.refSrc()}"]`, el => this.undoElRef(el, ref))
+        this.execNewMounted(el)
+        if(hook){ hook.__updated() }
+        DOM.deletePrivate(el, PHX_REF_LOCK)
+      }
+      el.removeAttribute(PHX_REF_LOCK)
+      el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
     }
 
-    el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
+    if((loadingRef === null || loadingRef <= ref) && (lockRef === null || lockRef <= ref)){
+      el.removeAttribute(PHX_REF_SRC)
+    }
+
+    // loading ref handling
+    if(loadingRef === null || loadingRef > ref){ return }
+    el.removeAttribute(PHX_REF_LOADING)
+
     let disabledVal = el.getAttribute(PHX_DISABLED)
     let readOnlyVal = el.getAttribute(PHX_READONLY)
-    // remove refs
-    el.removeAttribute(PHX_REF)
-    el.removeAttribute(PHX_REF_SRC)
-    el.removeAttribute(PHX_REF_LOCK)
     // restore inputs
     if(readOnlyVal !== null){
       el.readOnly = readOnlyVal === "true" ? true : false
@@ -920,7 +930,11 @@ export default class View {
       el.removeAttribute(PHX_DISABLED)
     }
     // remove classes
-    PHX_EVENT_CLASSES.forEach(className => DOM.removeClass(el, className))
+    PHX_EVENT_CLASSES.forEach(className => {
+      // only remove the phx-submit-loading class if we are not locked
+      if(className === "phx-submit-loading" && lockRef !== null && lockRef > ref){ return }
+      DOM.removeClass(el, className)
+    })
     // restore disables
     let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
     if(disableRestore !== null){
@@ -942,15 +956,12 @@ export default class View {
     }
 
     for(let {el, lock, loading} of elements){
-      if(!lock && !loading){ throw new Error("ref updates require lock or loading options")}
+      if(!lock && !loading){ throw new Error("putRef requires lock or loading") }
       el.setAttribute(PHX_REF_SRC, this.refSrc())
-      el.setAttribute(PHX_REF, newRef)
-      if(lock){
-        el.setAttribute(PHX_REF_LOCK, newRef)
-      }
-      if(opts.submitter && !(el === opts.submitter || el === opts.form)){ continue }
+      if(loading){ el.setAttribute(PHX_REF_LOADING, newRef) }
+      if(lock){ el.setAttribute(PHX_REF_LOCK, newRef) }
 
-      if(!loading){ continue }
+      if(!loading || (opts.submitter && !(el === opts.submitter || el === opts.form))){ continue }
 
       el.classList.add(`phx-${event}-loading`)
       el.dispatchEvent(new CustomEvent(`phx:${event}-loading`, {bubbles: true, cancelable: false}))
@@ -1193,7 +1204,7 @@ export default class View {
           cid: cid
         }, onReply)
       })
-    } else if(!(formEl.hasAttribute(PHX_REF) && formEl.classList.contains("phx-submit-loading"))){
+    } else if(!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))){
       let meta = this.extractMeta(formEl)
       let formData = serializeForm(formEl, {submitter, ...meta})
       this.pushWithReply(refGenerator, "event", {

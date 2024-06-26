@@ -9,7 +9,7 @@ import {
   PHX_MAIN,
   PHX_PARENT_ID,
   PHX_PRIVATE,
-  PHX_REF,
+  PHX_REF_SRC,
   PHX_PENDING_ATTRS,
   PHX_ROOT_ID,
   PHX_SESSION,
@@ -195,7 +195,7 @@ let DOM = {
   },
 
   syncPendingAttrs(fromEl, toEl){
-    if(!fromEl.hasAttribute(PHX_REF)){ return }
+    if(!fromEl.hasAttribute(PHX_REF_SRC)){ return }
     PHX_EVENT_CLASSES.forEach(className => {
       fromEl.classList.contains(className) && toEl.classList.add(className)
     })

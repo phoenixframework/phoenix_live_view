@@ -12,7 +12,7 @@ export const PHX_COMPONENT = "data-phx-component"
 export const PHX_LIVE_LINK = "data-phx-link"
 export const PHX_TRACK_STATIC = "track-static"
 export const PHX_LINK_STATE = "data-phx-link-state"
-export const PHX_REF = "data-phx-ref"
+export const PHX_REF_LOADING = "data-phx-ref-loading"
 export const PHX_REF_SRC = "data-phx-ref-src"
 export const PHX_REF_LOCK = "data-phx-ref-lock"
 export const PHX_TRACK_UPLOADS = "track-uploads"
@@ -76,7 +76,7 @@ export const DEFAULTS = {
   debounce: 300,
   throttle: 300
 }
-export const PHX_PENDING_ATTRS = [PHX_REF, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING]
+export const PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING]
 // Rendered
 export const DYNAMICS = "d"
 export const STATIC = "s"
