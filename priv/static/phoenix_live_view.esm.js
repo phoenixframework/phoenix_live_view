@@ -1484,6 +1484,76 @@ Hooks.InfiniteScroll = {
 };
 var hooks_default = Hooks;
 
+// js/phoenix_live_view/element_ref.js
+var ElementRef = class {
+  constructor(el) {
+    this.el = el;
+    this.loadingRef = el.hasAttribute(PHX_REF_LOADING) ? parseInt(el.getAttribute(PHX_REF_LOADING), 10) : null;
+    this.lockRef = el.hasAttribute(PHX_REF_LOCK) ? parseInt(el.getAttribute(PHX_REF_LOCK), 10) : null;
+  }
+  maybeUndo(ref, eachCloneCallback) {
+    if (!this.isWithin(ref)) {
+      return;
+    }
+    this.undoLocks(ref, eachCloneCallback);
+    this.undoLoading(ref);
+    if (this.isFullyResolvedBy(ref)) {
+      this.el.removeAttribute(PHX_REF_SRC);
+    }
+  }
+  isWithin(ref) {
+    return !(this.loadingRef !== null && this.loadingRef > ref && (this.lockRef !== null && this.lockRef > ref));
+  }
+  undoLocks(ref, eachCloneCallback) {
+    if (!this.isLockUndoneBy(ref)) {
+      return;
+    }
+    let clonedTree = dom_default.private(this.el, PHX_REF_LOCK);
+    if (clonedTree) {
+      eachCloneCallback(clonedTree);
+      dom_default.deletePrivate(this.el, PHX_REF_LOCK);
+    }
+    this.el.removeAttribute(PHX_REF_LOCK);
+    this.el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
+  }
+  undoLoading(ref) {
+    if (!this.isLoadingUndoneBy(ref)) {
+      return;
+    }
+    this.el.removeAttribute(PHX_REF_LOADING);
+    let disabledVal = this.el.getAttribute(PHX_DISABLED);
+    let readOnlyVal = this.el.getAttribute(PHX_READONLY);
+    if (readOnlyVal !== null) {
+      this.el.readOnly = readOnlyVal === "true" ? true : false;
+      this.el.removeAttribute(PHX_READONLY);
+    }
+    if (disabledVal !== null) {
+      this.el.disabled = disabledVal === "true" ? true : false;
+      this.el.removeAttribute(PHX_DISABLED);
+    }
+    PHX_EVENT_CLASSES.filter((name) => this.canUndoLoadingClass(name, ref)).forEach((name) => {
+      dom_default.removeClass(this.el, name);
+    });
+    let disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE);
+    if (disableRestore !== null) {
+      this.el.innerText = disableRestore;
+      this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
+    }
+  }
+  isLoadingUndoneBy(ref) {
+    return this.loadingRef === null ? false : this.loadingRef <= ref;
+  }
+  isLockUndoneBy(ref) {
+    return this.lockRef === null ? false : this.lockRef <= ref;
+  }
+  isFullyResolvedBy(ref) {
+    return (this.loadingRef === null || this.loadingRef <= ref) && (this.lockRef === null || this.lockRef <= ref);
+  }
+  canUndoLoadingClass(className, ref) {
+    return className !== "phx-submit-loading" || this.lockRef === null || this.lockRef <= ref;
+  }
+};
+
 // js/phoenix_live_view/dom_post_morph_restorer.js
 var DOMPostMorphRestorer = class {
   constructor(containerBefore, containerAfter, updateType) {
@@ -3587,54 +3657,16 @@ var View = class {
     });
   }
   undoElRef(el, ref) {
-    let loadingRef = el.hasAttribute(PHX_REF_LOADING) ? parseInt(el.getAttribute(PHX_REF_LOADING), 10) : null;
-    let lockRef = el.hasAttribute(PHX_REF_LOCK) ? parseInt(el.getAttribute(PHX_REF_LOCK), 10) : null;
-    if (loadingRef !== null && loadingRef > ref && (lockRef !== null && lockRef > ref)) {
-      return;
-    }
-    if (lockRef !== null && lockRef <= ref) {
-      let clonedTree = dom_default.private(el, PHX_REF_LOCK);
-      if (clonedTree) {
-        let hook = this.triggerBeforeUpdateHook(el, clonedTree);
-        DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
-        dom_default.all(el, `[${PHX_REF_SRC}="${this.refSrc()}"]`, (el2) => this.undoElRef(el2, ref));
-        this.execNewMounted(el);
-        if (hook) {
-          hook.__updated();
-        }
-        dom_default.deletePrivate(el, PHX_REF_LOCK);
+    let elRef = new ElementRef(el);
+    elRef.maybeUndo(ref, (clonedTree) => {
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree);
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
+      dom_default.all(el, `[${PHX_REF_SRC}="${this.refSrc()}"]`, (child) => this.undoElRef(child, ref));
+      this.execNewMounted(el);
+      if (hook) {
+        hook.__updated();
       }
-      el.removeAttribute(PHX_REF_LOCK);
-      el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
-    }
-    if ((loadingRef === null || loadingRef <= ref) && (lockRef === null || lockRef <= ref)) {
-      el.removeAttribute(PHX_REF_SRC);
-    }
-    if (loadingRef === null || loadingRef > ref) {
-      return;
-    }
-    el.removeAttribute(PHX_REF_LOADING);
-    let disabledVal = el.getAttribute(PHX_DISABLED);
-    let readOnlyVal = el.getAttribute(PHX_READONLY);
-    if (readOnlyVal !== null) {
-      el.readOnly = readOnlyVal === "true" ? true : false;
-      el.removeAttribute(PHX_READONLY);
-    }
-    if (disabledVal !== null) {
-      el.disabled = disabledVal === "true" ? true : false;
-      el.removeAttribute(PHX_DISABLED);
-    }
-    PHX_EVENT_CLASSES.forEach((className) => {
-      if (className === "phx-submit-loading" && lockRef !== null && lockRef > ref) {
-        return;
-      }
-      dom_default.removeClass(el, className);
     });
-    let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE);
-    if (disableRestore !== null) {
-      el.innerText = disableRestore;
-      el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
-    }
   }
   refSrc() {
     return this.el.id;

@@ -50,6 +50,7 @@ import {
 
 import Browser from "./browser"
 import DOM from "./dom"
+import ElementRef from "./element_ref"
 import DOMPatch from "./dom_patch"
 import LiveUploader from "./live_uploader"
 import Rendered from "./rendered"
@@ -885,62 +886,15 @@ export default class View {
   }
 
   undoElRef(el, ref){
-    let loadingRef = el.hasAttribute(PHX_REF_LOADING) ? parseInt(el.getAttribute(PHX_REF_LOADING), 10) : null
-    let lockRef = el.hasAttribute(PHX_REF_LOCK) ? parseInt(el.getAttribute(PHX_REF_LOCK), 10) : null
+    let elRef = new ElementRef(el)
 
-    if((loadingRef !== null && loadingRef > ref) && (lockRef !== null && lockRef > ref)){ return }
-
-    // Check for cloned PHX_REF_LOCK element that has been morphed behind
-    // the scenes while this element was locked in the DOM.
-    // When we apply the cloned tree to the active DOM element, we must
-    //
-    //   1. execute pending mounted hooks for nodes now in the DOM
-    //   2. undo any ref inside the cloned tree that has since been ack'd
-    if(lockRef !== null && lockRef <= ref){
-      let clonedTree = DOM.private(el, PHX_REF_LOCK)
-      if(clonedTree){
-        let hook = this.triggerBeforeUpdateHook(el, clonedTree)
-        DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
-        DOM.all(el, `[${PHX_REF_SRC}="${this.refSrc()}"]`, el => this.undoElRef(el, ref))
-        this.execNewMounted(el)
-        if(hook){ hook.__updated() }
-        DOM.deletePrivate(el, PHX_REF_LOCK)
-      }
-      el.removeAttribute(PHX_REF_LOCK)
-      el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
-    }
-
-    if((loadingRef === null || loadingRef <= ref) && (lockRef === null || lockRef <= ref)){
-      el.removeAttribute(PHX_REF_SRC)
-    }
-
-    // loading ref handling
-    if(loadingRef === null || loadingRef > ref){ return }
-    el.removeAttribute(PHX_REF_LOADING)
-
-    let disabledVal = el.getAttribute(PHX_DISABLED)
-    let readOnlyVal = el.getAttribute(PHX_READONLY)
-    // restore inputs
-    if(readOnlyVal !== null){
-      el.readOnly = readOnlyVal === "true" ? true : false
-      el.removeAttribute(PHX_READONLY)
-    }
-    if(disabledVal !== null){
-      el.disabled = disabledVal === "true" ? true : false
-      el.removeAttribute(PHX_DISABLED)
-    }
-    // remove classes
-    PHX_EVENT_CLASSES.forEach(className => {
-      // only remove the phx-submit-loading class if we are not locked
-      if(className === "phx-submit-loading" && lockRef !== null && lockRef > ref){ return }
-      DOM.removeClass(el, className)
+    elRef.maybeUndo(ref, clonedTree => {
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
+      DOM.all(el, `[${PHX_REF_SRC}="${this.refSrc()}"]`, child => this.undoElRef(child, ref))
+      this.execNewMounted(el)
+      if(hook){ hook.__updated() }
     })
-    // restore disables
-    let disableRestore = el.getAttribute(PHX_DISABLE_WITH_RESTORE)
-    if(disableRestore !== null){
-      el.innerText = disableRestore
-      el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
-    }
   }
 
   refSrc(){ return this.el.id }
