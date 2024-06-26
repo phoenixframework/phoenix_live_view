@@ -22,6 +22,7 @@ import {
   PHX_READONLY,
   PHX_REF,
   PHX_REF_SRC,
+  PHX_REF_LOCK,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
@@ -325,9 +326,10 @@ export default class View {
   }
 
   dropPendingRefs(){
-    DOM.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => {
+    DOM.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"][${PHX_REF}]`, el => {
       el.removeAttribute(PHX_REF)
       el.removeAttribute(PHX_REF_SRC)
+      el.removeAttribute(PHX_REF_LOCK)
     })
   }
 
@@ -885,12 +887,29 @@ export default class View {
   undoElRef(el, ref){
     if(!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)){ return }
 
+    // Check for cloned PHX_REF_LOCK element that has been morphed behind
+    // the scenes while this element was locked in the DOM.
+    // When we apply the cloned tree to the active DOM element, we must
+    //
+    //   1. execute pending mounted hooks for nodes now in the DOM
+    //   2. undo any ref inside the cloned tree that has since been ack'd
+    let clonedTree = DOM.private(el, PHX_REF_LOCK)
+    if(clonedTree){
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
+      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
+      this.execNewMounted(el)
+      if(hook){ hook.__updated() }
+      DOM.deletePrivate(el, PHX_REF_LOCK)
+    }
+
     el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
     let disabledVal = el.getAttribute(PHX_DISABLED)
     let readOnlyVal = el.getAttribute(PHX_READONLY)
     // remove refs
     el.removeAttribute(PHX_REF)
     el.removeAttribute(PHX_REF_SRC)
+    el.removeAttribute(PHX_REF_LOCK)
     // restore inputs
     if(readOnlyVal !== null){
       el.readOnly = readOnlyVal === "true" ? true : false
@@ -908,32 +927,30 @@ export default class View {
       el.innerText = disableRestore
       el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
     }
-    // Check for cloned PHX_REF element that has been morphed behind
-    // the scenes while this element was locked in the DOM.
-    // When we apply the cloned tree to the active DOM element, we must
-    //
-    //   1. execute pending mounted hooks for nodes now in the DOM
-    //   2. undo any ref inside the cloned tree that has since been ack'd
-    let clonedTree = DOM.private(el, PHX_REF)
-    if(clonedTree){
-      let hook = this.triggerBeforeUpdateHook(el, clonedTree)
-      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket)
-      DOM.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, el => this.undoElRef(el, ref))
-      this.execNewMounted(el)
-      if(hook){ hook.__updated() }
-      DOM.deletePrivate(el, PHX_REF)
-    }
   }
+
+  refSrc(){ return this.el.id }
 
   putRef(elements, event, opts = {}){
     let newRef = this.ref++
     let disableWith = this.binding(PHX_DISABLE_WITH)
-    if(opts.loading){ elements = elements.concat(DOM.all(document, opts.loading))}
+    if(opts.loading){
+      let loadingEls = DOM.all(document, opts.loading).map(el => {
+        return {el, lock: true, loading: true}
+      })
+      elements = elements.concat(loadingEls)
+    }
 
-    for(let el of elements){
+    for(let {el, lock, loading} of elements){
+      if(!lock && !loading){ throw new Error("ref updates require lock or loading options")}
+      el.setAttribute(PHX_REF_SRC, this.refSrc())
       el.setAttribute(PHX_REF, newRef)
-      el.setAttribute(PHX_REF_SRC, this.el.id)
+      if(lock){
+        el.setAttribute(PHX_REF_LOCK, newRef)
+      }
       if(opts.submitter && !(el === opts.submitter || el === opts.form)){ continue }
+
+      if(!loading){ continue }
 
       el.classList.add(`phx-${event}-loading`)
       el.dispatchEvent(new CustomEvent(`phx:${event}-loading`, {bubbles: true, cancelable: false}))
@@ -948,7 +965,7 @@ export default class View {
         el.setAttribute("disabled", "")
       }
     }
-    return [newRef, elements, opts]
+    return [newRef, elements.map(({el}) => el), opts]
   }
 
   componentID(el){
@@ -984,7 +1001,7 @@ export default class View {
       this.log("hook", () => ["unable to push hook event. LiveView not connected", event, payload])
       return false
     }
-    let [ref, els, opts] = this.putRef([el], "hook")
+    let [ref, els, opts] = this.putRef([{el, loading: true, lock: true}], "hook")
     this.pushWithReply(() => [ref, els, opts], "event", {
       type: "hook",
       event: event,
@@ -1019,7 +1036,7 @@ export default class View {
 
 
   pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply){
-    this.pushWithReply(() => this.putRef([el], type, opts), "event", {
+    this.pushWithReply(() => this.putRef([{el, loading: true, lock: true}], type, opts), "event", {
       type: type,
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
@@ -1042,7 +1059,12 @@ export default class View {
   pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback){
     let uploads
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts)
-    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts)
+    let refGenerator = () => {
+      return this.putRef([
+        {el: inputEl, loading: true, lock: true},
+        {el: inputEl.form, loading: true, lock: true}
+      ], "change", opts)
+    }
     let formData
     let meta  = this.extractMeta(inputEl.form)
     if(inputEl instanceof HTMLButtonElement){ meta.submitter = inputEl }
@@ -1139,7 +1161,11 @@ export default class View {
       }
     })
     formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
-    return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts)
+    let formEls = disables.concat(buttons).concat(inputs).map(el => {
+      return {el, loading: true, lock: true}
+    })
+
+    return this.putRef([{el: formEl, loading: true, lock: false}].concat(formEls), "submit", opts)
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply){
@@ -1296,7 +1322,7 @@ export default class View {
 
   pushLinkPatch(href, targetEl, callback){
     let linkRef = this.liveSocket.setPendingLink(href)
-    let refGen = targetEl ? () => this.putRef([targetEl], "click") : null
+    let refGen = targetEl ? () => this.putRef([{el: targetEl, loading: true, lock: true}], "click") : null
     let fallback = () => this.liveSocket.redirect(window.location.href)
     let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href
 

@@ -1204,7 +1204,7 @@ describe("View + Component", function(){
       let fromEl = tag("span", {"data-phx-ref-src": el.id, "data-phx-ref": "1"}, "hello")
       let toEl = tag("span", {"class": "new"}, "world")
 
-      DOM.putPrivate(fromEl, "data-phx-ref", toEl)
+      DOM.putPrivate(fromEl, "data-phx-ref-lock", toEl)
 
       el.appendChild(fromEl)
       let view = simulateJoinedView(el, liveSocket)

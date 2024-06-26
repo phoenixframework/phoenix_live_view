@@ -10,6 +10,8 @@ import {
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
   PHX_REF,
+  PHX_REF_SRC,
+  PHX_REF_LOCK,
   PHX_STREAM,
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
@@ -184,6 +186,7 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          DOM.syncPendingAttrs(fromEl, toEl)
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
@@ -223,10 +226,13 @@ export default class DOMPatch {
               updates.push(fromEl)
             }
             DOM.applyStickyOperations(fromEl)
-            let clone = DOM.private(fromEl, PHX_REF) || fromEl.cloneNode(true)
-            DOM.putPrivate(fromEl, PHX_REF, clone)
-            if(!isFocusedFormEl){
-              fromEl = clone
+            let isLocked = fromEl.hasAttribute(PHX_REF_LOCK)
+            let clone = isLocked ? DOM.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null
+            if(clone){
+              DOM.putPrivate(fromEl, PHX_REF_LOCK, clone)
+              if(!isFocusedFormEl){
+                fromEl = clone
+              }
             }
           }
 

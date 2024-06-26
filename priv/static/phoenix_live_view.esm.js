@@ -20,6 +20,7 @@ var PHX_TRACK_STATIC = "track-static";
 var PHX_LINK_STATE = "data-phx-link-state";
 var PHX_REF = "data-phx-ref";
 var PHX_REF_SRC = "data-phx-ref-src";
+var PHX_REF_LOCK = "data-phx-ref-lock";
 var PHX_TRACK_UPLOADS = "track-uploads";
 var PHX_UPLOAD_REF = "data-phx-upload-ref";
 var PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
@@ -79,6 +80,7 @@ var DEFAULTS = {
   debounce: 300,
   throttle: 300
 };
+var PHX_PENDING_ATTRS = [PHX_REF, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING];
 var DYNAMICS = "d";
 var STATIC = "s";
 var ROOT = "r";
@@ -734,6 +736,17 @@ var DOM = {
       this.putPrivate(el, key, updateFunc(existing));
     }
   },
+  syncPendingAttrs(fromEl, toEl) {
+    if (!fromEl.hasAttribute(PHX_REF)) {
+      return;
+    }
+    PHX_EVENT_CLASSES.forEach((className) => {
+      fromEl.classList.contains(className) && toEl.classList.add(className);
+    });
+    PHX_PENDING_ATTRS.filter((attr) => fromEl.hasAttribute(attr)).forEach((attr) => {
+      toEl.setAttribute(attr, fromEl.getAttribute(attr));
+    });
+  },
   copyPrivates(target, source) {
     if (source[PHX_PRIVATE]) {
       target[PHX_PRIVATE] = source[PHX_PRIVATE];
@@ -911,7 +924,7 @@ var DOM = {
     for (let i = targetAttrs.length - 1; i >= 0; i--) {
       let name = targetAttrs[i].name;
       if (isIgnored) {
-        if (name.startsWith("data-") && !source.hasAttribute(name) && ![PHX_REF, PHX_REF_SRC].includes(name)) {
+        if (name.startsWith("data-") && !source.hasAttribute(name) && !PHX_PENDING_ATTRS.includes(name)) {
           target.removeAttribute(name);
         }
       } else {
@@ -2164,6 +2177,7 @@ var DOMPatch = class {
           this.maybeReOrderStream(el, false);
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          dom_default.syncPendingAttrs(fromEl, toEl);
           dom_default.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom);
           dom_default.cleanChildNodes(toEl, phxUpdate);
           if (this.skipCIDSibling(toEl)) {
@@ -2197,10 +2211,13 @@ var DOMPatch = class {
               updates.push(fromEl);
             }
             dom_default.applyStickyOperations(fromEl);
-            let clone2 = dom_default.private(fromEl, PHX_REF) || fromEl.cloneNode(true);
-            dom_default.putPrivate(fromEl, PHX_REF, clone2);
-            if (!isFocusedFormEl) {
-              fromEl = clone2;
+            let isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
+            let clone2 = isLocked ? dom_default.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null;
+            if (clone2) {
+              dom_default.putPrivate(fromEl, PHX_REF_LOCK, clone2);
+              if (!isFocusedFormEl) {
+                fromEl = clone2;
+              }
             }
           }
           if (dom_default.isPhxChild(toEl)) {
@@ -3047,9 +3064,10 @@ var View = class {
     });
   }
   dropPendingRefs() {
-    dom_default.all(document, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el) => {
+    dom_default.all(document, `[${PHX_REF_SRC}="${this.refSrc()}"][${PHX_REF}]`, (el) => {
       el.removeAttribute(PHX_REF);
       el.removeAttribute(PHX_REF_SRC);
+      el.removeAttribute(PHX_REF_LOCK);
     });
   }
   onJoinComplete({ live_patch }, html, streams, events) {
@@ -3572,11 +3590,23 @@ var View = class {
     if (!(parseInt(el.getAttribute(PHX_REF), 10) <= ref)) {
       return;
     }
+    let clonedTree = dom_default.private(el, PHX_REF_LOCK);
+    if (clonedTree) {
+      let hook = this.triggerBeforeUpdateHook(el, clonedTree);
+      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
+      dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => this.undoElRef(el2, ref));
+      this.execNewMounted(el);
+      if (hook) {
+        hook.__updated();
+      }
+      dom_default.deletePrivate(el, PHX_REF_LOCK);
+    }
     el.dispatchEvent(new CustomEvent("phx:unlock", { bubbles: true, cancelable: false }));
     let disabledVal = el.getAttribute(PHX_DISABLED);
     let readOnlyVal = el.getAttribute(PHX_READONLY);
     el.removeAttribute(PHX_REF);
     el.removeAttribute(PHX_REF_SRC);
+    el.removeAttribute(PHX_REF_LOCK);
     if (readOnlyVal !== null) {
       el.readOnly = readOnlyVal === "true" ? true : false;
       el.removeAttribute(PHX_READONLY);
@@ -3591,28 +3621,29 @@ var View = class {
       el.innerText = disableRestore;
       el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
     }
-    let clonedTree = dom_default.private(el, PHX_REF);
-    if (clonedTree) {
-      let hook = this.triggerBeforeUpdateHook(el, clonedTree);
-      DOMPatch.patchWithClonedTree(el, clonedTree, this.liveSocket);
-      dom_default.all(el, `[${PHX_REF_SRC}="${this.id}"][${PHX_REF}]`, (el2) => this.undoElRef(el2, ref));
-      this.execNewMounted(el);
-      if (hook) {
-        hook.__updated();
-      }
-      dom_default.deletePrivate(el, PHX_REF);
-    }
+  }
+  refSrc() {
+    return this.el.id;
   }
   putRef(elements, event, opts = {}) {
     let newRef = this.ref++;
     let disableWith = this.binding(PHX_DISABLE_WITH);
     if (opts.loading) {
-      elements = elements.concat(dom_default.all(document, opts.loading));
+      let loadingEls = dom_default.all(document, opts.loading).map((el) => {
+        return { el, lock: true, loading: true };
+      });
+      elements = elements.concat(loadingEls);
     }
-    for (let el of elements) {
+    for (let { el, lock, loading } of elements) {
+      el.setAttribute(PHX_REF_SRC, this.refSrc());
       el.setAttribute(PHX_REF, newRef);
-      el.setAttribute(PHX_REF_SRC, this.el.id);
+      if (lock) {
+        el.setAttribute(PHX_REF_LOCK, newRef);
+      }
       if (opts.submitter && !(el === opts.submitter || el === opts.form)) {
+        continue;
+      }
+      if (!loading) {
         continue;
       }
       el.classList.add(`phx-${event}-loading`);
@@ -3629,7 +3660,7 @@ var View = class {
         el.setAttribute("disabled", "");
       }
     }
-    return [newRef, elements, opts];
+    return [newRef, elements.map(({ el }) => el), opts];
   }
   componentID(el) {
     let cid = el.getAttribute && el.getAttribute(PHX_COMPONENT);
@@ -3662,7 +3693,7 @@ var View = class {
       this.log("hook", () => ["unable to push hook event. LiveView not connected", event, payload]);
       return false;
     }
-    let [ref, els, opts] = this.putRef([el], "hook");
+    let [ref, els, opts] = this.putRef([{ el, loading: true, lock: true }], "hook");
     this.pushWithReply(() => [ref, els, opts], "event", {
       type: "hook",
       event,
@@ -3702,7 +3733,7 @@ var View = class {
     return meta;
   }
   pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
-    this.pushWithReply(() => this.putRef([el], type, opts), "event", {
+    this.pushWithReply(() => this.putRef([{ el, loading: true, lock: true }], type, opts), "event", {
       type,
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
@@ -3724,7 +3755,12 @@ var View = class {
   pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback) {
     let uploads;
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts);
-    let refGenerator = () => this.putRef([inputEl, inputEl.form], "change", opts);
+    let refGenerator = () => {
+      return this.putRef([
+        { el: inputEl, loading: true, lock: true },
+        { el: inputEl.form, loading: true, lock: true }
+      ], "change", opts);
+    };
     let formData;
     let meta = this.extractMeta(inputEl.form);
     if (inputEl instanceof HTMLButtonElement) {
@@ -3816,7 +3852,10 @@ var View = class {
       }
     });
     formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
-    return this.putRef([formEl].concat(disables).concat(buttons).concat(inputs), "submit", opts);
+    let formEls = disables.concat(buttons).concat(inputs).map((el) => {
+      return { el, loading: true, lock: true };
+    });
+    return this.putRef([{ el: formEl, loading: true, lock: false }].concat(formEls), "submit", opts);
   }
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
     let refGenerator = () => this.disableForm(formEl, { ...opts, form: formEl, submitter });
@@ -3956,7 +3995,7 @@ var View = class {
   }
   pushLinkPatch(href, targetEl, callback) {
     let linkRef = this.liveSocket.setPendingLink(href);
-    let refGen = targetEl ? () => this.putRef([targetEl], "click") : null;
+    let refGen = targetEl ? () => this.putRef([{ el: targetEl, loading: true, lock: true }], "click") : null;
     let fallback = () => this.liveSocket.redirect(window.location.href);
     let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href;
     let push = this.pushWithReply(refGen, "live_patch", { url }, (resp) => {
