@@ -27,13 +27,16 @@ import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
 export default class DOMPatch {
-  static patchWithClonedTree(fromEl, clonedTree, liveSocket){
-    let activeElement  = liveSocket.getActiveElement()
+  static patchWithClonedTree(container, clonedTree, liveSocket){
+    let activeElement = liveSocket.getActiveElement()
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
 
-    morphdom(fromEl, clonedTree, {
+    morphdom(container, clonedTree, {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl, toEl) => {
+        DOM.syncPendingAttrs(fromEl, toEl)
+        // we cannot morph locked children
+        if(!container.isSameNode(fromEl) && fromEl.hasAttribute(PHX_REF_LOCK)){ return false }
         if(DOM.isIgnored(fromEl, phxUpdate)){ return false }
         if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
           DOM.mergeFocusedInput(fromEl, toEl)

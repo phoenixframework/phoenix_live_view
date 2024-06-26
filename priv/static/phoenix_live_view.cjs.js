@@ -1534,25 +1534,29 @@ var ElementRef = class {
     if (!this.isLoadingUndoneBy(ref)) {
       return;
     }
-    this.el.removeAttribute(PHX_REF_LOADING);
-    let disabledVal = this.el.getAttribute(PHX_DISABLED);
-    let readOnlyVal = this.el.getAttribute(PHX_READONLY);
-    if (readOnlyVal !== null) {
-      this.el.readOnly = readOnlyVal === "true" ? true : false;
-      this.el.removeAttribute(PHX_READONLY);
+    if (this.canUndoLoading(ref)) {
+      this.el.removeAttribute(PHX_REF_LOADING);
+      let disabledVal = this.el.getAttribute(PHX_DISABLED);
+      let readOnlyVal = this.el.getAttribute(PHX_READONLY);
+      if (readOnlyVal !== null) {
+        this.el.readOnly = readOnlyVal === "true" ? true : false;
+        this.el.removeAttribute(PHX_READONLY);
+      }
+      if (disabledVal !== null) {
+        this.el.disabled = disabledVal === "true" ? true : false;
+        this.el.removeAttribute(PHX_DISABLED);
+      }
+      let disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE);
+      if (disableRestore !== null) {
+        this.el.innerText = disableRestore;
+        this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
+      }
     }
-    if (disabledVal !== null) {
-      this.el.disabled = disabledVal === "true" ? true : false;
-      this.el.removeAttribute(PHX_DISABLED);
-    }
-    PHX_EVENT_CLASSES.filter((name) => this.canUndoLoadingClass(name, ref)).forEach((name) => {
-      dom_default.removeClass(this.el, name);
+    PHX_EVENT_CLASSES.forEach((name) => {
+      if (name !== "phx-submit-loading" || this.canUndoLoading(ref)) {
+        dom_default.removeClass(this.el, name);
+      }
     });
-    let disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE);
-    if (disableRestore !== null) {
-      this.el.innerText = disableRestore;
-      this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
-    }
   }
   isLoadingUndoneBy(ref) {
     return this.loadingRef === null ? false : this.loadingRef <= ref;
@@ -1563,8 +1567,8 @@ var ElementRef = class {
   isFullyResolvedBy(ref) {
     return (this.loadingRef === null || this.loadingRef <= ref) && (this.lockRef === null || this.lockRef <= ref);
   }
-  canUndoLoadingClass(className, ref) {
-    return className !== "phx-submit-loading" || this.lockRef === null || this.lockRef <= ref;
+  canUndoLoading(ref) {
+    return this.lockRef === null || this.lockRef <= ref;
   }
 };
 
@@ -2104,17 +2108,21 @@ var morphdom_esm_default = morphdom;
 
 // js/phoenix_live_view/dom_patch.js
 var DOMPatch = class {
-  static patchWithClonedTree(fromEl, clonedTree, liveSocket) {
+  static patchWithClonedTree(container, clonedTree, liveSocket) {
     let activeElement = liveSocket.getActiveElement();
     let phxUpdate = liveSocket.binding(PHX_UPDATE);
-    morphdom_esm_default(fromEl, clonedTree, {
+    morphdom_esm_default(container, clonedTree, {
       childrenOnly: false,
-      onBeforeElUpdated: (fromEl2, toEl) => {
-        if (dom_default.isIgnored(fromEl2, phxUpdate)) {
+      onBeforeElUpdated: (fromEl, toEl) => {
+        dom_default.syncPendingAttrs(fromEl, toEl);
+        if (!container.isSameNode(fromEl) && fromEl.hasAttribute(PHX_REF_LOCK)) {
           return false;
         }
-        if (activeElement && activeElement.isSameNode(fromEl2) && dom_default.isFormInput(fromEl2)) {
-          dom_default.mergeFocusedInput(fromEl2, toEl);
+        if (dom_default.isIgnored(fromEl, phxUpdate)) {
+          return false;
+        }
+        if (activeElement && activeElement.isSameNode(fromEl) && dom_default.isFormInput(fromEl)) {
+          dom_default.mergeFocusedInput(fromEl, toEl);
           return false;
         }
       }

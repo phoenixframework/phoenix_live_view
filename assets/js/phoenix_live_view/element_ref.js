@@ -59,28 +59,32 @@ export default class ElementRef {
   undoLoading(ref){
     if(!this.isLoadingUndoneBy(ref)){ return }
 
-    this.el.removeAttribute(PHX_REF_LOADING)
-    let disabledVal = this.el.getAttribute(PHX_DISABLED)
-    let readOnlyVal = this.el.getAttribute(PHX_READONLY)
-    // restore inputs
-    if(readOnlyVal !== null){
-      this.el.readOnly = readOnlyVal === "true" ? true : false
-      this.el.removeAttribute(PHX_READONLY)
-    }
-    if(disabledVal !== null){
-      this.el.disabled = disabledVal === "true" ? true : false
-      this.el.removeAttribute(PHX_DISABLED)
+    if(this.canUndoLoading(ref)){
+      this.el.removeAttribute(PHX_REF_LOADING)
+      let disabledVal = this.el.getAttribute(PHX_DISABLED)
+      let readOnlyVal = this.el.getAttribute(PHX_READONLY)
+      // restore inputs
+      if(readOnlyVal !== null){
+        this.el.readOnly = readOnlyVal === "true" ? true : false
+        this.el.removeAttribute(PHX_READONLY)
+      }
+      if(disabledVal !== null){
+        this.el.disabled = disabledVal === "true" ? true : false
+        this.el.removeAttribute(PHX_DISABLED)
+      }
+      // restore disables
+      let disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE)
+      if(disableRestore !== null){
+        this.el.innerText = disableRestore
+        this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
+      }
     }
     // remove classes
-    PHX_EVENT_CLASSES.filter(name => this.canUndoLoadingClass(name, ref)).forEach(name => {
-      DOM.removeClass(this.el, name)
+    PHX_EVENT_CLASSES.forEach(name => {
+      if(name !== "phx-submit-loading" || this.canUndoLoading(ref)){
+        DOM.removeClass(this.el, name)
+      }
     })
-    // restore disables
-    let disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE)
-    if(disableRestore !== null){
-      this.el.innerText = disableRestore
-      this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
-    }
   }
 
   isLoadingUndoneBy(ref){ return this.loadingRef === null ? false : this.loadingRef <= ref }
@@ -91,7 +95,5 @@ export default class ElementRef {
   }
 
   // only remove the phx-submit-loading class if we are not locked
-  canUndoLoadingClass(className, ref){
-    return className !== "phx-submit-loading" || this.lockRef === null || this.lockRef <= ref
-  }
+  canUndoLoading(ref){ return this.lockRef === null || this.lockRef <= ref }
 }

@@ -1236,7 +1236,7 @@ describe("View + Component", function(){
 
       view.undoRefs(1)
 
-      expect(el.querySelector("#myhook").outerHTML).toBe("<span id=\"myhook\" phx-hook=\"MyHook\" data-phx-ref-src=\"container\" data-phx-ref-lock=\"2\">Hello</span>")
+      expect(el.querySelector("#myhook").outerHTML).toBe("<span id=\"myhook\" phx-hook=\"MyHook\" data-phx-ref-src=\"container\" data-phx-ref-lock=\"2\" data-phx-ref-loading=\"1\">Hello</span>")
       view.undoRefs(2)
       expect(el.querySelector("#myhook").outerHTML).toBe("<span id=\"myhook\" phx-hook=\"MyHook\">world</span>")
       expect(beforeUpdate).toBe(true)
