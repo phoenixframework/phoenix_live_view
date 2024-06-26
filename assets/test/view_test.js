@@ -1232,7 +1232,7 @@ describe("View + Component", function(){
       view.update({s: ["<span id=\"myhook\" data-phx-ref=\"1\" data-phx-ref-src=\"container\" phx-hook=\"MyHook\">Hello</span>"]}, [])
 
       let toEl = tag("span", {"id": "myhook", "phx-hook": "MyHook"}, "world")
-      DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref", toEl)
+      DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref-lock", toEl)
 
       view.undoRefs(1)
 
