@@ -4218,7 +4218,7 @@ var LiveSocket = class {
     });
   }
   version() {
-    return "1.0.0-rc.5";
+    return "1.0.0-rc.6";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";

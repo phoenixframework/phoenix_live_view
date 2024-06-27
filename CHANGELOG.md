@@ -108,6 +108,14 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.0-rc.6 (2024-06-27)
+
+### Bug fixes
+  * Fix issue with phx-submit where the form container would not be updated while awaiting phx-submit acknowledgement
+
+### Enhancements
+  * Support `blocking: false` option to all JS commands that accept `:transition`, to avoid blocking DOM updates during the transition
+
 ## 1.0.0-rc.5 (2024-06-21)
 
 ### Bug fixes
