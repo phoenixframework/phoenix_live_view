@@ -31,8 +31,19 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
 
+      let Hooks = {}
+      Hooks.FormHook = {
+        mounted() {
+          this.pushEvent("ping", {}, () => this.el.innerText += "pong")
+        }
+      }
+      Hooks.FormStreamHook = {
+        mounted() {
+          this.pushEvent("ping", {}, () => this.el.innerText += "pong")
+        }
+      }
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}, hooks: Hooks})
       liveSocket.connect()
       window.liveSocket = liveSocket
     </script>
@@ -100,6 +111,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form", E2E.FormLive
       live "/form/dynamic-inputs", E2E.FormDynamicInputsLive
       live "/form/nested", E2E.NestedFormLive
+      live "/form/stream", E2E.FormStreamLive
       live "/js", E2E.JsLive
     end
 

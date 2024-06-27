@@ -1,6 +1,8 @@
 const { test, expect } = require("../test-fixtures");
 const { syncLV, attributeMutations } = require("../utils");
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 for (let path of ["/form/nested", "/form"]) {
   // see also https://github.com/phoenixframework/phoenix_live_view/issues/1759
   // https://github.com/phoenixframework/phoenix_live_view/issues/2993
@@ -187,7 +189,126 @@ for (let path of ["/form/nested", "/form"]) {
 
     await expect(page.getByText("Form was submitted!")).toBeVisible();
   });
+
+  test(`${path} - loading and locked states with latency`, async ({ page }) => {
+    await page.goto(`${path}?phx-change=validate`);
+    await syncLV(page);
+    await page.evaluate(() => window.liveSocket.enableLatencySim(2000));
+    await expect(page.getByText("Form was submitted!")).not.toBeVisible();
+    let testForm = page.locator("#test-form");
+    let submitBtn = page.locator("#test-form #submit");
+    await page.locator("#test-form input[name=b]").fill("test");
+    await expect(testForm).toHaveClass("myformclass phx-change-loading");
+    await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+    // form is locked on phx-change for any changed input
+    await expect(testForm).toHaveAttribute("data-phx-ref-lock");
+    await expect(testForm).toHaveAttribute("data-phx-ref-src");
+    // we need to sleep to ensure the phx-change ref arrives sufficiently before the phx-submit ref
+    // to make our assertions about the intermediate states
+    await sleep(1000)
+    await submitBtn.click();
+    // change-loading and submit-loading classes exist simultaneously
+    await expect(testForm).toHaveClass("myformclass phx-change-loading phx-submit-loading");
+    await sleep(1000)
+    // phx-change ack arrives and is removed
+    await expect(testForm).toHaveClass("myformclass phx-submit-loading");
+    await expect(submitBtn).toHaveClass("phx-submit-loading");
+    await expect(submitBtn).toHaveAttribute("data-phx-disable-with-restore", "Submit");
+    await expect(submitBtn).toHaveAttribute("data-phx-ref-loading");
+    await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+    await expect(testForm).toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).toHaveAttribute("data-phx-ref-lock");
+    // form is not locked on submit
+    await expect(testForm).not.toHaveAttribute("data-phx-ref-lock");
+    await expect(submitBtn).toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).toHaveAttribute("disabled", "");
+    await expect(submitBtn).toHaveAttribute("phx-disable-with", "Submitting");
+    await expect(page.getByText("Form was submitted!")).toBeVisible();
+    // all refs are cleaned up
+    await expect(testForm).toHaveClass("myformclass");
+    await expect(submitBtn).toHaveClass("");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-disable-with-restore");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-loading");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-lock");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-loading");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-lock");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).not.toHaveAttribute("disabled");
+    await expect(submitBtn).toHaveAttribute("phx-disable-with", "Submitting");
+    await page.evaluate(() => window.liveSocket.disableLatencySim());
+  });
 }
+
+test(`loading and locked states with latent clone`, async ({ page }) => {
+  await page.goto(`/form/stream`);
+  let formHook = page.locator("#form-stream-hook");
+  await syncLV(page);
+  await page.evaluate(() => window.liveSocket.enableLatencySim(2000));
+  await expect(formHook).toHaveText("pong");
+  let testForm = page.locator("#test-form");
+  let testInput = page.locator("#test-form input[name=myname]");
+  let submitBtn = page.locator("#test-form button");
+  // initial 3 stream items
+  await expect(page.locator("#form-stream li")).toHaveCount(3)
+  await testInput.fill("1");
+  await testInput.fill("2");
+  // form is locked on phx-change and stream remains unchanged
+  await sleep(1000)
+  await submitBtn.click();
+  await expect(testForm).toHaveClass("phx-change-loading phx-submit-loading");
+  await expect(submitBtn).toHaveText("Saving...");
+  await expect(testInput).toHaveClass("phx-change-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-src");
+  await expect(testInput).toHaveAttribute("data-phx-ref-loading");
+  await expect(testInput).toHaveAttribute("data-phx-ref-src");
+  await expect(page.locator("#form-stream li")).toHaveCount(3, {timeout: 100});
+  // on unlock, cloned stream items that are added on each phx-change are applied to DOM
+  await expect(page.locator("#form-stream li")).toHaveCount(5);
+  // after clones are applied, the stream item hooks are mounted
+  // note that the form still awaits the submit ack, but it is not locked,
+  // therefore the updates from the phx-change are already applied
+  await expect(page.locator("#form-stream li")).toHaveText([
+    "*%{id: 1}pong",
+    "*%{id: 2}pong",
+    "*%{id: 3}pong",
+    "*%{id: 4}",
+    "*%{id: 5}"
+  ]);
+  // still saving
+  await expect(submitBtn).toHaveText("Saving...");
+  await expect(testForm).toHaveClass("phx-submit-loading");
+  await expect(testInput).toHaveAttribute("readonly", "");
+  await expect(submitBtn).toHaveClass("phx-submit-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-src");
+  await expect(testInput).toHaveAttribute("data-phx-ref-loading");
+  await expect(testInput).toHaveAttribute("data-phx-ref-src");
+  await expect(submitBtn).toHaveAttribute("data-phx-ref-loading");
+  await expect(submitBtn).toHaveAttribute("data-phx-ref-src");
+  // submit adds 1 more stream item and new hook is mounted
+  await expect(page.locator("#form-stream li")).toHaveText([
+    "*%{id: 1}pong",
+    "*%{id: 2}pong",
+    "*%{id: 3}pong",
+    "*%{id: 4}pong",
+    "*%{id: 5}pong",
+    "*%{id: 6}pong"
+  ]);
+  await expect(submitBtn).toHaveText("Submit");
+  await expect(submitBtn).toHaveAttribute("phx-disable-with", "Saving...");
+  await expect(testForm).not.toHaveClass("phx-submit-loading");
+  await expect(testInput).not.toHaveAttribute("readonly");
+  await expect(submitBtn).not.toHaveClass("phx-submit-loading");
+  await expect(testForm).not.toHaveAttribute("data-phx-ref");
+  await expect(testForm).not.toHaveAttribute("data-phx-ref-src");
+  await expect(testInput).not.toHaveAttribute("data-phx-ref");
+  await expect(testInput).not.toHaveAttribute("data-phx-ref-src");
+  await expect(submitBtn).not.toHaveAttribute("data-phx-ref");
+  await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
+  await page.evaluate(() => window.liveSocket.disableLatencySim());
+});
 
 test("can dynamically add/remove inputs (ecto sort_param/drop_param)", async ({ page }) => {
   await page.goto("/form/dynamic-inputs");
@@ -329,4 +450,5 @@ test("phx-no-feedback is applied correctly for backwards-compatible-shims", asyn
   await syncLV(page);
   await expect(page.locator("[data-feedback-container]")).not.toBeVisible();
 });
+
 

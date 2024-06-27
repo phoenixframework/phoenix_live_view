@@ -9,15 +9,16 @@ import {
   PHX_MAIN,
   PHX_PARENT_ID,
   PHX_PRIVATE,
-  PHX_REF,
   PHX_REF_SRC,
+  PHX_PENDING_ATTRS,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
   PHX_STICKY,
-  THROTTLED
+  PHX_EVENT_CLASSES,
+  THROTTLED,
 } from "./constants"
 
 import JS from "./js"
@@ -191,6 +192,16 @@ let DOM = {
     } else {
       this.putPrivate(el, key, updateFunc(existing))
     }
+  },
+
+  syncPendingAttrs(fromEl, toEl){
+    if(!fromEl.hasAttribute(PHX_REF_SRC)){ return }
+    PHX_EVENT_CLASSES.forEach(className => {
+      fromEl.classList.contains(className) && toEl.classList.add(className)
+    })
+    PHX_PENDING_ATTRS.filter(attr => fromEl.hasAttribute(attr)).forEach(attr => {
+      toEl.setAttribute(attr, fromEl.getAttribute(attr))
+    })
   },
 
   copyPrivates(target, source){
@@ -388,7 +399,7 @@ let DOM = {
     for(let i = targetAttrs.length - 1; i >= 0; i--){
       let name = targetAttrs[i].name
       if(isIgnored){
-        if(name.startsWith("data-") && !source.hasAttribute(name) && ![PHX_REF, PHX_REF_SRC].includes(name)){ target.removeAttribute(name) }
+        if(name.startsWith("data-") && !source.hasAttribute(name) && !PHX_PENDING_ATTRS.includes(name)){ target.removeAttribute(name) }
       } else {
         if(!source.hasAttribute(name)){ target.removeAttribute(name) }
       }

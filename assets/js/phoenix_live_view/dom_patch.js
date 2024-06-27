@@ -9,7 +9,8 @@ import {
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
-  PHX_REF,
+  PHX_REF_SRC,
+  PHX_REF_LOCK,
   PHX_STREAM,
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
@@ -26,13 +27,16 @@ import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
 export default class DOMPatch {
-  static patchWithClonedTree(fromEl, clonedTree, liveSocket){
-    let activeElement  = liveSocket.getActiveElement()
+  static patchWithClonedTree(container, clonedTree, liveSocket){
+    let activeElement = liveSocket.getActiveElement()
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
 
-    morphdom(fromEl, clonedTree, {
+    morphdom(container, clonedTree, {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl, toEl) => {
+        DOM.syncPendingAttrs(fromEl, toEl)
+        // we cannot morph locked children
+        if(!container.isSameNode(fromEl) && fromEl.hasAttribute(PHX_REF_LOCK)){ return false }
         if(DOM.isIgnored(fromEl, phxUpdate)){ return false }
         if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
           DOM.mergeFocusedInput(fromEl, toEl)
@@ -184,6 +188,7 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          DOM.syncPendingAttrs(fromEl, toEl)
           DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
@@ -208,7 +213,7 @@ export default class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          // If the element has  PHX_REF, it is locked and awaiting an ack.
+          // If the element has  PHX_REF_SRC, it is loading or locked and awaiting an ack.
           // If it's locked, we clone the fromEl tree and instruct morphdom to use
           // the cloned tree as the source of the morph for this branch from here on out.
           // We keep a reference to the cloned tree in the element's private data, and
@@ -216,17 +221,20 @@ export default class DOMPatch {
           // apply any changes that happened while the element was locked.
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
-          if(fromEl.hasAttribute(PHX_REF)){
+          if(fromEl.hasAttribute(PHX_REF_SRC)){
             if(DOM.isUploadInput(fromEl)){
               DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
               this.trackBefore("updated", fromEl, toEl)
               updates.push(fromEl)
             }
             DOM.applyStickyOperations(fromEl)
-            let clone = DOM.private(fromEl, PHX_REF) || fromEl.cloneNode(true)
-            DOM.putPrivate(fromEl, PHX_REF, clone)
-            if(!isFocusedFormEl){
-              fromEl = clone
+            let isLocked = fromEl.hasAttribute(PHX_REF_LOCK)
+            let clone = isLocked ? DOM.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null
+            if(clone){
+              DOM.putPrivate(fromEl, PHX_REF_LOCK, clone)
+              if(!isFocusedFormEl){
+                fromEl = clone
+              }
             }
           }
 
