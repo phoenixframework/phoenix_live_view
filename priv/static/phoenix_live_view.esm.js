@@ -2482,14 +2482,12 @@ var DOMPatch = class {
   transitionPendingRemoves() {
     let { pendingRemoves, liveSocket } = this;
     if (pendingRemoves.length > 0) {
-      liveSocket.transitionRemoves(pendingRemoves);
-      liveSocket.requestDOMUpdate(() => {
+      liveSocket.transitionRemoves(pendingRemoves, false, () => {
         pendingRemoves.forEach((el) => {
           let child = dom_default.firstPhxChild(el);
           if (child) {
             liveSocket.destroyViewByEl(child);
           }
-          el.remove();
         });
         this.trackAfter("transitionsDiscarded", pendingRemoves);
       });
@@ -4459,21 +4457,31 @@ var LiveSocket = class {
       }
     });
   }
-  transitionRemoves(elements, skipSticky) {
+  transitionRemoves(elements, skipSticky, callback) {
     let removeAttr = this.binding("remove");
     elements = elements || dom_default.all(document, `[${removeAttr}]`);
     if (skipSticky) {
       const stickies = dom_default.findPhxSticky(document) || [];
       elements = elements.filter((el) => !dom_default.isChildOfAny(el, stickies));
     }
+    let silenceEvents = (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
     elements.forEach((el) => {
       for (let event of this.boundEventNames) {
-        el.addEventListener(event, (e) => {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-        }, true);
+        el.addEventListener(event, silenceEvents, true);
       }
       this.execJS(el, el.getAttribute(removeAttr), "remove");
+    });
+    this.requestDOMUpdate(() => {
+      elements.forEach((el) => {
+        for (let event of this.boundEventNames) {
+          el.removeEventListener(event, silenceEvents, true);
+        }
+      });
+      callback && callback();
+      elements.forEach((el) => el.remove());
     });
   }
   isPhxView(el) {

@@ -429,7 +429,7 @@ export default class LiveSocket {
     })
   }
 
-  transitionRemoves(elements, skipSticky){
+  transitionRemoves(elements, skipSticky, callback){
     let removeAttr = this.binding("remove")
     elements = elements || DOM.all(document, `[${removeAttr}]`)
 
@@ -437,16 +437,28 @@ export default class LiveSocket {
       const stickies = DOM.findPhxSticky(document) || []
       elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
     }
+    let silenceEvents = (e) => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+    }
     elements.forEach(el => {
       // prevent all listeners we care about from bubbling to window
       // since we are removing the element
       for(let event of this.boundEventNames){
-        el.addEventListener(event, e => {
-          e.preventDefault()
-          e.stopImmediatePropagation()
-        }, true)
+        el.addEventListener(event, silenceEvents, true)
       }
       this.execJS(el, el.getAttribute(removeAttr), "remove")
+    })
+    // remove the silenced listeners when transitions are done incase the element is re-used
+    // and call caller's callback as soon as we are done with transitions
+    this.requestDOMUpdate(() => {
+      elements.forEach(el => {
+        for(let event of this.boundEventNames){
+          el.removeEventListener(event, silenceEvents, true)
+        }
+      })
+      callback && callback()
+      elements.forEach(el => el.remove())
     })
   }
 
