@@ -269,6 +269,7 @@ let JS = {
       } else {
         view.transition(time, onStart, onDone)
       }
+      return
     }
 
     window.requestAnimationFrame(() => {
