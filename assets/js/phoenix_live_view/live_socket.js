@@ -409,16 +409,19 @@ export default class LiveSocket {
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let liveReferer = this.currentLocation.href
     this.outgoingMainEl = this.outgoingMainEl || this.main.el
+    let removeEls = DOM.all(this.outgoingMainEl, `[${this.binding("remove")}]`)
     let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
 
     this.main = this.newRootView(newMainEl, flash, liveReferer)
     this.main.setRedirect(href)
-    this.transitionRemoves(null, true)
+    this.transitionRemoves(removeEls, true)
     this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
+          // remove phx-remove els right before we replace the main element
+          removeEls.forEach(el => el.remove())
           DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
           this.outgoingMainEl.replaceWith(newMainEl)
           this.outgoingMainEl = null
@@ -429,24 +432,33 @@ export default class LiveSocket {
     })
   }
 
-  transitionRemoves(elements, skipSticky){
+  transitionRemoves(elements, skipSticky, callback){
     let removeAttr = this.binding("remove")
-    elements = elements || DOM.all(document, `[${removeAttr}]`)
-
     if(skipSticky){
       const stickies = DOM.findPhxSticky(document) || []
       elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
+    }
+    let silenceEvents = (e) => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
     }
     elements.forEach(el => {
       // prevent all listeners we care about from bubbling to window
       // since we are removing the element
       for(let event of this.boundEventNames){
-        el.addEventListener(event, e => {
-          e.preventDefault()
-          e.stopImmediatePropagation()
-        }, true)
+        el.addEventListener(event, silenceEvents, true)
       }
       this.execJS(el, el.getAttribute(removeAttr), "remove")
+    })
+    // remove the silenced listeners when transitions are done incase the element is re-used
+    // and call caller's callback as soon as we are done with transitions
+    this.requestDOMUpdate(() => {
+      elements.forEach(el => {
+        for(let event of this.boundEventNames){
+          el.removeEventListener(event, silenceEvents, true)
+        }
+      })
+      callback && callback()
     })
   }
 
