@@ -200,12 +200,14 @@ for (let path of ["/form/nested", "/form"]) {
     await page.locator("#test-form input[name=b]").fill("test");
     await expect(testForm).toHaveClass("myformclass phx-change-loading");
     await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+    // form is locked on phx-change for any changed input
     await expect(testForm).toHaveAttribute("data-phx-ref-lock");
     await expect(testForm).toHaveAttribute("data-phx-ref-src");
     // we need to sleep to ensure the phx-change ref arrives sufficiently before the phx-submit ref
     // to make our assertions about the intermediate states
     await sleep(1000)
     await submitBtn.click();
+    // change-loading and submit-loading classes exist simultaneously
     await expect(testForm).toHaveClass("myformclass phx-change-loading phx-submit-loading");
     await sleep(1000)
     // phx-change ack arrives and is removed
@@ -216,6 +218,7 @@ for (let path of ["/form/nested", "/form"]) {
     await expect(testForm).toHaveAttribute("data-phx-ref-loading");
     await expect(testForm).toHaveAttribute("data-phx-ref-src");
     await expect(submitBtn).toHaveAttribute("data-phx-ref-lock");
+    // form is not locked on submit
     await expect(testForm).not.toHaveAttribute("data-phx-ref-lock");
     await expect(submitBtn).toHaveAttribute("data-phx-ref-src");
     await expect(submitBtn).toHaveAttribute("disabled", "");
