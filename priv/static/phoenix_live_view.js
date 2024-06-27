@@ -459,14 +459,14 @@ var LiveView = (() => {
         }
       });
     },
-    exec_add_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time }) {
-      this.addOrRemoveClasses(el, names, [], transition, time, view);
+    exec_add_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
+      this.addOrRemoveClasses(el, names, [], transition, time, view, blocking);
     },
-    exec_remove_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time }) {
-      this.addOrRemoveClasses(el, [], names, transition, time, view);
+    exec_remove_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
+      this.addOrRemoveClasses(el, [], names, transition, time, view, blocking);
     },
-    exec_toggle_class(eventType, phxEvent, view, sourceEl, el, { to, names, transition, time }) {
-      this.toggleClasses(el, names, transition, time, view);
+    exec_toggle_class(eventType, phxEvent, view, sourceEl, el, { to, names, transition, time, blocking }) {
+      this.toggleClasses(el, names, transition, time, view, blocking);
     },
     exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
       if (el.hasAttribute(attr)) {
@@ -483,17 +483,17 @@ var LiveView = (() => {
         this.setOrRemoveAttrs(el, [[attr, val1]], []);
       }
     },
-    exec_transition(eventType, phxEvent, view, sourceEl, el, { time, transition }) {
-      this.addOrRemoveClasses(el, [], [], transition, time, view);
+    exec_transition(eventType, phxEvent, view, sourceEl, el, { time, transition, blocking }) {
+      this.addOrRemoveClasses(el, [], [], transition, time, view, blocking);
     },
-    exec_toggle(eventType, phxEvent, view, sourceEl, el, { display, ins, outs, time }) {
-      this.toggle(eventType, view, el, display, ins, outs, time);
+    exec_toggle(eventType, phxEvent, view, sourceEl, el, { display, ins, outs, time, blocking }) {
+      this.toggle(eventType, view, el, display, ins, outs, time, blocking);
     },
-    exec_show(eventType, phxEvent, view, sourceEl, el, { display, transition, time }) {
-      this.show(eventType, view, el, display, transition, time);
+    exec_show(eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
+      this.show(eventType, view, el, display, transition, time, blocking);
     },
-    exec_hide(eventType, phxEvent, view, sourceEl, el, { display, transition, time }) {
-      this.hide(eventType, view, el, display, transition, time);
+    exec_hide(eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
+      this.hide(eventType, view, el, display, transition, time, blocking);
     },
     exec_set_attr(eventType, phxEvent, view, sourceEl, el, { attr: [attr, val] }) {
       this.setOrRemoveAttrs(el, [[attr, val]], []);
@@ -501,17 +501,17 @@ var LiveView = (() => {
     exec_remove_attr(eventType, phxEvent, view, sourceEl, el, { attr }) {
       this.setOrRemoveAttrs(el, [], [attr]);
     },
-    show(eventType, view, el, display, transition, time) {
+    show(eventType, view, el, display, transition, time, blocking) {
       if (!this.isVisible(el)) {
-        this.toggle(eventType, view, el, display, transition, null, time);
+        this.toggle(eventType, view, el, display, transition, null, time, blocking);
       }
     },
-    hide(eventType, view, el, display, transition, time) {
+    hide(eventType, view, el, display, transition, time, blocking) {
       if (this.isVisible(el)) {
-        this.toggle(eventType, view, el, display, null, transition, time);
+        this.toggle(eventType, view, el, display, null, transition, time, blocking);
       }
     },
-    toggle(eventType, view, el, display, ins, outs, time) {
+    toggle(eventType, view, el, display, ins, outs, time, blocking) {
       time = time || default_transition_time;
       let [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []];
       let [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []];
@@ -524,12 +524,19 @@ var LiveView = (() => {
               window.requestAnimationFrame(() => this.addOrRemoveClasses(el, outEndClasses, outStartClasses));
             });
           };
-          el.dispatchEvent(new Event("phx:hide-start"));
-          view.transition(time, onStart, () => {
+          let onEnd = () => {
             this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses));
             dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
             el.dispatchEvent(new Event("phx:hide-end"));
-          });
+          };
+          el.dispatchEvent(new Event("phx:hide-start"));
+          if (blocking === false) {
+            console.log("non-blocking toggle1");
+            onStart();
+            setTimeout(onEnd, time);
+          } else {
+            view.transition(time, onStart, onEnd);
+          }
         } else {
           if (eventType === "remove") {
             return;
@@ -543,11 +550,18 @@ var LiveView = (() => {
               window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses));
             });
           };
-          el.dispatchEvent(new Event("phx:show-start"));
-          view.transition(time, onStart, () => {
+          let onEnd = () => {
             this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses));
             el.dispatchEvent(new Event("phx:show-end"));
-          });
+          };
+          el.dispatchEvent(new Event("phx:show-start"));
+          if (blocking === false) {
+            console.log("non-blocking toggle2");
+            onStart();
+            setTimeout(onEnd, time);
+          } else {
+            view.transition(time, onStart, onEnd);
+          }
         }
       } else {
         if (this.isVisible(el)) {
@@ -574,7 +588,7 @@ var LiveView = (() => {
         this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view);
       });
     },
-    addOrRemoveClasses(el, adds, removes, transition, time, view) {
+    addOrRemoveClasses(el, adds, removes, transition, time, view, blocking) {
       time = time || default_transition_time;
       let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []];
       if (transitionRun.length > 0) {
@@ -586,7 +600,12 @@ var LiveView = (() => {
           });
         };
         let onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart));
-        return view.transition(time, onStart, onDone);
+        if (blocking === false) {
+          onStart();
+          setTimeout(onDone, time);
+        } else {
+          view.transition(time, onStart, onDone);
+        }
       }
       window.requestAnimationFrame(() => {
         let [prevAdds, prevRemoves] = dom_default.getSticky(el, "classes", [[], []]);
