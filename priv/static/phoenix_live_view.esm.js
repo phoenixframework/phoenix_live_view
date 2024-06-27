@@ -1518,6 +1518,9 @@ var ElementRef = class {
   }
   undoLoading(ref) {
     if (!this.isLoadingUndoneBy(ref)) {
+      if (this.canUndoLoading(ref) && this.el.classList.contains("phx-submit-loading")) {
+        this.el.classList.remove("phx-change-loading");
+      }
       return;
     }
     if (this.canUndoLoading(ref)) {

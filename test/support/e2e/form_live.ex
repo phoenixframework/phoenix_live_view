@@ -119,6 +119,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
       phx-change={@params["phx-change"]}
       phx-auto-recover={@params["phx-auto-recover"]}
       phx-target={assigns[:"phx-target"]}
+      class="myformclass"
     >
       <input type="text" name="a" readonly value={@params["a"]} />
       <input type="text" name="b" value={@params["b"]} />
