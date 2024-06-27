@@ -409,16 +409,19 @@ export default class LiveSocket {
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let liveReferer = this.currentLocation.href
     this.outgoingMainEl = this.outgoingMainEl || this.main.el
+    let removeEls = DOM.all(this.outgoingMainEl, `[${this.binding("remove")}]`)
     let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
 
     this.main = this.newRootView(newMainEl, flash, liveReferer)
     this.main.setRedirect(href)
-    this.transitionRemoves(null, true)
+    this.transitionRemoves(removeEls, true)
     this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
+          // remove phx-remove els right before we replace the main element
+          removeEls.forEach(el => el.remove())
           DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
           this.outgoingMainEl.replaceWith(newMainEl)
           this.outgoingMainEl = null
@@ -431,8 +434,6 @@ export default class LiveSocket {
 
   transitionRemoves(elements, skipSticky, callback){
     let removeAttr = this.binding("remove")
-    elements = elements || DOM.all(document, `[${removeAttr}]`)
-
     if(skipSticky){
       const stickies = DOM.findPhxSticky(document) || []
       elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
@@ -458,7 +459,6 @@ export default class LiveSocket {
         }
       })
       callback && callback()
-      elements.forEach(el => el.remove())
     })
   }
 
