@@ -152,3 +152,61 @@ defmodule Phoenix.LiveViewTest.E2E.NestedFormLive do
     """
   end
 end
+
+defmodule Phoenix.LiveViewTest.E2E.FormStreamLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~H"""
+    <%= @count %>
+    <form id="test-form" phx-change="validate" phx-submit="save">
+      <input name="myname" value={@count}>
+      <input id="other" name="other" value={@count}>
+      <div id="form-stream-hook" phx-hook="FormHook" phx-update="ignore"></div>
+      <ul id="form-stream" phx-update="stream">
+        <li :for={{id, item} <- @streams.items} id={id} phx-hook="FormStreamHook">*<%= inspect(item) %></li>
+      </ul>
+      <button id="submit" phx-disable-with="Saving...">Submit</button>
+    </form>
+    """
+  end
+
+  def mount(_params, _session, socket) do
+    if connected?(socket) do
+      :timer.send_interval(100, self(), :tick)
+    end
+
+    {:ok,
+     socket
+     |> assign(count: 0, stream_count: 3)
+     |> stream(:items, [%{id: 1}, %{id: 2}, %{id: 3}])}
+  end
+
+  def handle_info(:tick, socket) do
+    {:noreply, assign(socket, :count, socket.assigns.count + 1)}
+  end
+
+  def handle_event("ping", _params, socket) do
+    {:reply, %{}, socket}
+  end
+
+  def handle_event("validate", _params, socket) do
+    {:noreply,
+     socket
+     |> inc()
+     |> assign(stream_count: socket.assigns.stream_count + 1)
+     |> stream_insert(:items, %{id: socket.assigns.stream_count + 1})}
+  end
+
+  def handle_event("save", _params, socket) do
+    {:noreply,
+     socket
+     |> inc()
+     |> assign(stream_count: socket.assigns.stream_count + 1)
+     |> stream_insert(:items, %{id: socket.assigns.stream_count + 1})}
+  end
+
+  defp inc(socket) do
+    assign(socket, count: socket.assigns.count + 1)
+  end
+end
