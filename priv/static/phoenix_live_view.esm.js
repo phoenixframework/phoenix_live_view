@@ -485,7 +485,6 @@ var JS = {
         };
         el.dispatchEvent(new Event("phx:hide-start"));
         if (blocking === false) {
-          console.log("non-blocking toggle1");
           onStart();
           setTimeout(onEnd, time);
         } else {
@@ -510,7 +509,6 @@ var JS = {
         };
         el.dispatchEvent(new Event("phx:show-start"));
         if (blocking === false) {
-          console.log("non-blocking toggle2");
           onStart();
           setTimeout(onEnd, time);
         } else {
@@ -560,6 +558,7 @@ var JS = {
       } else {
         view.transition(time, onStart, onDone);
       }
+      return;
     }
     window.requestAnimationFrame(() => {
       let [prevAdds, prevRemoves] = dom_default.getSticky(el, "classes", [[], []]);
