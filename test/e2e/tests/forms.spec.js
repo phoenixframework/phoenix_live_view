@@ -255,7 +255,9 @@ test(`loading and locked states with latent clone`, async ({ page }) => {
   await testInput.fill("2");
   // form is locked on phx-change and stream remains unchanged
   await sleep(1000)
-  await expect(testForm).toHaveClass("phx-change-loading");
+  await submitBtn.click();
+  await expect(testForm).toHaveClass("phx-change-loading phx-submit-loading");
+  await expect(submitBtn).toHaveText("Saving...");
   await expect(testInput).toHaveClass("phx-change-loading");
   await expect(testForm).toHaveAttribute("data-phx-ref-loading");
   await expect(testForm).toHaveAttribute("data-phx-ref-src");
@@ -265,14 +267,16 @@ test(`loading and locked states with latent clone`, async ({ page }) => {
   // on unlock, cloned stream items that are added on each phx-change are applied to DOM
   await expect(page.locator("#form-stream li")).toHaveCount(5);
   // after clones are applied, the stream item hooks are mounted
+  // note that the form still awaits the submit ack, but it is not locked,
+  // therefore the updates from the phx-change are already applied
   await expect(page.locator("#form-stream li")).toHaveText([
     "*%{id: 1}pong",
     "*%{id: 2}pong",
     "*%{id: 3}pong",
-    "*%{id: 4}pong",
-    "*%{id: 5}pong"
+    "*%{id: 4}",
+    "*%{id: 5}"
   ]);
-  await submitBtn.click();
+  // still saving
   await expect(submitBtn).toHaveText("Saving...");
   await expect(testForm).toHaveClass("phx-submit-loading");
   await expect(testInput).toHaveAttribute("readonly", "");
@@ -297,11 +301,11 @@ test(`loading and locked states with latent clone`, async ({ page }) => {
   await expect(testForm).not.toHaveClass("phx-submit-loading");
   await expect(testInput).not.toHaveAttribute("readonly");
   await expect(submitBtn).not.toHaveClass("phx-submit-loading");
-  await expect(testForm).not.toHaveAttribute("data-phx-ref-loading");
+  await expect(testForm).not.toHaveAttribute("data-phx-ref");
   await expect(testForm).not.toHaveAttribute("data-phx-ref-src");
-  await expect(testInput).not.toHaveAttribute("data-phx-ref-loading");
+  await expect(testInput).not.toHaveAttribute("data-phx-ref");
   await expect(testInput).not.toHaveAttribute("data-phx-ref-src");
-  await expect(submitBtn).not.toHaveAttribute("data-phx-ref-loading");
+  await expect(submitBtn).not.toHaveAttribute("data-phx-ref");
   await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
   await page.evaluate(() => window.liveSocket.disableLatencySim());
 });
