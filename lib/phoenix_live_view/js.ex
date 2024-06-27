@@ -558,7 +558,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `remove_class/1`."
   def remove_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
-    opts = validate_keys(opts, :remove_class, [:to, :transition, :time])
+    opts = validate_keys(opts, :remove_class, [:to, :transition, :time, :blocking])
     time = opts[:time]
 
     put_op(js, "remove_class",
