@@ -129,7 +129,6 @@ export default class DOMPatch {
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
           } else if(streamAt === -1){
-            parent.appendChild(child)
             let lastChild = parent.lastElementChild
             if(lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)){
               let nonStreamChild = Array.from(parent.children).find(c => !c.hasAttribute(PHX_STREAM_REF))
