@@ -352,7 +352,7 @@ var JS = {
         args.data = Object.assign(args.data || {}, defaultArgs.data);
         args.callback = args.callback || defaultArgs.callback;
       }
-      this.filterToEls(sourceEl, args).forEach((el) => {
+      this.filterToEls(view.liveSocket, sourceEl, args).forEach((el) => {
         this[`exec_${kind}`](eventType, phxEvent, view, sourceEl, el, args);
       });
     });
@@ -608,8 +608,8 @@ var JS = {
   isToggledOut(el, outClasses) {
     return !this.isVisible(el) || this.hasAllClasses(el, outClasses);
   },
-  filterToEls(sourceEl, { to }) {
-    return to ? dom_default.all(document, to) : [sourceEl];
+  filterToEls(liveSocket, sourceEl, { to }) {
+    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to) : [sourceEl];
   },
   defaultDisplay(el) {
     return { tr: "table-row", td: "table-cell" }[el.tagName.toLowerCase()] || "block";
@@ -2267,7 +2267,6 @@ var DOMPatch = class {
           if (streamAt === 0) {
             parent.insertAdjacentElement("afterbegin", child);
           } else if (streamAt === -1) {
-            parent.appendChild(child);
             let lastChild = parent.lastElementChild;
             if (lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)) {
               let nonStreamChild = Array.from(parent.children).find((c) => !c.hasAttribute(PHX_STREAM_REF));
@@ -3860,7 +3859,6 @@ var View = class {
         continue;
       }
       el.classList.add(`phx-${eventType}-loading`);
-      el.dispatchEvent(new CustomEvent(`phx:${eventType}-loading`, { bubbles: true, cancelable: false }));
       let disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
@@ -3876,6 +3874,8 @@ var View = class {
         event: phxEvent,
         eventType,
         ref: newRef,
+        isLoading: loading,
+        isLocked: lock,
         lockElements: elements.filter(({ lock: lock2 }) => lock2).map(({ el: el2 }) => el2),
         loadingElements: elements.filter(({ loading: loading2 }) => loading2).map(({ el: el2 }) => el2),
         unlock: (els) => {
@@ -4366,6 +4366,7 @@ var LiveSocket = class {
     this.boundEventNames = new Set();
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign({
+      jsQuerySelectorAll: (sourceEl, query) => document.querySelectorAll(query),
       onPatchStart: closure(),
       onPatchEnd: closure(),
       onNodeAdded: closure(),
@@ -5145,6 +5146,9 @@ var LiveSocket = class {
         callback(e);
       }
     });
+  }
+  jsQuerySelectorAll(sourceEl, query) {
+    return this.domCallbacks.jsQuerySelectorAll(sourceEl, query);
   }
 };
 var TransitionSet = class {
