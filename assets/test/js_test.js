@@ -1,6 +1,7 @@
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 import JS from "phoenix_live_view/js"
+import ViewHook from "phoenix_live_view/view_hook"
 import {simulateJoinedView, simulateVisibility, liveViewDOM} from "./test_helpers"
 
 let setupView = (content) => {
@@ -18,6 +19,111 @@ describe("JS", () => {
 
   afterEach(() => {
     jest.useRealTimers()
+  })
+
+  describe("hook.js()", () => {
+    let js, view, modal
+    beforeEach(() => {
+      view = setupView(`<div id="modal">modal</div>`)
+      modal = view.el.querySelector("#modal")
+      let hook = new ViewHook(view, view.el, {})
+      js = hook.js()
+    })
+
+    test("exec", done => {
+      simulateVisibility(modal)
+      expect(modal.style.display).toBe("")
+      js.exec(`[["toggle", {"to": "#modal"}]]`)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("none")
+      done()
+    })
+
+    test("show and hide", done => {
+      simulateVisibility(modal)
+      expect(modal.style.display).toBe("")
+      js.hide(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("none")
+      js.show(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("block")
+      done()
+    })
+
+    test("toggle", done => {
+      simulateVisibility(modal)
+      expect(modal.style.display).toBe("")
+      js.toggle(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("none")
+      js.toggle(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("block")
+      done()
+    })
+
+    test("addClass and removeClass", done => {
+      expect(Array.from(modal.classList)).toEqual([])
+      js.addClass(modal, "class1 class2")
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class1", "class2"])
+      jest.advanceTimersByTime(100)
+      js.removeClass(modal, "class1")
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2"])
+      js.addClass(modal, ["class3", "class4"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2", "class3", "class4"])
+      js.removeClass(modal, ["class3", "class4"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2"])
+      done()
+    })
+
+    test("toggleClass", done => {
+      expect(Array.from(modal.classList)).toEqual([])
+      js.toggleClass(modal, "class1 class2")
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class1", "class2"])
+      js.toggleClass(modal, ["class1"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2"])
+      done()
+    })
+
+    test("transition", done => {
+      js.transition(modal, "shake", {time: 150})
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["shake"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual([])
+      js.transition(modal, ["shake", "opacity-50", "opacity-100"], {time: 150})
+      jest.advanceTimersByTime(10)
+      expect(Array.from(modal.classList)).toEqual(["opacity-50"])
+      jest.advanceTimersByTime(200)
+      expect(Array.from(modal.classList)).toEqual(["opacity-100"])
+      done()
+    })
+
+    test("setAttribute and removeAttribute", done => {
+      js.removeAttribute(modal, "works")
+      js.setAttribute(modal, "works", "123")
+      expect(modal.getAttribute("works")).toBe("123")
+      js.removeAttribute(modal, "works")
+      expect(modal.getAttribute("works")).toBe(null)
+      done()
+    })
+
+    test("toggleAttr", done => {
+      js.toggleAttribute(modal, "works", "on", "off")
+      expect(modal.getAttribute("works")).toBe("on")
+      js.toggleAttribute(modal, "works", "on", "off")
+      expect(modal.getAttribute("works")).toBe("off")
+      js.toggleAttribute(modal, "works", "on", "off")
+      expect(modal.getAttribute("works")).toBe("on")
+      done()
+    })
   })
 
   describe("exec_toggle", () => {
@@ -765,5 +871,4 @@ describe("JS", () => {
       expect(document.activeElement).toBe(modal1)
     })
   })
-
 })

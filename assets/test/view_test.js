@@ -1,5 +1,5 @@
 import {Socket} from "phoenix"
-import LiveSocket from "phoenix_live_view/live_socket"
+import {LiveSocket, createHook} from "phoenix_live_view/index"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
@@ -842,6 +842,23 @@ describe("View Hooks", function(){
     expect(hookLiveSocket).toBeDefined()
   })
 
+  test("createHook", (done) => {
+    let liveSocket = new LiveSocket("/live", Socket, {})
+    let el = liveViewDOM()
+    customElements.define("custom-el", class extends HTMLElement {
+      connectedCallback(){
+        this.hook = createHook(this, {mounted: () => {
+          expect(this.hook.liveSocket).toBeTruthy()
+          done()
+        }})
+        expect(this.hook.liveSocket).toBe(null)
+      }
+    })
+    let customEl = document.createElement("custom-el")
+    el.appendChild(customEl)
+    let view = simulateJoinedView(el, liveSocket)
+  })
+
   test("view destroyed", async () => {
     let values = []
     let Hooks = {
@@ -994,15 +1011,15 @@ describe("View + Component", function(){
     expect(view.targetComponentID(form, targetCtx)).toBe(0)
   })
 
-  test("pushEvent", function(){
-    expect.assertions(4)
+  test("pushEvent", (done) => {
+    expect.assertions(16)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
     let targetCtx = el.querySelector(".form-wrapper")
-    let input = el.querySelector("input")
 
     let view = simulateJoinedView(el, liveSocket)
+    let input = view.el.querySelector("input[id=plus]")
     let channelStub = {
       push(_evt, payload, _timeout){
         expect(payload.type).toBe("keyup")
@@ -1016,7 +1033,31 @@ describe("View + Component", function(){
     }
     view.channel = channelStub
 
-    view.pushEvent("keyup", input, targetCtx, "click", {})
+    input.addEventListener("phx:push:myevent", (e) => {
+      expect(e.detail.ref).toBe(0)
+      expect(e.target).toBe(input)
+    })
+    input.addEventListener("phx:ack:myevent", (e) => {
+      expect(e.detail.ref).toBe(0)
+      expect(e.target).toBe(input)
+      done()
+    })
+    input.addEventListener("phx:push", (e) => {
+      let {lock, unlock} = e.detail
+      expect(typeof lock).toBe("function")
+      expect(view.el.getAttribute("data-phx-ref-lock")).toBe(null)
+      // lock accepts unlock function to fire, which will done() the test
+      lock(view.el, (e) => {
+        expect(e.detail.event).toBe("myevent")
+      })
+      expect(e.target).toBe(input)
+      expect(input.getAttribute("data-phx-ref-lock")).toBe("0")
+      expect(view.el.getAttribute("data-phx-ref-lock")).toBe("0")
+      unlock(view.el)
+      expect(view.el.getAttribute("data-phx-ref-lock")).toBe(null)
+    })
+
+    view.pushEvent("keyup", input, targetCtx, "myevent", {})
   })
 
   test("pushInput", function(done){

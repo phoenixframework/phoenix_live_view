@@ -19,7 +19,7 @@ export default class ElementRef {
 
   // public
 
-  maybeUndo(ref, eachCloneCallback){
+  maybeUndo(ref, phxEvent, eachCloneCallback){
     if(!this.isWithin(ref)){ return }
 
     // undo locks and apply clones
@@ -27,6 +27,13 @@ export default class ElementRef {
 
     // undo loading states
     this.undoLoading(ref)
+
+    // dispatch ack events
+    let detail = {ref: ref, event: phxEvent}
+    this.el.dispatchEvent(new CustomEvent("phx:ack", {detail, bubbles: true, cancelable: false}))
+    if(phxEvent){
+      this.el.dispatchEvent(new CustomEvent(`phx:ack:${phxEvent}`, {detail, bubbles: true, cancelable: false}))
+    }
 
     // clean up if fully resolved
     if(this.isFullyResolvedBy(ref)){ this.el.removeAttribute(PHX_REF_SRC) }
@@ -53,7 +60,6 @@ export default class ElementRef {
       DOM.deletePrivate(this.el, PHX_REF_LOCK)
     }
     this.el.removeAttribute(PHX_REF_LOCK)
-    this.el.dispatchEvent(new CustomEvent("phx:unlock", {bubbles: true, cancelable: false}))
   }
 
   undoLoading(ref){

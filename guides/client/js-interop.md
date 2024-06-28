@@ -354,3 +354,47 @@ Hooks.Chart = {
 ```
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
+
+## Locked DOM elements and loading states
+
+Whenever pushings events to the server, such as a button click or form submission, LiveView locks elements in the DOM and applies CSS based loading states as outlined in the [bindings](bindings.md) guide. The lock consists of a `data-phx-ref` attribute, which prevents any inbound patches from
+altering the contents of an element until that ref is acknowledged by the server. This prevents UI race conditions from happenign on the client and provides UI feedback during the round trip.
+
+Custom JavaScript can integrate with the locking events to implement optimistic UI layers, or apply their own custom loading states. The following `CustomEvent`'s are dispatched to an element whenever an event is pushed to the server:
+
+  `phx:lock` – A lock was applied to the element for any phx-binding event.
+    The event `detail` is an object with:
+
+    `event` – The name of the `phx-` event, for example `<button phx-click="save">`
+      would set the event as `"save"`.
+
+    `eventType` – The type of event, such as "click", "submit", "change".
+
+    `ref` - The lock ref.
+
+    `loading` - The list of elements locked with loading classes for this ref.
+
+    `lock` – A function which accepts a list of DOM nodes to lock with the same lock
+      applied to the event's target element.
+
+    `unlock` – A function which accepts a list of DOM nodes to unlock. The lock tracking
+      attributes are removed, along with the loading state class names. Additionally, the
+      `phx:unlock` event is dispatched.
+
+  `phx:lock:[event]` – A specific lock for an event was applied to the element. Allows a script
+    to more easily distinguish where a lock originated. Contains the same attributes as `phx:lock`.
+    For example `<button phx-click="save">` could be listened for via:
+
+        this.addEventListener("phx:lock:save", ({detail}) => console.log("locked", detail.ref))
+
+   `phx:unlock` – A lock was removed from the previously locked element, with the
+     following detail:
+
+     `ref` – The lock's ref.
+     `event` – The name of the phx binding event
+
+   `phx:unlock:[event]` – A lock was removed from the previously locked element for a given
+     event, with the following detail:
+
+     `ref` – The lock's ref.
+     `event` – The name of the phx binding event

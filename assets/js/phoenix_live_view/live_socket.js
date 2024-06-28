@@ -161,6 +161,7 @@ export default class LiveSocket {
     this.boundEventNames = new Set()
     this.serverCloseRef = null
     this.domCallbacks = Object.assign({
+      jsQuerySelectorAll: (sourceEl, query) => document.querySelectorAll(query),
       onPatchStart: closure(),
       onPatchEnd: closure(),
       onNodeAdded: closure(),
@@ -472,7 +473,7 @@ export default class LiveSocket {
 
   owner(childEl, callback){
     let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el)) || this.main
-    if(view){ callback(view) }
+    return view && callback ? callback(view) : view
   }
 
   withinOwners(childEl, callback){
@@ -948,6 +949,10 @@ export default class LiveSocket {
     window.addEventListener(event, e => {
       if(!this.silenced){ callback(e) }
     })
+  }
+
+  jsQuerySelectorAll(sourceEl, query){
+    return this.domCallbacks.jsQuerySelectorAll(sourceEl, query)
   }
 }
 

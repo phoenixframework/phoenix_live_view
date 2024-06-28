@@ -130,13 +130,20 @@ export default class DOMPatch {
             parent.insertAdjacentElement("afterbegin", child)
           } else if(streamAt === -1){
             parent.appendChild(child)
+            let lastChild = parent.lastElementChild
+            if(lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)){
+              let nonStreamChild = Array.from(parent.children).find(c => !c.hasAttribute(PHX_STREAM_REF))
+              parent.insertBefore(child, nonStreamChild)
+            } else {
+              parent.appendChild(child)
+            }
           } else if(streamAt > 0){
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
           }
         },
         onBeforeNodeAdded: (el) => {
-          DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
+          DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom)
           this.trackBefore("added", el)
 
           let morphedEl = el
@@ -189,7 +196,7 @@ export default class DOMPatch {
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.syncPendingAttrs(fromEl, toEl)
-          DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
+          DOM.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
             // if this is a live component used in a stream, we may need to reorder it
