@@ -408,11 +408,12 @@ defmodule Phoenix.LiveView.Router do
 
     {as_helper, as_action} = inferred_as(live_view, opts[:as], action)
 
+    # TODO: Remove :log_module when we require Phoenix v1.8+
     metadata =
       metadata
       |> Map.put(:phoenix_live_view, {live_view, action, opts, live_session})
-      |> Map.put_new(:log_module, live_view)
-      |> Map.put_new(:log_function, :mount)
+      |> Map.put(:mfa, {live_view, :mount, 3})
+      |> Map.put(:log_module, live_view)
 
     {as_action,
      alias: false,
