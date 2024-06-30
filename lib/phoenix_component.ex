@@ -2437,7 +2437,7 @@ defmodule Phoenix.Component do
     </button>
   </.inputs_for>
 
-  <input type="hidden" name="mailing_list[emails_drop][]" />
+  <input type="hidden" name="mailing_list[emails_drop][]" value="old" />
 
   <button type="button" name="mailing_list[emails_sort][]" value="new" phx-click={JS.dispatch("change")}>
     add more
