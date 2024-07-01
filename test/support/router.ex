@@ -45,6 +45,7 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/log-disabled", WithLogDisabled
     live "/errors", ErrorsLive
     live "/live-reload", ReloadLive
+    live "/live-component-reload", ReloadComponentLive
     live "/assign_async", AssignAsyncLive
     live "/start_async", StartAsyncLive
 
