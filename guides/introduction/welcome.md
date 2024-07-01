@@ -299,7 +299,7 @@ These guides focus on server-side functionality:
 
 These guides focus on LiveView bindings and client-side integration:
 
-* [Bindings](bindings.md)
-* [Form bindings](form-bindings.md)
-* [JavaScript interoperability](js-interop.md)
-* [External uploads](uploads-external.md)
+* [Bindings](../client/bindings.md)
+* [Form bindings](../client/form-bindings.md)
+* [JavaScript interoperability](../client/js-interop.md)
+* [External uploads](../client/uploads-external.md)
