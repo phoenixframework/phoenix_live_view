@@ -878,6 +878,9 @@ export default class LiveSocket {
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
+        if(e instanceof CustomEvent && e.target.form === undefined){
+          throw new Error(`dispatching a custom ${type} event is only supported on input elements inside a form`)
+        }
         let phxChange = this.binding("change")
         let input = e.target
         let inputEvent = input.getAttribute(phxChange)
