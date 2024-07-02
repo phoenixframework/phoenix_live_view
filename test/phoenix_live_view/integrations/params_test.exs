@@ -95,6 +95,16 @@ defmodule Phoenix.LiveView.ParamsTest do
              |> redirected_to() == "/"
     end
 
+    test "hard redirects with a custom status", %{conn: conn} do
+      assert conn
+             |> put_serialized_session(
+               :on_handle_params,
+               &{:noreply, LiveView.redirect(&1, to: "/", status: 301)}
+             )
+             |> get("/counter/123?from=handle_params")
+             |> redirected_to(301) == "/"
+    end
+
     test "hard redirect with flash message", %{conn: conn} do
       conn =
         put_serialized_session(conn, :on_handle_params, fn socket ->
