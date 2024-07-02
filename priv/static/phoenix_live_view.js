@@ -4948,6 +4948,17 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.on(type, (e) => {
           let phxChange = this.binding("change");
           let input = e.target;
+          if (e.isComposing) {
+            const key = `composition-listener-${type}`;
+            if (!dom_default.private(input, key)) {
+              dom_default.putPrivate(input, key, true);
+              input.addEventListener("compositionend", () => {
+                input.dispatchEvent(new Event(type, { bubbles: true }));
+                dom_default.deletePrivate(input, key);
+              }, { once: true });
+            }
+            return;
+          }
           let inputEvent = input.getAttribute(phxChange);
           let formEvent = input.form && input.form.getAttribute(phxChange);
           let phxEvent = inputEvent || formEvent;

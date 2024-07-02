@@ -880,6 +880,22 @@ export default class LiveSocket {
       this.on(type, e => {
         let phxChange = this.binding("change")
         let input = e.target
+        // do not fire phx-change if we are in the middle of a composition session
+        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
+        // Safari has issues if the input is updated while composing
+        // see https://github.com/phoenixframework/phoenix_live_view/issues/3322
+        if(e.isComposing){
+          const key = `composition-listener-${type}`
+          if(!DOM.private(input, key)){
+            DOM.putPrivate(input, key, true)
+            input.addEventListener("compositionend", () => {
+              // trigger a new input/change event 
+              input.dispatchEvent(new Event(type, {bubbles: true}))
+              DOM.deletePrivate(input, key)
+            }, {once: true})
+          }
+          return
+        }
         let inputEvent = input.getAttribute(phxChange)
         let formEvent = input.form && input.form.getAttribute(phxChange)
         let phxEvent = inputEvent || formEvent
