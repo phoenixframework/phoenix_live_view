@@ -325,6 +325,10 @@ defmodule Phoenix.Component.Declarative do
       compile_error!(line, file, ":include is only supported for :global attributes")
     end
 
+    if type != :global and Keyword.has_key?(opts, :verify) do
+      compile_error!(line, file, ":verify is only supported for :global attributes")
+    end
+
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
     unless is_binary(doc) or is_nil(doc) or doc == false do
@@ -523,9 +527,10 @@ defmodule Phoenix.Component.Declarative do
   defp invalid_attr_message(:required, _), do: nil
   defp invalid_attr_message(:values, _), do: nil
   defp invalid_attr_message(:examples, _), do: nil
+  defp invalid_attr_message(:verify, _), do: nil
 
   defp invalid_attr_message(_key, nil),
-    do: "The supported options are: [:required, :default, :values, :examples, :include]"
+    do: "The supported options are: [:required, :default, :values, :examples, :include, :verify]"
 
   defp invalid_attr_message(_key, _slot),
     do: "The supported options inside slots are: [:required]"
@@ -1111,7 +1116,7 @@ defmodule Phoenix.Component.Declarative do
       end)
 
     for {name, {line, _column, _type_value}} <- attrs,
-        !(global_attr && __global__?(caller_module, Atom.to_string(name), global_attr)) do
+        !global_attr || (global_attr && Keyword.get(global_attr.opts, :verify, true) && !__global__?(caller_module, Atom.to_string(name), global_attr)) do
       message = "undefined attribute \"#{name}\" for component #{component_fa(call)}"
       warn(message, call.file, line)
     end
