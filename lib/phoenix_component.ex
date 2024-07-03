@@ -2939,6 +2939,9 @@ defmodule Phoenix.Component do
 
   [INSERT LVATTRDOCS]
 
+  Note the `id` attribute cannot be overwritten, but you can create a label with a `for` attribute
+  pointing to the UploadConfig `ref`.
+
   ## Drag and Drop
 
   Drag and drop is supported by annotating the droppable container with a `phx-drop-target`
