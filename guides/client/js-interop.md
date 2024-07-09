@@ -314,7 +314,6 @@ Hooks.InfiniteScroll = {
 However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
     <div id="chart" phx-hook="Chart">
-    {:noreply, push_event(socket, "points", %{points: new_points})}
 
 And then on the client:
 
@@ -328,6 +327,10 @@ Hooks.Chart = {
   }
 }
 ```
+
+And then you can push events as:
+
+    {:noreply, push_event(socket, "points", %{points: new_points})}
 
 Events pushed from the server via `push_event` are global and will be dispatched
 to all active hooks on the client who are handling that event. If you need to scope events
