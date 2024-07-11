@@ -18,10 +18,16 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3200 do
           <aside>
             <div>
               <div :if={@live_action == :messages_tab}>
-                <.live_component module={Phoenix.LiveViewTest.E2E.Issue3200.MessagesTab} id="messages_tab" />
+                <.live_component
+                  module={Phoenix.LiveViewTest.E2E.Issue3200.MessagesTab}
+                  id="messages_tab"
+                />
               </div>
               <div :if={@live_action == :settings_tab}>
-                <.live_component module={Phoenix.LiveViewTest.E2E.Issue3200.SettingsTab} id="settings_tab" />
+                <.live_component
+                  module={Phoenix.LiveViewTest.E2E.Issue3200.SettingsTab}
+                  id="settings_tab"
+                />
               </div>
             </div>
           </aside>

@@ -191,7 +191,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       assert_raise ArgumentError, ~r/expected dynamic_tag name to be safe HTML/, fn ->
-        t2h(~H|<.dynamic_tag name="p><script>alert('nice try');</script>"/>|)
+        t2h(~H|<.dynamic_tag name="p><script>alert('nice try');</script>" />|)
       end
     end
 
@@ -232,14 +232,14 @@ defmodule Phoenix.LiveView.ComponentsTest do
     test "self closing without inner block" do
       assigns = %{}
 
-      assert t2h(~H|<.dynamic_tag name="br"/>|) == ~X|<br/>|
-      assert t2h(~H|<.dynamic_tag name="input" type="text"/>|) == ~X|<input type="text"/>|
+      assert t2h(~H|<.dynamic_tag name="br" />|) == ~X|<br/>|
+      assert t2h(~H|<.dynamic_tag name="input" type="text" />|) == ~X|<input type="text"/>|
     end
 
     test "keeps underscores in attributes" do
       assigns = %{}
 
-      assert t2h(~H|<.dynamic_tag name="br" foo_bar="baz"/>|) == ~X|<br foo_bar="baz"/>|
+      assert t2h(~H|<.dynamic_tag name="br" foo_bar="baz" />|) == ~X|<br foo_bar="baz"/>|
     end
   end
 
@@ -327,8 +327,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-      <.form for={%{}} action="/">
-      </.form>
+      <.form for={%{}} action="/"></.form>
       """
 
       csrf_token = Plug.CSRFProtection.get_csrf_token_for("/")
@@ -391,7 +390,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-      <.form :let={user_form}
+      <.form
+        :let={user_form}
         for={%{}}
         id="form"
         action="/"
@@ -435,12 +435,12 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} as={:myform}>
-          <.inputs_for :let={finner} field={f[:inner]}}>
-            <% 0 = finner.index %>
-            <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
-          </.inputs_for>
-        </.form>
+      <.form :let={f} as={:myform}>
+        <.inputs_for :let={finner} field={f[:inner]} }>
+          <% 0 = finner.index %>
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
+        </.inputs_for>
+      </.form>
       """
 
       assert t2h(template) ==
@@ -456,11 +456,11 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} as={:myform}>
-          <.inputs_for :let={finner} field={f[:inner]}} id="test" as={:name}>
-            <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
-          </.inputs_for>
-        </.form>
+      <.form :let={f} as={:myform}>
+        <.inputs_for :let={finner} field={f[:inner]} } id="test" as={:name}>
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
+        </.inputs_for>
+      </.form>
       """
 
       assert t2h(template) ==
@@ -476,11 +476,11 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} as={:myform}>
-          <.inputs_for :let={finner} field={f[:inner]}} default={%{foo: "123"}}>
-            <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
-          </.inputs_for>
-        </.form>
+      <.form :let={f} as={:myform}>
+        <.inputs_for :let={finner} field={f[:inner]} } default={%{foo: "123"}}>
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
+        </.inputs_for>
+      </.form>
       """
 
       assert t2h(template) ==
@@ -496,17 +496,18 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} as={:myform}>
-          <.inputs_for
-            :let={finner}
-            field={f[:inner]}}
-            default={[%{foo: "456"}]}
-            prepend={[%{foo: "123"}]}
-            append={[%{foo: "789"}]}
-          >
-            <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
-          </.inputs_for>
-        </.form>
+      <.form :let={f} as={:myform}>
+        <.inputs_for
+          :let={finner}
+          field={f[:inner]}
+          }
+          default={[%{foo: "456"}]}
+          prepend={[%{foo: "123"}]}
+          append={[%{foo: "789"}]}
+        >
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
+        </.inputs_for>
+      </.form>
       """
 
       assert t2h(template) ==
@@ -526,15 +527,11 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       template = ~H"""
-        <.form :let={f} as={:myform}>
-          <.inputs_for
-            :let={finner}
-            field={f[:inner]}}
-            options={[foo: "bar"]}
-          >
-            <p><%= finner.options[:foo] %></p>
-          </.inputs_for>
-        </.form>
+      <.form :let={f} as={:myform}>
+        <.inputs_for :let={finner} field={f[:inner]} } options={[foo: "bar"]}>
+          <p><%= finner.options[:foo] %></p>
+        </.inputs_for>
+      </.form>
       """
 
       html = t2h(template)
@@ -553,7 +550,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       }
 
       assert t2h(
-               ~H|<.live_file_input upload={@conf} class={"<script>alert('nice try');</script>"} />|
+               ~H|<.live_file_input upload={@conf} class="<script>alert('nice try');</script>" />|
              ) ==
                ~X|<input type="file" accept="" data-phx-hook="Phoenix.LiveFileUpload" data-phx-update="ignore" data-phx-active-refs="foo" data-phx-done-refs="" data-phx-preflighted-refs="" data-phx-auto-upload class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;">|
     end

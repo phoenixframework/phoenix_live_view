@@ -1246,7 +1246,8 @@ defmodule Phoenix.LiveView.TagEngine do
           meta
         )
 
-      _ -> :ok
+      _ ->
+        :ok
     end
   end
 

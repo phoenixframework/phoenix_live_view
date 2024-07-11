@@ -36,10 +36,10 @@ defmodule Phoenix.LiveViewTest.ComponentAndNestedInLive do
 
   def render(assigns) do
     ~H"""
-      <%= if @enabled do %>
-        <%= live_render @socket, NestedLive, id: :nested_live %>
-        <.live_component module={NestedComponent} id={:_component} />
-      <% end %>
+    <%= if @enabled do %>
+      <%= live_render(@socket, NestedLive, id: :nested_live) %>
+      <.live_component module={NestedComponent} id={:_component} />
+    <% end %>
     """
   end
 

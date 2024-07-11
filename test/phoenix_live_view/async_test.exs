@@ -11,15 +11,17 @@ defmodule Phoenix.LiveView.AsyncTest do
           capture_io(:stderr, fn ->
             fun = unquote(fun)
 
-            Code.eval_quoted(quote do
-              require Phoenix.LiveView
+            Code.eval_quoted(
+              quote do
+                require Phoenix.LiveView
 
-              socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+                socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
 
-              Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
-                socket.assigns.bar
-              end)
-            end)
+                Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
+                  socket.assigns.bar
+                end)
+              end
+            )
           end)
 
         assert warnings =~
@@ -31,16 +33,18 @@ defmodule Phoenix.LiveView.AsyncTest do
           capture_io(:stderr, fn ->
             fun = unquote(fun)
 
-            Code.eval_quoted(quote do
-              require Phoenix.LiveView
+            Code.eval_quoted(
+              quote do
+                require Phoenix.LiveView
 
-              socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
-              bar = socket.assigns.bar
+                socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+                bar = socket.assigns.bar
 
-              Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
-                bar
-              end)
-            end)
+                Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
+                  bar
+                end)
+              end
+            )
           end)
 
         refute warnings =~
@@ -58,9 +62,10 @@ defmodule Phoenix.LiveView.AsyncTest do
               use Phoenix.LiveView
 
               def mount(_params, _session, socket) do
-                {:ok, unquote(fun)(socket, :foo, fn ->
-                  do_something(socket.assigns)
-                end)}
+                {:ok,
+                 unquote(fun)(socket, :foo, fn ->
+                   do_something(socket.assigns)
+                 end)}
               end
 
               defp do_something(_socket), do: :ok
@@ -71,7 +76,9 @@ defmodule Phoenix.LiveView.AsyncTest do
                  "you are accessing the LiveView Socket inside a function given to #{unquote(fun)}"
       end
 
-      test "does not warn when accessing socket outside of function passed to #{fun}", %{test: test} do
+      test "does not warn when accessing socket outside of function passed to #{fun}", %{
+        test: test
+      } do
         warnings =
           capture_io(:stderr, fn ->
             defmodule Module.concat(AssignAsyncSocket, "Test#{:erlang.phash2(test)}") do
@@ -81,9 +88,10 @@ defmodule Phoenix.LiveView.AsyncTest do
                 socket = assign(socket, :foo, :bar)
                 foo = socket.assigns.foo
 
-                {:ok, unquote(fun)(socket, :foo, fn ->
-                  do_something(foo)
-                end)}
+                {:ok,
+                 unquote(fun)(socket, :foo, fn ->
+                   do_something(foo)
+                 end)}
               end
 
               defp do_something(assigns), do: :ok

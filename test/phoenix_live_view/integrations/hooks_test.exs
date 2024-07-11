@@ -149,7 +149,7 @@ defmodule Phoenix.LiveView.HooksTest do
 
   test "handle_params/3 attached after connected", %{conn: conn} do
     {:ok, lv, html} = live(conn, "/lifecycle")
-    assert html =~ "params_hook:\n"
+    assert html =~ "params_hook:</p>"
 
     HooksLive.attach_hook(lv, :hook, :handle_params, fn
       _params, _uri, %{assigns: %{params_hook_ref: _}} = socket ->
@@ -174,7 +174,7 @@ defmodule Phoenix.LiveView.HooksTest do
 
   test "handle_params/3 when callback is not exported raises without halt", %{conn: conn} do
     {:ok, lv, html} = live(conn, "/lifecycle")
-    assert html =~ "params_hook:\n"
+    assert html =~ "params_hook:</p>"
 
     HooksLive.attach_hook(lv, :hook, :handle_params, fn
       _params, _uri, %{assigns: %{params_hook_ref: 0}} = socket ->
@@ -271,12 +271,12 @@ defmodule Phoenix.LiveView.HooksTest do
     end)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o.\n"
+    assert render_async(lv) =~ "task:o.</p>"
 
     HooksLive.detach_hook(lv, :hook, :handle_async)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o..\n"
+    assert render_async(lv) =~ "task:o..</p>"
   end
 
   test "handle_async/3 halts", %{conn: conn} do
@@ -287,12 +287,12 @@ defmodule Phoenix.LiveView.HooksTest do
     end)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o\n"
+    assert render_async(lv) =~ "task:o</p>"
 
     HooksLive.detach_hook(lv, :hook, :handle_async)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o.\n"
+    assert render_async(lv) =~ "task:o.</p>"
   end
 
   test "attach/detach_hook with a handle_event live component socket", %{conn: conn} do

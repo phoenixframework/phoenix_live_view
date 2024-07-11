@@ -20,7 +20,7 @@ defmodule Phoenix.ComponentVerifyTest do
 
           def render(assigns) do
             ~H"""
-            <.func/>
+            <.func />
             """
           end
         end
@@ -101,7 +101,7 @@ defmodule Phoenix.ComponentVerifyTest do
           def render(assigns) do
             ~H"""
             <External.render>
-            <:named />
+              <:named />
             </External.render>
             """
           end
@@ -148,7 +148,7 @@ defmodule Phoenix.ComponentVerifyTest do
           def global_render(assigns) do
             ~H"""
             <.func global="global" />
-            <.func phx-click="click" id="id"/>
+            <.func phx-click="click" id="id" />
             """
           end
 
@@ -478,7 +478,7 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func_string attr="boom" />
             <.func_atom attr={:boom} />
             <.func_integer attr={11} />
-            <.func_string attr={"bar"} />
+            <.func_string attr="bar" />
             <.func_string attr={@string} />
             <.func_atom attr={:bar} />
             <.func_atom attr={@atom} />
@@ -574,9 +574,9 @@ defmodule Phoenix.ComponentVerifyTest do
       end)
 
     assert warnings =~ """
-    undefined attribute "class" in slot "item" for component \
-    Phoenix.ComponentVerifyTest.SlotWithoutDoBlock.func_slot_wo_do_block/1
-    """
+           undefined attribute "class" in slot "item" for component \
+           Phoenix.ComponentVerifyTest.SlotWithoutDoBlock.func_slot_wo_do_block/1
+           """
   end
 
   test "validates slot attr values" do
@@ -598,9 +598,9 @@ defmodule Phoenix.ComponentVerifyTest do
           def render(assigns) do
             ~H"""
             <.func>
-              <:named string="boom" atom={:boom} integer={11}/>
-              <:named string={@string} atom={@atom} integer={@integer}/>
-              <:named string="bar" atom={:bar} integer={5}/>
+              <:named string="boom" atom={:boom} integer={11} />
+              <:named string={@string} atom={@atom} integer={@integer} />
+              <:named string="bar" atom={:bar} integer={5} />
             </.func>
             """
           end
@@ -655,29 +655,23 @@ defmodule Phoenix.ComponentVerifyTest do
           def render(assigns) do
             ~H"""
             <!-- no default slot provided -->
-            <.func/>
-
+            <.func />
             <!-- with an empty default slot -->
             <.func></.func>
-
             <!-- with content in the default slot -->
             <.func>Hello!</.func>
-
             <!-- no named slots provided -->
-            <.func_named_slot/>
-
+            <.func_named_slot />
             <!-- with an empty named slot -->
             <.func_named_slot>
               <:named />
             </.func_named_slot>
-
             <!-- with content in the named slots -->
             <.func_named_slot>
               <:named>
                 Hello!
               </:named>
             </.func_named_slot>
-
             <!-- with entries for the named slot -->
             <.func_named_slot>
               <:named>
@@ -706,7 +700,7 @@ defmodule Phoenix.ComponentVerifyTest do
            Phoenix.ComponentVerifyTest.RequiredSlots.func_named_slot/1
            """
 
-    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 12}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 9}: (file)"
   end
 
   test "validate slot attr types" do
@@ -973,7 +967,7 @@ defmodule Phoenix.ComponentVerifyTest do
           def func(assigns) do
             ~H"""
             <div>
-            <%= render_slot(@slot) %>
+              <%= render_slot(@slot) %>
             </div>
             """
           end
@@ -983,15 +977,15 @@ defmodule Phoenix.ComponentVerifyTest do
           def render(assigns) do
             ~H"""
             <.func>
-            <:slot />
-            <:slot attr="foo" />
-            <:slot>
-            foo
-            </:slot>
-            <:slot attr="bar">
-            bar
-            </:slot>
-            <:slot {[attr: "bar"]} />
+              <:slot />
+              <:slot attr="foo" />
+              <:slot>
+                foo
+              </:slot>
+              <:slot attr="bar">
+                bar
+              </:slot>
+              <:slot {[attr: "bar"]} />
             </.func>
             """
           end
@@ -1045,16 +1039,14 @@ defmodule Phoenix.ComponentVerifyTest do
             <.fun_no_slots>
               hello
             </.fun_no_slots>
-
             <!-- undefined named slot -->
             <.func>
-            <:undefined />
+              <:undefined />
             </.func>
-
             <!-- named slot with undefined attrs -->
             <.func_undefined_slot_attrs>
-            <:named undefined />
-            <:named undefined="undefined" />
+              <:named undefined />
+              <:named undefined="undefined" />
             </.func_undefined_slot_attrs>
             """
           end
@@ -1075,7 +1067,7 @@ defmodule Phoenix.ComponentVerifyTest do
            Phoenix.ComponentVerifyTest.UndefinedSlots.func/1
            """
 
-    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 9}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 8}: (file)"
 
     assert warnings =~ """
            undefined attribute "undefined" \
@@ -1084,7 +1076,7 @@ defmodule Phoenix.ComponentVerifyTest do
            Phoenix.ComponentVerifyTest.UndefinedSlots.func_undefined_slot_attrs/1
            """
 
-    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 14}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 12}: (file)"
 
     assert warnings =~ """
            undefined attribute "undefined" \
@@ -1093,7 +1085,7 @@ defmodule Phoenix.ComponentVerifyTest do
            Phoenix.ComponentVerifyTest.UndefinedSlots.func_undefined_slot_attrs/1
            """
 
-    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 15}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 13}: (file)"
   end
 
   test "validates calls for locally defined components" do

@@ -258,8 +258,14 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     ~H"""
     Redirect: <%= @redirect %>
     <%= for name <- @names do %>
-      <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
-          id={name} name={name} from={@from} disabled={name in @disabled} parent_id={nil} />
+      <.live_component
+        module={Phoenix.LiveViewTest.StatefulComponent}
+        id={name}
+        name={name}
+        from={@from}
+        disabled={name in @disabled}
+        parent_id={nil}
+      />
     <% end %>
     """
   end
@@ -313,8 +319,14 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
     <div id="parent_id" class="parent">
       <%= @message %>
       <%= for name <- @names do %>
-        <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
-            id={name} name={name} from={@from} disabled={name in @disabled} parent_id={@parent_selector} />
+        <.live_component
+          module={Phoenix.LiveViewTest.StatefulComponent}
+          id={name}
+          name={name}
+          from={@from}
+          disabled={name in @disabled}
+          parent_id={@parent_selector}
+        />
       <% end %>
     </div>
     """
