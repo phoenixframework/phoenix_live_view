@@ -24,12 +24,13 @@
     "assets/js/phoenix_live_view/*"
   ],
   "devDependencies": {
-    "@playwright/test": "^1.43.1",
+    "@playwright/test": "^1.45.1",
     "monocart-reporter": "^2.3.1"
   },
   "scripts": {
+    "setup": "mix deps.get && npm install && cd assets && npm install",
     "e2e:server": "MIX_ENV=e2e mix test --cover --export-coverage e2e test/e2e/test_helper.exs",
-    "e2e:test": "mix assets.build && cd test/e2e && npx playwright test",
+    "e2e:test": "mix assets.build && cd test/e2e && npx playwright install && npx playwright test",
     "js:test": "cd assets && npm install && npm run test",
     "test": "npm run js:test && npm run e2e:test",
     "cover:merge": "node test/e2e/merge-coverage.mjs",

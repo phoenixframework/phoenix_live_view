@@ -19,7 +19,7 @@ const monocartReporter = ["monocart-reporter", {
 const config = {
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? [["github"], ["html"], monocartReporter] : [["list"], monocartReporter],
+  reporter: process.env.CI ? [["github"], ["html"], ["dot"], monocartReporter] : [["list"], monocartReporter],
   use: {
     trace: "retain-on-failure",
     screenshot: "only-on-failure",

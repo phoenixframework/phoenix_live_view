@@ -150,7 +150,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.43.1-jammy
+      image: mcr.microsoft.com/playwright:v1.45.1-jammy
     env:
       ImageOS: ubuntu22
       HOME: /root
@@ -177,7 +177,7 @@ jobs:
           restore-keys: |
             deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
 
-      - name: Install dependencies
+      - name: Run setup
         run: mix deps.get
 
       - name: Restore npm cache
@@ -188,16 +188,11 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: npm install (assets)
-        run: cd assets && npm install && cd ..
-
-      - name: Build assets
-        run: mix assets.build
+      - name: setup
+        run: npm run setup
 
       - name: Run e2e tests
-        run: |
-          npm install
-          npm run e2e:test
+        run: npm run e2e:test
 
       - uses: actions/upload-artifact@v4
         if: always()
