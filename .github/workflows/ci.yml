@@ -20,9 +20,13 @@ jobs:
             otp: 25.3
             lint: lint
 
+          - elixir: 1.16.3
+            otp: 26.2
+            lint: lint
+
           # update coverage report as well
-          - elixir: 1.15.5
-            otp: 26.0
+          - elixir: 1.17.2
+            otp: 27.0
             lint: lint
 
     runs-on: ubuntu-latest
@@ -89,8 +93,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.13.2
-            otp: 24.2
+          - elixir: 1.17.2
+            otp: 27.0
 
     runs-on: ubuntu-latest
     steps:
@@ -116,10 +120,10 @@ jobs:
       - name: Install dependencies
         run: mix deps.get --only test
 
-      - name: Set up Node.js 18.x
+      - name: Set up Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 20.x
 
       - name: Restore npm cache
         uses: actions/cache@v4
@@ -145,8 +149,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.16.1
-            otp: 26.2
+          - elixir: 1.17.2
+            otp: 27.0
 
     runs-on: ubuntu-latest
     container:
@@ -177,7 +181,7 @@ jobs:
           restore-keys: |
             deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
 
-      - name: Run setup
+      - name: Install dependencies
         run: mix deps.get
 
       - name: Restore npm cache
@@ -228,14 +232,14 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: 1.15.5
-          otp-version: 26.0
+          elixir-version: 1.17.2
+          otp-version: 27.0
 
       - name: Download mix unit coverage
         uses: actions/download-artifact@v4
         with:
           # This needs to be updated when changing the test matrix
-          name: mix-test-coverage-26-1.15.5
+          name: mix-test-coverage-27-1.17.2
           path: cover/
 
       - name: Download mix e2e coverage
@@ -250,9 +254,9 @@ jobs:
           path: |
             deps
             _build
-          key: deps-${{ runner.os }}-26-1.15.5-${{ hashFiles('**/mix.lock') }}
+          key: deps-${{ runner.os }}-27-1.17.2-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            deps-${{ runner.os }}-26-1.15.5
+            deps-${{ runner.os }}-27-1.17.2
 
       - name: Generate mix coverage report
         run: mix test.coverage
@@ -269,10 +273,10 @@ jobs:
           name: e2e-test-results
           path: test/e2e/test-results/
 
-      - name: Set up Node.js 18.x
+      - name: Set up Node.js 20.x
         uses: actions/setup-node@v4
         with:
-          node-version: 18.x
+          node-version: 20.x
 
       - name: Merge coverage reports
         run: npm install && npm run cover:merge
