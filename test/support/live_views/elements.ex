@@ -130,13 +130,13 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
       <input name="hello[ignore-submit]" type="submit" value="ignored">
       <input name="hello[ignore-image]" type="image" value="ignored">
       <input name="hello[date_text]" type="text">
-      <%= Phoenix.HTML.Form.date_select :hello, :date_select %>
+      <%= PhoenixHTMLHelpers.Form.date_select :hello, :date_select %>
       <input name="hello[time_text]" type="text">
-      <%= Phoenix.HTML.Form.time_select :hello, :time_select %>
+      <%= PhoenixHTMLHelpers.Form.time_select :hello, :time_select %>
       <input name="hello[naive_text]" type="text">
-      <%= Phoenix.HTML.Form.datetime_select :hello, :naive_select %>
+      <%= PhoenixHTMLHelpers.Form.datetime_select :hello, :naive_select %>
       <input name="hello[utc_text]" type="text">
-      <%= Phoenix.HTML.Form.datetime_select :hello, :utc_select, second: [] %>
+      <%= PhoenixHTMLHelpers.Form.datetime_select :hello, :utc_select, second: [] %>
       <input name="hello[individual]" type="text" phx-change="individual-changed"/>
     </form>
 
