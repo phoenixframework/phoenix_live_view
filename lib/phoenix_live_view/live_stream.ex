@@ -32,11 +32,22 @@ defmodule Phoenix.LiveView.LiveStream do
     }
   end
 
+  defp default_id(dom_prefix, %{__meta__: %{__struct__: Ecto.Schema.Metadata}} = ecto_struct) do
+    id_or_ids =
+      ecto_struct.__struct__.__schema__(:primary_key)
+      |> Enum.sort()
+      |> Enum.map(&Map.fetch!(ecto_struct, &1))
+      |> Enum.map(&to_string/1)
+      |> Enum.join("-")
+
+    dom_prefix <> "-#{to_string(id_or_ids)}"
+  end
+
   defp default_id(dom_prefix, %{id: id} = _struct_or_map), do: dom_prefix <> "-#{to_string(id)}"
 
   defp default_id(dom_prefix, other) do
     raise ArgumentError, """
-    expected stream :#{dom_prefix} to be a struct or map with :id key, got: #{inspect(other)}
+    expected stream :#{dom_prefix} to be an Ecto struct or a struct/map with :id key, got: #{inspect(other)}
 
     If you would like to generate custom DOM id's based on other keys, use stream_configure/3 with the :dom_id option beforehand.
     """
