@@ -60,6 +60,7 @@ This shows one example for the textarea input, but there are more cases that nee
            @errors != [] && "border-rose-400 focus:border-rose-400"
          ]}
 ```
+The following regex could be used to find and replace the relevant `phx-no-feedback` classes: `/phx-no-feedback:[\w\-\d:]+/`.
 
 2. Filter the errors in the initial function for `Phoenix.HTML.FormField`s:
 
