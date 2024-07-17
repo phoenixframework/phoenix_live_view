@@ -788,7 +788,7 @@ defmodule Phoenix.Component do
   for more information.
   '''
   @doc type: :macro
-  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+  defmacro sigil_H({:<<>>, meta, [expr]}, _modifiers) do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
@@ -1019,7 +1019,7 @@ defmodule Phoenix.Component do
 
     ~H"""
     <%= for entry <- @entries do %><%= call_inner_block!(entry, @changed, @argument) %><% end %>
-    """
+    """noformat
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
@@ -3101,7 +3101,7 @@ defmodule Phoenix.Component do
         render_slot(@inner_block, item)
       end
     %><% end %>
-    """
+    """noformat
   end
 
   @doc """
