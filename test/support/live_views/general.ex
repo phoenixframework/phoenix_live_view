@@ -10,8 +10,8 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
 
   def render(assigns) do
     ~H"""
-    Redirect: <%= @redirect %>
-    The temp is: <%= @val %><%= @greeting %>
+    <p>Redirect: <%= @redirect %></p>
+    <p>The temp is: <%= @val %><%= @greeting %></p>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button>
     <%= if @nest do %>
@@ -92,7 +92,10 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   def render(assigns) do
     ~H"""
     time: <%= @time %> <%= @name %>
-    <%= live_render(@socket, ClockControlsLive, id: :"#{String.replace(@name, " ", "-")}-controls", sticky: @sticky) %>
+    <%= live_render(@socket, ClockControlsLive,
+      id: :"#{String.replace(@name, " ", "-")}-controls",
+      sticky: @sticky
+    ) %>
     """
   end
 
@@ -136,7 +139,7 @@ defmodule Phoenix.LiveViewTest.DashboardLive do
 
   def render(assigns) do
     ~H"""
-    session: <%= Phoenix.HTML.raw inspect(@session) %>
+    session: <%= Phoenix.HTML.raw(inspect(@session)) %>
     """
   end
 
@@ -555,7 +558,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
     <.live_component :if={@lc} module={Phoenix.LiveViewTest.StartAsyncLive.LC} test={@lc} id="lc" />
     result: <%= inspect(@result) %>
     <%= if flash = @flash["info"] do %>
-    flash: <%= flash %>
+      flash: <%= flash %>
     <% end %>
     """
   end

@@ -788,7 +788,8 @@ defmodule Phoenix.Component do
   for more information.
   '''
   @doc type: :macro
-  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+  defmacro sigil_H({:<<>>, meta, [expr]}, modifiers)
+           when modifiers == [] or modifiers == ~c"noformat" do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
@@ -1019,7 +1020,7 @@ defmodule Phoenix.Component do
 
     ~H"""
     <%= for entry <- @entries do %><%= call_inner_block!(entry, @changed, @argument) %><% end %>
-    """
+    """noformat
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
@@ -2078,7 +2079,7 @@ defmodule Phoenix.Component do
 
   def live_title(assigns) do
     ~H"""
-    <title data-prefix={@prefix} data-suffix={@suffix}><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
+    <title data-prefix={@prefix} data-suffix={@suffix} phx-no-format><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
     """
   end
 
@@ -2787,6 +2788,7 @@ defmodule Phoenix.Component do
       href={@navigate}
       data-phx-link="redirect"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
+      phx-no-format
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
@@ -2925,7 +2927,8 @@ defmodule Phoenix.Component do
 
     if assigns.inner_block != [] do
       ~H"""
-      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe, [?<, ?/, @tag, ?>]} %>
+      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe,
+       [?<, ?/, @tag, ?>]} %>
       """
     else
       ~H"""
@@ -2998,7 +3001,9 @@ defmodule Phoenix.Component do
       data-phx-upload-ref={@upload.ref}
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
-      data-phx-preflighted-refs={join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))}
+      data-phx-preflighted-refs={
+        join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))
+      }
       data-phx-auto-upload={@upload.auto_upload?}
       {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
     />
@@ -3056,7 +3061,8 @@ defmodule Phoenix.Component do
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
       phx-no-format
-      {@rest} />
+      {@rest}
+    />
     """
   end
 
@@ -3096,7 +3102,7 @@ defmodule Phoenix.Component do
         render_slot(@inner_block, item)
       end
     %><% end %>
-    """
+    """noformat
   end
 
   @doc """

@@ -61,7 +61,12 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
             <figcaption><%= entry.client_name %></figcaption>
           </figure>
           <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
-          <button type="button" phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">
+          <button
+            type="button"
+            phx-click="cancel-upload"
+            phx-value-ref={entry.ref}
+            aria-label="cancel"
+          >
             &times;
           </button>
           <p :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">

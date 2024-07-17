@@ -29,7 +29,7 @@ defmodule Phoenix.LiveView.DiffTest do
     <div>
       <h1><%= @title %></h1>
       <%= for name <- @names do %>
-        <br/><%= name %>
+        <br /><%= name %>
       <% end %>
     </div>
     """
@@ -40,9 +40,9 @@ defmodule Phoenix.LiveView.DiffTest do
     <div>
       <h1><%= @title %></h1>
       <%= for name <- @names do %>
-        <br/><%= name %>
+        <br /><%= name %>
         <%= for score <- @scores do %>
-          <br/><%= score %>
+          <br /><%= score %>
         <% end %>
       <% end %>
     </div>
@@ -435,8 +435,10 @@ defmodule Phoenix.LiveView.DiffTest do
     def render(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 1}) %>
-        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 2}) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, %{value: 1}) %> HELLO <%= @id %> <%= render_slot(
+          @inner_block,
+          %{value: 2}
+        ) %>
       </div>
       """
     end
@@ -452,8 +454,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_inner_block_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@inner_block) %>
-        HELLO <%= @id %> <%= render_slot(@inner_block) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block) %> HELLO <%= @id %> <%= render_slot(@inner_block) %>
       </div>
       """
     end
@@ -461,8 +462,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_slot_no_args(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@sample) %>
-        HELLO <%= @id %> <%= render_slot(@sample) %>
+        HELLO <%= @id %> <%= render_slot(@sample) %> HELLO <%= @id %> <%= render_slot(@sample) %>
       </div>
       """
     end
@@ -470,8 +470,10 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_inner_block(assigns) do
       ~H"""
       <div>
-        HELLO <%= @id %> <%= render_slot(@inner_block, 1) %>
-        HELLO <%= @id %> <%= render_slot(@inner_block, 2) %>
+        HELLO <%= @id %> <%= render_slot(@inner_block, 1) %> HELLO <%= @id %> <%= render_slot(
+          @inner_block,
+          2
+        ) %>
       </div>
       """
     end
@@ -479,7 +481,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_with_live_component(assigns) do
       ~H"""
       COMPONENT
-      <.live_component module={SlotComponent} :let={%{value: value}} id="WORLD">
+      <.live_component :let={%{value: value}} module={SlotComponent} id="WORLD">
         WITH VALUE <%= value %>
       </.live_component>
       """
@@ -538,7 +540,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
         :b ->
           ~H"""
-          <%= %>
+          <%=  %>
           """
 
         :c ->
@@ -637,7 +639,7 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{s: ["\n  INSIDE BLOCK\n"]},
                  2 => "DEFAULT",
                  3 => %{s: ["\n  INSIDE BLOCK\n"]},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"],
+                 :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
                  :r => 1
                },
                :s => ["", ""]
@@ -666,7 +668,7 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{s: ["\n    INSIDE SLOT\n  "]},
                  2 => "MY ID",
                  3 => %{s: ["\n    INSIDE SLOT\n  "]},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"],
+                 :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
                  :r => 1
                },
                :s => ["", ""]
@@ -695,7 +697,7 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{0 => "1", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
                  2 => "DEFAULT",
                  3 => %{0 => "2", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
-                 :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"],
+                 :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
                  :r => 1
                },
                :s => ["", ""]
@@ -748,8 +750,7 @@ defmodule Phoenix.LiveView.DiffTest do
     def render_multiple_slots(assigns) do
       ~H"""
       <div>
-        HEADER: <%= render_slot(@header) %>
-        FOOTER: <%= render_slot(@footer) %>
+        HEADER: <%= render_slot(@header) %> FOOTER: <%= render_slot(@footer) %>
       </div>
       """
     end
@@ -776,7 +777,7 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => %{
                  0 => %{0 => "H", 1 => "B", :s => ["\n    ", "", "\n  "]},
                  1 => %{0 => "F", 1 => "B", :s => ["\n    ", "", "\n  "]},
-                 :s => ["<div>\n  HEADER: ", "\n  FOOTER: ", "\n</div>"],
+                 :s => ["<div>\n  HEADER: ", " FOOTER: ", "\n</div>"],
                  :r => 1
                },
                :s => ["", ""]
@@ -866,7 +867,7 @@ defmodule Phoenix.LiveView.DiffTest do
                    1 => %{0 => "1", :s => ["\n  WITH VALUE ", "\n"]},
                    2 => "WORLD",
                    3 => %{0 => "2", :s => ["\n  WITH VALUE ", "\n"]},
-                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"],
+                   :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
                    :r => 1
                  }
                },
@@ -1555,7 +1556,9 @@ defmodule Phoenix.LiveView.DiffTest do
         rendered = ~H"""
         <div>
           <%= for {component, index} <- Enum.with_index(@components, 1) do %>
-            <%= if index > 1 do %><%= index %>: <%= component %><% end %>
+            <%= if index > 1 do %>
+              <%= index %>: <%= component %>
+            <% end %>
           <% end %>
         </div>
         """
@@ -1566,7 +1569,7 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => %{
                  d: [[""], [%{0 => "2", 1 => 1, :s => 0}]],
                  s: ["\n    ", "\n  "],
-                 p: %{0 => ["", ": ", ""]}
+                 p: %{0 => ["\n      ", ": ", "\n    "]}
                },
                :c => %{
                  1 => %{
@@ -1625,9 +1628,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
     defp tracking(assigns) do
       ~H"""
-      <.live_component module={SlotComponent} :let={%{value: value}} id="TRACKING">
-        WITH PARENT VALUE <%= @parent_value %>
-        WITH VALUE <%= value %>
+      <.live_component :let={%{value: value}} module={SlotComponent} id="TRACKING">
+        WITH PARENT VALUE <%= @parent_value %> WITH VALUE <%= value %>
       </.live_component>
       """
     end
@@ -1644,15 +1646,15 @@ defmodule Phoenix.LiveView.DiffTest do
                    1 => %{
                      0 => "123",
                      1 => "1",
-                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
+                     :s => ["\n  WITH PARENT VALUE ", " WITH VALUE ", "\n"]
                    },
                    2 => "TRACKING",
                    3 => %{
                      0 => "123",
                      1 => "2",
-                     :s => ["\n  WITH PARENT VALUE ", "\n  WITH VALUE ", "\n"]
+                     :s => ["\n  WITH PARENT VALUE ", " WITH VALUE ", "\n"]
                    },
-                   :s => ["<div>\n  HELLO ", " ", "\n  HELLO ", " ", "\n</div>"],
+                   :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
                    :r => 1
                  }
                },

@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView.ParamsTest do
                  {"data-phx-session", _},
                  {"data-phx-static", _}
                ],
-               ["The value is: 1" <> _]
+               [{"p", [], ["The value is: 1"]} | _]
              } = container
     end
 

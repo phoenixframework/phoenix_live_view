@@ -1118,7 +1118,9 @@ defmodule Phoenix.Component.Declarative do
 
     undefined_slots =
       Enum.reduce(slots_defs, slots, fn slot_def, slots ->
-        %{name: slot_name, required: required, attrs: attrs, validate_attrs: validate_attrs} = slot_def
+        %{name: slot_name, required: required, attrs: attrs, validate_attrs: validate_attrs} =
+          slot_def
+
         {slot_values, slots} = Map.pop(slots, slot_name)
 
         case slot_values do
@@ -1185,9 +1187,11 @@ defmodule Phoenix.Component.Declarative do
                 # undefined slot attr
                 %{} ->
                   cond do
-                    attr_name == :inner_block -> :ok
+                    attr_name == :inner_block ->
+                      :ok
 
-                    attrs == [] and not validate_attrs -> :ok
+                    attrs == [] and not validate_attrs ->
+                      :ok
 
                     true ->
                       message =

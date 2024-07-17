@@ -7,7 +7,7 @@ defmodule Phoenix.LiveViewTest.FlashLive do
     root[<%= Phoenix.Flash.get(@flash, :info) %>]:info
     root[<%= Phoenix.Flash.get(@flash, :error) %>]:error
     <.live_component module={Phoenix.LiveViewTest.FlashComponent} id="flash-component" />
-    child[<%= live_render @socket, Phoenix.LiveViewTest.FlashChildLive, id: "flash-child" %>]
+    child[<%= live_render(@socket, Phoenix.LiveViewTest.FlashChildLive, id: "flash-child") %>]
     """
   end
 
@@ -48,9 +48,13 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
   def render(assigns) do
     ~H"""
     <div id={@id} phx-target={@myself} phx-click="click">
-    <span phx-target={@myself} phx-click="lv:clear-flash">Clear all</span>
-    <span phx-target={@myself} phx-click="lv:clear-flash" phx-value-key="info">component[<%= Phoenix.Flash.get(@flash, :info) %>]:info</span>
-    <span phx-target={@myself} phx-click="lv:clear-flash" phx-value-key="error">component[<%= Phoenix.Flash.get(@flash, :error) %>]:error</span>
+      <span phx-target={@myself} phx-click="lv:clear-flash">Clear all</span>
+      <span phx-target={@myself} phx-click="lv:clear-flash" phx-value-key="info">
+        component[<%= Phoenix.Flash.get(@flash, :info) %>]:info
+      </span>
+      <span phx-target={@myself} phx-click="lv:clear-flash" phx-value-key="error">
+        component[<%= Phoenix.Flash.get(@flash, :error) %>]:error
+      </span>
     </div>
     """
   end

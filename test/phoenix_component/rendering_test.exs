@@ -263,19 +263,27 @@ defmodule Phoenix.ComponentRenderingTest do
       assert eval(~H|<.inner_changed :let={_foo} foo={@foo}></.inner_changed>|) ==
                [["%{foo: true}", nil]]
 
-      assert eval(
-               ~H|<.inner_changed :let={_foo} foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
+      assert eval(~H"""
+             <.inner_changed :let={_foo} foo={@foo}>
+               <%= inspect(Map.get(assigns, :__changed__)) %>
+             </.inner_changed>
+             """) ==
                [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
-      assert eval(
-               ~H|<.inner_changed :let={_foo} foo={@foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
+      assert eval(~H"""
+             <.inner_changed :let={_foo} foo={@foo}>
+               <%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %>
+             </.inner_changed>
+             """) ==
                [["%{foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
 
-      assert eval(
-               ~H|<.inner_changed :let={foo} foo={@foo}><.inner_changed :let={_bar} bar={foo}><%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
-             ) ==
+      assert eval(~H"""
+             <.inner_changed :let={foo} foo={@foo}>
+               <.inner_changed :let={_bar} bar={foo}>
+                 <%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %>
+               </.inner_changed>
+             </.inner_changed>
+             """) ==
                [
                  [
                    "%{foo: true, inner_block: true}",
@@ -283,14 +291,20 @@ defmodule Phoenix.ComponentRenderingTest do
                  ]
                ]
 
-      assert eval(
-               ~H|<.inner_changed :let={foo} foo={@foo}><%= foo %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
-             ) ==
+      assert eval(~H"""
+             <.inner_changed :let={foo} foo={@foo}>
+               <%= foo %><%= inspect(Map.get(assigns, :__changed__)) %>
+             </.inner_changed>
+             """) ==
                [["%{foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
 
-      assert eval(
-               ~H|<.inner_changed :let={foo} foo={@foo}><.inner_changed :let={bar} bar={foo}><%= bar %><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed></.inner_changed>|
-             ) ==
+      assert eval(~H"""
+             <.inner_changed :let={foo} foo={@foo}>
+               <.inner_changed :let={bar} bar={foo}>
+                 <%= bar %><%= inspect(Map.get(assigns, :__changed__)) %>
+               </.inner_changed>
+             </.inner_changed>
+             """) ==
                [
                  [
                    "%{foo: true, inner_block: true}",
@@ -305,7 +319,7 @@ defmodule Phoenix.ComponentRenderingTest do
       assert eval(~H"""
              <.wrapper>
                <%= @foo %>
-               <.inner_changed foo={@bar} :let={var}>
+               <.inner_changed :let={var} foo={@bar}>
                  <%= var %>
                </.inner_changed>
              </.wrapper>

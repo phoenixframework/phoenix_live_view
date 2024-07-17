@@ -346,7 +346,6 @@ defmodule Phoenix.LiveView.JSTest do
                ]
              }
 
-
       assert JS.toggle_class("c", transition: "a b") == %JS{
                ops: [
                  [

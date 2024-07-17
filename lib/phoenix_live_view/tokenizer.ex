@@ -182,7 +182,11 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp handle_doctype(<<>>, line, column, _buffer, _acc, state) do
-    raise_syntax_error!("unexpected end of string inside tag", %{line: line, column: column}, state)
+    raise_syntax_error!(
+      "unexpected end of string inside tag",
+      %{line: line, column: column},
+      state
+    )
   end
 
   ## handle_script

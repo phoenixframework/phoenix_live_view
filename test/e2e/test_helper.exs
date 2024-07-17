@@ -6,7 +6,7 @@ Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest.E2E.Endpoint,
   secret_key_base: String.duplicate("a", 64),
   render_errors: [
     formats: [
-      html: Phoenix.LiveViewTest.E2E.ErrorHTML,
+      html: Phoenix.LiveViewTest.E2E.ErrorHTML
     ],
     layout: false
   ],

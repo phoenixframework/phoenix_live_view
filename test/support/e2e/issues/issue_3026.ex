@@ -10,7 +10,6 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3026Live do
       ~H"""
       <div>
         Example form
-
         <.form for={to_form(%{})} phx-change="validate" phx-submit="submit">
           <input label="Name" name="name" type="text" value={@name} />
           <input label="Email" name="email" type="text" value={@email} />

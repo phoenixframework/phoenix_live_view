@@ -773,7 +773,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE SLOT
       <%= render_slot(@sample) %>
       AFTER SLOT
-      """
+      """noformat
     end
 
     def function_component_with_slots(assigns) do
@@ -783,7 +783,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
-      """
+      """noformat
     end
 
     def function_component_with_slots_and_default(assigns) do
@@ -793,7 +793,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       TEXT:<%= render_slot(@inner_block) %>:TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
-      """
+      """noformat
     end
 
     def function_component_with_slots_and_args(assigns) do
@@ -801,7 +801,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE SLOT
       <%= render_slot(@sample, 1) %>
       AFTER SLOT
-      """
+      """noformat
     end
 
     def function_component_with_slot_attrs(assigns) do
@@ -811,7 +811,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= render_slot(entry) %>
       <%= entry.b %>
       <% end %>
-      """
+      """noformat
     end
 
     def function_component_with_multiple_slots_entries(assigns) do
@@ -819,7 +819,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= for entry <- @sample do %>
         <%= entry.id %>: <%= render_slot(entry, %{}) %>
       <% end %>
-      """
+      """noformat
     end
 
     def function_component_with_self_close_slots(assigns) do
@@ -827,15 +827,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= for entry <- @sample do %>
         <%= entry.id %>
       <% end %>
-      """
+      """noformat
     end
 
     def render_slot_name(assigns) do
-      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"
+      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"noformat
     end
 
     def render_inner_block_slot_name(assigns) do
-      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"
+      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"noformat
     end
 
     test "single slot" do
@@ -2073,7 +2073,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     def slot_if_self_close(assigns) do
       ~H"""
       <div><%= @value %>-<%= for slot <- @slot do %><%= slot.val %>-<% end %></div>
-      """
+      """noformat
     end
 
     test ":if in slots" do
