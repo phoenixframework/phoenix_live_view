@@ -18,11 +18,9 @@ jobs:
 
           - elixir: 1.15.4
             otp: 25.3
-            lint: lint
 
           - elixir: 1.16.3
             otp: 26.2
-            lint: lint
 
           # update coverage report as well
           - elixir: 1.17.2
@@ -58,10 +56,6 @@ jobs:
     - name: Install dependencies
       run: mix deps.get --only test
 
-    #- name: Check source code format
-    #  run: mix format --check-formatted
-    #  if: ${{ matrix.lint }}
-
     - name: Remove compiled application files
       run: mix clean
 
@@ -73,6 +67,12 @@ jobs:
 
     - name: Compile & lint dependencies
       run: mix compile --warnings-as-errors
+      if: ${{ matrix.lint }}
+      env:
+        MIX_ENV: test
+
+    - name: Check if formatted
+      run: mix format --check-formatted
       if: ${{ matrix.lint }}
       env:
         MIX_ENV: test
