@@ -820,3 +820,22 @@ test("issue #3260 - supports non-stream items with id in stream container", asyn
     { id: "users-3", text: "last_user" }
   ]);
 });
+
+test("JS commands are applied when re-joining", async ({ page }) => {
+  await page.goto("/stream");
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-1", text: "chris" },
+    { id: "users-2", text: "callan" }
+  ]);
+  await expect(page.locator("#users-1")).toBeVisible();
+  await page.locator("#users-1").getByRole("button", { name: "JS Hide" }).click();
+  await expect(page.locator("#users-1")).not.toBeVisible();
+  await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+  // not reconnect
+  await page.evaluate(() => window.liveSocket.connect());
+  await syncLV(page);
+  // should still be hidden
+  await expect(page.locator("#users-1")).not.toBeVisible();
+});
