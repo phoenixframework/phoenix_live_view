@@ -2897,7 +2897,7 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
-  attr.(:tag_name, :string, required: false, doc: "The name of the tag, such as `div`.")
+  attr.(:tag_name, :string, required: true, doc: "The name of the tag, such as `div`.")
 
   attr.(:name, :string,
     required: false,
@@ -2914,13 +2914,13 @@ defmodule Phoenix.Component do
   slot.(:inner_block, [])
 
   def dynamic_tag(%{rest: rest} = assigns) do
-    {tag_name, name} =
+    {tag_name, rest} =
       case assigns do
         %{tag_name: tag_name, name: name} ->
-          {tag_name, name}
+          {tag_name, Map.put(rest, :name, name)}
 
         %{tag_name: tag_name} ->
-          {tag_name, nil}
+          {tag_name, rest}
 
         %{name: name} ->
           IO.warn("""
@@ -2935,13 +2935,8 @@ defmodule Phoenix.Component do
               <.dynamic_tag tag_name="p" ...>
           """)
 
-          {name, nil}
-
-        _ ->
-          raise "Either tag_name or name is required when using Phoenix.Component.dynamic_tag/1"
+          {name, Map.delete(rest, :name)}
       end
-
-    rest = Map.put(rest, :name, name)
 
     tag =
       case Phoenix.HTML.html_escape(tag_name) do
