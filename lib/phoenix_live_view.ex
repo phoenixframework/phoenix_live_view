@@ -53,6 +53,7 @@ defmodule Phoenix.LiveView do
   and returns a `HEEx` template defined with [the `~H` sigil](`Phoenix.Component.sigil_H/2`).
 
       defmodule MyAppWeb.DemoLive do
+        # In a typical Phoenix app, the following line would usually be `use MyAppWeb, :live_view`
         use Phoenix.LiveView
 
         def render(assigns) do
