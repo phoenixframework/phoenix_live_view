@@ -2881,15 +2881,15 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.dynamic_tag name="input" type="text"/>
+  <.dynamic_tag tag_name="input" name="my-input" type="text"/>
   ```
 
   ```html
-  <input type="text"/>
+  <input name="my-input" type="text"/>
   ```
 
   ```heex
-  <.dynamic_tag name="p">content</.dynamic_tag>
+  <.dynamic_tag tag_name="p">content</.dynamic_tag>
   ```
 
   ```html
@@ -2897,7 +2897,13 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
-  attr.(:name, :string, required: true, doc: "The name of the tag, such as `div`.")
+  attr.(:tag_name, :string, required: true, doc: "The name of the tag, such as `div`.")
+
+  attr.(:name, :string,
+    required: false,
+    doc:
+      "Deprecated: use tag_name instead. If tag_name is used, passed to the tag. Otherwise the name of the tag, such as `div`."
+  )
 
   attr.(:rest, :global,
     doc: """
@@ -2907,8 +2913,30 @@ defmodule Phoenix.Component do
 
   slot.(:inner_block, [])
 
-  def dynamic_tag(%{name: name, rest: rest} = assigns) do
-    tag_name = to_string(name)
+  def dynamic_tag(%{rest: rest} = assigns) do
+    {tag_name, rest} =
+      case assigns do
+        %{tag_name: tag_name, name: name} ->
+          {tag_name, Map.put(rest, :name, name)}
+
+        %{tag_name: tag_name} ->
+          {tag_name, rest}
+
+        %{name: name} ->
+          IO.warn("""
+          Passing the tag name to `Phoenix.Component.dynamic_tag/1` using the `name` attribute is deprecated.
+
+          Instead of:
+
+              <.dynamic_tag name="p" ...>
+
+          use `tag_name` instead:
+
+              <.dynamic_tag tag_name="p" ...>
+          """)
+
+          {name, Map.delete(rest, :name)}
+      end
 
     tag =
       case Phoenix.HTML.html_escape(tag_name) do

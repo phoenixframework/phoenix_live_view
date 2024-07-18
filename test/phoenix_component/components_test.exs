@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.ComponentsTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureIO
   import Phoenix.Component
   import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
 
@@ -191,7 +192,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       assert_raise ArgumentError, ~r/expected dynamic_tag name to be safe HTML/, fn ->
-        t2h(~H|<.dynamic_tag name="p><script>alert('nice try');</script>" />|)
+        t2h(~H|<.dynamic_tag tag_name="p><script>alert('nice try');</script>" />|)
       end
     end
 
@@ -199,7 +200,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       assert t2h(
-               ~H|<.dynamic_tag name="p" class="<script>alert('nice try');</script>"></.dynamic_tag>|
+               ~H|<.dynamic_tag tag_name="p" class="<script>alert('nice try');</script>"></.dynamic_tag>|
              ) == ~X|<p class="&lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;"></p>|
     end
 
@@ -207,39 +208,55 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assigns = %{}
 
       assert t2h(
-               ~H|<.dynamic_tag name="p" {%{"<script>alert('nice try');</script>" => ""}}></.dynamic_tag>|
+               ~H|<.dynamic_tag tag_name="p" {%{"<script>alert('nice try');</script>" => ""}}></.dynamic_tag>|
              ) == ~X|<p &lt;script&gt;alert(&#39;nice try&#39;);&lt;/script&gt;=""></p>|
     end
 
     test "with empty inner block" do
       assigns = %{}
 
-      assert t2h(~H|<.dynamic_tag name="tr"></.dynamic_tag>|) == ~X|<tr></tr>|
+      assert t2h(~H|<.dynamic_tag tag_name="tr"></.dynamic_tag>|) == ~X|<tr></tr>|
 
-      assert t2h(~H|<.dynamic_tag name="tr" class="foo"></.dynamic_tag>|) ==
+      assert t2h(~H|<.dynamic_tag tag_name="tr" class="foo"></.dynamic_tag>|) ==
                ~X|<tr class="foo"></tr>|
     end
 
     test "with inner block" do
       assigns = %{}
 
-      assert t2h(~H|<.dynamic_tag name="tr">content</.dynamic_tag>|) == ~X|<tr>content</tr>|
+      assert t2h(~H|<.dynamic_tag tag_name="tr">content</.dynamic_tag>|) == ~X|<tr>content</tr>|
 
-      assert t2h(~H|<.dynamic_tag name="tr" class="foo">content</.dynamic_tag>|) ==
+      assert t2h(~H|<.dynamic_tag tag_name="tr" class="foo">content</.dynamic_tag>|) ==
                ~X|<tr class="foo">content</tr>|
     end
 
     test "self closing without inner block" do
       assigns = %{}
 
-      assert t2h(~H|<.dynamic_tag name="br" />|) == ~X|<br/>|
-      assert t2h(~H|<.dynamic_tag name="input" type="text" />|) == ~X|<input type="text"/>|
+      assert t2h(~H|<.dynamic_tag tag_name="br" />|) == ~X|<br/>|
+      assert t2h(~H|<.dynamic_tag tag_name="input" type="text" />|) == ~X|<input type="text"/>|
     end
 
     test "keeps underscores in attributes" do
       assigns = %{}
 
-      assert t2h(~H|<.dynamic_tag name="br" foo_bar="baz" />|) == ~X|<br foo_bar="baz"/>|
+      assert t2h(~H|<.dynamic_tag tag_name="br" foo_bar="baz" />|) == ~X|<br foo_bar="baz"/>|
+    end
+
+    test "can pass tag_name and name" do
+      assigns = %{}
+
+      assert t2h(~H|<.dynamic_tag tag_name="input" name="my-input" />|) ==
+               ~X|<input name="my-input"/>|
+    end
+
+    test "warns when using deprecated name attribute" do
+      assigns = %{}
+
+      assert capture_io(:stderr, fn ->
+               assert t2h(~H|<.dynamic_tag name="br" foo_bar="baz" />|) == ~X|<br foo_bar="baz"/>|
+             end) =~
+               "Passing the tag name to `Phoenix.Component.dynamic_tag/1` using the `name` attribute is deprecated"
     end
   end
 

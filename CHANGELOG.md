@@ -109,6 +109,11 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.0-rc.7
+
+### Deprecations
+  * Deprecate the `name` attribute of `Phoenix.Component.dynamic_tag/1` in favor of `tag_name`
+
 ## 1.0.0-rc.6 (2024-06-27)
 
 ### Bug fixes
