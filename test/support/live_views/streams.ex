@@ -59,6 +59,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
         <button phx-click="move" phx-value-id={id} phx-value-name="moved" phx-value-at="1">
           move
         </button>
+        <button phx-click={Phoenix.LiveView.JS.hide(to: "##{id}")}>JS Hide</button>
       </div>
     </div>
     <div id="admins" phx-update="stream">
