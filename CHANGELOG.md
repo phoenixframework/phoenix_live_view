@@ -111,6 +111,16 @@ generated user module:
 
 ## 1.0.0-rc.7
 
+### Enhancements
+  * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
+
+### Bug fixes
+  * Fix stream items not reapplying JS commands when joining after a disconnect
+  * Fix unnecessary remount when navigating back
+  * Fix character composition mode not working properly in Safari when an input is patched
+  * Fix `cannot redirect socket on update` error raised erroneously under rare circumstances
+  * Fix upstream morphdom issue that could cause elements being removed from the real DOM instead of a cloned tree while some elements are locked
+
 ### Deprecations
   * Deprecate the `name` attribute of `Phoenix.Component.dynamic_tag/1` in favor of `tag_name`
 
@@ -192,7 +202,7 @@ generated user module:
 ## 0.20.16 (2024-06-20)
 
 ### Bug fixes
-* Fix bug introduced in 0.20.15 causing incorrect patching on form elements when awaiting acknowledgements
+  * Fix bug introduced in 0.20.15 causing incorrect patching on form elements when awaiting acknowledgements
 
 ## 0.20.15 (2024-06-18)
 
