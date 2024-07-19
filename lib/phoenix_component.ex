@@ -2600,9 +2600,11 @@ defmodule Phoenix.Component do
   @doc """
   Generates a link to a given route.
 
-  To navigate across pages, using traditional browser navigation, use
-  the `href` attribute. To patch the current LiveView or navigate
-  across LiveViews, use `patch` and `navigate` respectively.
+  It is typically used with one of the three attributes:
+
+    * `patch` - on click, it patches the current LiveView with the given path
+    * `navigate` - on click, it navigates to a new LiveView at the given path
+    * `href` - on click, it performs traditional browser navigation (as any `<a>` tag)
 
   [INSERT LVATTRDOCS]
 
@@ -2719,10 +2721,13 @@ defmodule Phoenix.Component do
   @doc type: :component
   attr.(:navigate, :string,
     doc: """
-    Navigates from a LiveView to a new LiveView.
-    The browser page is kept, but a new LiveView process is mounted and its content on the page
-    is reloaded. It is only possible to navigate between LiveViews declared under the same router
-    `Phoenix.LiveView.Router.live_session/3`. Otherwise, a full browser redirect is used.
+    Navigates to a LiveView.
+    When redirecting across LiveViews, the browser page is kept, but a new LiveView process
+    is mounted and its contents is loaded on the page. It is only possible to navigate
+    between LiveViews declared under the same router
+    [`live_session`](`Phoenix.LiveView.Router.live_session/3`).
+    When used outside of a LiveView or across live sessions, it behaves like a regular
+    browser redirect.
     """
   )
 
