@@ -31,9 +31,7 @@ export default class ElementRef {
     // dispatch ack events
     let detail = {ref: ref, event: phxEvent}
     this.el.dispatchEvent(new CustomEvent("phx:ack", {detail, bubbles: true, cancelable: false}))
-    if(phxEvent){
-      this.el.dispatchEvent(new CustomEvent(`phx:ack:${phxEvent}`, {detail, bubbles: true, cancelable: false}))
-    }
+    this.el.dispatchEvent(new CustomEvent(`phx:ack:${ref}`, {detail, bubbles: true, cancelable: false}))
 
     // clean up if fully resolved
     if(this.isFullyResolvedBy(ref)){ this.el.removeAttribute(PHX_REF_SRC) }

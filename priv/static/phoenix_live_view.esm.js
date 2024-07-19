@@ -1547,9 +1547,7 @@ var ElementRef = class {
     this.undoLoading(ref);
     let detail = { ref, event: phxEvent };
     this.el.dispatchEvent(new CustomEvent("phx:ack", { detail, bubbles: true, cancelable: false }));
-    if (phxEvent) {
-      this.el.dispatchEvent(new CustomEvent(`phx:ack:${phxEvent}`, { detail, bubbles: true, cancelable: false }));
-    }
+    this.el.dispatchEvent(new CustomEvent(`phx:ack:${ref}`, { detail, bubbles: true, cancelable: false }));
     if (this.isFullyResolvedBy(ref)) {
       this.el.removeAttribute(PHX_REF_SRC);
     }
@@ -1985,6 +1983,7 @@ function morphdomFactory(morphAttrs2) {
           return;
         } else if (beforeUpdateResult instanceof HTMLElement) {
           fromEl = beforeUpdateResult;
+          indexTree(fromEl);
         }
         morphAttrs2(fromEl, toEl);
         onElUpdated(fromEl);
@@ -3100,6 +3099,7 @@ var View = class {
     dom_default.putPrivate(this.el, "view", this);
     this.id = this.el.id;
     this.ref = 0;
+    this.lastAckRef = null;
     this.childJoins = 0;
     this.loaderTimer = null;
     this.pendingDiffs = [];
@@ -3755,6 +3755,9 @@ var View = class {
     }
     return this.liveSocket.wrapPush(this, { timeout: true }, () => {
       return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", (resp) => {
+        if (ref !== null) {
+          this.lastAckRef = ref;
+        }
         let finish = (hookReply) => {
           if (resp.redirect) {
             this.onRedirect(resp.redirect);
@@ -3870,14 +3873,14 @@ var View = class {
         lock: (els, onUnlock) => {
           els = Array.isArray(els) ? els : [els];
           els.forEach((el2) => {
-            el2.setAttribute(PHX_REF_LOCK, newRef);
-            el2.setAttribute(PHX_REF_SRC, this.refSrc());
-            if (onUnlock) {
-              el2.addEventListener(`phx:ack:${phxEvent}`, (e) => {
-                if (e.detail.ref === newRef) {
-                  onUnlock(e);
-                }
-              });
+            if (this.isAcked(newRef)) {
+              onUnlock();
+            } else {
+              el2.setAttribute(PHX_REF_LOCK, newRef);
+              el2.setAttribute(PHX_REF_SRC, this.refSrc());
+              if (onUnlock) {
+                el2.addEventListener(`phx:ack:${newRef}`, onUnlock, { once: true });
+              }
             }
           });
         }
@@ -3896,6 +3899,9 @@ var View = class {
       }
     }
     return [newRef, elements.map(({ el }) => el), opts];
+  }
+  isAcked(ref) {
+    return this.lastAckRef !== null && this.lastAckRef >= ref;
   }
   componentID(el) {
     let cid = el.getAttribute && el.getAttribute(PHX_COMPONENT);

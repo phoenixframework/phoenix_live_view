@@ -141,6 +141,7 @@ export default class View {
     DOM.putPrivate(this.el, "view", this)
     this.id = this.el.id
     this.ref = 0
+    this.lastAckRef = null
     this.childJoins = 0
     this.loaderTimer = null
     this.pendingDiffs = []
@@ -871,6 +872,7 @@ export default class View {
     return (
       this.liveSocket.wrapPush(this, {timeout: true}, () => {
         return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+          if(ref !== null){ this.lastAckRef = ref }
           let finish = (hookReply) => {
             if(resp.redirect){ this.onRedirect(resp.redirect) }
             if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
@@ -970,12 +972,14 @@ export default class View {
         lock: (els, onUnlock) => {
           els = Array.isArray(els) ? els : [els]
           els.forEach(el => {
-            el.setAttribute(PHX_REF_LOCK, newRef)
-            el.setAttribute(PHX_REF_SRC, this.refSrc())
-            if(onUnlock){
-              el.addEventListener(`phx:ack:${phxEvent}`, e => {
-                if(e.detail.ref === newRef){ onUnlock(e) }
-              })
+            if(this.isAcked(newRef)){
+              onUnlock()
+            } else {
+              el.setAttribute(PHX_REF_LOCK, newRef)
+              el.setAttribute(PHX_REF_SRC, this.refSrc())
+              if(onUnlock){
+                el.addEventListener(`phx:ack:${newRef}`, onUnlock, {once: true})
+              }
             }
           })
         }
@@ -995,6 +999,8 @@ export default class View {
     }
     return [newRef, elements.map(({el}) => el), opts]
   }
+
+  isAcked(ref){ return this.lastAckRef !== null && this.lastAckRef >= ref }
 
   componentID(el){
     let cid = el.getAttribute && el.getAttribute(PHX_COMPONENT)
