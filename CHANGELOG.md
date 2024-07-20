@@ -301,7 +301,7 @@ generated user module:
 ### Bug fixes
   * Fix stream items being excluded in LiveViewTest
   * Fix stream items failing to properly update nested streams or LiveComponents
-  * Fix debounce/blur regression causing unexpeted events to be sent
+  * Fix debounce/blur regression causing unexpected events to be sent
 
 ## 0.20.5 (2024-02-08)
 
