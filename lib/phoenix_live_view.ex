@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView do
 
   The `on_mount` callback can return a keyword list of options as a third
   element in the return tuple. These options are identical to what can
-  optionally be returned in `mount/3`.
+  optionally be returned in `c:mount/3`.
 
   ## Examples
 
@@ -1403,7 +1403,7 @@ defmodule Phoenix.LiveView do
   Hooks provide a mechanism to tap into key stages of the LiveView
   lifecycle in order to bind/update assigns, intercept events,
   patches, and regular messages when necessary, and to inject
-  common functionality. Use `attach_hook/1` on any of the following
+  common functionality. Use `attach_hook/4` on any of the following
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, `:handle_async`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
@@ -1599,7 +1599,7 @@ defmodule Phoenix.LiveView do
   positive limit will prune items from the end of the container, while a negative
   limit will prune items from the beginning of the container.
 
-  Note that the limit is not enforced on the first `mount/3` render (when no websocket
+  Note that the limit is not enforced on the first `c:mount/3` render (when no websocket
   connection was established yet), as it means more data than necessary has been
   loaded. In such cases, you should only load and pass the desired amount of items
   to the stream.
