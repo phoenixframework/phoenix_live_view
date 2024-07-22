@@ -125,7 +125,7 @@ defmodule Phoenix.LiveView.Router do
   Defines a live session for live redirects within a group of live routes.
 
   `live_session/3` allow routes defined with `live/4` to support
-  `live_redirect` from the client with navigation purely over the existing
+  `navigate` redirects from the client with navigation purely over the existing
   websocket connection. This allows live routes defined in the router to
   mount a new root LiveView without additional HTTP requests to the server.
   For backwards compatibility reasons, all live routes defined outside
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.Router do
   the `mount` callback. Authorization rules generally happen on `mount`
   (for instance, is the user allowed to see this page?) and also on
   `handle_event` (is the user allowed to delete this item?). Performing
-  authorization on mount is important because `live_redirect`s *do not go
+  authorization on mount is important because `navigate`s *do not go
   through the plug pipeline*.
 
   `live_session` can be used to draw boundaries between groups of LiveViews.
