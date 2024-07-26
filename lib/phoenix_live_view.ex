@@ -690,7 +690,7 @@ defmodule Phoenix.LiveView do
   Clearing the flash can also be triggered on the client and natively handled by LiveView using the `lv:clear-flash` event.
 
   For example:
-  
+
   ```heex
   <p class="alert" phx-click="lv:clear-flash">
     <%= Phoenix.Flash.get(@flash, :info) %>
@@ -709,7 +709,7 @@ defmodule Phoenix.LiveView do
   Clearing the flash can also be triggered on the client and natively handled by LiveView using the `lv:clear-flash` event.
 
   For example:
-  
+
   ```heex
   <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
     <%= Phoenix.Flash.get(@flash, :info) %>
