@@ -402,7 +402,7 @@ defmodule Phoenix.LiveView.Utils do
         raise ArgumentError, """
         invalid option returned from #{inspect(mod)}.#{fun}/#{arity}.
 
-        Expected keys to be one of #{inspect(@mount_opts)}
+        Expected keys to be one of #{inspect(@mount_opts)},
         got: #{inspect(key)}: #{inspect(val)}
         """
     end)
