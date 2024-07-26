@@ -65,7 +65,7 @@ defmodule Phoenix.LiveView.UploadWriter do
     * `:done` - The client sent all expected chunks and the upload is awaiting consumption
     * `:cancel` - The upload was canceled, either by the server or the client navigating away.
     * `{:error, reason}` - The upload was canceled due to an error returned from `write_chunk/2`.
-      For example, if If `write_chunk/2` returns `{:error, :enoent, state}`, the upload will be cancelled
+      For example, if `write_chunk/2` returns `{:error, :enoent, state}`, the upload will be cancelled
       and `close/2` will be called with the reason `{:error, :enoent}`.
   """
 
