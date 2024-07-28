@@ -1136,8 +1136,16 @@ defmodule Phoenix.LiveViewTest do
              |> element(~s{[href="/foo"][id="foo.bar.baz"]})
              |> render() =~ "Increment</a>"
   """
-  def element(%View{proxy: proxy}, selector, text_filter \\ nil) when is_binary(selector) do
+  def element(%View{proxy: proxy}, selector, text_filter) when is_binary(selector) and is_binary(text_filter) do
     %Element{proxy: proxy, selector: selector, text_filter: text_filter}
+  end
+
+  def element(%View{proxy: proxy}, selector, %Regex{} = text_filter) when is_binary(selector) do
+    %Element{proxy: proxy, selector: selector, text_filter: text_filter}
+  end
+
+  def element(%View{proxy: proxy}, selector, _text_filter) when is_binary(selector) do
+    %Element{proxy: proxy, selector: selector}
   end
 
   @doc """
