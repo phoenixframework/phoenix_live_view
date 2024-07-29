@@ -671,7 +671,9 @@ export default class LiveSocket {
       // therefore the clickStartedAtTarget is stale
       if(e.detail === 0) this.clickStartedAtTarget = e.target
       let clickStartedAtTarget = this.clickStartedAtTarget || e.target
-      target = closestPhxBinding(clickStartedAtTarget, click)
+      // when searching the target for the click event, we always want to
+      // use the actual event target, see #3372
+      target = closestPhxBinding(e.target, click)
       this.dispatchClickAway(e, clickStartedAtTarget)
       this.clickStartedAtTarget = null
       let phxEvent = target && target.getAttribute(click)
