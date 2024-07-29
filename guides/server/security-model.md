@@ -195,7 +195,7 @@ This is the same mechanism provided by `Phoenix.Channel`s. Therefore, if
 your application uses both channels and LiveViews, you can use the same
 technique to disconnect any stateful connection.
 
-## `live_session` and `navigate`
+## `live_session` and `push_navigate`
 
 LiveView supports live redirect, which allows users to navigate between
 pages over the LiveView connection. Whenever there is a `push_navigate`,
