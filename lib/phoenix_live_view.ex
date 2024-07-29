@@ -686,6 +686,16 @@ defmodule Phoenix.LiveView do
   ## Examples
 
       iex> clear_flash(socket)
+
+  Clearing the flash can also be triggered on the client and natively handled by LiveView using the `lv:clear-flash` event.
+
+  For example:
+
+  ```heex
+  <p class="alert" phx-click="lv:clear-flash">
+    <%= Phoenix.Flash.get(@flash, :info) %>
+  </p>
+  ```
   """
   defdelegate clear_flash(socket), to: Phoenix.LiveView.Utils
 
@@ -695,6 +705,16 @@ defmodule Phoenix.LiveView do
   ## Examples
 
       iex> clear_flash(socket, :info)
+
+  Clearing the flash can also be triggered on the client and natively handled by LiveView using the `lv:clear-flash` event.
+
+  For example:
+
+  ```heex
+  <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
+    <%= Phoenix.Flash.get(@flash, :info) %>
+  </p>
+  ```
   """
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
 
