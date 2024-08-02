@@ -538,10 +538,12 @@ defmodule Phoenix.LiveView do
   """
   defmacro on_mount(mod_or_mod_arg) do
     mod_or_mod_arg =
-      if Macro.quoted_literal?(mod_or_mod_arg) do
-        Macro.prewalk(mod_or_mod_arg, &expand_alias(&1, __CALLER__))
-      else
-        mod_or_mod_arg
+      case mod_or_mod_arg do
+        {mod, arg} ->
+          {expand_literals(mod, __CALLER__), expand_literals(arg, __CALLER__)}
+
+        mod_or_mod_arg ->
+          expand_literals(mod_or_mod_arg, __CALLER__)
       end
 
     quote do
@@ -550,6 +552,14 @@ defmodule Phoenix.LiveView do
         :phoenix_live_mount,
         Phoenix.LiveView.Lifecycle.validate_on_mount!(__MODULE__, unquote(mod_or_mod_arg))
       )
+    end
+  end
+
+  defp expand_literals(ast, env) do
+    if Macro.quoted_literal?(ast) do
+      Macro.prewalk(ast, &expand_alias(&1, env))
+    else
+      ast
     end
   end
 
