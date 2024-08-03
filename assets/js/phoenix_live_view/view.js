@@ -581,7 +581,7 @@ export default class View {
     if(el.id === this.id){
       return this
     } else {
-      return this.children[el.getAttribute(PHX_PARENT_ID)][el.id]
+      return this.children[el.getAttribute(PHX_PARENT_ID)]?.[el.id]
     }
   }
 
