@@ -537,10 +537,10 @@ defmodule Phoenix.LiveView do
 
   """
   defmacro on_mount(mod_or_mod_arg) do
+    # While we could pass `mod_or_mod_arg` as a whole to
+    # expand_literals, we want to also be able to expand only
+    # the first element, even if the second element is not a literal.
     mod_or_mod_arg =
-      # While we could pass `mod_or_mod_arg` as a whole to
-      # expand_literals, we want to also be able to expand only
-      # the first element, even if the second element is not a literal.
       case mod_or_mod_arg do
         {mod, arg} ->
           {expand_literals(mod, __CALLER__), expand_literals(arg, __CALLER__)}
