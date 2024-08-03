@@ -315,6 +315,46 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  This function is used to return a :ok response from a callback.
+
+  ## Examples
+
+        def mount(_params, _session, socket) do
+          socket
+          |> assign(:message, "Hello, World!")
+          |> ok()
+        end
+  """
+  def ok(%Socket{} = socket), do: {:ok, socket}
+  def ok(%Socket{} = socket, options), do: {:ok, socket, options}
+
+  @doc """
+  This function is used to return a :noreply response from a callback.
+
+  ## Examples
+
+        def handle_event("ping", _, socket) do
+          socket
+          |> push_event("pong", %{msg: "pong"})
+          |> noreply()
+        end
+  """
+  def noreply(%Socket{} = socket), do: {:noreply, socket}
+
+  @doc """
+  This function is used to return a :noreply response from a callback.
+
+  ## Examples
+
+        def handle_event("ping", _, socket) do
+          socket
+          |> clear_flash()
+          |> reply(%{msg: "pong"})
+        end
+  """
+  def reply(%Socket{} = socket, payload) when is_map(payload), do: {:reply, payload, socket}
+
+  @doc """
   Raises error message for bad live patch on mount.
   """
   def raise_bad_mount_and_live_patch!() do
