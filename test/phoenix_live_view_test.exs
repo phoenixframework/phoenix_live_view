@@ -242,6 +242,14 @@ defmodule Phoenix.LiveViewUnitTest do
       assert redirect(@socket, to: "/foo").redirected == {:redirect, %{to: "/foo"}}
     end
 
+    test "accepts a custom redirect status for local / external paths" do
+      assert redirect(@socket, to: "/foo", status: 301).redirected ==
+               {:redirect, %{to: "/foo", status: 301}}
+
+      assert redirect(@socket, external: "http://foo.com/bar", status: 301).redirected ==
+               {:redirect, %{external: "http://foo.com/bar", status: 301}}
+    end
+
     test "allows external paths" do
       assert redirect(@socket, external: "http://foo.com/bar").redirected ==
                {:redirect, %{external: "http://foo.com/bar"}}
