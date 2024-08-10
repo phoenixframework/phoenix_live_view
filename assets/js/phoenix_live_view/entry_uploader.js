@@ -17,42 +17,53 @@ export default class EntryUploader {
     if(this.errored){ return }
     this.uploadChannel.leave()
     this.errored = true
-    clearTimeout(this.chunkTimer)
     this.entry.error(reason)
   }
 
   upload(){
     this.uploadChannel.onError(reason => this.error(reason))
-    this.uploadChannel.join()
-      .receive("ok", _data => this.readNextChunk())
-      .receive("error", reason => this.error(reason))
+
+    return new Promise((resolve, reject) => {
+      this.uploadChannel.join()
+        .receive("ok", _data => resolve())
+        .receive("error", reason => reject(reason))
+    })
+      .then(() => this.readNextChunk())
+      .catch(reason => this.error(reason))
   }
 
   isDone(){ return this.offset >= this.entry.file.size }
 
+  // private
+
   readNextChunk(){
-    let reader = new window.FileReader()
     let blob = this.entry.file.slice(this.offset, this.chunkSize + this.offset)
-    reader.onload = (e) => {
-      if(e.target.error === null){
-        this.offset += e.target.result.byteLength
-        this.pushChunk(e.target.result)
-      } else {
-        return logError("Read error: " + e.target.error)
-      }
-    }
-    reader.readAsArrayBuffer(blob)
+    this.offset += blob.size
+    return this.pushChunk(blob)
   }
 
   pushChunk(chunk){
     if(!this.uploadChannel.isJoined()){ return }
-    this.uploadChannel.push("chunk", chunk)
-      .receive("ok", () => {
-        this.entry.progress((this.offset / this.entry.file.size) * 100)
-        if(!this.isDone()){
-          this.chunkTimer = setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0)
-        }
-      })
-      .receive("error", ({reason}) => this.error(reason))
+
+    return new Promise((resolve, reject) => {
+      this.uploadChannel.push("chunk", chunk)
+        .receive("ok", () => {
+          this.entry.progress((this.offset / this.entry.file.size) * 100)
+          if(!this.isDone()){
+            resolve(this.simulateLatency())
+          }
+        })
+        .receive("error", ({reason}) => reject(reason))
+    })
+  }
+
+  simulateLatency(){
+    let callback = () => this.readNextChunk()
+    let latency = this.liveSocket.getLatencySim() || 0
+    let resolver = Promise.resolve()
+    if(latency !== 0){
+      resolver = new Promise(resolve => setTimeout(() => resolve(), latency))
+    }
+    return resolver.then(callback)
   }
 }
