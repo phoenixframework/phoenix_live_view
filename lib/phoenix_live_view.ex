@@ -894,6 +894,9 @@ defmodule Phoenix.LiveView do
   `{:postpone, my_result}` to collect results, but postpone the file
   consumption to be performed later.
 
+  A list of all `my_result` values produced by the passed function is
+  returned, regardless of whether they were consumed or postponed.
+
   ## Examples
 
       def handle_event("save", _params, socket) do

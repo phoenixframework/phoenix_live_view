@@ -21,7 +21,11 @@ both direct to server uploads as well as direct-to-cloud
 
 ## Allow uploads
 
-You enable an upload, typically on mount, via [`allow_upload/3`]:
+You enable an upload, typically on mount, via [`allow_upload/3`].
+
+For this example, we will also keep a list of uploaded files in
+a new assign named `uploaded_files`, but you could name it
+something else if you wanted.
 
 ```elixir
 @impl Phoenix.LiveView
