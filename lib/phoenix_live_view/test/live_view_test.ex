@@ -1022,6 +1022,9 @@ defmodule Phoenix.LiveViewTest do
     call(element, {:render_element, :has_element?, element})
   end
 
+  defguardp is_text_filter(text_filter)
+            when is_binary(text_filter) or is_struct(text_filter, Regex) or is_nil(text_filter)
+
   @doc """
   Checks if the given `selector` with `text_filter` is on `view`.
 
@@ -1032,7 +1035,8 @@ defmodule Phoenix.LiveViewTest do
       assert has_element?(view, "#some-element")
 
   """
-  def has_element?(%View{} = view, selector, text_filter \\ nil) do
+  def has_element?(%View{} = view, selector, text_filter \\ nil)
+      when is_binary(selector) and is_text_filter(text_filter) do
     has_element?(element(view, selector, text_filter))
   end
 
@@ -1136,7 +1140,8 @@ defmodule Phoenix.LiveViewTest do
              |> element(~s{[href="/foo"][id="foo.bar.baz"]})
              |> render() =~ "Increment</a>"
   """
-  def element(%View{proxy: proxy}, selector, text_filter \\ nil) when is_binary(selector) do
+  def element(%View{proxy: proxy}, selector, text_filter \\ nil)
+      when is_binary(selector) and is_text_filter(text_filter) do
     %Element{proxy: proxy, selector: selector, text_filter: text_filter}
   end
 
