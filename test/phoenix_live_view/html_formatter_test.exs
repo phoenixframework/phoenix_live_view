@@ -2094,15 +2094,10 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
-  test "escaped string as expression is handled properly (#3336)" do
-    assert_formatter_output(
-      ~S"""
-      <div data-foo={"{\"tag\": \"<something>\"}"}></div>
-      """,
-      ~S"""
-      <div data-foo="{&quot;tag&quot;: &quot;&lt;something&gt;&quot;}"></div>
-      """
-    )
+  test "doesn't flatten strings containing double quotes (#3336)" do
+    assert_formatter_doesnt_change(~S"""
+    <div data-foo={"{\"tag\": \"<something>\"}"}></div>
+    """)
   end
 
   # TODO: Remove this `if` when we require Elixir 1.14+
