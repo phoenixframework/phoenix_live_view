@@ -2100,7 +2100,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       <div data-foo={"{\"tag\": \"<something>\"}"}></div>
       """,
       ~S"""
-      <div data-foo='{"tag": "<something>"}'></div>
+      <div data-foo="{&quot;tag&quot;: &quot;&lt;something&gt;&quot;}"></div>
       """
     )
   end

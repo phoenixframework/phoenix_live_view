@@ -437,11 +437,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
           # delimiter for normal strings are "\""
           _ ->
-            if String.contains?(string, ["\"", "'"]) do
-              ~s(#{attr}='#{string}')
-            else
-              ~s(#{attr}="#{string}")
-            end
+            ~s(#{attr}="#{Phoenix.HTML.html_escape(string) |> Phoenix.HTML.safe_to_string()}")
         end
 
       {{atom, _, _}, []} when atom in [:<<>>, :<>] ->
