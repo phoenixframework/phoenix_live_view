@@ -123,14 +123,19 @@ defmodule Phoenix.LiveViewTest.E2E.SelectLive do
       This page contains multiple select inputs to test various behaviors.
       Sadly, we cannot test all of them automatically, as there is no way to assert the state of an open select's native UI.
     </p>
-
     Tick: <%= @tick %>
 
     <div style="display: flex; flex-direction: column; gap: 8px">
-      <button phx-click="toggle-tick"><%= if @tick_timer, do: "Disable", else: "Enable" %> ticking</button>
-      <button :if={!@select2_timer} phx-click="schedule-select2-update">Schedule select2 update</button>
+      <button phx-click="toggle-tick">
+        <%= if @tick_timer, do: "Disable", else: "Enable" %> ticking
+      </button>
+      <button :if={!@select2_timer} phx-click="schedule-select2-update">
+        Schedule select2 update
+      </button>
       <span :if={@select2_timer}>Select 2 will update in <%= @select2_countdown %>s</span>
-      <button :if={!@select4_timer} phx-click="schedule-select4-update">Schedule select4 update</button>
+      <button :if={!@select4_timer} phx-click="schedule-select4-update">
+        Schedule select4 update
+      </button>
       <span :if={@select4_timer}>Select 4 will update in <%= @select4_countdown %>s</span>
     </div>
 
@@ -141,29 +146,35 @@ defmodule Phoenix.LiveViewTest.E2E.SelectLive do
         You can simulate patching by enabling ticking above.
       </p>
       <.input type="select" field={@form[:select1]} label="Select 1" options={@select1_opts} />
-      <hr/>
+      <hr />
       <h2>Select 2</h2>
       <p>
         The second select's options will be updated after a 5s timeout (button on top).
         This can be used to test the behavior of the select when its options change while it is open.
       </p>
       <.input type="select" field={@form[:select2]} label="Select 2" options={@select2_opts} />
-      <hr/>
+      <hr />
       <h2>Select 3</h2>
       <p>
         Error classes are correctly applied to the third select.
         It should have a red border for all values from 1 to 5. The border should disappear when selecting 6 or higher.
       </p>
       <.input type="select" field={@form[:select3]} label="Select 3" options={@select3_opts} />
-      <hr/>
+      <hr />
       <h2>Select 4</h2>
       <p>
         The selected value of this field changes after a 5s timeout (button on top).
         This can be used to test the behavior of the select when its value changes while it is open.
         We expect the value to be ignored if the select is open, as value changes to focused inputs are ignored.
       </p>
-      <.input type="select" field={@form[:select4]} value={@select4_value} label="Select 4" options={@select4_opts} />
-      <hr/>
+      <.input
+        type="select"
+        field={@form[:select4]}
+        value={@select4_value}
+        label="Select 4"
+        options={@select4_opts}
+      />
+      <hr />
     </.form>
     """
   end

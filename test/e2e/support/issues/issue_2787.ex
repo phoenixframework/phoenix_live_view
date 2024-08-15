@@ -53,7 +53,8 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2787Live do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <script src="https://cdn.tailwindcss.com/3.4.3"></script>
+    <script src="https://cdn.tailwindcss.com/3.4.3">
+    </script>
     <div class="p-20">
       <.form for={@form} phx-change="updated" phx-submit="submitted" class="space-y-4">
         <.input

@@ -6,10 +6,9 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3107Live do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     {:ok,
-      socket
-      |> assign(:form, Phoenix.Component.to_form(%{}))
-      |> assign(:disabled, true)
-    }
+     socket
+     |> assign(:form, Phoenix.Component.to_form(%{}))
+     |> assign(:disabled, true)}
   end
 
   @impl Phoenix.LiveView
