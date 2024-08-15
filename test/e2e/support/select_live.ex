@@ -78,7 +78,7 @@ defmodule Phoenix.LiveViewTest.E2E.SelectLive do
   def handle_event("toggle-tick", _, socket) do
     case socket.assigns.tick_timer do
       nil ->
-        timer_ref = :timer.send_interval(1000, :tick)
+        {:ok, timer_ref} = :timer.send_interval(1000, :tick)
         {:noreply, assign(socket, :tick_timer, timer_ref)}
 
       ref ->
