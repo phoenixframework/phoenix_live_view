@@ -50,6 +50,23 @@ defmodule Phoenix.ComponentUnitTest do
       assert socket.assigns.existing == %{foo: :bam}
       assert socket.assigns.__changed__.existing == %{foo: :bar}
     end
+
+    test "keeps whole lists in changes" do
+      socket = assign(@socket, existing: [:foo, :bar])
+      socket = Utils.clear_changed(socket)
+
+      socket = assign(socket, existing: [:foo, :baz])
+      assert socket.assigns.existing == [:foo, :baz]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+
+      socket = assign(socket, existing: [:foo, :bat])
+      assert socket.assigns.existing == [:foo, :bat]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+
+      socket = assign(socket, %{existing: [:foo, :bam]})
+      assert socket.assigns.existing == [:foo, :bam]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+    end
   end
 
   describe "assign with assigns" do
@@ -102,7 +119,7 @@ defmodule Phoenix.ComponentUnitTest do
                notexisting: "new-notexisting",
                live_action: nil,
                flash: %{},
-               __changed__: %{existing: true, notexisting: true}
+               __changed__: %{existing: nil, notexisting: nil}
              }
     end
 
@@ -120,7 +137,7 @@ defmodule Phoenix.ComponentUnitTest do
                notexisting: "new-notexisting",
                live_action: nil,
                flash: %{},
-               __changed__: %{existing: true, notexisting: true, existing2: true}
+               __changed__: %{existing: nil, notexisting: nil, existing2: nil}
              }
     end
 
@@ -143,11 +160,11 @@ defmodule Phoenix.ComponentUnitTest do
                live_action: nil,
                flash: %{},
                __changed__: %{
-                 existing: true,
-                 existing2: true,
-                 notexisting: true,
-                 notexisting2: true,
-                 notexisting3: true
+                 existing: nil,
+                 existing2: nil,
+                 notexisting: nil,
+                 notexisting2: nil,
+                 notexisting3: nil
                }
              }
     end
