@@ -211,6 +211,8 @@ defmodule Phoenix.LiveView.JS do
       with the client event. The details will be available in the
       `event.detail` attribute for event listeners.
     * `:bubbles` – A boolean flag to bubble the event or not. Defaults to `true`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -224,8 +226,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `dispatch/2`."
   def dispatch(%JS{} = js, event, opts) do
-    opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles])
-    args = [event: event, to: opts[:to]]
+    opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles, :inner])
+    args = [event: event, to: opts[:to], inner: opts[:inner]]
 
     args =
       case Keyword.fetch(opts, :bubbles) do
@@ -286,6 +288,8 @@ defmodule Phoenix.LiveView.JS do
     * `:display` - An optional display value to set when toggling in. Defaults
       to `"block"`.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   When the toggle is complete on the client, a `phx:show-start` or `phx:hide-start`, and
   `phx:show-end` or `phx:hide-end` event will be dispatched to the toggled elements.
@@ -308,7 +312,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `toggle/1`."
   def toggle(js, opts) when is_list(opts) do
-    opts = validate_keys(opts, :toggle, [:to, :in, :out, :display, :time, :blocking])
+    opts = validate_keys(opts, :toggle, [:to, :in, :out, :display, :time, :blocking, :inner])
     in_classes = transition_class_names(opts[:in])
     out_classes = transition_class_names(opts[:out])
     time = opts[:time]
@@ -319,7 +323,8 @@ defmodule Phoenix.LiveView.JS do
       ins: in_classes,
       outs: out_classes,
       time: time,
-      blocking: opts[:blocking]
+      blocking: opts[:blocking],
+      inner: opts[:inner]
     )
   end
 
@@ -338,6 +343,8 @@ defmodule Phoenix.LiveView.JS do
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
     * `:display` - An optional display value to set when showing. Defaults to `"block"`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   During the process, the following events will be dispatched to the shown elements:
 
@@ -362,7 +369,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `show/1`."
   def show(js, opts) when is_list(opts) do
-    opts = validate_keys(opts, :show, [:to, :transition, :display, :time, :blocking])
+    opts = validate_keys(opts, :show, [:to, :transition, :display, :time, :blocking, :inner])
     transition = transition_class_names(opts[:transition])
     time = opts[:time]
 
@@ -371,7 +378,8 @@ defmodule Phoenix.LiveView.JS do
       display: opts[:display],
       transition: transition,
       time: time,
-      blocking: opts[:blocking]
+      blocking: opts[:blocking],
+      inner: opts[:inner]
     )
   end
 
@@ -389,6 +397,8 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   During the process, the following events will be dispatched to the hidden elements:
 
@@ -413,7 +423,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `hide/1`."
   def hide(js, opts) when is_list(opts) do
-    opts = validate_keys(opts, :hide, [:to, :transition, :time, :blocking])
+    opts = validate_keys(opts, :hide, [:to, :transition, :time, :blocking, :inner])
     transition = transition_class_names(opts[:transition])
     time = opts[:time]
 
@@ -421,7 +431,8 @@ defmodule Phoenix.LiveView.JS do
       to: opts[:to],
       transition: transition,
       time: time,
-      blocking: opts[:blocking]
+      blocking: opts[:blocking],
+      inner: opts[:inner]
     )
   end
 
@@ -441,6 +452,8 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -462,7 +475,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `add_class/1`."
   def add_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
-    opts = validate_keys(opts, :add_class, [:to, :transition, :time, :blocking])
+    opts = validate_keys(opts, :add_class, [:to, :transition, :time, :blocking, :inner])
     time = opts[:time]
 
     put_op(js, "add_class",
@@ -470,7 +483,8 @@ defmodule Phoenix.LiveView.JS do
       names: class_names(names),
       transition: transition_class_names(opts[:transition]),
       time: time,
-      blocking: opts[:blocking]
+      blocking: opts[:blocking],
+      inner: opts[:inner]
     )
   end
 
@@ -490,6 +504,8 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -509,7 +525,7 @@ defmodule Phoenix.LiveView.JS do
   end
 
   def toggle_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
-    opts = validate_keys(opts, :toggle_class, [:to, :transition, :time, :blocking])
+    opts = validate_keys(opts, :toggle_class, [:to, :transition, :time, :blocking, :inner])
     time = opts[:time]
 
     put_op(js, "toggle_class",
@@ -517,7 +533,8 @@ defmodule Phoenix.LiveView.JS do
       names: class_names(names),
       transition: transition_class_names(opts[:transition]),
       time: time,
-      blocking: opts[:blocking]
+      blocking: opts[:blocking],
+      inner: opts[:inner]
     )
   end
 
@@ -537,6 +554,8 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -558,7 +577,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `remove_class/1`."
   def remove_class(%JS{} = js, names, opts) when is_binary(names) and is_list(opts) do
-    opts = validate_keys(opts, :remove_class, [:to, :transition, :time, :blocking])
+    opts = validate_keys(opts, :remove_class, [:to, :transition, :time, :blocking, :inner])
     time = opts[:time]
 
     put_op(js, "remove_class",
@@ -566,7 +585,8 @@ defmodule Phoenix.LiveView.JS do
       names: class_names(names),
       transition: transition_class_names(opts[:transition]),
       time: time,
-      blocking: opts[:blocking]
+      blocking: opts[:blocking],
+      inner: opts[:inner]
     )
   end
 
@@ -588,6 +608,8 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -615,14 +637,15 @@ defmodule Phoenix.LiveView.JS do
   @doc "See `transition/1`."
   def transition(%JS{} = js, transition, opts)
       when (is_binary(transition) or is_tuple(transition)) and is_list(opts) do
-    opts = validate_keys(opts, :transition, [:to, :time, :blocking])
+    opts = validate_keys(opts, :transition, [:to, :time, :blockin, :inner])
     time = opts[:time]
 
     put_op(js, "transition",
       time: time,
       to: opts[:to],
       transition: transition_class_names(transition),
-      blocking: opts[:blocking]
+      blocking: opts[:blocking],
+      inner: opts[:inner]
     )
   end
 
@@ -635,6 +658,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - An optional DOM selector to add attributes to.
       Defaults to the interacted element.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -652,8 +677,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `set_attribute/1`."
   def set_attribute(%JS{} = js, {attr, val}, opts) when is_list(opts) do
-    opts = validate_keys(opts, :set_attribute, [:to])
-    put_op(js, "set_attr", to: opts[:to], attr: [attr, val])
+    opts = validate_keys(opts, :set_attribute, [:to, :inner])
+    put_op(js, "set_attr", to: opts[:to], attr: [attr, val], inner: opts[:inner])
   end
 
   @doc """
@@ -665,6 +690,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - An optional DOM selector to remove attributes from.
       Defaults to the interacted element.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -682,8 +709,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `remove_attribute/1`."
   def remove_attribute(%JS{} = js, attr, opts) when is_list(opts) do
-    opts = validate_keys(opts, :remove_attribute, [:to])
-    put_op(js, "remove_attr", to: opts[:to], attr: attr)
+    opts = validate_keys(opts, :remove_attribute, [:to, :inner])
+    put_op(js, "remove_attr", to: opts[:to], attr: attr, inner: opts[:inner])
   end
 
   @doc """
@@ -698,6 +725,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - An optional DOM selector to set or remove attributes from.
       Defaults to the interacted element.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -727,13 +756,13 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `toggle_attribute/1`."
   def toggle_attribute(%JS{} = js, {attr, val}, opts) when is_list(opts) do
-    opts = validate_keys(opts, :toggle_attribute, [:to])
-    put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val])
+    opts = validate_keys(opts, :toggle_attribute, [:to, :inner])
+    put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val], inner: opts[:inner])
   end
 
   def toggle_attribute(%JS{} = js, {attr, val1, val2}, opts) when is_list(opts) do
-    opts = validate_keys(opts, :toggle_attribute, [:to])
-    put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val1, val2])
+    opts = validate_keys(opts, :toggle_attribute, [:to, :inner])
+    put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val1, val2], inner: opts[:inner])
   end
 
   @doc """
@@ -743,6 +772,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - An optional DOM selector to send focus to.
       Defaults to the current element.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -754,8 +785,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `focus/1`."
   def focus(%JS{} = js, opts) when is_list(opts) do
-    opts = validate_keys(opts, :focus, [:to])
-    put_op(js, "focus", to: opts[:to])
+    opts = validate_keys(opts, :focus, [:to, :inner])
+    put_op(js, "focus", to: opts[:to], inner: opts[:inner])
   end
 
   @doc """
@@ -765,6 +796,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - An optional DOM selector to focus.
       Defaults to the current element.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -776,8 +809,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `focus_first/1`."
   def focus_first(%JS{} = js, opts) when is_list(opts) do
-    opts = validate_keys(opts, :focus_first, [:to])
-    put_op(js, "focus_first", to: opts[:to])
+    opts = validate_keys(opts, :focus_first, [:to, :inner])
+    put_op(js, "focus_first", to: opts[:to], inner: opts[:inner])
   end
 
   @doc """
@@ -787,6 +820,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - An optional DOM selector to push focus to.
       Defaults to the current element.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -799,8 +834,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `push_focus/1`."
   def push_focus(%JS{} = js, opts) when is_list(opts) do
-    opts = validate_keys(opts, :push_focus, [:to])
-    put_op(js, "push_focus", to: opts[:to])
+    opts = validate_keys(opts, :push_focus, [:to, :inner])
+    put_op(js, "push_focus", to: opts[:to], inner: opts[:inner])
   end
 
   @doc """
@@ -883,6 +918,8 @@ defmodule Phoenix.LiveView.JS do
 
     * `:to` - An optional DOM selector to fetch the attribute from.
       Defaults to the current element.
+    * `:inner` - When `true`, the event will only be dispatched to elements inside
+      of the interacted element. Defaults to `false`.
 
   ## Examples
 
@@ -904,8 +941,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `exec/1`."
   def exec(%JS{} = js, attr, opts) when is_binary(attr) and is_list(opts) do
-    opts = validate_keys(opts, :exec, [:to])
-    put_op(js, "exec", attr: attr, to: opts[:to])
+    opts = validate_keys(opts, :exec, [:to, :inner])
+    put_op(js, "exec", attr: attr, to: opts[:to], inner: opts[:inner])
   end
 
   defp put_op(%JS{ops: ops} = js, kind, args) do
