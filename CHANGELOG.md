@@ -113,6 +113,7 @@ generated user module:
 
 ### Enhancements
   * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
+  * Validate slot options (prevents typos like `slot :myslot, requird: true`)
 
 ### Bug fixes
   * Fix stream items not reapplying JS commands when joining after a disconnect
@@ -120,6 +121,8 @@ generated user module:
   * Fix character composition mode not working properly in Safari when an input is patched
   * Fix `cannot redirect socket on update` error raised erroneously under rare circumstances
   * Fix upstream morphdom issue that could cause elements being removed from the real DOM instead of a cloned tree while some elements are locked
+  * Don't dispatch click event when moving mouse away from initial click target
+  * Fix formatter formatting expressions that are strings with escaped quotes incorrectly
 
 ### Deprecations
   * Deprecate the `name` attribute of `Phoenix.Component.dynamic_tag/1` in favor of `tag_name`
