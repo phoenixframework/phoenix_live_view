@@ -96,7 +96,7 @@ defmodule Phoenix.LiveView.Utils do
   def force_assign(assigns, nil, key, val), do: Map.put(assigns, key, val)
 
   def force_assign(assigns, changed, key, val) do
-    # If the current value is a composite type (list, map, tiple),
+    # If the current value is a composite type (list, map, tuple),
     # we store it in changed so we can perform nested change tracking.
     # Also note the use of put_new is important.
     # We want to keep the original value from assigns and not any
