@@ -119,7 +119,7 @@ defmodule Phoenix.ComponentUnitTest do
                notexisting: "new-notexisting",
                live_action: nil,
                flash: %{},
-               __changed__: %{existing: nil, notexisting: nil}
+               __changed__: %{existing: true, notexisting: true}
              }
     end
 
@@ -137,7 +137,7 @@ defmodule Phoenix.ComponentUnitTest do
                notexisting: "new-notexisting",
                live_action: nil,
                flash: %{},
-               __changed__: %{existing: nil, notexisting: nil, existing2: nil}
+               __changed__: %{existing: true, notexisting: true, existing2: true}
              }
     end
 
@@ -160,11 +160,11 @@ defmodule Phoenix.ComponentUnitTest do
                live_action: nil,
                flash: %{},
                __changed__: %{
-                 existing: nil,
-                 existing2: nil,
-                 notexisting: nil,
-                 notexisting2: nil,
-                 notexisting3: nil
+                 existing: true,
+                 existing2: true,
+                 notexisting: true,
+                 notexisting2: true,
+                 notexisting3: true
                }
              }
     end
