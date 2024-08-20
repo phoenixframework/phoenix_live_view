@@ -1469,7 +1469,7 @@ defmodule Phoenix.LiveView do
 
   When defining a plugin that matches on specific callbacks, you **must**
   define a catch-all clause, as your hook will be invoked even for events
-  you may not be interested on.
+  you may not be interested in.
 
   ### Implications for end-users
 
