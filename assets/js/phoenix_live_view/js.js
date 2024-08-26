@@ -306,10 +306,8 @@ let JS = {
   },
 
   filterToEls(sourceEl, args){
-    if(args.to){
-      if(args.inner){ return DOM.all(sourceEl, args.to) }
-      return DOM.all(document, args.to)
-    }
+    if(args.to && args.inner){ return DOM.all(sourceEl, args.to) }
+    if(args.to){ return DOM.all(document, args.to) }
     return [sourceEl]
   },
 
