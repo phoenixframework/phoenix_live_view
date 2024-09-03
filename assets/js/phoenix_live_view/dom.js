@@ -310,9 +310,12 @@ let DOM = {
     return currentCycle
   },
 
-  maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom){
+  maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom, phxCustomEvents){
     if(el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))){
       el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
+    }
+    if(el.hasAttribute && el.hasAttribute(phxCustomEvents)) {
+      el.setAttribute("data-phx-hook", "Phoenix.CustomEvents")
     }
   },
 
