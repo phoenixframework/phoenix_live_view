@@ -108,7 +108,7 @@ Now to fade one element on click, you simply need to add:
 
 ## Optimistic UIs via JS commands
 
-While loading classes are extremely helpful, they cover only a handful of scenarios. For slightly more complex cases, you can use [JS commands](`Phoenix.LiveView.JS`). JS commands support adding/removing classes, toggling attributes, hiding elements, transitions, and more.
+While loading classes are extremely handy, they do not cover all possible scenarios. For  more complex cases, you can use [JS commands](`Phoenix.LiveView.JS`). JS commands support adding/removing classes, toggling attributes, hiding elements, transitions, and more.
 
 For example, imagine that you want to immediately remove an element from the page on click, you can do this:
 
@@ -119,25 +119,25 @@ For example, imagine that you want to immediately remove an element from the pag
 If the element you want to delete is not the clicked button, but its parent (or other element), you can pass a selector to hide:
 
 ```heex
-<button phx-click={JS.push("delete") |> JS.hide("#post-id-13")}>Delete</button>
+<button phx-click={JS.push("delete") |> JS.hide("#post-row-13")}>Delete</button>
 ```
 
-Or imagine that, instead of removing the element from the page, you want to fade it. We already saw how we can use loading classes for this in the previous section, but loading classes target the element that was clicked. Luckily, you can also configure the selector that gets the loading state:
+Or imagine that, instead of removing the element from the page, you want to fade it. We already saw how we can use loading classes for this in the previous section. However, loading classes target the element that was clicked. Luckily, you can also configure the selector that gets the loading state:
 
 ```heex
-<button phx-click={JS.push("delete", loading: "#post-id-13")}>Delete</button>
+<button phx-click={JS.push("delete", loading: "#post-row-13")}>Delete</button>
 ```
 
-For richer experiences, you can use the transition API:
+Transitions are also only a few characters away:
 
 ```heex
 <div id="item">My Item</div>
 <button phx-click={JS.transition("shake", to: "#item")}>Shake!</button>
 ```
 
-Whenever you perform any of these operations, LiveView knows which event triggered an element to hide or transition, and LiveView will prevent the element from changing until the event is acknowledged by the server. This means LiveView automatically prevents your elements from flickering or flashing, as events round-trip between client and server.
+Whenever you perform any of these commands alongside a `push`, LiveView knows which push event caused the DOM element to hide or transition, and LiveView will prevent any server update from conflicting or erasing the client state until the push is acknowledged by the server. This means LiveView automatically prevents your elements from flickering or flashing, as events round-trip between client and server.
 
-If what you need to perform is not currently supported by JS commands, you can use `JS.dispatch` to dispatch an event on the client. This can be used for more complex element changes or to trigger client-specific functionality. For example, to trigger copying to a clipboard, you may implement this event listener:
+JS commands also include a `dispatch` function, which dispatches an event to the DOM element to trigger client-specific functionality. For example, to trigger copying to a clipboard, you may implement this event listener:
 
 ```javascript
 window.addEventListener("app:clipcopy", (event) => {
@@ -165,7 +165,7 @@ See `Phoenix.LiveView.JS` for more examples and documentation.
 
 ## Optimistic UIs via JS hooks
 
-On the most complex cases, you can assume control of an HTML element, and control exactly how and when server updates apply to the element on the page. See [the Client hooks via `phx-hook` section in the JavaScript interoperability page](js-interop.md#client-hooks-via-phx-hook) to learn more.
+On the most complex cases, you can assume control of a DOM element, and control exactly how and when server updates apply to the element on the page. See [the Client hooks via `phx-hook` section in the JavaScript interoperability page](js-interop.md#client-hooks-via-phx-hook) to learn more.
 
 ## Live navigation
 
