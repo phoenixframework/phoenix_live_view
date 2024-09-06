@@ -383,7 +383,7 @@ defmodule Phoenix.Component.Declarative do
     :ok
   end
 
-  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
+  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :fun, :global]
   @valid_types [:any] ++ @builtin_types
 
   defp validate_attr_type!(module, key, slot, name, type, line, file)
@@ -409,7 +409,7 @@ defmodule Phoenix.Component.Declarative do
 
     cond do
       type in @valid_types -> type
-      is_tuple(type) -> validate_function_attr_type!(slot, name, type, line, file)
+      is_tuple(type) -> validate_tuple_attr_type!(slot, name, type, line, file)
       type |> Atom.to_string() |> String.starts_with?("Elixir.") -> {:struct, type}
       true -> bad_type!(slot, name, type, line, file)
     end
@@ -419,16 +419,12 @@ defmodule Phoenix.Component.Declarative do
     bad_type!(slot, name, type, line, file)
   end
 
-  defp validate_function_attr_type!(slot, name, {:function, args} = type, line, file) do
-    cond do
-      is_integer(args) -> type
-      Keyword.keyword?(args) and Enum.all?(args, fn {_, v} -> v in @valid_types end) -> type
-      is_list(args) and Enum.all?(args, &(&1 in @valid_types)) -> type
-      true -> bad_type!(slot, name, type, line, file)
-    end
+  defp validate_tuple_attr_type!(_slot, _name, {:fun, arity} = type, _line, _file)
+       when is_integer(arity) do
+    type
   end
 
-  defp validate_function_attr_type!(slot, name, type, line, file) do
+  defp validate_tuple_attr_type!(slot, name, type, line, file) do
     bad_type!(slot, name, type, line, file)
   end
 
@@ -440,9 +436,8 @@ defmodule Phoenix.Component.Declarative do
       * any Elixir struct, such as URI, MyApp.User, etc
       * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
       * a function written as:
-          * with specific arity, ex: {:function, 2}
-          * with arguments types, ex: {:function, [:string, :integer]}
-          * with arguments names and types, ex: {:function, [arg_1: :string, arg_2: :integer]}
+          * without arity, ex: :fun
+          * with a specific arity, ex: {:fun, 2}
       * :any for all other types
     """)
   end

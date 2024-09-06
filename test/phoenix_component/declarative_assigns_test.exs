@@ -53,9 +53,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     def func2(assigns), do: ~H[]
 
     def func3_line, do: __ENV__.line
-    attr :on_cancel, {:function, 2}, required: true
-    attr :on_complete, {:function, [:string, :integer]}, required: true
-    attr :on_fail, {:function, [reason: :string]}, required: true
+    attr :on_cancel, :fun, required: true
+    attr :on_complete, {:fun, 2}, required: true
     def func3(assigns), do: ~H[]
 
     def with_global_line, do: __ENV__.line
@@ -207,7 +206,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                attrs: [
                  %{
                    name: :on_cancel,
-                   type: {:function, 2},
+                   type: :fun,
                    opts: [],
                    required: true,
                    doc: nil,
@@ -216,25 +215,16 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                  },
                  %{
                    name: :on_complete,
-                   type: {:function, [:string, :integer]},
+                   type: {:fun, 2},
                    opts: [],
                    required: true,
                    doc: nil,
                    slot: nil,
                    line: func3_line + 2
-                 },
-                 %{
-                   name: :on_fail,
-                   type: {:function, [reason: :string]},
-                   opts: [],
-                   required: true,
-                   doc: nil,
-                   slot: nil,
-                   line: func3_line + 3
                  }
                ],
                slots: [],
-               line: func3_line + 4
+               line: func3_line + 3
              },
              with_global: %{
                kind: :def,
@@ -1281,39 +1271,26 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "raise if attr function type arity is not integer" do
-    msg = ~r"invalid type {:function, \"a\"} for attr :foo"
+    msg = ~r"invalid type {:fun, \"a\"} for attr :foo"
 
     assert_raise CompileError, msg, fn ->
       defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
         use Elixir.Phoenix.Component
 
-        attr :foo, {:function, "a"}
+        attr :foo, {:fun, "a"}
         def func(assigns), do: ~H[]
       end
     end
   end
 
-  test "raise if attr function type argument is not supported" do
-    msg = ~r"invalid type {:function, \[:not_a_type\]} for attr :foo"
+  test "raise if attr tuple first element is not :fun" do
+    msg = ~r"invalid type {:invalid, 1} for attr :foo"
 
     assert_raise CompileError, msg, fn ->
       defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
         use Elixir.Phoenix.Component
 
-        attr :foo, {:function, [:not_a_type]}
-        def func(assigns), do: ~H[]
-      end
-    end
-  end
-
-  test "raise if attr function type named argument is not supported" do
-    msg = ~r"invalid type {:function, \[arg: :not_a_type\]} for attr :foo"
-
-    assert_raise CompileError, msg, fn ->
-      defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
-        use Elixir.Phoenix.Component
-
-        attr :foo, {:function, [arg: :not_a_type]}
+        attr :foo, {:invalid, 1}
         def func(assigns), do: ~H[]
       end
     end
@@ -1336,14 +1313,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "raise if slot attr type arity is not integer" do
-    msg = ~r"invalid type {:function, \"a\"} for attr :foo in slot :named"
+    msg = ~r"invalid type {:fun, \"a\"} for attr :foo in slot :named"
 
     assert_raise CompileError, msg, fn ->
       defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
         use Elixir.Phoenix.Component
 
         slot :named do
-          attr :foo, {:function, "a"}
+          attr :foo, {:fun, "a"}
         end
 
         def func(assigns), do: ~H[]
@@ -1351,31 +1328,15 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
-  test "raise if slot attr type argument is not supported" do
-    msg = ~r"invalid type {:function, \[:not_a_type\]} for attr :foo in slot :named"
+  test "raise if slot attr tuple first element is not :fun" do
+    msg = ~r"invalid type {:invalid, 1} for attr :foo in slot :named"
 
     assert_raise CompileError, msg, fn ->
       defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
         use Elixir.Phoenix.Component
 
         slot :named do
-          attr :foo, {:function, [:not_a_type]}
-        end
-
-        def func(assigns), do: ~H[]
-      end
-    end
-  end
-
-  test "raise if slot attr type named argument is not supported" do
-    msg = ~r"invalid type {:function, \[arg: :not_a_type\]} for attr :foo in slot :named"
-
-    assert_raise CompileError, msg, fn ->
-      defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
-        use Elixir.Phoenix.Component
-
-        slot :named do
-          attr :foo, {:function, [arg: :not_a_type]}
+          attr :foo, {:invalid, 1}
         end
 
         def func(assigns), do: ~H[]
