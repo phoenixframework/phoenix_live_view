@@ -8,8 +8,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   ## Setup
 
-  Add it as plugin to your `.formatter.exs` file and make sure to put
-  the`heex` extension in the `inputs` option.
+  Add it as a plugin to your `.formatter.exs` file and make sure to put
+  the `heex` extension in the `inputs` option.
 
   ```elixir
   [

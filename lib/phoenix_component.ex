@@ -2600,9 +2600,11 @@ defmodule Phoenix.Component do
   @doc """
   Generates a link to a given route.
 
-  To navigate across pages, using traditional browser navigation, use
-  the `href` attribute. To patch the current LiveView or navigate
-  across LiveViews, use `patch` and `navigate` respectively.
+  It is typically used with one of the three attributes:
+
+    * `patch` - on click, it patches the current LiveView with the given path
+    * `navigate` - on click, it navigates to a new LiveView at the given path
+    * `href` - on click, it performs traditional browser navigation (as any `<a>` tag)
 
   [INSERT LVATTRDOCS]
 
@@ -2719,10 +2721,13 @@ defmodule Phoenix.Component do
   @doc type: :component
   attr.(:navigate, :string,
     doc: """
-    Navigates from a LiveView to a new LiveView.
-    The browser page is kept, but a new LiveView process is mounted and its content on the page
-    is reloaded. It is only possible to navigate between LiveViews declared under the same router
-    `Phoenix.LiveView.Router.live_session/3`. Otherwise, a full browser redirect is used.
+    Navigates to a LiveView.
+    When redirecting across LiveViews, the browser page is kept, but a new LiveView process
+    is mounted and its contents is loaded on the page. It is only possible to navigate
+    between LiveViews declared under the same router
+    [`live_session`](`Phoenix.LiveView.Router.live_session/3`).
+    When used outside of a LiveView or across live sessions, it behaves like a regular
+    browser redirect.
     """
   )
 
@@ -2881,15 +2886,15 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.dynamic_tag name="input" type="text"/>
+  <.dynamic_tag tag_name="input" name="my-input" type="text"/>
   ```
 
   ```html
-  <input type="text"/>
+  <input name="my-input" type="text"/>
   ```
 
   ```heex
-  <.dynamic_tag name="p">content</.dynamic_tag>
+  <.dynamic_tag tag_name="p">content</.dynamic_tag>
   ```
 
   ```html
@@ -2897,7 +2902,13 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
-  attr.(:name, :string, required: true, doc: "The name of the tag, such as `div`.")
+  attr.(:tag_name, :string, required: true, doc: "The name of the tag, such as `div`.")
+
+  attr.(:name, :string,
+    required: false,
+    doc:
+      "Deprecated: use tag_name instead. If tag_name is used, passed to the tag. Otherwise the name of the tag, such as `div`."
+  )
 
   attr.(:rest, :global,
     doc: """
@@ -2907,8 +2918,30 @@ defmodule Phoenix.Component do
 
   slot.(:inner_block, [])
 
-  def dynamic_tag(%{name: name, rest: rest} = assigns) do
-    tag_name = to_string(name)
+  def dynamic_tag(%{rest: rest} = assigns) do
+    {tag_name, rest} =
+      case assigns do
+        %{tag_name: tag_name, name: name} ->
+          {tag_name, Map.put(rest, :name, name)}
+
+        %{tag_name: tag_name} ->
+          {tag_name, rest}
+
+        %{name: name} ->
+          IO.warn("""
+          Passing the tag name to `Phoenix.Component.dynamic_tag/1` using the `name` attribute is deprecated.
+
+          Instead of:
+
+              <.dynamic_tag name="p" ...>
+
+          use `tag_name` instead:
+
+              <.dynamic_tag tag_name="p" ...>
+          """)
+
+          {name, Map.delete(rest, :name)}
+      end
 
     tag =
       case Phoenix.HTML.html_escape(tag_name) do

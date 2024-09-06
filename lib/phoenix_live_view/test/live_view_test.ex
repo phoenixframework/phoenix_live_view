@@ -532,8 +532,8 @@ defmodule Phoenix.LiveViewTest do
   If the element does not have a `phx-click` attribute but it is
   a link (the `<a>` tag), the link will be followed accordingly:
 
-    * if the link is a `live_patch`, the current view will be patched
-    * if the link is a `live_redirect`, this function will return
+    * if the link is a `patch`, the current view will be patched
+    * if the link is a `navigate`, this function will return
       `{:error, {:live_redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
     * if the link is a regular link, this function will return
@@ -974,7 +974,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Simulates a `live_patch` to the given `path` and returns the rendered result.
+  Simulates a `push_patch` to the given `path` and returns the rendered result.
   """
   def render_patch(%View{} = view, path) when is_binary(path) do
     call(view, {:render_patch, proxy_topic(view), path})
@@ -1022,6 +1022,9 @@ defmodule Phoenix.LiveViewTest do
     call(element, {:render_element, :has_element?, element})
   end
 
+  defguardp is_text_filter(text_filter)
+            when is_binary(text_filter) or is_struct(text_filter, Regex) or is_nil(text_filter)
+
   @doc """
   Checks if the given `selector` with `text_filter` is on `view`.
 
@@ -1032,7 +1035,8 @@ defmodule Phoenix.LiveViewTest do
       assert has_element?(view, "#some-element")
 
   """
-  def has_element?(%View{} = view, selector, text_filter \\ nil) do
+  def has_element?(%View{} = view, selector, text_filter \\ nil)
+      when is_binary(selector) and is_text_filter(text_filter) do
     has_element?(element(view, selector, text_filter))
   end
 
@@ -1136,7 +1140,8 @@ defmodule Phoenix.LiveViewTest do
              |> element(~s{[href="/foo"][id="foo.bar.baz"]})
              |> render() =~ "Increment</a>"
   """
-  def element(%View{proxy: proxy}, selector, text_filter \\ nil) when is_binary(selector) do
+  def element(%View{proxy: proxy}, selector, text_filter \\ nil)
+      when is_binary(selector) and is_text_filter(text_filter) do
     %Element{proxy: proxy, selector: selector, text_filter: text_filter}
   end
 
@@ -1714,7 +1719,7 @@ defmodule Phoenix.LiveViewTest do
 
   When attempting to navigate from a LiveView of a different
   `live_session`, an error redirect condition is returned indicating
-  a failed `live_redirect` from the client.
+  a failed `push_navigate` from the client.
 
   ## Examples
 
@@ -1744,7 +1749,7 @@ defmodule Phoenix.LiveViewTest do
 
         _ ->
           raise ArgumentError, """
-          attempted to live_redirect to a non-live route at #{inspect(url)}
+          attempted to navigate to a non-live route at #{inspect(url)}
           """
       end
 
@@ -1893,11 +1898,11 @@ defmodule Phoenix.LiveViewTest do
   In the case where an upload progress callback issues a navigate, patch, or
   redirect, the following will be returned:
 
-    * if the navigate is a `live_patch`, the current view will be patched
-    * if the navigate is a `live_redirect`, this function will return
+    * for a patch, the current view will be patched
+    * for a navigate, this function will return
       `{:error, {:live_redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
-    * if the navigate is a regular redirect, this function will return
+    * for a regular redirect, this function will return
       `{:error, {:redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
   """

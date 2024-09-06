@@ -905,7 +905,8 @@ defmodule Phoenix.LiveView.Diff do
       socket
       | assigns: Map.put(assigns, :__changed__, %{}),
         private: private,
-        fingerprints: prints
+        fingerprints: prints,
+        redirected: nil
     }
   end
 

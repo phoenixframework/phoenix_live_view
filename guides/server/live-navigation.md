@@ -76,7 +76,7 @@ the system and you define it in the router as:
 Now to add live sorting, you could do:
 
 ```heex
-<.link patch={path(~p"/users", sort_by: "name")}>Sort by name</.link>
+<.link patch={~p"/users?sort_by=name"}>Sort by name</.link>
 ```
 
 When clicked, since we are navigating to the current LiveView,

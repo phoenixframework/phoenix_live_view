@@ -41,7 +41,7 @@ defmodule Phoenix.LiveView.Route do
 
       :error ->
         raise ArgumentError,
-              "cannot invoke handle_params nor live_redirect/live_patch to #{inspect(uri)} " <>
+              "cannot invoke handle_params nor navigate/patch to #{inspect(uri)} " <>
                 "because it isn't defined in #{inspect(socket.router)}"
     end
   end

@@ -49,13 +49,25 @@ defmodule Phoenix.LiveComponent do
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
   When [`live_component/1`](`Phoenix.Component.live_component/1`) is called,
-  `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
-  receives the `socket` as argument. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`).
-  If `c:update/2` is not defined all assigns are simply merged into the socket.
-  The assigns received as the first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`)
-  callback will only include the _new_ assigns passed from this function.
-  Pre-existing assigns may be found in `socket.assigns`.
+  `c:mount/1` is called once, when the component is first added to the page.
+  `c:mount/1` receives a `socket` as its argument. Note that this is *not* the
+  same `socket` struct from the parent LiveView. It doesn't contain the parent
+  LiveView's `assigns`, and updating it won't affect the parent LiveView's
+  `socket`.
+
+  Then `c:update/2` is invoked with all of the assigns passed to
+  [`live_component/1`](`Phoenix.Component.live_component/1`). The assigns
+  received as the first argument to `c:update/2` will only include those
+  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`),
+  and not any pre-existing assigns in `socket.assigns` such as those assigned
+  by `c:mount/1`.
+
+  If `c:update/2` is not defined then all assigns given to
+  [`live_component/1`](`Phoenix.Component.live_component/1`) will simply be
+  merged into `socket.assigns`.
+
+  Both `c:mount/1` and `c:update/2` must return a tuple whose first element is
+  `:ok` and whose second element is the updated `socket`.
 
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -82,7 +94,7 @@ defmodule Phoenix.LiveComponent do
 
         def render(assigns) do
           ~H"""
-          <div id={"user-\#{@id}"} class="user">
+          <div id={"user-#{@id}"} class="user">
             <%= @user.name %>
           </div>
           """

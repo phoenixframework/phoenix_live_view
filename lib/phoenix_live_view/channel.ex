@@ -622,7 +622,7 @@ defmodule Phoenix.LiveView.Channel do
     Expected one of:
 
         {:noreply, %Socket{}}
-        {:reply, map, %Socket}
+        {:reply, map, %Socket{}}
 
     Got: #{inspect(result)}
     """

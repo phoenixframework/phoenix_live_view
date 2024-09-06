@@ -1766,4 +1766,17 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       end
     end
   end
+
+  test "raise if slot attribute is not supported" do
+    msg = ~r"invalid options .* for slot :foo. The supported options are"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.InvalidSlotAttr do
+        use Elixir.Phoenix.Component
+
+        slot :foo, require: true
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
 end

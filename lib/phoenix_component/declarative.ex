@@ -290,6 +290,14 @@ defmodule Phoenix.Component.Declarative do
       cannot define attributes in a slot with name #{inspect(slot.name)}
       """)
     end
+
+    if slot.opts != [] do
+      compile_error!(
+        line,
+        file,
+        "invalid options #{inspect(slot.opts)} for slot #{inspect(slot.name)}. The supported options are: [:required, :doc, :validate_attrs]"
+      )
+    end
   end
 
   @doc false
