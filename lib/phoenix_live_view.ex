@@ -971,12 +971,14 @@ defmodule Phoenix.LiveView do
 
   """
   def redirect(socket, opts \\ []) do
+    status = Keyword.get(opts, :status, 302)
+
     cond do
       Keyword.has_key?(opts, :to) ->
-        do_internal_redirect(socket, Keyword.fetch!(opts, :to), Keyword.get(opts, :status))
+        do_internal_redirect(socket, Keyword.fetch!(opts, :to), status)
 
       Keyword.has_key?(opts, :external) ->
-        do_external_redirect(socket, Keyword.fetch!(opts, :external), Keyword.get(opts, :status))
+        do_external_redirect(socket, Keyword.fetch!(opts, :external), status)
 
       true ->
         raise ArgumentError, "expected :to or :external option in redirect/2"
@@ -986,7 +988,7 @@ defmodule Phoenix.LiveView do
   defp do_internal_redirect(%Socket{} = socket, url, redirect_status) do
     validate_local_url!(url, "redirect/2")
 
-    put_redirect(socket, {:redirect, add_redirect_status(%{to: url}, redirect_status)})
+    put_redirect(socket, {:redirect, %{to: url, status: redirect_status}})
   end
 
   defp do_external_redirect(%Socket{} = socket, url, redirect_status) do
@@ -994,7 +996,7 @@ defmodule Phoenix.LiveView do
       {scheme, rest} ->
         put_redirect(
           socket,
-          {:redirect, add_redirect_status(%{external: "#{scheme}:#{rest}"}, redirect_status)}
+          {:redirect, %{external: "#{scheme}:#{rest}", status: redirect_status}}
         )
 
       url when is_binary(url) ->
@@ -1002,7 +1004,7 @@ defmodule Phoenix.LiveView do
 
         put_redirect(
           socket,
-          {:redirect, add_redirect_status(%{external: external_url}, redirect_status)}
+          {:redirect, %{external: external_url, status: redirect_status}}
         )
 
       other ->
@@ -1010,9 +1012,6 @@ defmodule Phoenix.LiveView do
               "expected :external option in redirect/2 to be valid URL, got: #{inspect(other)}"
     end
   end
-
-  defp add_redirect_status(opts, nil), do: opts
-  defp add_redirect_status(opts, status), do: Map.put(opts, :status, status)
 
   @doc """
   Annotates the socket for navigation within the current LiveView.
