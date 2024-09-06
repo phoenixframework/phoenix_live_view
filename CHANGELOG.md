@@ -56,8 +56,8 @@ This shows one example for the textarea input, but there are more cases that nee
 -          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
 -          "min-h-[6rem] phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
 +          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6 min-h-[6rem]",
-           @errors == [] && "border-zinc-300 focus:border-zinc-400",
-           @errors != [] && "border-rose-400 focus:border-rose-400"
++          @errors == [] && "border-zinc-300 focus:border-zinc-400",
++          @errors != [] && "border-rose-400 focus:border-rose-400"
          ]}
 ```
 The following regex could be used to find and replace the relevant `phx-no-feedback` classes: `/phx-no-feedback:[\w\-\d:]+/`.
