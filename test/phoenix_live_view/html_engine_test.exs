@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureIO
+
   import Phoenix.Component
 
   alias Phoenix.LiveView.Tokenizer.ParseError
@@ -771,7 +773,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE SLOT
       <%= render_slot(@sample) %>
       AFTER SLOT
-      """
+      """noformat
     end
 
     def function_component_with_slots(assigns) do
@@ -781,7 +783,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
-      """
+      """noformat
     end
 
     def function_component_with_slots_and_default(assigns) do
@@ -791,7 +793,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       TEXT:<%= render_slot(@inner_block) %>:TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
-      """
+      """noformat
     end
 
     def function_component_with_slots_and_args(assigns) do
@@ -799,7 +801,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE SLOT
       <%= render_slot(@sample, 1) %>
       AFTER SLOT
-      """
+      """noformat
     end
 
     def function_component_with_slot_attrs(assigns) do
@@ -809,7 +811,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= render_slot(entry) %>
       <%= entry.b %>
       <% end %>
-      """
+      """noformat
     end
 
     def function_component_with_multiple_slots_entries(assigns) do
@@ -817,7 +819,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= for entry <- @sample do %>
         <%= entry.id %>: <%= render_slot(entry, %{}) %>
       <% end %>
-      """
+      """noformat
     end
 
     def function_component_with_self_close_slots(assigns) do
@@ -825,15 +827,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= for entry <- @sample do %>
         <%= entry.id %>
       <% end %>
-      """
+      """noformat
     end
 
     def render_slot_name(assigns) do
-      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"
+      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"noformat
     end
 
     def render_inner_block_slot_name(assigns) do
-      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"
+      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"noformat
     end
 
     test "single slot" do
@@ -1763,6 +1765,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         """)
       end)
     end
+
+    test "warns when input has id as name" do
+      assert capture_io(:stderr, fn ->
+               eval("""
+               <input name="id" value="foo">
+               """)
+             end) =~
+               "Setting the \"name\" attribute to \"id\" on an input tag overrides the ID of the corresponding form element"
+    end
   end
 
   describe "handle errors in expressions" do
@@ -2062,7 +2073,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     def slot_if_self_close(assigns) do
       ~H"""
       <div><%= @value %>-<%= for slot <- @slot do %><%= slot.val %>-<% end %></div>
-      """
+      """noformat
     end
 
     test ":if in slots" do

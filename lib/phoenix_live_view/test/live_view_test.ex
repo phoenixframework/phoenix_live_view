@@ -194,19 +194,14 @@ defmodule Phoenix.LiveViewTest do
     Plug.Conn.put_private(conn, :live_view_connect_params, params)
   end
 
-  @deprecated "set the relevant connect_info fields in the connection instead"
-  def put_connect_info(conn, params) when is_map(params) do
-    Plug.Conn.put_private(conn, :live_view_connect_info, params)
-  end
-
   @doc """
   Spawns a connected LiveView process.
 
   If a `path` is given, then a regular `get(conn, path)`
-  is done and the page is upgraded to a `LiveView`. If
+  is done and the page is upgraded to a LiveView. If
   no path is given, it assumes a previously rendered
   `%Plug.Conn{}` is given, which will be converted to
-  a `LiveView` immediately.
+  a LiveView immediately.
 
   ## Examples
 
@@ -452,12 +447,17 @@ defmodule Phoenix.LiveViewTest do
   defmacro render_component(component, assigns \\ Macro.escape(%{}), opts \\ []) do
     endpoint = Module.get_attribute(__CALLER__.module, :endpoint)
 
+    component =
+      if is_atom(component) do
+        quote do
+          unquote(component).__live__()
+          unquote(component)
+        end
+      else
+        component
+      end
+
     quote do
-      component = unquote(component)
-
-      # Emit this line for undefined component warnings
-      if(is_atom(component), do: component.__live__())
-
       Phoenix.LiveViewTest.__render_component__(
         unquote(endpoint),
         unquote(component),
@@ -532,8 +532,8 @@ defmodule Phoenix.LiveViewTest do
   If the element does not have a `phx-click` attribute but it is
   a link (the `<a>` tag), the link will be followed accordingly:
 
-    * if the link is a `live_patch`, the current view will be patched
-    * if the link is a `live_redirect`, this function will return
+    * if the link is a `patch`, the current view will be patched
+    * if the link is a `navigate`, this function will return
       `{:error, {:live_redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
     * if the link is a regular link, this function will return
@@ -974,7 +974,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Simulates a `live_patch` to the given `path` and returns the rendered result.
+  Simulates a `push_patch` to the given `path` and returns the rendered result.
   """
   def render_patch(%View{} = view, path) when is_binary(path) do
     call(view, {:render_patch, proxy_topic(view), path})
@@ -1022,6 +1022,9 @@ defmodule Phoenix.LiveViewTest do
     call(element, {:render_element, :has_element?, element})
   end
 
+  defguardp is_text_filter(text_filter)
+            when is_binary(text_filter) or is_struct(text_filter, Regex) or is_nil(text_filter)
+
   @doc """
   Checks if the given `selector` with `text_filter` is on `view`.
 
@@ -1032,7 +1035,8 @@ defmodule Phoenix.LiveViewTest do
       assert has_element?(view, "#some-element")
 
   """
-  def has_element?(%View{} = view, selector, text_filter \\ nil) do
+  def has_element?(%View{} = view, selector, text_filter \\ nil)
+      when is_binary(selector) and is_text_filter(text_filter) do
     has_element?(element(view, selector, text_filter))
   end
 
@@ -1136,7 +1140,8 @@ defmodule Phoenix.LiveViewTest do
              |> element(~s{[href="/foo"][id="foo.bar.baz"]})
              |> render() =~ "Increment</a>"
   """
-  def element(%View{proxy: proxy}, selector, text_filter \\ nil) when is_binary(selector) do
+  def element(%View{proxy: proxy}, selector, text_filter \\ nil)
+      when is_binary(selector) and is_text_filter(text_filter) do
     %Element{proxy: proxy, selector: selector, text_filter: text_filter}
   end
 
@@ -1308,7 +1313,7 @@ defmodule Phoenix.LiveViewTest do
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
   `assert_receive_timeout` (100 ms).
 
-  It always returns `:ok`.
+  It returns the new path.
 
   To assert on the flash message, you can assert on the result of the
   rendered LiveView.
@@ -1714,7 +1719,7 @@ defmodule Phoenix.LiveViewTest do
 
   When attempting to navigate from a LiveView of a different
   `live_session`, an error redirect condition is returned indicating
-  a failed `live_redirect` from the client.
+  a failed `push_navigate` from the client.
 
   ## Examples
 
@@ -1744,7 +1749,7 @@ defmodule Phoenix.LiveViewTest do
 
         _ ->
           raise ArgumentError, """
-          attempted to live_redirect to a non-live route at #{inspect(url)}
+          attempted to navigate to a non-live route at #{inspect(url)}
           """
       end
 
@@ -1893,11 +1898,11 @@ defmodule Phoenix.LiveViewTest do
   In the case where an upload progress callback issues a navigate, patch, or
   redirect, the following will be returned:
 
-    * if the navigate is a `live_patch`, the current view will be patched
-    * if the navigate is a `live_redirect`, this function will return
+    * for a patch, the current view will be patched
+    * for a navigate, this function will return
       `{:error, {:live_redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
-    * if the navigate is a regular redirect, this function will return
+    * for a regular redirect, this function will return
       `{:error, {:redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
   """

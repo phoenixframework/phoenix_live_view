@@ -7,15 +7,8 @@ defmodule Phoenix.LiveViewTest.ReloadLive do
 
   def render(assigns) do
     case Application.fetch_env(:phoenix_live_view, :vsn) do
-      {:ok, 1} ->
-        ~H"""
-         <div>Version 1</div>
-        """
-
-      {:ok, 2} ->
-        ~H"""
-         <div>Version 2</div>
-        """
+      {:ok, 1} -> ~H"<div>Version 1</div>"
+      {:ok, 2} -> ~H"<div>Version 2</div>"
     end
   end
 end

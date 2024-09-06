@@ -23,9 +23,9 @@ except for the following LiveView specific options:
     section below for details.
   * `uploaders` – a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
-    [External Uploads guide](uploads-external.md) for details.
+    [External uploads guide](uploads-external.md) for details.
 
-## Debugging Client Events
+## Debugging client events
 
 To aid debugging on the client when troubleshooting issues, the `enableDebug()`
 and `disableDebug()` functions are exposed on the `LiveSocket` JavaScript instance.
@@ -69,52 +69,7 @@ window.liveSocket = liveSocket
       Call disableLatencySim() to disable
 ```
 
-## Event listeners
-
-LiveView emits several events to the browsers and allows developers to submit
-their own events too.
-
-### Live navigation events
-
-For live page navigation via `<.link navigate={...}>` and `<.link patch={...}>`,
-their server-side equivalents `push_navigate` and `push_patch`, as well as form
-submits via `phx-submit`, the JavaScript events `"phx:page-loading-start"` and
-`"phx:page-loading-stop"` are dispatched on window. Additionally, any `phx-`
-event may dispatch page loading events by annotating the DOM element with
-`phx-page-loading`. This is useful for showing main page loading status, for example:
-
-```
-// app.js
-import topbar from "topbar"
-window.addEventListener("phx:page-loading-start", info => topbar.show())
-window.addEventListener("phx:page-loading-stop", info => topbar.hide())
-```
-
-Within the callback, `info.detail` will be an object that contains a `kind`
-key, with a value that depends on the triggering event:
-
-  - `"redirect"` - the event was triggered by a redirect
-  - `"patch"` - the event was triggered by a patch
-  - `"initial"` - the event was triggered by initial page load
-  - `"element"` - the event was triggered by a `phx-` bound element, such as `phx-click`
-
-For all kinds of page loading events, all but `"element"` will receive an additional `to`
-key in the info metadata pointing to the href associated with the page load.
-
-In the case of an `"element"` page loading event, the info will contain a
-`"target"` key containing the DOM element which triggered the page loading
-state.
-
-A lower level `phx:navigate` event is also triggered any time the browser's URL bar
-is programmatically changed by Phoenix or the user navigation forward or back. The
-`info.detail` will contain the following information:
-
-  - `"href"` - the location the URL bar was navigated to.
-  - `"patch"` - the boolean flag indicating this was a patch navigation.
-  - `"pop"` - the boolean flag indication this was a navigation via `popstate`
-    from a user navigation forward or back in history.
-
-### Handling server-pushed events
+## Handling server-pushed events
 
 When the server uses `Phoenix.LiveView.push_event/3`, the event name
 will be dispatched in the browser with the `phx:` prefix. For example,
@@ -224,6 +179,9 @@ like this:
 Then a hook callback object could be defined and passed to the socket:
 
 ```javascript
+/**
+ * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+ */
 let Hooks = {}
 Hooks.PhoneNumber = {
   mounted() {
@@ -253,10 +211,17 @@ and the return value is ignored.
 For example, the following option could be used to guarantee that some attributes set on the client-side are kept intact:
 
 ```javascript
-onBeforeElUpdated(from, to){
-  for (const attr of from.attributes){
-    if (attr.name.startsWith("data-js-")){
-      to.setAttribute(attr.name, attr.value);
+...
+let liveSocket = new LiveSocket("/live", Socket, {
+  params: {_csrf_token: csrfToken},
+  hooks: Hooks,
+  dom: {
+    onBeforeElUpdated(from, to) {
+      for (const attr of from.attributes) {
+        if (attr.name.startsWith("data-js-")) {
+          to.setAttribute(attr.name, attr.value);
+        }
+      }
     }
   }
 }
@@ -282,6 +247,9 @@ For example, to implement infinite scrolling, one can pass the current page usin
 And then in the client:
 
 ```javascript
+/**
+ * @type {import("phoenix_live_view").ViewHook}
+ */
 Hooks.InfiniteScroll = {
   page() { return this.el.dataset.page },
   mounted(){
@@ -300,17 +268,23 @@ Hooks.InfiniteScroll = {
 However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
     <div id="chart" phx-hook="Chart">
-    {:noreply, push_event(socket, "points", %{points: new_points})}
 
 And then on the client:
 
 ```javascript
+/**
+ * @type {import("phoenix_live_view").ViewHook}
+ */
 Hooks.Chart = {
   mounted(){
     this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
   }
 }
 ```
+
+And then you can push events as:
+
+    {:noreply, push_event(socket, "points", %{points: new_points})}
 
 Events pushed from the server via `push_event` are global and will be dispatched
 to all active hooks on the client who are handling that event. If you need to scope events

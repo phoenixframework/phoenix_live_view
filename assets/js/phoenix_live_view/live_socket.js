@@ -95,11 +95,9 @@ import {
   PHX_THROTTLE,
   PHX_TRACK_UPLOADS,
   PHX_SESSION,
-  PHX_FEEDBACK_FOR,
-  PHX_FEEDBACK_GROUP,
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
-  PHX_REF,
+  PHX_REF_SRC,
 } from "./constants"
 
 import {
@@ -116,6 +114,8 @@ import Hooks from "./hooks"
 import LiveUploader from "./live_uploader"
 import View from "./view"
 import JS from "./js"
+
+export let isUsedInput = (el) => DOM.isUsedInput(el)
 
 export default class LiveSocket {
   constructor(url, phxSocket, opts = {}){
@@ -158,7 +158,14 @@ export default class LiveSocket {
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
-    this.domCallbacks = Object.assign({onNodeAdded: closure(), onBeforeElUpdated: closure()}, opts.dom || {})
+    this.boundEventNames = new Set()
+    this.serverCloseRef = null
+    this.domCallbacks = Object.assign({
+      onPatchStart: closure(),
+      onPatchEnd: closure(),
+      onNodeAdded: closure(),
+      onBeforeElUpdated: closure()},
+    opts.dom || {})
     this.transitions = new TransitionSet()
     window.addEventListener("pagehide", _e => {
       this.unloaded = true
@@ -172,6 +179,8 @@ export default class LiveSocket {
   }
 
   // public
+
+  version(){ return LV_VSN }
 
   isProfileEnabled(){ return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true" }
 
@@ -225,6 +234,12 @@ export default class LiveSocket {
 
   disconnect(callback){
     clearTimeout(this.reloadWithJitterTimer)
+    // remove the socket close listener to avoid trying to handle
+    // a server close event when it is actually caused by us disconnecting
+    if(this.serverCloseRef){
+      this.socket.off(this.serverCloseRef)
+      this.serverCloseRef = null
+    }
     this.socket.disconnect(callback)
   }
 
@@ -394,16 +409,19 @@ export default class LiveSocket {
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
     let liveReferer = this.currentLocation.href
     this.outgoingMainEl = this.outgoingMainEl || this.main.el
+    let removeEls = DOM.all(this.outgoingMainEl, `[${this.binding("remove")}]`)
     let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
 
     this.main = this.newRootView(newMainEl, flash, liveReferer)
     this.main.setRedirect(href)
-    this.transitionRemoves(null, true)
+    this.transitionRemoves(removeEls, true)
     this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
+          // remove phx-remove els right before we replace the main element
+          removeEls.forEach(el => el.remove())
           DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
           this.outgoingMainEl.replaceWith(newMainEl)
           this.outgoingMainEl = null
@@ -414,16 +432,33 @@ export default class LiveSocket {
     })
   }
 
-  transitionRemoves(elements, skipSticky){
+  transitionRemoves(elements, skipSticky, callback){
     let removeAttr = this.binding("remove")
-    elements = elements || DOM.all(document, `[${removeAttr}]`)
-
     if(skipSticky){
       const stickies = DOM.findPhxSticky(document) || []
       elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
     }
+    let silenceEvents = (e) => {
+      e.preventDefault()
+      e.stopImmediatePropagation()
+    }
     elements.forEach(el => {
+      // prevent all listeners we care about from bubbling to window
+      // since we are removing the element
+      for(let event of this.boundEventNames){
+        el.addEventListener(event, silenceEvents, true)
+      }
       this.execJS(el, el.getAttribute(removeAttr), "remove")
+    })
+    // remove the silenced listeners when transitions are done incase the element is re-used
+    // and call caller's callback as soon as we are done with transitions
+    this.requestDOMUpdate(() => {
+      elements.forEach(el => {
+        for(let event of this.boundEventNames){
+          el.removeEventListener(event, silenceEvents, true)
+        }
+      })
+      callback && callback()
     })
   }
 
@@ -512,7 +547,7 @@ export default class LiveSocket {
 
     this.boundTopLevelEvents = true
     // enter failsafe reload if server has gone away intentionally, such as "disconnect" broadcast
-    this.socket.onClose(event => {
+    this.serverCloseRef = this.socket.onClose(event => {
       // failsafe reload if normal closure and we still have a main LV
       if(event && event.code === 1000 && this.main){ return this.reloadWithJitter(this.main) }
     })
@@ -548,8 +583,8 @@ export default class LiveSocket {
         JS.exec(type, phxEvent, view, targetEl, ["push", {data}])
       }
     })
-    window.addEventListener("dragover", e => e.preventDefault())
-    window.addEventListener("drop", e => {
+    this.on("dragover", e => e.preventDefault())
+    this.on("drop", e => {
       e.preventDefault()
       let dropTargetId = maybe(closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)), trueTarget => {
         return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET))
@@ -624,43 +659,40 @@ export default class LiveSocket {
   }
 
   bindClicks(){
-    window.addEventListener("mousedown", e => this.clickStartedAtTarget = e.target)
-    this.bindClick("click", "click", false)
-    this.bindClick("mousedown", "capture-click", true)
+    this.on("mousedown", e => this.clickStartedAtTarget = e.target)
+    this.bindClick("click", "click")
   }
 
-  bindClick(eventName, bindingName, capture){
+  bindClick(eventName, bindingName){
     let click = this.binding(bindingName)
     window.addEventListener(eventName, e => {
       let target = null
-      if(capture){
-        target = e.target.matches(`[${click}]`) ? e.target : e.target.querySelector(`[${click}]`)
-      } else {
-        // a synthetic click event (detail 0) will not have caused a mousedown event,
-        // therefore the clickStartedAtTarget is stale
-        if(e.detail === 0) this.clickStartedAtTarget = e.target
-        let clickStartedAtTarget = this.clickStartedAtTarget || e.target
-        target = closestPhxBinding(clickStartedAtTarget, click)
-        this.dispatchClickAway(e, clickStartedAtTarget)
-        this.clickStartedAtTarget = null
-      }
+      // a synthetic click event (detail 0) will not have caused a mousedown event,
+      // therefore the clickStartedAtTarget is stale
+      if(e.detail === 0) this.clickStartedAtTarget = e.target
+      let clickStartedAtTarget = this.clickStartedAtTarget || e.target
+      // when searching the target for the click event, we always want to
+      // use the actual event target, see #3372
+      target = closestPhxBinding(e.target, click)
+      this.dispatchClickAway(e, clickStartedAtTarget)
+      this.clickStartedAtTarget = null
       let phxEvent = target && target.getAttribute(click)
       if(!phxEvent){
-        if(!capture && DOM.isNewPageClick(e, window.location)){ this.unload() }
+        if(DOM.isNewPageClick(e, window.location)){ this.unload() }
         return
       }
 
       if(target.getAttribute("href") === "#"){ e.preventDefault() }
 
       // noop if we are in the middle of awaiting an ack for this el already
-      if(target.hasAttribute(PHX_REF)){ return }
+      if(target.hasAttribute(PHX_REF_SRC)){ return }
 
       this.debounce(target, e, "click", () => {
         this.withinOwners(target, view => {
           JS.exec("click", phxEvent, view, target, ["push", {data: this.eventMeta("click", e, target)}])
         })
       })
-    }, capture)
+    }, false)
   }
 
   dispatchClickAway(e, clickStartedAt){
@@ -831,7 +863,7 @@ export default class LiveSocket {
           })
         })
       }
-    }, true)
+    })
 
     this.on("submit", e => {
       let phxEvent = e.target.getAttribute(this.binding("submit"))
@@ -844,12 +876,31 @@ export default class LiveSocket {
       this.withinOwners(e.target, view => {
         JS.exec("submit", phxEvent, view, e.target, ["push", {submitter: e.submitter}])
       })
-    }, false)
+    })
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
+        if(e instanceof CustomEvent && e.target.form === undefined){
+          throw new Error(`dispatching a custom ${type} event is only supported on input elements inside a form`)
+        }
         let phxChange = this.binding("change")
         let input = e.target
+        // do not fire phx-change if we are in the middle of a composition session
+        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
+        // Safari has issues if the input is updated while composing
+        // see https://github.com/phoenixframework/phoenix_live_view/issues/3322
+        if(e.isComposing){
+          const key = `composition-listener-${type}`
+          if(!DOM.private(input, key)){
+            DOM.putPrivate(input, key, true)
+            input.addEventListener("compositionend", () => {
+              // trigger a new input/change event 
+              input.dispatchEvent(new Event(type, {bubbles: true}))
+              DOM.deletePrivate(input, key)
+            }, {once: true})
+          }
+          return
+        }
         let inputEvent = input.getAttribute(phxChange)
         let formEvent = input.form && input.form.getAttribute(phxChange)
         let phxEvent = inputEvent || formEvent
@@ -876,11 +927,11 @@ export default class LiveSocket {
             JS.exec("change", phxEvent, view, input, ["push", {_target: e.target.name, dispatcher: dispatcher}])
           })
         })
-      }, false)
+      })
     }
     this.on("reset", (e) => {
       let form = e.target
-      DOM.resetForm(form, this.binding(PHX_FEEDBACK_FOR), this.binding(PHX_FEEDBACK_GROUP))
+      DOM.resetForm(form)
       let input = Array.from(form.elements).find(el => el.type === "reset")
       if(input){
         // wait until next tick to get updated input value
@@ -914,6 +965,7 @@ export default class LiveSocket {
   }
 
   on(event, callback){
+    this.boundEventNames.add(event)
     window.addEventListener(event, e => {
       if(!this.silenced){ callback(e) }
     })

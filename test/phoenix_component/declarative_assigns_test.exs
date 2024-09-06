@@ -54,15 +54,15 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
     def with_global_line, do: __ENV__.line
     attr :id, :string, default: "container"
-    def with_global(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true"/>]
+    def with_global(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true" />]
 
     attr :id, :string, required: true
     attr :rest, :global
-    def button(assigns), do: ~H[<button id={@id} {@rest}/>]
+    def button(assigns), do: ~H[<button id={@id} {@rest} />]
 
     def button_with_defaults_line, do: __ENV__.line
     attr :rest, :global, default: %{class: "primary"}
-    def button_with_defaults(assigns), do: ~H[<button {@rest}/>]
+    def button_with_defaults(assigns), do: ~H[<button {@rest} />]
 
     def button_with_values_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"]
@@ -85,17 +85,17 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     def render(assigns) do
       ~H"""
       <!-- local -->
-      <.func1 id="1"/>
+      <.func1 id="1" />
       <!-- local with inner content -->
       <.func1 id="2" email="foo@bar">CONTENT</.func1>
       <!-- imported -->
-      <.remote id="3"/>
+      <.remote id="3" />
       <!-- remote -->
-      <RemoteFunctionComponentWithAttrs.remote id="4"/>
+      <RemoteFunctionComponentWithAttrs.remote id="4" />
       <!-- remote with inner content -->
       <RemoteFunctionComponentWithAttrs.remote id="5">CONTENT</RemoteFunctionComponentWithAttrs.remote>
       <!-- remote and aliased -->
-      <Remote.remote id="6" {[dynamic: :values]}/>
+      <Remote.remote id="6" {[dynamic: :values]} />
       """
     end
   end
@@ -380,9 +380,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         <:header>
           This is a header.
         </:header>
-
         Hello, World
-
         <:footer>
           This is a footer.
         </:footer>
@@ -603,10 +601,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       end
 
       attr :nil_default, :string, default: nil
-      def example(assigns), do: ~H[<%= inspect @nil_default %>]
+      def example(assigns), do: ~H[<%= inspect(@nil_default) %>]
 
       attr :value, :string
-      def no_default(assigns), do: ~H[<%= inspect @value %>]
+      def no_default(assigns), do: ~H[<%= inspect(@value) %>]
 
       attr :id, :any
       attr :errors, :list, default: []
@@ -662,7 +660,9 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         ~H"""
         <div {@rest}>
           <%= render_slot(@inner_block) %>
-          <%= for col <- @col do %><%= render_slot(col) %>,<% end %>
+          <%= for col <- @col do %>
+            <%= render_slot(col) %>,
+          <% end %>
         </div>
         """
       end
@@ -680,7 +680,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       """
 
     assert Phoenix.LiveViewTest.rendered_to_string(template) ==
-             ~s|<div class="my-class">\n  \n  block\n  \n  col1,col2,\n</div>|
+             ~s|<div class=\"my-class\">\n  \n  block\n  \n  \n    col1,\n  \n    col2,\n  \n</div>|
   end
 
   defp lookup(_key \\ :one)
@@ -1635,6 +1635,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         attr :rest, :global, examples: ["placeholder", "rel"]
         def func(assigns), do: ~H[<%= @rest %>]
+      end
+    end
+  end
+
+  test "raise if slot attribute is not supported" do
+    msg = ~r"invalid options .* for slot :foo. The supported options are"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.InvalidSlotAttr do
+        use Elixir.Phoenix.Component
+
+        slot :foo, require: true
+        def func(assigns), do: ~H[]
       end
     end
   end

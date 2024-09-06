@@ -21,7 +21,11 @@ both direct to server uploads as well as direct-to-cloud
 
 ## Allow uploads
 
-You enable an upload, typically on mount, via [`allow_upload/3`]:
+You enable an upload, typically on mount, via [`allow_upload/3`].
+
+For this example, we will also keep a list of uploaded files in
+a new assign named `uploaded_files`, but you could name it
+something else if you wanted.
 
 ```elixir
 @impl Phoenix.LiveView
@@ -212,7 +216,7 @@ ultimately fail.
 For these reasons, it is best if uploads are stored elsewhere, such as the
 database (depending on the size and contents) or a separate storage service.
 For more information on implementing client-side, direct-to-cloud uploads,
-see the [External Uploads guide](uploads-external.md).
+see the [External uploads guide](uploads-external.md) for details.
 
 ## Appendix A: UploadLive
 

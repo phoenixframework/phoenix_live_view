@@ -373,7 +373,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert ExUnit.CaptureLog.capture_log(fn ->
                send(view.pid, {:send_update, [{StatefulComponent, name: "NEW-chris"}]})
                ref = Process.monitor(view.pid)
-               assert_receive {:DOWN, ^ref, _, _, _}
+               assert_receive {:DOWN, ^ref, _, _, _}, 500
              end) =~ "** (ArgumentError) missing required :id in send_update"
     end
 
@@ -412,7 +412,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
                )
 
                ref = Process.monitor(view.pid)
-               assert_receive {:DOWN, ^ref, _, _, _}
+               assert_receive {:DOWN, ^ref, _, _, _}, 500
              end) =~
                "** (ArgumentError) send_update failed (module NonexistentComponent is not available)"
     end
@@ -434,7 +434,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert html =~ "Redirect: none"
 
       assert view |> element("#chris") |> render_click(%{"op" => "push_patch"}) =~
-               "Redirect: none"
+               "Redirect: patch"
 
       assert_patch(view, "/components?redirect=patch")
     end

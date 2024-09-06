@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../../test-fixtures");
 const { syncLV } = require("../../utils");
 
 test("LiveComponent is re-rendered when racing destory", async ({ page }) => {

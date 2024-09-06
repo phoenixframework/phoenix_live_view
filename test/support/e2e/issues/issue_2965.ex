@@ -51,9 +51,8 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
-    <script src="/assets/phoenix_live_view/phoenix_live_view.js">
-    </script>
-    <script>
+    <script type="module">
+      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
       const QueuedUploaderHook = {
         async mounted() {
           const maxConcurrency = this.el.dataset.maxConcurrency || 3;
@@ -98,7 +97,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
         }
       };
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: {_csrf_token: csrfToken},
         hooks: {QueuedUploaderHook}
       })

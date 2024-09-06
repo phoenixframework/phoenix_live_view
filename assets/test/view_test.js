@@ -6,10 +6,15 @@ import View from "phoenix_live_view/view"
 import {
   PHX_LOADING_CLASS,
   PHX_ERROR_CLASS,
-  PHX_SERVER_ERROR_CLASS
+  PHX_SERVER_ERROR_CLASS,
+  PHX_HAS_FOCUSED
 } from "phoenix_live_view/constants"
 
 import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
+
+let simulateUsedInput = (input) => {
+  DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
+}
 
 describe("View + DOM", function(){
   beforeEach(() => {
@@ -35,6 +40,27 @@ describe("View + DOM", function(){
 
     expect(view.el.firstChild.tagName).toBe("H2")
     expect(view.rendered.get()).toEqual(updateDiff)
+  })
+
+  test("applyDiff can set title to falsy values", async () => {
+    document.title = "Foo"
+
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let updateDiff = {
+      s: ["<h2>", "</h2>"],
+      fingerprint: 123,
+      t: ""
+    }
+
+    let view = simulateJoinedView(el, liveSocket)
+    view.applyDiff("update", updateDiff, ({diff, events}) => view.update(diff, events))
+
+    expect(view.el.firstChild.tagName).toBe("H2")
+    expect(view.rendered.get()).toEqual(updateDiff)
+
+    await new Promise(requestAnimationFrame)
+    expect(document.title).toBe("")
   })
 
   test("pushWithReply", function(){
@@ -186,13 +212,13 @@ describe("View + DOM", function(){
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
     let input = el.querySelector("input")
-
+    simulateUsedInput(input)
     let view = simulateJoinedView(el, liveSocket)
     let channelStub = {
       push(_evt, payload, _timeout){
         expect(payload.type).toBe("form")
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe("increment=1&note=2&_target=increment")
+        expect(payload.value).toBe("increment=1&_unused_note=&note=2&_target=increment")
         return {
           receive(){ return this }
         }
@@ -203,41 +229,41 @@ describe("View + DOM", function(){
     view.pushInput(input, el, null, "validate", {_target: input.name})
   })
 
-  test("formsForRecovery", function(){
+  test("getFormsForRecovery", function(){
     let view, html, liveSocket = new LiveSocket("/live", Socket)
 
     html = "<form id=\"my-form\" phx-change=\"cg\"><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     expect(view.joinCount).toBe(0)
-    expect(view.formsForRecovery(html).length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     view.joinCount++
-    expect(view.formsForRecovery(html).length).toBe(1)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(1)
 
     view.joinCount++
-    expect(view.formsForRecovery(html).length).toBe(1)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(1)
 
     html = "<form phx-change=\"cg\" phx-auto-recover=\"ignore\"><input name=\"foo\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
-    expect(view.formsForRecovery().length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     html = "<form><input name=\"foo\"></form>"
-    view = new View(liveViewDOM(html), liveSocket)
+    view = new View(liveViewDOM(), liveSocket)
     view.joinCount = 2
-    expect(view.formsForRecovery().length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     html = "<form phx-change=\"cg\"></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 2
-    expect(view.formsForRecovery().length).toBe(0)
+    expect(Object.keys(view.getFormsForRecovery()).length).toBe(0)
 
     html = "<form id='my-form' phx-change='[[\"push\",{\"event\":\"update\",\"target\":1}]]'><input name=\"foo\" /></form>"
     view = new View(liveViewDOM(html), liveSocket)
     view.joinCount = 1
-    const newForms = view.formsForRecovery(html)
-    expect(newForms.length).toBe(1)
-    expect(newForms[0][0].getAttribute('phx-change')).toBe('[[\"push\",{\"event\":\"update\",\"target\":1}]]')
+    const newForms = view.getFormsForRecovery()
+    expect(Object.keys(newForms).length).toBe(1)
+    expect(newForms["my-form"].getAttribute('phx-change')).toBe('[[\"push\",{\"event\":\"update\",\"target\":1}]]')
   })
 
   describe("submitForm", function(){
@@ -380,7 +406,7 @@ describe("View + DOM", function(){
       let html = "<form id=\"form\" phx-submit=\"submit\"><input type=\"text\"></form>"
 
       stubChannel(view)
-      view.onJoin({rendered: {s: [html], fingerprint: 123}})
+      view.onJoin({rendered: {s: [html], fingerprint: 123}, liveview_version: require("../package.json").version})
       expect(view.el.innerHTML).toBe(html)
 
       let formEl = document.getElementById("form")
@@ -400,7 +426,7 @@ describe("View + DOM", function(){
       HTMLFormElement.prototype.submit = done
 
       stubChannel(view)
-      view.onJoin({rendered: {s: [html], fingerprint: 123}})
+      view.onJoin({rendered: {s: [html], fingerprint: 123}, liveview_version: require("../package.json").version})
       expect(view.el.innerHTML).toBe(html)
 
       let updatedHtml = "<form id=\"form\" phx-submit=\"submit\" phx-trigger-action><input type=\"text\"></form>"
@@ -427,7 +453,7 @@ describe("View + DOM", function(){
         "s": [`<div id="list" phx-update="${updateType}">`, "</div>"]
       }
 
-      view.onJoin({rendered: joinDiff})
+      view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
 
       return view
     }
@@ -750,7 +776,8 @@ describe("View Hooks", function(){
       rendered: {
         s: [html],
         fingerprint: 123
-      }
+      },
+      liveview_version: require("../package.json").version
     })
     window.requestAnimationFrame(() => {
       expect(document.getElementById("test").getAttribute("class")).toBe("new-class")
@@ -792,7 +819,8 @@ describe("View Hooks", function(){
       rendered: {
         s: ["<h2 id=\"up\" phx-hook=\"Upcase\">test mount</h2>"],
         fingerprint: 123
-      }
+      },
+      liveview_version: require("../package.json").version
     })
     expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT")
 
@@ -830,7 +858,8 @@ describe("View Hooks", function(){
       rendered: {
         s: ["<h2 id=\"check\" phx-hook=\"Check\">test mount</h2>"],
         fingerprint: 123
-      }
+      },
+      liveview_version: require("../package.json").version
     })
     expect(view.el.firstChild.innerHTML).toBe("test mount")
 
@@ -857,7 +886,8 @@ describe("View Hooks", function(){
       rendered: {
         s: ["<h2 id=\"check\" phx-hook=\"Check\"></h2>"],
         fingerprint: 123
-      }
+      },
+      liveview_version: require("../package.json").version
     })
     expect(values).toEqual(["mounted"])
 
@@ -887,7 +917,8 @@ describe("View Hooks", function(){
       rendered: {
         s: [template],
         fingerprint: 123
-      }
+      },
+      liveview_version: require("../package.json").version
     })
 
     let recorderHook = view.getHook(view.el.querySelector("#rec"))
@@ -915,7 +946,7 @@ describe("View Hooks", function(){
     let el = liveViewDOM()
     let view = simulateJoinedView(el, liveSocket)
 
-    view.onJoin({rendered: {s: ["<div>initial</div>"], fingerprint: 123}})
+    view.onJoin({rendered: {s: ["<div>initial</div>"], fingerprint: 123}, liveview_version: require("../package.json").version})
     expect(view.el.firstChild.innerHTML).toBe("initial")
 
     view.update({s: ["<div>updated</div>"], fingerprint: 123}, [])
@@ -989,7 +1020,6 @@ describe("View + Component", function(){
   })
 
   test("pushInput", function(done){
-    expect.assertions(6)
     let html =
       `<form id="form" phx-change="validate">
       <label for="first_name">First Name</label>
@@ -1001,6 +1031,7 @@ describe("View + Component", function(){
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM(html)
     let view = simulateJoinedView(el, liveSocket, html)
+    Array.from(view.el.querySelectorAll("input")).forEach(input => simulateUsedInput(input))
     let channelStub = {
       validate: "",
       nextValidate(payload){
@@ -1018,11 +1049,11 @@ describe("View + Component", function(){
                 <form id="form" phx-change="validate">
                   <label for="first_name">First Name</label>
                   <input id="first_name" value="" name="user[first_name]" />
-                  <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
+                  <span class="feedback">can't be blank</span>
 
                   <label for="last_name">Last Name</label>
                   <input id="last_name" value="" name="user[last_name]" />
-                  <span class="feedback" phx-feedback-for="user[last_name]">can't be blank</span>
+                  <span class="feedback">can't be blank</span>
                 </form>
                 `],
                 fingerprint: 345
@@ -1045,171 +1076,9 @@ describe("View + Component", function(){
     DOM.putPrivate(first_name, "phx-has-focused", true)
     view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
     window.requestAnimationFrame(() => {
-      expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-      expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
-  
       view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
-      DOM.putPrivate(last_name, "phx-has-focused", true)
       view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
       window.requestAnimationFrame(() => {
-        expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-        expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-        done()
-      })
-    })
-  })
-
-  test("pushInput sets phx-no-feedback on feedback groups", function(done){
-    expect.assertions(9)
-    let html =
-      `<form id="form" phx-change="validate">
-      <div phx-feedback-for="mygroup"></div>
-      <label for="first_name">First Name</label>
-      <input id="first_name" value="" name="user[first_name]" />
-
-      <label for="last_name">Last Name</label>
-      <input id="last_name" value="" name="user[last_name]" />
-
-      <label for="email">Email</label>
-      <input id="email" value="" name="user[email]" />
-    </form>`
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM(html)
-    let view = simulateJoinedView(el, liveSocket, html)
-    let channelStub = {
-      validate: "",
-      nextValidate(payload){
-        this.validate = Object.entries(payload)
-          .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value) : ""}`)
-          .join("&")
-      },
-      push(_evt, payload, _timeout){
-        expect(payload.value).toBe(this.validate)
-        return {
-          receive(status, cb){
-            if(status === "ok"){
-              let diff = {
-                s: [`
-                <form id="form" phx-change="validate">
-                  <div phx-feedback-for="mygroup"></div>
-
-                  <label for="first_name">First Name</label>
-                  <input id="first_name" value="" name="user[first_name]" phx-feedback-group="mygroup" />
-                  <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
-
-                  <label for="last_name">Last Name</label>
-                  <input id="last_name" value="" name="user[last_name]" phx-feedback-group="mygroup" />
-                  <span class="feedback" phx-feedback-for="user[last_name]">can't be blank</span>
-
-                  <label for="email">Email</label>
-                  <input id="email" value="" name="user[email]" />
-                  <span class="feedback" phx-feedback-for="user[email]">can't be blank</span>
-                </form>
-                `],
-                fingerprint: 345
-              }
-              cb({diff: diff})
-              return this
-            } else {
-              return this
-            }
-          }
-        }
-      }
-    }
-    view.channel = channelStub
-
-    let first_name = view.el.querySelector("#first_name")
-    let last_name = view.el.querySelector("#last_name")
-    let email = view.el.querySelector("#email")
-    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[email]"})
-    // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
-    DOM.putPrivate(email, "phx-has-focused", true)
-    view.pushInput(email, el, null, "validate", {_target: email.name})
-    window.requestAnimationFrame(() => {
-      expect(el.querySelector(`[phx-feedback-for="${email.name}"]`).classList.contains("phx-no-feedback")).toBeFalsy()
-      expect(el.querySelector(`[phx-feedback-for="${first_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
-      expect(el.querySelector(`[phx-feedback-for="${last_name.name}"]`).classList.contains("phx-no-feedback")).toBeTruthy()
-      expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeTruthy()
-
-      view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "user[email]": null, "_target": "user[first_name]"})
-      DOM.putPrivate(first_name, "phx-has-focused", true)
-      view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
-      window.requestAnimationFrame(() => {
-        expect(el.querySelector(`[phx-feedback-for="${first_name.name}"`).classList.contains("phx-no-feedback")).toBeFalsy()
-        expect(el.querySelector(`[phx-feedback-for="${last_name.name}"`).classList.contains("phx-no-feedback")).toBeTruthy()
-        // first_name was focused, the feedback-group should not have the phx-no-feedback class
-        expect(el.querySelector("[phx-feedback-for=\"mygroup\"]").classList.contains("phx-no-feedback")).toBeFalsy()
-        done()
-      })
-    })
-  })
-
-  test("pushInput sets phx-no-feedback class on feedback elements for multiple select", function(done){
-    // a multiple select name attribute contains trailing square brackets [] to capture multiple options
-    let multiple_select_name = "user[allergies][]"
-    // the phx-feedback-for attribute typically doesn't contain trailing brackets
-    // because its value is often set with the result of Phoenix.HTML.input_name/2
-    let multiple_select_phx_feedback_for_name = "user[allergies]"
-    let html =
-      `<form id="form" phx-change="validate">
-      <label for="first_name">First Name</label>
-      <input id="first_name" value="" name="user[first_name]" />
-
-      <label for="allergies">Allergies</label>
-      <select id="allergies" name="${multiple_select_name}" multiple="">
-        <option value="milk">Milk</option>
-        <option value="peanuts">Peanuts</option>
-        <option value="wheat">Wheat</option>
-      </select>
-    </form>`
-    let liveSocket = new LiveSocket("/live", Socket)
-    let el = liveViewDOM(html)
-    let view = simulateJoinedView(el, liveSocket, html)
-    let channelStub = {
-      push(_evt, _payload, _timeout){
-        return {
-          receive(_status, cb){
-            let diff = {
-              s: [`
-              <form id="form" phx-change="validate">
-                <label for="first_name">First Name</label>
-                <input id="first_name" value="" name="user[first_name]" />
-                <span class="feedback" phx-feedback-for="user[first_name]">can't be blank</span>
-
-                <label for="allergies">Allergies</label>
-                <select id="allergies" name="${multiple_select_name}" multiple="">
-                  <option value="milk">Milk</option>
-                  <option value="peanuts">Peanuts</option>
-                  <option value="wheat">Wheat</option>
-                </select>
-                <span class="feedback" phx-feedback-for="${multiple_select_phx_feedback_for_name}">can't be blank</span>
-              </form>
-              `],
-              fingerprint: 345
-            }
-            cb({diff})
-            return this
-          }
-        }
-      }
-    }
-    view.channel = channelStub
-
-    let first_name_input = view.el.querySelector("input#first_name")
-    let allergies_select = view.el.querySelector("select#allergies")
-    // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
-    DOM.putPrivate(first_name_input, "phx-has-focused", true)
-    view.pushInput(first_name_input, el, null, "validate", {_target: "user[first_name]"})
-    window.requestAnimationFrame(() => {
-      expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
-      expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeTruthy()
-  
-      DOM.putPrivate(allergies_select, "phx-has-focused", true)
-      view.pushInput(allergies_select, el, null, "validate", {_target: "user[allergies][]"})
-      window.requestAnimationFrame(() => {
-        expect(el.querySelector(`span[phx-feedback-for="user[first_name]"`).classList.contains("phx-no-feedback")).toBeFalsy()
-        expect(el.querySelector(`span[phx-feedback-for="user[allergies]"`).classList.contains("phx-no-feedback")).toBeFalsy()
         done()
       })
     })
@@ -1236,7 +1105,7 @@ describe("View + Component", function(){
       }
     }
 
-    view.onJoin({rendered: joinDiff})
+    view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
     expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
 
     view.update(updateDiff, [])
@@ -1259,7 +1128,7 @@ describe("View + Component", function(){
       "s": ["", ""]
     }
 
-    view.onJoin({rendered: joinDiff})
+    view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
     expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\">Hello</div><div data-phx-id=\"c1-container\" data-phx-component=\"1\">World</div>")
   })
 
@@ -1280,7 +1149,7 @@ describe("View + Component", function(){
 
     let updateDiff = {"s": [newChildHTML]}
 
-    view.onJoin({rendered: joinDiff})
+    view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
     expect(view.el.innerHTML.trim()).toEqual(childHTML)
     expect(view.getChildById("bar")).toBeDefined()
 
@@ -1293,12 +1162,12 @@ describe("View + Component", function(){
   describe("undoRefs", () => {
     test("restores phx specific attributes awaiting a ref", () => {
       let content = `
-        <span data-phx-ref="1" data-phx-ref-src="root"></span>
-        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref="38" data-phx-ref-src="root">
-          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref="38" data-phx-ref-src="root">
+        <span data-phx-ref-loading="1" data-phx-ref-src="root"></span>
+        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref-loading="38" data-phx-ref-src="root">
+          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref-loading="38" data-phx-ref-src="root">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref="38" data-phx-ref-src="root" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-ref-loading="38" data-phx-ref-src="root" data-phx-disable-with-restore="GO TO HEXDOCS">Searching...</button>
         </form>
       `.trim()
       let liveSocket = new LiveSocket("/live", Socket)
@@ -1308,11 +1177,11 @@ describe("View + Component", function(){
       view.undoRefs(1)
       expect(el.innerHTML).toBe(`
         <span></span>
-        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref="38">
-          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref="38">
+        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref-loading="38">
+          <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref-loading="38">
           <datalist id="results">
           </datalist>
-          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-disable-with-restore="GO TO HEXDOCS" data-phx-ref-src="root" data-phx-ref="38">Searching...</button>
+          <button type="submit" phx-disable-with="Searching..." data-phx-disabled="false" disabled="" class="phx-submit-loading" data-phx-disable-with-restore="GO TO HEXDOCS" data-phx-ref-src="root" data-phx-ref-loading="38">Searching...</button>
         </form>
       `.trim())
 
@@ -1332,10 +1201,10 @@ describe("View + Component", function(){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = rootContainer("")
 
-      let fromEl = tag("span", {"data-phx-ref-src": el.id, "data-phx-ref": "1"}, "hello")
+      let fromEl = tag("span", {"data-phx-ref-src": el.id, "data-phx-ref-lock": "1"}, "hello")
       let toEl = tag("span", {"class": "new"}, "world")
 
-      DOM.putPrivate(fromEl, "data-phx-ref", toEl)
+      DOM.putPrivate(fromEl, "data-phx-ref-lock", toEl)
 
       el.appendChild(fromEl)
       let view = simulateJoinedView(el, liveSocket)
@@ -1358,15 +1227,17 @@ describe("View + Component", function(){
       let el = liveViewDOM()
       let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
-      view.onJoin({rendered: {s: ["<span id=\"myhook\" phx-hook=\"MyHook\">Hello</span>"]}})
+      view.onJoin({rendered: {s: ["<span id=\"myhook\" phx-hook=\"MyHook\">Hello</span>"]}, liveview_version: require("../package.json").version})
 
-      view.update({s: ["<span id=\"myhook\" data-phx-ref=\"1\" data-phx-ref-src=\"container\" phx-hook=\"MyHook\">Hello</span>"]}, [])
+      view.update({s: ["<span id=\"myhook\" data-phx-ref-loading=\"1\" data-phx-ref-lock=\"2\" data-phx-ref-src=\"container\" phx-hook=\"MyHook\" class=\"phx-change-loading\">Hello</span>"]}, [])
 
       let toEl = tag("span", {"id": "myhook", "phx-hook": "MyHook"}, "world")
-      DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref", toEl)
+      DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref-lock", toEl)
 
       view.undoRefs(1)
 
+      expect(el.querySelector("#myhook").outerHTML).toBe("<span id=\"myhook\" phx-hook=\"MyHook\" data-phx-ref-src=\"container\" data-phx-ref-lock=\"2\" data-phx-ref-loading=\"1\">Hello</span>")
+      view.undoRefs(2)
       expect(el.querySelector("#myhook").outerHTML).toBe("<span id=\"myhook\" phx-hook=\"MyHook\">world</span>")
       expect(beforeUpdate).toBe(true)
       expect(updated).toBe(true)

@@ -11,27 +11,46 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     """
   end
 
-  def render(%{invalid_ids: true} = assigns) do
+  def render(%{no_id: true} = assigns) do
     ~H"""
     <div id="users" phx-update="stream">
-      <div :for={{id, _user} <- @streams.users} id={"prefixed-#{id}"} />
+      <div only-child>Empty!</div>
+      <div :for={{id, _user} <- @streams.users} id={id} />
     </div>
+
+    <style>
+      [only-child] {
+        display: none;
+      }
+      [only-child]:only-child {
+        display: block;
+      }
+    </style>
     """
   end
 
-  def render(%{invalid_item: true} = assigns) do
+  def render(%{extra_item_with_id: true} = assigns) do
     ~H"""
     <div id="users" phx-update="stream">
-      <div :for={{id, _user} <- @streams.users} id={id} />
-      <div id="another-item"></div>
+      <div :for={{id, user} <- @streams.users} id={id}><%= user.name %></div>
+      <div id="users-empty" only-child>Empty!</div>
     </div>
+
+    <style>
+      [only-child] {
+        display: none;
+      }
+      [only-child]:only-child {
+        display: block;
+      }
+    </style>
     """
   end
 
   def render(assigns) do
     ~H"""
     <div id="users" phx-update="stream">
-      <div :for={{id, user} <- @streams.users} id={id}>
+      <div :for={{id, user} <- @streams.users} id={id} data-count={@count}>
         <%= user.name %>
         <button phx-click="delete" phx-value-id={id}>delete</button>
         <button phx-click="update" phx-value-id={id}>update</button>
@@ -40,10 +59,11 @@ defmodule Phoenix.LiveViewTest.StreamLive do
         <button phx-click="move" phx-value-id={id} phx-value-name="moved" phx-value-at="1">
           move
         </button>
+        <button phx-click={Phoenix.LiveView.JS.hide(to: "##{id}")}>JS Hide</button>
       </div>
     </div>
     <div id="admins" phx-update="stream">
-      <div :for={{id, user} <- @streams.admins} id={id}>
+      <div :for={{id, user} <- @streams.admins} id={id} data-count={@count}>
         <%= user.name %>
         <button phx-click="admin-delete" phx-value-id={id}>delete</button>
         <button phx-click="admin-update" phx-value-id={id}>update</button>
@@ -68,12 +88,13 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     %{id: 3, name: "last_user"}
   ]
 
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
     {:ok,
      socket
      |> assign(:invalid_consume, false)
-     |> assign(:invalid_ids, false)
-     |> assign(:invalid_item, false)
+     |> assign(:no_id, false)
+     |> assign(:extra_item_with_id, Map.has_key?(params, "empty_item"))
+     |> assign(:count, 0)
      |> stream(:users, @users)
      |> stream(:admins, [user(1, "chris-admin"), user(2, "callan-admin")])}
   end
@@ -113,12 +134,14 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   end
 
   def handle_event("reset-users", _, socket) do
-    {:noreply, stream(socket, :users, [], reset: true)}
+    {:noreply, socket |> update(:count, &(&1 + 1)) |> stream(:users, [], reset: true)}
   end
 
   def handle_event("reset-users-reorder", %{}, socket) do
     {:noreply,
-     stream(socket, :users, [user(3, "peter"), user(1, "chris"), user(4, "mona")], reset: true)}
+     socket
+     |> update(:count, &(&1 + 1))
+     |> stream(:users, [user(3, "peter"), user(1, "chris"), user(4, "mona")], reset: true)}
   end
 
   def handle_event("stream-users", _, socket) do
@@ -157,12 +180,12 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     {:noreply, assign(socket, :invalid_consume, true)}
   end
 
-  def handle_event("stream-invalid-ids", _, socket) do
-    {:noreply, assign(socket, :invalid_ids, true) |> stream(:users, @users)}
+  def handle_event("stream-no-id", _, socket) do
+    {:noreply, assign(socket, :no_id, true) |> stream(:users, @users)}
   end
 
-  def handle_event("stream-invalid-item", _, socket) do
-    {:noreply, assign(socket, :invalid_item, true) |> stream(:users, @users)}
+  def handle_event("stream-extra-with-id", _, socket) do
+    {:noreply, assign(socket, :extra_item_with_id, true) |> stream(:users, @users)}
   end
 
   def handle_call({:run, func}, _, socket), do: func.(socket)

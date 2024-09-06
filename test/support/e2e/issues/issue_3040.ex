@@ -31,7 +31,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3040Live do
       <%= style() %>
     </style>
 
-    <.link patch={"/issues/3040?modal=true"}>Add new</.link>
+    <.link patch="/issues/3040?modal=true">Add new</.link>
 
     <.modal :if={@modal_open} id="my-modal" show on_cancel={JS.patch("/issues/3040")}>
       <.form for={%{}} phx-submit="submit">

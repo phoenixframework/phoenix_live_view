@@ -1,5 +1,5 @@
-const { test, expect } = require("@playwright/test");
-const { syncLV } = require("../utils");
+const { test, expect } = require("../test-fixtures");
+const { syncLV, evalLV } = require("../utils");
 
 const usersInDom = async (page, parent) => {
   return await page.locator(`#${parent} > *`)
@@ -158,6 +158,32 @@ test("stream reset properly reorders items", async ({ page }) => {
     { id: "users-1", text: "chris" },
     { id: "users-4", text: "mona" }
   ]);
+});
+
+test("stream reset updates attributes", async ({ page }) => {
+  await page.goto("/stream");
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-1", text: "chris" },
+    { id: "users-2", text: "callan" }
+  ]);
+
+  await expect(await page.locator("#users-1").getAttribute("data-count")).toEqual("0");
+  await expect(await page.locator("#users-2").getAttribute("data-count")).toEqual("0");
+
+  await page.getByRole("button", { name: "Reorder" }).click();
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-3", text: "peter" },
+    { id: "users-1", text: "chris" },
+    { id: "users-4", text: "mona" }
+  ]);
+
+  await expect(await page.locator("#users-1").getAttribute("data-count")).toEqual("1");
+  await expect(await page.locator("#users-3").getAttribute("data-count")).toEqual("1");
+  await expect(await page.locator("#users-4").getAttribute("data-count")).toEqual("1");
 });
 
 test.describe("Issue #2656", () => {
@@ -768,4 +794,48 @@ test("issue #3129 - streams asynchronously assigned and rendered inside a compre
     { id: "items-c", text: "C" },
     { id: "items-d", text: "D" }
   ]);
+});
+
+test("issue #3260 - supports non-stream items with id in stream container", async ({ page }) => {
+  await page.goto("/stream?empty_item");
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-1", text: "chris" },
+    { id: "users-2", text: "callan" },
+    { id: "users-empty", text: "Empty!" }
+  ]);
+  
+  await expect(page.getByText("Empty")).not.toBeVisible();
+  await evalLV(page, `socket.view.handle_event("reset-users", %{}, socket)`);
+  await expect(page.getByText("Empty")).toBeVisible();
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-empty", text: "Empty!" }
+  ]);
+
+  await evalLV(page, `socket.view.handle_event("append-users", %{}, socket)`);
+  await expect(page.getByText("Empty")).not.toBeVisible();
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-empty", text: "Empty!" },
+    { id: "users-4", text: "foo" },
+    { id: "users-3", text: "last_user" }
+  ]);
+});
+
+test("JS commands are applied when re-joining", async ({ page }) => {
+  await page.goto("/stream");
+  await syncLV(page);
+
+  await expect(await usersInDom(page, "users")).toEqual([
+    { id: "users-1", text: "chris" },
+    { id: "users-2", text: "callan" }
+  ]);
+  await expect(page.locator("#users-1")).toBeVisible();
+  await page.locator("#users-1").getByRole("button", { name: "JS Hide" }).click();
+  await expect(page.locator("#users-1")).not.toBeVisible();
+  await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+  // not reconnect
+  await page.evaluate(() => window.liveSocket.connect());
+  await syncLV(page);
+  // should still be hidden
+  await expect(page.locator("#users-1")).not.toBeVisible();
 });

@@ -1,4 +1,4 @@
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../test-fixtures");
 const { syncLV } = require("../utils");
 
 let webSocketEvents = [];
@@ -24,7 +24,7 @@ test("can navigate between LiveViews in the same live session over websocket", a
   await expect(networkEvents).toEqual([
     { method: "GET", url: "http://localhost:4004/navigation/a" },
     { method: "GET", url: "http://localhost:4004/assets/phoenix/phoenix.min.js" },
-    { method: "GET", url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.js" },
+    { method: "GET", url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js" },
   ]);
 
   await expect(webSocketEvents).toEqual([
@@ -211,4 +211,19 @@ test("scrolls hash el into view", async ({ page }) => {
   await expect(scrollTop).not.toBe(0);
   await expect(scrollTop).toBeGreaterThanOrEqual(offset - 500);
   await expect(scrollTop).toBeLessThanOrEqual(offset + 500);
+});
+
+test("navigating all the way back works without remounting (only patching)", async ({ page }) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+  networkEvents = [];
+  await page.getByRole("link", { name: "Patch this LiveView" }).click();
+  await syncLV(page);
+  await page.goBack();
+  await syncLV(page);
+  await expect(networkEvents).toEqual([]);
+  // we only expect patch navigation
+  await expect(webSocketEvents.filter(e => e.payload.indexOf("phx_leave") !== -1)).toHaveLength(0);
+  // we patched 2 times
+  await expect(webSocketEvents.filter(e => e.payload.indexOf("live_patch") !== -1)).toHaveLength(2);
 });

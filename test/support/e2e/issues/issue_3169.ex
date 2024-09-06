@@ -22,8 +22,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.Components do
 
   def test(assigns) do
     ~H"""
-    This is a test!
-    <%= @var %>
+    This is a test! <%= @var %>
     """
   end
 end
@@ -35,8 +34,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.FormColumn do
   def render(assigns) do
     ~H"""
     <div>
-      FormColumn (c3)
-      <input type="text" value={@form[:name].value} />
+      FormColumn (c3) <input type="text" value={@form[:name].value} />
       <.input field={@form[:name]} />
       <.test var="foo" />
     </div>
@@ -68,7 +66,6 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.FormCore do
     """
   end
 end
-
 
 defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.FormComponent do
   use Phoenix.LiveComponent
@@ -107,7 +104,6 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.FormComponent do
   end
 end
 
-
 defmodule Phoenix.LiveViewTest.E2E.Issue3169Live do
   use Phoenix.LiveView, layout: {__MODULE__, :live}
 
@@ -118,11 +114,10 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live do
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
-    <script src="/assets/phoenix_live_view/phoenix_live_view.js">
-    </script>
-    <script>
+    <script type="module">
+      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: {_csrf_token: csrfToken},
       })
       liveSocket.connect()
@@ -133,8 +128,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live do
 
   def render(assigns) do
     ~H"""
-    HomeLive
-    <.live_component module={FormComponent} id="form_view" selected={@selected}/>
+    HomeLive <.live_component module={FormComponent} id="form_view" selected={@selected} />
     <button id="select-a" phx-click="select" phx-value-name="a">Select A</button>
     <button id="select-b" phx-click="select" phx-value-name="b">Select B</button>
     <button id="select-z" phx-click="select" phx-value-name="z">Select Z</button>

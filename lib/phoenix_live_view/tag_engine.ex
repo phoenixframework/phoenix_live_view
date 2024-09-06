@@ -123,34 +123,30 @@ defmodule Phoenix.LiveView.TagEngine do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
-    __inner_block__(do_block, name)
-  end
+    case do_block do
+      [{:->, meta, _} | _] ->
+        inner_fun = {:fn, meta, do_block}
 
-  @doc false
-  # TODO: Make me private once Phoenix.LiveView.Helpers are removed
-  def __inner_block__([{:->, meta, _} | _] = do_block, key) do
-    inner_fun = {:fn, meta, do_block}
+        quote do
+          fn parent_changed, arg ->
+            var!(assigns) =
+              unquote(__MODULE__).__assigns__(var!(assigns), unquote(name), parent_changed)
 
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
+            _ = var!(assigns)
+            unquote(inner_fun).(arg)
+          end
+        end
 
-        _ = var!(assigns)
-        unquote(inner_fun).(arg)
-      end
-    end
-  end
+      _ ->
+        quote do
+          fn parent_changed, arg ->
+            var!(assigns) =
+              unquote(__MODULE__).__assigns__(var!(assigns), unquote(name), parent_changed)
 
-  def __inner_block__(do_block, key) do
-    quote do
-      fn parent_changed, arg ->
-        var!(assigns) =
-          unquote(__MODULE__).__assigns__(var!(assigns), unquote(key), parent_changed)
-
-        _ = var!(assigns)
-        unquote(do_block)
-      end
+            _ = var!(assigns)
+            unquote(do_block)
+          end
+        end
     end
   end
 
@@ -719,6 +715,7 @@ defmodule Phoenix.LiveView.TagEngine do
     suffix = if closing == :void, do: ">", else: "></#{name}>"
     attrs = remove_phx_no_break(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
+    validate_tag_attrs!(attrs, tag_meta, state)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
@@ -740,6 +737,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_token({:tag, name, attrs, tag_meta} = token, state) do
     validate_phx_attrs!(attrs, tag_meta, state)
+    validate_tag_attrs!(attrs, tag_meta, state)
     attrs = remove_phx_no_break(attrs)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
@@ -1219,10 +1217,47 @@ defmodule Phoenix.LiveView.TagEngine do
     List.keydelete(attrs, "phx-no-format", 0)
   end
 
+  defp validate_tag_attrs!(attrs, %{tag_name: "input"}, state) do
+    # warn if using name="id" on an input
+    case Enum.find(attrs, &match?({"name", {:string, "id", _}, _}, &1)) do
+      {_name, _value, attr_meta} ->
+        # TODO: Remove conditional once we require Elixir v1.14+
+        meta =
+          if Version.match?(System.version(), ">= 1.14.0") do
+            [
+              line: attr_meta.line,
+              column: attr_meta.column,
+              file: state.file,
+              module: state.caller.module,
+              function: state.caller.function
+            ]
+          else
+            Macro.Env.stacktrace(%{state.caller | line: attr_meta.line})
+          end
+
+        IO.warn(
+          """
+          Setting the "name" attribute to "id" on an input tag overrides the ID of the corresponding form element.
+          This leads to unexpected behavior, especially when using LiveView, and is not recommended.
+
+          You should use a different value for the "name" attribute, e.g. "_id" and remap the value in the
+          corresponding handle_event/3 callback or controller.
+          """,
+          meta
+        )
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp validate_tag_attrs!(_attrs, _meta, _state), do: :ok
+
   # Check if `phx-update` or `phx-hook` is present in attrs and raises in case
   # there is no ID attribute set.
-  defp validate_phx_attrs!(attrs, meta, state),
-    do: validate_phx_attrs!(attrs, meta, state, nil, false)
+  defp validate_phx_attrs!(attrs, meta, state) do
+    validate_phx_attrs!(attrs, meta, state, nil, false)
+  end
 
   defp validate_phx_attrs!([], meta, state, attr, false)
        when attr in ["phx-update", "phx-hook"] do

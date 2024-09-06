@@ -767,7 +767,7 @@ defmodule Phoenix.Component do
   ```heex
   <.table id="my-table" rows={@users}>
     <:col :for={header <- @headers} :let={user}>
-      <td><%= user[:header] %></td>
+      <td><%= user[header] %></td>
     </:col>
   <table>
   ```
@@ -788,7 +788,8 @@ defmodule Phoenix.Component do
   for more information.
   '''
   @doc type: :macro
-  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+  defmacro sigil_H({:<<>>, meta, [expr]}, modifiers)
+           when modifiers == [] or modifiers == ~c"noformat" do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
@@ -908,8 +909,8 @@ defmodule Phoenix.Component do
 
   ## Containers
 
-  When a `LiveView` is rendered, its contents are wrapped in a container. By default,
-  the container is a `div` tag with a handful of `LiveView` specific attributes.
+  When a LiveView is rendered, its contents are wrapped in a container. By default,
+  the container is a `div` tag with a handful of LiveView-specific attributes.
 
   The container can be customized in different ways:
 
@@ -1019,7 +1020,7 @@ defmodule Phoenix.Component do
 
     ~H"""
     <%= for entry <- @entries do %><%= call_inner_block!(entry, @changed, @argument) %><% end %>
-    """
+    """noformat
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
@@ -1045,7 +1046,7 @@ defmodule Phoenix.Component do
   <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
   ```
   """
-  @doc deprecated: "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
+  @deprecated "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
   def live_flash(%_struct{} = other, _key) do
     raise ArgumentError, "live_flash/2 expects a @flash assign, got: #{inspect(other)}"
   end
@@ -1149,7 +1150,7 @@ defmodule Phoenix.Component do
   ## Sharing assigns
 
   It is possible to share assigns between the Plug pipeline and LiveView on disconnected render
-  and between LiveViews when connected.
+  and between parent-child LiveViews when connected.
 
   ### When disconnected
 
@@ -1455,6 +1456,12 @@ defmodule Phoenix.Component do
     * `:as` - the `name` prefix to be used in form inputs
     * `:id` - the `id` prefix to be used in form inputs
     * `:errors` - keyword list of errors (used by maps exclusively)
+    * `:action` - The action that was taken against the form. This value can be
+      used to distinguish between different operations such as the user typing
+      into a form for validation, or submitting a form for a database insert.
+      For example: `to_form(changeset, action: :validate)`,
+      or `to_form(changeset, action: :save)`. The provided action is passed
+      to the underlying `Phoenix.HTML.FormData` implementation options.
 
   The underlying data may accept additional options when
   converted to forms. For example, a map accepts `:errors`
@@ -1470,7 +1477,8 @@ defmodule Phoenix.Component do
   form options.
 
   Errors in a form are only displayed if the changeset's `action`
-  field is set (and it is not set to `:ignore`). Refer to
+  field is set (and it is not set to `:ignore`) and can be filtered
+  by whether the fields have been used on the client or not. Refer to
   [a note on :errors for more information](#form/1-a-note-on-errors).
   """
   def to_form(data_or_params, options \\ [])
@@ -1491,9 +1499,17 @@ defmodule Phoenix.Component do
 
     {_as, options} = Keyword.pop(options, :as)
     {errors, options} = Keyword.pop(options, :errors, data.errors)
+    {action, options} = Keyword.pop(options, :action)
     options = Keyword.merge(data.options, options)
 
-    %{data | errors: errors, id: id, name: name, options: options}
+    %Phoenix.HTML.Form{
+      data
+      | action: action,
+        errors: errors,
+        id: id,
+        name: name,
+        options: options
+    }
   end
 
   def to_form(data, options) do
@@ -1522,13 +1538,69 @@ defmodule Phoenix.Component do
   end
 
   @doc """
+  Returns the errors for the form field if the field was used by the client.
+
+  Used inputs are only those inputs that have been focused, interacted with, or
+  submitted by the client. For LiveView, this is used to filter errors from the
+  `Phoenix.HTML.FormData` implementation to avoid showing "field can't be blank"
+  in scenarios where the client hasn't yet interacted with specific fields.
+
+  Used inputs are tracked internally by the client sending a sibling key
+  derived from each input name, which indicates the inputs that remain  unused
+  on the client. For example, a form with email and title fields where only the
+  title has been modifed so far on the client, would send the following payload:
+
+      %{
+        "title" => "new title",
+        "email" => "",
+        "_unused_email" => ""
+      }
+
+  The `_unused_email` key indicates that the email field has not been used by the
+  client, which is used to filter errors from the UI.
+
+  ## Examples
+
+  For example, imagine in your template you render a title and email input.
+  On initial load the end-user begins typing the title field. The client will send
+  the entire form payload to the server with the typed title and an empty email.
+
+  The `Phoenix.HTML.FormData` implementation will consider an empty email in
+  this scenario as invalid, but the user shouldn't see the error because they
+  haven't yet used the email input. To handle this, `used_input?/1` can be used to
+  filter errors from the client by referencing param metadata to distinguish between
+  used and unused input fields. For non-LiveViews, all inputs are considered used.
+
+  ```heex
+  <input type="text" name={@form[:title].name} value={@form[:title].value} />
+
+  <div :if={used_input?(@form[:title])}>
+    <p :for={error <- @form[:title].errors}><%= error %></p>
+  </div>
+
+  <input type="text" name={@form[:email].name} value={@form[:email].value} />
+
+  <div :if={used_input?(@form[:email])}>
+    <p :for={error <- @form[:email].errors}><%= error %></p>
+  </div>
+  ```
+  """
+  def used_input?(%Phoenix.HTML.FormField{field: field, form: form}) do
+    cond do
+      not is_map_key(form.params, "#{field}") -> false
+      is_map_key(form.params, "_unused_#{field}") -> false
+      true -> true
+    end
+  end
+
+  @doc """
   Embeds external template files into the module as function components.
 
   ## Options
 
     * `:root` - The root directory to embed files. Defaults to the current
       module's directory (`__DIR__`)
-    * `:suffix` - The string value to append to embedded function names. By
+    * `:suffix` - A string value to append to embedded function names. By
       default, function names will be the name of the template file excluding
       the format and engine.
 
@@ -1883,6 +1955,13 @@ defmodule Phoenix.Component do
         type
       end
 
+    opts =
+      if Macro.quoted_literal?(opts) do
+        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
+      else
+        opts
+      end
+
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
         __MODULE__,
@@ -1920,8 +1999,8 @@ defmodule Phoenix.Component do
   @doc """
   A function component for rendering `Phoenix.LiveComponent` within a parent LiveView.
 
-  While `LiveView`s can be nested, each LiveView starts its own process. A `LiveComponent` provides
-  similar functionality to `LiveView`, except they run in the same process as the `LiveView`,
+  While LiveViews can be nested, each LiveView starts its own process. A LiveComponent provides
+  similar functionality to LiveView, except they run in the same process as the LiveView,
   with its own encapsulated state. That's why they are called stateful components.
 
   ## Attributes
@@ -2000,7 +2079,7 @@ defmodule Phoenix.Component do
 
   def live_title(assigns) do
     ~H"""
-    <title data-prefix={@prefix} data-suffix={@suffix}><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
+    <title data-prefix={@prefix} data-suffix={@suffix} phx-no-format><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
     """
   end
 
@@ -2107,20 +2186,28 @@ defmodule Phoenix.Component do
   insert was attempted, and the presence of that action will cause errors to be
   displayed. The same is true for Repo.update/delete.
 
-  If you want to show errors manually you can also set the action yourself,
-  either directly on the `Ecto.Changeset` struct field or by using
+  Error visibility is handled by providing the action to `to_form/2`, which will
+  set the underlying changeset action. You can also set the action manually by
+  directly updating on the `Ecto.Changeset` struct field, or by using
   `Ecto.Changeset.apply_action/2`. Since the action can be arbitrary, you can
   set it to `:validate` or anything else to avoid giving the impression that a
   database operation has actually been attempted.
 
+  ### Displaying errors on used and unused input fields
+
+  Used inputs are only those inputs that have been focused, interacted with, or
+  submitted by the client. In most cases, a user shouldn't receive error feedback
+  for forms they haven't yet interacted with, until they submit the form. Filtering
+  the errors based on used input fields can be done with `used_input?/1`.
+
   ## Example: outside LiveView (regular HTTP requests)
 
   The `form` component can still be used to submit forms outside of LiveView.
-  In such cases, the `action` attribute MUST be given. Without said attribute,
-  the `form` method and csrf token are discarded.
+  In such cases, the standard HTML `action` attribute MUST be given.
+  Without said attribute, the `form` method and csrf token are discarded.
 
   ```heex
-  <.form :let={f} for={@changeset} action={Routes.comment_path(:create, @comment)}>
+  <.form :let={f} for={@changeset} action={~p"/comments/#{@comment}"}>
     <.input field={f[:body]} />
   </.form>
   ```
@@ -2263,10 +2350,10 @@ defmodule Phoenix.Component do
     ~H"""
     <form {@attrs}>
       <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
-        <input name="_method" type="hidden" hidden value={@hidden_method}>
+        <input name="_method" type="hidden" hidden value={@hidden_method} />
       <% end %>
       <%= if @csrf_token do %>
-        <input name="_csrf_token" type="hidden" hidden value={@csrf_token}>
+        <input name="_csrf_token" type="hidden" hidden value={@csrf_token} />
       <% end %>
       <%= render_slot(@inner_block, @form) %>
     </form>
@@ -2286,10 +2373,10 @@ defmodule Phoenix.Component do
 
   ```heex
   <.form
-    :let={f}
+    for={@form}
     phx-change="change_name"
   >
-    <.inputs_for :let={f_nested} field={f[:nested]}>
+    <.inputs_for :let={f_nested} field={@form[:nested]}>
       <.input type="text" field={f_nested[:name]} />
     </.inputs_for>
   </.form>
@@ -2342,6 +2429,7 @@ defmodule Phoenix.Component do
     <.input type="text" field={ef[:email]} placeholder="email" />
     <.input type="text" field={ef[:name]} placeholder="name" />
     <button
+      type="button"
       name="mailing_list[emails_drop][]"
       value={ef.index}
       phx-click={JS.dispatch("change")}
@@ -2512,9 +2600,11 @@ defmodule Phoenix.Component do
   @doc """
   Generates a link to a given route.
 
-  To navigate across pages, using traditional browser navigation, use
-  the `href` attribute. To patch the current LiveView or navigate
-  across LiveViews, use `patch` and `navigate` respectively.
+  It is typically used with one of the three attributes:
+
+    * `patch` - on click, it patches the current LiveView with the given path
+    * `navigate` - on click, it navigates to a new LiveView at the given path
+    * `href` - on click, it performs traditional browser navigation (as any `<a>` tag)
 
   [INSERT LVATTRDOCS]
 
@@ -2569,6 +2659,11 @@ defmodule Phoenix.Component do
   a custom javascript implementation:
 
   ```javascript
+  // Compared to a javascript window.confirm, the custom dialog does not block
+  // javascript execution. Therefore to make this work as expected we store
+  // the successful confirmation as an attribute and re-trigger the click event.
+  // On the second click, the `data-confirm-resolved` attribute is set and we proceed.
+  const RESOLVED_ATTRIBUTE = "data-confirm-resolved";
   // listen on document.body, so it's executed before the default of
   // phoenix_html, which is listening on the window object
   document.body.addEventListener('phoenix.link.click', function (e) {
@@ -2576,11 +2671,28 @@ defmodule Phoenix.Component do
     e.stopPropagation();
     // Introduce alternative implementation
     var message = e.target.getAttribute("data-confirm");
-    if(!message){ return true; }
+    if(!message){ return; }
+
+    // Confirm is resolved execute the click event
+    if (e.target?.hasAttribute(RESOLVED_ATTRIBUTE)) {
+      e.target.removeAttribute(RESOLVED_ATTRIBUTE);
+      return;
+    }
+
+    // Confirm is needed, preventDefault and show your modal
+    e.preventDefault();
+    e.target?.setAttribute(RESOLVED_ATTRIBUTE, "");
+
     vex.dialog.confirm({
       message: message,
       callback: function (value) {
-        if (value == false) { e.preventDefault(); }
+        if (value == true) {
+          // Customer confirmed, re-trigger the click event.
+          e.target?.click();
+        } else {
+          // Customer canceled
+          e.target?.removeAttribute(RESOLVED_ATTRIBUTE);
+        }
       }
     })
   }, false);
@@ -2609,10 +2721,13 @@ defmodule Phoenix.Component do
   @doc type: :component
   attr.(:navigate, :string,
     doc: """
-    Navigates from a LiveView to a new LiveView.
-    The browser page is kept, but a new LiveView process is mounted and its content on the page
-    is reloaded. It is only possible to navigate between LiveViews declared under the same router
-    `Phoenix.LiveView.Router.live_session/3`. Otherwise, a full browser redirect is used.
+    Navigates to a LiveView.
+    When redirecting across LiveViews, the browser page is kept, but a new LiveView process
+    is mounted and its contents is loaded on the page. It is only possible to navigate
+    between LiveViews declared under the same router
+    [`live_session`](`Phoenix.LiveView.Router.live_session/3`).
+    When used outside of a LiveView or across live sessions, it behaves like a regular
+    browser redirect.
     """
   )
 
@@ -2678,6 +2793,7 @@ defmodule Phoenix.Component do
       href={@navigate}
       data-phx-link="redirect"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
+      phx-no-format
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
@@ -2689,6 +2805,7 @@ defmodule Phoenix.Component do
       href={@patch}
       data-phx-link="patch"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
+      phx-no-format
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
@@ -2704,6 +2821,7 @@ defmodule Phoenix.Component do
       data-method={if @method != "get", do: @method}
       data-csrf={if @method != "get", do: csrf_token(@csrf_token, @href)}
       data-to={if @method != "get", do: @href}
+      phx-no-format
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
@@ -2768,15 +2886,15 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.dynamic_tag name="input" type="text"/>
+  <.dynamic_tag tag_name="input" name="my-input" type="text"/>
   ```
 
   ```html
-  <input type="text"/>
+  <input name="my-input" type="text"/>
   ```
 
   ```heex
-  <.dynamic_tag name="p">content</.dynamic_tag>
+  <.dynamic_tag tag_name="p">content</.dynamic_tag>
   ```
 
   ```html
@@ -2784,7 +2902,13 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
-  attr.(:name, :string, required: true, doc: "The name of the tag, such as `div`.")
+  attr.(:tag_name, :string, required: true, doc: "The name of the tag, such as `div`.")
+
+  attr.(:name, :string,
+    required: false,
+    doc:
+      "Deprecated: use tag_name instead. If tag_name is used, passed to the tag. Otherwise the name of the tag, such as `div`."
+  )
 
   attr.(:rest, :global,
     doc: """
@@ -2794,8 +2918,30 @@ defmodule Phoenix.Component do
 
   slot.(:inner_block, [])
 
-  def dynamic_tag(%{name: name, rest: rest} = assigns) do
-    tag_name = to_string(name)
+  def dynamic_tag(%{rest: rest} = assigns) do
+    {tag_name, rest} =
+      case assigns do
+        %{tag_name: tag_name, name: name} ->
+          {tag_name, Map.put(rest, :name, name)}
+
+        %{tag_name: tag_name} ->
+          {tag_name, rest}
+
+        %{name: name} ->
+          IO.warn("""
+          Passing the tag name to `Phoenix.Component.dynamic_tag/1` using the `name` attribute is deprecated.
+
+          Instead of:
+
+              <.dynamic_tag name="p" ...>
+
+          use `tag_name` instead:
+
+              <.dynamic_tag tag_name="p" ...>
+          """)
+
+          {name, Map.delete(rest, :name)}
+      end
 
     tag =
       case Phoenix.HTML.html_escape(tag_name) do
@@ -2814,7 +2960,8 @@ defmodule Phoenix.Component do
 
     if assigns.inner_block != [] do
       ~H"""
-      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe, [?<, ?/, @tag, ?>]} %>
+      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe,
+       [?<, ?/, @tag, ?>]} %>
       """
     else
       ~H"""
@@ -2827,6 +2974,9 @@ defmodule Phoenix.Component do
   Builds a file input tag for a LiveView upload.
 
   [INSERT LVATTRDOCS]
+
+  Note the `id` attribute cannot be overwritten, but you can create a label with a `for` attribute
+  pointing to the UploadConfig `ref`.
 
   ## Drag and Drop
 
@@ -2884,7 +3034,9 @@ defmodule Phoenix.Component do
       data-phx-upload-ref={@upload.ref}
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
-      data-phx-preflighted-refs={join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))}
+      data-phx-preflighted-refs={
+        join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))
+      }
       data-phx-auto-upload={@upload.auto_upload?}
       {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
     />
@@ -2941,7 +3093,9 @@ defmodule Phoenix.Component do
       data-phx-entry-ref={@entry.ref}
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
-      {@rest} />
+      phx-no-format
+      {@rest}
+    />
     """
   end
 
@@ -2981,7 +3135,7 @@ defmodule Phoenix.Component do
         render_slot(@inner_block, item)
       end
     %><% end %>
-    """
+    """noformat
   end
 
   @doc """

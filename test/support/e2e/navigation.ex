@@ -4,11 +4,12 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
   def render("live.html", assigns) do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
-    <script src="/assets/phoenix/phoenix.min.js"></script>
-    <script src="/assets/phoenix_live_view/phoenix_live_view.js"></script>
-    <script>
+    <script src="/assets/phoenix/phoenix.min.js">
+    </script>
+    <script type="module">
+      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
       window.liveSocket = liveSocket
     </script>
@@ -128,7 +129,10 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
     ~H"""
     <h1>This is page B</h1>
 
-    <a href="#items-item-42" style="margin-bottom: 8px; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;">
+    <a
+      href="#items-item-42"
+      style="margin-bottom: 8px; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;"
+    >
       Go to 42.
     </a>
 

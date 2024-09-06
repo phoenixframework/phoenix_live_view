@@ -1,187 +1,313 @@
-const { test, expect } = require("@playwright/test");
+const { test, expect } = require("../test-fixtures");
 const { syncLV, attributeMutations } = require("../utils");
 
-// see also https://github.com/phoenixframework/phoenix_live_view/issues/1759
-// https://github.com/phoenixframework/phoenix_live_view/issues/2993
-test.describe("restores disabled and readonly states", () => {
-  test("readonly state is restored after submits", async ({ page }) => {
-    await page.goto("/form");
-    await syncLV(page);
-    await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
-    let changesA = attributeMutations(page, "input[name=a]");
-    let changesB = attributeMutations(page, "input[name=b]");
-    // can submit multiple times and readonly input stays readonly
-    await page.locator("#submit").click();
-    await syncLV(page);
-    // a is readonly and should stay readonly
-    await expect(await changesA()).toEqual(expect.arrayContaining([
-      { attr: "data-phx-readonly", oldValue: null, newValue: "true" },
-      { attr: "readonly", oldValue: "", newValue: "" },
-      { attr: "data-phx-readonly", oldValue: "true", newValue: null },
-      { attr: "readonly", oldValue: "", newValue: "" },
-    ]));
-    // b is not readonly, but LV will set it to readonly while submitting
-    await expect(await changesB()).toEqual(expect.arrayContaining([
-      { attr: "data-phx-readonly", oldValue: null, newValue: "false" },
-      { attr: "readonly", oldValue: null, newValue: "" },
-      { attr: "data-phx-readonly", oldValue: "false", newValue: null },
-      { attr: "readonly", oldValue: "", newValue: null },
-    ]));
-    await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
-    await page.locator("#submit").click();
-    await syncLV(page);
-    await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
-  });
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-  test("button disabled state is restored after submits", async ({ page }) => {
-    await page.goto("/form");
-    await syncLV(page);
-    let changes = attributeMutations(page, "#submit");
-    await page.locator("#submit").click();
-    await syncLV(page);
-    // submit button is disabled while submitting, but then restored
-    await expect(await changes()).toEqual(expect.arrayContaining([
-      { attr: "data-phx-disabled", oldValue: null, newValue: "false" },
-      { attr: "disabled", oldValue: null, newValue: "" },
-      { attr: "class", oldValue: null, newValue: "phx-submit-loading" },
-      { attr: "data-phx-disabled", oldValue: "false", newValue: null },
-      { attr: "disabled", oldValue: "", newValue: null },
-      { attr: "class", oldValue: "phx-submit-loading", newValue: null },
-    ]));
-  });
-
-  test("non-form button (phx-disable-with) disabled state is restored after click", async ({ page }) => {
-    await page.goto("/form");
-    await syncLV(page);
-    let changes = attributeMutations(page, "button[type=button]");
-    await page.locator("button[type=button]").click();
-    await syncLV(page);
-    // submit button is disabled while submitting, but then restored
-    await expect(await changes()).toEqual(expect.arrayContaining([
-      { attr: "data-phx-disabled", oldValue: null, newValue: "false" },
-      { attr: "disabled", oldValue: null, newValue: "" },
-      { attr: "class", oldValue: null, newValue: "phx-click-loading" },
-      { attr: "data-phx-disabled", oldValue: "false", newValue: null },
-      { attr: "disabled", oldValue: "", newValue: null },
-      { attr: "class", oldValue: "phx-click-loading", newValue: null },
-    ]));
-  });
-});
-
-test.describe("form recovery", () => {
-  test("form state is recovered when socket reconnects", async ({ page }) => {
-    let webSocketEvents = [];
-    page.on("websocket", ws => {
-      ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
-      ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
-      ws.on("close", () => webSocketEvents.push({ type: "close" }));
+for (let path of ["/form/nested", "/form"]) {
+  // see also https://github.com/phoenixframework/phoenix_live_view/issues/1759
+  // https://github.com/phoenixframework/phoenix_live_view/issues/2993
+  test.describe("restores disabled and readonly states", () => {
+    test(`${path} - readonly state is restored after submits`, async ({ page }) => {
+      await page.goto(path);
+      await syncLV(page);
+      await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
+      let changesA = attributeMutations(page, "input[name=a]");
+      let changesB = attributeMutations(page, "input[name=b]");
+      // can submit multiple times and readonly input stays readonly
+      await page.locator("#submit").click();
+      await syncLV(page);
+      // a is readonly and should stay readonly
+      await expect(await changesA()).toEqual(expect.arrayContaining([
+        { attr: "data-phx-readonly", oldValue: null, newValue: "true" },
+        { attr: "readonly", oldValue: "", newValue: "" },
+        { attr: "data-phx-readonly", oldValue: "true", newValue: null },
+        { attr: "readonly", oldValue: "", newValue: "" },
+      ]));
+      // b is not readonly, but LV will set it to readonly while submitting
+      await expect(await changesB()).toEqual(expect.arrayContaining([
+        { attr: "data-phx-readonly", oldValue: null, newValue: "false" },
+        { attr: "readonly", oldValue: null, newValue: "" },
+        { attr: "data-phx-readonly", oldValue: "false", newValue: null },
+        { attr: "readonly", oldValue: "", newValue: null },
+      ]));
+      await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
+      await page.locator("#submit").click();
+      await syncLV(page);
+      await expect(page.locator("input[name=a]")).toHaveAttribute("readonly");
     });
 
-    await page.goto("/form");
-    await syncLV(page);
-
-    await page.locator("input[name=b]").fill("test");
-    await syncLV(page);
-
-    await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-    await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-    await expect(webSocketEvents).toEqual(expect.arrayContaining([
-      { type: "sent", payload: expect.stringContaining("phx_join") },
-      { type: "received", payload: expect.stringContaining("phx_reply") },
-      { type: "close" },
-    ]))
-
-    webSocketEvents = [];
-
-    await page.evaluate(() => window.liveSocket.connect());
-    await syncLV(page);
-    await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-    await expect(page.locator("input[name=b]")).toHaveValue("test");
-
-    await expect(webSocketEvents).toEqual(expect.arrayContaining([
-      { type: "sent", payload: expect.stringContaining("phx_join") },
-      { type: "received", payload: expect.stringContaining("phx_reply") },
-      { type: "sent", payload: expect.stringMatching(/event.*a=foo&b=test/) },
-    ]))
-  });
-
-  test("does not recover when form is missing id", async ({ page }) => {
-    await page.goto("/form?no-id");
-    await syncLV(page);
-
-    await page.locator("input[name=b]").fill("test");
-    await syncLV(page);
-
-    await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-    await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-    await page.evaluate(() => window.liveSocket.connect());
-    await syncLV(page);
-    await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-    await expect(page.locator("input[name=b]")).toHaveValue("bar");
-  });
-
-  test("does not recover when form is missing phx-change", async ({ page }) => {
-    await page.goto("/form?no-change-event");
-    await syncLV(page);
-
-    await page.locator("input[name=b]").fill("test");
-    await syncLV(page);
-
-    await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-    await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-    await page.evaluate(() => window.liveSocket.connect());
-    await syncLV(page);
-    await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-    await expect(page.locator("input[name=b]")).toHaveValue("bar");
-  });
-
-  test("phx-auto-recover", async ({ page }) => {
-    await page.goto("/form?phx-auto-recover=custom-recovery");
-    await syncLV(page);
-
-    await page.locator("input[name=b]").fill("test");
-    await syncLV(page);
-
-    await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
-    await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-    let webSocketEvents = [];
-    page.on("websocket", ws => {
-      ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
-      ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
-      ws.on("close", () => webSocketEvents.push({ type: "close" }));
+    test(`${path} - button disabled state is restored after submits`, async ({ page }) => {
+      await page.goto(path);
+      await syncLV(page);
+      let changes = attributeMutations(page, "#submit");
+      await page.locator("#submit").click();
+      await syncLV(page);
+      // submit button is disabled while submitting, but then restored
+      await expect(await changes()).toEqual(expect.arrayContaining([
+        { attr: "data-phx-disabled", oldValue: null, newValue: "false" },
+        { attr: "disabled", oldValue: null, newValue: "" },
+        { attr: "class", oldValue: null, newValue: "phx-submit-loading" },
+        { attr: "data-phx-disabled", oldValue: "false", newValue: null },
+        { attr: "disabled", oldValue: "", newValue: null },
+        { attr: "class", oldValue: "phx-submit-loading", newValue: null },
+      ]));
     });
 
-    await page.evaluate(() => window.liveSocket.connect());
-    await syncLV(page);
-    await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-    await expect(page.locator("input[name=b]")).toHaveValue("custom value from server");
-
-    await expect(webSocketEvents).toEqual(expect.arrayContaining([
-      { type: "sent", payload: expect.stringContaining("phx_join") },
-      { type: "received", payload: expect.stringContaining("phx_reply") },
-      { type: "sent", payload: expect.stringMatching(/event.*a=foo&b=test/) },
-    ]))
+    test(`${path} - non-form button (phx-disable-with) disabled state is restored after click`, async ({ page }) => {
+      await page.goto(path);
+      await syncLV(page);
+      let changes = attributeMutations(page, "button[type=button]");
+      await page.locator("button[type=button]").click();
+      await syncLV(page);
+      // submit button is disabled while submitting, but then restored
+      await expect(await changes()).toEqual(expect.arrayContaining([
+        { attr: "data-phx-disabled", oldValue: null, newValue: "false" },
+        { attr: "disabled", oldValue: null, newValue: "" },
+        { attr: "class", oldValue: null, newValue: "phx-click-loading" },
+        { attr: "data-phx-disabled", oldValue: "false", newValue: null },
+        { attr: "disabled", oldValue: "", newValue: null },
+        { attr: "class", oldValue: "phx-click-loading", newValue: null },
+      ]));
+    });
   });
-})
 
-test("can submit form with button that has phx-click", async ({ page }) => {
-  await page.goto("/form?phx-auto-recover=custom-recovery");
+  for (let additionalParams of ["live-component", ""]) {
+    let append = additionalParams.length ? ` ${additionalParams}` : "";
+    test.describe(`${path}${append} - form recovery`, () => {
+      test("form state is recovered when socket reconnects", async ({ page }) => {
+        let webSocketEvents = [];
+        page.on("websocket", ws => {
+          ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
+          ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
+          ws.on("close", () => webSocketEvents.push({ type: "close" }));
+        });
+
+        await page.goto(path + "?" + additionalParams);
+        await syncLV(page);
+
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
+
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+        await expect(webSocketEvents).toEqual(expect.arrayContaining([
+          { type: "sent", payload: expect.stringContaining("phx_join") },
+          { type: "received", payload: expect.stringContaining("phx_reply") },
+          { type: "close" },
+        ]))
+
+        webSocketEvents = [];
+
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+        await expect(page.locator("input[name=b]")).toHaveValue("test");
+
+        await expect(webSocketEvents).toEqual(expect.arrayContaining([
+          { type: "sent", payload: expect.stringContaining("phx_join") },
+          { type: "received", payload: expect.stringContaining("phx_reply") },
+          { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
+        ]))
+      });
+
+      test("does not recover when form is missing id", async ({ page }) => {
+        await page.goto(`${path}?no-id&${additionalParams}`);
+        await syncLV(page);
+
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
+
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+        await expect(page.locator("input[name=b]")).toHaveValue("bar");
+      });
+
+      test("does not recover when form is missing phx-change", async ({ page }) => {
+        await page.goto(`${path}?no-change-event&${additionalParams}`);
+        await syncLV(page);
+
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
+
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+        await expect(page.locator("input[name=b]")).toHaveValue("bar");
+      });
+
+      test("phx-auto-recover", async ({ page }) => {
+        await page.goto(`${path}?phx-auto-recover=custom-recovery&${additionalParams}`);
+        await syncLV(page);
+
+        await page.locator("input[name=b]").fill("test");
+        await syncLV(page);
+
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)));
+        await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+        let webSocketEvents = [];
+        page.on("websocket", ws => {
+          ws.on("framesent", event => webSocketEvents.push({ type: "sent", payload: event.payload }));
+          ws.on("framereceived", event => webSocketEvents.push({ type: "received", payload: event.payload }));
+          ws.on("close", () => webSocketEvents.push({ type: "close" }));
+        });
+
+        await page.evaluate(() => window.liveSocket.connect());
+        await syncLV(page);
+        await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+        await expect(page.locator("input[name=b]")).toHaveValue("custom value from server");
+
+        await expect(webSocketEvents).toEqual(expect.arrayContaining([
+          { type: "sent", payload: expect.stringContaining("phx_join") },
+          { type: "received", payload: expect.stringContaining("phx_reply") },
+          { type: "sent", payload: expect.stringMatching(/event.*_unused_a=&a=foo&_unused_b=&b=test/) },
+        ]))
+      });
+    })
+  }
+
+  test(`${path} - can submit form with button that has phx-click`, async ({ page }) => {
+    await page.goto(`${path}?phx-auto-recover=custom-recovery`);
+    await syncLV(page);
+
+    await expect(page.getByText("Form was submitted!")).not.toBeVisible();
+
+    await page.getByRole("button", { name: "Submit with JS" }).click();
+    await syncLV(page);
+
+    await expect(page.getByText("Form was submitted!")).toBeVisible();
+  });
+
+  test(`${path} - loading and locked states with latency`, async ({ page }) => {
+    await page.goto(`${path}?phx-change=validate`);
+    await syncLV(page);
+    await page.evaluate(() => window.liveSocket.enableLatencySim(2000));
+    await expect(page.getByText("Form was submitted!")).not.toBeVisible();
+    let testForm = page.locator("#test-form");
+    let submitBtn = page.locator("#test-form #submit");
+    await page.locator("#test-form input[name=b]").fill("test");
+    await expect(testForm).toHaveClass("myformclass phx-change-loading");
+    await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+    // form is locked on phx-change for any changed input
+    await expect(testForm).toHaveAttribute("data-phx-ref-lock");
+    await expect(testForm).toHaveAttribute("data-phx-ref-src");
+    // we need to sleep to ensure the phx-change ref arrives sufficiently before the phx-submit ref
+    // to make our assertions about the intermediate states
+    await sleep(1000)
+    await submitBtn.click();
+    // change-loading and submit-loading classes exist simultaneously
+    await expect(testForm).toHaveClass("myformclass phx-change-loading phx-submit-loading");
+    await sleep(1000)
+    // phx-change ack arrives and is removed
+    await expect(testForm).toHaveClass("myformclass phx-submit-loading");
+    await expect(submitBtn).toHaveClass("phx-submit-loading");
+    await expect(submitBtn).toHaveAttribute("data-phx-disable-with-restore", "Submit");
+    await expect(submitBtn).toHaveAttribute("data-phx-ref-loading");
+    await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+    await expect(testForm).toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).toHaveAttribute("data-phx-ref-lock");
+    // form is not locked on submit
+    await expect(testForm).not.toHaveAttribute("data-phx-ref-lock");
+    await expect(submitBtn).toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).toHaveAttribute("disabled", "");
+    await expect(submitBtn).toHaveAttribute("phx-disable-with", "Submitting");
+    await expect(page.getByText("Form was submitted!")).toBeVisible();
+    // all refs are cleaned up
+    await expect(testForm).toHaveClass("myformclass");
+    await expect(submitBtn).toHaveClass("");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-disable-with-restore");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-loading");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-lock");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-loading");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-lock");
+    await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
+    await expect(submitBtn).not.toHaveAttribute("disabled");
+    await expect(submitBtn).toHaveAttribute("phx-disable-with", "Submitting");
+    await page.evaluate(() => window.liveSocket.disableLatencySim());
+  });
+}
+
+test(`loading and locked states with latent clone`, async ({ page }) => {
+  await page.goto(`/form/stream`);
+  let formHook = page.locator("#form-stream-hook");
   await syncLV(page);
-
-  await expect(page.getByText("Form was submitted!")).not.toBeVisible();
-
-  await page.getByRole("button", { name: "Submit with JS" }).click();
-  await syncLV(page);
-
-  await expect(page.getByText("Form was submitted!")).toBeVisible();
+  await page.evaluate(() => window.liveSocket.enableLatencySim(2000));
+  await expect(formHook).toHaveText("pong");
+  let testForm = page.locator("#test-form");
+  let testInput = page.locator("#test-form input[name=myname]");
+  let submitBtn = page.locator("#test-form button");
+  // initial 3 stream items
+  await expect(page.locator("#form-stream li")).toHaveCount(3)
+  await testInput.fill("1");
+  await testInput.fill("2");
+  // form is locked on phx-change and stream remains unchanged
+  await sleep(1000)
+  await submitBtn.click();
+  await expect(testForm).toHaveClass("phx-change-loading phx-submit-loading");
+  await expect(submitBtn).toHaveText("Saving...");
+  await expect(testInput).toHaveClass("phx-change-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-src");
+  await expect(testInput).toHaveAttribute("data-phx-ref-loading");
+  await expect(testInput).toHaveAttribute("data-phx-ref-src");
+  await expect(page.locator("#form-stream li")).toHaveCount(3, {timeout: 100});
+  // on unlock, cloned stream items that are added on each phx-change are applied to DOM
+  await expect(page.locator("#form-stream li")).toHaveCount(5);
+  // after clones are applied, the stream item hooks are mounted
+  // note that the form still awaits the submit ack, but it is not locked,
+  // therefore the updates from the phx-change are already applied
+  await expect(page.locator("#form-stream li")).toHaveText([
+    "*%{id: 1}pong",
+    "*%{id: 2}pong",
+    "*%{id: 3}pong",
+    "*%{id: 4}",
+    "*%{id: 5}"
+  ]);
+  // still saving
+  await expect(submitBtn).toHaveText("Saving...");
+  await expect(testForm).toHaveClass("phx-submit-loading");
+  await expect(testInput).toHaveAttribute("readonly", "");
+  await expect(submitBtn).toHaveClass("phx-submit-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-src");
+  await expect(testInput).toHaveAttribute("data-phx-ref-loading");
+  await expect(testInput).toHaveAttribute("data-phx-ref-src");
+  await expect(submitBtn).toHaveAttribute("data-phx-ref-loading");
+  await expect(submitBtn).toHaveAttribute("data-phx-ref-src");
+  // submit adds 1 more stream item and new hook is mounted
+  await expect(page.locator("#form-stream li")).toHaveText([
+    "*%{id: 1}pong",
+    "*%{id: 2}pong",
+    "*%{id: 3}pong",
+    "*%{id: 4}pong",
+    "*%{id: 5}pong",
+    "*%{id: 6}pong"
+  ]);
+  await expect(submitBtn).toHaveText("Submit");
+  await expect(submitBtn).toHaveAttribute("phx-disable-with", "Saving...");
+  await expect(testForm).not.toHaveClass("phx-submit-loading");
+  await expect(testInput).not.toHaveAttribute("readonly");
+  await expect(submitBtn).not.toHaveClass("phx-submit-loading");
+  await expect(testForm).not.toHaveAttribute("data-phx-ref");
+  await expect(testForm).not.toHaveAttribute("data-phx-ref-src");
+  await expect(testInput).not.toHaveAttribute("data-phx-ref");
+  await expect(testInput).not.toHaveAttribute("data-phx-ref-src");
+  await expect(submitBtn).not.toHaveAttribute("data-phx-ref");
+  await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
+  await page.evaluate(() => window.liveSocket.disableLatencySim());
 });
 
 test("can dynamically add/remove inputs (ecto sort_param/drop_param)", async ({ page }) => {
@@ -274,7 +400,9 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
   }));
 });
 
-test("phx-no-feedback is applied correctly", async ({ page }) => {
+// phx-feedback-for was removed in LiveView 1.0, but we still test the shim applied in
+// test_helper.exs layout for backwards compatibility
+test("phx-no-feedback is applied correctly for backwards-compatible-shims", async ({ page }) => {
   await page.goto("/form/feedback");
   await syncLV(page);
 
@@ -322,3 +450,5 @@ test("phx-no-feedback is applied correctly", async ({ page }) => {
   await syncLV(page);
   await expect(page.locator("[data-feedback-container]")).not.toBeVisible();
 });
+
+

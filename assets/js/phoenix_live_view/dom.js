@@ -4,22 +4,21 @@ import {
   DEBOUNCE_TRIGGER,
   FOCUSABLE_INPUTS,
   PHX_COMPONENT,
-  PHX_EVENT_CLASSES,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_MAIN,
-  PHX_NO_FEEDBACK_CLASS,
   PHX_PARENT_ID,
   PHX_PRIVATE,
-  PHX_REF,
   PHX_REF_SRC,
+  PHX_PENDING_ATTRS,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
   PHX_STICKY,
-  THROTTLED
+  PHX_EVENT_CLASSES,
+  THROTTLED,
 } from "./constants"
 
 import JS from "./js"
@@ -195,6 +194,16 @@ let DOM = {
     }
   },
 
+  syncPendingAttrs(fromEl, toEl){
+    if(!fromEl.hasAttribute(PHX_REF_SRC)){ return }
+    PHX_EVENT_CLASSES.forEach(className => {
+      fromEl.classList.contains(className) && toEl.classList.add(className)
+    })
+    PHX_PENDING_ATTRS.filter(attr => fromEl.hasAttribute(attr)).forEach(attr => {
+      toEl.setAttribute(attr, fromEl.getAttribute(attr))
+    })
+  },
+
   copyPrivates(target, source){
     if(source[PHX_PRIVATE]){
       target[PHX_PRIVATE] = source[PHX_PRIVATE]
@@ -223,7 +232,9 @@ let DOM = {
 
       case "blur":
         if(this.once(el, "debounce-blur")){
-          el.addEventListener("blur", () => callback())
+          el.addEventListener("blur", () => {
+            if(asyncFilter()){ callback() }
+          })
         }
         return
 
@@ -305,81 +316,16 @@ let DOM = {
     }
   },
 
-  isFeedbackContainer(el, phxFeedbackFor){
-    return el.hasAttribute && el.hasAttribute(phxFeedbackFor)
+  isUsedInput(el){
+    return (el.nodeType === Node.ELEMENT_NODE &&
+      (this.private(el, PHX_HAS_FOCUSED) || this.private(el, PHX_HAS_SUBMITTED)))
   },
 
-  maybeHideFeedback(container, feedbackContainers, phxFeedbackFor, phxFeedbackGroup){
-    // because we can have multiple containers with the same phxFeedbackFor value
-    // we perform the check only once and store the result;
-    // we often have multiple containers, because we push both fromEl and toEl in dompatch
-    // when a container is updated
-    const feedbackResults = {}
-    feedbackContainers.forEach(el => {
-      // skip elements that are not in the DOM
-      if(!container.contains(el)) return
-      const feedback = el.getAttribute(phxFeedbackFor)
-      if(!feedback){
-        // the container previously had phx-feedback-for, but now it doesn't
-        // remove the class from the container (if it exists)
-        JS.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS])
-        return
-      }
-      if(feedbackResults[feedback] === true){
-        this.hideFeedback(el)
-        return
-      }
-      feedbackResults[feedback] = this.shouldHideFeedback(container, feedback, phxFeedbackGroup)
-      if(feedbackResults[feedback] === true){
-        this.hideFeedback(el)
-      }
-    })
-  },
-
-  hideFeedback(container){
-    JS.addOrRemoveClasses(container, [PHX_NO_FEEDBACK_CLASS], [])
-  },
-
-  shouldHideFeedback(container, nameOrGroup, phxFeedbackGroup){
-    const query = `[name="${nameOrGroup}"],
-                   [name="${nameOrGroup}[]"],
-                   [${phxFeedbackGroup}="${nameOrGroup}"]`
-    let focused = false
-    DOM.all(container, query, (input) => {
-      if(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED)){
-        focused = true
-      }
-    })
-    return !focused
-  },
-
-  feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup){
-    let query = `[${phxFeedbackFor}="${input.name}"],
-                 [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
-    if(input.getAttribute(phxFeedbackGroup)){
-      query += `,[${phxFeedbackFor}="${input.getAttribute(phxFeedbackGroup)}"]`
-    }
-    return query
-  },
-
-  resetForm(form, phxFeedbackFor, phxFeedbackGroup){
+  resetForm(form){
     Array.from(form.elements).forEach(input => {
-      let query = this.feedbackSelector(input, phxFeedbackFor, phxFeedbackGroup)
       this.deletePrivate(input, PHX_HAS_FOCUSED)
       this.deletePrivate(input, PHX_HAS_SUBMITTED)
-      this.all(document, query, feedbackEl => {
-        JS.addOrRemoveClasses(feedbackEl, [PHX_NO_FEEDBACK_CLASS], [])
-      })
     })
-  },
-
-  showError(inputEl, phxFeedbackFor, phxFeedbackGroup){
-    if(inputEl.name){
-      let query = this.feedbackSelector(inputEl, phxFeedbackFor, phxFeedbackGroup)
-      this.all(document, query, (el) => {
-        JS.addOrRemoveClasses(el, [], [PHX_NO_FEEDBACK_CLASS])
-      })
-    }
   },
 
   isPhxChild(node){
@@ -453,7 +399,7 @@ let DOM = {
     for(let i = targetAttrs.length - 1; i >= 0; i--){
       let name = targetAttrs[i].name
       if(isIgnored){
-        if(name.startsWith("data-") && !source.hasAttribute(name) && ![PHX_REF, PHX_REF_SRC].includes(name)){ target.removeAttribute(name) }
+        if(name.startsWith("data-") && !source.hasAttribute(name) && !PHX_PENDING_ATTRS.includes(name)){ target.removeAttribute(name) }
       } else {
         if(!source.hasAttribute(name)){ target.removeAttribute(name) }
       }
@@ -498,25 +444,6 @@ let DOM = {
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
-  },
-
-  syncPendingRef(fromEl, toEl, disableWith){
-    let ref = fromEl.getAttribute(PHX_REF)
-    if(ref === null){ return true }
-    let refSrc = fromEl.getAttribute(PHX_REF_SRC)
-
-    if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
-      if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
-      DOM.putPrivate(fromEl, PHX_REF, toEl)
-      return false
-    } else {
-      PHX_EVENT_CLASSES.forEach(className => {
-        fromEl.classList.contains(className) && toEl.classList.add(className)
-      })
-      toEl.setAttribute(PHX_REF, ref)
-      toEl.setAttribute(PHX_REF_SRC, refSrc)
-      return true
-    }
   },
 
   cleanChildNodes(container, phxUpdate){

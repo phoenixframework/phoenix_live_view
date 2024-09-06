@@ -143,6 +143,32 @@ defmodule Phoenix.LiveView.StreamTest do
            ]
   end
 
+  test "updates attributes on reset", %{conn: conn} do
+    {:ok, lv, _} = live(conn, "/stream")
+
+    assert lv |> render() |> users_in_dom("users") == [
+             {"users-1", "chris"},
+             {"users-2", "callan"}
+           ]
+
+    html = render(lv)
+    assert Floki.find(html, "#users-1") |> Floki.attribute("data-count") == ["0"]
+    assert Floki.find(html, "#users-2") |> Floki.attribute("data-count") == ["0"]
+
+    lv |> render_hook("reset-users-reorder", %{})
+
+    assert lv |> render() |> users_in_dom("users") == [
+             {"users-3", "peter"},
+             {"users-1", "chris"},
+             {"users-4", "mona"}
+           ]
+
+    html = render(lv)
+    assert Floki.find(html, "#users-1") |> Floki.attribute("data-count") == ["1"]
+    assert Floki.find(html, "#users-3") |> Floki.attribute("data-count") == ["1"]
+    assert Floki.find(html, "#users-4") |> Floki.attribute("data-count") == ["1"]
+  end
+
   test "stream reset on patch", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/healthy/fruits")
 
@@ -505,22 +531,33 @@ defmodule Phoenix.LiveView.StreamTest do
            end) =~ ~r/streams can only be consumed directly by a for comprehension/
   end
 
-  test "stream raises when there are items with invalid IDs", %{conn: conn} do
+  test "stream raises when nodes without id are in container", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/stream")
 
     assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
-             render_click(lv, "stream-invalid-ids", %{})
+             render_click(lv, "stream-no-id", %{})
            end) =~
-             ~r/a container with phx-update=\"stream\" must only contain stream children with the id set to the `dom_id` of the stream item/
+             ~r/setting phx-update to "stream" requires setting an ID on each child/
   end
 
-  test "stream raises when non stream items are in container", %{conn: conn} do
+  test "issue #3260 - supports non-stream items with id in stream container", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/stream")
 
-    assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
-             render_click(lv, "stream-invalid-item", %{})
-           end) =~
-             ~r/a container with phx-update=\"stream\" must only contain stream children with the id set to the `dom_id` of the stream item/
+    render_click(lv, "stream-extra-with-id", %{})
+    html = render(lv)
+
+    assert [{"users-1", "chris"}, {"users-2", "callan"}, {"users-empty", "Empty!"}] =
+             users_in_dom(html, "users")
+
+    assert render_click(lv, "reset-users", %{}) |> users_in_dom("users") == [
+             {"users-empty", "Empty!"}
+           ]
+
+    assert render_click(lv, "append-users", %{}) |> users_in_dom("users") == [
+             {"users-empty", "Empty!"},
+             {"users-4", "foo"},
+             {"users-3", "last_user"}
+           ]
   end
 
   test "handles high frequency updates properly", %{conn: conn} do
@@ -802,17 +839,19 @@ defmodule Phoenix.LiveView.StreamTest do
            ]
   end
 
-  test "issue #3129 - streams asynchronously assigned and rendered inside a comprehension", %{conn: conn} do
+  test "issue #3129 - streams asynchronously assigned and rendered inside a comprehension", %{
+    conn: conn
+  } do
     {:ok, lv, _html} = live(conn, "/stream/inside-for")
 
     html = render_async(lv)
 
     assert ul_list_children(html) == [
-              {"items-a", "A"},
-              {"items-b", "B"},
-              {"items-c", "C"},
-              {"items-d", "D"}
-            ]
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
   end
 
   defp assert_pruned_stream(lv) do

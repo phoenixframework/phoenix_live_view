@@ -246,7 +246,7 @@ LiveView to a separate module. For these cases, LiveView provides
 
 Components have their own `mount/3` and `handle_event/3` callbacks, as
 well as their own state with change tracking support. Components are also
-lightweight as they "run" in the same process as the parent `LiveView`.
+lightweight as they "run" in the same process as the parent LiveView.
 However, this means an error in a component would cause the whole view to
 fail to render. See `Phoenix.LiveComponent` for a complete rundown on components.
 
@@ -286,13 +286,14 @@ split on server-side and client-side:
 These guides focus on server-side functionality:
 
 * [Assigns and HEEx templates](assigns-eex.md)
+* [Deployments](deployments.md)
 * [Error and exception handling](error-handling.md)
-* [Live Layouts](live-layouts.md)
-* [Live Navigation](live-navigation.md)
-* [Security considerations of the LiveView model](security-model.md)
+* [Live layouts](live-layouts.md)
+* [Live navigation](live-navigation.md)
+* [Security considerations](security-model.md)
 * [Telemetry](telemetry.md)
 * [Uploads](uploads.md)
-* [Using Gettext for internationalization](using-gettext.md)
+* [Gettext for internationalization](using-gettext.md)
 
 ### Client-side
 
@@ -300,6 +301,5 @@ These guides focus on LiveView bindings and client-side integration:
 
 * [Bindings](bindings.md)
 * [Form bindings](form-bindings.md)
-* [DOM patching and temporary assigns](dom-patching.md)
 * [JavaScript interoperability](js-interop.md)
-* [Uploads (External)](uploads-external.md)
+* [External uploads](uploads-external.md)

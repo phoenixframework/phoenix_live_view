@@ -54,10 +54,10 @@ defmodule Phoenix.LiveViewTest.HooksLive do
 
   def render(assigns) do
     ~H"""
-    last_on_mount:<%= inspect(assigns[:last_on_mount]) %>
-    params_hook:<%= assigns[:params_hook_ref] %>
-    count:<%= @count %>
-    task:<%= @task %>
+    <p>last_on_mount:<%= inspect(assigns[:last_on_mount]) %></p>
+    <p>params_hook:<%= assigns[:params_hook_ref] %></p>
+    <p>count:<%= @count %></p>
+    <p>task:<%= @task %></p>
     <button id="dec" phx-click="dec">-</button>
     <button id="inc" phx-click="inc">+</button>
     <button id="patch" phx-click="patch">?</button>

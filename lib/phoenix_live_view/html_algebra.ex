@@ -267,7 +267,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   end
 
   # Handle EEX blocks within preserve tags
-  defp to_algebra({:eex_block, expr, block}, %{mode: :preserve} = context) do
+  defp to_algebra({:eex_block, expr, block, meta}, %{mode: :preserve} = context) do
     doc =
       Enum.reduce(block, empty(), fn {block, expr}, doc ->
         children = block_to_algebra(block, context)
@@ -275,11 +275,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         concat([doc, children, expr])
       end)
 
-    {:block, group(concat("<%= #{expr} %>", doc))}
+    {:block, group(concat("<%#{meta.opt} #{expr} %>", doc))}
   end
 
   # Handle EEX blocks
-  defp to_algebra({:eex_block, expr, block}, context) do
+  defp to_algebra({:eex_block, expr, block, meta}, context) do
     {doc, _stab} =
       Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
         {block, _force_newline?} = trim_block_newlines(block)
@@ -287,7 +287,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         {concat(doc, force_unfit(next_doc)), stab?}
       end)
 
-    {:block, group(concat("<%= #{expr} %>", doc))}
+    {:block, group(concat("<%#{meta.opt} #{expr} %>", doc))}
   end
 
   defp to_algebra({:eex_comment, text}, _context) do
@@ -427,17 +427,15 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp render_attribute({attr, {:expr, value, meta}, _}, opts) do
     case expr_to_quoted(value, meta) do
       {{:__block__, meta, [string]} = block, []} when is_binary(string) ->
-        case Keyword.get(meta, :delimiter) do
-          # Handle heredocs
-          # """
-          # text
-          # """
-          "\"\"\"" ->
-            group(concat(["#{attr}={", quoted_to_code_algebra(block, [], opts), "}"]))
+        has_quotes? = String.contains?(string, "\"")
+        delimiter = Keyword.get(meta, :delimiter)
 
-          # delimiter for normal strings are "\""
-          _ ->
-            ~s(#{attr}="#{string}")
+        if has_quotes? or delimiter == "\"\"\"" do
+          # don't try to flatten heredocs or strings with quotes
+          group(concat(["#{attr}={", quoted_to_code_algebra(block, [], opts), "}"]))
+        else
+          # attr={"foo"} -> attr="foo"
+          ~s(#{attr}="#{string}")
         end
 
       {{atom, _, _}, []} when atom in [:<<>>, :<>] ->

@@ -88,7 +88,7 @@ as you would with plug:
 
 We use [`assign_new/3`](`Phoenix.Component.assign_new/3`). This is a
 convenience to avoid fetching the `current_user` multiple times across
-LiveViews.
+parent-child LiveViews.
 
 Now we can use the hook whenever relevant. One option is to specify
 the hook in your router under `live_session`:
@@ -195,17 +195,17 @@ This is the same mechanism provided by `Phoenix.Channel`s. Therefore, if
 your application uses both channels and LiveViews, you can use the same
 technique to disconnect any stateful connection.
 
-## `live_session` and `live_redirect`
+## `live_session` and `push_navigate`
 
 LiveView supports live redirect, which allows users to navigate between
-pages over the LiveView connection. Whenever there is a `live_redirect`,
+pages over the LiveView connection. Whenever there is a `push_navigate`,
 a new LiveView will be mounted, skipping the regular HTTP requests and
 without going through the plug pipeline.
 
 However, if you want to draw stronger boundaries between parts of your
 application, you can also use `Phoenix.LiveView.Router.live_session/2`
 to group your live routes. This can be handy because you can only
-`live_redirect` between LiveViews in the same `live_session`.
+`push_navigate` between LiveViews in the same `live_session`.
 
 For example, imagine you need to authenticate two distinct types of users.
 Your regular users login via email and password, and you have an admin
@@ -281,21 +281,25 @@ a live session, then the `pipe_through` checks are not necessary.
 
 Declaring the `on_mount` on `live_session` is exactly the same as
 declaring it in each LiveView. It will be executed every time a
-LiveView is mounted, even after `live_redirect`s.
+LiveView is mounted, even after `push_navigate`s.
 
 ## Summing up
 
 The important concepts to keep in mind are:
 
-  * If you have both LiveViews and regular web requests, then any
-    authorization logic in your plugs must be replicated in your LiveView.
-    Code that executes on the `mount` callback always runs on both live
-    and regular web requests to that LiveView
+  * Your authentication logic (logging the user in) is typically part of
+    your regular web request pipeline and it is shared by both controllers
+    and LiveViews. Authentication then stores the user information in the
+    session. Regular web requests use `plug` to read the user from a session,
+    LiveViews read it inside an `on_mount` callback. This is typically a
+    single database lookup on both cases. Running `mix phx.gen.auth` sets
+    up all that is necessary
 
-  * All actions (events) must also be explicitly authorized by
-    checking permissions. Those permissions are often domain/business
-    specific, and typically happen in your context modules. This is
-    also a requirement for regular requests and responses
+  * Once authenticated, your authorization logic in LiveViews will happen
+    both during `mount` (such as "can the user see this page?") and during
+    events (like "can the user delete this item?"). Those rules are often
+    domain/business specific, and typically happen in your context modules.
+    This is also a requirement for regular requests and responses
 
   * `live_session` can be used to draw boundaries between groups of
     LiveViews. While you could use `live_session` to draw lines between

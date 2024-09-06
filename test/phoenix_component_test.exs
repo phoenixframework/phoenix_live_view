@@ -50,6 +50,23 @@ defmodule Phoenix.ComponentUnitTest do
       assert socket.assigns.existing == %{foo: :bam}
       assert socket.assigns.__changed__.existing == %{foo: :bar}
     end
+
+    test "keeps whole lists in changes" do
+      socket = assign(@socket, existing: [:foo, :bar])
+      socket = Utils.clear_changed(socket)
+
+      socket = assign(socket, existing: [:foo, :baz])
+      assert socket.assigns.existing == [:foo, :baz]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+
+      socket = assign(socket, existing: [:foo, :bat])
+      assert socket.assigns.existing == [:foo, :bat]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+
+      socket = assign(socket, %{existing: [:foo, :bam]})
+      assert socket.assigns.existing == [:foo, :bam]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+    end
   end
 
   describe "assign with assigns" do
@@ -284,6 +301,31 @@ defmodule Phoenix.ComponentUnitTest do
 
       form = to_form(base, errors: [name: "can't be blank"])
       assert form.errors == [name: "can't be blank"]
+
+      form = to_form(base, action: :validate)
+      assert form.action == :validate
     end
+  end
+
+  test "used_input?/1" do
+    params = %{}
+    form = to_form(params, as: "profile", action: :validate)
+    refute used_input?(form[:username])
+    refute used_input?(form[:email])
+
+    params = %{"username" => "", "email" => ""}
+    form = to_form(params, as: "profile", action: :validate)
+    assert used_input?(form[:username])
+    assert used_input?(form[:email])
+
+    params = %{"username" => "", "email" => "", "_unused_username" => ""}
+    form = to_form(params, as: "profile", action: :validate)
+    refute used_input?(form[:username])
+    assert used_input?(form[:email])
+
+    params = %{"username" => "", "email" => "", "_unused_username" => "", "_unused_email" => ""}
+    form = to_form(params, as: "profile", action: :validate)
+    refute used_input?(form[:username])
+    refute used_input?(form[:email])
   end
 end

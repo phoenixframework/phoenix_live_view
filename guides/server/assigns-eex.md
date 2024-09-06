@@ -36,7 +36,8 @@ won't resend the static parts and it will only resend the dynamic
 part if it changes.
 
 The tracking of changes is done via assigns. If the `@title` assign
-changes, then LiveView will execute `expand_title(@title)` and send
+changes, then LiveView will execute the dynamic parts of the template,
+`expand_title(@title)`, and send
 the new content. If `@title` is the same, nothing is executed and
 nothing is sent.
 
@@ -91,6 +92,8 @@ enforces this best practice.
 There are some common pitfalls to keep in mind when using the `~H` sigil
 or `.heex` templates inside LiveViews.
 
+### Variables
+
 Due to the scope of variables, LiveView has to disable change tracking
 whenever variables are used in the template, with the exception of
 variables introduced by Elixir block constructs such as `case`,
@@ -109,40 +112,45 @@ Instead, use a function:
 ```
 
 Similarly, **do not** define variables at the top of your `render` function
-for LiveViews or LiveComponents:
+for LiveViews or LiveComponents. Since LiveView cannot track `sum` or `title`,
+if either value changes, both must be re-rendered by LiveView.
 
     def render(assigns) do
       sum = assigns.x + assigns.y
+      title = assigns.title
 
       ~H"""
+      <h1><%= title %></h1>
+
       <%= sum %>
       """
     end
 
-Instead explicitly precompute the assign outside of render:
+Instead use the `assign/2`, `assign/3`, `assign_new/3`, and `update/3`
+functions to compute it. Any assign defined or updated this way will be marked as
+changed, while other assigns like `@title` will still be tracked by LiveView.
 
-    assign(socket, sum: socket.assigns.x + socket.assigns.y)
+    assign(assigns, sum: assigns.x + assigns.y)
 
-Unlike LiveView's `render/1` callback, a function component can
-modify the assigns it receives via the `assign/2`, `assign/3`,
-`assign_new/3`, and `update/3` functions. Therefore, you can assign
-the computed values before declaring your template:
+The same functions can be used inside function components too:
 
     attr :x, :integer, required: true
     attr :y, :integer, required: true
+    attr :title, :string, required: true
     def sum_component(assigns) do
       assigns = assign(assigns, sum: assigns.x + assigns.y)
 
       ~H"""
+      <h1><%= @title %></h1>
+
       <%= @sum %>
       """
     end
 
 Generally speaking, avoid accessing variables inside `HEEx` templates, as code that
-access variables is always executed on every render. This also applies to the
-`assigns` variable. The exception are variables introduced by Elixir's block
-constructs. For example, accessing the `post` variable defined by the comprehension
-below works as expected:
+access variables is always executed on every render. The exception are variables
+introduced by Elixir's block constructs. For example, accessing the `post` variable
+defined by the comprehension below works as expected:
 
 ```heex
 <%= for post <- @posts do %>
@@ -150,9 +158,14 @@ below works as expected:
 <% end %>
 ```
 
+### The `assigns` variable
+
 When talking about variables, it is also worth discussing the `assigns`
 special variable. Every time you use the `~H` sigil, you must define an
 `assigns` variable, which is also available on every `.heex` template.
+However, we must avoid accessing this variable directly inside templates
+and instead use `@` for accessing specific keys. This also applies to
+function components. Let's see some examples.
 
 Sometimes you might want to pass all assigns from one function component to
 another. For example, imagine you have a complex `card` component with 
@@ -205,7 +218,8 @@ end
 ```
 
 If you really need to pass all assigns you should instead use the regular
-function call syntax:
+function call syntax. This is the only case where accessing `assigns` inside
+templates is acceptable:
 
 ```elixir
 def card(assigns) do
@@ -223,6 +237,8 @@ This ensures that the change tracking information from the parent component
 is passed to each child component, only re-rendering what is necessary.
 However, generally speaking, it is best to avoid passing `assigns` altogether
 and instead let LiveView figure out the best way to track changes.
+
+### Summary
 
 To sum up:
 

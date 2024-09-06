@@ -12,12 +12,26 @@ if Mix.env() == :dev do
     ]
   end
 
+  lv_vsn = Mix.Project.config()[:version]
+
   config :esbuild,
-    version: "0.12.15",
-    module: esbuild.(~w(--format=esm --sourcemap --outfile=../priv/static/phoenix_live_view.esm.js)),
-    main: esbuild.(~w(--format=cjs --sourcemap --outfile=../priv/static/phoenix_live_view.cjs.js)),
-    cdn: esbuild.(~w(--format=iife --target=es2016 --global-name=LiveView --outfile=../priv/static/phoenix_live_view.js)),
-    cdn_min: esbuild.(~w(--format=iife --target=es2016 --global-name=LiveView --minify --outfile=../priv/static/phoenix_live_view.min.js))
+    version: "0.20.2",
+    module:
+      esbuild.(
+        ~w(--format=esm --sourcemap --define:LV_VSN="#{lv_vsn}" --outfile=../priv/static/phoenix_live_view.esm.js)
+      ),
+    main:
+      esbuild.(
+        ~w(--format=cjs --sourcemap --define:LV_VSN="#{lv_vsn}" --outfile=../priv/static/phoenix_live_view.cjs.js)
+      ),
+    cdn:
+      esbuild.(
+        ~w(--format=iife --target=es2016 --global-name=LiveView --define:LV_VSN="#{lv_vsn}" --outfile=../priv/static/phoenix_live_view.js)
+      ),
+    cdn_min:
+      esbuild.(
+        ~w(--format=iife --target=es2016 --global-name=LiveView --minify --define:LV_VSN="#{lv_vsn}" --outfile=../priv/static/phoenix_live_view.min.js)
+      )
 end
 
 import_config "#{config_env()}.exs"

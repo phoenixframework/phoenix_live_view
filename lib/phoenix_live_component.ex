@@ -44,19 +44,30 @@ defmodule Phoenix.LiveComponent do
   ### Mount and update
 
   Live components are identified by the component module and their ID.
-  Therefore, two live components with the same module and ID are treated
-  as the same component. We often tie the component ID to some application based ID:
+  We often tie the component ID to some application based ID:
 
       <.live_component module={UserComponent} id={@user.id} user={@user} />
 
   When [`live_component/1`](`Phoenix.Component.live_component/1`) is called,
-  `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
-  receives the `socket` as argument. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`).
-  If `c:update/2` is not defined all assigns are simply merged into the socket.
-  The assigns received as the first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`)
-  callback will only include the _new_ assigns passed from this function.
-  Pre-existing assigns may be found in `socket.assigns`.
+  `c:mount/1` is called once, when the component is first added to the page.
+  `c:mount/1` receives a `socket` as its argument. Note that this is *not* the
+  same `socket` struct from the parent LiveView. It doesn't contain the parent
+  LiveView's `assigns`, and updating it won't affect the parent LiveView's
+  `socket`.
+
+  Then `c:update/2` is invoked with all of the assigns passed to
+  [`live_component/1`](`Phoenix.Component.live_component/1`). The assigns
+  received as the first argument to `c:update/2` will only include those
+  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`),
+  and not any pre-existing assigns in `socket.assigns` such as those assigned
+  by `c:mount/1`.
+
+  If `c:update/2` is not defined then all assigns given to
+  [`live_component/1`](`Phoenix.Component.live_component/1`) will simply be
+  merged into `socket.assigns`.
+
+  Both `c:mount/1` and `c:update/2` must return a tuple whose first element is
+  `:ok` and whose second element is the updated `socket`.
 
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -67,7 +78,14 @@ defmodule Phoenix.LiveComponent do
 
       update(assigns, socket) -> render(assigns)
 
-  The given `id` is not automatically used as the DOM ID. If you want to set
+  Two live components with the same module and ID are treated as the same component,
+  regardless of where they are in the page. Therefore, if you change the location
+  of where a component is rendered within its parent LiveView, it won't be remounted.
+  This means you can use live components to implement cards and other elements that
+  can be moved around without losing state. A component is only discarded when the
+  client observes it is removed from the page.
+
+  Finally, the given `id` is not automatically used as the DOM ID. If you want to set
   a DOM ID, it is your responsibility to do so when rendering:
 
       defmodule UserComponent do
@@ -76,7 +94,7 @@ defmodule Phoenix.LiveComponent do
 
         def render(assigns) do
           ~H"""
-          <div id={"user-\#{@id}"} class="user">
+          <div id={"user-#{@id}"} class="user">
             <%= @user.name %>
           </div>
           """
@@ -423,7 +441,7 @@ defmodule Phoenix.LiveComponent do
   ## Live patches and live redirects
 
   A template rendered inside a component can use `<.link patch={...}>` and
-  `<.link navigate={...}>`. Patches are always handled by the parent `LiveView`,
+  `<.link navigate={...}>`. Patches are always handled by the parent LiveView,
   as components do not provide `handle_params`.
 
   ## Cost of live components

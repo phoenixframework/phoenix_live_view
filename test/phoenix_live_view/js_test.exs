@@ -117,6 +117,15 @@ defmodule Phoenix.LiveView.JSTest do
                ]
              }
 
+      assert JS.add_class("show", transition: "fade", blocking: false) == %JS{
+               ops: [
+                 [
+                   "add_class",
+                   %{names: ["show"], transition: [["fade"], [], []], blocking: false}
+                 ]
+               ]
+             }
+
       assert JS.add_class("c", transition: "a b") == %JS{
                ops: [
                  [
@@ -218,6 +227,15 @@ defmodule Phoenix.LiveView.JSTest do
                ]
              }
 
+      assert JS.remove_class("show", transition: "fade", blocking: false) == %JS{
+               ops: [
+                 [
+                   "remove_class",
+                   %{names: ["show"], transition: [["fade"], [], []], blocking: false}
+                 ]
+               ]
+             }
+
       assert JS.remove_class("c", transition: "a b") == %JS{
                ops: [
                  [
@@ -315,6 +333,15 @@ defmodule Phoenix.LiveView.JSTest do
                  [
                    "toggle_class",
                    %{names: ["show"], transition: [["fade"], [], []]}
+                 ]
+               ]
+             }
+
+      assert JS.toggle_class("show", transition: "fade", blocking: false) == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show"], transition: [["fade"], [], []], blocking: false}
                  ]
                ]
              }

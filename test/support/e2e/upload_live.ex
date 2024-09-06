@@ -53,24 +53,35 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
     <form id="upload-form" phx-submit="save" phx-change="validate">
       <.live_file_input upload={@uploads.avatar} />
       <button type="submit">Upload</button>
+
+      <section phx-drop-target={@uploads.avatar.ref}>
+        <article :for={entry <- @uploads.avatar.entries} class="upload-entry">
+          <figure>
+            <.live_img_preview entry={entry} style="width: 500px" />
+            <figcaption><%= entry.client_name %></figcaption>
+          </figure>
+          <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
+          <button
+            type="button"
+            phx-click="cancel-upload"
+            phx-value-ref={entry.ref}
+            aria-label="cancel"
+          >
+            &times;
+          </button>
+          <p :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">
+            <%= error_to_string(err) %>
+          </p>
+        </article>
+        <p :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger">
+          <%= error_to_string(err) %>
+        </p>
+      </section>
+
+      <ul>
+        <li :for={file <- @uploaded_files}><a href={file}><%= Path.basename(file) %></a></li>
+      </ul>
     </form>
-
-    <section phx-drop-target={@uploads.avatar.ref}>
-      <article :for={entry <- @uploads.avatar.entries} class="upload-entry">
-        <figure>
-          <.live_img_preview entry={entry} style="width: 500px" />
-          <figcaption><%= entry.client_name %></figcaption>
-        </figure>
-        <progress value={entry.progress} max="100"> <%= entry.progress %>% </progress>
-        <button type="button" phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">&times;</button>
-        <p :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger"><%= error_to_string(err) %></p>
-      </article>
-      <p :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger"><%= error_to_string(err) %></p>
-    </section>
-
-    <ul>
-      <li :for={file <- @uploaded_files}><a href={file}><%= Path.basename(file) %></a></li>
-    </ul>
     """
   end
 

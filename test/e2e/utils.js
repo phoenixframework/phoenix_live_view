@@ -14,6 +14,16 @@ const syncLV = async (page) => {
   return Promise.all(promises);
 };
 
+// this function executes the given code inside the liveview that is responsible
+// for the given selector; it uses private phoenix live view js functions, so it could
+// break in the future
+// we handle the evaluation in a LV hook
+const evalLV = async (page, code, selector="[data-phx-main]") => await page.evaluate(([code, selector]) => {
+  window.liveSocket.main.withinTargets(selector, (targetView, targetCtx) => {
+    targetView.pushEvent("event", document.body, targetCtx, "sandbox:eval", { value: code })
+  });
+}, [code, selector]);
+
 const attributeMutations = (page, selector) => {
   // this is a bit of a hack, basically we create a MutationObserver on the page
   // that will record any changes to a selector until the promise is awaited
@@ -44,7 +54,7 @@ const attributeMutations = (page, selector) => {
       }).observe(target, { attributes: true, attributeOldValue: true });
     });
   }, id);
-  
+
   return () => {
     // we want to stop observing!
     page.locator(selector).evaluate((_target, id) => window[id](), id);
@@ -53,4 +63,4 @@ const attributeMutations = (page, selector) => {
   };
 }
 
-module.exports = { randomString, syncLV, attributeMutations };
+module.exports = { randomString, syncLV, evalLV, attributeMutations };

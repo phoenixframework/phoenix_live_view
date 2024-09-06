@@ -12,8 +12,9 @@ export const PHX_COMPONENT = "data-phx-component"
 export const PHX_LIVE_LINK = "data-phx-link"
 export const PHX_TRACK_STATIC = "track-static"
 export const PHX_LINK_STATE = "data-phx-link-state"
-export const PHX_REF = "data-phx-ref"
+export const PHX_REF_LOADING = "data-phx-ref-loading"
 export const PHX_REF_SRC = "data-phx-ref-src"
+export const PHX_REF_LOCK = "data-phx-ref-lock"
 export const PHX_TRACK_UPLOADS = "track-uploads"
 export const PHX_UPLOAD_REF = "data-phx-upload-ref"
 export const PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs"
@@ -27,7 +28,6 @@ export const PHX_PRUNE = "data-phx-prune"
 export const PHX_PAGE_LOADING = "page-loading"
 export const PHX_CONNECTED_CLASS = "phx-connected"
 export const PHX_LOADING_CLASS = "phx-loading"
-export const PHX_NO_FEEDBACK_CLASS = "phx-no-feedback"
 export const PHX_ERROR_CLASS = "phx-error"
 export const PHX_CLIENT_ERROR_CLASS = "phx-client-error"
 export const PHX_SERVER_ERROR_CLASS = "phx-server-error"
@@ -37,8 +37,6 @@ export const PHX_ROOT_ID = "data-phx-root-id"
 export const PHX_VIEWPORT_TOP = "viewport-top"
 export const PHX_VIEWPORT_BOTTOM = "viewport-bottom"
 export const PHX_TRIGGER_ACTION = "trigger-action"
-export const PHX_FEEDBACK_FOR = "feedback-for"
-export const PHX_FEEDBACK_GROUP = "feedback-group"
 export const PHX_HAS_FOCUSED = "phx-has-focused"
 export const FOCUSABLE_INPUTS = ["text", "textarea", "number", "email", "password", "search", "tel", "url", "date", "time", "datetime-local", "color", "range"]
 export const CHECKABLE_INPUTS = ["checkbox", "radio"]
@@ -78,7 +76,7 @@ export const DEFAULTS = {
   debounce: 300,
   throttle: 300
 }
-
+export const PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING]
 // Rendered
 export const DYNAMICS = "d"
 export const STATIC = "s"

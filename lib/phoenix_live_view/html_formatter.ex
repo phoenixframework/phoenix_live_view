@@ -8,8 +8,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   ## Setup
 
-  Add it as plugin to your `.formatter.exs` file and make sure to put
-  the`heex` extension in the `inputs` option.
+  Add it as a plugin to your `.formatter.exs` file and make sure to put
+  the `heex` extension in the `inputs` option.
 
   ```elixir
   [
@@ -216,9 +216,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
-  if Version.match?(System.version(), ">= 1.13.0") do
-    @behaviour Mix.Tasks.Format
-  end
+  @behaviour Mix.Tasks.Format
 
   @impl Mix.Tasks.Format
   def features(_opts) do
@@ -227,30 +225,34 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   @impl Mix.Tasks.Format
   def format(source, opts) do
-    line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
-    newlines = :binary.matches(source, ["\r\n", "\n"])
-
-    formatted =
+    if opts[:sigil] === :H and opts[:modifiers] === ~c"noformat" do
       source
-      |> tokenize()
-      |> to_tree([], [], {source, newlines})
-      |> case do
-        {:ok, nodes} ->
-          nodes
-          |> HTMLAlgebra.build(opts)
-          |> Inspect.Algebra.format(line_length)
+    else
+      line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
+      newlines = :binary.matches(source, ["\r\n", "\n"])
 
-        {:error, line, column, message} ->
-          file = opts[:file] || "nofile"
-          raise ParseError, line: line, column: column, file: file, description: message
-      end
+      formatted =
+        source
+        |> tokenize()
+        |> to_tree([], [], {source, newlines})
+        |> case do
+          {:ok, nodes} ->
+            nodes
+            |> HTMLAlgebra.build(opts)
+            |> Inspect.Algebra.format(line_length)
 
-    # If the opening delimiter is a single character, such as ~H"...", or the formatted code is empty,
-    # do not add trailing newline.
-    newline = if match?(<<_>>, opts[:opening_delimiter]) or formatted == [], do: [], else: ?\n
+          {:error, line, column, message} ->
+            file = opts[:file] || "nofile"
+            raise ParseError, line: line, column: column, file: file, description: message
+        end
 
-    # TODO: Remove IO.iodata_to_binary/1 call on Elixir v1.14+
-    IO.iodata_to_binary([formatted, newline])
+      # If the opening delimiter is a single character, such as ~H"...", or the formatted code is empty,
+      # do not add trailing newline.
+      newline = if match?(<<_>>, opts[:opening_delimiter]) or formatted == [], do: [], else: ?\n
+
+      # TODO: Remove IO.iodata_to_binary/1 call on Elixir v1.14+
+      IO.iodata_to_binary([formatted, newline])
+    end
   end
 
   # Tokenize contents using EEx.tokenize and Phoenix.Live.Tokenizer respectively.
@@ -503,48 +505,48 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     to_tree(tokens, [{:eex_comment, text} | buffer], stack, source)
   end
 
-  defp to_tree([{:eex, :start_expr, expr, _meta} | tokens], buffer, stack, source) do
-    to_tree(tokens, [], [{:eex_block, expr, buffer} | stack], source)
+  defp to_tree([{:eex, :start_expr, expr, meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [], [{:eex_block, expr, meta, buffer} | stack], source)
   end
 
   defp to_tree(
          [{:eex, :middle_expr, middle_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer, middle_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
          source
        ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
-    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack], source)
+    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], source)
   end
 
   defp to_tree(
          [{:eex, :middle_expr, middle_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer} | stack],
          source
        ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr}]
-    to_tree(tokens, [], [{:eex_block, expr, upper_buffer, middle_buffer} | stack], source)
+    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], source)
   end
 
   defp to_tree(
          [{:eex, :end_expr, end_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer, middle_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
          source
        ) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
-    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack, source)
+    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, source)
   end
 
   defp to_tree(
          [{:eex, :end_expr, end_expr, _meta} | tokens],
          buffer,
-         [{:eex_block, expr, upper_buffer} | stack],
+         [{:eex_block, expr, meta, upper_buffer} | stack],
          source
        ) do
     block = [{Enum.reverse(buffer), end_expr}]
-    to_tree(tokens, [{:eex_block, expr, block} | upper_buffer], stack, source)
+    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, source)
   end
 
   defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, source) do
