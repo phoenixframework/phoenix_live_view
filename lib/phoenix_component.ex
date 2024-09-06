@@ -1538,7 +1538,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Returns the errors for the form field if the field was used by the client.
+  Checks if the input field was used by the client.
 
   Used inputs are only those inputs that have been focused, interacted with, or
   submitted by the client. For LiveView, this is used to filter errors from the
