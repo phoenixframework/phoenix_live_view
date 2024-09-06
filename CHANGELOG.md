@@ -113,7 +113,7 @@ generated user module:
 
 ### Enhancements
   * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
-  * Validate slot options (prevents typos like `slot :myslot, requird: true`)
+  * Validate slot options (prevents typos like `slot :myslot, required: true`)
 
 ### Bug fixes
   * Fix stream items not reapplying JS commands when joining after a disconnect
