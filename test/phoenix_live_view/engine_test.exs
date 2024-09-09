@@ -283,6 +283,19 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{form: form3}, %{form: form1}) == ["baz"]
     end
 
+    test "handles _unused_ parameter changing for forms" do
+      form1 = Phoenix.Component.to_form(%{"foo" => "bar", "_unused_foo" => ""})
+      form2 = Phoenix.Component.to_form(%{"foo" => "bar"})
+
+      template = "<%= Map.fetch!(@form[:foo], :value) %>"
+      assert changed(template, %{form: form1}, nil) == ["bar"]
+
+      template = "<%= Map.fetch!(@form[:foo], :value) %>"
+      assert changed(template, %{form: form1}, %{}) == [nil]
+      assert changed(template, %{form: form1}, %{form: form1}) == [nil]
+      assert changed(template, %{form: form2}, %{form: form1}) == ["bar"]
+    end
+
     test "renders dynamic with access tracking inside comprehension" do
       template = """
       <%= for x <- [:a, :b, :c] do %>
