@@ -1,14 +1,4 @@
 let ARIA = {
-  focusMain(){
-    let target = document.querySelector("main h1, main, h1")
-    if(target){
-      let origTabIndex = target.tabIndex
-      target.tabIndex = -1
-      target.focus()
-      target.tabIndex = origTabIndex
-    }
-  },
-
   anyOf(instance, classes){ return classes.find(name => instance instanceof name) },
 
   isFocusable(el, interactiveOnly){
