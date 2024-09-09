@@ -151,7 +151,10 @@ defmodule Phoenix.LiveView.JS do
 
     * `:target` - A selector or component ID to push to. This value will
       overwrite any `phx-target` attribute present on the element.
-    * `:loading` - A selector to apply the phx loading classes to.
+    * `:loading` - A selector to apply the phx loading classes to,
+      such as `phx-click-loading` in case the event was triggered by
+      `phx-click`. The element will be locked from server updates
+      until the push is acknowledged by the server.
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
       phx:page-loading-stop events for this push. Defaults to `false`.
     * `:value` - A map of values to send to the server. These values will be

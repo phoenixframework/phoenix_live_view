@@ -108,7 +108,15 @@ Now to fade one element on click, you simply need to add:
 
 ## Optimistic UIs via JS commands
 
-While loading classes are extremely handy, they do not cover all possible scenarios. For  more complex cases, you can use [JS commands](`Phoenix.LiveView.JS`). JS commands support adding/removing classes, toggling attributes, hiding elements, transitions, and more.
+While loading classes are extremely handy, they only apply to the element currently clicked. Sometimes, you may to click a "Delete" button but mark the whole row that holds the button as loading (for example, to fade it out).
+
+By using JS commands, you can tell LiveView which elements get the loading state:
+
+```heex
+<button phx-click={JS.push("delete", loading: "#post-row-13")}>Delete</button>
+```
+
+Besides custom loading elements, you can use [JS commands](`Phoenix.LiveView.JS`) for a huge variety of operations, such as adding/removing classes, toggling attributes, hiding elements, transitions, and more.
 
 For example, imagine that you want to immediately remove an element from the page on click, you can do this:
 
@@ -122,20 +130,13 @@ If the element you want to delete is not the clicked button, but its parent (or 
 <button phx-click={JS.push("delete") |> JS.hide("#post-row-13")}>Delete</button>
 ```
 
-Or imagine that, instead of removing the element from the page, you want to fade it. We already saw how we can use loading classes for this in the previous section. However, loading classes target the element that was clicked. Luckily, you can also configure the selector that gets the loading state:
+Or if you'd rather add a class instead:
 
 ```heex
-<button phx-click={JS.push("delete", loading: "#post-row-13")}>Delete</button>
+<button phx-click={JS.push("delete") |> JS.add_class("opacity-50")}>Delete</button>
 ```
 
-Transitions are also only a few characters away:
-
-```heex
-<div id="item">My Item</div>
-<button phx-click={JS.transition("shake", to: "#item")}>Shake!</button>
-```
-
-Whenever you perform any of these commands alongside a `push`, LiveView knows which push event caused the DOM element to hide or transition, and LiveView will prevent any server update from conflicting or erasing the client state until the push is acknowledged by the server. This means LiveView automatically prevents your elements from flickering or flashing, as events round-trip between client and server.
+One key property of JS commands, such as `hide` and `add_class`, is that they are DOM-patch aware, so operations applied by the JS APIs will stick to elements across patches from the server.
 
 JS commands also include a `dispatch` function, which dispatches an event to the DOM element to trigger client-specific functionality. For example, to trigger copying to a clipboard, you may implement this event listener:
 
@@ -159,6 +160,13 @@ And then trigger it as follows:
 
 ```heex
 <button phx-click={JS.dispatch("app:clipcopy", to: "#printed-output")}>Copy</button>
+```
+
+Transitions are also only a few characters away:
+
+```heex
+<div id="item">My Item</div>
+<button phx-click={JS.transition("shake", to: "#item")}>Shake!</button>
 ```
 
 See `Phoenix.LiveView.JS` for more examples and documentation.
