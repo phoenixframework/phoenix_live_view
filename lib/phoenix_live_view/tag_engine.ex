@@ -1200,6 +1200,33 @@ defmodule Phoenix.LiveView.TagEngine do
   defp attr_type(value) when is_float(value), do: {:float, value}
   defp attr_type(value) when is_boolean(value), do: {:boolean, value}
   defp attr_type(value) when is_atom(value), do: {:atom, value}
+  defp attr_type({:fn, _, [{:->, _, [args, _]}]}), do: {:fun, length(args)}
+  defp attr_type({:&, _, [{:/, _, [_, arity]}]}), do: {:fun, arity}
+
+  # this could be a &myfun(&1, &2)
+  defp attr_type({:&, _, args}) do
+    {_ast, arity} =
+      Macro.traverse(
+        args,
+        nil,
+        fn
+          {:&, _, [n]} = ast, acc ->
+            # we found a &1, &2, etc, keep the largest one
+            if n > acc || is_nil(acc) do
+              {ast, n}
+            else
+              {ast, acc}
+            end
+
+          ast, acc ->
+            {ast, acc}
+        end,
+        fn ast, acc -> {ast, acc} end
+      )
+
+    (is_number(arity) && {:fun, arity}) || :any
+  end
+
   defp attr_type(_value), do: :any
 
   ## Helpers

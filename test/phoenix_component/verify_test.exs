@@ -456,6 +456,85 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 2}: (file)"
   end
 
+  test "validates function types" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule FunAttrs do
+          use Phoenix.Component
+
+          attr :any_fun, :fun
+          attr :arity_1, {:fun, 1}
+          attr :arity_2, {:fun, 2}
+
+          def func(assigns), do: ~H[]
+
+          def line, do: __ENV__.line + 4
+
+          def render(assigns) do
+            ~H"""
+            <%!-- those are valid functions --%>
+            <.func any_fun={fn x, y -> x + y end} />
+            <.func any_fun={&Function.identity/1} />
+            <.func any_fun={&(&1 + &2 + &3)} />
+            <%!-- this is not a function --%>
+            <.func any_fun={:foo} />
+            <%!-- those are valid arity 1 functions --%>
+            <.func arity_1={fn _ -> nil end} />
+            <.func arity_1={&Function.identity/1} />
+            <.func arity_1={& &1} />
+            <%!-- those are not arity 1 functions --%>
+            <.func arity_1={fn _, _ -> nil end} />
+            <.func arity_1={&String.split/2} />
+            <.func arity_1={&Phoenix.LiveView.send_update(@myself, completed: &1, nice: &2)} />
+            <.func arity_1={1.23} />
+            <%!-- those are valid arity 2 functions --%>
+            <.func arity_2={fn _, _ -> nil end} />
+            <.func arity_2={&String.split/2} />
+            <.func arity_2={&Phoenix.LiveView.send_update(@myself, completed: &1, nice: &2)} />
+            <%!-- those are not arity 2 functions --%>
+            <.func arity_2={fn _ -> nil end} />
+            <.func arity_2={&Function.identity/1} />
+            <.func arity_2={&Phoenix.LiveView.send_update(@myself, completed: &1)} />
+            <.func arity_2="foo" />
+            """
+          end
+        end
+      end)
+
+    line = get_line(__MODULE__.FunAttrs, :line)
+
+    assert Regex.scan(~r/attribute "any_fun" in component/, warnings) |> length() == 1
+    assert Regex.scan(~r/attribute "arity_1" in component/, warnings) |> length() == 4
+    assert Regex.scan(~r/attribute "arity_2" in component/, warnings) |> length() == 4
+
+    assert warnings =~ """
+           attribute "any_fun" in component Phoenix.ComponentVerifyTest.FunAttrs.func/1 \
+           must be a function, got: :foo
+           """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 5}: (file)"
+
+    assert warnings =~ """
+           attribute "arity_1" in component Phoenix.ComponentVerifyTest.FunAttrs.func/1 \
+           must be a function of arity 1, got: a function of arity 2
+           """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 11}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 12}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 13}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 14}: (file)"
+
+    assert warnings =~ """
+           attribute "arity_2" in component Phoenix.ComponentVerifyTest.FunAttrs.func/1 \
+           must be a function of arity 2, got: a function of arity 1
+           """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 20}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 21}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 22}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 23}: (file)"
+  end
+
   test "validates attr values" do
     warnings =
       capture_io(:stderr, fn ->
