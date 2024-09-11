@@ -398,6 +398,8 @@ defmodule Phoenix.LiveView.Router do
       Module.get_attribute(router, :phoenix_live_session_current) ||
         %{name: :default, extra: %{}, vsn: session_vsn(router)}
 
+    helpers = Module.get_attribute(router, :phoenix_helpers)
+
     live_view = Phoenix.Router.scoped_alias(router, live_view)
     {private, metadata, warn_on_verify, opts} = validate_live_opts!(opts)
 
@@ -406,7 +408,12 @@ defmodule Phoenix.LiveView.Router do
       |> Keyword.put(:router, router)
       |> Keyword.put(:action, action)
 
-    {as_helper, as_action} = inferred_as(live_view, opts[:as], action)
+    {as_helper, as_action} =
+      if helpers do
+        inferred_as(live_view, opts[:as], action)
+      else
+        {nil, action}
+      end
 
     # TODO: Remove :log_module when we require Phoenix v1.8+
     metadata =
