@@ -1025,6 +1025,10 @@ export default class View {
   }
 
   pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback){
+    if(!inputEl.form){
+      throw new Error("form events require the input to be inside a form")
+    }
+
     let uploads
     let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts)
     let refGenerator = () => {

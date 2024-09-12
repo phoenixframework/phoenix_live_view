@@ -101,7 +101,10 @@ def handle_event("email_changed", %{"user" => %{"email" => email}}, socket) do
 end
 ```
 
-_Note_: only the individual input is sent as params for an input marked with `phx-change`.
+> #### Note {: .warning}
+> 1. Only the individual input is sent as params for an input marked with `phx-change`.
+> 2. While it is possible to use `phx-change` on individual inputs, those inputs
+>    must still be within a form.
 
 ## Error feedback
 
