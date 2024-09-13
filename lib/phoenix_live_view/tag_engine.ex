@@ -1206,25 +1206,15 @@ defmodule Phoenix.LiveView.TagEngine do
   # this could be a &myfun(&1, &2)
   defp attr_type({:&, _, args}) do
     {_ast, arity} =
-      Macro.traverse(
-        args,
-        nil,
-        fn
-          {:&, _, [n]} = ast, acc ->
-            # we found a &1, &2, etc, keep the largest one
-            if n > acc || is_nil(acc) do
-              {ast, n}
-            else
-              {ast, acc}
-            end
+      Macro.prewalk(args, 0, fn
+        {:&, _, [n]} = ast, acc when is_integer(n) ->
+          {ast, max(n, acc)}
 
-          ast, acc ->
-            {ast, acc}
-        end,
-        fn ast, acc -> {ast, acc} end
-      )
+        ast, acc ->
+          {ast, acc}
+      end)
 
-    (is_number(arity) && {:fun, arity}) || :any
+    (arity > 0 && {:fun, arity}) || :any
   end
 
   defp attr_type(_value), do: :any
