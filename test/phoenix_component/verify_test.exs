@@ -466,6 +466,10 @@ defmodule Phoenix.ComponentVerifyTest do
           attr :arity_1, {:fun, 1}
           attr :arity_2, {:fun, 2}
 
+          slot :myslot do
+            attr :arity_1, {:fun, 1}
+          end
+
           def func(assigns), do: ~H[]
 
           def line, do: __ENV__.line + 4
@@ -496,6 +500,10 @@ defmodule Phoenix.ComponentVerifyTest do
             <.func arity_2={&Function.identity/1} />
             <.func arity_2={&Phoenix.LiveView.send_update(@myself, completed: &1)} />
             <.func arity_2="foo" />
+            <%!-- also works for slots --%>
+            <.func>
+              <:myslot arity_1={fn _, _ -> nil end} />
+            </.func>
             """
           end
         end
@@ -533,6 +541,13 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 21}: (file)"
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 22}: (file)"
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 23}: (file)"
+
+    assert warnings =~ """
+           attribute "arity_1" in slot "myslot" for component Phoenix.ComponentVerifyTest.FunAttrs.func/1 \
+           must be a function of arity 1, got: a function of arity 2
+           """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 26}: (file)"
   end
 
   test "validates attr values" do
