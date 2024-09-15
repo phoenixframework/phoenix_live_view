@@ -1,4 +1,5 @@
 import View from "phoenix_live_view/view"
+import {version as liveview_version} from "../package.json"
 
 export let appendTitle = opts => {
   let title = document.createElement("title")
@@ -26,7 +27,7 @@ export let simulateJoinedView = (el, liveSocket) => {
   stubChannel(view)
   liveSocket.roots[view.id] = view
   view.isConnected = () => true
-  view.onJoin({rendered: {s: [el.innerHTML]}, liveview_version: require("../package.json").version})
+  view.onJoin({rendered: {s: [el.innerHTML]}, liveview_version})
   return view
 }
 

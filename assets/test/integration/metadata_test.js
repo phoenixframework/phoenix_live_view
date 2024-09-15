@@ -55,7 +55,7 @@ describe("metadata", () => {
     view.isConnected = () => true
     let btn = view.el.querySelector("button")
     let meta = {}
-    stubViewPushEvent(view, (type, el, target, phxEvent, metadata, opts) => {
+    stubViewPushEvent(view, (type, el, target, phxEvent, metadata, _opts) => {
       meta = metadata
     })
     btn.dispatchEvent(new Event("click", {bubbles: true}))

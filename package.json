@@ -25,7 +25,7 @@
   ],
   "devDependencies": {
     "@playwright/test": "^1.47.1",
-    "monocart-reporter": "^2.3.1"
+    "monocart-reporter": "^2.8.0"
   },
   "scripts": {
     "setup": "mix deps.get && npm install && cd assets && npm install",
