@@ -21,7 +21,7 @@ callback, for example:
 | [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
 | [Scroll Events](#scroll-events-and-infinite-pagination) | `phx-viewport-top`, `phx-viewport-bottom` |
-| [DOM Patching](#dom-patching) | `phx-mounted`, `phx-update`, `phx-remove` |
+| [DOM Patching](#dom-patching) | `phx-update`, `phx-mounted`, `phx-remove` |
 | [JS Interop](js-interop.md#client-hooks-via-phx-hook) | `phx-hook` |
 | [Lifecycle Events](#lifecycle-events) | `phx-connected`, `phx-disconnected` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
@@ -340,6 +340,10 @@ To react to elements being removed from the DOM, the `phx-remove` binding
 may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
 The `phx-remove` command is only executed for the removed parent element.
 It does not cascade to children.
+
+To react to elements being updated in the DOM, you'll need to use a
+[hook](js-interop.md#client-hooks-via-phx-hook), which gives you full access
+to the element life-cycle.
 
 ## Lifecycle events
 
