@@ -74,13 +74,24 @@ defmodule Phoenix.LiveViewTest.E2E.Hooks do
     Logger.debug("lv:#{inspect(self())} eval result: #{inspect(result)}")
 
     case result do
-      {:noreply, %Phoenix.LiveView.Socket{} = socket} -> {:halt, socket}
-      %Phoenix.LiveView.Socket{} = socket -> {:halt, socket}
-      _ -> {:halt, socket}
+      {:noreply, %Phoenix.LiveView.Socket{} = socket} -> {:halt, %{}, socket}
+      %Phoenix.LiveView.Socket{} = socket -> {:halt, %{}, socket}
+      result -> {:halt, %{"result" => result}, socket}
     end
   end
 
   defp handle_eval_event(_, _, socket), do: {:cont, socket}
+end
+
+defmodule Phoenix.LiveViewTest.E2E.EvalController do
+  use Phoenix.Controller
+
+  plug :accepts, ["json"]
+
+  def eval(conn, %{"code" => code} = _params) do
+    {result, _} = Code.eval_string(code, [], __ENV__)
+    json(conn, result)
+  end
 end
 
 defmodule Phoenix.LiveViewTest.E2E.Router do
@@ -151,6 +162,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3169", Issue3169Live
     end
   end
+
+  post "/eval", Phoenix.LiveViewTest.E2E.EvalController, :eval
 end
 
 defmodule Phoenix.LiveViewTest.E2E.Endpoint do
