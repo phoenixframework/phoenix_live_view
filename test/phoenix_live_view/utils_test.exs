@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.UtilsTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView.Utils
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   test "sign" do
     assert is_binary(Utils.sign_flash(Endpoint, %{"info" => "hi"}))

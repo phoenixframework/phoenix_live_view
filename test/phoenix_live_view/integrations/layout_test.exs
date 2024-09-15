@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.LayoutTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint, LayoutView}
+  alias Phoenix.LiveViewTest.Support.{Endpoint, LayoutView}
 
   @endpoint Endpoint
 

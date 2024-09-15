@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.FlashLive do
+defmodule Phoenix.LiveViewTest.Support.FlashLive do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -6,8 +6,8 @@ defmodule Phoenix.LiveViewTest.FlashLive do
     uri[<%= @uri %>]
     root[<%= Phoenix.Flash.get(@flash, :info) %>]:info
     root[<%= Phoenix.Flash.get(@flash, :error) %>]:error
-    <.live_component module={Phoenix.LiveViewTest.FlashComponent} id="flash-component" />
-    child[<%= live_render(@socket, Phoenix.LiveViewTest.FlashChildLive, id: "flash-child") %>]
+    <.live_component module={Phoenix.LiveViewTest.Support.FlashComponent} id="flash-component" />
+    child[<%= live_render(@socket, Phoenix.LiveViewTest.Support.FlashChildLive, id: "flash-child") %>]
     """
   end
 
@@ -42,7 +42,7 @@ defmodule Phoenix.LiveViewTest.FlashLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.FlashComponent do
+defmodule Phoenix.LiveViewTest.Support.FlashComponent do
   use Phoenix.LiveComponent
 
   def render(assigns) do
@@ -80,7 +80,7 @@ defmodule Phoenix.LiveViewTest.FlashComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.FlashChildLive do
+defmodule Phoenix.LiveViewTest.Support.FlashChildLive do
   use Phoenix.LiveView
 
   def render(assigns) do

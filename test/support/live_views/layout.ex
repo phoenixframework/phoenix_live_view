@@ -1,9 +1,9 @@
-defmodule Phoenix.LiveViewTest.ParentLayoutLive do
+defmodule Phoenix.LiveViewTest.Support.ParentLayoutLive do
   use Phoenix.LiveView
 
   def render(assigns) do
     ~H"""
-    <%= live_render(@socket, Phoenix.LiveViewTest.LayoutLive, session: @session, id: "layout") %>
+    <%= live_render(@socket, Phoenix.LiveViewTest.Support.LayoutLive, session: @session, id: "layout") %>
     """
   end
 
@@ -12,8 +12,8 @@ defmodule Phoenix.LiveViewTest.ParentLayoutLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.LayoutLive do
-  use Phoenix.LiveView, layout: {Phoenix.LiveViewTest.LayoutView, :live}
+defmodule Phoenix.LiveViewTest.Support.LayoutLive do
+  use Phoenix.LiveView, layout: {Phoenix.LiveViewTest.Support.LayoutView, :live}
 
   def render(assigns), do: ~H|The value is: <%= @val %>|
 

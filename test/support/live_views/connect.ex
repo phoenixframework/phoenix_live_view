@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.ConnectLive do
+defmodule Phoenix.LiveViewTest.Support.ConnectLive do
   use Phoenix.LiveView
 
   def render(assigns) do

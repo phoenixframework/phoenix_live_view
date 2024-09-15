@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.RenderWithLive do
+defmodule Phoenix.LiveViewTest.Support.RenderWithLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do

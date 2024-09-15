@@ -11,7 +11,7 @@ defmodule Phoenix.LiveView.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
-      test_coverage: [summary: [threshold: 85]],
+      test_coverage: [summary: [threshold: 85], ignore_modules: coverage_ignore_modules()],
       xref: [exclude: [Floki]],
       package: package(),
       deps: deps(),
@@ -197,6 +197,14 @@ defmodule Phoenix.LiveView.MixProject do
     [
       "assets.build": ["esbuild module", "esbuild cdn", "esbuild cdn_min", "esbuild main"],
       "assets.watch": ["esbuild module --watch"]
+    ]
+  end
+
+  defp coverage_ignore_modules do
+    [
+      ~r/Phoenix\.LiveViewTest\.Support\..*/,
+      ~r/Phoenix\.LiveViewTest\.E2E\..*/,
+      ~r/Inspect\..*/
     ]
   end
 end

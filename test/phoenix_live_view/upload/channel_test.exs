@@ -5,9 +5,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.{UploadClient, UploadLive, UploadLiveWithComponent}
+  alias Phoenix.LiveViewTest.UploadClient
+  alias Phoenix.LiveViewTest.Support.{UploadLive, UploadLiveWithComponent}
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
+  @endpoint Phoenix.LiveViewTest.Support.Endpoint
 
   defmodule TestWriter do
     @behaviour Phoenix.LiveView.UploadWriter
@@ -856,7 +857,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              {:reply, :ok, new_socket}
            end
 
-           LiveView.send_update(Phoenix.LiveViewTest.UploadComponent,
+           LiveView.send_update(Phoenix.LiveViewTest.Support.UploadComponent,
              id: "upload1",
              run: {run, nil}
            )
@@ -951,7 +952,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              {:reply, :ok, new_socket}
            end
 
-           LiveView.send_update(Phoenix.LiveViewTest.UploadComponent,
+           LiveView.send_update(Phoenix.LiveViewTest.Support.UploadComponent,
              id: "upload1",
              run: {run, nil}
            )

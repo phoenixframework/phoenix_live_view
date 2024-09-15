@@ -9,7 +9,8 @@ defmodule Phoenix.LiveView.ParamsTest do
   import Phoenix.LiveView.TelemetryTestHelpers
 
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 

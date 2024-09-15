@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.CollocatedLive do
+defmodule Phoenix.LiveViewTest.Support.CollocatedLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do
@@ -6,6 +6,6 @@ defmodule Phoenix.LiveViewTest.CollocatedLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.CollocatedComponent do
+defmodule Phoenix.LiveViewTest.Support.CollocatedComponent do
   use Phoenix.LiveComponent
 end

@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.InitAssigns do
+defmodule Phoenix.LiveViewTest.Support.InitAssigns do
   alias Phoenix.Component
 
   def on_mount(:default, _params, _session, socket) do
@@ -16,7 +16,7 @@ defmodule Phoenix.LiveViewTest.InitAssigns do
   end
 end
 
-defmodule Phoenix.LiveViewTest.MountArgs do
+defmodule Phoenix.LiveViewTest.Support.MountArgs do
   import Phoenix.LiveView
 
   def on_mount(:inlined, _params, _session, socket) do
@@ -25,7 +25,7 @@ defmodule Phoenix.LiveViewTest.MountArgs do
   end
 end
 
-defmodule Phoenix.LiveViewTest.OnMount do
+defmodule Phoenix.LiveViewTest.Support.OnMount do
   def on_mount(:default, _params, _session, socket) do
     {:cont, socket}
   end
@@ -35,7 +35,7 @@ defmodule Phoenix.LiveViewTest.OnMount do
   end
 end
 
-defmodule Phoenix.LiveViewTest.OtherOnMount do
+defmodule Phoenix.LiveViewTest.Support.OtherOnMount do
   def on_mount(:default, _params, _session, socket) do
     {:cont, socket}
   end
@@ -45,9 +45,9 @@ defmodule Phoenix.LiveViewTest.OtherOnMount do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive do
+defmodule Phoenix.LiveViewTest.Support.HooksLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.InitAssigns
+  alias Phoenix.LiveViewTest.Support.InitAssigns
 
   on_mount InitAssigns
   on_mount {InitAssigns, :other}
@@ -143,7 +143,7 @@ defmodule Phoenix.LiveViewTest.HooksLive do
   def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.BadMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   on_mount __MODULE__
@@ -157,7 +157,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.BadMount do
   def render(assigns), do: ~H"<div></div>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.HaltMount do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.HaltMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   on_mount {__MODULE__, :hook}
@@ -166,7 +166,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.HaltMount do
   def render(assigns), do: ~H"<div></div>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.RedirectMount do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def mount(_, _, socket) do
@@ -185,7 +185,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.RedirectMount do
   def render(assigns), do: ~H"<div></div>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.Noop do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.Noop do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def render(assigns) do
@@ -196,7 +196,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.Noop do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HaltConnectedMount do
+defmodule Phoenix.LiveViewTest.Support.HaltConnectedMount do
   alias Phoenix.{Component, LiveView}
 
   def on_mount(_arg, _params, _session, socket) do
@@ -208,7 +208,7 @@ defmodule Phoenix.LiveViewTest.HaltConnectedMount do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HooksAttachInfoComponent do
+defmodule Phoenix.LiveViewTest.Support.HooksAttachInfoComponent do
   use Phoenix.LiveComponent
   alias Phoenix.LiveView
 
@@ -223,7 +223,7 @@ defmodule Phoenix.LiveViewTest.HooksAttachInfoComponent do
   def render(assigns), do: ~H"<div></div>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksDetachInfoComponent do
+defmodule Phoenix.LiveViewTest.Support.HooksDetachInfoComponent do
   use Phoenix.LiveComponent
   alias Phoenix.LiveView
 
@@ -234,7 +234,7 @@ defmodule Phoenix.LiveViewTest.HooksDetachInfoComponent do
   def render(assigns), do: ~H"<div></div>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksEventComponent do
+defmodule Phoenix.LiveViewTest.Support.HooksEventComponent do
   use Phoenix.LiveComponent
   alias Phoenix.LiveView
 
@@ -258,10 +258,10 @@ defmodule Phoenix.LiveViewTest.HooksEventComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.WithComponent do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{HooksAttachInfoComponent, HooksDetachInfoComponent}
-  alias Phoenix.LiveViewTest.HooksEventComponent
+  alias Phoenix.LiveViewTest.Support.{HooksAttachInfoComponent, HooksDetachInfoComponent}
+  alias Phoenix.LiveViewTest.Support.HooksEventComponent
 
   def mount(params, _session, socket) do
     type = String.to_existing_atom(params["type"])
@@ -297,7 +297,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.WithComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.HandleParamsNotDefined do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.HandleParamsNotDefined do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def mount(_, _, socket) do
@@ -310,7 +310,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.HandleParamsNotDefined do
   def render(assigns), do: ~H"url=<%= assigns[:url] %>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.HandleInfoNotDefined do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.HandleInfoNotDefined do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def mount(_, _, socket) do
@@ -326,7 +326,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.HandleInfoNotDefined do
   def render(assigns), do: ~H"data=<%= assigns[:data] %>"
 end
 
-defmodule Phoenix.LiveViewTest.HooksLive.OnMountOptions do
+defmodule Phoenix.LiveViewTest.Support.HooksLive.OnMountOptions do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   on_mount {__MODULE__, :temporary_assigns}
@@ -337,7 +337,7 @@ defmodule Phoenix.LiveViewTest.HooksLive.OnMountOptions do
   end
 
   def on_mount(:layout, _params, _session, socket) do
-    {:cont, socket, layout: {Phoenix.LiveViewTest.LayoutView, :on_mount_layout}}
+    {:cont, socket, layout: {Phoenix.LiveViewTest.Support.LayoutView, :on_mount_layout}}
   end
 
   def render(assigns), do: ~H"data-<%= @data %>"

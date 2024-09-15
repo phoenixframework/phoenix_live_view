@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.EndpointOverridable do
+defmodule Phoenix.LiveViewTest.Support.EndpointOverridable do
   defmacro __before_compile__(_env) do
     quote do
       @parsers Plug.Parsers.init(
@@ -13,16 +13,16 @@ defmodule Phoenix.LiveViewTest.EndpointOverridable do
         %{conn | secret_key_base: config(:secret_key_base)}
         |> Plug.Parsers.call(@parsers)
         |> Plug.Conn.put_private(:phoenix_endpoint, __MODULE__)
-        |> Phoenix.LiveViewTest.Router.call([])
+        |> Phoenix.LiveViewTest.Support.Router.call([])
       end
     end
   end
 end
 
-defmodule Phoenix.LiveViewTest.Endpoint do
+defmodule Phoenix.LiveViewTest.Support.Endpoint do
   use Phoenix.Endpoint, otp_app: :phoenix_live_view
 
-  @before_compile Phoenix.LiveViewTest.EndpointOverridable
+  @before_compile Phoenix.LiveViewTest.Support.EndpointOverridable
 
   socket "/live", Phoenix.LiveView.Socket
 

@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -160,7 +160,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
       async_ref = Process.monitor(Process.whereis(:start_async_cancel))
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StartAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.StartAsyncLive.LC,
         id: "lc",
         action: :cancel
       )
@@ -169,7 +169,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
 
       assert render(lv) =~ "lc: {:exit, {:shutdown, :cancel}}"
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StartAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.StartAsyncLive.LC,
         id: "lc",
         action: :renew_canceled
       )
