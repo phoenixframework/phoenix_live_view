@@ -445,6 +445,39 @@ defmodule Phoenix.LiveView.ComponentsTest do
                </form>
                """
     end
+
+    test "method is case insensitive when using get or post with action" do
+      assigns = %{}
+
+      template = ~H"""
+      <.form for={%{}} method="GET" action="/"></.form>
+      """
+
+      assert t2h(template) ==
+               ~x{<form method="get" action="/"></form>}
+
+      template = ~H"""
+      <.form for={%{}} method="PoST" action="/"></.form>
+      """
+
+      csrf = Plug.CSRFProtection.get_csrf_token_for("/")
+
+      assert t2h(template) ==
+               ~x{<form method="post" action="/"><input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}"></form>}
+
+      # for anything != get or post we use post and set the hidden _method field
+      template = ~H"""
+      <.form for={%{}} method="PuT" action="/"></.form>
+      """
+
+      assert t2h(template) ==
+               ~x"""
+               <form action="/" method="post">
+                 <input name="_method" type="hidden" hidden="hidden" value="PuT">
+                 <input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}">
+               </form>
+               """
+    end
   end
 
   describe "inputs_for" do

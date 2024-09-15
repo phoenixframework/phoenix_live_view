@@ -2362,8 +2362,13 @@ defmodule Phoenix.Component do
   end
 
   defp form_method(nil), do: {"post", nil}
-  defp form_method(method) when method in ~w(get post), do: {method, nil}
-  defp form_method(method) when is_binary(method), do: {"post", method}
+
+  defp form_method(method) when is_binary(method) do
+    case String.downcase(method) do
+      method when method in ~w(get post) -> {method, nil}
+      _ -> {"post", method}
+    end
+  end
 
   @doc """
   Renders nested form inputs for associations or embeds.
