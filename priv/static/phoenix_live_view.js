@@ -318,15 +318,6 @@ var LiveView = (() => {
 
   // js/phoenix_live_view/aria.js
   var ARIA = {
-    focusMain() {
-      let target = document.querySelector("main h1, main, h1");
-      if (target) {
-        let origTabIndex = target.tabIndex;
-        target.tabIndex = -1;
-        target.focus();
-        target.tabIndex = origTabIndex;
-      }
-    },
     anyOf(instance, classes) {
       return classes.find((name) => instance instanceof name);
     },
@@ -4060,6 +4051,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
     }
     pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback) {
+      if (!inputEl.form) {
+        throw new Error("form events require the input to be inside a form");
+      }
       let uploads;
       let cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts);
       let refGenerator = () => {
@@ -4929,7 +4923,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (e.detail === 0)
           this.clickStartedAtTarget = e.target;
         let clickStartedAtTarget = this.clickStartedAtTarget || e.target;
-        target = closestPhxBinding(clickStartedAtTarget, click);
+        target = closestPhxBinding(e.target, click);
         this.dispatchClickAway(e, clickStartedAtTarget);
         this.clickStartedAtTarget = null;
         let phxEvent = target && target.getAttribute(click);
