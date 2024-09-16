@@ -804,7 +804,7 @@ test("issue #3260 - supports non-stream items with id in stream container", asyn
     { id: "users-2", text: "callan" },
     { id: "users-empty", text: "Empty!" }
   ]);
-  
+
   await expect(page.getByText("Empty")).not.toBeVisible();
   await evalLV(page, `socket.view.handle_event("reset-users", %{}, socket)`);
   await expect(page.getByText("Empty")).toBeVisible();
@@ -815,9 +815,9 @@ test("issue #3260 - supports non-stream items with id in stream container", asyn
   await evalLV(page, `socket.view.handle_event("append-users", %{}, socket)`);
   await expect(page.getByText("Empty")).not.toBeVisible();
   await expect(await usersInDom(page, "users")).toEqual([
-    { id: "users-empty", text: "Empty!" },
     { id: "users-4", text: "foo" },
-    { id: "users-3", text: "last_user" }
+    { id: "users-3", text: "last_user" },
+    { id: "users-empty", text: "Empty!" }
   ]);
 });
 

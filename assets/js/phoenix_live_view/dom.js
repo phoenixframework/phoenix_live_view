@@ -310,11 +310,33 @@ let DOM = {
     return currentCycle
   },
 
-  maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom){
-    if(el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))){
-      el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
+  // maintains or adds privately used hook information
+  // fromEl and toEl can be the same element in the case of a newly added node
+  // fromEl and toEl can be any HTML node type, so we need to check if it's an element node
+  maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom){
+    // maintain the hooks created with createHook
+    if(fromEl.hasAttribute && fromEl.hasAttribute("data-phx-hook") && !toEl.hasAttribute("data-phx-hook")){
+      toEl.setAttribute("data-phx-hook", fromEl.getAttribute("data-phx-hook"))
+    }
+    // add hooks to elements with viewport attributes
+    if(toEl.hasAttribute && (toEl.hasAttribute(phxViewportTop) || toEl.hasAttribute(phxViewportBottom))){
+      toEl.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
     }
   },
+
+  putCustomElHook(el, hook){
+    if(el.isConnected){
+      el.setAttribute("data-phx-hook", "")
+    } else {
+      console.error(`
+        hook attached to non-connected DOM element
+        ensure you are calling createHook within your connectedCallback. ${el.outerHTML}
+      `)
+    }
+    this.putPrivate(el, "custom-el-hook", hook)
+  },
+
+  getCustomElHook(el){ return this.private(el, "custom-el-hook") },
 
   isUsedInput(el){
     return (el.nodeType === Node.ELEMENT_NODE &&
