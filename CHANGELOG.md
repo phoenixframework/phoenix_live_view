@@ -112,6 +112,9 @@ generated user module:
 ## 1.0.0-rc.7
 
 ### Enhancements
+  * Export `createHook` from `phoenix_live_view` to allow CustomElement's to use hooks
+  * Expose programmable JS command interface to hooks for showing, hiding, addClass, etc from a hook which integrates with server DOM patching
+  * Support targetting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closet, "tr"}`, etc.
   * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
   * Validate slot options (prevents typos like `slot :myslot, requird: true`)
 
