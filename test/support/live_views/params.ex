@@ -3,9 +3,9 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
 
   def render(assigns) do
     ~H"""
-    The value is: <%= @val %>
-    mount: <%= inspect(@mount_params) %>
-    params: <%= inspect(@params) %>
+    <p>The value is: <%= @val %></p>
+    <p>mount: <%= inspect(@mount_params) %></p>
+    <p>params: <%= inspect(@params) %></p>
     """
   end
 
@@ -73,9 +73,9 @@ defmodule Phoenix.LiveViewTest.ActionLive do
 
   def render(assigns) do
     ~H"""
-    Live action: <%= inspect @live_action %>
-    Mount action: <%= inspect @mount_action %>
-    Params: <%= inspect @params %>
+    <p>Live action: <%= inspect(@live_action) %></p>
+    <p>Mount action: <%= inspect(@mount_action) %></p>
+    <p>Params: <%= inspect(@params) %></p>
     """
   end
 

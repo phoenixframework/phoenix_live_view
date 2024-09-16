@@ -672,7 +672,9 @@ export default class LiveSocket {
       // therefore the clickStartedAtTarget is stale
       if(e.detail === 0) this.clickStartedAtTarget = e.target
       let clickStartedAtTarget = this.clickStartedAtTarget || e.target
-      target = closestPhxBinding(clickStartedAtTarget, click)
+      // when searching the target for the click event, we always want to
+      // use the actual event target, see #3372
+      target = closestPhxBinding(e.target, click)
       this.dispatchClickAway(e, clickStartedAtTarget)
       this.clickStartedAtTarget = null
       let phxEvent = target && target.getAttribute(click)
@@ -879,8 +881,27 @@ export default class LiveSocket {
 
     for(let type of ["change", "input"]){
       this.on(type, e => {
+        if(e instanceof CustomEvent && e.target.form === undefined){
+          throw new Error(`dispatching a custom ${type} event is only supported on input elements inside a form`)
+        }
         let phxChange = this.binding("change")
         let input = e.target
+        // do not fire phx-change if we are in the middle of a composition session
+        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
+        // Safari has issues if the input is updated while composing
+        // see https://github.com/phoenixframework/phoenix_live_view/issues/3322
+        if(e.isComposing){
+          const key = `composition-listener-${type}`
+          if(!DOM.private(input, key)){
+            DOM.putPrivate(input, key, true)
+            input.addEventListener("compositionend", () => {
+              // trigger a new input/change event 
+              input.dispatchEvent(new Event(type, {bubbles: true}))
+              DOM.deletePrivate(input, key)
+            }, {once: true})
+          }
+          return
+        }
         let inputEvent = input.getAttribute(phxChange)
         let formEvent = input.form && input.form.getAttribute(phxChange)
         let phxEvent = inputEvent || formEvent

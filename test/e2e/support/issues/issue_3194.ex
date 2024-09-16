@@ -11,11 +11,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3194Live do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <.form
-      for={@form}
-      phx-change="validate"
-      phx-submit="submit"
-    >
+    <.form for={@form} phx-change="validate" phx-submit="submit">
       <input
         id={@form[:store_number].id}
         name={@form[:store_number].name}

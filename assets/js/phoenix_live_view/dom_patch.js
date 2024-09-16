@@ -147,7 +147,7 @@ export default class DOMPatch {
 
           let morphedEl = el
           // this is a stream item that was kept on reset, recursively morph it
-          if(!isJoinPatch && this.streamComponentRestore[el.id]){
+          if(this.streamComponentRestore[el.id]){
             morphedEl = this.streamComponentRestore[el.id]
             delete this.streamComponentRestore[el.id]
             morph.call(this, morphedEl, el, true)

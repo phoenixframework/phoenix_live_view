@@ -19,7 +19,10 @@ defmodule Phoenix.LiveViewTest.ShuffleLive do
     ~H"""
     <%= for zone <- @time_zones do %>
       <div id={"score-" <> zone["id"]}>
-        <%= live_render(@socket, Phoenix.LiveViewTest.TZLive, id: "tz-#{zone["id"]}", session: %{"name" => zone["name"]}) %>
+        <%= live_render(@socket, Phoenix.LiveViewTest.TZLive,
+          id: "tz-#{zone["id"]}",
+          session: %{"name" => zone["name"]}
+        ) %>
       </div>
     <% end %>
     """

@@ -93,7 +93,8 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
           id="push-to-self"
           phx-click={
             JS.push("inc", target: "#child_1", value: %{inc: 1})
-            |> JS.push("inc", target: "#child_1", value: %{inc: 10})}
+            |> JS.push("inc", target: "#child_1", value: %{inc: 10})
+          }
         >
           Both to self
         </button>
@@ -118,8 +119,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
   def render(assigns) do
     ~H"""
     <.live_component module={Child} id={:child_1} />
-    <.live_component module={Child} id={:child_2} />
-    root count: <%= @count %>
+    <.live_component module={Child} id={:child_2} /> root count: <%= @count %>
     """
   end
 
@@ -153,7 +153,7 @@ defmodule Phoenix.LiveViewTest.EventsInMountLive do
   end
 
   def render(assigns) do
-    ~H"<%= live_render @socket, Child, id: :child_live %>"
+    ~H"<%= live_render(@socket, Child, id: :child_live) %>"
   end
 
   def mount(_params, _session, socket) do
@@ -175,15 +175,11 @@ defmodule Phoenix.LiveViewTest.EventsInComponentLive do
     def render(assigns) do
       ~H"""
       <div>
-        <button id="comp-reply"
-                phx-click="reply"
-                phx-target={@myself}>
+        <button id="comp-reply" phx-click="reply" phx-target={@myself}>
           bump reply!
         </button>
 
-        <button id="comp-noreply"
-                phx-click="noreply"
-                phx-target={@myself}>
+        <button id="comp-noreply" phx-click="noreply" phx-target={@myself}>
           bump no reply!
         </button>
       </div>

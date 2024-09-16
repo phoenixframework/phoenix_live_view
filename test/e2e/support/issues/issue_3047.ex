@@ -3,14 +3,17 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3047ALive do
 
   def render("live.html", assigns) do
     ~H"""
-    <%= apply(Phoenix.LiveViewTest.E2E.Layout, :render, ["live.html", Map.put(assigns, :inner_content, [])]) %>
+    <%= apply(Phoenix.LiveViewTest.E2E.Layout, :render, [
+      "live.html",
+      Map.put(assigns, :inner_content, [])
+    ]) %>
 
     <div class="flex flex-col items-center justify-center">
       <div class="flex flex-row gap-3">
-        <.link class="border rounded bg-blue-700 w-fit px-2 text-white" navigate={"/issues/3047/a"}>
+        <.link class="border rounded bg-blue-700 w-fit px-2 text-white" navigate="/issues/3047/a">
           Page A
         </.link>
-        <.link class="border rounded bg-blue-700 w-fit px-2 text-white" navigate={"/issues/3047/b"}>
+        <.link class="border rounded bg-blue-700 w-fit px-2 text-white" navigate="/issues/3047/b">
           Page B
         </.link>
       </div>

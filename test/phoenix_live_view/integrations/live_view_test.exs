@@ -94,7 +94,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       html = html_response(conn, 200)
 
       assert html =~ """
-             The temp is: 0
+             <p>The temp is: 0</p>
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
              """
@@ -104,7 +104,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {_tag, _attrs, children} = html |> DOM.parse() |> DOM.by_id!(view.id)
 
       assert children == [
-               "Redirect: none\nThe temp is: 1\n",
+               {"p", [], ["Redirect: none"]},
+               {"p", [], ["The temp is: 1"]},
                {"button", [{"phx-click", "dec"}], ["-"]},
                {"button", [{"phx-click", "inc"}], ["+"]}
              ]
@@ -224,7 +225,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
                     {"class", "thermo"}
                   ],
                   [
-                    _text,
+                    _p1,
+                    _p2,
                     _btn_down,
                     _btn_up,
                     {"section",
@@ -265,7 +267,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
                     {"style", "thermo-flex<script>"}
                   ],
                   [
-                    _text,
+                    _p1,
+                    _p2,
                     _btn_down,
                     _btn_up,
                     {"p",
@@ -304,14 +307,16 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert DOM.parse(render_click(view, :inc)) ==
                DOM.parse("""
-               Redirect: none\nThe temp is: 4
+               <p>Redirect: none</p>
+               <p>The temp is: 4</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
 
       assert DOM.parse(render_click(view, :dec)) ==
                DOM.parse("""
-               Redirect: none\nThe temp is: 3
+               <p>Redirect: none</p>
+               <p>The temp is: 3</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
@@ -320,7 +325,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert child_nodes ==
                DOM.parse("""
-               Redirect: none\nThe temp is: 3
+               <p>Redirect: none</p>
+               <p>The temp is: 3</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)

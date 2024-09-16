@@ -151,7 +151,10 @@ defmodule Phoenix.LiveView.JS do
 
     * `:target` - A selector or component ID to push to. This value will
       overwrite any `phx-target` attribute present on the element.
-    * `:loading` - A selector to apply the phx loading classes to.
+    * `:loading` - A selector to apply the phx loading classes to,
+      such as `phx-click-loading` in case the event was triggered by
+      `phx-click`. The element will be locked from server updates
+      until the push is acknowledged by the server.
     * `:page_loading` - Boolean to trigger the phx:page-loading-start and
       phx:page-loading-stop events for this push. Defaults to `false`.
     * `:value` - A map of values to send to the server. These values will be
@@ -593,6 +596,10 @@ defmodule Phoenix.LiveView.JS do
 
       <div id="item">My Item</div>
       <button phx-click={JS.transition("shake", to: "#item")}>Shake!</button>
+
+      <div phx-mounted={JS.transition({"ease-out duration-300", "opacity-0", "opacity-100"}, time: 300)}>
+         duration-300 milliseconds matches time: 300 milliseconds
+      <div>
   """
   def transition(transition) when is_binary(transition) or is_tuple(transition) do
     transition(%JS{}, transition, [])

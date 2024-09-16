@@ -195,17 +195,17 @@ This is the same mechanism provided by `Phoenix.Channel`s. Therefore, if
 your application uses both channels and LiveViews, you can use the same
 technique to disconnect any stateful connection.
 
-## `live_session` and `live_redirect`
+## `live_session` and `push_navigate`
 
 LiveView supports live redirect, which allows users to navigate between
-pages over the LiveView connection. Whenever there is a `live_redirect`,
+pages over the LiveView connection. Whenever there is a `push_navigate`,
 a new LiveView will be mounted, skipping the regular HTTP requests and
 without going through the plug pipeline.
 
 However, if you want to draw stronger boundaries between parts of your
 application, you can also use `Phoenix.LiveView.Router.live_session/2`
 to group your live routes. This can be handy because you can only
-`live_redirect` between LiveViews in the same `live_session`.
+`push_navigate` between LiveViews in the same `live_session`.
 
 For example, imagine you need to authenticate two distinct types of users.
 Your regular users login via email and password, and you have an admin
@@ -281,7 +281,7 @@ a live session, then the `pipe_through` checks are not necessary.
 
 Declaring the `on_mount` on `live_session` is exactly the same as
 declaring it in each LiveView. It will be executed every time a
-LiveView is mounted, even after `live_redirect`s.
+LiveView is mounted, even after `push_navigate`s.
 
 ## Summing up
 

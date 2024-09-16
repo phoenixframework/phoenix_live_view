@@ -2277,7 +2277,7 @@ var DOMPatch = class {
           dom_default.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom);
           this.trackBefore("added", el);
           let morphedEl = el;
-          if (!isJoinPatch && this.streamComponentRestore[el.id]) {
+          if (this.streamComponentRestore[el.id]) {
             morphedEl = this.streamComponentRestore[el.id];
             delete this.streamComponentRestore[el.id];
             morph.call(this, morphedEl, el, true);
@@ -3264,6 +3264,9 @@ var View = class {
     this.flash = null;
     if (this.root === this) {
       this.formsForRecovery = this.getFormsForRecovery();
+    }
+    if (this.isMain()) {
+      this.liveSocket.replaceRootHistory();
     }
     if (liveview_version !== this.liveSocket.version()) {
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`);
@@ -5085,8 +5088,22 @@ var LiveSocket = class {
     });
     for (let type of ["change", "input"]) {
       this.on(type, (e) => {
+        if (e instanceof CustomEvent && e.target.form === void 0) {
+          throw new Error(`dispatching a custom ${type} event is only supported on input elements inside a form`);
+        }
         let phxChange = this.binding("change");
         let input = e.target;
+        if (e.isComposing) {
+          const key = `composition-listener-${type}`;
+          if (!dom_default.private(input, key)) {
+            dom_default.putPrivate(input, key, true);
+            input.addEventListener("compositionend", () => {
+              input.dispatchEvent(new Event(type, { bubbles: true }));
+              dom_default.deletePrivate(input, key);
+            }, { once: true });
+          }
+          return;
+        }
         let inputEvent = input.getAttribute(phxChange);
         let formEvent = input.form && input.form.getAttribute(phxChange);
         let phxEvent = inputEvent || formEvent;

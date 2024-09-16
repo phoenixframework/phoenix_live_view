@@ -77,7 +77,8 @@ defmodule Phoenix.LiveView.NestedTest do
 
     html_without_nesting =
       DOM.parse("""
-      Redirect: none\nThe temp is: 1
+      <p>Redirect: none</p>
+      <p>The temp is: 1</p>
       <button phx-click="dec">-</button>
       <button phx-click="inc">+</button>
       """)

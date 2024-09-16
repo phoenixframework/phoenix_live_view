@@ -788,7 +788,8 @@ defmodule Phoenix.Component do
   for more information.
   '''
   @doc type: :macro
-  defmacro sigil_H({:<<>>, meta, [expr]}, []) do
+  defmacro sigil_H({:<<>>, meta, [expr]}, modifiers)
+           when modifiers == [] or modifiers == ~c"noformat" do
     unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
@@ -1019,7 +1020,7 @@ defmodule Phoenix.Component do
 
     ~H"""
     <%= for entry <- @entries do %><%= call_inner_block!(entry, @changed, @argument) %><% end %>
-    """
+    """noformat
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
@@ -1537,7 +1538,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Returns the errors for the form field if the field was used by the client.
+  Checks if the input field was used by the client.
 
   Used inputs are only those inputs that have been focused, interacted with, or
   submitted by the client. For LiveView, this is used to filter errors from the
@@ -2078,7 +2079,7 @@ defmodule Phoenix.Component do
 
   def live_title(assigns) do
     ~H"""
-    <title data-prefix={@prefix} data-suffix={@suffix}><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
+    <title data-prefix={@prefix} data-suffix={@suffix} phx-no-format><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
     """
   end
 
@@ -2275,7 +2276,8 @@ defmodule Phoenix.Component do
     The HTTP method.
     It is only used if an `:action` is given. If the method is not `get` nor `post`,
     an input tag with name `_method` is generated alongside the form tag.
-    If an `:action` is given with no method, the method will default to `post`.
+    If an `:action` is given with no method, the method will default to the return value
+    of `Phoenix.HTML.FormData.to_form/2` (usually `post`).
     """
   )
 
@@ -2599,9 +2601,11 @@ defmodule Phoenix.Component do
   @doc """
   Generates a link to a given route.
 
-  To navigate across pages, using traditional browser navigation, use
-  the `href` attribute. To patch the current LiveView or navigate
-  across LiveViews, use `patch` and `navigate` respectively.
+  It is typically used with one of the three attributes:
+
+    * `patch` - on click, it patches the current LiveView with the given path
+    * `navigate` - on click, it navigates to a new LiveView at the given path
+    * `href` - on click, it performs traditional browser navigation (as any `<a>` tag)
 
   [INSERT LVATTRDOCS]
 
@@ -2718,10 +2722,13 @@ defmodule Phoenix.Component do
   @doc type: :component
   attr.(:navigate, :string,
     doc: """
-    Navigates from a LiveView to a new LiveView.
-    The browser page is kept, but a new LiveView process is mounted and its content on the page
-    is reloaded. It is only possible to navigate between LiveViews declared under the same router
-    `Phoenix.LiveView.Router.live_session/3`. Otherwise, a full browser redirect is used.
+    Navigates to a LiveView.
+    When redirecting across LiveViews, the browser page is kept, but a new LiveView process
+    is mounted and its contents is loaded on the page. It is only possible to navigate
+    between LiveViews declared under the same router
+    [`live_session`](`Phoenix.LiveView.Router.live_session/3`).
+    When used outside of a LiveView or across live sessions, it behaves like a regular
+    browser redirect.
     """
   )
 
@@ -2787,6 +2794,7 @@ defmodule Phoenix.Component do
       href={@navigate}
       data-phx-link="redirect"
       data-phx-link-state={if @replace, do: "replace", else: "push"}
+      phx-no-format
       {@rest}
     ><%= render_slot(@inner_block) %></a>
     """
@@ -2879,15 +2887,15 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.dynamic_tag name="input" type="text"/>
+  <.dynamic_tag tag_name="input" name="my-input" type="text"/>
   ```
 
   ```html
-  <input type="text"/>
+  <input name="my-input" type="text"/>
   ```
 
   ```heex
-  <.dynamic_tag name="p">content</.dynamic_tag>
+  <.dynamic_tag tag_name="p">content</.dynamic_tag>
   ```
 
   ```html
@@ -2895,7 +2903,13 @@ defmodule Phoenix.Component do
   ```
   """
   @doc type: :component
-  attr.(:name, :string, required: true, doc: "The name of the tag, such as `div`.")
+  attr.(:tag_name, :string, required: true, doc: "The name of the tag, such as `div`.")
+
+  attr.(:name, :string,
+    required: false,
+    doc:
+      "Deprecated: use tag_name instead. If tag_name is used, passed to the tag. Otherwise the name of the tag, such as `div`."
+  )
 
   attr.(:rest, :global,
     doc: """
@@ -2905,8 +2919,30 @@ defmodule Phoenix.Component do
 
   slot.(:inner_block, [])
 
-  def dynamic_tag(%{name: name, rest: rest} = assigns) do
-    tag_name = to_string(name)
+  def dynamic_tag(%{rest: rest} = assigns) do
+    {tag_name, rest} =
+      case assigns do
+        %{tag_name: tag_name, name: name} ->
+          {tag_name, Map.put(rest, :name, name)}
+
+        %{tag_name: tag_name} ->
+          {tag_name, rest}
+
+        %{name: name} ->
+          IO.warn("""
+          Passing the tag name to `Phoenix.Component.dynamic_tag/1` using the `name` attribute is deprecated.
+
+          Instead of:
+
+              <.dynamic_tag name="p" ...>
+
+          use `tag_name` instead:
+
+              <.dynamic_tag tag_name="p" ...>
+          """)
+
+          {name, Map.delete(rest, :name)}
+      end
 
     tag =
       case Phoenix.HTML.html_escape(tag_name) do
@@ -2925,7 +2961,8 @@ defmodule Phoenix.Component do
 
     if assigns.inner_block != [] do
       ~H"""
-      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe, [?<, ?/, @tag, ?>]} %>
+      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe,
+       [?<, ?/, @tag, ?>]} %>
       """
     else
       ~H"""
@@ -2938,6 +2975,9 @@ defmodule Phoenix.Component do
   Builds a file input tag for a LiveView upload.
 
   [INSERT LVATTRDOCS]
+
+  Note the `id` attribute cannot be overwritten, but you can create a label with a `for` attribute
+  pointing to the UploadConfig `ref`.
 
   ## Drag and Drop
 
@@ -2995,7 +3035,9 @@ defmodule Phoenix.Component do
       data-phx-upload-ref={@upload.ref}
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
-      data-phx-preflighted-refs={join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))}
+      data-phx-preflighted-refs={
+        join_refs(for(entry <- @upload.entries, entry.preflighted?, do: entry.ref))
+      }
       data-phx-auto-upload={@upload.auto_upload?}
       {if @upload.max_entries > 1, do: Map.put(@rest, :multiple, true), else: @rest}
     />
@@ -3053,7 +3095,8 @@ defmodule Phoenix.Component do
       data-phx-hook="Phoenix.LiveImgPreview"
       data-phx-update="ignore"
       phx-no-format
-      {@rest} />
+      {@rest}
+    />
     """
   end
 
@@ -3093,7 +3136,7 @@ defmodule Phoenix.Component do
         render_slot(@inner_block, item)
       end
     %><% end %>
-    """
+    """noformat
   end
 
   @doc """

@@ -168,6 +168,7 @@ $ mix test
 
 Running all JavaScript tests:
 ```bash
+$ npm run setup
 $ npm run test
 ```
 
@@ -184,12 +185,14 @@ $ npm run test.watch
 or simply:
 
 ```bash
+$ npm run setup
 $ npm run js:test
 ```
 
 Running the JavaScript end-to-end tests:
 
 ```bash
+$ npm run setup
 $ npm run e2e:test
 ```
 

@@ -43,6 +43,18 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
 
   @impl Phoenix.LiveView
   def mount(params, session, socket) do
+    # if we're nested we need to manually add the on_mount hook
+    # as the live_session doesn't apply
+    socket =
+      if socket.parent_pid do
+        {:cont, socket} =
+          Phoenix.LiveViewTest.E2E.Hooks.on_mount(:default, params, session, socket)
+
+        socket
+      else
+        socket
+      end
+
     params =
       case params do
         :not_mounted_at_router -> session
@@ -160,11 +172,13 @@ defmodule Phoenix.LiveViewTest.E2E.FormStreamLive do
     ~H"""
     <%= @count %>
     <form id="test-form" phx-change="validate" phx-submit="save">
-      <input name="myname" value={@count}>
-      <input id="other" name="other" value={@count}>
+      <input name="myname" value={@count} />
+      <input id="other" name="other" value={@count} />
       <div id="form-stream-hook" phx-hook="FormHook" phx-update="ignore"></div>
       <ul id="form-stream" phx-update="stream">
-        <li :for={{id, item} <- @streams.items} id={id} phx-hook="FormStreamHook">*<%= inspect(item) %></li>
+        <li :for={{id, item} <- @streams.items} id={id} phx-hook="FormStreamHook">
+          *<%= inspect(item) %>
+        </li>
       </ul>
       <button id="submit" phx-disable-with="Saving...">Submit</button>
     </form>

@@ -53,6 +53,7 @@ defmodule Phoenix.LiveView do
   and returns a `HEEx` template defined with [the `~H` sigil](`Phoenix.Component.sigil_H/2`).
 
       defmodule MyAppWeb.DemoLive do
+        # In a typical Phoenix app, the following line would usually be `use MyAppWeb, :live_view`
         use Phoenix.LiveView
 
         def render(assigns) do
@@ -478,7 +479,7 @@ defmodule Phoenix.LiveView do
 
   The `on_mount` callback can return a keyword list of options as a third
   element in the return tuple. These options are identical to what can
-  optionally be returned in `mount/3`.
+  optionally be returned in `c:mount/3`.
 
   ## Examples
 
@@ -536,11 +537,16 @@ defmodule Phoenix.LiveView do
 
   """
   defmacro on_mount(mod_or_mod_arg) do
+    # While we could pass `mod_or_mod_arg` as a whole to
+    # expand_literals, we want to also be able to expand only
+    # the first element, even if the second element is not a literal.
     mod_or_mod_arg =
-      if Macro.quoted_literal?(mod_or_mod_arg) do
-        Macro.prewalk(mod_or_mod_arg, &expand_alias(&1, __CALLER__))
-      else
-        mod_or_mod_arg
+      case mod_or_mod_arg do
+        {mod, arg} ->
+          {expand_literals(mod, __CALLER__), expand_literals(arg, __CALLER__)}
+
+        mod_or_mod_arg ->
+          expand_literals(mod_or_mod_arg, __CALLER__)
       end
 
     quote do
@@ -549,6 +555,14 @@ defmodule Phoenix.LiveView do
         :phoenix_live_mount,
         Phoenix.LiveView.Lifecycle.validate_on_mount!(__MODULE__, unquote(mod_or_mod_arg))
       )
+    end
+  end
+
+  defp expand_literals(ast, env) do
+    if Macro.quoted_literal?(ast) do
+      Macro.prewalk(ast, &expand_alias(&1, env))
+    else
+      ast
     end
   end
 
@@ -667,6 +681,10 @@ defmodule Phoenix.LiveView do
         plug :fetch_live_flash
       end
 
+  In a typical LiveView application, the message will be rendered by the CoreComponents’ flash/1 component.
+  It is up to this function to determine what kind of messages it supports.
+  By default, the `:info` and `:error` kinds are handled.
+
   ## Examples
 
       iex> put_flash(socket, :info, "It worked!")
@@ -681,6 +699,16 @@ defmodule Phoenix.LiveView do
   ## Examples
 
       iex> clear_flash(socket)
+
+  Clearing the flash can also be triggered on the client and natively handled by LiveView using the `lv:clear-flash` event.
+
+  For example:
+
+  ```heex
+  <p class="alert" phx-click="lv:clear-flash">
+    <%= Phoenix.Flash.get(@flash, :info) %>
+  </p>
+  ```
   """
   defdelegate clear_flash(socket), to: Phoenix.LiveView.Utils
 
@@ -690,6 +718,16 @@ defmodule Phoenix.LiveView do
   ## Examples
 
       iex> clear_flash(socket, :info)
+
+  Clearing the flash can also be triggered on the client and natively handled by LiveView using the `lv:clear-flash` event.
+
+  For example:
+
+  ```heex
+  <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
+    <%= Phoenix.Flash.get(@flash, :info) %>
+  </p>
+  ```
   """
   defdelegate clear_flash(socket, key), to: Phoenix.LiveView.Utils
 
@@ -855,6 +893,9 @@ defmodule Phoenix.LiveView do
   `{:ok, my_result}` to collect results about the consumed entries, or
   `{:postpone, my_result}` to collect results, but postpone the file
   consumption to be performed later.
+
+  A list of all `my_result` values produced by the passed function is
+  returned, regardless of whether they were consumed or postponed.
 
   ## Examples
 
@@ -1398,7 +1439,7 @@ defmodule Phoenix.LiveView do
   Hooks provide a mechanism to tap into key stages of the LiveView
   lifecycle in order to bind/update assigns, intercept events,
   patches, and regular messages when necessary, and to inject
-  common functionality. Use `attach_hook/1` on any of the following
+  common functionality. Use `attach_hook/4` on any of the following
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, `:handle_async`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
@@ -1428,7 +1469,7 @@ defmodule Phoenix.LiveView do
 
   When defining a plugin that matches on specific callbacks, you **must**
   define a catch-all clause, as your hook will be invoked even for events
-  you may not be interested on.
+  you may not be interested in.
 
   ### Implications for end-users
 
@@ -1594,7 +1635,7 @@ defmodule Phoenix.LiveView do
   positive limit will prune items from the end of the container, while a negative
   limit will prune items from the beginning of the container.
 
-  Note that the limit is not enforced on the first `mount/3` render (when no websocket
+  Note that the limit is not enforced on the first `c:mount/3` render (when no websocket
   connection was established yet), as it means more data than necessary has been
   loaded. In such cases, you should only load and pass the desired amount of items
   to the stream.

@@ -60,6 +60,7 @@ This shows one example for the textarea input, but there are more cases that nee
            @errors != [] && "border-rose-400 focus:border-rose-400"
          ]}
 ```
+The following regex could be used to find and replace the relevant `phx-no-feedback` classes: `/phx-no-feedback:[\w\-\d:]+/`.
 
 2. Filter the errors in the initial function for `Phoenix.HTML.FormField`s:
 
@@ -107,6 +108,24 @@ generated user module:
 +
      if valid_password?(changeset.data, password) do
 ```
+
+## 1.0.0-rc.7
+
+### Enhancements
+  * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
+  * Validate slot options (prevents typos like `slot :myslot, requird: true`)
+
+### Bug fixes
+  * Fix stream items not reapplying JS commands when joining after a disconnect
+  * Fix unnecessary remount when navigating back
+  * Fix character composition mode not working properly in Safari when an input is patched
+  * Fix `cannot redirect socket on update` error raised erroneously under rare circumstances
+  * Fix upstream morphdom issue that could cause elements being removed from the real DOM instead of a cloned tree while some elements are locked
+  * Don't dispatch click event when moving mouse away from initial click target
+  * Fix formatter formatting expressions that are strings with escaped quotes incorrectly
+
+### Deprecations
+  * Deprecate the `name` attribute of `Phoenix.Component.dynamic_tag/1` in favor of `tag_name`
 
 ## 1.0.0-rc.6 (2024-06-27)
 
@@ -186,7 +205,7 @@ generated user module:
 ## 0.20.16 (2024-06-20)
 
 ### Bug fixes
-* Fix bug introduced in 0.20.15 causing incorrect patching on form elements when awaiting acknowledgements
+  * Fix bug introduced in 0.20.15 causing incorrect patching on form elements when awaiting acknowledgements
 
 ## 0.20.15 (2024-06-18)
 
@@ -285,7 +304,7 @@ generated user module:
 ### Bug fixes
   * Fix stream items being excluded in LiveViewTest
   * Fix stream items failing to properly update nested streams or LiveComponents
-  * Fix debounce/blur regression causing unexpeted events to be sent
+  * Fix debounce/blur regression causing unexpected events to be sent
 
 ## 0.20.5 (2024-02-08)
 

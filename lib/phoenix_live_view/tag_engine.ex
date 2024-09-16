@@ -1200,6 +1200,23 @@ defmodule Phoenix.LiveView.TagEngine do
   defp attr_type(value) when is_float(value), do: {:float, value}
   defp attr_type(value) when is_boolean(value), do: {:boolean, value}
   defp attr_type(value) when is_atom(value), do: {:atom, value}
+  defp attr_type({:fn, _, [{:->, _, [args, _]}]}), do: {:fun, length(args)}
+  defp attr_type({:&, _, [{:/, _, [_, arity]}]}), do: {:fun, arity}
+
+  # this could be a &myfun(&1, &2)
+  defp attr_type({:&, _, args}) do
+    {_ast, arity} =
+      Macro.prewalk(args, 0, fn
+        {:&, _, [n]} = ast, acc when is_integer(n) ->
+          {ast, max(n, acc)}
+
+        ast, acc ->
+          {ast, acc}
+      end)
+
+    (arity > 0 && {:fun, arity}) || :any
+  end
+
   defp attr_type(_value), do: :any
 
   ## Helpers
@@ -1246,7 +1263,8 @@ defmodule Phoenix.LiveView.TagEngine do
           meta
         )
 
-      _ -> :ok
+      _ ->
+        :ok
     end
   end
 
