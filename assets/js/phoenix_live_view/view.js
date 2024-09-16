@@ -969,18 +969,24 @@ export default class View {
           els = Array.isArray(els) ? els : [els]
           this.undoRefs(newRef, phxEvent, els)
         },
-        lock: (els, onUnlock) => {
+        getAck: new Promise(resolve => {
+          if(this.isAcked(newRef)){
+            resolve(detail)
+          } else {
+            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), {once: true})
+          }
+        }),
+        lock: (els) => {
+          if(this.isAcked(newRef)){ return new Promise.resolve(detail) }
+
           els = Array.isArray(els) ? els : [els]
-          els.forEach(el => {
-            if(this.isAcked(newRef)){
-              onUnlock()
-            } else {
-              el.setAttribute(PHX_REF_LOCK, newRef)
-              el.setAttribute(PHX_REF_SRC, this.refSrc())
-              if(onUnlock){
-                el.addEventListener(`phx:ack:${newRef}`, onUnlock, {once: true})
-              }
-            }
+          els.forEach(lockEl => {
+            lockEl.setAttribute(PHX_REF_LOCK, newRef)
+            lockEl.setAttribute(PHX_REF_SRC, this.refSrc())
+          })
+
+          return new Promise(resolve => {
+            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), {once: true})
           })
         }
       }

@@ -931,16 +931,32 @@ defmodule Phoenix.LiveView.JS do
   end
 
   defp validate_keys(opts, kind, allowed_keys) do
-    for key <- Keyword.keys(opts) do
-      if key not in allowed_keys do
+    Enum.map(opts, fn
+      {:to, {scope, _selector}} when scope not in [:closest, :inner, :document] ->
         raise ArgumentError, """
-        invalid option for #{kind}
-        Expected keys to be one of #{inspect(allowed_keys)}, got: #{inspect(key)}
+        invalid scope for :to option in #{kind}.
+        Valid scopes are :closest, :inner, :document. Got: #{inspect(scope)}
         """
-      end
-    end
 
-    opts
+      {:to, {:document, selector}} ->
+        {:to, selector}
+
+      {:to, {scope, selector}} ->
+        {:to, %{scope => selector}}
+
+      {:to, selector} when is_binary(selector) ->
+        {:to, selector}
+
+      {key, val} ->
+        if key not in allowed_keys do
+          raise ArgumentError, """
+          invalid option for #{kind}
+          Expected keys to be one of #{inspect(allowed_keys)}, got: #{inspect(key)}
+          """
+        end
+
+        {key, val}
+    end)
   end
 
   defp put_value(opts) do

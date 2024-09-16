@@ -302,6 +302,33 @@ describe("JS", () => {
       JS.exec("click", click.getAttribute("phx-click"), view, click)
     })
 
+    test("with to scope inner", done => {
+      let view = setupView(`
+      <div id="click" phx-click='[["dispatch", {"to": {"inner": ".modal"}, "event": "click"}]]'>
+        <div class="modal">modal</div>
+      </div>
+      `)
+      let modal = simulateVisibility(document.querySelector(".modal"))
+      let click = document.querySelector("#click")
+
+      modal.addEventListener("click", () => done())
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+    })
+
+    test("with to scope closest", done => {
+      let view = setupView(`
+      <div class="modal">
+        <div>
+          <div id="click" phx-click='[["dispatch", {"to": {"closest": ".modal"}, "event": "click"}]]'></div>
+        </div>
+      </div>
+      `)
+      let modal = simulateVisibility(document.querySelector(".modal"))
+      let click = document.querySelector("#click")
+
+      modal.addEventListener("click", () => done())
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+    })
     test("with details", done => {
       let view = setupView(`
       <div id="modal">modal</div>

@@ -311,7 +311,17 @@ let JS = {
   },
 
   filterToEls(liveSocket, sourceEl, {to}){
-    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to) : [sourceEl]
+    let defaultQuery = () => {
+      if(typeof(to) === "string"){
+        return document.querySelectorAll(to)
+      } else if(to.closest){
+        let toEl = sourceEl.closest(to.closest)
+        return toEl ? [toEl] : []
+      } else if(to.inner){
+        return sourceEl.querySelectorAll(to.inner)
+      }
+    }
+    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to, defaultQuery) : [sourceEl]
   },
 
   defaultDisplay(el){

@@ -1012,7 +1012,7 @@ describe("View + Component", function(){
   })
 
   test("pushEvent", (done) => {
-    expect.assertions(16)
+    expect.assertions(17)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
@@ -1037,18 +1037,22 @@ describe("View + Component", function(){
       expect(e.detail.ref).toBe(0)
       expect(e.target).toBe(input)
     })
-    input.addEventListener("phx:ack:myevent", (e) => {
+    input.addEventListener("phx:ack:0", (e) => {
+      expect(e.detail.event).toBe("myevent")
       expect(e.detail.ref).toBe(0)
       expect(e.target).toBe(input)
       done()
     })
     input.addEventListener("phx:push", (e) => {
-      let {lock, unlock} = e.detail
+      let {lock, unlock, getAck} = e.detail
       expect(typeof lock).toBe("function")
       expect(view.el.getAttribute("data-phx-ref-lock")).toBe(null)
       // lock accepts unlock function to fire, which will done() the test
-      lock(view.el, (e) => {
-        expect(e.detail.event).toBe("myevent")
+      getAck.then(detail => {
+        expect(detail.event).toBe("myevent")
+      })
+      lock(view.el).then(detail => {
+        expect(detail.event).toBe("myevent")
       })
       expect(e.target).toBe(input)
       expect(input.getAttribute("data-phx-ref-lock")).toBe("0")

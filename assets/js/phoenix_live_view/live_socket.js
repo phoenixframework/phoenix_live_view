@@ -161,7 +161,7 @@ export default class LiveSocket {
     this.boundEventNames = new Set()
     this.serverCloseRef = null
     this.domCallbacks = Object.assign({
-      jsQuerySelectorAll: (sourceEl, query) => document.querySelectorAll(query),
+      jsQuerySelectorAll: null,
       onPatchStart: closure(),
       onPatchEnd: closure(),
       onNodeAdded: closure(),
@@ -951,8 +951,9 @@ export default class LiveSocket {
     })
   }
 
-  jsQuerySelectorAll(sourceEl, query){
-    return this.domCallbacks.jsQuerySelectorAll(sourceEl, query)
+  jsQuerySelectorAll(sourceEl, query, defaultQuery){
+    let all = this.domCallbacks.jsQuerySelectorAll
+    return all ? all(sourceEl, query, defaultQuery) : defaultQuery()
   }
 }
 

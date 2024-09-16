@@ -609,7 +609,17 @@ var JS = {
     return !this.isVisible(el) || this.hasAllClasses(el, outClasses);
   },
   filterToEls(liveSocket, sourceEl, { to }) {
-    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to) : [sourceEl];
+    let defaultQuery = () => {
+      if (typeof to === "string") {
+        return document.querySelectorAll(to);
+      } else if (to.closest) {
+        let toEl = sourceEl.closest(to.closest);
+        return toEl ? [toEl] : [];
+      } else if (to.inner) {
+        return sourceEl.querySelectorAll(to.inner);
+      }
+    };
+    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to, defaultQuery) : [sourceEl];
   },
   defaultDisplay(el) {
     return { tr: "table-row", td: "table-cell" }[el.tagName.toLowerCase()] || "block";
@@ -3885,18 +3895,24 @@ var View = class {
           els = Array.isArray(els) ? els : [els];
           this.undoRefs(newRef, phxEvent, els);
         },
-        lock: (els, onUnlock) => {
+        getAck: new Promise((resolve) => {
+          if (this.isAcked(newRef)) {
+            resolve(detail);
+          } else {
+            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), { once: true });
+          }
+        }),
+        lock: (els) => {
+          if (this.isAcked(newRef)) {
+            return new Promise.resolve(detail);
+          }
           els = Array.isArray(els) ? els : [els];
-          els.forEach((el2) => {
-            if (this.isAcked(newRef)) {
-              onUnlock();
-            } else {
-              el2.setAttribute(PHX_REF_LOCK, newRef);
-              el2.setAttribute(PHX_REF_SRC, this.refSrc());
-              if (onUnlock) {
-                el2.addEventListener(`phx:ack:${newRef}`, onUnlock, { once: true });
-              }
-            }
+          els.forEach((lockEl) => {
+            lockEl.setAttribute(PHX_REF_LOCK, newRef);
+            lockEl.setAttribute(PHX_REF_SRC, this.refSrc());
+          });
+          return new Promise((resolve) => {
+            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), { once: true });
           });
         }
       };
@@ -4372,7 +4388,7 @@ var LiveSocket = class {
     this.boundEventNames = new Set();
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign({
-      jsQuerySelectorAll: (sourceEl, query) => document.querySelectorAll(query),
+      jsQuerySelectorAll: null,
       onPatchStart: closure(),
       onPatchEnd: closure(),
       onNodeAdded: closure(),
@@ -5153,8 +5169,9 @@ var LiveSocket = class {
       }
     });
   }
-  jsQuerySelectorAll(sourceEl, query) {
-    return this.domCallbacks.jsQuerySelectorAll(sourceEl, query);
+  jsQuerySelectorAll(sourceEl, query, defaultQuery) {
+    let all = this.domCallbacks.jsQuerySelectorAll;
+    return all ? all(sourceEl, query, defaultQuery) : defaultQuery();
   }
 };
 var TransitionSet = class {

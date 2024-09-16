@@ -78,6 +78,15 @@ defmodule Phoenix.LiveView.JSTest do
                ]
              }
 
+      assert JS.add_class("show", to: {:closest, "a"}) == %JS{
+               ops: [
+                 [
+                   "add_class",
+                   %{names: ["show"], to: %{closest: "a"}}
+                 ]
+               ]
+             }
+
       assert JS.add_class("show", to: "#modal") == %JS{
                ops: [
                  [
@@ -166,6 +175,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for add_class/, fn ->
         JS.add_class("show", bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in add_class/, fn ->
+        JS.add_class("show", to: {:sibling, "foo"})
+      end
     end
 
     test "encoding" do
@@ -190,6 +203,15 @@ defmodule Phoenix.LiveView.JSTest do
                  [
                    "remove_class",
                    %{names: ["show"], to: "#modal"}
+                 ]
+               ]
+             }
+
+      assert JS.remove_class("show", to: {:inner, "a"}) == %JS{
+               ops: [
+                 [
+                   "remove_class",
+                   %{names: ["show"], to: %{inner: "a"}}
                  ]
                ]
              }
@@ -303,6 +325,15 @@ defmodule Phoenix.LiveView.JSTest do
                  ]
                ]
              }
+
+      assert JS.toggle_class("show", to: {:document, "#modal"}) == %JS{
+               ops: [
+                 [
+                   "toggle_class",
+                   %{names: ["show"], to: "#modal"}
+                 ]
+               ]
+             }
     end
 
     test "multiple classes" do
@@ -345,7 +376,6 @@ defmodule Phoenix.LiveView.JSTest do
                  ]
                ]
              }
-
 
       assert JS.toggle_class("c", transition: "a b") == %JS{
                ops: [
@@ -416,6 +446,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for dispatch/, fn ->
         JS.dispatch("click", to: ".foo", bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in dispatch/, fn ->
+        JS.dispatch("click", to: {:winner, ".foo"})
+      end
     end
 
     test "raises with click details" do
@@ -452,6 +486,15 @@ defmodule Phoenix.LiveView.JSTest do
                  [
                    "toggle",
                    %{to: "#modal"}
+                 ]
+               ]
+             }
+
+      assert JS.toggle(to: {:closest, ".modal"}) == %JS{
+               ops: [
+                 [
+                   "toggle",
+                   %{to: %{closest: ".modal"}}
                  ]
                ]
              }
@@ -520,6 +563,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for toggle/, fn ->
         JS.toggle(to: "#modal", bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in toggle/, fn ->
+        JS.toggle(to: "#modal", to: {:bad, "123"})
+      end
     end
 
     test "composability" do
@@ -543,6 +590,10 @@ defmodule Phoenix.LiveView.JSTest do
     test "with defaults" do
       assert JS.show(to: "#modal") == %JS{
                ops: [["show", %{to: "#modal"}]]
+             }
+
+      assert JS.show(to: {:inner, ".modal"}) == %JS{
+               ops: [["show", %{to: %{inner: ".modal"}}]]
              }
     end
 
@@ -600,6 +651,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for show/, fn ->
         JS.show(to: "#modal", bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in show/, fn ->
+        JS.show(to: {:bad, "#modal"})
+      end
     end
 
     test "composability" do
@@ -623,6 +678,10 @@ defmodule Phoenix.LiveView.JSTest do
     test "with defaults" do
       assert JS.hide(to: "#modal") == %JS{
                ops: [["hide", %{to: "#modal"}]]
+             }
+
+      assert JS.hide(to: {:closest, "a"}) == %JS{
+               ops: [["hide", %{to: %{closest: "a"}}]]
              }
     end
 
@@ -672,6 +731,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for hide/, fn ->
         JS.hide(to: "#modal", bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in hide/, fn ->
+        JS.hide(to: {:bad, "#modal"})
+      end
     end
 
     test "composability" do
@@ -699,6 +762,10 @@ defmodule Phoenix.LiveView.JSTest do
 
       assert JS.transition("shake", to: "#modal") == %JS{
                ops: [["transition", %{transition: [["shake"], [], []], to: "#modal"}]]
+             }
+
+      assert JS.transition("shake", to: {:inner, "a"}) == %JS{
+               ops: [["transition", %{transition: [["shake"], [], []], to: %{inner: "a"}}]]
              }
 
       assert JS.transition("shake swirl", to: "#modal") == %JS{
@@ -733,6 +800,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for transition/, fn ->
         JS.transition("shake", to: "#modal", bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in transition/, fn ->
+        JS.transition("shake", to: {:bad, "#modal"})
+      end
     end
 
     test "composability" do
@@ -765,6 +836,12 @@ defmodule Phoenix.LiveView.JSTest do
                  ["set_attr", %{attr: ["aria-expanded", "true"], to: "#dropdown"}]
                ]
              }
+
+      assert JS.set_attribute({"aria-expanded", "true"}, to: {:inner, ".dropdown"}) == %JS{
+               ops: [
+                 ["set_attr", %{attr: ["aria-expanded", "true"], to: %{inner: ".dropdown"}}]
+               ]
+             }
     end
 
     test "composability" do
@@ -785,6 +862,10 @@ defmodule Phoenix.LiveView.JSTest do
     test "raises with unknown options" do
       assert_raise ArgumentError, ~r/invalid option for set_attribute/, fn ->
         JS.set_attribute({"disabled", ""}, bad: :opt)
+      end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in set_attribute/, fn ->
+        JS.set_attribute({"disabled", ""}, to: {:bad, "#modal"})
       end
     end
 
@@ -855,6 +936,16 @@ defmodule Phoenix.LiveView.JSTest do
                  ["toggle_attr", %{attr: ["aria-expanded", "true", "false"], to: "#dropdown"}]
                ]
              }
+
+      assert JS.toggle_attribute({"aria-expanded", "true", "false"}, to: {:inner, ".dropdown"}) ==
+               %JS{
+                 ops: [
+                   [
+                     "toggle_attr",
+                     %{attr: ["aria-expanded", "true", "false"], to: %{inner: ".dropdown"}}
+                   ]
+                 ]
+               }
     end
 
     test "composability" do
@@ -877,6 +968,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for toggle_attribute/, fn ->
         JS.toggle_attribute({"disabled", "true"}, bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in toggle_attribute/, fn ->
+        JS.toggle_attribute({"disabled", "true"}, to: {:bad, "123"})
+      end
     end
 
     test "encoding" do
@@ -892,6 +987,7 @@ defmodule Phoenix.LiveView.JSTest do
     test "with defaults" do
       assert JS.focus() == %JS{ops: [["focus", %{}]]}
       assert JS.focus(to: "input") == %JS{ops: [["focus", %{to: "input"}]]}
+      assert JS.focus(to: {:inner, "input"}) == %JS{ops: [["focus", %{to: %{inner: "input"}}]]}
     end
 
     test "composability" do
@@ -908,6 +1004,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for focus/, fn ->
         JS.focus(bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in focus/, fn ->
+        JS.focus(to: {:bad, "a"})
+      end
     end
 
     test "encoding" do
@@ -919,6 +1019,10 @@ defmodule Phoenix.LiveView.JSTest do
     test "with defaults" do
       assert JS.focus_first() == %JS{ops: [["focus_first", %{}]]}
       assert JS.focus_first(to: "input") == %JS{ops: [["focus_first", %{to: "input"}]]}
+
+      assert JS.focus_first(to: {:inner, "input"}) == %JS{
+               ops: [["focus_first", %{to: %{inner: "input"}}]]
+             }
     end
 
     test "composability" do
@@ -938,6 +1042,10 @@ defmodule Phoenix.LiveView.JSTest do
       assert_raise ArgumentError, ~r/invalid option for focus_first/, fn ->
         JS.focus_first(bad: :opt)
       end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in focus_first/, fn ->
+        JS.focus_first(to: {:bad, "a"})
+      end
     end
 
     test "encoding" do
@@ -949,6 +1057,10 @@ defmodule Phoenix.LiveView.JSTest do
     test "with defaults" do
       assert JS.push_focus() == %JS{ops: [["push_focus", %{}]]}
       assert JS.push_focus(to: "input") == %JS{ops: [["push_focus", %{to: "input"}]]}
+
+      assert JS.push_focus(to: {:inner, "input"}) == %JS{
+               ops: [["push_focus", %{to: %{inner: "input"}}]]
+             }
     end
 
     test "composability" do
@@ -967,6 +1079,10 @@ defmodule Phoenix.LiveView.JSTest do
     test "raises with unknown options" do
       assert_raise ArgumentError, ~r/invalid option for push_focus/, fn ->
         JS.push_focus(bad: :opt)
+      end
+
+      assert_raise ArgumentError, ~r/invalid scope for :to option in push_focus/, fn ->
+        JS.push_focus(to: {:bad, "a"})
       end
     end
 
