@@ -197,7 +197,7 @@ export default class DOMPatch {
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.syncPendingAttrs(fromEl, toEl)
-          DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
+          DOM.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom, phxCustomEvents)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
             // if this is a live component used in a stream, we may need to reorder it
