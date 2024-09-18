@@ -402,15 +402,6 @@ export default class View {
         this.maybeMounted(el)
       }
     })
-    DOM.all(parent, `[${this.binding(PHX_CUSTOM_EVENTS)}]`, el => {
-      if(this.ownsElement(el)){
-        this.bindCustomEvents(el);
-      }
-    });
-  }
-
-  bindCustomEvents(el) {
-    
   }
 
   applyJoinPatch(live_patch, html, streams, events){
