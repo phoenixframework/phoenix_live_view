@@ -2035,6 +2035,9 @@ defmodule Phoenix.LiveView do
   The result of the task is sent to the `c:handle_async/3` callback
   of the caller LiveView or LiveComponent.
 
+  If there is an in-flight task with the same `name`, the later `start_async` wins and the previous task’s result is ignored.
+  You are not restricted to just atoms for `name`, it can be any term such as a tuple.
+
   The task is only started when the socket is connected.
 
   ## Options
