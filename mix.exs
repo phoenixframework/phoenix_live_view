@@ -28,7 +28,7 @@ defmodule Phoenix.LiveView.MixProject do
     ]
   end
 
-  defp elixirc_paths(:e2e), do: ["lib", "test/support"]
+  defp elixirc_paths(:e2e), do: ["lib", "test/support", "test/e2e/support"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
@@ -52,7 +52,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:floki, "~> 0.36", optional: true},
       {:ex_doc, "~> 0.29", only: :docs},
       {:makeup_eex, ">= 0.1.1", only: :docs},
-      {:makeup_diff, "~> 0.1", only: :docs},
+      {:makeup_diff, "~> 0.1.1", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4", only: :test},
       {:phoenix_html_helpers, "~> 1.0", only: :test},

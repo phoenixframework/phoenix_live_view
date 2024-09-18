@@ -52,6 +52,11 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     attr :age, :integer, default: 0
     def func2(assigns), do: ~H[]
 
+    def func3_line, do: __ENV__.line
+    attr :on_cancel, :fun, required: true
+    attr :on_complete, {:fun, 2}, required: true
+    def func3(assigns), do: ~H[]
+
     def with_global_line, do: __ENV__.line
     attr :id, :string, default: "container"
     def with_global(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true" />]
@@ -122,6 +127,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   test "stores attributes definitions" do
     func1_line = FunctionComponentWithAttrs.func1_line()
     func2_line = FunctionComponentWithAttrs.func2_line()
+    func3_line = FunctionComponentWithAttrs.func3_line()
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
     button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
@@ -194,6 +200,31 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                ],
                slots: [],
                line: func2_line + 3
+             },
+             func3: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   name: :on_cancel,
+                   type: :fun,
+                   opts: [],
+                   required: true,
+                   doc: nil,
+                   slot: nil,
+                   line: func3_line + 1
+                 },
+                 %{
+                   name: :on_complete,
+                   type: {:fun, 2},
+                   opts: [],
+                   required: true,
+                   doc: nil,
+                   slot: nil,
+                   line: func3_line + 2
+                 }
+               ],
+               slots: [],
+               line: func3_line + 3
              },
              with_global: %{
                kind: :def,
@@ -1239,6 +1270,32 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "raise if attr function type arity is not integer" do
+    msg = ~r"invalid type {:fun, \"a\"} for attr :foo"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        attr :foo, {:fun, "a"}
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr tuple first element is not :fun" do
+    msg = ~r"invalid type {:invalid, 1} for attr :foo"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        attr :foo, {:invalid, 1}
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
   test "raise if slot attr type is not supported" do
     msg = ~r"invalid type :not_a_type for attr :foo in slot :named"
 
@@ -1248,6 +1305,38 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         slot :named do
           attr :foo, :not_a_type
+        end
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if slot attr type arity is not integer" do
+    msg = ~r"invalid type {:fun, \"a\"} for attr :foo in slot :named"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        slot :named do
+          attr :foo, {:fun, "a"}
+        end
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if slot attr tuple first element is not :fun" do
+    msg = ~r"invalid type {:invalid, 1} for attr :foo in slot :named"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        slot :named do
+          attr :foo, {:invalid, 1}
         end
 
         def func(assigns), do: ~H[]

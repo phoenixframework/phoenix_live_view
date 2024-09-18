@@ -1802,7 +1802,7 @@ defmodule Phoenix.LiveView do
 
     * `:at` - The index to insert or update the item in the collection on the client.
       By default, the item is appended to the parent DOM container. This is the same as
-      passing a limit of `-1`.
+      passing a value of `-1`.
       If the item already exists in the parent DOM container then it will be
       updated in place.
 

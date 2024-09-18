@@ -18,11 +18,29 @@ const syncLV = async (page) => {
 // for the given selector; it uses private phoenix live view js functions, so it could
 // break in the future
 // we handle the evaluation in a LV hook
-const evalLV = async (page, code, selector="[data-phx-main]") => await page.evaluate(([code, selector]) => {
-  window.liveSocket.main.withinTargets(selector, (targetView, targetCtx) => {
-    targetView.pushEvent("event", document.body, targetCtx, "sandbox:eval", { value: code })
+const evalLV = async (page, code, selector = "[data-phx-main]") => await page.evaluate(([code, selector]) => {
+  return new Promise((resolve) => {
+    window.liveSocket.main.withinTargets(selector, (targetView, targetCtx) => {
+      targetView.pushEvent(
+        "event",
+        document.body,
+        targetCtx,
+        "sandbox:eval",
+        { value: code },
+        {},
+        ({ result }) => resolve(result)
+      );
+    });
   });
 }, [code, selector]);
+
+// executes the given code inside a new process
+// (in context of a plug request)
+const evalPlug = async (request, code) => {
+  return await request.post("/eval", {
+    data: { code }
+  }).then(resp => resp.json());
+};
 
 const attributeMutations = (page, selector) => {
   // this is a bit of a hack, basically we create a MutationObserver on the page
@@ -63,4 +81,4 @@ const attributeMutations = (page, selector) => {
   };
 }
 
-module.exports = { randomString, syncLV, evalLV, attributeMutations };
+module.exports = { randomString, syncLV, evalLV, evalPlug, attributeMutations };

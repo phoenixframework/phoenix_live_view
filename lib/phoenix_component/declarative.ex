@@ -383,10 +383,11 @@ defmodule Phoenix.Component.Declarative do
     :ok
   end
 
-  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :global]
+  @builtin_types [:boolean, :integer, :float, :string, :atom, :list, :map, :fun, :global]
   @valid_types [:any] ++ @builtin_types
 
-  defp validate_attr_type!(module, key, slot, name, type, line, file) when is_atom(type) do
+  defp validate_attr_type!(module, key, slot, name, type, line, file)
+       when is_atom(type) or is_tuple(type) do
     attrs = Module.get_attribute(module, key) || []
 
     cond do
@@ -406,14 +407,24 @@ defmodule Phoenix.Component.Declarative do
         :ok
     end
 
-    case Atom.to_string(type) do
-      "Elixir." <> _ -> {:struct, type}
-      _ when type in @valid_types -> type
-      _ -> bad_type!(slot, name, type, line, file)
+    cond do
+      type in @valid_types -> type
+      is_tuple(type) -> validate_tuple_attr_type!(slot, name, type, line, file)
+      type |> Atom.to_string() |> String.starts_with?("Elixir.") -> {:struct, type}
+      true -> bad_type!(slot, name, type, line, file)
     end
   end
 
   defp validate_attr_type!(_module, _key, slot, name, type, line, file) do
+    bad_type!(slot, name, type, line, file)
+  end
+
+  defp validate_tuple_attr_type!(_slot, _name, {:fun, arity} = type, _line, _file)
+       when is_integer(arity) do
+    type
+  end
+
+  defp validate_tuple_attr_type!(slot, name, type, line, file) do
     bad_type!(slot, name, type, line, file)
   end
 
@@ -424,6 +435,9 @@ defmodule Phoenix.Component.Declarative do
 
       * any Elixir struct, such as URI, MyApp.User, etc
       * one of #{Enum.map_join(@builtin_types, ", ", &inspect/1)}
+      * a function written as:
+          * without arity, ex: :fun
+          * with a specific arity, ex: {:fun, 2}
       * :any for all other types
     """)
   end
@@ -1234,6 +1248,9 @@ defmodule Phoenix.Component.Declarative do
   defp type_mismatch(type, {type, _value}), do: nil
   defp type_mismatch(:atom, {:boolean, _value}), do: nil
   defp type_mismatch({:struct, _}, {:map, {:%{}, _, [{:|, _, [_, _]}]}}), do: nil
+  defp type_mismatch(:fun, {:fun, _}), do: nil
+  defp type_mismatch({:fun, arity}, {:fun, arity}), do: nil
+  defp type_mismatch({:fun, _arity}, {:fun, arity}), do: type_with_article({:fun, arity})
   defp type_mismatch(_type, {_, value}), do: Macro.to_string(value)
 
   defp component_fa(%{component: {mod, fun}}) do
@@ -1243,6 +1260,8 @@ defmodule Phoenix.Component.Declarative do
   ## Shared helpers
 
   defp type_with_article({:struct, struct}), do: "a #{inspect(struct)} struct"
+  defp type_with_article(:fun), do: "a function"
+  defp type_with_article({:fun, arity}), do: "a function of arity #{arity}"
   defp type_with_article(type) when type in [:atom, :integer], do: "an #{inspect(type)}"
   defp type_with_article(type), do: "a #{inspect(type)}"
 

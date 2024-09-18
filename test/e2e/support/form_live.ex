@@ -43,6 +43,18 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
 
   @impl Phoenix.LiveView
   def mount(params, session, socket) do
+    # if we're nested we need to manually add the on_mount hook
+    # as the live_session doesn't apply
+    socket =
+      if socket.parent_pid do
+        {:cont, socket} =
+          Phoenix.LiveViewTest.E2E.Hooks.on_mount(:default, params, session, socket)
+
+        socket
+      else
+        socket
+      end
+
     params =
       case params do
         :not_mounted_at_router -> session
