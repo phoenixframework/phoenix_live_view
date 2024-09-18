@@ -1559,11 +1559,8 @@ var ElementRef = class {
     if (!this.isWithin(ref)) {
       return;
     }
-    this.undoLocks(ref, eachCloneCallback);
-    this.undoLoading(ref);
-    let detail = { ref, event: phxEvent };
-    this.el.dispatchEvent(new CustomEvent("phx:ack", { detail, bubbles: true, cancelable: false }));
-    this.el.dispatchEvent(new CustomEvent(`phx:ack:${ref}`, { detail, bubbles: true, cancelable: false }));
+    this.undoLocks(ref, phxEvent, eachCloneCallback);
+    this.undoLoading(ref, phxEvent);
     if (this.isFullyResolvedBy(ref)) {
       this.el.removeAttribute(PHX_REF_SRC);
     }
@@ -1571,7 +1568,7 @@ var ElementRef = class {
   isWithin(ref) {
     return !(this.loadingRef !== null && this.loadingRef > ref && (this.lockRef !== null && this.lockRef > ref));
   }
-  undoLocks(ref, eachCloneCallback) {
+  undoLocks(ref, phxEvent, eachCloneCallback) {
     if (!this.isLockUndoneBy(ref)) {
       return;
     }
@@ -1581,8 +1578,10 @@ var ElementRef = class {
       dom_default.deletePrivate(this.el, PHX_REF_LOCK);
     }
     this.el.removeAttribute(PHX_REF_LOCK);
+    let opts = { detail: { ref, event: phxEvent }, bubbles: true, cancelable: false };
+    this.el.dispatchEvent(new CustomEvent(`phx:lock-stop:${this.lockRef}`, opts));
   }
-  undoLoading(ref) {
+  undoLoading(ref, phxEvent) {
     if (!this.isLoadingUndoneBy(ref)) {
       if (this.canUndoLoading(ref) && this.el.classList.contains("phx-submit-loading")) {
         this.el.classList.remove("phx-change-loading");
@@ -1606,6 +1605,8 @@ var ElementRef = class {
         this.el.innerText = disableRestore;
         this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
       }
+      let opts = { detail: { ref, event: phxEvent }, bubbles: true, cancelable: false };
+      this.el.dispatchEvent(new CustomEvent(`phx:loading-stop:${this.loadingRef}`, opts));
     }
     PHX_EVENT_CLASSES.forEach((name) => {
       if (name !== "phx-submit-loading" || this.canUndoLoading(ref)) {
@@ -3889,24 +3890,26 @@ var View = class {
           els = Array.isArray(els) ? els : [els];
           this.undoRefs(newRef, phxEvent, els);
         },
-        getAck: new Promise((resolve) => {
+        lockComplete: new Promise((resolve) => {
           if (this.isAcked(newRef)) {
-            resolve(detail);
-          } else {
-            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), { once: true });
+            return resolve(detail);
           }
+          el.addEventListener(`phx:loading-stop:${newRef}`, () => resolve(detail), { once: true });
         }),
-        lock: (els) => {
+        loadingComplete: new Promise((resolve) => {
           if (this.isAcked(newRef)) {
-            return new Promise.resolve(detail);
+            return resolve(detail);
           }
-          els = Array.isArray(els) ? els : [els];
-          els.forEach((lockEl) => {
+          el.addEventListener(`phx:lock-stop:${newRef}`, () => resolve(detail), { once: true });
+        }),
+        lock: (lockEl) => {
+          return new Promise((resolve) => {
+            if (this.isAcked(newRef)) {
+              return resolve(detail);
+            }
             lockEl.setAttribute(PHX_REF_LOCK, newRef);
             lockEl.setAttribute(PHX_REF_SRC, this.refSrc());
-          });
-          return new Promise((resolve) => {
-            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), { once: true });
+            lockEl.addEventListener(`phx:lock-stop:${newRef}`, () => resolve(detail), { once: true });
           });
         }
       };

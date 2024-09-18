@@ -9,7 +9,6 @@ import {
   PHX_DISABLE_WITH_RESTORE,
   PHX_DISABLED,
   PHX_LOADING_CLASS,
-  PHX_EVENT_CLASSES,
   PHX_ERROR_CLASS,
   PHX_CLIENT_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
@@ -886,13 +885,17 @@ export default class View {
           if(resp.diff){
             this.liveSocket.requestDOMUpdate(() => {
               this.applyDiff("update", resp.diff, ({diff, reply, events}) => {
-                if(ref !== null){ this.undoRefs(ref, payload.event) }
+                if(ref !== null){
+                  this.undoRefs(ref, payload.event)
+                }
                 this.update(diff, events)
                 finish(reply)
               })
             })
           } else {
-            if(ref !== null){ this.undoRefs(ref, payload.event) }
+            if(ref !== null){
+              this.undoRefs(ref, payload.event)
+            }
             finish(null)
           }
         })
@@ -972,24 +975,20 @@ export default class View {
           els = Array.isArray(els) ? els : [els]
           this.undoRefs(newRef, phxEvent, els)
         },
-        getAck: new Promise(resolve => {
-          if(this.isAcked(newRef)){
-            resolve(detail)
-          } else {
-            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), {once: true})
-          }
+        lockComplete: new Promise(resolve => {
+          if(this.isAcked(newRef)){ return resolve(detail) }
+          el.addEventListener(`phx:loading-stop:${newRef}`, () => resolve(detail), {once: true})
         }),
-        lock: (els) => {
-          if(this.isAcked(newRef)){ return new Promise.resolve(detail) }
-
-          els = Array.isArray(els) ? els : [els]
-          els.forEach(lockEl => {
+        loadingComplete: new Promise(resolve => {
+          if(this.isAcked(newRef)){ return resolve(detail) }
+          el.addEventListener(`phx:lock-stop:${newRef}`, () => resolve(detail), {once: true})
+        }),
+        lock: (lockEl) => {
+          return new Promise(resolve => {
+            if(this.isAcked(newRef)){ return resolve(detail) }
             lockEl.setAttribute(PHX_REF_LOCK, newRef)
             lockEl.setAttribute(PHX_REF_SRC, this.refSrc())
-          })
-
-          return new Promise(resolve => {
-            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), {once: true})
+            lockEl.addEventListener(`phx:lock-stop:${newRef}`, () => resolve(detail), {once: true})
           })
         }
       }

@@ -23,15 +23,10 @@ export default class ElementRef {
     if(!this.isWithin(ref)){ return }
 
     // undo locks and apply clones
-    this.undoLocks(ref, eachCloneCallback)
+    this.undoLocks(ref, phxEvent, eachCloneCallback)
 
     // undo loading states
-    this.undoLoading(ref)
-
-    // dispatch ack events
-    let detail = {ref: ref, event: phxEvent}
-    this.el.dispatchEvent(new CustomEvent("phx:ack", {detail, bubbles: true, cancelable: false}))
-    this.el.dispatchEvent(new CustomEvent(`phx:ack:${ref}`, {detail, bubbles: true, cancelable: false}))
+    this.undoLoading(ref, phxEvent)
 
     // clean up if fully resolved
     if(this.isFullyResolvedBy(ref)){ this.el.removeAttribute(PHX_REF_SRC) }
@@ -49,7 +44,7 @@ export default class ElementRef {
   //
   //   1. execute pending mounted hooks for nodes now in the DOM
   //   2. undo any ref inside the cloned tree that has since been ack'd
-  undoLocks(ref, eachCloneCallback){
+  undoLocks(ref, phxEvent, eachCloneCallback){
     if(!this.isLockUndoneBy(ref)){ return }
 
     let clonedTree = DOM.private(this.el, PHX_REF_LOCK)
@@ -58,9 +53,12 @@ export default class ElementRef {
       DOM.deletePrivate(this.el, PHX_REF_LOCK)
     }
     this.el.removeAttribute(PHX_REF_LOCK)
+
+    let opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
+    this.el.dispatchEvent(new CustomEvent(`phx:lock-stop:${this.lockRef}`, opts))
   }
 
-  undoLoading(ref){
+  undoLoading(ref, phxEvent){
     if(!this.isLoadingUndoneBy(ref)){
       if(this.canUndoLoading(ref) && this.el.classList.contains("phx-submit-loading")){
         this.el.classList.remove("phx-change-loading")
@@ -87,7 +85,11 @@ export default class ElementRef {
         this.el.innerText = disableRestore
         this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
       }
+
+      let opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
+      this.el.dispatchEvent(new CustomEvent(`phx:loading-stop:${this.loadingRef}`, opts))
     }
+
     // remove classes
     PHX_EVENT_CLASSES.forEach(name => {
       if(name !== "phx-submit-loading" || this.canUndoLoading(ref)){
