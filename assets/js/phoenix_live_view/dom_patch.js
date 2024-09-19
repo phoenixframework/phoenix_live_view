@@ -15,6 +15,7 @@ import {
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
   PHX_VIEWPORT_BOTTOM,
+  PHX_CUSTOM_EVENTS,
 } from "./constants"
 
 import {
@@ -96,6 +97,7 @@ export default class DOMPatch {
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
+    let phxCustomEvents = liveSocket.binding(PHX_CUSTOM_EVENTS)
     let added = []
     let updates = []
     let appendPrependUpdates = []
@@ -142,7 +144,7 @@ export default class DOMPatch {
           }
         },
         onBeforeNodeAdded: (el) => {
-          DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom)
+          DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom, phxCustomEvents)
           this.trackBefore("added", el)
 
           let morphedEl = el
@@ -195,7 +197,7 @@ export default class DOMPatch {
         },
         onBeforeElUpdated: (fromEl, toEl) => {
           DOM.syncPendingAttrs(fromEl, toEl)
-          DOM.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom)
+          DOM.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom, phxCustomEvents)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
             // if this is a live component used in a stream, we may need to reorder it
