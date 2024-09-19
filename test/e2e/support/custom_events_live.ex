@@ -1,7 +1,6 @@
 defmodule Phoenix.LiveViewTest.E2E.CustomEventsLive do
   use Phoenix.LiveView, layout: {__MODULE__, :live}
 
-
   @impl Phoenix.LiveView
   def render("live.html", assigns) do
     ~H"""
@@ -38,8 +37,8 @@ defmodule Phoenix.LiveViewTest.E2E.CustomEventsLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-      <my-button id="mybutton" phx-custom-events="my_event"></my-button>
-      <div id="foo"><%= @foo %></div>
+    <my-button id="mybutton" phx-custom-events="my_event"></my-button>
+    <div id="foo"><%= @foo %></div>
     """
   end
 
