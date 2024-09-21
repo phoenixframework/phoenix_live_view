@@ -693,11 +693,11 @@ defmodule Phoenix.LiveView.Diff do
        ) do
     diffs = maybe_put_events(diffs, socket)
 
-    {new_pending, diffs, compnents} =
+    {new_pending, diffs, components} =
       render_component(socket, component, id, cid, new?, cids, diffs, components)
 
     pending = Map.merge(pending, new_pending, fn _, v1, v2 -> v2 ++ v1 end)
-    zip_components(sockets, metadata, component, cids, {pending, diffs, compnents})
+    zip_components(sockets, metadata, component, cids, {pending, diffs, components})
   end
 
   defp zip_components([], [], _component, _cids, acc) do

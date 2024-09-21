@@ -382,7 +382,7 @@ defmodule Phoenix.LiveView.HooksTest do
            }
   end
 
-  test "afte_render hook", %{conn: conn} do
+  test "after_render hook", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle")
 
     assert render(lv) =~ "count:0"

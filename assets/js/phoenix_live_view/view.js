@@ -71,7 +71,7 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   const {submitter, ...meta} = metadata
 
   // We must inject the submitter in the order that it exists in the DOM
-  // releative to other inputs. For example, for checkbox groups, the order must be maintained.
+  // relative to other inputs. For example, for checkbox groups, the order must be maintained.
   let injectedElement
   if(submitter && submitter.name){
     const input = document.createElement("input")
