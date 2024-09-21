@@ -10,7 +10,7 @@ However, your LiveView _may_ still have state that will be lost in this transiti
 
 2. Consider storing other relevant state in the database. For example, if you are building a chat app and you want to store which messages have been read, you can store so in the database. Once the page is loaded, you retrieve the index of the last read message. This makes the application more robust, allow data to be synchronized across devices, etc.
 
-3. If your application uses forms (which is most likely true), keep in mind that Phoenix perform automatic form recovery: in case of disconnections, Phoenix will collect the form data and resubmit it on reconnection. This mechanism works out of the box for most forms but you may want to customize it or test it for your most complex forms. See the relevant section [in the "Form bindings" document](../client/form-bindings.md) to learn more.
+3. If your application uses forms (which is most likely true), keep in mind that Phoenix performs automatic form recovery: in case of disconnections, Phoenix will collect the form data and resubmit it on reconnection. This mechanism works out of the box for most forms but you may want to customize it or test it for your most complex forms. See the relevant section [in the "Form bindings" document](../client/form-bindings.md) to learn more.
 
 The idea is that: if you follow the practices above, most of your state is already handled within your app and therefore deployments should not bring additional concerns. Not only that, it will bring overall benefits to your app such as indexing, link sharing, device sharing, and so on.
 
