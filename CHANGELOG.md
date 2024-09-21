@@ -114,9 +114,9 @@ generated user module:
 ### Enhancements
   * Export `createHook` from `phoenix_live_view` to allow CustomElement's to use hooks
   * Expose programmable JS command interface to hooks for showing, hiding, addClass, etc from a hook which integrates with server DOM patching
-  * Support targetting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closet, "tr"}`, etc.
+  * Support targeting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closet, "tr"}`, etc.
   * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
-  * Validate slot options (prevents typos like `slot :myslot, requird: true`)
+  * Validate slot options (prevents typos like `slot :myslot, required: true`)
 
 ### Bug fixes
   * Fix stream items not reapplying JS commands when joining after a disconnect
@@ -174,7 +174,7 @@ generated user module:
 
 ### Bug fixes
   * Fix used input tracking on checkboxes and hidden inputs
-  * Fix phx-debounce=blur incorrectly sending change event to the next page in some cirumstances
+  * Fix phx-debounce=blur incorrectly sending change event to the next page in some circumstances
   * Fix race condition when destroying Live Components while transitions are still running
   * Fix page reload when disconnecting LiveSocket if using Bandit
   * Fix formatter changing `<%` to `<%=` when it shouldn't
@@ -225,7 +225,7 @@ generated user module:
   * Fix nested LiveView within streams becoming empty when reset
   * Fix `phx-mounted` firing twice, first on dead render, then on live render, leading to errors when a LiveComponent has not yet mounted
   * Fix `JS.toggle_class` error when used with a transition
-  * Fix phx-debounce=blur incorrectly sending change event to the next page in some cirumstances
+  * Fix phx-debounce=blur incorrectly sending change event to the next page in some circumstances
   * Fix race condition when destroying Live Components while transitions are still running
   * Fix page reload when disconnecting LiveSocket if using Bandit
   * Fix formatter changing `<%` to `<%=` when it shouldn't
@@ -395,7 +395,7 @@ generated user module:
   * Fix match error on live navigation when reconnecting from client
 
 ### Enhancements
-  * Support new `meta()` method on File/Blob sublcasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
+  * Support new `meta()` method on File/Blob subclasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
   * Improve void tagging and error messages
 
 ## 0.20.0 (2023-09-22)
@@ -678,7 +678,7 @@ a `:let` usage.
   - [Logger] Add new LiveView logger with telemetry instrumentation for lifecycle events
   - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessibility
   - [Socket] Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
-  - Add `_live_referer` connect param for handling `push_navigate` referal URL
+  - Add `_live_referer` connect param for handling `push_navigate` referral URL
   - Add new `phx-connected` and `phx-disconnected` bindings for reacting to lifecycle changes
   - Add dead view support for JS commands
   - Add dead view support for hooks

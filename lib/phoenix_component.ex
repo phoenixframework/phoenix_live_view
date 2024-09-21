@@ -1548,7 +1548,7 @@ defmodule Phoenix.Component do
   Used inputs are tracked internally by the client sending a sibling key
   derived from each input name, which indicates the inputs that remain  unused
   on the client. For example, a form with email and title fields where only the
-  title has been modifed so far on the client, would send the following payload:
+  title has been modified so far on the client, would send the following payload:
 
       %{
         "title" => "new title",
@@ -2467,7 +2467,7 @@ defmodule Phoenix.Component do
   and `value="new"` name with accompanied "add more" text. Please note that this button must
   have `type="button"` to prevent it from submitting the form.
   Ecto will treat unknown sort params as new children and build a new child.
-  This button is optional and only necessary if you want to dyamically add entries.
+  This button is optional and only necessary if you want to dynamically add entries.
   You can optionally add a similar button before the `<.inputs_for>`, in the case you want
   to prepend entries.
   """
