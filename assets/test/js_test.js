@@ -517,7 +517,7 @@ describe("JS", () => {
       `)
       let form = document.querySelector("#my-form")
       let input = document.querySelector("#username")
-      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, {_target}, callback) => {
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, {_target}, _callback) => {
         expect(phxEvent).toBe("validate")
         expect(sourceEl.isSameNode(input)).toBe(true)
         expect(_target).toBe(input.name)
@@ -670,7 +670,7 @@ describe("JS", () => {
       `)
       let click = document.querySelector("#click")
 
-      view.pushWithReply = (refGenerator, event, payload, onReply) => {
+      view.pushWithReply = (refGenerator, event, payload, _onReply) => {
         expect(payload.value).toEqual({"one": 1, "two": 2, "three": "3"})
         done()
       }
@@ -687,7 +687,7 @@ describe("JS", () => {
       let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
-      view.pushEvent = (eventType, sourceEl, targetCtx, event, data) => {
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, _data) => {
         expect(event).toEqual("clicked")
         done()
       }
@@ -774,7 +774,7 @@ describe("JS", () => {
       <div id="click" phx-click='[["exec",{"attr": "phx-remove", "to": "#modal"}]]'></div>
       `)
       let click = document.querySelector("#click")
-      view.pushEvent = (eventType, sourceEl, targetCtx, event, meta) => {
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, _meta) => {
         expect(eventType).toBe("exec")
         expect(event).toBe("clicked")
         done()
