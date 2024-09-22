@@ -1,12 +1,12 @@
 defmodule Phoenix.LiveView.UploadExternalTest do
   use ExUnit.Case, async: true
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
+  @endpoint Phoenix.LiveViewTest.Support.Endpoint
 
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.UploadLive
+  alias Phoenix.LiveViewTest.Support.UploadLive
 
   def inspect_html_safe(term) do
     term

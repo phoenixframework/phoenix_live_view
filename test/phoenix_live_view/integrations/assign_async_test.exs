@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -125,7 +125,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
       assert render_async(lv) =~ "lc_data: 123"
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
         id: "lc",
         action: :assign_async_reset,
         reset: false
@@ -141,7 +141,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert rendered =~ "lc_data: 123"
       assert rendered =~ "other_data: 555"
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
         id: "lc",
         action: :assign_async_reset,
         reset: [:other_data]
@@ -159,7 +159,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
       assert render_async(lv) =~ "lc_data: 123"
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
         id: "lc",
         action: :assign_async_reset,
         reset: true
@@ -210,7 +210,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       async_ref = Process.monitor(Process.whereis(:lc_cancel))
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
         id: "lc",
         action: :cancel
       )
@@ -219,7 +219,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert render(lv) =~ "exit: {:shutdown, :cancel}"
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
         id: "lc",
         action: :renew_canceled
       )

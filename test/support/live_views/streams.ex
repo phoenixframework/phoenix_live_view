@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.StreamLive do
+defmodule Phoenix.LiveViewTest.Support.StreamLive do
   use Phoenix.LiveView
 
   def run(lv, func) do
@@ -71,7 +71,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
         <button phx-click="admin-move-to-last" phx-value-id={id}>make last</button>
       </div>
     </div>
-    <.live_component id="stream-component" module={Phoenix.LiveViewTest.StreamComponent} />
+    <.live_component id="stream-component" module={Phoenix.LiveViewTest.Support.StreamComponent} />
 
     <button phx-click="reset-users">Reset users</button>
     <button phx-click="reset-users-reorder">Reorder users</button>
@@ -195,7 +195,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamComponent do
+defmodule Phoenix.LiveViewTest.Support.StreamComponent do
   use Phoenix.LiveComponent
 
   def run(lv, func) do
@@ -263,7 +263,7 @@ defmodule Phoenix.LiveViewTest.StreamComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HealthyLive do
+defmodule Phoenix.LiveViewTest.Support.HealthyLive do
   use Phoenix.LiveView
 
   @healthy_stuff %{
@@ -319,7 +319,7 @@ defmodule Phoenix.LiveViewTest.HealthyLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamResetLive do
+defmodule Phoenix.LiveViewTest.Support.StreamResetLive do
   use Phoenix.LiveView
 
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2994
@@ -492,7 +492,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamResetLCLive do
+defmodule Phoenix.LiveViewTest.Support.StreamResetLCLive do
   use Phoenix.LiveView
 
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2982
@@ -553,7 +553,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLCLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamLimitLive do
+defmodule Phoenix.LiveViewTest.Support.StreamLimitLive do
   use Phoenix.LiveView
 
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2686
@@ -640,7 +640,7 @@ defmodule Phoenix.LiveViewTest.StreamLimitLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamNestedLive do
+defmodule Phoenix.LiveViewTest.Support.StreamNestedLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do
@@ -657,13 +657,13 @@ defmodule Phoenix.LiveViewTest.StreamNestedLive do
     ~H"""
     <div id="nested-container">
       <%= @foo %>
-      <%= live_render(@socket, Phoenix.LiveViewTest.StreamResetLive, id: "nested") %>
+      <%= live_render(@socket, Phoenix.LiveViewTest.Support.StreamResetLive, id: "nested") %>
     </div>
     """
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamInsideForLive do
+defmodule Phoenix.LiveViewTest.Support.StreamInsideForLive do
   # https://github.com/phoenixframework/phoenix_live_view/issues/3129
   use Phoenix.LiveView
 
@@ -699,7 +699,7 @@ defmodule Phoenix.LiveViewTest.StreamInsideForLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamNestedComponentResetLive do
+defmodule Phoenix.LiveViewTest.Support.StreamNestedComponentResetLive do
   use Phoenix.LiveView
 
   defmodule InnerComponent do
@@ -801,7 +801,7 @@ defmodule Phoenix.LiveViewTest.StreamNestedComponentResetLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HighFrequencyStreamAndNoStreamUpdatesLive do
+defmodule Phoenix.LiveViewTest.Support.HighFrequencyStreamAndNoStreamUpdatesLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do

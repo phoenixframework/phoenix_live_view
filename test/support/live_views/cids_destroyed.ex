@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.CidsDestroyedLive do
+defmodule Phoenix.LiveViewTest.Support.CidsDestroyedLive do
   use Phoenix.LiveView
 
   defmodule Button do

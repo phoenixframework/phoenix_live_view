@@ -1,6 +1,6 @@
-alias Phoenix.LiveViewTest.{ClockLive, ClockControlsLive}
+alias Phoenix.LiveViewTest.Support.{ClockLive, ClockControlsLive}
 
-defmodule Phoenix.LiveViewTest.ThermostatLive do
+defmodule Phoenix.LiveViewTest.Support.ThermostatLive do
   use Phoenix.LiveView, container: {:article, class: "thermo"}, namespace: Phoenix.LiveViewTest
 
   defmodule Error do
@@ -86,7 +86,7 @@ defmodule Phoenix.LiveViewTest.ThermostatLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ClockLive do
+defmodule Phoenix.LiveViewTest.Support.ClockLive do
   use Phoenix.LiveView, container: {:section, class: "clock"}
 
   def render(assigns) do
@@ -121,7 +121,7 @@ defmodule Phoenix.LiveViewTest.ClockLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ClockControlsLive do
+defmodule Phoenix.LiveViewTest.Support.ClockControlsLive do
   use Phoenix.LiveView
 
   def render(assigns), do: ~H|<button phx-click="snooze">+</button>|
@@ -134,7 +134,7 @@ defmodule Phoenix.LiveViewTest.ClockControlsLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.DashboardLive do
+defmodule Phoenix.LiveViewTest.Support.DashboardLive do
   use Phoenix.LiveView, container: {:div, class: inspect(__MODULE__)}
 
   def render(assigns) do
@@ -148,7 +148,7 @@ defmodule Phoenix.LiveViewTest.DashboardLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.SameChildLive do
+defmodule Phoenix.LiveViewTest.Support.SameChildLive do
   use Phoenix.LiveView
 
   def render(%{dup: true} = assigns) do
@@ -176,9 +176,9 @@ defmodule Phoenix.LiveViewTest.SameChildLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.RootLive do
+defmodule Phoenix.LiveViewTest.Support.RootLive do
   use Phoenix.LiveView
-  alias Phoenix.LiveViewTest.ChildLive
+  alias Phoenix.LiveViewTest.Support.ChildLive
 
   def render(assigns) do
     ~H"""
@@ -204,7 +204,7 @@ defmodule Phoenix.LiveViewTest.RootLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ChildLive do
+defmodule Phoenix.LiveViewTest.Support.ChildLive do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -224,7 +224,7 @@ defmodule Phoenix.LiveViewTest.ChildLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.OptsLive do
+defmodule Phoenix.LiveViewTest.Support.OptsLive do
   use Phoenix.LiveView
 
   def render(assigns), do: ~H|<%= @description %>. <%= @canary %>|
@@ -238,7 +238,7 @@ defmodule Phoenix.LiveViewTest.OptsLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.RedirLive do
+defmodule Phoenix.LiveViewTest.Support.RedirLive do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -299,7 +299,7 @@ defmodule Phoenix.LiveViewTest.RedirLive do
   defp do_redirect(socket, "push_patch", opts), do: push_patch(socket, opts)
 end
 
-defmodule Phoenix.LiveViewTest.AssignsNotInSocketLive do
+defmodule Phoenix.LiveViewTest.Support.AssignsNotInSocketLive do
   use Phoenix.LiveView
 
   def render(assigns), do: ~H|<%= boom(@socket) %>|
@@ -307,7 +307,7 @@ defmodule Phoenix.LiveViewTest.AssignsNotInSocketLive do
   defp boom(socket), do: socket.assigns.boom
 end
 
-defmodule Phoenix.LiveViewTest.ErrorsLive do
+defmodule Phoenix.LiveViewTest.Support.ErrorsLive do
   use Phoenix.LiveView
 
   alias Phoenix.LiveView.Socket
@@ -334,13 +334,13 @@ defmodule Phoenix.LiveViewTest.ErrorsLive do
   def handle_event("crash", _params, _socket), do: raise("boom handle_event")
 end
 
-defmodule Phoenix.LiveViewTest.ClassListLive do
+defmodule Phoenix.LiveViewTest.Support.ClassListLive do
   use Phoenix.LiveView, container: {:span, class: ~w(foo bar)}
 
   def render(assigns), do: ~H|Some content|
 end
 
-defmodule Phoenix.LiveViewTest.AssignAsyncLive do
+defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive do
   use Phoenix.LiveView
 
   on_mount({__MODULE__, :defaults})
@@ -351,7 +351,12 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
 
   def render(assigns) do
     ~H"""
-    <.live_component :if={@lc} module={Phoenix.LiveViewTest.AssignAsyncLive.LC} test={@lc} id="lc" />
+    <.live_component
+      :if={@lc}
+      module={Phoenix.LiveViewTest.Support.AssignAsyncLive.LC}
+      test={@lc}
+      id="lc"
+    />
 
     <div :if={@data.loading}>data loading...</div>
     <div :if={@data.ok? && @data.result == nil}>no data found</div>
@@ -460,7 +465,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
+defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive.LC do
   use Phoenix.LiveComponent
 
   def render(assigns) do
@@ -544,7 +549,7 @@ defmodule Phoenix.LiveViewTest.AssignAsyncLive.LC do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StartAsyncLive do
+defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
   use Phoenix.LiveView
 
   on_mount({__MODULE__, :defaults})
@@ -555,8 +560,12 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
 
   def render(assigns) do
     ~H"""
-    <.live_component :if={@lc} module={Phoenix.LiveViewTest.StartAsyncLive.LC} test={@lc} id="lc" />
-    result: <%= inspect(@result) %>
+    <.live_component
+      :if={@lc}
+      module={Phoenix.LiveViewTest.Support.StartAsyncLive.LC}
+      test={@lc}
+      id="lc"
+    /> result: <%= inspect(@result) %>
     <%= if flash = @flash["info"] do %>
       flash: <%= flash %>
     <% end %>
@@ -730,7 +739,7 @@ defmodule Phoenix.LiveViewTest.StartAsyncLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StartAsyncLive.LC do
+defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.LC do
   use Phoenix.LiveComponent
 
   def render(assigns) do

@@ -110,13 +110,13 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     scope "/", Phoenix.LiveViewTest do
       pipe_through(:browser)
 
-      live "/stream", StreamLive
-      live "/stream/reset", StreamResetLive
-      live "/stream/reset-lc", StreamResetLCLive
-      live "/stream/limit", StreamLimitLive
-      live "/stream/nested-component-reset", StreamNestedComponentResetLive
-      live "/stream/inside-for", StreamInsideForLive
-      live "/healthy/:category", HealthyLive
+      live "/stream", Support.StreamLive
+      live "/stream/reset", Support.StreamResetLive
+      live "/stream/reset-lc", Support.StreamResetLCLive
+      live "/stream/limit", Support.StreamLimitLive
+      live "/stream/nested-component-reset", Support.StreamNestedComponentResetLive
+      live "/stream/inside-for", Support.StreamInsideForLive
+      live "/healthy/:category", Support.HealthyLive
 
       live "/upload", E2E.UploadLive
       live "/form", E2E.FormLive

@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.CollocatedTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint, CollocatedLive, CollocatedComponent}
+  alias Phoenix.LiveViewTest.Support.{Endpoint, CollocatedLive, CollocatedComponent}
 
   @endpoint Endpoint
 

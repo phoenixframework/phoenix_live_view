@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.LiveReloadTest do
     socket "/live", Phoenix.LiveView.Socket
     socket "/phoenix/live_reload/socket", Phoenix.LiveReloader.Socket
     plug Phoenix.CodeReloader
-    plug Phoenix.LiveViewTest.Router
+    plug Phoenix.LiveViewTest.Support.Router
   end
 
   import Phoenix.ConnTest

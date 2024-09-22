@@ -6,7 +6,8 @@ defmodule Phoenix.LiveView.NestedTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, ClockLive, ClockControlsLive, LiveInComponent}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.{Endpoint, ClockLive, ClockControlsLive, LiveInComponent}
 
   @endpoint Endpoint
 

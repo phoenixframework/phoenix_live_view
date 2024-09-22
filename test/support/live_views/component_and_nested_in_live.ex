@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.ComponentAndNestedInLive do
+defmodule Phoenix.LiveViewTest.Support.ComponentAndNestedInLive do
   use Phoenix.LiveView
 
   defmodule NestedLive do

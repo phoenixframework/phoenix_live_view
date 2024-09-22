@@ -6,7 +6,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   alias Phoenix.HTML
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -344,7 +345,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "live_isolated" do
     test "renders a live view with custom session", %{conn: conn} do
       {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
+        live_isolated(conn, Phoenix.LiveViewTest.Support.DashboardLive,
+          session: %{"hello" => "world"}
+        )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
@@ -353,7 +356,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
 
       {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
+        live_isolated(conn, Phoenix.LiveViewTest.Support.DashboardLive,
+          session: %{"hello" => "world"}
+        )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
@@ -361,12 +366,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "raises if handle_params is implemented", %{conn: conn} do
       assert_raise ArgumentError,
                    ~r/it is not mounted nor accessed through the router live\/3 macro/,
-                   fn -> live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive) end
+                   fn -> live_isolated(conn, Phoenix.LiveViewTest.Support.ParamCounterLive) end
     end
 
     test "works without an initialized session" do
       {:ok, view, _} =
-        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.Support.DashboardLive,
           session: %{"hello" => "world"}
         )
 
@@ -375,7 +380,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "raises on session with atom keys" do
       assert_raise ArgumentError, ~r"LiveView :session must be a map with string keys,", fn ->
-        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.Support.DashboardLive,
           session: %{hello: "world"}
         )
       end
@@ -396,7 +401,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
                   header: ~c"Status for generic server " ++ _,
                   data: _gen_server_data,
                   data: [
-                    {~c"LiveView", Phoenix.LiveViewTest.ClockLive},
+                    {~c"LiveView", Phoenix.LiveViewTest.Support.ClockLive},
                     {~c"Parent pid", nil},
                     {~c"Transport pid", _},
                     {~c"Topic", <<_::binary>>},
@@ -434,18 +439,26 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   describe "connected mount exceptions" do
     test "when disconnected, raises normally per plug wrapper", %{conn: conn} do
-      assert_raise(Plug.Conn.WrapperError, ~r/Phoenix.LiveViewTest.ThermostatLive.Error/, fn ->
-        get(conn, "/thermo?raise_disconnected=500")
-      end)
+      assert_raise(
+        Plug.Conn.WrapperError,
+        ~r/Phoenix.LiveViewTest.Support.ThermostatLive.Error/,
+        fn ->
+          get(conn, "/thermo?raise_disconnected=500")
+        end
+      )
 
-      assert_raise(Plug.Conn.WrapperError, ~r/Phoenix.LiveViewTest.ThermostatLive.Error/, fn ->
-        get(conn, "/thermo?raise_disconnected=404")
-      end)
+      assert_raise(
+        Plug.Conn.WrapperError,
+        ~r/Phoenix.LiveViewTest.Support.ThermostatLive.Error/,
+        fn ->
+          get(conn, "/thermo?raise_disconnected=404")
+        end
+      )
     end
 
     test "when connected, raises and exits for 5xx", %{conn: conn} do
       assert {{exception, _}, _} = catch_exit(live(conn, "/thermo?raise_connected=500"))
-      assert %Phoenix.LiveViewTest.ThermostatLive.Error{plug_status: 500} = exception
+      assert %Phoenix.LiveViewTest.Support.ThermostatLive.Error{plug_status: 500} = exception
     end
 
     test "when connected, raises and wraps 4xx in client response", %{conn: conn} do

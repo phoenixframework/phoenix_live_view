@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.ElementsTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint}
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 

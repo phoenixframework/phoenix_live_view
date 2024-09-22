@@ -1,6 +1,6 @@
-defmodule Phoenix.LiveViewTest.HostLive do
+defmodule Phoenix.LiveViewTest.Support.HostLive do
   use Phoenix.LiveView
-  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
+  alias Phoenix.LiveViewTest.Support.Router.Helpers, as: Routes
 
   def handle_params(_params, uri, socket) do
     {:noreply, assign(socket, :uri, uri)}

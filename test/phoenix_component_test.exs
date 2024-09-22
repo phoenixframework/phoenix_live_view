@@ -7,13 +7,13 @@ defmodule Phoenix.ComponentUnitTest do
   @socket Utils.configure_socket(
             %Socket{
               endpoint: Endpoint,
-              router: Phoenix.LiveViewTest.Router,
-              view: Phoenix.LiveViewTest.ParamCounterLive
+              router: Phoenix.LiveViewTest.Support.Router,
+              view: Phoenix.LiveViewTest.Support.ParamCounterLive
             },
             %{
               connect_params: %{},
               connect_info: %{},
-              root_view: Phoenix.LiveViewTest.ParamCounterLive,
+              root_view: Phoenix.LiveViewTest.Support.ParamCounterLive,
               __changed__: %{}
             },
             nil,

@@ -4,18 +4,18 @@ defmodule Phoenix.LiveViewUnitTest do
   import Phoenix.LiveView
 
   alias Phoenix.LiveView.{Utils, Socket}
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @socket Utils.configure_socket(
             %Socket{
               endpoint: Endpoint,
-              router: Phoenix.LiveViewTest.Router,
-              view: Phoenix.LiveViewTest.ParamCounterLive
+              router: Phoenix.LiveViewTest.Support.Router,
+              view: Phoenix.LiveViewTest.Support.ParamCounterLive
             },
             %{
               connect_params: %{},
               connect_info: %{},
-              root_view: Phoenix.LiveViewTest.ParamCounterLive,
+              root_view: Phoenix.LiveViewTest.Support.ParamCounterLive,
               live_temp: %{}
             },
             nil,
@@ -282,7 +282,7 @@ defmodule Phoenix.LiveViewUnitTest do
         push_patch(@socket, to: "//foo.com")
       end
 
-      socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}
+      socket = %{@socket | view: Phoenix.LiveViewTest.Support.ParamCounterLive}
 
       assert push_patch(socket, to: "/counter/123").redirected ==
                {:live, :patch, %{kind: :push, to: "/counter/123"}}

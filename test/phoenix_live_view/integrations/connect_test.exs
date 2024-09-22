@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.ConnectTest do
   import Phoenix.LiveViewTest
   import Phoenix.ConnTest
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
+  @endpoint Phoenix.LiveViewTest.Support.Endpoint
 
   describe "connect_params" do
     test "can be read on mount" do

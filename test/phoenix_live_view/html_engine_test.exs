@@ -378,8 +378,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "debug annotations" do
-    alias Phoenix.LiveViewTest.DebugAnno
-    import Phoenix.LiveViewTest.DebugAnno
+    alias Phoenix.LiveViewTest.Support.DebugAnno
+    import Phoenix.LiveViewTest.Support.DebugAnno
 
     test "without root tag" do
       assigns = %{}
@@ -391,17 +391,17 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("<DebugAnno.remote_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.remote_with_root> test/support/live_views/debug_anno.exs:11 () --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.remote_with_root> -->"
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.remote_with_root> test/support/live_views/debug_anno.exs:11 () --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.remote_with_root> -->"
 
       assert compile("<.local_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->"
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> -->"
     end
 
     test "nesting" do
       assigns = %{}
 
       assert compile("<DebugAnno.nested value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.nested> test/support/live_views/debug_anno.exs:23 () --><div>\n  <!-- @caller test/support/live_views/debug_anno.exs:25 () --><!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.DebugAnno.nested> -->"
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.nested> test/support/live_views/debug_anno.exs:23 () --><div>\n  <!-- @caller test/support/live_views/debug_anno.exs:25 () --><!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.nested> -->"
     end
   end
 

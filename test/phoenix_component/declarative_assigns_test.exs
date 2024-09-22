@@ -862,7 +862,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
   test "inserts attr & slot docs into function component @doc string" do
     {_, _, :elixir, "text/markdown", _, _, docs} =
-      Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+      Code.fetch_docs(Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs)
 
     components = %{
       fun_attr_any: """
@@ -934,7 +934,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       fun_attr_struct: """
       ## Attributes
 
-      * `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)
+      * `attr` (`Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.Struct`)
       """,
       fun_attr_required: """
       ## Attributes
@@ -1069,7 +1069,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "stores correct line number on AST" do
-    module = Phoenix.LiveViewTest.FunctionComponentWithAttrs
+    module = Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs
 
     {^module, binary, _file} = :code.get_object_code(module)
 
@@ -1089,7 +1089,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
   test "does not override signature of Elixir functions" do
     {:docs_v1, _, :elixir, "text/markdown", _, _, docs} =
-      Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+      Code.fetch_docs(Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs)
 
     assert {{:function, :identity, 1}, _, ["identity(var)"], _, %{}} =
              List.keyfind(docs, {:function, :identity, 1}, 0)
@@ -1097,8 +1097,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert {{:function, :map_identity, 1}, _, ["map_identity(map)"], _, %{}} =
              List.keyfind(docs, {:function, :map_identity, 1}, 0)
 
-    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(:not_a_map) == :not_a_map
-    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(%{}) == %{}
+    assert Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.identity(:not_a_map) ==
+             :not_a_map
+
+    assert Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.identity(%{}) == %{}
   end
 
   test "raise if attr :doc is not a string" do

@@ -4,8 +4,9 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView.{Route, Session}
-  alias Phoenix.LiveViewTest.{Endpoint, DashboardLive, DOM}
-  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.{Endpoint, DashboardLive}
+  alias Phoenix.LiveViewTest.Support.Router.Helpers, as: Routes
 
   @endpoint Endpoint
 
@@ -48,7 +49,7 @@ defmodule Phoenix.LiveView.RouterTest do
     conn = get(conn, "/router/thermo_container/123")
 
     assert conn.resp_body =~
-             ~r/<span[^>]*class="Phoenix.LiveViewTest.DashboardLive"[^>]*style="flex-grow">/
+             ~r/<span[^>]*class="Phoenix.LiveViewTest.Support.DashboardLive"[^>]*style="flex-grow">/
   end
 
   test "live non-action helpers", %{conn: conn} do
@@ -68,7 +69,7 @@ defmodule Phoenix.LiveView.RouterTest do
   end
 
   test "user-defined metadata is available inside of metadata key" do
-    assert Phoenix.LiveViewTest.Router
+    assert Phoenix.LiveViewTest.Support.Router
            |> Phoenix.Router.route_info("GET", "/thermo-with-metadata", nil)
            |> Map.get(:route_name) == "opts"
   end
@@ -78,7 +79,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.name == :test
       assert route.live_session.vsn
@@ -90,7 +91,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session-admin"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.name == :admin
       assert route.live_session.vsn
@@ -103,7 +104,7 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session-mfa"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.name == :mfa
       assert route.live_session.vsn
@@ -116,21 +117,25 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/halt-connected-mount"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.extra == %{
                on_mount: [
                  %{
-                   id: {Phoenix.LiveViewTest.HaltConnectedMount, :default},
+                   id: {Phoenix.LiveViewTest.Support.HaltConnectedMount, :default},
                    stage: :mount,
                    function:
-                     Function.capture(Phoenix.LiveViewTest.HaltConnectedMount, :on_mount, 4)
+                     Function.capture(
+                       Phoenix.LiveViewTest.Support.HaltConnectedMount,
+                       :on_mount,
+                       4
+                     )
                  }
                ]
              }
 
       assert conn |> get(path) |> html_response(200) =~
-               "last_on_mount:Phoenix.LiveViewTest.HaltConnectedMount"
+               "last_on_mount:Phoenix.LiveViewTest.Support.HaltConnectedMount"
 
       assert {:error, {:live_redirect, %{to: "/lifecycle"}}} = live(conn, path)
     end
@@ -139,14 +144,15 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-mod-arg"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.extra == %{
                on_mount: [
                  %{
-                   id: {Phoenix.LiveViewTest.MountArgs, :inlined},
+                   id: {Phoenix.LiveViewTest.Support.MountArgs, :inlined},
                    stage: :mount,
-                   function: Function.capture(Phoenix.LiveViewTest.MountArgs, :on_mount, 4)
+                   function:
+                     Function.capture(Phoenix.LiveViewTest.Support.MountArgs, :on_mount, 4)
                  }
                ]
              }
@@ -159,19 +165,20 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-mods"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.extra == %{
                on_mount: [
                  %{
-                   id: {Phoenix.LiveViewTest.OnMount, :default},
+                   id: {Phoenix.LiveViewTest.Support.OnMount, :default},
                    stage: :mount,
-                   function: Function.capture(Phoenix.LiveViewTest.OnMount, :on_mount, 4)
+                   function: Function.capture(Phoenix.LiveViewTest.Support.OnMount, :on_mount, 4)
                  },
                  %{
-                   id: {Phoenix.LiveViewTest.OtherOnMount, :default},
+                   id: {Phoenix.LiveViewTest.Support.OtherOnMount, :default},
                    stage: :mount,
-                   function: Function.capture(Phoenix.LiveViewTest.OtherOnMount, :on_mount, 4)
+                   function:
+                     Function.capture(Phoenix.LiveViewTest.Support.OtherOnMount, :on_mount, 4)
                  }
                ]
              }
@@ -183,19 +190,20 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-mods-args"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.extra == %{
                on_mount: [
                  %{
-                   id: {Phoenix.LiveViewTest.OnMount, :other},
+                   id: {Phoenix.LiveViewTest.Support.OnMount, :other},
                    stage: :mount,
-                   function: Function.capture(Phoenix.LiveViewTest.OnMount, :on_mount, 4)
+                   function: Function.capture(Phoenix.LiveViewTest.Support.OnMount, :on_mount, 4)
                  },
                  %{
-                   id: {Phoenix.LiveViewTest.OtherOnMount, :other},
+                   id: {Phoenix.LiveViewTest.Support.OtherOnMount, :other},
                    stage: :mount,
-                   function: Function.capture(Phoenix.LiveViewTest.OtherOnMount, :on_mount, 4)
+                   function:
+                     Function.capture(Phoenix.LiveViewTest.Support.OtherOnMount, :on_mount, 4)
                  }
                ]
              }
@@ -245,10 +253,10 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/dashboard-live-session-layout"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.extra == %{
-               layout: {Phoenix.LiveViewTest.LayoutView, :live_override}
+               layout: {Phoenix.LiveViewTest.Support.LayoutView, :live_override}
              }
 
       {:ok, view, html} = live(conn, path)
@@ -264,10 +272,10 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/dashboard-live-session-layout"
 
       assert {:internal, route} =
-               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Router, path)
+               Route.live_link_info(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
 
       assert route.live_session.extra == %{
-               layout: {Phoenix.LiveViewTest.LayoutView, :live_override}
+               layout: {Phoenix.LiveViewTest.Support.LayoutView, :live_override}
              }
 
       conn = get(conn, path)

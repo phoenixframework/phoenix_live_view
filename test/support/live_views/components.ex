@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.FunctionComponent do
+defmodule Phoenix.LiveViewTest.Support.FunctionComponent do
   use Phoenix.Component
 
   def render(assigns) do
@@ -14,7 +14,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
+defmodule Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs do
   use Phoenix.Component
 
   defmodule Struct do
@@ -183,7 +183,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   def fun_attr_values_examples(assigns), do: ~H[]
 end
 
-defmodule Phoenix.LiveViewTest.StatefulComponent do
+defmodule Phoenix.LiveViewTest.Support.StatefulComponent do
   use Phoenix.LiveComponent
 
   def mount(socket) do
@@ -245,7 +245,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.WithComponentLive do
+defmodule Phoenix.LiveViewTest.Support.WithComponentLive do
   use Phoenix.LiveView
 
   def render(%{disabled: :all} = assigns) do
@@ -259,7 +259,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
     Redirect: <%= @redirect %>
     <%= for name <- @names do %>
       <.live_component
-        module={Phoenix.LiveViewTest.StatefulComponent}
+        module={Phoenix.LiveViewTest.Support.StatefulComponent}
         id={name}
         name={name}
         from={@from}
@@ -298,7 +298,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.WithMultipleTargets do
+defmodule Phoenix.LiveViewTest.Support.WithMultipleTargets do
   use Phoenix.LiveView
 
   def mount(_params, %{"names" => names, "from" => from} = session, socket) do
@@ -320,7 +320,7 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
       <%= @message %>
       <%= for name <- @names do %>
         <.live_component
-          module={Phoenix.LiveViewTest.StatefulComponent}
+          module={Phoenix.LiveViewTest.Support.StatefulComponent}
           id={name}
           name={name}
           from={@from}
@@ -341,7 +341,7 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   end
 end
 
-defmodule Phoenix.LiveViewTest.WithLogOverride do
+defmodule Phoenix.LiveViewTest.Support.WithLogOverride do
   use Phoenix.LiveView, log: :warning
 
   def mount(_params, _session, socket) do
@@ -351,7 +351,7 @@ defmodule Phoenix.LiveViewTest.WithLogOverride do
   def render(assigns), do: ~H[]
 end
 
-defmodule Phoenix.LiveViewTest.WithLogDisabled do
+defmodule Phoenix.LiveViewTest.Support.WithLogDisabled do
   use Phoenix.LiveView, log: false
 
   def mount(_params, _session, socket) do
