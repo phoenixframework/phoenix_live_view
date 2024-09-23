@@ -952,6 +952,14 @@ export default class View {
 
       if(!loading || (opts.submitter && !(el === opts.submitter || el === opts.form))){ continue }
 
+      let lockCompletePromise = new Promise(resolve => {
+        el.addEventListener(`phx:undo-lock:${newRef}`, () => resolve(detail), {once: true})
+      })
+
+      let loadingCompletePromise = new Promise(resolve => {
+        el.addEventListener(`phx:undo-loading:${newRef}`, () => resolve(detail), {once: true})
+      })
+
       el.classList.add(`phx-${eventType}-loading`)
       let disableText = el.getAttribute(disableWith)
       if(disableText !== null){
@@ -963,6 +971,7 @@ export default class View {
         el.setAttribute(PHX_DISABLED, el.getAttribute(PHX_DISABLED) || el.disabled)
         el.setAttribute("disabled", "")
       }
+
       let detail = {
         event: phxEvent,
         eventType: eventType,
@@ -975,14 +984,8 @@ export default class View {
           els = Array.isArray(els) ? els : [els]
           this.undoRefs(newRef, phxEvent, els)
         },
-        lockComplete: new Promise(resolve => {
-          if(this.isAcked(newRef)){ return resolve(detail) }
-          el.addEventListener(`phx:loading-stop:${newRef}`, () => resolve(detail), {once: true})
-        }),
-        loadingComplete: new Promise(resolve => {
-          if(this.isAcked(newRef)){ return resolve(detail) }
-          el.addEventListener(`phx:lock-stop:${newRef}`, () => resolve(detail), {once: true})
-        }),
+        lockComplete: lockCompletePromise,
+        loadingComplete: loadingCompletePromise,
         lock: (lockEl) => {
           return new Promise(resolve => {
             if(this.isAcked(newRef)){ return resolve(detail) }

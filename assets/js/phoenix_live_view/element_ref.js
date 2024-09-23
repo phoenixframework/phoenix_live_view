@@ -55,7 +55,7 @@ export default class ElementRef {
     this.el.removeAttribute(PHX_REF_LOCK)
 
     let opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
-    this.el.dispatchEvent(new CustomEvent(`phx:lock-stop:${this.lockRef}`, opts))
+    this.el.dispatchEvent(new CustomEvent(`phx:undo-lock:${this.lockRef}`, opts))
   }
 
   undoLoading(ref, phxEvent){
@@ -87,7 +87,7 @@ export default class ElementRef {
       }
 
       let opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
-      this.el.dispatchEvent(new CustomEvent(`phx:loading-stop:${this.loadingRef}`, opts))
+      this.el.dispatchEvent(new CustomEvent(`phx:undo-loading:${this.loadingRef}`, opts))
     }
 
     // remove classes

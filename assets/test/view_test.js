@@ -1014,7 +1014,7 @@ describe("View + Component", function(){
   })
 
   test("pushEvent", (done) => {
-    expect.assertions(16)
+    expect.assertions(17)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
@@ -1039,13 +1039,17 @@ describe("View + Component", function(){
     view.channel = channelStub
 
     input.addEventListener("phx:push:myevent", (e) => {
-      let {ref, lockComplete} = e.detail
+      let {ref, lockComplete, loadingComplete} = e.detail
       expect(ref).toBe(0)
       expect(e.target).toBe(input)
-      lockComplete.then((detail) => {
+      loadingComplete.then((detail) => {
         expect(detail.event).toBe("myevent")
         expect(detail.ref).toBe(0)
-        done()
+        lockComplete.then((detail) => {
+          expect(detail.event).toBe("myevent")
+          expect(detail.ref).toBe(0)
+          done()
+        })
       })
     })
     input.addEventListener("phx:push", (e) => {

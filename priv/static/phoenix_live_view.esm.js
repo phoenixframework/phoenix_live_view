@@ -1564,7 +1564,7 @@ var ElementRef = class {
     }
     this.el.removeAttribute(PHX_REF_LOCK);
     let opts = { detail: { ref, event: phxEvent }, bubbles: true, cancelable: false };
-    this.el.dispatchEvent(new CustomEvent(`phx:lock-stop:${this.lockRef}`, opts));
+    this.el.dispatchEvent(new CustomEvent(`phx:undo-lock:${this.lockRef}`, opts));
   }
   undoLoading(ref, phxEvent) {
     if (!this.isLoadingUndoneBy(ref)) {
@@ -1591,7 +1591,7 @@ var ElementRef = class {
         this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
       }
       let opts = { detail: { ref, event: phxEvent }, bubbles: true, cancelable: false };
-      this.el.dispatchEvent(new CustomEvent(`phx:loading-stop:${this.loadingRef}`, opts));
+      this.el.dispatchEvent(new CustomEvent(`phx:undo-loading:${this.loadingRef}`, opts));
     }
     PHX_EVENT_CLASSES.forEach((name) => {
       if (name !== "phx-submit-loading" || this.canUndoLoading(ref)) {
@@ -3851,6 +3851,12 @@ var View = class {
       if (!loading || opts.submitter && !(el === opts.submitter || el === opts.form)) {
         continue;
       }
+      let lockCompletePromise = new Promise((resolve) => {
+        el.addEventListener(`phx:undo-lock:${newRef}`, () => resolve(detail), { once: true });
+      });
+      let loadingCompletePromise = new Promise((resolve) => {
+        el.addEventListener(`phx:undo-loading:${newRef}`, () => resolve(detail), { once: true });
+      });
       el.classList.add(`phx-${eventType}-loading`);
       let disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
@@ -3875,18 +3881,8 @@ var View = class {
           els = Array.isArray(els) ? els : [els];
           this.undoRefs(newRef, phxEvent, els);
         },
-        lockComplete: new Promise((resolve) => {
-          if (this.isAcked(newRef)) {
-            return resolve(detail);
-          }
-          el.addEventListener(`phx:loading-stop:${newRef}`, () => resolve(detail), { once: true });
-        }),
-        loadingComplete: new Promise((resolve) => {
-          if (this.isAcked(newRef)) {
-            return resolve(detail);
-          }
-          el.addEventListener(`phx:lock-stop:${newRef}`, () => resolve(detail), { once: true });
-        }),
+        lockComplete: lockCompletePromise,
+        loadingComplete: loadingCompletePromise,
         lock: (lockEl) => {
           return new Promise((resolve) => {
             if (this.isAcked(newRef)) {
