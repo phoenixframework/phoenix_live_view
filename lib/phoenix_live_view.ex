@@ -262,8 +262,8 @@ defmodule Phoenix.LiveView do
   It must always return `{:noreply, socket}`, where `:noreply`
   means no additional information is sent to the client.
 
-
   > #### Note {: .warning}
+  >
   > `handle_params` is only allowed on a root LiveView as it takes the
   > current url of the page as parameter.
   """
