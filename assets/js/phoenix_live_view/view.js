@@ -785,6 +785,11 @@ export default class View {
 
   joinDead(){ this.isDead = true }
 
+  joinPush(){
+    this.joinPush = this.joinPush || this.channel.join()
+    return this.joinPush
+  }
+
   join(callback){
     this.showLoader(this.liveSocket.loaderTimeout)
     this.bindChannel()
@@ -795,15 +800,11 @@ export default class View {
       onDone = onDone || function(){}
       callback ? callback(this.joinCount, onDone) : onDone()
     }
-    this.liveSocket.wrapPush(this, {timeout: false}, () => {
-      return this.channel.join()
-        .receive("ok", data => {
-          if(!this.isDestroyed()){
-            this.liveSocket.requestDOMUpdate(() => this.onJoin(data))
-          }
-        })
-        .receive("error", resp => !this.isDestroyed() && this.onJoinError(resp))
-        .receive("timeout", () => !this.isDestroyed() && this.onJoinError({reason: "timeout"}))
+
+    this.wrapPush(() => this.channel.join(), {
+      ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
+      error: (error) => this.onJoinError(error),
+      timeout: () => this.onJoinError({reason: "timeout"})
     })
   }
 
@@ -861,26 +862,42 @@ export default class View {
     this.execAll(this.binding("disconnected"))
   }
 
-  pushWithReply(refGenerator, event, payload, onReply = function (){ }){
-    if(!this.isConnected()){ return }
+  wrapPush(callerPush, receives){
+    let latency = this.liveSocket.getLatencySim()
+    let withLatency = latency ?
+      (cb) => setTimeout(() => !this.isDestroyed() && cb(), latency) :
+      (cb) => !this.isDestroyed() && cb()
+
+    withLatency(() => {
+      callerPush()
+        .receive("ok", resp => withLatency(() => receives.ok && receives.ok(resp)))
+        .receive("error", reason => withLatency(() => receives.error && receives.error(reason)))
+        .receive("timeout", () => withLatency(() => receives.timeout && receives.timeout()))
+    })
+  }
+
+  pushWithReply(refGenerator, event, payload){
+    if(!this.isConnected()){ return Promise.reject({error: "noconnection"}) }
 
     let [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}]
-    let onLoadingDone = function(){ }
+    let oldJoinCount = this.joinCount
+    let onLoadingDone = function(){}
     if(opts.page_loading || (el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null))){
       onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
     }
 
     if(typeof (payload.cid) !== "number"){ delete payload.cid }
-    return (
-      this.liveSocket.wrapPush(this, {timeout: true}, () => {
-        return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+
+    return new Promise((resolve, reject) => {
+      this.wrapPush(() => this.channel.push(event, payload, PUSH_TIMEOUT), {
+        ok: (resp) => {
           if(ref !== null){ this.lastAckRef = ref }
           let finish = (hookReply) => {
             if(resp.redirect){ this.onRedirect(resp.redirect) }
             if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
             if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
             onLoadingDone()
-            onReply(resp, hookReply)
+            resolve({resp: resp, reply: hookReply})
           }
           if(resp.diff){
             this.liveSocket.requestDOMUpdate(() => {
@@ -893,14 +910,21 @@ export default class View {
               })
             })
           } else {
-            if(ref !== null){
-              this.undoRefs(ref, payload.event)
-            }
+            if(ref !== null){ this.undoRefs(ref, payload.event) }
             finish(null)
           }
-        })
+        },
+        error: (reason) => reject({error: reason}),
+        timeout: () => {
+          reject({timeout: true})
+          if(this.joinCount === oldJoinCount){
+            this.liveSocket.reloadWithJitter(this, () => {
+              this.log("timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"])
+            })
+          }
+        }
       })
-    )
+    })
   }
 
   undoRefs(ref, phxEvent, onlyEls){
@@ -1052,7 +1076,7 @@ export default class View {
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }, (resp, reply) => onReply(reply, ref))
+    }).then(({resp: _resp, reply: hookReply}) => onReply(hookReply, ref))
 
     return ref
   }
@@ -1085,7 +1109,7 @@ export default class View {
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    }, (resp, reply) => onReply && onReply(reply))
+    }).then(({resp, reply}) => onReply && onReply(reply))
   }
 
   pushFileProgress(fileEl, entryRef, progress, onReply = function (){ }){
@@ -1096,7 +1120,7 @@ export default class View {
         entry_ref: entryRef,
         progress: progress,
         cid: view.targetComponentID(fileEl.form, targetCtx)
-      }, onReply)
+      }).then(({resp}) => onReply(resp))
     })
   }
 
@@ -1133,7 +1157,7 @@ export default class View {
       uploads: uploads,
       cid: cid
     }
-    this.pushWithReply(refGenerator, "event", event, resp => {
+    this.pushWithReply(refGenerator, "event", event).then(({resp}) => {
       if(DOM.isUploadInput(inputEl) && DOM.isAutoUpload(inputEl)){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
           let [ref, _els] = refGenerator()
@@ -1246,7 +1270,7 @@ export default class View {
           event: phxEvent,
           value: formData,
           cid: cid
-        }, onReply)
+        }).then(({resp}) => onReply(resp))
       })
     } else if(!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))){
       let meta = this.extractMeta(formEl)
@@ -1256,7 +1280,7 @@ export default class View {
         event: phxEvent,
         value: formData,
         cid: cid
-      }, onReply)
+      }).then(({resp}) => onReply(resp))
     }
   }
 
@@ -1287,7 +1311,7 @@ export default class View {
 
       this.log("upload", () => ["sending preflight request", payload])
 
-      this.pushWithReply(null, "allow_upload", payload, resp => {
+      this.pushWithReply(null, "allow_upload", payload).then(({resp}) => {
         this.log("upload", () => ["got preflight response", resp])
         // the preflight will reject entries beyond the max entries
         // so we error and cancel entries on the client that are missing from the response
@@ -1381,25 +1405,22 @@ export default class View {
     let fallback = () => this.liveSocket.redirect(window.location.href)
     let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href
 
-    let push = this.pushWithReply(refGen, "live_patch", {url}, resp => {
-      this.liveSocket.requestDOMUpdate(() => {
-        if(resp.link_redirect){
-          this.liveSocket.replaceMain(href, null, callback, linkRef)
-        } else {
-          if(this.liveSocket.commitPendingLink(linkRef)){
-            this.href = href
+    this.pushWithReply(refGen, "live_patch", {url}).then(
+      ({resp}) => {
+        this.liveSocket.requestDOMUpdate(() => {
+          if(resp.link_redirect){
+            this.liveSocket.replaceMain(href, null, callback, linkRef)
+          } else {
+            if(this.liveSocket.commitPendingLink(linkRef)){
+              this.href = href
+            }
+            this.applyPendingUpdates()
+            callback && callback(linkRef)
           }
-          this.applyPendingUpdates()
-          callback && callback(linkRef)
-        }
-      })
-    })
-
-    if(push){
-      push.receive("timeout", fallback)
-    } else {
-      fallback()
-    }
+        })
+      },
+      ({error: _error, timeout: _timeout}) => fallback()
+    )
   }
 
   getFormsForRecovery(){
@@ -1428,7 +1449,7 @@ export default class View {
       // could be added back from the server so we don't skip them
       willDestroyCIDs.forEach(cid => this.rendered.resetRender(cid))
 
-      this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
+      this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}).then(() => {
         // we must wait for pending transitions to complete before determining
         // if the cids were added back to the DOM in the meantime (#3139)
         this.liveSocket.requestDOMUpdate(() => {
@@ -1439,7 +1460,7 @@ export default class View {
           })
 
           if(completelyDestroyCIDs.length > 0){
-            this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+            this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}).then(({resp}) => {
               this.rendered.pruneCIDs(resp.cids)
             })
           }
