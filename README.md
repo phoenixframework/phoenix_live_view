@@ -76,7 +76,7 @@ community at different stages of development:
 
 * [Petal Components](https://github.com/petalframework/petal_components): Phoenix + Live View HEEX Components 
 
-* [PrimerLive](https://github.com/ArthurClemens/primer_live): An implementation of GitHub's Primer Design System using Phoenix LiveView  - 
+* [PrimerLive](https://github.com/ArthurClemens/primer_live): An implementation of GitHub's Primer Design System using Phoenix LiveView
 
 * [SaladUI](https://github.com/bluzky/salad_ui): Phoenix Liveview component library inspired by shadcn UI 
 
