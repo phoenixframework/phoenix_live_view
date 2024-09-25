@@ -11,12 +11,15 @@ https://user-images.githubusercontent.com/576796/162234098-31b580fe-e424-47e6-b0
 
 <br />
 
-After you [install Elixir](https://elixir-lang.org/install.html)
-on your machine, you can create your first LiveView app in two
-steps:
+LiveView ships by default in new Phoenix applications. After you
+[install Elixir](https://elixir-lang.org/install.html) on your machine,
+you can create your first LiveView app in two steps:
 
     $ mix archive.install hex phx_new
     $ mix phx.new demo
+
+> If you have an older existing Phoenix app and you wish to add LiveView,
+> see [the previous installation guide](https://github.com/phoenixframework/phoenix_live_view/blob/v0.20.1/guides/introduction/installation.md).
 
 ## Feature highlights
 
@@ -61,11 +64,21 @@ Also follow these announcements from the Phoenix team on LiveView for more examp
 
   * [Initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript)
 
-## Installation
+## Component systems
 
-LiveView is included by default in all new Phoenix v1.6+ applications and
-later. If you have an older existing Phoenix app and you wish to add
-LiveView, see [the previous installation guide](https://github.com/phoenixframework/phoenix_live_view/blob/v0.20.1/guides/introduction/installation.md).
+When you create a new Phoenix project, it comes with a minimal component system to power Phoenix generators.
+In case you want to enrich your developer experience, there are several component systems provided by the
+community at different stages of development:
+
+* [Bloom](https://github.com/chrisgreg/bloom): The opinionated, open-source extension to Phoenix Core Components
+
+* [Doggo](https://github.com/woylie/doggo): Headless UI components for Phoenix
+
+* [Petal Components](https://github.com/petalframework/petal_components): Phoenix + Live View HEEX Components 
+
+* [PrimerLive](https://github.com/ArthurClemens/primer_live): An implementation of GitHub's Primer Design System using Phoenix LiveView  - 
+
+* [SaladUI](https://github.com/bluzky/salad_ui): Phoenix Liveview component library inspired by shadcn UI 
 
 ## What makes LiveView unique?
 
