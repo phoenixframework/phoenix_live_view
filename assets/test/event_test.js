@@ -35,7 +35,6 @@ let stubNextChannelReply = (view, replyPayload) => {
   }
 }
 
-
 describe("events", () => {
   let processedEvents
   beforeEach(() => {
@@ -152,7 +151,7 @@ describe("pushEvent replies", () => {
     processedReplies = []
   })
 
-  test("reply", () => {
+  test("reply", (done) => {
     let view
     let pushedRef = null
     let liveSocket = new LiveSocket("/live", Socket, {
@@ -162,6 +161,7 @@ describe("pushEvent replies", () => {
             stubNextChannelReply(view, {transactionID: "1001"})
             pushedRef = this.pushEvent("charge", {amount: 123}, (resp, ref) => {
               processedReplies.push({resp, ref})
+              view.el.dispatchEvent(new CustomEvent("replied", {detail: {resp, ref}}))
             })
           }
         }
@@ -175,8 +175,11 @@ describe("pushEvent replies", () => {
     `]
     }, [])
 
-    expect(pushedRef).toEqual(0)
-    expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
+    view.el.addEventListener("replied", () => {
+      expect(pushedRef).toEqual(0)
+      expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
+      done()
+    })
   })
 
   test("pushEvent without connection noops", () => {

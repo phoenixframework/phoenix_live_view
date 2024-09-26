@@ -553,7 +553,7 @@ describe("JS", () => {
           uploads: {},
           value: "_unused_username=&username=&_unused_other=&other=&_target=username"
         })
-        done()
+        return Promise.resolve({resp: done()})
       }
       let args = ["push", {_target: input.name, dispatcher: input}]
       JS.exec("change", form.getAttribute("phx-change"), view, input, args)
@@ -584,7 +584,7 @@ describe("JS", () => {
           uploads: {},
           value: "_unused_username=&username=&_target=username"
         })
-        done()
+        return Promise.resolve({resp: done()})
       }
       let args = ["push", {_target: input.name, dispatcher: input}]
       JS.exec("change", input.getAttribute("phx-change"), view, input, args)
@@ -615,7 +615,7 @@ describe("JS", () => {
           uploads: {},
           value: "_unused_username=&username=&_target=username"
         })
-        done()
+        return Promise.resolve({resp: done()})
       }
       let args = ["push", {_target: input.name, dispatcher: input}]
       JS.exec("change", input.getAttribute("phx-change"), view, input, args)
@@ -633,7 +633,7 @@ describe("JS", () => {
 
       view.pushWithReply = (refGen, event, payload) => {
         expect(payload).toEqual({"cid": null, "event": "save", "type": "form", "value": "username=&desc="})
-        done()
+        return Promise.resolve({resp: done()})
       }
       JS.exec("submit", form.getAttribute("phx-submit"), view, form, ["push", {}])
     })
@@ -672,7 +672,7 @@ describe("JS", () => {
 
       view.pushWithReply = (refGenerator, event, payload, _onReply) => {
         expect(payload.value).toEqual({"one": 1, "two": 2, "three": "3"})
-        done()
+        return Promise.resolve({resp: done()})
       }
       JS.exec("click", click.getAttribute("phx-click"), view, click)
     })

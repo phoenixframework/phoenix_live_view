@@ -309,34 +309,6 @@ export default class LiveSocket {
     })
   }
 
-  wrapPush(view, opts, push){
-    let latency = this.getLatencySim()
-    let oldJoinCount = view.joinCount
-    if(!latency){
-      if(this.isConnected() && opts.timeout){
-        return push().receive("timeout", () => {
-          if(view.joinCount === oldJoinCount && !view.isDestroyed()){
-            this.reloadWithJitter(view, () => {
-              this.log(view, "timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"])
-            })
-          }
-        })
-      } else {
-        return push()
-      }
-    }
-
-    let fakePush = {
-      receives: [],
-      receive(kind, cb){ this.receives.push([kind, cb]) }
-    }
-    setTimeout(() => {
-      if(view.isDestroyed()){ return }
-      fakePush.receives.reduce((acc, [kind, cb]) => acc.receive(kind, cb), push())
-    }, latency)
-    return fakePush
-  }
-
   reloadWithJitter(view, log){
     clearTimeout(this.reloadWithJitterTimer)
     this.disconnect()
@@ -895,7 +867,7 @@ export default class LiveSocket {
           if(!DOM.private(input, key)){
             DOM.putPrivate(input, key, true)
             input.addEventListener("compositionend", () => {
-              // trigger a new input/change event 
+              // trigger a new input/change event
               input.dispatchEvent(new Event(type, {bubbles: true}))
               DOM.deletePrivate(input, key)
             }, {once: true})
