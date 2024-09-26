@@ -265,7 +265,7 @@ defmodule Phoenix.LiveView do
   > #### Note {: .warning}
   >
   > `handle_params` is only allowed on LiveViews mounted at the router,
-  > as it takes the current url of the page as parameter.
+  > as it takes the current url of the page as the second parameter.
   """
   @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
