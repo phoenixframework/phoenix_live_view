@@ -2036,6 +2036,7 @@ defmodule Phoenix.LiveView do
   of the caller LiveView or LiveComponent.
 
   If there is an in-flight task with the same `name`, the later `start_async` wins and the previous task’s result is ignored.
+  If you wish to replace an existing task, you can use `cancel_async/3` before `start_async/3`.
   You are not restricted to just atoms for `name`, it can be any term such as a tuple.
 
   The task is only started when the socket is connected.
