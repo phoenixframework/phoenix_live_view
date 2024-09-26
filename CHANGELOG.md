@@ -119,6 +119,8 @@ generated user module:
   * Validate slot options (prevents typos like `slot :myslot, requird: true`)
 
 ### Bug fixes
+  * Fix infinite loading streams in zoomed viewports #3442
+  * Fix race condition in latency simulator causing messages to be applied out of order
   * Fix stream items not reapplying JS commands when joining after a disconnect
   * Fix unnecessary remount when navigating back
   * Fix character composition mode not working properly in Safari when an input is patched
