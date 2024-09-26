@@ -84,6 +84,8 @@ Events that happen inside a form have their state applied to both the element an
 
 ```heex
 <button phx-disable-with="Submitting...">Submit</button>
+<!-- Or, to disable without changing the text: -->
+<button phx-disable-with>Submit</button>
 ```
 
 ### Tailwind integration

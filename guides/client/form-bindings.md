@@ -336,6 +336,16 @@ the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 <button type="submit" phx-disable-with="Saving...">Save</button>
 ```
 
+If you don't want to change the button's text but want it to be disabled, simply
+add the attribute but leave it blank:
+
+```heex
+<button type="submit" phx-disable-with>Save</button>
+```
+
+This couples well with CSS loading states to indicate the button's disabled state
+through other means than its text.
+
 You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
 with the following rules in your `app.css`:
