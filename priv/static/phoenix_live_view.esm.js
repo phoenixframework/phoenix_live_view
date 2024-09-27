@@ -1359,7 +1359,7 @@ var Hooks = {
       if (this.preflightedWas !== newPreflights) {
         this.preflightedWas = newPreflights;
         if (newPreflights === "") {
-          this.__view.cancelSubmit(this.el.form);
+          this.__view().cancelSubmit(this.el.form);
         }
       }
       if (this.activeRefs() === "") {
