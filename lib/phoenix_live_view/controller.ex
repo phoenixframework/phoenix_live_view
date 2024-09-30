@@ -47,10 +47,13 @@ defmodule Phoenix.LiveView.Controller do
           Map.merge(socket_assigns, %{content: content, live_module: view})
         )
 
-      {:stop, %Socket{redirected: {:redirect, opts}} = socket} ->
+      {:stop, %Socket{redirected: {:redirect, %{status: status} = opts}} = socket} ->
+        redirect_opts = Map.delete(opts, :status) |> Map.to_list()
+
         conn
+        |> Plug.Conn.put_status(status)
         |> put_flash(LiveView.Utils.get_flash(socket))
-        |> Phoenix.Controller.redirect(Map.to_list(opts))
+        |> Phoenix.Controller.redirect(redirect_opts)
 
       {:stop, %Socket{redirected: {:live, _, %{to: to}}} = socket} ->
         conn

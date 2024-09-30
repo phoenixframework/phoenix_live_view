@@ -964,39 +964,58 @@ defmodule Phoenix.LiveView do
   ## Options
 
     * `:to` - the path to redirect to. It must always be a local path
+    * `:status` - the HTTP status code to use for the redirect. Defaults to 302.
     * `:external` - an external path to redirect to. Either a string
       or `{scheme, url}` to redirect to a custom scheme
 
   ## Examples
 
       {:noreply, redirect(socket, to: "/")}
+      {:noreply, redirect(socket, to: "/", status: 301)}
       {:noreply, redirect(socket, external: "https://example.com")}
 
   """
-  def redirect(socket, opts \\ [])
+  def redirect(socket, opts \\ []) do
+    status = Keyword.get(opts, :status, 302)
 
-  def redirect(%Socket{} = socket, to: url) do
-    validate_local_url!(url, "redirect/2")
-    put_redirect(socket, {:redirect, %{to: url}})
+    cond do
+      Keyword.has_key?(opts, :to) ->
+        do_internal_redirect(socket, Keyword.fetch!(opts, :to), status)
+
+      Keyword.has_key?(opts, :external) ->
+        do_external_redirect(socket, Keyword.fetch!(opts, :external), status)
+
+      true ->
+        raise ArgumentError, "expected :to or :external option in redirect/2"
+    end
   end
 
-  def redirect(%Socket{} = socket, external: url) do
+  defp do_internal_redirect(%Socket{} = socket, url, redirect_status) do
+    validate_local_url!(url, "redirect/2")
+
+    put_redirect(socket, {:redirect, %{to: url, status: redirect_status}})
+  end
+
+  defp do_external_redirect(%Socket{} = socket, url, redirect_status) do
     case url do
       {scheme, rest} ->
-        put_redirect(socket, {:redirect, %{external: "#{scheme}:#{rest}"}})
+        put_redirect(
+          socket,
+          {:redirect, %{external: "#{scheme}:#{rest}", status: redirect_status}}
+        )
 
       url when is_binary(url) ->
         external_url = Phoenix.LiveView.Utils.valid_string_destination!(url, "redirect/2")
-        put_redirect(socket, {:redirect, %{external: external_url}})
+
+        put_redirect(
+          socket,
+          {:redirect, %{external: external_url, status: redirect_status}}
+        )
 
       other ->
         raise ArgumentError,
               "expected :external option in redirect/2 to be valid URL, got: #{inspect(other)}"
     end
-  end
-
-  def redirect(%Socket{}, _) do
-    raise ArgumentError, "expected :to or :external option in redirect/2"
   end
 
   @doc """

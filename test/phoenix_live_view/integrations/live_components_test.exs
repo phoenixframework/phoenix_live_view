@@ -445,7 +445,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert html =~ "Redirect: none"
 
       assert view |> element("#chris") |> render_click(%{"op" => "redirect"}) ==
-               {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
+               {:error, {:redirect, %{to: "/components?redirect=redirect", status: 302}}}
 
       assert_redirect(view, "/components?redirect=redirect")
     end
