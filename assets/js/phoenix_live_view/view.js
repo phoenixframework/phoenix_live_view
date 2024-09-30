@@ -15,7 +15,6 @@ import {
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
-  PHX_PAGE_LOADING,
   PHX_PARENT_ID,
   PHX_PROGRESS,
   PHX_READONLY,
@@ -882,7 +881,7 @@ export default class View {
     let [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}]
     let oldJoinCount = this.joinCount
     let onLoadingDone = function(){}
-    if(opts.page_loading || (el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null))){
+    if(opts.page_loading){
       onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
     }
 
@@ -1232,7 +1231,6 @@ export default class View {
         input.disabled = true
       }
     })
-    formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
     let formEls = disables.concat(buttons).concat(inputs).map(el => {
       return {el, loading: true, lock: true}
     })

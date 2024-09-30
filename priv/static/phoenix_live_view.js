@@ -78,7 +78,6 @@ var LiveView = (() => {
   var PHX_SKIP = "data-phx-skip";
   var PHX_MAGIC_ID = "data-phx-id";
   var PHX_PRUNE = "data-phx-prune";
-  var PHX_PAGE_LOADING = "page-loading";
   var PHX_CONNECTED_CLASS = "phx-connected";
   var PHX_LOADING_CLASS = "phx-loading";
   var PHX_ERROR_CLASS = "phx-error";
@@ -127,7 +126,7 @@ var LiveView = (() => {
     debounce: 300,
     throttle: 300
   };
-  var PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING];
+  var PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK];
   var DYNAMICS = "d";
   var STATIC = "s";
   var ROOT = "r";
@@ -3809,7 +3808,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let oldJoinCount = this.joinCount;
       let onLoadingDone = function() {
       };
-      if (opts.page_loading || el && el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null) {
+      if (opts.page_loading) {
         onLoadingDone = this.liveSocket.withPageLoading({ kind: "element", target: el });
       }
       if (typeof payload.cid !== "number") {
@@ -4172,7 +4171,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           input.disabled = true;
         }
       });
-      formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "");
       let formEls = disables.concat(buttons).concat(inputs).map((el) => {
         return { el, loading: true, lock: true };
       });

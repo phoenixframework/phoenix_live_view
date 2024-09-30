@@ -22,6 +22,9 @@ let liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
+Additionally, the `phx-page-loading` attrbute has been removed in favor of using the `page_loading: true`
+option to `Phoenix.LiveView.JS.push/2` as needed.
+
 ### Migrating from phx-feedback-for
 
 While we provide [a shim for existing applications](https://gist.github.com/chrismccord/c4c60328c6ac5ec29e167bb115315d82) relying on phx-feedback-for,

@@ -25,7 +25,6 @@ export const PHX_LIVE_FILE_UPDATED = "phx:live-file:updated"
 export const PHX_SKIP = "data-phx-skip"
 export const PHX_MAGIC_ID = "data-phx-id"
 export const PHX_PRUNE = "data-phx-prune"
-export const PHX_PAGE_LOADING = "page-loading"
 export const PHX_CONNECTED_CLASS = "phx-connected"
 export const PHX_LOADING_CLASS = "phx-loading"
 export const PHX_ERROR_CLASS = "phx-error"
@@ -76,7 +75,7 @@ export const DEFAULTS = {
   debounce: 300,
   throttle: 300
 }
-export const PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK, PHX_PAGE_LOADING]
+export const PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK]
 // Rendered
 export const DYNAMICS = "d"
 export const STATIC = "s"
