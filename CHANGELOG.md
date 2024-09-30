@@ -112,6 +112,7 @@ generated user module:
 ## 1.0.0-rc.7
 
 ### Enhancements
+  * Support custom redirect statuses on `Phoenix.LiveView.redirect/2`
   * Export `createHook` from `phoenix_live_view` to allow CustomElement's to use hooks
   * Expose programmable JS command interface to hooks for showing, hiding, addClass, etc from a hook which integrates with server DOM patching
   * Support targeting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closet, "tr"}`, etc.
