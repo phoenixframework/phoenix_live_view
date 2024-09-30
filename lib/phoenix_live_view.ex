@@ -2028,11 +2028,11 @@ defmodule Phoenix.LiveView do
         send_update(parent, Component, data)
       end)
 
-  ## Testing
+  ## Testing async operations
 
-  You might want to include render_async/2 in any tests for LiveViews that make use
-  of assign_async, to ensure the test waits until the async assigns are done before performing
-  any assertions, for example:
+  When testing LiveViews and LiveComponents with async assigns, use
+  `Phoenix.LiveViewTest.render_async/2` to ensure the test waits until the async operations
+  are complete before proceeding with assertions. For example:
 
       {:ok, view, _html} = live(conn, "/my_live_view")
       html = render_async(view)
