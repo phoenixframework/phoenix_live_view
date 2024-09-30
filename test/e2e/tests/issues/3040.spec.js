@@ -49,7 +49,7 @@ test("does not close modal when moving mouse outside while held down", async ({ 
   await page.mouse.move(143, 350);
   await page.mouse.up();
 
-  // we expect the modal to still be visible because the mousedown happended
+  // we expect the modal to still be visible because the mousedown happened
   // inside, not triggering phx-click-away
   await expect(modal).toBeVisible();
   await page.keyboard.press("Backspace");

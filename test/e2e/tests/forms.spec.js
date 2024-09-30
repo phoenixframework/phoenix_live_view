@@ -1,7 +1,5 @@
 const { test, expect } = require("../test-fixtures");
-const { syncLV, attributeMutations } = require("../utils");
-
-const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const { syncLV, evalLV, evalPlug, attributeMutations } = require("../utils");
 
 for (let path of ["/form/nested", "/form"]) {
   // see also https://github.com/phoenixframework/phoenix_live_view/issues/1759
@@ -190,10 +188,32 @@ for (let path of ["/form/nested", "/form"]) {
     await expect(page.getByText("Form was submitted!")).toBeVisible();
   });
 
-  test(`${path} - loading and locked states with latency`, async ({ page }) => {
+  test(`${path} - loading and locked states with latency`, async ({ page, request }) => {
+    const nested = !!path.match(/nested/);
     await page.goto(`${path}?phx-change=validate`);
     await syncLV(page);
-    await page.evaluate(() => window.liveSocket.enableLatencySim(2000));
+    const { lv_pid } = await evalLV(page, `
+      <<"#PID"::binary, pid::binary>> = inspect(self())
+  
+      pid_parts =
+        pid
+        |> String.trim_leading("<")
+        |> String.trim_trailing(">")
+        |> String.split(".")
+  
+      %{lv_pid: pid_parts}
+    `, nested ? "#nested" : undefined);
+    const ack = (event) => evalPlug(request, `send(IEx.Helpers.pid(${lv_pid[0]}, ${lv_pid[1]}, ${lv_pid[2]}), {:sync, "${event}"}); nil`);
+    // we serialize the test by letting each event handler wait for a {:sync, event} message
+    await evalLV(page, `
+      attach_hook(socket, :sync, :handle_event, fn event, _params, socket ->
+        if event == "ping" do
+          {:cont, socket}
+        else
+          receive do {:sync, ^event} -> {:cont, socket} end
+        end
+      end)
+    `, nested ? "#nested" : undefined);
     await expect(page.getByText("Form was submitted!")).not.toBeVisible();
     let testForm = page.locator("#test-form");
     let submitBtn = page.locator("#test-form #submit");
@@ -203,14 +223,11 @@ for (let path of ["/form/nested", "/form"]) {
     // form is locked on phx-change for any changed input
     await expect(testForm).toHaveAttribute("data-phx-ref-lock");
     await expect(testForm).toHaveAttribute("data-phx-ref-src");
-    // we need to sleep to ensure the phx-change ref arrives sufficiently before the phx-submit ref
-    // to make our assertions about the intermediate states
-    await sleep(1000)
     await submitBtn.click();
     // change-loading and submit-loading classes exist simultaneously
     await expect(testForm).toHaveClass("myformclass phx-change-loading phx-submit-loading");
-    await sleep(1000)
     // phx-change ack arrives and is removed
+    await ack("validate");
     await expect(testForm).toHaveClass("myformclass phx-submit-loading");
     await expect(submitBtn).toHaveClass("phx-submit-loading");
     await expect(submitBtn).toHaveAttribute("data-phx-disable-with-restore", "Submit");
@@ -223,6 +240,7 @@ for (let path of ["/form/nested", "/form"]) {
     await expect(submitBtn).toHaveAttribute("data-phx-ref-src");
     await expect(submitBtn).toHaveAttribute("disabled", "");
     await expect(submitBtn).toHaveAttribute("phx-disable-with", "Submitting");
+    await ack("save");
     await expect(page.getByText("Form was submitted!")).toBeVisible();
     // all refs are cleaned up
     await expect(testForm).toHaveClass("myformclass");
@@ -236,25 +254,52 @@ for (let path of ["/form/nested", "/form"]) {
     await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
     await expect(submitBtn).not.toHaveAttribute("disabled");
     await expect(submitBtn).toHaveAttribute("phx-disable-with", "Submitting");
-    await page.evaluate(() => window.liveSocket.disableLatencySim());
   });
 }
 
-test(`loading and locked states with latent clone`, async ({ page }) => {
+test(`loading and locked states with latent clone`, async ({ page, request }) => {
   await page.goto(`/form/stream`);
   let formHook = page.locator("#form-stream-hook");
   await syncLV(page);
-  await page.evaluate(() => window.liveSocket.enableLatencySim(2000));
+  const { lv_pid } = await evalLV(page, `
+    <<"#PID"::binary, pid::binary>> = inspect(self())
+
+    pid_parts =
+      pid
+      |> String.trim_leading("<")
+      |> String.trim_trailing(">")
+      |> String.split(".")
+
+    %{lv_pid: pid_parts}
+  `);
+  const ack = (event) => evalPlug(request, `send(IEx.Helpers.pid(${lv_pid[0]}, ${lv_pid[1]}, ${lv_pid[2]}), {:sync, "${event}"}); nil`);
+  // we serialize the test by letting each event handler wait for a {:sync, event} message
+  // excluding the ping messages from our hook
+  await evalLV(page, `
+    attach_hook(socket, :sync, :handle_event, fn event, _params, socket ->
+      if event == "ping" do
+        {:cont, socket}
+      else
+        receive do {:sync, ^event} -> {:cont, socket} end
+      end
+    end)
+  `);
   await expect(formHook).toHaveText("pong");
   let testForm = page.locator("#test-form");
   let testInput = page.locator("#test-form input[name=myname]");
   let submitBtn = page.locator("#test-form button");
   // initial 3 stream items
-  await expect(page.locator("#form-stream li")).toHaveCount(3)
+  await expect(page.locator("#form-stream li")).toHaveCount(3);
   await testInput.fill("1");
   await testInput.fill("2");
   // form is locked on phx-change and stream remains unchanged
-  await sleep(1000)
+  await expect(testForm).toHaveClass("phx-change-loading");
+  await expect(testInput).toHaveClass("phx-change-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-loading");
+  await expect(testForm).toHaveAttribute("data-phx-ref-src");
+  await expect(testInput).toHaveAttribute("data-phx-ref-loading");
+  await expect(testInput).toHaveAttribute("data-phx-ref-src");
+  // now we submit
   await submitBtn.click();
   await expect(testForm).toHaveClass("phx-change-loading phx-submit-loading");
   await expect(submitBtn).toHaveText("Saving...");
@@ -263,7 +308,11 @@ test(`loading and locked states with latent clone`, async ({ page }) => {
   await expect(testForm).toHaveAttribute("data-phx-ref-src");
   await expect(testInput).toHaveAttribute("data-phx-ref-loading");
   await expect(testInput).toHaveAttribute("data-phx-ref-src");
-  await expect(page.locator("#form-stream li")).toHaveCount(3, {timeout: 100});
+  // now we ack the two change events
+  await ack("validate");
+  // the form is still locked, therefore we still have 3 elements
+  await expect(page.locator("#form-stream li")).toHaveCount(3);
+  await ack("validate");
   // on unlock, cloned stream items that are added on each phx-change are applied to DOM
   await expect(page.locator("#form-stream li")).toHaveCount(5);
   // after clones are applied, the stream item hooks are mounted
@@ -287,6 +336,8 @@ test(`loading and locked states with latent clone`, async ({ page }) => {
   await expect(testInput).toHaveAttribute("data-phx-ref-src");
   await expect(submitBtn).toHaveAttribute("data-phx-ref-loading");
   await expect(submitBtn).toHaveAttribute("data-phx-ref-src");
+  // now we ack the submit
+  await ack("save");
   // submit adds 1 more stream item and new hook is mounted
   await expect(page.locator("#form-stream li")).toHaveText([
     "*%{id: 1}pong",
@@ -307,7 +358,6 @@ test(`loading and locked states with latent clone`, async ({ page }) => {
   await expect(testInput).not.toHaveAttribute("data-phx-ref-src");
   await expect(submitBtn).not.toHaveAttribute("data-phx-ref");
   await expect(submitBtn).not.toHaveAttribute("data-phx-ref-src");
-  await page.evaluate(() => window.liveSocket.disableLatencySim());
 });
 
 test("can dynamically add/remove inputs (ecto sort_param/drop_param)", async ({ page }) => {

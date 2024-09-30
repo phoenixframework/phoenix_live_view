@@ -1,7 +1,7 @@
 import {Socket} from "phoenix"
-import { closestPhxBinding } from "phoenix_live_view/utils"
+import {closestPhxBinding} from "phoenix_live_view/utils"
 import LiveSocket from "phoenix_live_view/live_socket"
-import { simulateJoinedView, liveViewDOM } from "./test_helpers"
+import {simulateJoinedView, liveViewDOM} from "./test_helpers"
 
 let setupView = (content) => {
   let el = liveViewDOM(content)
@@ -13,7 +13,7 @@ let setupView = (content) => {
 describe("utils", () => {
   describe("closestPhxBinding", () => {
     test("if an element's parent has a phx-click binding and is not disabled, return the parent", () => {
-      let view = setupView(`
+      let _view = setupView(`
       <button id="button" phx-click="toggle">
         <span id="innerContent">This is a button</span>
       </button>
@@ -24,7 +24,7 @@ describe("utils", () => {
     })
 
     test("if an element's parent is disabled, return null", () => {
-      let view = setupView(`
+      let _view = setupView(`
       <button id="button" phx-click="toggle" disabled>
         <span id="innerContent">This is a button</span>
       </button>

@@ -5,6 +5,7 @@ let focusStack = []
 let default_transition_time = 200
 
 let JS = {
+  // private
   exec(eventType, phxEvent, view, sourceEl, defaults){
     let [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
     let commands = phxEvent.charAt(0) === "[" ?
@@ -15,7 +16,7 @@ let JS = {
         args.data = Object.assign(args.data || {}, defaultArgs.data)
         args.callback = args.callback || defaultArgs.callback
       }
-      this.filterToEls(sourceEl, args).forEach(el => {
+      this.filterToEls(view.liveSocket, sourceEl, args).forEach(el => {
         this[`exec_${kind}`](eventType, phxEvent, view, sourceEl, el, args)
       })
     })
@@ -119,21 +120,7 @@ let JS = {
   },
 
   exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val1, val2]}){
-    if(el.hasAttribute(attr)){
-      if(val2 !== undefined){
-        // toggle between val1 and val2
-        if(el.getAttribute(attr) === val1){
-          this.setOrRemoveAttrs(el, [[attr, val2]], [])
-        } else {
-          this.setOrRemoveAttrs(el, [[attr, val1]], [])
-        }
-      } else {
-        // remove attr
-        this.setOrRemoveAttrs(el, [], [attr])
-      }
-    } else {
-      this.setOrRemoveAttrs(el, [[attr, val1]], [])
-    }
+    this.toggleAttr(el, attr, val1, val2)
   },
 
   exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition, blocking}){
@@ -240,13 +227,31 @@ let JS = {
     }
   },
 
-  toggleClasses(el, classes, transition, time, view){
+  toggleClasses(el, classes, transition, time, view, blocking){
     window.requestAnimationFrame(() => {
       let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
       let newAdds = classes.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
       let newRemoves = classes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
-      this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view)
+      this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view, blocking)
     })
+  },
+
+  toggleAttr(el, attr, val1, val2){
+    if(el.hasAttribute(attr)){
+      if(val2 !== undefined){
+        // toggle between val1 and val2
+        if(el.getAttribute(attr) === val1){
+          this.setOrRemoveAttrs(el, [[attr, val2]], [])
+        } else {
+          this.setOrRemoveAttrs(el, [[attr, val1]], [])
+        }
+      } else {
+        // remove attr
+        this.setOrRemoveAttrs(el, [], [attr])
+      }
+    } else {
+      this.setOrRemoveAttrs(el, [[attr, val1]], [])
+    }
   },
 
   addOrRemoveClasses(el, adds, removes, transition, time, view, blocking){
@@ -305,12 +310,32 @@ let JS = {
     return !this.isVisible(el) || this.hasAllClasses(el, outClasses)
   },
 
-  filterToEls(sourceEl, {to}){
-    return to ? DOM.all(document, to) : [sourceEl]
+  filterToEls(liveSocket, sourceEl, {to}){
+    let defaultQuery = () => {
+      if(typeof(to) === "string"){
+        return document.querySelectorAll(to)
+      } else if(to.closest){
+        let toEl = sourceEl.closest(to.closest)
+        return toEl ? [toEl] : []
+      } else if(to.inner){
+        return sourceEl.querySelectorAll(to.inner)
+      }
+    }
+    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to, defaultQuery) : [sourceEl]
   },
 
   defaultDisplay(el){
     return {tr: "table-row", td: "table-cell"}[el.tagName.toLowerCase()] || "block"
+  },
+
+  transitionClasses(val){
+    if(!val){ return null }
+
+    let [trans, tStart, tEnd] = Array.isArray(val) ? val : [val.split(" "), [], []]
+    trans = Array.isArray(trans) ? trans : trans.split(" ")
+    tStart = Array.isArray(tStart) ? tStart : tStart.split(" ")
+    tEnd = Array.isArray(tEnd) ? tEnd : tEnd.split(" ")
+    return [trans, tStart, tEnd]
   }
 }
 

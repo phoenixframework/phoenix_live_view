@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.EventsLive do
+defmodule Phoenix.LiveViewTest.Support.EventsLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def render(assigns) do
@@ -24,7 +24,7 @@ defmodule Phoenix.LiveViewTest.EventsLive do
   def handle_info({:run, func}, socket), do: func.(socket)
 end
 
-defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
+defmodule Phoenix.LiveViewTest.Support.EventsMultiJSLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveView.JS
 
@@ -71,7 +71,7 @@ defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
   def handle_info({:run, func}, socket), do: func.(socket)
 end
 
-defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
+defmodule Phoenix.LiveViewTest.Support.EventsInComponentMultiJSLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveView.JS
 
@@ -132,7 +132,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.EventsInMountLive do
+defmodule Phoenix.LiveViewTest.Support.EventsInMountLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   defmodule Child do
@@ -166,7 +166,7 @@ defmodule Phoenix.LiveViewTest.EventsInMountLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.EventsInComponentLive do
+defmodule Phoenix.LiveViewTest.Support.EventsInComponentLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   defmodule Child do

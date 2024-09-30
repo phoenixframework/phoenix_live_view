@@ -154,7 +154,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.45.1-jammy
+      image: mcr.microsoft.com/playwright:v1.47.1-jammy
     env:
       ImageOS: ubuntu22
       HOME: /root

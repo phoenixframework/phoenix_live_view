@@ -42,7 +42,7 @@ describe("events", () => {
       changed: null,
     }
 
-    stubViewPushInput(view, (sourceEl, targetCtx, newCid, event, pushOpts, callback) => {
+    stubViewPushInput(view, (sourceEl, targetCtx, newCid, event, pushOpts, _callback) => {
       meta = {
         event,
         target: targetCtx,

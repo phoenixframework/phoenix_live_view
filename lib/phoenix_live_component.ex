@@ -94,7 +94,7 @@ defmodule Phoenix.LiveComponent do
 
         def render(assigns) do
           ~H"""
-          <div id={"user-\#{@id}"} class="user">
+          <div id={"user-#{@id}"} class="user">
             <%= @user.name %>
           </div>
           """

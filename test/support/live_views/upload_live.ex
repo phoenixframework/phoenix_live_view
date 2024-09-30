@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.UploadLive do
+defmodule Phoenix.LiveViewTest.Support.UploadLive do
   use Phoenix.LiveView
 
   def render(%{uploads: _} = assigns) do
@@ -77,7 +77,7 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 end
 
-defmodule Phoenix.LiveViewTest.UploadComponent do
+defmodule Phoenix.LiveViewTest.Support.UploadComponent do
   use Phoenix.LiveComponent
 
   def render(%{uploads: _} = assigns) do
@@ -142,7 +142,7 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
+defmodule Phoenix.LiveViewTest.Support.UploadLiveWithComponent do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -150,7 +150,7 @@ defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
     <div>
       <%= if @uploads_count > 0 do %>
         <%= for i <- 0..@uploads_count do %>
-          <.live_component module={Phoenix.LiveViewTest.UploadComponent} id={"upload#{i}"} />
+          <.live_component module={Phoenix.LiveViewTest.Support.UploadComponent} id={"upload#{i}"} />
         <% end %>
       <% end %>
     </div>
@@ -170,7 +170,7 @@ defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
   end
 
   def handle_call({:run, func}, from, socket) do
-    send_update(Phoenix.LiveViewTest.UploadComponent, id: "upload0", run: {func, from})
+    send_update(Phoenix.LiveViewTest.Support.UploadComponent, id: "upload0", run: {func, from})
     {:noreply, socket}
   end
 end

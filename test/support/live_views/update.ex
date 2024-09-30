@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.TZLive do
+defmodule Phoenix.LiveViewTest.Support.TZLive do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -12,14 +12,14 @@ defmodule Phoenix.LiveViewTest.TZLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ShuffleLive do
+defmodule Phoenix.LiveViewTest.Support.ShuffleLive do
   use Phoenix.LiveView
 
   def render(assigns) do
     ~H"""
     <%= for zone <- @time_zones do %>
       <div id={"score-" <> zone["id"]}>
-        <%= live_render(@socket, Phoenix.LiveViewTest.TZLive,
+        <%= live_render(@socket, Phoenix.LiveViewTest.Support.TZLive,
           id: "tz-#{zone["id"]}",
           session: %{"name" => zone["name"]}
         ) %>

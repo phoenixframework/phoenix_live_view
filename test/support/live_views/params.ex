@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.ParamCounterLive do
+defmodule Phoenix.LiveViewTest.Support.ParamCounterLive do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -68,7 +68,7 @@ defmodule Phoenix.LiveViewTest.ParamCounterLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ActionLive do
+defmodule Phoenix.LiveViewTest.Support.ActionLive do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -92,7 +92,7 @@ defmodule Phoenix.LiveViewTest.ActionLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ErrorInHandleParamsLive do
+defmodule Phoenix.LiveViewTest.Support.ErrorInHandleParamsLive do
   use Phoenix.LiveView
 
   def render(assigns), do: ~H|<div>I crash in handle_params</div>|

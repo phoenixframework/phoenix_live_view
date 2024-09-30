@@ -7,13 +7,13 @@ defmodule Phoenix.ComponentUnitTest do
   @socket Utils.configure_socket(
             %Socket{
               endpoint: Endpoint,
-              router: Phoenix.LiveViewTest.Router,
-              view: Phoenix.LiveViewTest.ParamCounterLive
+              router: Phoenix.LiveViewTest.Support.Router,
+              view: Phoenix.LiveViewTest.Support.ParamCounterLive
             },
             %{
               connect_params: %{},
               connect_info: %{},
-              root_view: Phoenix.LiveViewTest.ParamCounterLive,
+              root_view: Phoenix.LiveViewTest.Support.ParamCounterLive,
               __changed__: %{}
             },
             nil,
@@ -49,6 +49,23 @@ defmodule Phoenix.ComponentUnitTest do
       socket = assign(socket, %{existing: %{foo: :bam}})
       assert socket.assigns.existing == %{foo: :bam}
       assert socket.assigns.__changed__.existing == %{foo: :bar}
+    end
+
+    test "keeps whole lists in changes" do
+      socket = assign(@socket, existing: [:foo, :bar])
+      socket = Utils.clear_changed(socket)
+
+      socket = assign(socket, existing: [:foo, :baz])
+      assert socket.assigns.existing == [:foo, :baz]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+
+      socket = assign(socket, existing: [:foo, :bat])
+      assert socket.assigns.existing == [:foo, :bat]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+
+      socket = assign(socket, %{existing: [:foo, :bam]})
+      assert socket.assigns.existing == [:foo, :bam]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
     end
   end
 

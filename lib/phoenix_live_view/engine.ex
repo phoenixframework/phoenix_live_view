@@ -1276,7 +1276,10 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp recur_changed_assign([{:access, head}], %Form{} = form1, %Form{} = form2) do
-    Form.input_changed?(form1, form2, head)
+    # Phoenix.HTML does not know about LiveView's _unused_ input tracking,
+    # therefore we also need to check if the input's unused state changed
+    Form.input_changed?(form1, form2, head) or
+      Phoenix.Component.used_input?(form1[head]) !== Phoenix.Component.used_input?(form2[head])
   end
 
   defp recur_changed_assign([{:access, head} | tail], assigns, changed) do

@@ -1093,7 +1093,7 @@ defmodule Phoenix.LiveViewTest do
 
   defp call(view_or_element, tuple) do
     try do
-      GenServer.call(proxy_pid(view_or_element), tuple, 30_000)
+      GenServer.call(proxy_pid(view_or_element), tuple, :infinity)
     catch
       :exit, {{:shutdown, {kind, opts}}, _} when kind in [:redirect, :live_redirect] ->
         {:error, {kind, opts}}

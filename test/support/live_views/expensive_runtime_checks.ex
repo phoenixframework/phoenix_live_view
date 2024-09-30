@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.ExpensiveRuntimeChecksLive do
+defmodule Phoenix.LiveViewTest.Support.ExpensiveRuntimeChecksLive do
   use Phoenix.LiveView
 
   @impl Phoenix.LiveView

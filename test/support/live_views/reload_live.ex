@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.ReloadLive do
+defmodule Phoenix.LiveViewTest.Support.ReloadLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do

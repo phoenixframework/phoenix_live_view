@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.EventTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.{Endpoint}
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 

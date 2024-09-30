@@ -1,6 +1,7 @@
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 import JS from "phoenix_live_view/js"
+import ViewHook from "phoenix_live_view/view_hook"
 import {simulateJoinedView, simulateVisibility, liveViewDOM} from "./test_helpers"
 
 let setupView = (content) => {
@@ -18,6 +19,111 @@ describe("JS", () => {
 
   afterEach(() => {
     jest.useRealTimers()
+  })
+
+  describe("hook.js()", () => {
+    let js, view, modal
+    beforeEach(() => {
+      view = setupView(`<div id="modal">modal</div>`)
+      modal = view.el.querySelector("#modal")
+      let hook = new ViewHook(view, view.el, {})
+      js = hook.js()
+    })
+
+    test("exec", done => {
+      simulateVisibility(modal)
+      expect(modal.style.display).toBe("")
+      js.exec(`[["toggle", {"to": "#modal"}]]`)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("none")
+      done()
+    })
+
+    test("show and hide", done => {
+      simulateVisibility(modal)
+      expect(modal.style.display).toBe("")
+      js.hide(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("none")
+      js.show(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("block")
+      done()
+    })
+
+    test("toggle", done => {
+      simulateVisibility(modal)
+      expect(modal.style.display).toBe("")
+      js.toggle(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("none")
+      js.toggle(modal)
+      jest.advanceTimersByTime(100)
+      expect(modal.style.display).toBe("block")
+      done()
+    })
+
+    test("addClass and removeClass", done => {
+      expect(Array.from(modal.classList)).toEqual([])
+      js.addClass(modal, "class1 class2")
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class1", "class2"])
+      jest.advanceTimersByTime(100)
+      js.removeClass(modal, "class1")
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2"])
+      js.addClass(modal, ["class3", "class4"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2", "class3", "class4"])
+      js.removeClass(modal, ["class3", "class4"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2"])
+      done()
+    })
+
+    test("toggleClass", done => {
+      expect(Array.from(modal.classList)).toEqual([])
+      js.toggleClass(modal, "class1 class2")
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class1", "class2"])
+      js.toggleClass(modal, ["class1"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["class2"])
+      done()
+    })
+
+    test("transition", done => {
+      js.transition(modal, "shake", {time: 150})
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual(["shake"])
+      jest.advanceTimersByTime(100)
+      expect(Array.from(modal.classList)).toEqual([])
+      js.transition(modal, ["shake", "opacity-50", "opacity-100"], {time: 150})
+      jest.advanceTimersByTime(10)
+      expect(Array.from(modal.classList)).toEqual(["opacity-50"])
+      jest.advanceTimersByTime(200)
+      expect(Array.from(modal.classList)).toEqual(["opacity-100"])
+      done()
+    })
+
+    test("setAttribute and removeAttribute", done => {
+      js.removeAttribute(modal, "works")
+      js.setAttribute(modal, "works", "123")
+      expect(modal.getAttribute("works")).toBe("123")
+      js.removeAttribute(modal, "works")
+      expect(modal.getAttribute("works")).toBe(null)
+      done()
+    })
+
+    test("toggleAttr", done => {
+      js.toggleAttribute(modal, "works", "on", "off")
+      expect(modal.getAttribute("works")).toBe("on")
+      js.toggleAttribute(modal, "works", "on", "off")
+      expect(modal.getAttribute("works")).toBe("off")
+      js.toggleAttribute(modal, "works", "on", "off")
+      expect(modal.getAttribute("works")).toBe("on")
+      done()
+    })
   })
 
   describe("exec_toggle", () => {
@@ -196,6 +302,33 @@ describe("JS", () => {
       JS.exec("click", click.getAttribute("phx-click"), view, click)
     })
 
+    test("with to scope inner", done => {
+      let view = setupView(`
+      <div id="click" phx-click='[["dispatch", {"to": {"inner": ".modal"}, "event": "click"}]]'>
+        <div class="modal">modal</div>
+      </div>
+      `)
+      let modal = simulateVisibility(document.querySelector(".modal"))
+      let click = document.querySelector("#click")
+
+      modal.addEventListener("click", () => done())
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+    })
+
+    test("with to scope closest", done => {
+      let view = setupView(`
+      <div class="modal">
+        <div>
+          <div id="click" phx-click='[["dispatch", {"to": {"closest": ".modal"}, "event": "click"}]]'></div>
+        </div>
+      </div>
+      `)
+      let modal = simulateVisibility(document.querySelector(".modal"))
+      let click = document.querySelector("#click")
+
+      modal.addEventListener("click", () => done())
+      JS.exec("click", click.getAttribute("phx-click"), view, click)
+    })
     test("with details", done => {
       let view = setupView(`
       <div id="modal">modal</div>
@@ -384,7 +517,7 @@ describe("JS", () => {
       `)
       let form = document.querySelector("#my-form")
       let input = document.querySelector("#username")
-      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, {_target}, callback) => {
+      view.pushInput = (sourceEl, targetCtx, newCid, phxEvent, {_target}, _callback) => {
         expect(phxEvent).toBe("validate")
         expect(sourceEl.isSameNode(input)).toBe(true)
         expect(_target).toBe(input.name)
@@ -420,7 +553,7 @@ describe("JS", () => {
           uploads: {},
           value: "_unused_username=&username=&_unused_other=&other=&_target=username"
         })
-        done()
+        return Promise.resolve({resp: done()})
       }
       let args = ["push", {_target: input.name, dispatcher: input}]
       JS.exec("change", form.getAttribute("phx-change"), view, input, args)
@@ -451,7 +584,7 @@ describe("JS", () => {
           uploads: {},
           value: "_unused_username=&username=&_target=username"
         })
-        done()
+        return Promise.resolve({resp: done()})
       }
       let args = ["push", {_target: input.name, dispatcher: input}]
       JS.exec("change", input.getAttribute("phx-change"), view, input, args)
@@ -482,7 +615,7 @@ describe("JS", () => {
           uploads: {},
           value: "_unused_username=&username=&_target=username"
         })
-        done()
+        return Promise.resolve({resp: done()})
       }
       let args = ["push", {_target: input.name, dispatcher: input}]
       JS.exec("change", input.getAttribute("phx-change"), view, input, args)
@@ -500,7 +633,7 @@ describe("JS", () => {
 
       view.pushWithReply = (refGen, event, payload) => {
         expect(payload).toEqual({"cid": null, "event": "save", "type": "form", "value": "username=&desc="})
-        done()
+        return Promise.resolve({resp: done()})
       }
       JS.exec("submit", form.getAttribute("phx-submit"), view, form, ["push", {}])
     })
@@ -537,9 +670,9 @@ describe("JS", () => {
       `)
       let click = document.querySelector("#click")
 
-      view.pushWithReply = (refGenerator, event, payload, onReply) => {
+      view.pushWithReply = (refGenerator, event, payload, _onReply) => {
         expect(payload.value).toEqual({"one": 1, "two": 2, "three": "3"})
-        done()
+        return Promise.resolve({resp: done()})
       }
       JS.exec("click", click.getAttribute("phx-click"), view, click)
     })
@@ -554,7 +687,7 @@ describe("JS", () => {
       let modal = simulateVisibility(document.querySelector("#modal"))
       let click = document.querySelector("#click")
 
-      view.pushEvent = (eventType, sourceEl, targetCtx, event, data) => {
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, _data) => {
         expect(event).toEqual("clicked")
         done()
       }
@@ -641,7 +774,7 @@ describe("JS", () => {
       <div id="click" phx-click='[["exec",{"attr": "phx-remove", "to": "#modal"}]]'></div>
       `)
       let click = document.querySelector("#click")
-      view.pushEvent = (eventType, sourceEl, targetCtx, event, meta) => {
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, _meta) => {
         expect(eventType).toBe("exec")
         expect(event).toBe("clicked")
         done()
@@ -765,5 +898,4 @@ describe("JS", () => {
       expect(document.activeElement).toBe(modal1)
     })
   })
-
 })

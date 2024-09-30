@@ -1,7 +1,9 @@
 import {Socket} from "phoenix"
-import LiveSocket from "phoenix_live_view/live_socket"
+import {LiveSocket, createHook} from "phoenix_live_view/index"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
+
+import {version as liveview_version} from "../package.json"
 
 import {
   PHX_LOADING_CLASS,
@@ -263,7 +265,7 @@ describe("View + DOM", function(){
     view.joinCount = 1
     const newForms = view.getFormsForRecovery()
     expect(Object.keys(newForms).length).toBe(1)
-    expect(newForms["my-form"].getAttribute('phx-change')).toBe('[[\"push\",{\"event\":\"update\",\"target\":1}]]')
+    expect(newForms["my-form"].getAttribute("phx-change")).toBe("[[\"push\",{\"event\":\"update\",\"target\":1}]]")
   })
 
   describe("submitForm", function(){
@@ -406,7 +408,7 @@ describe("View + DOM", function(){
       let html = "<form id=\"form\" phx-submit=\"submit\"><input type=\"text\"></form>"
 
       stubChannel(view)
-      view.onJoin({rendered: {s: [html], fingerprint: 123}, liveview_version: require("../package.json").version})
+      view.onJoin({rendered: {s: [html], fingerprint: 123}, liveview_version})
       expect(view.el.innerHTML).toBe(html)
 
       let formEl = document.getElementById("form")
@@ -426,7 +428,7 @@ describe("View + DOM", function(){
       HTMLFormElement.prototype.submit = done
 
       stubChannel(view)
-      view.onJoin({rendered: {s: [html], fingerprint: 123}, liveview_version: require("../package.json").version})
+      view.onJoin({rendered: {s: [html], fingerprint: 123}, liveview_version})
       expect(view.el.innerHTML).toBe(html)
 
       let updatedHtml = "<form id=\"form\" phx-submit=\"submit\" phx-trigger-action><input type=\"text\"></form>"
@@ -453,7 +455,7 @@ describe("View + DOM", function(){
         "s": [`<div id="list" phx-update="${updateType}">`, "</div>"]
       }
 
-      view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
+      view.onJoin({rendered: joinDiff, liveview_version})
 
       return view
     }
@@ -777,7 +779,7 @@ describe("View Hooks", function(){
         s: [html],
         fingerprint: 123
       },
-      liveview_version: require("../package.json").version
+      liveview_version
     })
     window.requestAnimationFrame(() => {
       expect(document.getElementById("test").getAttribute("class")).toBe("new-class")
@@ -820,7 +822,7 @@ describe("View Hooks", function(){
         s: ["<h2 id=\"up\" phx-hook=\"Upcase\">test mount</h2>"],
         fingerprint: 123
       },
-      liveview_version: require("../package.json").version
+      liveview_version
     })
     expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT")
 
@@ -842,6 +844,23 @@ describe("View Hooks", function(){
     expect(hookLiveSocket).toBeDefined()
   })
 
+  test("createHook", (done) => {
+    let liveSocket = new LiveSocket("/live", Socket, {})
+    let el = liveViewDOM()
+    customElements.define("custom-el", class extends HTMLElement {
+      connectedCallback(){
+        this.hook = createHook(this, {mounted: () => {
+          expect(this.hook.liveSocket).toBeTruthy()
+          done()
+        }})
+        expect(this.hook.liveSocket).toBe(null)
+      }
+    })
+    let customEl = document.createElement("custom-el")
+    el.appendChild(customEl)
+    let view = simulateJoinedView(el, liveSocket)
+  })
+
   test("view destroyed", async () => {
     let values = []
     let Hooks = {
@@ -859,7 +878,7 @@ describe("View Hooks", function(){
         s: ["<h2 id=\"check\" phx-hook=\"Check\">test mount</h2>"],
         fingerprint: 123
       },
-      liveview_version: require("../package.json").version
+      liveview_version
     })
     expect(view.el.firstChild.innerHTML).toBe("test mount")
 
@@ -887,7 +906,7 @@ describe("View Hooks", function(){
         s: ["<h2 id=\"check\" phx-hook=\"Check\"></h2>"],
         fingerprint: 123
       },
-      liveview_version: require("../package.json").version
+      liveview_version
     })
     expect(values).toEqual(["mounted"])
 
@@ -903,8 +922,8 @@ describe("View Hooks", function(){
   })
 
   test("dispatches uploads", async () => {
-    let hooks = { Recorder: {} }
-    let liveSocket = new LiveSocket("/live", Socket, { hooks })
+    let hooks = {Recorder: {}}
+    let liveSocket = new LiveSocket("/live", Socket, {hooks})
     let el = liveViewDOM()
     let view = simulateJoinedView(el, liveSocket)
 
@@ -918,7 +937,7 @@ describe("View Hooks", function(){
         s: [template],
         fingerprint: 123
       },
-      liveview_version: require("../package.json").version
+      liveview_version
     })
 
     let recorderHook = view.getHook(view.el.querySelector("#rec"))
@@ -946,7 +965,7 @@ describe("View Hooks", function(){
     let el = liveViewDOM()
     let view = simulateJoinedView(el, liveSocket)
 
-    view.onJoin({rendered: {s: ["<div>initial</div>"], fingerprint: 123}, liveview_version: require("../package.json").version})
+    view.onJoin({rendered: {s: ["<div>initial</div>"], fingerprint: 123}, liveview_version})
     expect(view.el.firstChild.innerHTML).toBe("initial")
 
     view.update({s: ["<div>updated</div>"], fingerprint: 123}, [])
@@ -994,15 +1013,15 @@ describe("View + Component", function(){
     expect(view.targetComponentID(form, targetCtx)).toBe(0)
   })
 
-  test("pushEvent", function(){
-    expect.assertions(4)
+  test("pushEvent", (done) => {
+    expect.assertions(17)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewComponent()
     let targetCtx = el.querySelector(".form-wrapper")
-    let input = el.querySelector("input")
 
     let view = simulateJoinedView(el, liveSocket)
+    let input = view.el.querySelector("input[id=plus]")
     let channelStub = {
       push(_evt, payload, _timeout){
         expect(payload.type).toBe("keyup")
@@ -1010,13 +1029,48 @@ describe("View + Component", function(){
         expect(payload.value).toEqual({"value": "1"})
         expect(payload.cid).toEqual(0)
         return {
-          receive(){ return this }
+          receive(status, callback){
+            callback({ref: payload.ref})
+            return this
+          }
         }
       }
     }
     view.channel = channelStub
 
-    view.pushEvent("keyup", input, targetCtx, "click", {})
+    input.addEventListener("phx:push:myevent", (e) => {
+      let {ref, lockComplete, loadingComplete} = e.detail
+      expect(ref).toBe(0)
+      expect(e.target).toBe(input)
+      loadingComplete.then((detail) => {
+        expect(detail.event).toBe("myevent")
+        expect(detail.ref).toBe(0)
+        lockComplete.then((detail) => {
+          expect(detail.event).toBe("myevent")
+          expect(detail.ref).toBe(0)
+          done()
+        })
+      })
+    })
+    input.addEventListener("phx:push", (e) => {
+      let {lock, unlock, lockComplete} = e.detail
+      expect(typeof lock).toBe("function")
+      expect(view.el.getAttribute("data-phx-ref-lock")).toBe(null)
+      // lock accepts unlock function to fire, which will done() the test
+      lockComplete.then(detail => {
+        expect(detail.event).toBe("myevent")
+      })
+      lock(view.el).then(detail => {
+        expect(detail.event).toBe("myevent")
+      })
+      expect(e.target).toBe(input)
+      expect(input.getAttribute("data-phx-ref-lock")).toBe("0")
+      expect(view.el.getAttribute("data-phx-ref-lock")).toBe("0")
+      unlock(view.el)
+      expect(view.el.getAttribute("data-phx-ref-lock")).toBe(null)
+    })
+
+    view.pushEvent("keyup", input, targetCtx, "myevent", {})
   })
 
   test("pushInput", function(done){
@@ -1105,7 +1159,7 @@ describe("View + Component", function(){
       }
     }
 
-    view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
+    view.onJoin({rendered: joinDiff, liveview_version})
     expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
 
     view.update(updateDiff, [])
@@ -1128,7 +1182,7 @@ describe("View + Component", function(){
       "s": ["", ""]
     }
 
-    view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
+    view.onJoin({rendered: joinDiff, liveview_version})
     expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\">Hello</div><div data-phx-id=\"c1-container\" data-phx-component=\"1\">World</div>")
   })
 
@@ -1149,7 +1203,7 @@ describe("View + Component", function(){
 
     let updateDiff = {"s": [newChildHTML]}
 
-    view.onJoin({rendered: joinDiff, liveview_version: require("../package.json").version})
+    view.onJoin({rendered: joinDiff, liveview_version})
     expect(view.el.innerHTML.trim()).toEqual(childHTML)
     expect(view.getChildById("bar")).toBeDefined()
 
@@ -1227,7 +1281,7 @@ describe("View + Component", function(){
       let el = liveViewDOM()
       let view = simulateJoinedView(el, liveSocket)
       stubChannel(view)
-      view.onJoin({rendered: {s: ["<span id=\"myhook\" phx-hook=\"MyHook\">Hello</span>"]}, liveview_version: require("../package.json").version})
+      view.onJoin({rendered: {s: ["<span id=\"myhook\" phx-hook=\"MyHook\">Hello</span>"]}, liveview_version})
 
       view.update({s: ["<span id=\"myhook\" data-phx-ref-loading=\"1\" data-phx-ref-lock=\"2\" data-phx-ref-src=\"container\" phx-hook=\"MyHook\" class=\"phx-change-loading\">Hello</span>"]}, [])
 

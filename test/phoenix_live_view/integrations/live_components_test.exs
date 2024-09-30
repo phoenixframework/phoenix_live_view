@@ -3,7 +3,8 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint, DOM, StatefulComponent}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.{Endpoint, StatefulComponent}
 
   @endpoint Endpoint
   @moduletag session: %{names: ["chris", "jose"], from: nil}
@@ -386,7 +387,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
                render(view)
                refute_receive {:updated, _}
              end) =~
-               "send_update failed because component Phoenix.LiveViewTest.StatefulComponent with ID \"nemo\" does not exist or it has been removed"
+               "send_update failed because component Phoenix.LiveViewTest.Support.StatefulComponent with ID \"nemo\" does not exist or it has been removed"
 
       # with @myself
       assert ExUnit.CaptureLog.capture_log(fn ->
@@ -444,7 +445,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert html =~ "Redirect: none"
 
       assert view |> element("#chris") |> render_click(%{"op" => "redirect"}) ==
-               {:error, {:redirect, %{to: "/components?redirect=redirect"}}}
+               {:error, {:redirect, %{to: "/components?redirect=redirect", status: 302}}}
 
       assert_redirect(view, "/components?redirect=redirect")
     end
@@ -535,7 +536,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     end
 
     test "loads unloaded component" do
-      module = Phoenix.LiveViewTest.ComponentInLive.Component
+      module = Phoenix.LiveViewTest.Support.ComponentInLive.Component
       :code.purge(module)
       :code.delete(module)
       assert render_component(module, %{}) =~ "<div>Hello World</div>"

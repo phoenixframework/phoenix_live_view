@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.ElementsLive do
+defmodule Phoenix.LiveViewTest.Support.ElementsLive do
   use Phoenix.LiveView
 
   alias Phoenix.LiveView.JS
@@ -10,7 +10,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
     <div id="child-component">
-      <.live_component module={Phoenix.LiveViewTest.ElementsComponent} id={1} />
+      <.live_component module={Phoenix.LiveViewTest.Support.ElementsComponent} id={1} />
     </div>
 
     <% # basic render_* %>
@@ -284,7 +284,7 @@ defmodule Phoenix.LiveViewTest.ElementsLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.ElementsComponent do
+defmodule Phoenix.LiveViewTest.Support.ElementsComponent do
   use Phoenix.LiveComponent
 
   alias Phoenix.LiveView.JS

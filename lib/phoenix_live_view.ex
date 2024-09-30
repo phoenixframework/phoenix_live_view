@@ -261,6 +261,11 @@ defmodule Phoenix.LiveView do
 
   It must always return `{:noreply, socket}`, where `:noreply`
   means no additional information is sent to the client.
+
+  > #### Note {: .warning}
+  >
+  > `handle_params` is only allowed on LiveViews mounted at the router,
+  > as it takes the current url of the page as the second parameter.
   """
   @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
@@ -959,39 +964,58 @@ defmodule Phoenix.LiveView do
   ## Options
 
     * `:to` - the path to redirect to. It must always be a local path
+    * `:status` - the HTTP status code to use for the redirect. Defaults to 302.
     * `:external` - an external path to redirect to. Either a string
       or `{scheme, url}` to redirect to a custom scheme
 
   ## Examples
 
       {:noreply, redirect(socket, to: "/")}
+      {:noreply, redirect(socket, to: "/", status: 301)}
       {:noreply, redirect(socket, external: "https://example.com")}
 
   """
-  def redirect(socket, opts \\ [])
+  def redirect(socket, opts \\ []) do
+    status = Keyword.get(opts, :status, 302)
 
-  def redirect(%Socket{} = socket, to: url) do
-    validate_local_url!(url, "redirect/2")
-    put_redirect(socket, {:redirect, %{to: url}})
+    cond do
+      Keyword.has_key?(opts, :to) ->
+        do_internal_redirect(socket, Keyword.fetch!(opts, :to), status)
+
+      Keyword.has_key?(opts, :external) ->
+        do_external_redirect(socket, Keyword.fetch!(opts, :external), status)
+
+      true ->
+        raise ArgumentError, "expected :to or :external option in redirect/2"
+    end
   end
 
-  def redirect(%Socket{} = socket, external: url) do
+  defp do_internal_redirect(%Socket{} = socket, url, redirect_status) do
+    validate_local_url!(url, "redirect/2")
+
+    put_redirect(socket, {:redirect, %{to: url, status: redirect_status}})
+  end
+
+  defp do_external_redirect(%Socket{} = socket, url, redirect_status) do
     case url do
       {scheme, rest} ->
-        put_redirect(socket, {:redirect, %{external: "#{scheme}:#{rest}"}})
+        put_redirect(
+          socket,
+          {:redirect, %{external: "#{scheme}:#{rest}", status: redirect_status}}
+        )
 
       url when is_binary(url) ->
         external_url = Phoenix.LiveView.Utils.valid_string_destination!(url, "redirect/2")
-        put_redirect(socket, {:redirect, %{external: external_url}})
+
+        put_redirect(
+          socket,
+          {:redirect, %{external: external_url, status: redirect_status}}
+        )
 
       other ->
         raise ArgumentError,
               "expected :external option in redirect/2 to be valid URL, got: #{inspect(other)}"
     end
-  end
-
-  def redirect(%Socket{}, _) do
-    raise ArgumentError, "expected :to or :external option in redirect/2"
   end
 
   @doc """
@@ -1469,7 +1493,7 @@ defmodule Phoenix.LiveView do
 
   When defining a plugin that matches on specific callbacks, you **must**
   define a catch-all clause, as your hook will be invoked even for events
-  you may not be interested on.
+  you may not be interested in.
 
   ### Implications for end-users
 
@@ -1802,7 +1826,7 @@ defmodule Phoenix.LiveView do
 
     * `:at` - The index to insert or update the item in the collection on the client.
       By default, the item is appended to the parent DOM container. This is the same as
-      passing a limit of `-1`.
+      passing a value of `-1`.
       If the item already exists in the parent DOM container then it will be
       updated in place.
 
@@ -2022,6 +2046,16 @@ defmodule Phoenix.LiveView do
         # ...
         send_update(parent, Component, data)
       end)
+
+  ## Testing async operations
+
+  When testing LiveViews and LiveComponents with async assigns, use
+  `Phoenix.LiveViewTest.render_async/2` to ensure the test waits until the async operations
+  are complete before proceeding with assertions. For example:
+
+      {:ok, view, _html} = live(conn, "/my_live_view")
+      html = render_async(view)
+      assert html =~ "My assertion"
   """
   defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
     Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)
@@ -2034,6 +2068,10 @@ defmodule Phoenix.LiveView do
   The task is linked to the caller and errors/exits are wrapped.
   The result of the task is sent to the `c:handle_async/3` callback
   of the caller LiveView or LiveComponent.
+
+  If there is an in-flight task with the same `name`, the later `start_async` wins and the previous task’s result is ignored.
+  If you wish to replace an existing task, you can use `cancel_async/3` before `start_async/3`.
+  You are not restricted to just atoms for `name`, it can be any term such as a tuple.
 
   The task is only started when the socket is connected.
 

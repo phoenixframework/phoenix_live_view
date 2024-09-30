@@ -22,6 +22,9 @@ let liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
+Additionally, the `phx-page-loading` attrbute has been removed in favor of using the `page_loading: true`
+option to `Phoenix.LiveView.JS.push/2` as needed.
+
 ### Migrating from phx-feedback-for
 
 While we provide [a shim for existing applications](https://gist.github.com/chrismccord/c4c60328c6ac5ec29e167bb115315d82) relying on phx-feedback-for,
@@ -112,14 +115,24 @@ generated user module:
 ## 1.0.0-rc.7
 
 ### Enhancements
+  * Support custom redirect statuses on `Phoenix.LiveView.redirect/2`
+  * Export `createHook` from `phoenix_live_view` to allow CustomElement's to use hooks
+  * Expose programmable JS command interface to hooks for showing, hiding, addClass, etc from a hook which integrates with server DOM patching
+  * Support targeting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closet, "tr"}`, etc.
   * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
+  * Validate slot options (prevents typos like `slot :myslot, requird: true`)
 
 ### Bug fixes
+  * Fix nested LiveViews inside a stream element
+  * Fix infinite loading streams in zoomed viewports #3442
+  * Fix race condition in latency simulator causing messages to be applied out of order
   * Fix stream items not reapplying JS commands when joining after a disconnect
   * Fix unnecessary remount when navigating back
   * Fix character composition mode not working properly in Safari when an input is patched
   * Fix `cannot redirect socket on update` error raised erroneously under rare circumstances
   * Fix upstream morphdom issue that could cause elements being removed from the real DOM instead of a cloned tree while some elements are locked
+  * Don't dispatch click event when moving mouse away from initial click target
+  * Fix formatter formatting expressions that are strings with escaped quotes incorrectly
 
 ### Deprecations
   * Deprecate the `name` attribute of `Phoenix.Component.dynamic_tag/1` in favor of `tag_name`
@@ -168,7 +181,7 @@ generated user module:
 
 ### Bug fixes
   * Fix used input tracking on checkboxes and hidden inputs
-  * Fix phx-debounce=blur incorrectly sending change event to the next page in some cirumstances
+  * Fix phx-debounce=blur incorrectly sending change event to the next page in some circumstances
   * Fix race condition when destroying Live Components while transitions are still running
   * Fix page reload when disconnecting LiveSocket if using Bandit
   * Fix formatter changing `<%` to `<%=` when it shouldn't
@@ -219,7 +232,7 @@ generated user module:
   * Fix nested LiveView within streams becoming empty when reset
   * Fix `phx-mounted` firing twice, first on dead render, then on live render, leading to errors when a LiveComponent has not yet mounted
   * Fix `JS.toggle_class` error when used with a transition
-  * Fix phx-debounce=blur incorrectly sending change event to the next page in some cirumstances
+  * Fix phx-debounce=blur incorrectly sending change event to the next page in some circumstances
   * Fix race condition when destroying Live Components while transitions are still running
   * Fix page reload when disconnecting LiveSocket if using Bandit
   * Fix formatter changing `<%` to `<%=` when it shouldn't
@@ -389,7 +402,7 @@ generated user module:
   * Fix match error on live navigation when reconnecting from client
 
 ### Enhancements
-  * Support new `meta()` method on File/Blob sublcasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
+  * Support new `meta()` method on File/Blob subclasses on JavaScript client to allow the client to pass arbitrary metadata when using `upload/uploadTo` from hook. The `%UploadEntry{}`'s new `client_meta` field is populated from this information.
   * Improve void tagging and error messages
 
 ## 0.20.0 (2023-09-22)
@@ -672,7 +685,7 @@ a `:let` usage.
   - [Logger] Add new LiveView logger with telemetry instrumentation for lifecycle events
   - [JS] Add new JS commands for `focus`, `focus_first`, `push_focus`, and `pop_focus` for accessibility
   - [Socket] Support sharing `Phoenix.LiveView.Socket` with regular channels via `use Phoenix.LiveView.Socket`
-  - Add `_live_referer` connect param for handling `push_navigate` referal URL
+  - Add `_live_referer` connect param for handling `push_navigate` referral URL
   - Add new `phx-connected` and `phx-disconnected` bindings for reacting to lifecycle changes
   - Add dead view support for JS commands
   - Add dead view support for hooks

@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
   import Phoenix.LiveView.TelemetryTestHelpers
 
   alias Phoenix.LiveView.Socket
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
   @moduletag session: %{names: ["chris", "jose"], from: nil}
@@ -44,10 +44,10 @@ defmodule Phoenix.LiveView.TelemetryTest do
           assert metadata.uri == "http://www.example.com/thermo?foo=bar"
         end)
 
-      refute log =~ "MOUNT Phoenix.LiveViewTest.ThermostatLive"
+      refute log =~ "MOUNT Phoenix.LiveViewTest.Support.ThermostatLive"
       refute log =~ "Replied in "
 
-      refute log =~ "HANDLE PARAMS in Phoenix.LiveViewTest.ThermostatLive"
+      refute log =~ "HANDLE PARAMS in Phoenix.LiveViewTest.Support.ThermostatLive"
       refute log =~ "Replied in "
     end
 
@@ -103,12 +103,12 @@ defmodule Phoenix.LiveView.TelemetryTest do
           assert metadata.uri == "http://www.example.com/thermo?foo=bar"
         end)
 
-      assert log =~ "MOUNT Phoenix.LiveViewTest.ThermostatLive"
+      assert log =~ "MOUNT Phoenix.LiveViewTest.Support.ThermostatLive"
       assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
       assert log =~ "  Session: %{\"current_user_id\" => \"1\"}"
       assert log =~ "Replied in"
 
-      assert log =~ "HANDLE PARAMS in Phoenix.LiveViewTest.ThermostatLive"
+      assert log =~ "HANDLE PARAMS in Phoenix.LiveViewTest.Support.ThermostatLive"
       assert log =~ "  Parameters: %{\"foo\" => \"bar\"}"
       assert log =~ "Replied in"
     end
@@ -163,7 +163,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
           assert metadata.params == %{"temp" => "20"}
         end)
 
-      assert log =~ "HANDLE EVENT \"save\" in Phoenix.LiveViewTest.ThermostatLive"
+      assert log =~ "HANDLE EVENT \"save\" in Phoenix.LiveViewTest.Support.ThermostatLive"
       assert log =~ "  Parameters: %{\"temp\" => \"20\"}"
       assert log =~ "Replied in"
     end
@@ -231,7 +231,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
 
           assert metadata.socket.transport_pid
           assert metadata.event == "transform"
-          assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+          assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
           assert metadata.params == %{"op" => "upcase"}
 
           assert_receive {:event, [:phoenix, :live_component, :handle_event, :stop],
@@ -239,12 +239,12 @@ defmodule Phoenix.LiveView.TelemetryTest do
 
           assert metadata.socket.transport_pid
           assert metadata.event == "transform"
-          assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+          assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
           assert metadata.params == %{"op" => "upcase"}
         end)
 
-      assert log =~ "HANDLE EVENT \"transform\" in Phoenix.LiveViewTest.WithComponentLive"
-      assert log =~ "  Component: Phoenix.LiveViewTest.StatefulComponent"
+      assert log =~ "HANDLE EVENT \"transform\" in Phoenix.LiveViewTest.Support.WithComponentLive"
+      assert log =~ "  Component: Phoenix.LiveViewTest.Support.StatefulComponent"
       assert log =~ "  Parameters: %{\"op\" => \"upcase\"}"
       assert log =~ "Replied in"
     end
@@ -262,7 +262,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
 
       assert metadata.socket.transport_pid
       assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
       assert metadata.params == %{"op" => "boom"}
 
       assert_receive {:event, [:phoenix, :live_component, :handle_event, :exception],
@@ -272,7 +272,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
       assert metadata.reason == {:case_clause, "boom"}
       assert metadata.socket.transport_pid
       assert metadata.event == "transform"
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
       assert metadata.params == %{"op" => "boom"}
     end
 
@@ -285,7 +285,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
                       metadata}
 
       assert metadata.socket
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
 
       assert [
                {
@@ -299,7 +299,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
                       metadata}
 
       assert metadata.socket
-      assert metadata.component == Phoenix.LiveViewTest.StatefulComponent
+      assert metadata.component == Phoenix.LiveViewTest.Support.StatefulComponent
       assert [updated_component_socket, _] = metadata.sockets
 
       assert updated_component_socket != component_socket
@@ -320,7 +320,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
           {:ok, _view, _html} = live(conn, "/log-override")
         end)
 
-      assert log =~ "MOUNT Phoenix.LiveViewTest.WithLogOverride"
+      assert log =~ "MOUNT Phoenix.LiveViewTest.Support.WithLogOverride"
       assert log =~ "Replied in "
     end
 
@@ -331,7 +331,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
           {:ok, _view, _html} = live(conn, "/log-disabled")
         end)
 
-      refute log =~ "MOUNT Phoenix.LiveViewTest.WithLogDisabled"
+      refute log =~ "MOUNT Phoenix.LiveViewTest.Support.WithLogDisabled"
       refute log =~ "Replied in "
     end
   end

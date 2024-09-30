@@ -1,6 +1,6 @@
 # Form bindings
 
-## Form Events
+## Form events
 
 To handle form changes and submissions, use the `phx-change` and `phx-submit`
 events. In general, it is preferred to handle input changes at the form level,
@@ -101,9 +101,12 @@ def handle_event("email_changed", %{"user" => %{"email" => email}}, socket) do
 end
 ```
 
-_Note_: only the individual input is sent as params for an input marked with `phx-change`.
+> #### Note {: .warning}
+> 1. Only the individual input is sent as params for an input marked with `phx-change`.
+> 2. While it is possible to use `phx-change` on individual inputs, those inputs
+>    must still be within a form.
 
-## Error Feedback
+## Error feedback
 
 For proper error feedback on form updates, LiveView sends special parameters on form events
 starting with `_unused_` to indicate that the input for the specific field has not been interacted with yet.
@@ -113,15 +116,17 @@ When creating a form from these parameters through `Phoenix.Component.to_form/2`
 
 For example, your `MyAppWeb.CoreComponents` may use this function:
 
-    def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
-      errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+```elixir
+def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+  errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
 
-      assigns
-      |> assign(field: nil, id: assigns.id || field.id)
-      |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
-      |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+  assigns
+  |> assign(field: nil, id: assigns.id || field.id)
+  |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
+  |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+```
 
-Now, only errors for fields that were interacted with are shown.
+Now only errors for fields that were interacted with are shown.
 
 ## Number inputs
 
@@ -258,7 +263,7 @@ above, which would wire up to the following server callbacks in your LiveView:
 
 To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
-## Resetting Forms
+## Resetting forms
 
 To reset a LiveView form, you can use the standard `type="reset"` on a
 form button or input. When clicked, the form inputs will be reset to their

@@ -75,13 +75,24 @@ defmodule Phoenix.LiveViewTest.E2E.Hooks do
     Logger.debug("lv:#{inspect(self())} eval result: #{inspect(result)}")
 
     case result do
-      {:noreply, %Phoenix.LiveView.Socket{} = socket} -> {:halt, socket}
-      %Phoenix.LiveView.Socket{} = socket -> {:halt, socket}
-      _ -> {:halt, socket}
+      {:noreply, %Phoenix.LiveView.Socket{} = socket} -> {:halt, %{}, socket}
+      %Phoenix.LiveView.Socket{} = socket -> {:halt, %{}, socket}
+      result -> {:halt, %{"result" => result}, socket}
     end
   end
 
   defp handle_eval_event(_, _, socket), do: {:cont, socket}
+end
+
+defmodule Phoenix.LiveViewTest.E2E.EvalController do
+  use Phoenix.Controller
+
+  plug :accepts, ["json"]
+
+  def eval(conn, %{"code" => code} = _params) do
+    {result, _} = Code.eval_string(code, [], __ENV__)
+    json(conn, result)
+  end
 end
 
 defmodule Phoenix.LiveViewTest.E2E.Router do
@@ -100,13 +111,13 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     scope "/", Phoenix.LiveViewTest do
       pipe_through(:browser)
 
-      live "/stream", StreamLive
-      live "/stream/reset", StreamResetLive
-      live "/stream/reset-lc", StreamResetLCLive
-      live "/stream/limit", StreamLimitLive
-      live "/stream/nested-component-reset", StreamNestedComponentResetLive
-      live "/stream/inside-for", StreamInsideForLive
-      live "/healthy/:category", HealthyLive
+      live "/stream", Support.StreamLive
+      live "/stream/reset", Support.StreamResetLive
+      live "/stream/reset-lc", Support.StreamResetLCLive
+      live "/stream/limit", Support.StreamLimitLive
+      live "/stream/nested-component-reset", Support.StreamNestedComponentResetLive
+      live "/stream/inside-for", Support.StreamInsideForLive
+      live "/healthy/:category", Support.HealthyLive
 
       live "/upload", E2E.UploadLive
       live "/form", E2E.FormLive
@@ -130,6 +141,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3200/settings", Issue3200.PanelLive, :settings_tab
       live "/3194", Issue3194Live
       live "/3194/other", Issue3194Live.OtherLive
+      live "/3378", Issue3378.HomeLive
     end
   end
 
@@ -156,6 +168,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3169", Issue3169Live
     end
   end
+
+  post "/eval", Phoenix.LiveViewTest.E2E.EvalController, :eval
 end
 
 defmodule Phoenix.LiveViewTest.E2E.Endpoint do

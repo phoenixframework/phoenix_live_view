@@ -21,7 +21,7 @@ let Hooks = {
       if(this.preflightedWas !== newPreflights){
         this.preflightedWas = newPreflights
         if(newPreflights === ""){
-          this.__view.cancelSubmit(this.el.form)
+          this.__view().cancelSubmit(this.el.form)
         }
       }
 
@@ -95,17 +95,17 @@ let top = (scrollContainer) => {
 
 let isAtViewportTop = (el, scrollContainer) => {
   let rect = el.getBoundingClientRect()
-  return rect.top >= top(scrollContainer) && rect.left >= 0 && rect.top <= bottom(scrollContainer)
+  return Math.ceil(rect.top) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.top) <= bottom(scrollContainer)
 }
 
 let isAtViewportBottom = (el, scrollContainer) => {
   let rect = el.getBoundingClientRect()
-  return rect.right >= top(scrollContainer) && rect.left >= 0 && rect.bottom <= bottom(scrollContainer)
+  return Math.ceil(rect.bottom) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.bottom) <= bottom(scrollContainer)
 }
 
 let isWithinViewport = (el, scrollContainer) => {
   let rect = el.getBoundingClientRect()
-  return rect.top >= top(scrollContainer) && rect.left >= 0 && rect.top <= bottom(scrollContainer)
+  return Math.ceil(rect.top) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.top) <= bottom(scrollContainer)
 }
 
 Hooks.InfiniteScroll = {

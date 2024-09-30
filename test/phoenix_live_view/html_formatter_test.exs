@@ -2094,6 +2094,12 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
+  test "doesn't flatten strings containing double quotes (#3336)" do
+    assert_formatter_doesnt_change(~S"""
+    <div data-foo={"{\"tag\": \"<something>\"}"}></div>
+    """)
+  end
+
   # TODO: Remove this `if` when we require Elixir 1.14+
   if function_exported?(EEx, :tokenize, 2) do
     test "handle EEx comments" do

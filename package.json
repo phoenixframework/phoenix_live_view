@@ -24,8 +24,8 @@
     "assets/js/phoenix_live_view/*"
   ],
   "devDependencies": {
-    "@playwright/test": "^1.45.1",
-    "monocart-reporter": "^2.3.1"
+    "@playwright/test": "^1.47.1",
+    "monocart-reporter": "^2.8.0"
   },
   "scripts": {
     "setup": "mix deps.get && npm install && cd assets && npm install",
