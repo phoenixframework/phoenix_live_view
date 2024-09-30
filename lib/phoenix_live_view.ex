@@ -2030,7 +2030,7 @@ defmodule Phoenix.LiveView do
 
   ## Testing
 
-  You might want to include render_async/1 in any tests for LiveViews that make use
+  You might want to include render_async/2 in any tests for LiveViews that make use
   of assign_async, to ensure the test waits until the async assigns are done before performing
   any assertions, for example:
 
