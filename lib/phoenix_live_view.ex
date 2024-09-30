@@ -2027,6 +2027,16 @@ defmodule Phoenix.LiveView do
         # ...
         send_update(parent, Component, data)
       end)
+
+  ## Testing
+
+  You might want to include render_async/2 in any tests for LiveViews that make use
+  of assign_async, to ensure the test waits until the async assigns are done before performing
+  any assertions, for example:
+
+      {:ok, view, _html} = live(conn, "/my_live_view")
+      html = render_async(view)
+      assert html =~ "My assertion"
   """
   defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
     Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)
