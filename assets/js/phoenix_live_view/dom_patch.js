@@ -455,11 +455,8 @@ export default class DOMPatch {
     if(!(fromEl instanceof HTMLSelectElement) || fromEl.multiple){ return false }
     if(fromEl.options.length !== toEl.options.length){ return true }
 
-    let fromSelected = fromEl.selectedOptions[0]
-    let toSelected = toEl.selectedOptions[0]
-    if(fromSelected && fromSelected.hasAttribute("selected")){
-      toSelected.setAttribute("selected", fromSelected.getAttribute("selected"))
-    }
+    // keep the current value
+    toEl.value = fromEl.value
 
     // in general we have to be very careful with using isEqualNode as it does not a reliable
     // DOM tree equality check, but for selection attributes and options it works fine

@@ -124,13 +124,17 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form/nested", E2E.NestedFormLive
       live "/form/stream", E2E.FormStreamLive
       live "/js", E2E.JsLive
+      live "/select", E2E.SelectLive
     end
 
     scope "/issues", Phoenix.LiveViewTest.E2E do
       pipe_through(:browser)
 
+      live "/2787", Issue2787Live
       live "/3026", Issue3026Live
       live "/3040", Issue3040Live
+      live "/3083", Issue3083Live
+      live "/3107", Issue3107Live
       live "/3117", Issue3117Live
       live "/3200/messages", Issue3200.PanelLive, :messages_tab
       live "/3200/settings", Issue3200.PanelLive, :settings_tab
