@@ -2556,11 +2556,7 @@ var DOMPatch = class {
     if (fromEl.options.length !== toEl.options.length) {
       return true;
     }
-    let fromSelected = fromEl.selectedOptions[0];
-    let toSelected = toEl.selectedOptions[0];
-    if (fromSelected && fromSelected.hasAttribute("selected")) {
-      toSelected.setAttribute("selected", fromSelected.getAttribute("selected"));
-    }
+    toEl.value = fromEl.value;
     return !fromEl.isEqualNode(toEl);
   }
   isCIDPatch() {
@@ -4704,27 +4700,8 @@ var LiveSocket = class {
       root.destroyDescendent(el.id);
     }
   }
-  setActiveElement(target) {
-    if (this.activeElement === target) {
-      return;
-    }
-    this.activeElement = target;
-    let cancel = () => {
-      if (target === this.activeElement) {
-        this.activeElement = null;
-      }
-      target.removeEventListener("mouseup", this);
-      target.removeEventListener("touchend", this);
-    };
-    target.addEventListener("mouseup", cancel);
-    target.addEventListener("touchend", cancel);
-  }
   getActiveElement() {
-    if (document.activeElement === document.body) {
-      return this.activeElement || document.activeElement;
-    } else {
-      return document.activeElement || document.body;
-    }
+    return document.activeElement;
   }
   dropActiveElement(view) {
     if (this.prevActive && view.ownsElement(this.prevActive)) {
@@ -5115,9 +5092,6 @@ var LiveSocket = class {
         this.debounce(input, e, type, () => {
           this.withinOwners(dispatcher, (view) => {
             dom_default.putPrivate(input, PHX_HAS_FOCUSED, true);
-            if (!dom_default.isTextualInput(input)) {
-              this.setActiveElement(input);
-            }
             js_default.exec("change", phxEvent, view, input, ["push", { _target: e.target.name, dispatcher }]);
           });
         });

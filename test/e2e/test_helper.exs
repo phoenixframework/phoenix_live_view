@@ -57,7 +57,6 @@ end
 
 defmodule Phoenix.LiveViewTest.E2E.Hooks do
   import Phoenix.LiveView
-  import Phoenix.Component
 
   require Logger
 
