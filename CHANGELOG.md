@@ -123,6 +123,7 @@ generated user module:
   * Validate slot options (prevents typos like `slot :myslot, requird: true`)
 
 ### Bug fixes
+  * Fix select focus states and selects not being updated when focused #3083, #3107
   * Fix nested LiveViews inside a stream element
   * Fix infinite loading streams in zoomed viewports #3442
   * Fix race condition in latency simulator causing messages to be applied out of order
