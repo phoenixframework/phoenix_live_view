@@ -115,6 +115,7 @@ generated user module:
 ## 1.0.0-rc.7
 
 ### Enhancements
+  * Support nested inputs in `Phoenix.Component.used_input?/1`
   * Support custom redirect statuses on `Phoenix.LiveView.redirect/2`
   * Export `createHook` from `phoenix_live_view` to allow CustomElement's to use hooks
   * Expose programmable JS command interface to hooks for showing, hiding, addClass, etc from a hook which integrates with server DOM patching
