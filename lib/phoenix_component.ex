@@ -1572,7 +1572,7 @@ defmodule Phoenix.Component do
       }
 
   The `_unused_day` key indicates that the day field has not been used by the client,
-  bug the year and month fields have been used, indicating the birthday field as a whole
+  but the year and month fields have been used, meaning the birthday field as a whole
   was used.
 
   ## Examples
