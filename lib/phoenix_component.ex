@@ -1559,6 +1559,22 @@ defmodule Phoenix.Component do
   The `_unused_email` key indicates that the email field has not been used by the
   client, which is used to filter errors from the UI.
 
+  Nested fields are also supported. For example, a form with a nested datetime field
+  is considered used if any of the nested parameters are used.
+
+      %{
+        "bday" => %{
+          "year" => "",
+          "month" => "",
+          "day" => "",
+          "_unused_day" => ""
+        }
+      }
+
+  The `_unused_day` key indicates that the day field has not been used by the client,
+  bug the year and month fields have been used, indicating the birthday field as a whole
+  was used.
+
   ## Examples
 
   For example, imagine in your template you render a title and email input.
@@ -1586,10 +1602,20 @@ defmodule Phoenix.Component do
   ```
   """
   def used_input?(%Phoenix.HTML.FormField{field: field, form: form}) do
-    cond do
-      not is_map_key(form.params, "#{field}") -> false
-      is_map_key(form.params, "_unused_#{field}") -> false
-      true -> true
+    used_param?(form.params, field)
+  end
+
+  defp used_param?(_params, "_unused_" <> _), do: false
+
+  defp used_param?(params, field) do
+    field_str = "#{field}"
+    unused_field_str = "_unused_#{field}"
+
+    case params do
+      %{^field_str => _, ^unused_field_str => _} -> false
+      %{^field_str => %{} = nested} -> Enum.any?(Map.keys(nested), &used_param?(nested, &1))
+      %{^field_str => _val} -> true
+      %{} -> false
     end
   end
 
