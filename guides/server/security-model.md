@@ -42,7 +42,7 @@ The [`mount/3`](`c:Phoenix.LiveView.mount/3`) callback is invoked both on
 the initial HTTP mount and when LiveView is connected. Therefore, any
 authorization performed during mount will cover all scenarios.
 
-Once the user is authorized and stored in the session, the logic to fetch the user and further authorize its account needs to happen inside LiveView. For example, if you have the following plugs:
+Once the user is authenticated and stored in the session, the logic to fetch the user and further authorize its account needs to happen inside LiveView. For example, if you have the following plugs:
 
     plug :ensure_user_authenticated
     plug :ensure_user_confirmed
