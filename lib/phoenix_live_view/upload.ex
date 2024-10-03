@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.Upload do
     conf = get_upload_by_ref!(socket, config_ref)
 
     if conf.external do
-      put_upload_error(socket, conf.name, entry_ref, :external_client_failure)
+      put_upload_error(socket, conf.name, entry_ref, external_client_failure: reason)
     else
       socket
     end
