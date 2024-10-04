@@ -1,7 +1,12 @@
 import {
   BEFORE_UNLOAD_LOADER_TIMEOUT,
   CHECKABLE_INPUTS,
+  CONSECUTIVE_REDIRECTS,
   CONSECUTIVE_RELOADS,
+  MAX_REDIRECTS,
+  REDIRECT_JITTER_MIN,
+  REDIRECT_JITTER_MAX,
+  REDIRECT_FAILSAFE_JITTER,
   PHX_AUTO_RECOVER,
   PHX_COMPONENT,
   PHX_CONNECTED_CLASS,
@@ -145,6 +150,12 @@ export default class View {
     this.pendingDiffs = []
     this.pendingForms = new Set()
     this.redirect = false
+    this.redirectWithJitterTimer = null
+    this.maxRedirects = MAX_REDIRECTS
+    this.redirectJitterMin = REDIRECT_JITTER_MIN
+    this.redirectJitterMax = REDIRECT_JITTER_MAX
+    this.redirectFailsafeJitter = REDIRECT_FAILSAFE_JITTER
+    this.localStorage = window.localStorage
     this.href = null
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
     this.joinPending = true
@@ -810,7 +821,7 @@ export default class View {
   onJoinError(resp){
     if(resp.reason === "reload"){
       this.log("error", () => [`failed mount with ${resp.status}. Falling back to page request`, resp])
-      if(this.isMain()){ this.onRedirect({to: this.href}) }
+      this.redirectWithJitter()
       return
     } else if(resp.reason === "unauthorized" || resp.reason === "stale"){
       this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp])
@@ -826,6 +837,27 @@ export default class View {
     this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
     this.log("error", () => ["unable to join", resp])
     if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
+  }
+
+  redirectWithJitter() {
+    clearTimeout(this.redirectWithJitterTimer)
+    let minMs = this.redirectJitterMin
+    let maxMs = this.redirectJitterMax
+    let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
+    let redirectAttempts = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_REDIRECTS, 0, count => count + 1)
+    if (redirectAttempts > this.maxRedirects) {
+      afterMs = this.redirectFailsafeJitter
+    }
+  
+    this.redirectWithJitterTimer = setTimeout(() => {
+      this.log("error", () => [`encountered ${redirectAttempts} consecutive redirects`])
+      if (redirectAttempts > this.maxRedirects) {
+        this.log("error", () => [`exceeded ${this.maxRedirects} consecutive redirects. Entering failsafe mode`])
+      }
+      if (this.isMain()) {
+        this.onRedirect({ to: this.href })
+      }
+    }, afterMs)
   }
 
   onClose(reason){

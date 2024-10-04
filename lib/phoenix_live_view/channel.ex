@@ -1180,6 +1180,10 @@ defmodule Phoenix.LiveView.Channel do
           exception ->
             status = Plug.Exception.status(exception)
 
+            Logger.error(
+              "Mounting #{phx_socket.topic} failed because an exception was raised. Status: #{status}. Exception: #{inspect(exception)}"
+            )
+
             if status >= 400 and status < 500 do
               GenServer.reply(from, {:error, %{reason: "reload", status: status}})
               {:stop, :shutdown, :no_state}

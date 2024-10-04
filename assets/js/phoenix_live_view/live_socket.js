@@ -31,7 +31,7 @@
  * @param {integer} [opts.maxReloads] - The maximum reloads before entering failsafe mode.
  * @param {integer} [opts.reloadJitterMin] - The minimum time between normal reload attempts.
  * @param {integer} [opts.reloadJitterMax] - The maximum time between normal reload attempts.
- * @param {integer} [opts.failsafeJitter] - The time between reload attempts in failsafe mode.
+ * @param {integer} [opts.reloadFailsafeJitter] - The time between reload attempts in failsafe mode.
  * @param {Function} [opts.viewLogger] - The optional function to log debug information. For example:
  *
  *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -76,7 +76,7 @@ import {
   BINDING_PREFIX,
   CONSECUTIVE_RELOADS,
   DEFAULTS,
-  FAILSAFE_JITTER,
+  RELOAD_FAILSAFE_JITTER,
   LOADER_TIMEOUT,
   MAX_RELOADS,
   PHX_DEBOUNCE,
@@ -154,7 +154,7 @@ export default class LiveSocket {
     this.maxReloads = opts.maxReloads || MAX_RELOADS
     this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN
     this.reloadJitterMax = opts.reloadJitterMax || RELOAD_JITTER_MAX
-    this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
+    this.reloadFailsafeJitter = opts.reloadFailsafeJitter || RELOAD_FAILSAFE_JITTER
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
     this.boundTopLevelEvents = false
@@ -317,7 +317,7 @@ export default class LiveSocket {
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
     let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
     if(tries > this.maxReloads){
-      afterMs = this.failsafeJitter
+      afterMs = this.reloadFailsafeJitter
     }
     this.reloadWithJitterTimer = setTimeout(() => {
       // if view has recovered, such as transport replaced, then cancel
