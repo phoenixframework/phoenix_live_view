@@ -43,8 +43,8 @@ file below to `lib/my_app_web/live/thermostat_live.ex`:
 
 ```elixir
 defmodule MyAppWeb.ThermostatLive do
-  # In Phoenix v1.6+ apps, the line is typically: use MyAppWeb, :live_view
-  use Phoenix.LiveView
+  # In versions of Phoenix older than 1.6, the line is typically: use Phoenix.LiveView
+  use MyAppWeb, :live_view
 
   def render(assigns) do
     ~H"""
@@ -106,6 +106,7 @@ defmodule MyAppWeb.Router do
   import Phoenix.LiveView.Router
 
   scope "/", MyAppWeb do
+    pipe_through :browser
     live "/thermostat", ThermostatLive
   end
 end
