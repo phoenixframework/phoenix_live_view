@@ -106,6 +106,7 @@ defmodule MyAppWeb.Router do
   import Phoenix.LiveView.Router
 
   scope "/", MyAppWeb do
+    pipe_through :browser
     live "/thermostat", ThermostatLive
   end
 end
