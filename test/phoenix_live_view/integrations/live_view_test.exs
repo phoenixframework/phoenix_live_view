@@ -339,6 +339,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, _html} = live(conn, "/thermo")
       GenServer.call(view.pid, {:set, :page_title, "New Title"})
       assert page_title(view) =~ "New Title"
+
+      GenServer.call(view.pid, {:set, :page_title, "<i>New Title</i>"})
+      assert page_title(view) =~ "&lt;i&gt;New Title&lt;/i&gt;"
     end
   end
 

@@ -1234,8 +1234,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_push_title(diff, state) do
     case diff do
-      %{@title => title} -> {Map.delete(diff, @title), %{state | page_title: title}}
-      %{} -> {diff, state}
+      %{@title => title} ->
+        escaped_title =
+          title
+          |> Phoenix.HTML.html_escape()
+          |> Phoenix.HTML.safe_to_string()
+
+        {Map.delete(diff, @title), %{state | page_title: escaped_title}}
+
+      %{} ->
+        {diff, state}
     end
   end
 
