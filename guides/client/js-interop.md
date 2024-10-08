@@ -23,7 +23,7 @@ except for the following LiveView specific options:
     section below for details.
   * `uploaders` – a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
-    [External uploads guide](uploads-external.md) for details.
+    [External uploads guide](external-uploads.md) for details.
 
 ## Debugging client events
 

@@ -287,20 +287,21 @@ split on server-side and client-side:
 These guides focus on server-side functionality:
 
 * [Assigns and HEEx templates](assigns-eex.md)
-* [Deployments](deployments.md)
+* [Deployments and recovery](deployments.md)
 * [Error and exception handling](error-handling.md)
+* [Gettext for internationalization](gettext.md)
 * [Live layouts](live-layouts.md)
 * [Live navigation](live-navigation.md)
 * [Security considerations](security-model.md)
 * [Telemetry](telemetry.md)
 * [Uploads](uploads.md)
-* [Gettext for internationalization](using-gettext.md)
 
 ### Client-side
 
 These guides focus on LiveView bindings and client-side integration:
 
 * [Bindings](bindings.md)
+* [External uploads](external-uploads.md)
 * [Form bindings](form-bindings.md)
 * [JavaScript interoperability](js-interop.md)
-* [External uploads](uploads-external.md)
+* [Syncing changes and optimistic UIs](syncing-changes.md)

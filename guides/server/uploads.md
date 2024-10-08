@@ -2,7 +2,7 @@
 
 LiveView supports interactive file uploads with progress for
 both direct to server uploads as well as direct-to-cloud
-[external uploads](uploads-external.html) on the client.
+[external uploads](external-uploads.html) on the client.
 
 ## Built-in Features
 
@@ -216,7 +216,7 @@ ultimately fail.
 For these reasons, it is best if uploads are stored elsewhere, such as the
 database (depending on the size and contents) or a separate storage service.
 For more information on implementing client-side, direct-to-cloud uploads,
-see the [External uploads guide](uploads-external.md) for details.
+see the [External uploads guide](external-uploads.md) for details.
 
 ## Appendix A: UploadLive
 
