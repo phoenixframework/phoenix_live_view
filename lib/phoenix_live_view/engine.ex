@@ -128,14 +128,15 @@ defmodule Phoenix.LiveView.Rendered do
 
   @type t :: %__MODULE__{
           static: [String.t()],
-          dynamic: (boolean() ->
-                      [
-                        nil
-                        | iodata()
-                        | Phoenix.LiveView.Rendered.t()
-                        | Phoenix.LiveView.Comprehension.t()
-                        | Phoenix.LiveView.Component.t()
-                      ]),
+          dynamic:
+            (boolean() ->
+               [
+                 nil
+                 | iodata()
+                 | Phoenix.LiveView.Rendered.t()
+                 | Phoenix.LiveView.Comprehension.t()
+                 | Phoenix.LiveView.Component.t()
+               ]),
           fingerprint: integer(),
           root: nil | true | false,
           caller:
