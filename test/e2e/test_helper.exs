@@ -224,7 +224,7 @@ end
 
 IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
 
-unless IEx.started?() do
+if not IEx.started?() do
   # when running the test server manually, we halt after
   # reading from stdin
   spawn(fn ->

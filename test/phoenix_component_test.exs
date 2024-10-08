@@ -332,7 +332,7 @@ defmodule Phoenix.ComponentUnitTest do
       "bday" => %{"day" => "", "month" => "", "year" => ""},
       "published_at" => %{"date" => "", "time" => "", "_unused_date" => "", "_unused_time" => ""},
       "deleted_at" => %{},
-      "inserted_at" => %{"date" => "", "time" => "", "_unused_time" => ""},
+      "inserted_at" => %{"date" => "", "time" => "", "_unused_time" => ""}
     }
 
     form = to_form(params, as: "profile", action: :validate)

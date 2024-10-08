@@ -255,7 +255,7 @@ defmodule Phoenix.LiveView.Router do
     Module.register_attribute(module, :phoenix_live_sessions, accumulate: true)
     vsn = session_vsn(module)
 
-    unless is_atom(name) do
+    if not is_atom(name) do
       raise ArgumentError, """
       expected live_session name to be an atom, got: #{inspect(name)}
       """

@@ -8,7 +8,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   @stream_id :stream
 
   def ensure_loaded! do
-    unless Code.ensure_loaded?(Floki) do
+    if not Code.ensure_loaded?(Floki) do
       raise """
       Phoenix LiveView requires Floki as a test dependency.
       Please add to your mix.exs:

@@ -418,7 +418,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp handle_mount_option(socket, :temporary_assigns, temp_assigns) do
-    unless Keyword.keyword?(temp_assigns) do
+    if not Keyword.keyword?(temp_assigns) do
       raise "the :temporary_assigns mount option must be keyword list"
     end
 

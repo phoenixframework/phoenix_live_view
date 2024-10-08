@@ -790,7 +790,7 @@ defmodule Phoenix.Component do
   @doc type: :macro
   defmacro sigil_H({:<<>>, meta, [expr]}, modifiers)
            when modifiers == [] or modifiers == ~c"noformat" do
-    unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
+    if not Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 

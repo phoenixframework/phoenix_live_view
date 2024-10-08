@@ -962,7 +962,7 @@ defmodule Phoenix.LiveViewTest do
       end
     end)
 
-    unless Process.cancel_timer(timeout_ref) do
+    if !Process.cancel_timer(timeout_ref) do
       receive do
         {^timeout_ref, :timeout} -> :noop
       after
@@ -1840,7 +1840,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_trigger_submit__(%Element{} = form, name, required_attr, error_msg) do
     case render_tree(form) do
       {"form", attrs, _child_nodes} ->
-        unless List.keymember?(attrs, required_attr, 0) do
+        if not List.keymember?(attrs, required_attr, 0) do
           raise ArgumentError, error_msg <> ", got: #{inspect(attrs)}"
         end
 
@@ -1913,7 +1913,7 @@ defmodule Phoenix.LiveViewTest do
         %{} -> nil
       end)
 
-    unless entry_name do
+    if !entry_name do
       raise ArgumentError, "no such entry with name #{inspect(entry_name)}"
     end
 

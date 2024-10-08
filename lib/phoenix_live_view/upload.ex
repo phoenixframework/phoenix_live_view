@@ -257,7 +257,7 @@ defmodule Phoenix.LiveView.Upload do
   """
   def consume_uploaded_entry(%Socket{} = socket, %UploadEntry{} = entry, func)
       when is_function(func, 1) do
-    unless entry.done?,
+    if !entry.done?,
       do: raise(ArgumentError, "cannot consume uploaded files when entries are still in progress")
 
     conf = Map.fetch!(socket.assigns[:uploads], entry.upload_config)

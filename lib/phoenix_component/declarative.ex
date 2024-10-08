@@ -202,7 +202,7 @@ defmodule Phoenix.Component.Declarative do
 
     prefix_matches =
       for prefix <- prefixes do
-        unless String.ends_with?(prefix, "-") do
+        if not String.ends_with?(prefix, "-") do
           raise ArgumentError,
                 "global prefixes for #{inspect(module)} must end with a dash, got: #{inspect(prefix)}"
         end
@@ -239,14 +239,14 @@ defmodule Phoenix.Component.Declarative do
     ensure_used!(module, line, file)
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
-    unless is_binary(doc) or is_nil(doc) or doc == false do
+    if not (is_binary(doc) or is_nil(doc) or doc == false) do
       compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
     {validate_attrs, opts} = Keyword.pop(opts, :validate_attrs, true)
 
-    unless is_boolean(required) do
+    if not is_boolean(required) do
       compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
     end
 
@@ -335,13 +335,13 @@ defmodule Phoenix.Component.Declarative do
 
     {doc, opts} = Keyword.pop(opts, :doc, nil)
 
-    unless is_binary(doc) or is_nil(doc) or doc == false do
+    if not (is_binary(doc) or is_nil(doc) or doc == false) do
       compile_error!(line, file, ":doc must be a string or false, got: #{inspect(doc)}")
     end
 
     {required, opts} = Keyword.pop(opts, :required, false)
 
-    unless is_boolean(required) do
+    if not is_boolean(required) do
       compile_error!(line, file, ":required must be a boolean, got: #{inspect(required)}")
     end
 
@@ -448,12 +448,12 @@ defmodule Phoenix.Component.Declarative do
   defp validate_attr_default!(slot, name, type, opts, line, file) do
     case {opts[:default], opts[:values]} do
       {default, nil} ->
-        unless valid_value?(type, default) do
+        if not valid_value?(type, default) do
           bad_default!(slot, name, type, default, line, file)
         end
 
       {default, values} ->
-        unless default in values do
+        if default not in values do
           compile_error!(line, file, """
           expected the default value for attr #{attr_slot(name, slot)} to be one of #{inspect(values)}, \
           got: #{inspect(default)}
@@ -470,7 +470,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp validate_attr_values!(slot, name, type, values, line, file) do
-    unless is_enumerable(values) and not Enum.empty?(values) do
+    if not is_enumerable(values) or Enum.empty?(values) do
       compile_error!(line, file, """
       :values must be a non-empty enumerable, got: #{inspect(values)}
       """)
@@ -493,7 +493,7 @@ defmodule Phoenix.Component.Declarative do
   end
 
   defp validate_attr_examples!(slot, name, type, examples, line, file) do
-    unless is_list(examples) and not Enum.empty?(examples) do
+    if not is_list(examples) or Enum.empty?(examples) do
       compile_error!(line, file, """
       :examples must be a non-empty list, got: #{inspect(examples)}
       """)
@@ -1111,7 +1111,7 @@ defmodule Phoenix.Component.Declarative do
 
           # attrs must be one of values
           {_type, {line, _column, {_, type_value}}} when not is_nil(attr_values) ->
-            unless type_value in attr_values do
+            if type_value not in attr_values do
               message =
                 "attribute \"#{name}\" in component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: #{inspect(type_value)}"
 
@@ -1186,7 +1186,7 @@ defmodule Phoenix.Component.Declarative do
                 when is_tuple(type_value) and tuple_size(type_value) == 2 ->
                   {_, attr_value} = type_value
 
-                  unless attr_value in attr_values do
+                  if attr_value not in attr_values do
                     message =
                       "attribute \"#{attr_name}\" in slot \"#{slot_name}\" " <>
                         "for component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: " <>
