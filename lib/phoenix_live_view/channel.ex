@@ -1181,7 +1181,23 @@ defmodule Phoenix.LiveView.Channel do
             status = Plug.Exception.status(exception)
 
             if status >= 400 and status < 500 do
-              GenServer.reply(from, {:error, %{reason: "reload", status: status}})
+              # only forward the stack and exception module to the signed cookie if debug_errors is enabled
+              # which already exposes the stacktrace and exception information to the client
+              {exception_mod, stack} =
+                if endpoint.config(:debug_errors) do
+                  {inspect(exception.__struct__), __STACKTRACE__}
+                else
+                  {nil, []}
+                end
+
+              token =
+                Phoenix.LiveView.Static.sign_token(endpoint, %{
+                  status: status,
+                  exception: exception_mod,
+                  stack: stack
+                })
+
+              GenServer.reply(from, {:error, %{reason: "reload", status: status, token: token}})
               {:stop, :shutdown, :no_state}
             else
               reraise(exception, __STACKTRACE__)

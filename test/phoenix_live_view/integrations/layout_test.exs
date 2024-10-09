@@ -13,8 +13,8 @@ defmodule Phoenix.LiveView.LayoutTest do
   end
 
   test "uses dead layout from router", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
-                 ~r"\(ArgumentError\) no \"unknown_template\" html template defined for UnknownView",
+    assert_raise ArgumentError,
+                 ~r"no \"unknown_template\" html template defined for UnknownView",
                  fn -> live(conn, "/bad_layout") end
 
     {:ok, _, _} = live(conn, "/layout")

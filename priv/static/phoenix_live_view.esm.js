@@ -68,6 +68,7 @@ var PHX_LV_PROFILE = "phx:live-socket:profiling";
 var PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim";
 var PHX_PROGRESS = "progress";
 var PHX_MOUNTED = "mounted";
+var PHX_RELOAD_STATUS = "__phoenix_reload_status__";
 var LOADER_TIMEOUT = 1;
 var BEFORE_UNLOAD_LOADER_TIMEOUT = 200;
 var BINDING_PREFIX = "phx-";
@@ -243,15 +244,19 @@ var Browser = {
       this.redirect(to);
     }
   },
-  setCookie(name, value) {
-    document.cookie = `${name}=${value}`;
+  setCookie(name, value, maxAgeSeconds) {
+    let expires = typeof maxAgeSeconds === "number" ? ` max-age=${maxAgeSeconds};` : "";
+    document.cookie = `${name}=${value};${expires} path=/`;
   },
   getCookie(name) {
     return document.cookie.replace(new RegExp(`(?:(?:^|.*;s*)${name}s*=s*([^;]*).*$)|^.*$`), "$1");
   },
+  deleteCookie(name) {
+    document.cookie = `${name}=; max-age=-1; path=/`;
+  },
   redirect(toURL, flash) {
     if (flash) {
-      Browser.setCookie("__phoenix_flash__", flash + "; max-age=60000; path=/");
+      this.setCookie("__phoenix_flash__", flash, 60);
     }
     window.location = toURL;
   },
@@ -3644,8 +3649,8 @@ var View = class {
   expandURL(to) {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to;
   }
-  onRedirect({ to, flash }) {
-    this.liveSocket.redirect(to, flash);
+  onRedirect({ to, flash, reloadToken }) {
+    this.liveSocket.redirect(to, flash, reloadToken);
   }
   isDestroyed() {
     return this.destroyed;
@@ -3676,9 +3681,9 @@ var View = class {
   }
   onJoinError(resp) {
     if (resp.reason === "reload") {
-      this.log("error", () => [`failed mount with ${resp.status}. Falling back to page request`, resp]);
       if (this.isMain()) {
-        this.onRedirect({ to: this.href });
+        this.log("error", () => [`failed mount with ${resp.status} ${resp.token}. Falling back to page reload`, resp]);
+        this.onRedirect({ to: this.href, reloadToken: resp.token });
       }
       return;
     } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
@@ -4438,6 +4443,7 @@ var LiveSocket = class {
       this.enableDebug();
     }
     let doConnect = () => {
+      this.resetReloadStatus();
       if (this.joinRootViews()) {
         this.bindTopLevelEvents();
         this.socket.connect();
@@ -4595,7 +4601,10 @@ var LiveSocket = class {
     });
     return rootsFound;
   }
-  redirect(to, flash) {
+  redirect(to, flash, reloadToken) {
+    if (reloadToken) {
+      browser_default.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
+    }
     this.unload();
     browser_default.redirect(to, flash);
   }
@@ -4782,7 +4791,11 @@ var LiveSocket = class {
   setPendingLink(href) {
     this.linkRef++;
     this.pendingLink = href;
+    this.resetReloadStatus();
     return this.linkRef;
+  }
+  resetReloadStatus() {
+    browser_default.deleteCookie(PHX_RELOAD_STATUS);
   }
   commitPendingLink(linkRef) {
     if (this.linkRef !== linkRef) {

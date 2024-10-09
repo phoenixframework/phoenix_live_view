@@ -47,16 +47,21 @@ let Browser = {
     }
   },
 
-  setCookie(name, value){
-    document.cookie = `${name}=${value}`
+  setCookie(name, value, maxAgeSeconds){
+    let expires = typeof(maxAgeSeconds) === "number" ? ` max-age=${maxAgeSeconds};` : ""
+    document.cookie = `${name}=${value};${expires} path=/`
   },
 
   getCookie(name){
     return document.cookie.replace(new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`), "$1")
   },
 
+  deleteCookie(name){
+    document.cookie = `${name}=; max-age=-1; path=/`
+  },
+
   redirect(toURL, flash){
-    if(flash){ Browser.setCookie("__phoenix_flash__", flash + "; max-age=60000; path=/") }
+    if(flash){ this.setCookie("__phoenix_flash__", flash, 60) }
     window.location = toURL
   },
 

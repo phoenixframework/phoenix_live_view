@@ -98,6 +98,7 @@ import {
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF_SRC,
+  PHX_RELOAD_STATUS
 } from "./constants"
 
 import {
@@ -216,6 +217,7 @@ export default class LiveSocket {
     // enable debug by default if on localhost and not explicitly disabled
     if(window.location.hostname === "localhost" && !this.isDebugDisabled()){ this.enableDebug() }
     let doConnect = () => {
+      this.resetReloadStatus()
       if(this.joinRootViews()){
         this.bindTopLevelEvents()
         this.socket.connect()
@@ -374,7 +376,8 @@ export default class LiveSocket {
     return rootsFound
   }
 
-  redirect(to, flash){
+  redirect(to, flash, reloadToken){
+    if(reloadToken){ Browser.setCookie(PHX_RELOAD_STATUS, reloadToken, 60) }
     this.unload()
     Browser.redirect(to, flash)
   }
@@ -569,8 +572,13 @@ export default class LiveSocket {
   setPendingLink(href){
     this.linkRef++
     this.pendingLink = href
+    this.resetReloadStatus()
     return this.linkRef
   }
+
+  // anytime we are navigating or connecting, drop reload cookie in case
+  // we issue the cookie but the next request was interrupted and the server never dropped it
+  resetReloadStatus(){ Browser.deleteCookie(PHX_RELOAD_STATUS) }
 
   commitPendingLink(linkRef){
     if(this.linkRef !== linkRef){

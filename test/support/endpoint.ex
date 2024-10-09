@@ -9,11 +9,11 @@ defmodule Phoenix.LiveViewTest.Support.EndpointOverridable do
 
       defoverridable call: 2
 
-      def call(conn, _) do
+      def call(conn, opts) do
         %{conn | secret_key_base: config(:secret_key_base)}
         |> Plug.Parsers.call(@parsers)
         |> Plug.Conn.put_private(:phoenix_endpoint, __MODULE__)
-        |> Phoenix.LiveViewTest.Support.Router.call([])
+        |> super(opts)
       end
     end
   end
@@ -35,8 +35,14 @@ defmodule Phoenix.LiveViewTest.Support.Endpoint do
   def config(:cache_static_manifest_latest), do: Process.get(:cache_static_manifest_latest)
   def config(:otp_app), do: :phoenix_live_view
   def config(:pubsub_server), do: Phoenix.LiveView.PubSub
-  def config(:render_errors), do: [view: __MODULE__]
+  def config(:render_errors), do: [formats: [html: __MODULE__]]
   def config(:static_url), do: [path: "/static"]
   def config(which), do: super(which)
   def config(which, default), do: super(which, default)
+
+  plug Phoenix.LiveViewTest.Support.Router
+
+  def render(template, _assigns) do
+    Phoenix.Controller.status_message_from_template(template)
+  end
 end
