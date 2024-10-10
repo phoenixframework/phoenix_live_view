@@ -107,7 +107,7 @@ defmodule Phoenix.LiveView.Static do
           end
 
         message = """
-        #{inspect(view)} raised #{exception} during connected mount sending a #{status} response.
+        #{inspect(view)} raised #{inspect(exception)} during connected mount sending a #{status} response
         """
 
         raise Plug.Conn.WrapperError,
