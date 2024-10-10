@@ -811,7 +811,7 @@ export default class View {
   onJoinError(resp){
     if(resp.reason === "reload"){
       if(this.isMain()){
-        this.log("error", () => [`failed mount with ${resp.status} ${resp.token}. Falling back to page reload`, resp])
+        this.log("error", () => [`failed mount with ${resp.status}. Falling back to page reload`, resp])
         this.onRedirect({to: this.href, reloadToken: resp.token})
       }
       return
