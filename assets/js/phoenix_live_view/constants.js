@@ -62,6 +62,7 @@ export const PHX_LV_PROFILE = "phx:live-socket:profiling"
 export const PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim"
 export const PHX_PROGRESS = "progress"
 export const PHX_MOUNTED = "mounted"
+export const PHX_RELOAD_STATUS = "__phoenix_reload_status__"
 export const LOADER_TIMEOUT = 1
 export const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
 export const BINDING_PREFIX = "phx-"

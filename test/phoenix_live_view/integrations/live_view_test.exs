@@ -133,8 +133,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "live render with socket.assigns", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError,
-                   ~r/\(KeyError\) key :boom not found in: #Phoenix.LiveView.Socket.AssignsNotInSocket<>/,
+      assert_raise KeyError,
+                   ~r/key :boom not found in: #Phoenix.LiveView.Socket.AssignsNotInSocket<>/,
                    fn ->
                      live(conn, "/assigns-not-in-socket")
                    end
@@ -443,16 +443,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
   describe "connected mount exceptions" do
     test "when disconnected, raises normally per plug wrapper", %{conn: conn} do
       assert_raise(
-        Plug.Conn.WrapperError,
-        ~r/Phoenix.LiveViewTest.Support.ThermostatLive.Error/,
+        Phoenix.LiveViewTest.Support.ThermostatLive.Error,
         fn ->
           get(conn, "/thermo?raise_disconnected=500")
         end
       )
 
       assert_raise(
-        Plug.Conn.WrapperError,
-        ~r/Phoenix.LiveViewTest.Support.ThermostatLive.Error/,
+        Phoenix.LiveViewTest.Support.ThermostatLive.Error,
         fn ->
           get(conn, "/thermo?raise_disconnected=404")
         end
@@ -466,7 +464,22 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "when connected, raises and wraps 4xx in client response", %{conn: conn} do
       assert {reason, _} = catch_exit(live(conn, "/thermo?raise_connected=404"))
-      assert %{reason: "reload", status: 404} = reason
+      assert %{reason: "reload", status: 404, token: token} = reason
+
+      # does not expose stack or exception module by default
+      assert Phoenix.LiveView.Static.verify_token(@endpoint, token) ==
+               {:ok, %{status: 404, exception: nil, stack: []}}
+
+      response =
+        assert_error_sent(404, fn ->
+          conn
+          |> put_req_cookie("__phoenix_reload_status__", token)
+          |> get("/thermo")
+        end)
+
+      # deletes cookie with response
+      {404, resp_headers, "Not Found"} = response
+      assert %{"set-cookie" => "__phoenix_reload_status__=;" <> _} = Map.new(resp_headers)
     end
   end
 end

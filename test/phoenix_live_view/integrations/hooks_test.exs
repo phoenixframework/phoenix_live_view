@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.HooksTest do
   end
 
   test "on_mount hook raises when hook result is invalid", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
+    assert_raise ArgumentError,
                  ~r(invalid return from hook {Phoenix.LiveViewTest.Support.HooksLive.BadMount, :default}),
                  fn ->
                    live(conn, "/lifecycle/bad-mount")
@@ -32,7 +32,7 @@ defmodule Phoenix.LiveView.HooksTest do
   end
 
   test "on_mount hook raises when :halt is returned without a redirected socket", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
+    assert_raise ArgumentError,
                  ~r(the hook {Phoenix.LiveViewTest.Support.HooksLive.HaltMount, :hook} for lifecycle event :mount attempted to halt without redirecting.),
                  fn ->
                    live(conn, "/lifecycle/halt-mount")
@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.HooksTest do
   end
 
   test "on_mount hook raises when :cont is returned with a redirected socket", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
+    assert_raise ArgumentError,
                  ~r(the hook {Phoenix.LiveViewTest.Support.HooksLive.RedirectMount, :default} for lifecycle event :mount attempted to redirect without halting.),
                  fn ->
                    live(conn, "/lifecycle/redirect-cont-mount")

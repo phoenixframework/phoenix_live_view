@@ -31,6 +31,7 @@ import {
   PHX_VIEW_SELECTOR,
   PHX_MAIN,
   PHX_MOUNTED,
+  PHX_RELOAD_STATUS,
   PUSH_TIMEOUT,
   PHX_VIEWPORT_TOP,
   PHX_VIEWPORT_BOTTOM,
@@ -778,7 +779,7 @@ export default class View {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
-  onRedirect({to, flash}){ this.liveSocket.redirect(to, flash) }
+  onRedirect({to, flash, reloadToken}){ this.liveSocket.redirect(to, flash, reloadToken) }
 
   isDestroyed(){ return this.destroyed }
 
@@ -809,8 +810,10 @@ export default class View {
 
   onJoinError(resp){
     if(resp.reason === "reload"){
-      this.log("error", () => [`failed mount with ${resp.status}. Falling back to page request`, resp])
-      if(this.isMain()){ this.onRedirect({to: this.href}) }
+      if(this.isMain()){
+        this.log("error", () => [`failed mount with ${resp.status}. Falling back to page reload`, resp])
+        this.onRedirect({to: this.href, reloadToken: resp.token})
+      }
       return
     } else if(resp.reason === "unauthorized" || resp.reason === "stale"){
       this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp])

@@ -66,7 +66,7 @@ defmodule Phoenix.LiveView.AssignsTest do
     end
 
     test "raises with invalid options", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError,
+      assert_raise ArgumentError,
                    ~r/invalid option returned from Phoenix.LiveViewTest.Support.OptsLive.mount\/3/,
                    fn ->
                      conn

@@ -55,7 +55,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
     test "static mount emits telemetry events when callback raises an exception", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :mount])
 
-      assert_raise Plug.Conn.WrapperError, ~r/boom/, fn ->
+      assert_raise RuntimeError, ~r/boom/, fn ->
         get(conn, "/errors?crash_on=disconnected_mount")
       end
 
