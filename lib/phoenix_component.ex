@@ -2502,22 +2502,25 @@ defmodule Phoenix.Component do
   You can optionally add a similar button before the `<.inputs_for>`, in the case you want
   to prepend entries.
 
-  > #### A note on accessing a field's `value` {: .warning}
+  > ### A note on accessing a field's `value` {: .warning}
   >
-  > Directly accessing the `.value` of a nested field can lead to unexpected behavior,
-  > because you might encounter:
-  > - `%Ecto.Changeset{}` structs
-  > - the underlying data struct
-  > - raw parameters sent by the client
+  > You may be tempted to access `form[:field].value` or attempt to manipulate
+  > the form metadata in your templates. However, bear in mind that `form[:field]`
+  > value reflects the most recent changes. For example, a `:integer` field may
+  > either contain integer values, but it may also hold a string, if the form has
+  > been submitted.
   >
-  > The last case can occur when using the `drop_param` option and the overall data
-  > remains unchanged after Ecto drops an entry. Generally, a field's value reflects
-  > the most recent changes, including requests to drop an entry.
+  > This is particularly noticeable when using `inputs_for`. Accessing the `.value`
+  > of a nested field may either return a struct, a changeset, or raw parameters
+  > sent by the client (when using `drop_param`). This makes the `form[:field].value`
+  > inpractical for deriving or computing other properties.
   >
-  > It is preferable to do any processing on the underlying data, for example
-  > by working with the changeset in your event handlers instead.
+  > The correct way to approach this problem is by computing any property either in
+  > your LiveViews, by traversing the relevant changesets and data structures, or by
+  > moving the logic to the `Ecto.Changeset` itself.
   >
   > As an example, imagine you are building an time tracking application where:
+  >
   > - users enter the total work time for a day
   > - individual activities are tracked as embeds
   > - the sum of all activities should match the total time
