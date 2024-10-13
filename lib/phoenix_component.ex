@@ -2501,6 +2501,78 @@ defmodule Phoenix.Component do
   This button is optional and only necessary if you want to dynamically add entries.
   You can optionally add a similar button before the `<.inputs_for>`, in the case you want
   to prepend entries.
+
+  > #### A note on accessing a field's `value` {: .warning}
+  >
+  > Directly accessing the `.value` of a nested field can lead to unexpected behavior,
+  > because you might encounter:
+  > - `%Ecto.Changeset{}` structs
+  > - the underlying data struct
+  > - raw parameters sent by the client
+  >
+  > The last case can occur when using the `drop_param` option and the overall data
+  > remains unchanged after Ecto drops an entry. Generally, a field's value reflects
+  > the most recent changes, including requests to drop an entry.
+  >
+  > It is preferable to do any processing on the underlying data, for example
+  > by working with the changeset in your event handlers instead.
+  >
+  > As an example, imagine you are building an time tracking application where:
+  > - users enter the total work time for a day
+  > - individual activities are tracked as embeds
+  > - the sum of all activities should match the total time
+  > - the form should display the remaining time
+  >
+  > Instead of trying to calculate the remaining time in your template by
+  > doing something like `calculate_remaining(@form)` and accessing
+  > `form[:activities].value`, calculate the remaining time based
+  > on the changeset in your `handle_event` instead:
+  >
+  > ```elixir
+  > def handle_event("validate", %{"tracked_day" => params}, socket) do
+  >   changeset = TrackedDay.changeset(socket.assigns.tracked_day, params)
+  >   remaining = calculate_remaining(changeset)
+  >   {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+  > end
+  >
+  > # Helper function to calculate remaining time
+  > defp calculate_remaining(changeset) do
+  >   total = Ecto.Changeset.get_field(changeset)
+  >   activities = Ecto.Changeset.get_embed(changeset, :activities)
+  >   remaining = Enum.reduce(activities, total, fn activity, acc ->
+  >     duration = case activity do
+  >       %{valid?: true} = changeset -> Ecto.Changeset.get_field(changeset, :duration)
+  >       # if the activity is invalid, we don't include its duration in the calculation
+  >       _ -> 0
+  >     end
+  >
+  >     acc - length
+  >   end)
+  > end
+  > ```
+  >
+  > This logic might also be implemented directly in your schema module and, if you
+  > often need the `:remaining` value, you could also add it as a `:virtual` field to
+  > your schema and run the calculation when validating the changeset:
+  >
+  > ```elixir
+  > def changeset(tracked_day, attrs) do
+  >   tracked_day
+  >   |> cast(attrs, [:total_duration])
+  >   |> cast_embed(:activities)
+  >   |> validate_required([:total_duration])
+  >   |> validate_number(:total_duration, greater_than: 0)
+  >   |> validate_and_put_remaining_time()
+  > end
+  >
+  > defp validate_and_put_remaining_time(changeset) do
+  >   remaining = calculate_remaining(changeset)
+  >   put_change(changeset, :remaining, remaining)
+  > end
+  > ```
+  >
+  > By using this approach, you can safely render the remaining time in your template
+  > using `@form[:remaining].value`, avoiding the pitfalls of directly accessing complex field values.
   """
   @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
