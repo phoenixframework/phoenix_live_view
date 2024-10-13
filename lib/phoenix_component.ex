@@ -2506,7 +2506,7 @@ defmodule Phoenix.Component do
   >
   > You may be tempted to access `form[:field].value` or attempt to manipulate
   > the form metadata in your templates. However, bear in mind that `form[:field]`
-  > value reflects the most recent changes. For example, a `:integer` field may
+  > value reflects the most recent changes. For example, an `:integer` field may
   > either contain integer values, but it may also hold a string, if the form has
   > been submitted.
   >
@@ -2519,7 +2519,7 @@ defmodule Phoenix.Component do
   > your LiveViews, by traversing the relevant changesets and data structures, or by
   > moving the logic to the `Ecto.Changeset` itself.
   >
-  > As an example, imagine you are building an time tracking application where:
+  > As an example, imagine you are building a time tracking application where:
   >
   > - users enter the total work time for a day
   > - individual activities are tracked as embeds
