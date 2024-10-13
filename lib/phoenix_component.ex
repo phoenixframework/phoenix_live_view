@@ -2505,7 +2505,7 @@ defmodule Phoenix.Component do
   > ### A note on accessing a field's `value` {: .warning}
   >
   > You may be tempted to access `form[:field].value` or attempt to manipulate
-  > the form metadata in your templates. However, bear in mind that `form[:field]`
+  > the form metadata in your templates. However, bear in mind that the `form[:field]`
   > value reflects the most recent changes. For example, an `:integer` field may
   > either contain integer values, but it may also hold a string, if the form has
   > been submitted.
@@ -2513,7 +2513,7 @@ defmodule Phoenix.Component do
   > This is particularly noticeable when using `inputs_for`. Accessing the `.value`
   > of a nested field may either return a struct, a changeset, or raw parameters
   > sent by the client (when using `drop_param`). This makes the `form[:field].value`
-  > inpractical for deriving or computing other properties.
+  > impractical for deriving or computing other properties.
   >
   > The correct way to approach this problem is by computing any property either in
   > your LiveViews, by traversing the relevant changesets and data structures, or by
