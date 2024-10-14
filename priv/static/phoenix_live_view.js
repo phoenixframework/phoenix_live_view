@@ -280,12 +280,14 @@ var LiveView = (() => {
           }
           delete meta.scroll;
           history[kind + "State"](meta, "", to || null);
-          let hashEl = this.getHashTargetEl(window.location.hash);
-          if (hashEl) {
-            hashEl.scrollIntoView();
-          } else if (meta.type === "redirect") {
-            window.scroll(0, 0);
-          }
+          window.requestAnimationFrame(() => {
+            let hashEl = this.getHashTargetEl(window.location.hash);
+            if (hashEl) {
+              hashEl.scrollIntoView();
+            } else if (meta.type === "redirect") {
+              window.scroll(0, 0);
+            }
+          });
         }
       } else {
         this.redirect(to);
@@ -3730,7 +3732,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     onJoinError(resp) {
       if (resp.reason === "reload") {
         if (this.isMain()) {
-          this.log("error", () => [`failed mount with ${resp.status} ${resp.token}. Falling back to page reload`, resp]);
+          this.log("error", () => [`failed mount with ${resp.status}. Falling back to page reload`, resp]);
           this.onRedirect({ to: this.href, reloadToken: resp.token });
         }
         return;
