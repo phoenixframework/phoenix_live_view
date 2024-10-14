@@ -31,10 +31,10 @@ import {
   PHX_VIEW_SELECTOR,
   PHX_MAIN,
   PHX_MOUNTED,
-  PHX_RELOAD_STATUS,
   PUSH_TIMEOUT,
   PHX_VIEWPORT_TOP,
   PHX_VIEWPORT_BOTTOM,
+  MAX_CHILD_JOIN_ATTEMPTS
 } from "./constants"
 
 import {
@@ -148,6 +148,7 @@ export default class View {
     this.redirect = false
     this.href = null
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
+    this.joinAttempts = 0
     this.joinPending = true
     this.destroyed = false
     this.joinCallback = function(onDone){ onDone && onDone() }
@@ -188,7 +189,9 @@ export default class View {
 
     if(manifest.length > 0){ params["_track_static"] = manifest }
     params["_mounts"] = this.joinCount
+    params["_mount_attempts"] = this.joinAttempts
     params["_live_referer"] = liveReferer
+    this.joinAttempts++
 
     return params
   }
@@ -328,6 +331,7 @@ export default class View {
       let [html, streams] = this.renderContainer(null, "join")
       this.dropPendingRefs()
       this.joinCount++
+      this.joinAttempts = 0
 
       this.maybeRecoverForms(html, () => {
         this.onJoinComplete(resp, html, streams, events)
@@ -810,14 +814,12 @@ export default class View {
 
   onJoinError(resp){
     if(resp.reason === "reload"){
-      if(this.isMain()){
-        this.log("error", () => [`failed mount with ${resp.status}. Falling back to page reload`, resp])
-        this.onRedirect({to: this.href, reloadToken: resp.token})
-      }
+      this.log("error", () => [`failed mount with ${resp.status}. Falling back to page reload`, resp])
+      this.onRedirect({to: this.root.href, reloadToken: resp.token})
       return
     } else if(resp.reason === "unauthorized" || resp.reason === "stale"){
       this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp])
-      if(this.isMain()){ this.onRedirect({to: this.href}) }
+      this.onRedirect({to: this.root.href})
       return
     }
     if(resp.redirect || resp.live_redirect){
@@ -826,14 +828,31 @@ export default class View {
     }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
-    this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
     this.log("error", () => ["unable to join", resp])
-    if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
+    if(this.isMain()){
+      this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+      if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
+    } else {
+      if(this.joinAttempts >= MAX_CHILD_JOIN_ATTEMPTS){
+        // put the root review into permanent error state, but don't destroy it as it can remain active
+        this.root.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+        this.log("error", () => [`giving up trying to mount after ${MAX_CHILD_JOIN_ATTEMPTS} tries`, resp])
+        this.destroy()
+      }
+      let trueChildEl = DOM.byId(this.el.id)
+      if(trueChildEl){
+        DOM.mergeAttrs(trueChildEl, this.el)
+        this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+        this.el = trueChildEl
+      } else {
+        this.destroy()
+      }
+    }
   }
 
   onClose(reason){
     if(this.isDestroyed()){ return }
-    if(this.liveSocket.hasPendingLink() && reason !== "leave"){
+    if(this.isMain() && this.liveSocket.hasPendingLink() && reason !== "leave"){
       return this.liveSocket.reloadWithJitter(this)
     }
     this.destroyAllChildren()

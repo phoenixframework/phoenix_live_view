@@ -96,18 +96,18 @@ defmodule Phoenix.LiveView.Static do
       %{@phoenix_reload_status => status_token} ->
         conn = Plug.Conn.delete_resp_cookie(conn, @phoenix_reload_status)
 
-        {status, exception, stack} =
+        {status, exception, errored_view, stack} =
           case verify_token(endpoint, status_token) do
-            {:ok, %{status: status, exception: exception, stack: stack}}
+            {:ok, %{status: status, exception: exception, view: errored_view, stack: stack}}
             when is_integer(status) ->
-              {status, exception, stack}
+              {status, exception, errored_view, stack}
 
             {:error, _reason} ->
-              {500, nil, []}
+              {500, nil, nil, []}
           end
 
         message = """
-        #{inspect(view)} raised #{inspect(exception)} during connected mount sending a #{status} response
+        #{errored_view} raised #{exception} during connected mount sending a #{status} response
         """
 
         raise Plug.Conn.WrapperError,
