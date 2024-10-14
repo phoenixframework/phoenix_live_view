@@ -34,13 +34,20 @@ let Browser = {
 
         delete meta.scroll // Only store the scroll in the redirect case.
         history[kind + "State"](meta, "", to || null) // IE will coerce undefined to string
-        let hashEl = this.getHashTargetEl(window.location.hash)
 
-        if(hashEl){
-          hashEl.scrollIntoView()
-        } else if(meta.type === "redirect"){
-          window.scroll(0, 0)
-        }
+        // when using navigate, we'd call pushState immediately before patching the DOM,
+        // jumping back to the top of the page, effectively ignoring the scrollIntoView;
+        // therefore we wait for the next frame (after the DOM patch) and only then try
+        // to scroll to the hashEl
+        window.requestAnimationFrame(() => {
+          let hashEl = this.getHashTargetEl(window.location.hash)
+  
+          if(hashEl){
+            hashEl.scrollIntoView()
+          } else if(meta.type === "redirect"){
+            window.scroll(0, 0)
+          }
+        })
       }
     } else {
       this.redirect(to)
