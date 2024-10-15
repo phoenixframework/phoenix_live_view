@@ -2535,19 +2535,21 @@ defmodule Phoenix.Component do
   > def handle_event("validate", %{"tracked_day" => params}, socket) do
   >   changeset = TrackedDay.changeset(socket.assigns.tracked_day, params)
   >   remaining = calculate_remaining(changeset)
-  >   {:noreply, assign(socket, :form, to_form(changeset, action: :validate))}
+  >   {:noreply, assign(socket, form: to_form(changeset, action: :validate), remaining: remaining)}
   > end
   >
   > # Helper function to calculate remaining time
   > defp calculate_remaining(changeset) do
   >   total = Ecto.Changeset.get_field(changeset)
   >   activities = Ecto.Changeset.get_embed(changeset, :activities)
-  >   remaining = Enum.reduce(activities, total, fn activity, acc ->
-  >     duration = case activity do
-  >       %{valid?: true} = changeset -> Ecto.Changeset.get_field(changeset, :duration)
-  >       # if the activity is invalid, we don't include its duration in the calculation
-  >       _ -> 0
-  >     end
+  >
+  >   Enum.reduce(activities, total, fn activity, acc ->
+  >     duration =
+  >       case activity do
+  >         %{valid?: true} = changeset -> Ecto.Changeset.get_field(changeset, :duration)
+  >         # if the activity is invalid, we don't include its duration in the calculation
+  >         _ -> 0
+  >       end
   >
   >     acc - length
   >   end)
