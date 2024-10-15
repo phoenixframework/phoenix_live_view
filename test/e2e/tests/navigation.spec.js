@@ -213,6 +213,19 @@ test("scrolls hash el into view", async ({ page }) => {
   await expect(scrollTop).toBeLessThanOrEqual(offset + 500);
 });
 
+test("scrolls hash el into view after live navigation (issue #3452)", async ({ page }) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+
+  await page.getByRole("link", { name: "Navigate to 42" }).click();
+  await expect(page).toHaveURL("/navigation/b#items-item-42");
+  let scrollTop = await page.evaluate(() => document.body.scrollTop);
+  const offset = (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200;
+  await expect(scrollTop).not.toBe(0);
+  await expect(scrollTop).toBeGreaterThanOrEqual(offset - 500);
+  await expect(scrollTop).toBeLessThanOrEqual(offset + 500);
+});
+
 test("navigating all the way back works without remounting (only patching)", async ({ page }) => {
   await page.goto("/navigation/a");
   await syncLV(page);

@@ -76,19 +76,19 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
 
     <p>Current param: <%= @param_current %></p>
 
-    <.link
-      patch={"/navigation/a?param=#{@param_next}"}
-      style="padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;"
-    >
-      Patch this LiveView
-    </.link>
+    <.styled_link patch={"/navigation/a?param=#{@param_next}"}>Patch this LiveView</.styled_link>
+    <.styled_link patch={"/navigation/a?param=#{@param_next}"} replace>Patch (Replace)</.styled_link>
+    <.styled_link navigate="/navigation/b#items-item-42">Navigate to 42</.styled_link>
+    """
+  end
 
+  defp styled_link(assigns) do
+    ~H"""
     <.link
-      patch={"/navigation/a?param=#{@param_next}"}
-      replace
       style="padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;"
+      {Map.delete(assigns, [:inner_block])}
     >
-      Patch (Replace)
+      <%= render_slot(@inner_block) %>
     </.link>
     """
   end
