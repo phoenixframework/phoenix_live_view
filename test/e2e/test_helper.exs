@@ -23,6 +23,12 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Layout do
   use Phoenix.Component
 
+  def render("root.html", assigns) do
+    ~H"""
+    <%!-- no doctype -> quirks mode --%> <!DOCTYPE html> <%= @inner_content %>
+    """
+  end
+
   def render("live.html", assigns) do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
@@ -102,6 +108,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :protect_from_forgery
+    plug :put_root_layout, html: {Phoenix.LiveViewTest.E2E.Layout, :root}
   end
 
   live_session :default,
@@ -159,6 +166,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     pipe_through(:browser)
 
     live "/form/feedback", FormFeedbackLive
+    live "/errors", ErrorLive
 
     scope "/issues" do
       live "/2965", Issue2965Live

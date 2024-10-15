@@ -141,7 +141,7 @@ test("restores scroll position after navigation", async ({ page }) => {
 
   await expect(page.locator("#items")).toContainText("Item 42");
 
-  await expect(await page.evaluate(() => document.body.scrollTop)).toEqual(0);
+  await expect(await page.evaluate(() => document.documentElement.scrollTop)).toEqual(0);
   const offset = (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200;
   await page.evaluate((offset) => window.scrollTo(0, offset), offset);
   // LiveView only updates the scroll position every 100ms
@@ -156,7 +156,7 @@ test("restores scroll position after navigation", async ({ page }) => {
   // scroll position is restored
   await expect.poll(
     async () => {
-      return await page.evaluate(() => document.body.scrollTop);
+      return await page.evaluate(() => document.documentElement.scrollTop);
     },
     { message: 'scrollTop not restored', timeout: 5000 }
   ).toBe(offset);
@@ -199,7 +199,7 @@ test("scrolls hash el into view", async ({ page }) => {
   await page.getByRole("link", { name: "Go to 42" }).click();
   await expect(page).toHaveURL("/navigation/b#items-item-42");
 
-  let scrollTop = await page.evaluate(() => document.body.scrollTop)
+  let scrollTop = await page.evaluate(() => document.documentElement.scrollTop)
   await expect(scrollTop).not.toBe(0);
   await expect(scrollTop).toBeGreaterThanOrEqual(offset - 500);
   await expect(scrollTop).toBeLessThanOrEqual(offset + 500);
@@ -207,7 +207,7 @@ test("scrolls hash el into view", async ({ page }) => {
   await page.goto("/navigation/a");
   await page.goto("/navigation/b#items-item-42");
 
-  scrollTop = await page.evaluate(() => document.body.scrollTop)
+  scrollTop = await page.evaluate(() => document.documentElement.scrollTop)
   await expect(scrollTop).not.toBe(0);
   await expect(scrollTop).toBeGreaterThanOrEqual(offset - 500);
   await expect(scrollTop).toBeLessThanOrEqual(offset + 500);

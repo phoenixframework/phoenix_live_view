@@ -318,7 +318,7 @@ export default class LiveSocket {
     let maxMs = this.reloadJitterMax
     let afterMs = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs
     let tries = Browser.updateLocal(this.localStorage, window.location.pathname, CONSECUTIVE_RELOADS, 0, count => count + 1)
-    if(tries > this.maxReloads){
+    if(tries >= this.maxReloads){
       afterMs = this.failsafeJitter
     }
     this.reloadWithJitterTimer = setTimeout(() => {
@@ -326,7 +326,7 @@ export default class LiveSocket {
       if(view.isDestroyed() || view.isConnected()){ return }
       view.destroy()
       log ? log() : this.log(view, "join", () => [`encountered ${tries} consecutive reloads`])
-      if(tries > this.maxReloads){
+      if(tries >= this.maxReloads){
         this.log(view, "join", () => [`exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`])
       }
       if(this.hasPendingLink()){
