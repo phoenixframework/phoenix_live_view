@@ -1111,6 +1111,22 @@ defmodule Phoenix.LiveView.JSTest do
     end
   end
 
+  describe "concat" do
+    test "combines multiple JS structs" do
+      js1 = JS.push("inc", value: %{one: 1, two: 2})
+      js2 = JS.add_class("show", to: "#modal", time: 100)
+      js3 = JS.remove_class("show")
+
+      assert JS.concat(js1, js2) |> JS.concat(js3) == %JS{
+               ops: [
+                 ["push", %{event: "inc", value: %{one: 1, two: 2}}],
+                 ["add_class", %{names: ["show"], time: 100, to: "#modal"}],
+                 ["remove_class", %{names: ["show"]}]
+               ]
+             }
+    end
+  end
+
   defp js_to_string(%JS{} = js) do
     js
     |> Map.update!(:ops, &order_ops_map_keys/1)

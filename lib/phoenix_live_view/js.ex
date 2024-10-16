@@ -911,6 +911,11 @@ defmodule Phoenix.LiveView.JS do
     put_op(js, "exec", attr: attr, to: opts[:to])
   end
 
+  @doc """
+  Combines two JS commands, appending the second to the first.
+  """
+  def concat(%JS{ops: first}, %JS{ops: second}), do: %JS{ops: first ++ second}
+
   defp put_op(%JS{ops: ops} = js, kind, args) do
     args = drop_nil_values(args)
     struct!(js, ops: ops ++ [[kind, args]])
