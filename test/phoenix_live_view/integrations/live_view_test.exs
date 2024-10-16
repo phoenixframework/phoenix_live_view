@@ -468,7 +468,13 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       # does not expose stack or exception module by default
       assert Phoenix.LiveView.Static.verify_token(@endpoint, token) ==
-               {:ok, %{status: 404, exception: nil, stack: []}}
+               {:ok,
+                %{
+                  status: 404,
+                  exception: nil,
+                  stack: [],
+                  view: "Phoenix.LiveViewTest.Support.ThermostatLive"
+                }}
 
       response =
         assert_error_sent(404, fn ->

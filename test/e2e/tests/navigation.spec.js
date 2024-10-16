@@ -219,7 +219,7 @@ test("scrolls hash el into view after live navigation (issue #3452)", async ({ p
 
   await page.getByRole("link", { name: "Navigate to 42" }).click();
   await expect(page).toHaveURL("/navigation/b#items-item-42");
-  let scrollTop = await page.evaluate(() => document.body.scrollTop);
+  let scrollTop = await page.evaluate(() => document.documentElement.scrollTop);
   const offset = (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200;
   await expect(scrollTop).not.toBe(0);
   await expect(scrollTop).toBeGreaterThanOrEqual(offset - 500);
