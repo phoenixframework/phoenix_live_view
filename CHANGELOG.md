@@ -122,6 +122,8 @@ generated user module:
   * Support targeting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closet, "tr"}`, etc.
   * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
   * Validate slot options (prevents typos like `slot :myslot, requird: true`)
+  * Emit `:phoenix, :live_component, :update` telemetry event when a LiveComponent is updated via `send_update/2`
+  * Enhance error recovery during connecting mount to trigger plug_status error pipeline
 
 ### Bug fixes
   * Fix select focus states and selects not being updated when focused #3083, #3107
