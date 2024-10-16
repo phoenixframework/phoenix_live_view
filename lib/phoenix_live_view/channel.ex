@@ -1201,7 +1201,6 @@ defmodule Phoenix.LiveView.Channel do
               GenServer.reply(from, {:error, %{reason: "reload", status: status, token: token}})
               {:stop, :shutdown, :no_state}
             else
-              IO.inspect({view, connect_params})
               reraise(exception, __STACKTRACE__)
             end
         end
