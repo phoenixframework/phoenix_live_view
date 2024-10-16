@@ -451,7 +451,7 @@ export default class View {
     }
   }
 
-  maybeAddNewHook(el, force){
+  maybeAddNewHook(el){
     let newHook = this.addHook(el)
     if(newHook){ newHook.__mounted() }
   }

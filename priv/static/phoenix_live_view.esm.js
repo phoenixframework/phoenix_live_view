@@ -2285,7 +2285,7 @@ var DOMPatch = class {
     let appendPrependUpdates = [];
     let externalFormTriggered = null;
     function morph(targetContainer2, source, withChildren = false) {
-      morphdom_esm_default(targetContainer2, source, {
+      let morphCallbacks = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
         // when we are patching a live component, we do want to patch the root element as well;
@@ -2378,6 +2378,11 @@ var DOMPatch = class {
           this.maybeReOrderStream(el, false);
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          if (fromEl.id && fromEl.isSameNode(targetContainer2) && fromEl.id !== toEl.id) {
+            morphCallbacks.onNodeDiscarded(fromEl);
+            fromEl.replaceWith(toEl);
+            return morphCallbacks.onNodeAdded(toEl);
+          }
           dom_default.syncPendingAttrs(fromEl, toEl);
           dom_default.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom);
           dom_default.cleanChildNodes(toEl, phxUpdate);
@@ -2452,7 +2457,8 @@ var DOMPatch = class {
             return fromEl;
           }
         }
-      });
+      };
+      morphdom_esm_default(targetContainer2, source, morphCallbacks);
     }
     this.trackBefore("added", container);
     this.trackBefore("updated", container, container);
@@ -3606,7 +3612,7 @@ var View = class _View {
       dom_default.putPrivate(el, "mounted", true);
     }
   }
-  maybeAddNewHook(el, force) {
+  maybeAddNewHook(el) {
     let newHook = this.addHook(el);
     if (newHook) {
       newHook.__mounted();

@@ -103,7 +103,7 @@ export default class DOMPatch {
     let externalFormTriggered = null
 
     function morph(targetContainer, source, withChildren=false){
-      morphdom(targetContainer, source, {
+      let morphCallbacks = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
         // when we are patching a live component, we do want to patch the root element as well;
@@ -194,6 +194,13 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          // if we are patching the root target container and the id has changed, treat it as a new node
+          // by replacing the fromEl with the toEl, which ensures hooks are torn down and re-created
+          if(fromEl.id && fromEl.isSameNode(targetContainer) && fromEl.id !== toEl.id){
+            morphCallbacks.onNodeDiscarded(fromEl)
+            fromEl.replaceWith(toEl)
+            return morphCallbacks.onNodeAdded(toEl)
+          }
           DOM.syncPendingAttrs(fromEl, toEl)
           DOM.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
@@ -278,7 +285,8 @@ export default class DOMPatch {
             return fromEl
           }
         }
-      })
+      }
+      morphdom(targetContainer, source, morphCallbacks)
     }
 
     this.trackBefore("added", container)
