@@ -126,6 +126,7 @@ generated user module:
   * Enhance error recovery during connecting mount to trigger plug_status error pipeline
 
 ### Bug fixes
+  * Fix hooks on root LiveComponent container not being torn down and created when the DOM id changes
   * Fix select focus states and selects not being updated when focused #3083, #3107
   * Fix nested LiveViews inside a stream element
   * Fix infinite loading streams in zoomed viewports #3442
