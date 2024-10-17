@@ -328,7 +328,7 @@ var focusStack = [];
 var default_transition_time = 200;
 var JS = {
   // private
-  exec(eventType, phxEvent, view, sourceEl, defaults) {
+  exec(e, eventType, phxEvent, view, sourceEl, defaults) {
     let [defaultKind, defaultArgs] = defaults || [null, { callback: defaults && defaults.callback }];
     let commands = phxEvent.charAt(0) === "[" ? JSON.parse(phxEvent) : [[defaultKind, defaultArgs]];
     commands.forEach(([kind, args]) => {
@@ -337,7 +337,7 @@ var JS = {
         args.callback = args.callback || defaultArgs.callback;
       }
       this.filterToEls(view.liveSocket, sourceEl, args).forEach((el) => {
-        this[`exec_${kind}`](eventType, phxEvent, view, sourceEl, el, args);
+        this[`exec_${kind}`](e, eventType, phxEvent, view, sourceEl, el, args);
       });
     });
   },
@@ -353,7 +353,7 @@ var JS = {
   },
   // private
   // commands
-  exec_exec(eventType, phxEvent, view, sourceEl, el, { attr, to }) {
+  exec_exec(e, eventType, phxEvent, view, sourceEl, el, { attr, to }) {
     let nodes = to ? dom_default.all(document, to) : [sourceEl];
     nodes.forEach((node) => {
       let encodedJS = node.getAttribute(attr);
@@ -363,12 +363,12 @@ var JS = {
       view.liveSocket.execJS(node, encodedJS, eventType);
     });
   },
-  exec_dispatch(eventType, phxEvent, view, sourceEl, el, { to, event, detail, bubbles }) {
+  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { to, event, detail, bubbles }) {
     detail = detail || {};
     detail.dispatcher = sourceEl;
     dom_default.dispatchEvent(el, event, { detail, bubbles });
   },
-  exec_push(eventType, phxEvent, view, sourceEl, el, args) {
+  exec_push(e, eventType, phxEvent, view, sourceEl, el, args) {
     let { event, data, target, page_loading, loading, value, dispatcher, callback } = args;
     let pushOpts = { loading, value, target, page_loading: !!page_loading };
     let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
@@ -392,22 +392,22 @@ var JS = {
       }
     });
   },
-  exec_navigate(eventType, phxEvent, view, sourceEl, el, { href, replace }) {
-    view.liveSocket.historyRedirect(href, replace ? "replace" : "push");
+  exec_navigate(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+    view.liveSocket.historyRedirect(e, href, replace ? "replace" : "push", null, sourceEl);
   },
-  exec_patch(eventType, phxEvent, view, sourceEl, el, { href, replace }) {
-    view.liveSocket.pushHistoryPatch(href, replace ? "replace" : "push", sourceEl);
+  exec_patch(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+    view.liveSocket.pushHistoryPatch(e, href, replace ? "replace" : "push", sourceEl);
   },
-  exec_focus(eventType, phxEvent, view, sourceEl, el) {
+  exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
     window.requestAnimationFrame(() => aria_default.attemptFocus(el));
   },
-  exec_focus_first(eventType, phxEvent, view, sourceEl, el) {
+  exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
     window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
   },
-  exec_push_focus(eventType, phxEvent, view, sourceEl, el) {
+  exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
     window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
   },
-  exec_pop_focus(eventType, phxEvent, view, sourceEl, el) {
+  exec_pop_focus(e, eventType, phxEvent, view, sourceEl, el) {
     window.requestAnimationFrame(() => {
       const el2 = focusStack.pop();
       if (el2) {
@@ -415,34 +415,34 @@ var JS = {
       }
     });
   },
-  exec_add_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
+  exec_add_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
     this.addOrRemoveClasses(el, names, [], transition, time, view, blocking);
   },
-  exec_remove_class(eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
+  exec_remove_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
     this.addOrRemoveClasses(el, [], names, transition, time, view, blocking);
   },
-  exec_toggle_class(eventType, phxEvent, view, sourceEl, el, { to, names, transition, time, blocking }) {
+  exec_toggle_class(e, eventType, phxEvent, view, sourceEl, el, { to, names, transition, time, blocking }) {
     this.toggleClasses(el, names, transition, time, view, blocking);
   },
-  exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
+  exec_toggle_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
     this.toggleAttr(el, attr, val1, val2);
   },
-  exec_transition(eventType, phxEvent, view, sourceEl, el, { time, transition, blocking }) {
+  exec_transition(e, eventType, phxEvent, view, sourceEl, el, { time, transition, blocking }) {
     this.addOrRemoveClasses(el, [], [], transition, time, view, blocking);
   },
-  exec_toggle(eventType, phxEvent, view, sourceEl, el, { display, ins, outs, time, blocking }) {
+  exec_toggle(e, eventType, phxEvent, view, sourceEl, el, { display, ins, outs, time, blocking }) {
     this.toggle(eventType, view, el, display, ins, outs, time, blocking);
   },
-  exec_show(eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
+  exec_show(e, eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
     this.show(eventType, view, el, display, transition, time, blocking);
   },
-  exec_hide(eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
+  exec_hide(e, eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
     this.hide(eventType, view, el, display, transition, time, blocking);
   },
-  exec_set_attr(eventType, phxEvent, view, sourceEl, el, { attr: [attr, val] }) {
+  exec_set_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val] }) {
     this.setOrRemoveAttrs(el, [[attr, val]], []);
   },
-  exec_remove_attr(eventType, phxEvent, view, sourceEl, el, { attr }) {
+  exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, { attr }) {
     this.setOrRemoveAttrs(el, [], [attr]);
   },
   // utils for commands
@@ -3886,7 +3886,8 @@ var View = class _View {
   onLiveRedirect(redir) {
     let { to, kind, flash } = redir;
     let url = this.expandURL(to);
-    this.liveSocket.historyRedirect(url, kind, flash);
+    let e = new CustomEvent("phx:server-navigate", { detail: { to, kind, flash } });
+    this.liveSocket.historyRedirect(e, url, kind, flash);
   }
   onLivePatch(redir) {
     let { to, kind } = redir;
@@ -4529,9 +4530,10 @@ var View = class _View {
       });
     }, templateDom, templateDom);
   }
-  pushLinkPatch(href, targetEl, callback) {
+  pushLinkPatch(e, href, targetEl, callback) {
     let linkRef = this.liveSocket.setPendingLink(href);
-    let refGen = targetEl ? () => this.putRef([{ el: targetEl, loading: true, lock: true }], null, "click") : null;
+    let loading = e.isTrusted && e.type !== "popstate";
+    let refGen = targetEl ? () => this.putRef([{ el: targetEl, loading, lock: true }], null, "click") : null;
     let fallback = () => this.liveSocket.redirect(window.location.href);
     let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href;
     this.pushWithReply(refGen, "live_patch", { url }).then(
@@ -4740,12 +4742,14 @@ var LiveSocket = class {
     this.connect();
   }
   execJS(el, encodedJS, eventType = null) {
-    this.owner(el, (view) => js_default.exec(eventType, encodedJS, view, el));
+    let e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
+    this.owner(el, (view) => js_default.exec(e, eventType, encodedJS, view, el));
   }
   // private
   execJSHookPush(el, phxEvent, data, callback) {
     this.withinOwners(el, (view) => {
-      js_default.exec("hook", phxEvent, view, el, ["push", { data, callback }]);
+      let e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
+      js_default.exec(e, "hook", phxEvent, view, el, ["push", { data, callback }]);
     });
   }
   unload() {
@@ -5013,18 +5017,18 @@ var LiveSocket = class {
         return;
       }
       let data = { key: e.key, ...this.eventMeta(type, e, targetEl) };
-      js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
+      js_default.exec(e, type, phxEvent, view, targetEl, ["push", { data }]);
     });
     this.bind({ blur: "focusout", focus: "focusin" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
       if (!phxTarget) {
         let data = { key: e.key, ...this.eventMeta(type, e, targetEl) };
-        js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
+        js_default.exec(e, type, phxEvent, view, targetEl, ["push", { data }]);
       }
     });
     this.bind({ blur: "blur", focus: "focus" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
       if (phxTarget === "window") {
         let data = this.eventMeta(type, e, targetEl);
-        js_default.exec(type, phxEvent, view, targetEl, ["push", { data }]);
+        js_default.exec(e, type, phxEvent, view, targetEl, ["push", { data }]);
       }
     });
     this.on("dragover", (e) => e.preventDefault());
@@ -5136,7 +5140,7 @@ var LiveSocket = class {
       }
       this.debounce(target, e, "click", () => {
         this.withinOwners(target, (view) => {
-          js_default.exec("click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
+          js_default.exec(e, "click", phxEvent, view, target, ["push", { data: this.eventMeta("click", e, target) }]);
         });
       });
     }, false);
@@ -5148,7 +5152,7 @@ var LiveSocket = class {
         this.withinOwners(el, (view) => {
           let phxEvent = el.getAttribute(phxClickAway);
           if (js_default.isVisible(el) && js_default.isInViewport(el)) {
-            js_default.exec("click", phxEvent, view, el, ["push", { data: this.eventMeta("click", e, e.target) }]);
+            js_default.exec(e, "click", phxEvent, view, el, ["push", { data: this.eventMeta("click", e, e.target) }]);
           }
         });
       }
@@ -5177,7 +5181,7 @@ var LiveSocket = class {
       dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: type === "patch", pop: true } });
       this.requestDOMUpdate(() => {
         if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
-          this.main.pushLinkPatch(href, null, () => {
+          this.main.pushLinkPatch(event, href, null, () => {
             this.maybeScroll(scroll);
           });
         } else {
@@ -5205,9 +5209,9 @@ var LiveSocket = class {
       }
       this.requestDOMUpdate(() => {
         if (type === "patch") {
-          this.pushHistoryPatch(href, linkState, target);
+          this.pushHistoryPatch(e, href, linkState, target);
         } else if (type === "redirect") {
-          this.historyRedirect(href, linkState);
+          this.historyRedirect(e, href, linkState, null, target);
         } else {
           throw new Error(`expected ${PHX_LIVE_LINK} to be "patch" or "redirect", got: ${type}`);
         }
@@ -5236,12 +5240,12 @@ var LiveSocket = class {
     let done = () => dom_default.dispatchEvent(window, "phx:page-loading-stop", { detail: info });
     return callback ? callback(done) : done;
   }
-  pushHistoryPatch(href, linkState, targetEl) {
+  pushHistoryPatch(e, href, linkState, targetEl) {
     if (!this.isConnected() || !this.main.isMain()) {
       return browser_default.redirect(href);
     }
     this.withPageLoading({ to: href, kind: "patch" }, (done) => {
-      this.main.pushLinkPatch(href, targetEl, (linkRef) => {
+      this.main.pushLinkPatch(e, href, targetEl, (linkRef) => {
         this.historyPatch(href, linkState, linkRef);
         done();
       });
@@ -5255,7 +5259,10 @@ var LiveSocket = class {
     dom_default.dispatchEvent(window, "phx:navigate", { detail: { patch: true, href, pop: false } });
     this.registerNewLocation(window.location);
   }
-  historyRedirect(href, linkState, flash) {
+  historyRedirect(e, href, linkState, flash, targetEl) {
+    if (targetEl && e.isTrusted && e.type !== "popstate") {
+      targetEl.classList.add("phx-click-loading");
+    }
     if (!this.isConnected() || !this.main.isMain()) {
       return browser_default.redirect(href, flash);
     }
@@ -5318,7 +5325,7 @@ var LiveSocket = class {
       e.preventDefault();
       e.target.disabled = true;
       this.withinOwners(e.target, (view) => {
-        js_default.exec("submit", phxEvent, view, e.target, ["push", { submitter: e.submitter }]);
+        js_default.exec(e, "submit", phxEvent, view, e.target, ["push", { submitter: e.submitter }]);
       });
     });
     for (let type of ["change", "input"]) {
@@ -5359,7 +5366,7 @@ var LiveSocket = class {
         this.debounce(input, e, type, () => {
           this.withinOwners(dispatcher, (view) => {
             dom_default.putPrivate(input, PHX_HAS_FOCUSED, true);
-            js_default.exec("change", phxEvent, view, input, ["push", { _target: e.target.name, dispatcher }]);
+            js_default.exec(e, "change", phxEvent, view, input, ["push", { _target: e.target.name, dispatcher }]);
           });
         });
       });
