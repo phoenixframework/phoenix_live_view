@@ -770,7 +770,8 @@ export default class View {
   onLiveRedirect(redir){
     let {to, kind, flash} = redir
     let url = this.expandURL(to)
-    this.liveSocket.historyRedirect(url, kind, flash)
+    let e = new CustomEvent("phx:server-navigate", {detail: {to, kind, flash}})
+    this.liveSocket.historyRedirect(e, url, kind, flash)
   }
 
   onLivePatch(redir){
@@ -1419,9 +1420,12 @@ export default class View {
     }, templateDom, templateDom)
   }
 
-  pushLinkPatch(href, targetEl, callback){
+  pushLinkPatch(e, href, targetEl, callback){
     let linkRef = this.liveSocket.setPendingLink(href)
-    let refGen = targetEl ? () => this.putRef([{el: targetEl, loading: true, lock: true}], null, "click") : null
+    // only add loading states if event is trusted (it was triggered by user, such as click) and
+    // it's not a forward/back navigation from popstate
+    let loading = e.isTrusted && e.type !== "popstate"
+    let refGen = targetEl ? () => this.putRef([{el: targetEl, loading: loading, lock: true}], null, "click") : null
     let fallback = () => this.liveSocket.redirect(window.location.href)
     let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href
 
