@@ -112,7 +112,7 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
-## 1.0.0-rc.7
+## 1.0.0-rc.7 (2024-10-17)
 
 ### Enhancements
   * Support nested inputs in `Phoenix.Component.used_input?/1`
