@@ -1110,10 +1110,13 @@ defmodule Phoenix.Component.Declarative do
             warn(message, call.file, line)
 
           # attrs must be one of values
-          {_type, {line, _column, {_, type_value}}} when not is_nil(attr_values) ->
+          {type, {line, _column, {_, type_value} = actual_type}} when not is_nil(attr_values) ->
             if type_value not in attr_values do
+              value_ast_to_string = type_mismatch(type, actual_type) || inspect(type_value)
+
               message =
-                "attribute \"#{name}\" in component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: #{inspect(type_value)}"
+                "attribute \"#{name}\" in component #{component_fa(call)} must be one of #{inspect(attr_values)}, got: " <>
+                  value_ast_to_string
 
               warn(message, call.file, line)
             end
@@ -1251,6 +1254,7 @@ defmodule Phoenix.Component.Declarative do
   defp type_mismatch(:fun, {:fun, _}), do: nil
   defp type_mismatch({:fun, arity}, {:fun, arity}), do: nil
   defp type_mismatch({:fun, _arity}, {:fun, arity}), do: type_with_article({:fun, arity})
+  defp type_mismatch(_type, {:fun, arity}), do: type_with_article({:fun, arity})
   defp type_mismatch(_type, {_, value}), do: Macro.to_string(value)
 
   defp component_fa(%{component: {mod, fun}}) do
