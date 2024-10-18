@@ -860,7 +860,7 @@ describe("View Hooks", function(){
     })
     let customEl = document.createElement("custom-el")
     el.appendChild(customEl)
-    let view = simulateJoinedView(el, liveSocket)
+    simulateJoinedView(el, liveSocket)
   })
 
   test("view destroyed", async () => {

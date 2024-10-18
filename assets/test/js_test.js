@@ -26,7 +26,7 @@ describe("JS", () => {
   describe("hook.js()", () => {
     let js, view, modal
     beforeEach(() => {
-      view = setupView(`<div id="modal">modal</div>`)
+      view = setupView("<div id=\"modal\">modal</div>")
       modal = view.el.querySelector("#modal")
       let hook = new ViewHook(view, view.el, {})
       js = hook.js()
@@ -35,7 +35,7 @@ describe("JS", () => {
     test("exec", done => {
       simulateVisibility(modal)
       expect(modal.style.display).toBe("")
-      js.exec(`[["toggle", {"to": "#modal"}]]`)
+      js.exec("[[\"toggle\", {\"to\": \"#modal\"}]]")
       jest.advanceTimersByTime(100)
       expect(modal.style.display).toBe("none")
       done()
