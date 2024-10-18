@@ -266,9 +266,9 @@ defmodule Phoenix.LiveView.Diff do
         {diff, new_components, :noop} =
           write_component(socket, cid, components, fn component_socket, component ->
             telemetry_metadata = %{
-              socket: component_socket,
+              socket: socket,
               component: component,
-              assigns_sockets: updated_assigns
+              assigns_sockets: [{updated_assigns, component_socket}]
             }
 
             sockets =
@@ -335,18 +335,18 @@ defmodule Phoenix.LiveView.Diff do
   Converts a component to a rendered struct.
   """
   def component_to_rendered(socket, component, assigns, mount_assigns) when is_map(assigns) do
-    socket = mount_component(socket, component, mount_assigns)
+    component_socket = mount_component(socket, component, mount_assigns)
     assigns = maybe_call_preload!(component, assigns)
 
     telemetry_metadata = %{
       socket: socket,
       component: component,
-      assigns_sockets: assigns
+      assigns_sockets: [{assigns, component_socket}]
     }
 
     :telemetry.span([:phoenix, :live_component, :update], telemetry_metadata, fn ->
       result =
-        socket
+        component_socket
         |> Utils.maybe_call_update!(component, assigns)
         |> component_to_rendered(component, assigns[:id])
 
