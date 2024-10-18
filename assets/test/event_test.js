@@ -182,6 +182,35 @@ describe("pushEvent replies", () => {
     })
   })
 
+  test("promise", (done) => {
+    let view
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Gateway: {
+          mounted(){
+            stubNextChannelReply(view, {transactionID: "1001"})
+            this.pushEvent("charge", {amount: 123}).then((reply) => {
+              processedReplies.push(reply)
+              view.el.dispatchEvent(new CustomEvent("replied", {detail: reply}))
+            })
+          }
+        }
+      }
+    })
+    view = simulateView(liveSocket, [], "")
+    view.update({
+      s: [`
+      <div id="gateway" phx-hook="Gateway">
+      </div>
+    `]
+    }, [])
+
+    view.el.addEventListener("replied", () => {
+      expect(processedReplies).toEqual([{transactionID: "1001"}])
+      done()
+    })
+  })
+
   test("pushEvent without connection noops", () => {
     let view
     let pushedRef = "before"
@@ -190,7 +219,7 @@ describe("pushEvent replies", () => {
         Gateway: {
           mounted(){
             stubNextChannelReply(view, {transactionID: "1001"})
-            pushedRef = this.pushEvent("charge", {amount: 123})
+            pushedRef = this.pushEvent("charge", {amount: 123}, () => {})
           }
         }
       }
