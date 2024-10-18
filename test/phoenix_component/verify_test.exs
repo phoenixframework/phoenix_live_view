@@ -559,6 +559,9 @@ defmodule Phoenix.ComponentVerifyTest do
           attr :attr, :string, values: ["foo", "bar", "baz"]
           def func_string(assigns), do: ~H[]
 
+          attr :attr, :string
+          def func_string_no_values(assigns), do: ~H[]
+
           attr :attr, :atom, values: [:foo, :bar, :baz]
           def func_atom(assigns), do: ~H[]
 
@@ -570,6 +573,8 @@ defmodule Phoenix.ComponentVerifyTest do
           def render(assigns) do
             ~H"""
             <.func_string attr="boom" />
+            <.func_string attr={fn _ -> :bar end} />
+            <.func_string_no_values attr={fn _ -> :baz end} />
             <.func_atom attr={:boom} />
             <.func_integer attr={11} />
             <.func_string attr="bar" />
@@ -585,7 +590,7 @@ defmodule Phoenix.ComponentVerifyTest do
 
     line = get_line(__MODULE__.AttrValues, :line)
 
-    assert Regex.scan(~r/attribute "attr" in component/, warnings) |> length() == 3
+    assert Regex.scan(~r/attribute "attr" in component/, warnings) |> length() == 5
 
     assert warnings =~ """
            attribute "attr" in component \
@@ -597,11 +602,27 @@ defmodule Phoenix.ComponentVerifyTest do
 
     assert warnings =~ """
            attribute "attr" in component \
+           Phoenix.ComponentVerifyTest.AttrValues.func_string/1 \
+           must be one of ["foo", "bar", "baz"], got: a function of arity 1
+           """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
+
+    assert warnings =~ """
+           attribute "attr" in component \
+           Phoenix.ComponentVerifyTest.AttrValues.func_string_no_values/1 \
+           must be a :string, got: a function of arity 1
+           """
+
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 4}: (file)"
+
+    assert warnings =~ """
+           attribute "attr" in component \
            Phoenix.ComponentVerifyTest.AttrValues.func_atom/1 \
            must be one of [:foo, :bar, :baz], got: :boom
            """
 
-    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 3}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 5}: (file)"
 
     assert warnings =~ """
            attribute "attr" in component \
@@ -609,7 +630,7 @@ defmodule Phoenix.ComponentVerifyTest do
            must be one of 1..10, got: 11
            """
 
-    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 4}: (file)"
+    assert warnings =~ "test/phoenix_component/verify_test.exs:#{line + 6}: (file)"
   end
 
   test "does not warn for unknown attribute in slot without do-block when validate_attrs is false" do
