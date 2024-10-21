@@ -28,7 +28,8 @@ import morphdom from "morphdom"
 
 export default class DOMPatch {
   static patchWithClonedTree(container, clonedTree, liveSocket){
-    let activeElement = liveSocket.getActiveElement()
+    let focused = liveSocket.getActiveElement()
+    let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
 
     morphdom(container, clonedTree, {
@@ -38,12 +39,14 @@ export default class DOMPatch {
         // we cannot morph locked children
         if(!container.isSameNode(fromEl) && fromEl.hasAttribute(PHX_REF_LOCK)){ return false }
         if(DOM.isIgnored(fromEl, phxUpdate)){ return false }
-        if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
+        if(focused && focused.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
           DOM.mergeFocusedInput(fromEl, toEl)
           return false
         }
       }
     })
+
+    liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
   }
 
   constructor(view, container, id, html, streams, targetCID){
