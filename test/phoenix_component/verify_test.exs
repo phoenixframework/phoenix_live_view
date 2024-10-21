@@ -78,6 +78,28 @@ defmodule Phoenix.ComponentVerifyTest do
 
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
   end
+  
+  test "allow any attributes when :verify is set to false" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule UndefinedAttrs do
+          use Phoenix.Component
+
+          attr :rest, :global, verify: false
+          def func(assigns), do: ~H[]
+
+          def line, do: __ENV__.line + 4
+
+          def render(assigns) do
+            ~H"""
+            <.func width="btn" size={@size} phx-no-format />
+            """
+          end
+        end
+      end)
+
+    assert warnings == ""
+  end
 
   test "validates attrs and slots for external function components" do
     warnings =
