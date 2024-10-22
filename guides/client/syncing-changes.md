@@ -4,7 +4,9 @@ When using LiveView, whenever you change the state in your LiveView process, cha
 
 However, in many occasions, the client may have its own state: inputs, buttons, focused UI elements, and more. In order to avoid server updates from destroying state on the client, LiveView provides several features and out-of-the-box conveniences.
 
-Let's start by discussing which problems may arise from client-server integration, which may apply to any web application, and explore how LiveView solves it automatically.
+Let's start by discussing which problems may arise from client-server integration, which may apply to any web application, and explore how LiveView solves it automatically. If you want to focus on the more practical aspects, you can jump to later sections or watch the video below:
+
+<iframe width="560" height="315" src="https://www.youtube-nocookie.com/embed/fCdi7SEPrTs?si=ai_gcKZALmzc1Gy8" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 ## The problem in a nutshell
 
