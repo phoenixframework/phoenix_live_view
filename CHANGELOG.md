@@ -119,7 +119,7 @@ generated user module:
   * Support custom redirect statuses on `Phoenix.LiveView.redirect/2`
   * Export `createHook` from `phoenix_live_view` to allow CustomElement's to use hooks
   * Expose programmable JS command interface to hooks for showing, hiding, addClass, etc from a hook which integrates with server DOM patching
-  * Support targeting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closet, "tr"}`, etc.
+  * Support targeting inner and closest query selectors in JS commands with `to: {:inner, "a"}` and `to: {:closest, "tr"}`, etc.
   * Throw a more informative error when `JS.dispatch/2` is used with an input event on an invalid target
   * Validate slot options (prevents typos like `slot :myslot, requird: true`)
   * Emit `:phoenix, :live_component, :update` telemetry event when a LiveComponent is updated via `send_update/2`
