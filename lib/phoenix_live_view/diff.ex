@@ -871,7 +871,11 @@ defmodule Phoenix.LiveView.Diff do
     case :maps.next(iterator) do
       {_, cid, iterator} ->
         case old_cids do
-          %{^cid => {_, _, _, _, {^print, _} = tree}} ->
+          # if a component is marked for deletion, we cannot share its statics since it may be removed
+          %{^cid => {_, _, _, %{@marked_for_deletion => true}, {^print, _} = _tree}} ->
+            find_same_component_print(print, iterator, old_cids, new_cids, attempts - 1)
+
+          %{^cid => {_, _, _, _private, {^print, _} = tree}} ->
             {-cid, tree}
 
           %{} ->
