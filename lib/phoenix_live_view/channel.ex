@@ -399,7 +399,7 @@ defmodule Phoenix.LiveView.Channel do
     end)
   end
 
-  def handle_call({@prefix, :child_mount, _child_pid, assign_new}, _from, state) do
+  def handle_call({@prefix, :get_assigns, _child_pid, assign_new}, _from, state) do
     assigns = Map.take(state.socket.assigns, assign_new)
     {:reply, {:ok, assigns}, state}
   end
@@ -1123,6 +1123,10 @@ defmodule Phoenix.LiveView.Channel do
       transport_pid: transport_pid
     } = phx_socket
 
+    # TODO: change this to directly pattern match on handover_pid above
+    #       when we require Phoenix 1.8
+    handover_pid = Map.get(phx_socket, :handover_pid)
+
     Process.put(:"$initial_call", {view, :mount, 3})
 
     case params do
@@ -1164,7 +1168,15 @@ defmodule Phoenix.LiveView.Channel do
     merged_session = Map.merge(socket_session, verified_user_session)
     lifecycle = load_lifecycle(config, route)
 
-    case mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
+    case mount_private(
+           parent,
+           root_view,
+           assign_new,
+           connect_params,
+           connect_info,
+           lifecycle,
+           handover_pid
+         ) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
@@ -1254,7 +1266,15 @@ defmodule Phoenix.LiveView.Channel do
     socket
   end
 
-  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle) do
+  defp mount_private(
+         nil,
+         root_view,
+         assign_new,
+         connect_params,
+         connect_info,
+         lifecycle,
+         handover_pid
+       ) do
     {:ok,
      %{
        connect_params: connect_params,
@@ -1262,12 +1282,21 @@ defmodule Phoenix.LiveView.Channel do
        assign_new: {%{}, assign_new},
        lifecycle: lifecycle,
        root_view: root_view,
-       live_temp: %{}
+       live_temp: %{},
+       handover_pid: handover_pid
      }}
   end
 
-  defp mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
-    case sync_with_parent(parent, assign_new) do
+  defp mount_private(
+         parent,
+         root_view,
+         assign_new,
+         connect_params,
+         connect_info,
+         lifecycle,
+         _handover_pid
+       ) do
+    case get_assigns(parent, assign_new) do
       {:ok, parent_assigns} ->
         # Child live views always ignore the layout on `:use`.
         {:ok,
@@ -1278,7 +1307,8 @@ defmodule Phoenix.LiveView.Channel do
            live_layout: false,
            lifecycle: lifecycle,
            root_view: root_view,
-           live_temp: %{}
+           live_temp: %{},
+           handover_pid: nil
          }}
 
       {:error, :noproc} ->
@@ -1286,9 +1316,9 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp sync_with_parent(parent, assign_new) do
+  def get_assigns(pid, keys) do
     try do
-      GenServer.call(parent, {@prefix, :child_mount, self(), assign_new})
+      GenServer.call(pid, {@prefix, :get_assigns, self(), keys})
     catch
       :exit, {:noproc, _} -> {:error, :noproc}
     end

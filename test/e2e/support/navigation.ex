@@ -56,6 +56,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
   def mount(_params, _session, socket) do
     socket
     |> assign(:param_current, nil)
+    |> assign_new(:foo, fn -> "bar" end)
     |> then(&{:ok, &1})
   end
 
@@ -73,6 +74,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
   def render(assigns) do
     ~H"""
     <h1>This is page A</h1>
+    <p>Foo: <%= @foo %></p>
 
     <p>Current param: <%= @param_current %></p>
 
@@ -100,6 +102,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket
+    |> assign_new(:foo, fn -> "baz" end)
     |> then(&{:ok, &1})
   end
 
@@ -128,6 +131,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
   def render(assigns) do
     ~H"""
     <h1>This is page B</h1>
+    <p>Foo: <%= @foo %></p>
 
     <a
       href="#items-item-42"

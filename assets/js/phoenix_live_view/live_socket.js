@@ -390,7 +390,7 @@ export default class LiveSocket {
     let removeEls = DOM.all(this.outgoingMainEl, `[${this.binding("remove")}]`)
     let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
-    this.main.destroy()
+    this.main.destroy(false)
 
     this.main = this.newRootView(newMainEl, flash, liveReferer)
     this.main.setRedirect(href)
@@ -407,7 +407,7 @@ export default class LiveSocket {
           onDone()
         })
       }
-    })
+    }, true)
   }
 
   transitionRemoves(elements, skipSticky, callback){

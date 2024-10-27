@@ -56,9 +56,7 @@ test("can navigate between LiveViews in the same live session over websocket", a
   await expect(networkEvents).toEqual([]);
   // we don't assert the order of the events here, because they are not deterministic
   await expect(webSocketEvents).toEqual(expect.arrayContaining([
-    { type: "sent", payload: expect.stringContaining("phx_leave") },
     { type: "sent", payload: expect.stringContaining("phx_join") },
-    { type: "received", payload: expect.stringContaining("phx_close") },
     { type: "received", payload: expect.stringContaining("phx_reply") },
     { type: "received", payload: expect.stringContaining("phx_reply") },
   ]));
@@ -128,7 +126,6 @@ test("falls back to http navigation when navigating between live sessions", asyn
 
   await expect(networkEvents).toEqual(expect.arrayContaining([{ method: "GET", url: "http://localhost:4004/stream" }]));
   await expect(webSocketEvents).toEqual(expect.arrayContaining([
-    { type: "sent", payload: expect.stringContaining("phx_leave") },
     { type: "sent", payload: expect.stringContaining("phx_join") },
     { type: "received", payload: expect.stringMatching(/error.*unauthorized/) },
   ].concat(browserName === "webkit" ? [] : [{ type: "close" }])));
@@ -236,7 +233,24 @@ test("navigating all the way back works without remounting (only patching)", asy
   await syncLV(page);
   await expect(networkEvents).toEqual([]);
   // we only expect patch navigation
-  await expect(webSocketEvents.filter(e => e.payload.indexOf("phx_leave") !== -1)).toHaveLength(0);
+  await expect(webSocketEvents.filter(e => e.payload.indexOf("phx_join") !== -1)).toHaveLength(1);
   // we patched 2 times
   await expect(webSocketEvents.filter(e => e.payload.indexOf("live_patch") !== -1)).toHaveLength(2);
+});
+
+test("sharing assigns between live navigation", async ({ page }) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+
+  await expect(page.getByText("Foo:")).toContainText("bar");
+  await page.getByRole("link", { name: "LiveView B" }).click();
+  await syncLV(page);
+  await expect(page.getByText("Foo:")).toContainText("bar");
+
+  await page.reload();
+  await syncLV(page);
+  await expect(page.getByText("Foo:")).toContainText("baz");
+  await page.getByRole("link", { name: "LiveView A" }).click();
+  await syncLV(page);
+  await expect(page.getByText("Foo:")).toContainText("baz");
 });

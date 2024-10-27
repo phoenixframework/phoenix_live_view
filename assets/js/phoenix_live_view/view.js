@@ -205,7 +205,7 @@ export default class View {
     return val === "" ? null : val
   }
 
-  destroy(callback = function (){ }){
+  destroy(leave = true, callback = function (){ }){
     this.destroyAllChildren()
     this.destroyed = true
     delete this.root.children[this.id]
@@ -221,10 +221,14 @@ export default class View {
     DOM.markPhxChildDestroyed(this.el)
 
     this.log("destroyed", () => ["the child has been removed from the parent"])
-    this.channel.leave()
-      .receive("ok", onFinished)
-      .receive("error", onFinished)
-      .receive("timeout", onFinished)
+    if(leave){
+      this.channel.leave()
+        .receive("ok", onFinished)
+        .receive("error", onFinished)
+        .receive("timeout", onFinished)
+    } else {
+      onFinished()
+    }
   }
 
   setContainerClasses(...classes){
@@ -795,7 +799,7 @@ export default class View {
     return this.joinPush
   }
 
-  join(callback){
+  join(callback, handover = false){
     this.showLoader(this.liveSocket.loaderTimeout)
     this.bindChannel()
     if(this.isMain()){
@@ -806,7 +810,7 @@ export default class View {
       callback ? callback(this.joinCount, onDone) : onDone()
     }
 
-    this.wrapPush(() => this.channel.join(), {
+    this.wrapPush(() => this.channel.join(this.liveSocket.socket.timeout, handover), {
       ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
       error: (error) => this.onJoinError(error),
       timeout: () => this.onJoinError({reason: "timeout"})

@@ -96,7 +96,7 @@ defmodule Phoenix.LiveView.Socket do
         }
 
   channel "lvu:*", Phoenix.LiveView.UploadChannel
-  channel "lv:*", Phoenix.LiveView.Channel
+  channel "lv:*", Phoenix.LiveView.Channel, handover_on_rejoin: true
 
   @impl Phoenix.Socket
   def connect(_params, %Phoenix.Socket{} = socket, connect_info) do
@@ -111,7 +111,7 @@ defmodule Phoenix.LiveView.Socket do
       use Phoenix.Socket
 
       channel "lvu:*", Phoenix.LiveView.UploadChannel
-      channel "lv:*", Phoenix.LiveView.Channel
+      channel "lv:*", Phoenix.LiveView.Channel, handover_on_rejoin: true
 
       def connect(params, socket, info), do: {:ok, socket}
       defdelegate id(socket), to: unquote(__MODULE__)
