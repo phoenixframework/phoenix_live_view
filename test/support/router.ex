@@ -31,7 +31,6 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/clock", ClockLive
     live "/redir", RedirLive
     live "/elements", ElementsLive
-    live "/inner_block", InnerLive
 
     live "/render-with", RenderWithLive
     live "/same-child", SameChildLive
@@ -67,7 +66,7 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/router/foobarbaz/nested/index", FooBarLive.Nested.Index, :index
     live "/router/foobarbaz/nested/show", FooBarLive.Nested.Index, :show
     live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
-    live "/router/foobarbaz/with_live", Phoenix.LiveViewTest.Support.Live.Nested.Module, :action
+    live "/router/foobarbaz/with_live", Live.Nested.Module, :action
     live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
 
     # integration layout
@@ -115,7 +114,6 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     # integration lifecycle
     live "/lifecycle", HooksLive
     live "/lifecycle/bad-mount", HooksLive.BadMount
-    live "/lifecycle/own-mount", HooksLive.OwnMount
     live "/lifecycle/halt-mount", HooksLive.HaltMount
     live "/lifecycle/redirect-cont-mount", HooksLive.RedirectMount, :cont
     live "/lifecycle/redirect-halt-mount", HooksLive.RedirectMount, :halt

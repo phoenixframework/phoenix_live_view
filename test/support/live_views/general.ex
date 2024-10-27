@@ -874,3 +874,29 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.LC do
     {:noreply, socket |> put_flash(:info, flash) |> push_navigate(to: "/start_async?test=ok")}
   end
 end
+
+# empty, but needed to silence warnings about unavailable modules
+defmodule Phoenix.LiveViewTest.Support.FooBarLive do
+  use Phoenix.LiveView
+  def render(assigns), do: ~H""
+end
+
+defmodule Phoenix.LiveViewTest.Support.FooBarLive.Index do
+  use Phoenix.LiveView
+  def render(assigns), do: ~H""
+end
+
+defmodule Phoenix.LiveViewTest.Support.FooBarLive.Nested.Index do
+  use Phoenix.LiveView
+  def render(assigns), do: ~H""
+end
+
+defmodule Phoenix.LiveViewTest.Support.Live.Nested.Module do
+  use Phoenix.LiveView
+  def render(assigns), do: ~H""
+end
+
+defmodule Phoenix.LiveViewTest.Support.NoSuffix do
+  use Phoenix.LiveView
+  def render(assigns), do: ~H""
+end
