@@ -765,6 +765,8 @@ export default class View {
     this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
+    this.onChannel("live_handover", (redir) => this.startHandover(redir))
+    this.onChannel("phx_handover", (payload) => this.completeHandover(payload))
     this.channel.onError(reason => this.onError(reason))
     this.channel.onClose(reason => this.onClose(reason))
   }
@@ -789,6 +791,44 @@ export default class View {
   }
 
   onRedirect({to, flash, reloadToken}){ this.liveSocket.redirect(to, flash, reloadToken) }
+
+  startHandover(redir){
+    if(!this.isMain()){
+      throw new Error("unexpected handover for non main view")
+    }
+    let {to, kind, _flash} = redir
+    let href = this.expandURL(to)
+    let scroll = window.scrollY
+    this.liveSocket.withPageLoading({to: href, kind}, done => {
+      // let liveReferer = this.currentLocation.href
+      let removeEls = DOM.all(this.el, `[${this.binding("remove")}]`)
+      let newMainEl = DOM.cloneNode(this.el, "")
+      this.outGoingEl = this.el
+      this.el = newMainEl
+      this.showLoader(this.liveSocket.loaderTimeout)
+
+      this.setRedirect(href)
+      this.liveSocket.transitionRemoves(removeEls, true)
+      this.handoverCallback = () => {
+        this.stopCallback = function(){}
+        this.liveSocket.requestDOMUpdate(() => {
+          // remove phx-remove els right before we replace the main element
+          removeEls.forEach(el => el.remove())
+          DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
+          this.outGoingEl.replaceWith(this.el)
+          Browser.pushState(kind, {type: "redirect", id: this.id, scroll: scroll}, href)
+          DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
+          this.liveSocket.registerNewLocation(window.location)
+          done()
+        })
+      }
+    })
+  }
+
+  completeHandover(payload){
+    this.stopCallback = this.handoverCallback
+    this.onJoin(payload)
+  }
 
   isDestroyed(){ return this.destroyed }
 

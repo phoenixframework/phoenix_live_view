@@ -848,9 +848,12 @@ defmodule Phoenix.LiveView.Channel do
         opts = copy_flash(new_state, flash, opts)
 
         new_state
-        |> push_pending_events_on_redirect(new_socket)
-        |> push_live_redirect(opts, ref)
-        |> stop_shutdown_redirect(:live_redirect, opts)
+        |> maybe_handover(opts, ref, fn new_state ->
+          new_state
+          |> push_pending_events_on_redirect(new_socket)
+          |> push_live_redirect(opts, ref)
+          |> stop_shutdown_redirect(:live_redirect, opts)
+        end)
 
       {:live, :patch, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
         {params, action} = patch_params_and_action!(new_socket, opts)
@@ -1079,6 +1082,34 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
+  # handover from previous LV in the same live session
+  defp mount({:handover, new_verified, route, url, params}, from, phx_socket)
+       when is_map_key(phx_socket, :handover_pid) and is_pid(phx_socket.handover_pid) and
+              phx_socket.handover_pid == new_verified.root_pid do
+    %Phoenix.Socket{private: %{connect_info: connect_info}} = phx_socket
+    %Session{view: view} = new_verified
+
+    new_verified = %{new_verified | root_pid: self()}
+
+    case load_live_view(view) do
+      {:ok, config} ->
+        verified_mount(
+          new_verified,
+          config,
+          route,
+          url,
+          params,
+          from,
+          phx_socket,
+          connect_info
+        )
+
+      {:error, _reason} ->
+        GenServer.reply(from, {:error, %{reason: "stale"}})
+        {:stop, :shutdown, :no_state}
+    end
+  end
+
   defp mount(%{}, from, phx_socket) do
     Logger.error("Mounting #{phx_socket.topic} failed because no session was provided")
     GenServer.reply(from, {:error, %{reason: "stale"}})
@@ -1098,7 +1129,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp verified_mount(
-         %Session{} = verified,
+         %Session{} = verified_session,
          config,
          route,
          url,
@@ -1110,13 +1141,11 @@ defmodule Phoenix.LiveView.Channel do
     %Session{
       id: id,
       view: view,
-      root_view: root_view,
       parent_pid: parent,
       root_pid: root_pid,
       session: verified_user_session,
-      assign_new: assign_new,
       router: router
-    } = verified
+    } = verified_session
 
     %Phoenix.Socket{
       endpoint: endpoint,
@@ -1138,7 +1167,7 @@ defmodule Phoenix.LiveView.Channel do
     connect_params = params["params"]
 
     # Optional verified parts
-    flash = verify_flash(endpoint, verified, params["flash"], connect_params)
+    flash = verify_flash(endpoint, verified_session, params["flash"], connect_params)
 
     # connect_info is either a Plug.Conn during tests or a Phoenix.Socket map
     socket_session = Map.get(connect_info, :session, %{})
@@ -1169,9 +1198,7 @@ defmodule Phoenix.LiveView.Channel do
     lifecycle = load_lifecycle(config, route)
 
     case mount_private(
-           parent,
-           root_view,
-           assign_new,
+           verified_session,
            connect_params,
            connect_info,
            lifecycle,
@@ -1186,7 +1213,7 @@ defmodule Phoenix.LiveView.Channel do
           |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
           |> build_state(phx_socket)
           |> maybe_call_mount_handle_params(router, url, params)
-          |> reply_mount(from, verified, route)
+          |> reply_mount(from, verified_session, route)
           |> maybe_subscribe_to_live_reload()
         rescue
           exception ->
@@ -1267,9 +1294,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp mount_private(
-         nil,
-         root_view,
-         assign_new,
+         %Session{parent_pid: nil, root_view: root_view, assign_new: assign_new} =
+           verified_session,
          connect_params,
          connect_info,
          lifecycle,
@@ -1277,6 +1303,7 @@ defmodule Phoenix.LiveView.Channel do
        ) do
     {:ok,
      %{
+       verified_session: verified_session,
        connect_params: connect_params,
        connect_info: connect_info,
        assign_new: {%{}, assign_new},
@@ -1288,19 +1315,19 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp mount_private(
-         parent,
-         root_view,
-         assign_new,
+         %Session{parent_pid: parent_pid, root_view: root_view, assign_new: assign_new} =
+           verified_session,
          connect_params,
          connect_info,
          lifecycle,
          _handover_pid
        ) do
-    case get_assigns(parent, assign_new) do
+    case get_assigns(parent_pid, assign_new) do
       {:ok, parent_assigns} ->
         # Child live views always ignore the layout on `:use`.
         {:ok,
          %{
+           verified_session: verified_session,
            connect_params: connect_params,
            connect_info: connect_info,
            assign_new: {parent_assigns, assign_new},
@@ -1366,8 +1393,10 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply, post_verified_mount(new_state)}
 
       {:live_redirect, opts, new_state} ->
-        GenServer.reply(from, {:error, %{live_redirect: opts}})
-        {:stop, :shutdown, new_state}
+        maybe_handover(new_state, opts, nil, fn new_state ->
+          GenServer.reply(from, {:error, %{live_redirect: opts}})
+          {:stop, :shutdown, new_state}
+        end)
 
       {:redirect, opts, new_state} ->
         GenServer.reply(from, {:error, %{redirect: opts}})
@@ -1607,6 +1636,42 @@ defmodule Phoenix.LiveView.Channel do
 
       %{} ->
         %{}
+    end
+  end
+
+  defp handover? do
+    phoenix_vsn = to_string(Application.spec(:phoenix)[:vsn])
+    Version.match?(phoenix_vsn, ">= 1.8.0-dev")
+  end
+
+  defp maybe_handover(state, redirect_opts, ref, fallback) do
+    %{socket: %{parent_pid: parent, private: %{verified_session: session}} = socket} = state
+    %{to: to} = redirect_opts
+    # get the full uri to verify the new session
+    destructure [path, query], :binary.split(to, "?")
+    to = %{socket.host_uri | path: path, query: query}
+    params = (query && Plug.Conn.Query.decode(query)) || %{}
+
+    if diff = Diff.get_push_events_diff(socket), do: push_diff(state, diff, ref)
+
+    # we can only handover on Phoenix >= 1.8.0 and when we are mounted at the router
+    with true <- handover?(),
+         nil <- parent,
+         {:ok, new_verified, route, url} <-
+           authorize_session(
+             session,
+             socket.endpoint,
+             %{"redirect" => to}
+           ) do
+      %{topic: topic, join_ref: join_ref} = state
+      state = push(state, "live_handover", redirect_opts)
+
+      msg_payload = {:handover, new_verified, route, url, params}
+      send(socket.transport_pid, {:handover, msg_payload, self(), topic, join_ref})
+
+      {:noreply, state}
+    else
+      _ -> fallback.(state)
     end
   end
 end

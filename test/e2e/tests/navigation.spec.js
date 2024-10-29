@@ -245,6 +245,7 @@ test("sharing assigns between live navigation", async ({ page }) => {
   await expect(page.getByText("Foo:")).toContainText("bar");
   await page.getByRole("link", { name: "LiveView B" }).click();
   await syncLV(page);
+  await expect(page).toHaveURL("/navigation/b");
   await expect(page.getByText("Foo:")).toContainText("bar");
 
   await page.reload();
@@ -252,5 +253,26 @@ test("sharing assigns between live navigation", async ({ page }) => {
   await expect(page.getByText("Foo:")).toContainText("baz");
   await page.getByRole("link", { name: "LiveView A" }).click();
   await syncLV(page);
+  await expect(page).toHaveURL("/navigation/a");
+  await expect(page.getByText("Foo:")).toContainText("baz");
+});
+
+test("sharing assigns between live navigation (push_navigate)", async ({ page }) => {
+  await page.goto("/navigation/a");
+  await syncLV(page);
+
+  await expect(page.getByText("Foo:")).toContainText("bar");
+  await page.getByRole("link", { name: "push_navigate" }).click();
+  await syncLV(page);
+  await expect(page).toHaveURL("/navigation/b");
+  await expect(page.getByText("Foo:")).toContainText("bar");
+
+  await page.reload();
+  await syncLV(page);
+  await expect(page.getByText("Foo:")).toContainText("baz");
+  await page.getByRole("link", { name: "push_navigate" }).click();
+  await syncLV(page);
+  await expect(page).toHaveURL("/navigation/a");
+
   await expect(page.getByText("Foo:")).toContainText("baz");
 });
