@@ -446,7 +446,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          stack,
          source
        ) do
-    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), %{}}]} | buffer], stack, source)
+    meta = %{
+      newlines_before_text: count_newlines_until_text(text, 0),
+      newlines_after_text: text |> String.reverse() |> count_newlines_until_text(0)
+    }
+
+    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), meta}]} | buffer], stack, source)
   end
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack, source) do

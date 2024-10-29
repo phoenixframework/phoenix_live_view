@@ -25,17 +25,37 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
         concat(doc, next_doc)
       end)
 
-    force_unfit? =
-      Enum.any?(block, fn
-        {:text, text, %{newlines: newlines}} -> newlines > 0 or String.contains?(text, "\n")
-        _ -> false
+    {force_unfit?, meta} =
+      Enum.find_value(block, fn
+        {:text, text, meta} ->
+          {String.contains?(text, "\n"), meta}
+
+        _ ->
+          {false, %{}}
       end)
 
-    if force_unfit? do
-      concat |> force_unfit() |> group()
-    else
-      concat |> group()
-    end
+    doc =
+      if force_unfit? do
+        concat |> force_unfit() |> group()
+      else
+        concat |> group()
+      end
+
+    newline_or_empty_before_text =
+      if meta[:newlines_before_text] && meta[:newlines_before_text] > 1 do
+        line()
+      else
+        empty()
+      end
+
+    newline_or_empty_after_text =
+      if meta[:newlines_after_text] && meta[:newlines_after_text] > 1 do
+        line()
+      else
+        empty()
+      end
+
+    concat([newline_or_empty_before_text, doc, newline_or_empty_after_text])
   end
 
   defp block_to_algebra([head | tail], context) do

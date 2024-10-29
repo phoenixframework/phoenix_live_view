@@ -95,6 +95,7 @@ defmodule Phoenix.LiveView.Integrations.HTMLFormatterTest do
         </td>
       <% end %>
     </section>
+
     <!-- comment -->
     <div>
       <p>Hello</p>
