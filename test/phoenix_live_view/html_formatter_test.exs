@@ -2100,6 +2100,42 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
+  test "keep intentional lines breaks from HTML comments" do
+    assert_formatter_doesnt_change("""
+    <h1>Title</h1>
+
+    <!-- comment -->
+    <p>Text</p>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <h1>Title</h1>
+
+    <!-- comment -->
+
+    <p>Text</p>
+    """)
+
+    assert_formatter_output(
+      """
+      <h1>Title</h1>
+
+
+      <!-- comment -->
+
+
+      <p>Text</p>
+      """,
+      """
+      <h1>Title</h1>
+
+      <!-- comment -->
+
+      <p>Text</p>
+      """
+    )
+  end
+
   # TODO: Remove this `if` when we require Elixir 1.14+
   if function_exported?(EEx, :tokenize, 2) do
     test "handle EEx comments" do
