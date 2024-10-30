@@ -148,6 +148,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3194", Issue3194Live
       live "/3194/other", Issue3194Live.OtherLive
       live "/3378", Issue3378.HomeLive
+      live "/3448", Issue3448Live
     end
   end
 
