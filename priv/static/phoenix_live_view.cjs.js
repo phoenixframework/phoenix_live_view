@@ -121,11 +121,14 @@ var STREAM = "stream";
 
 // js/phoenix_live_view/entry_uploader.js
 var EntryUploader = class {
-  constructor(entry, chunkSize, liveSocket) {
+  constructor(entry, config, liveSocket) {
+    console.log(config);
+    let { chunk_size, chunk_timeout } = config;
     this.liveSocket = liveSocket;
     this.entry = entry;
     this.offset = 0;
-    this.chunkSize = chunkSize;
+    this.chunkSize = chunk_size;
+    this.chunkTimeout = chunk_timeout;
     this.chunkTimer = null;
     this.errored = false;
     this.uploadChannel = liveSocket.channel(`lvu:${entry.ref}`, { token: entry.metadata() });
@@ -163,7 +166,7 @@ var EntryUploader = class {
     if (!this.uploadChannel.isJoined()) {
       return;
     }
-    this.uploadChannel.push("chunk", chunk).receive("ok", () => {
+    this.uploadChannel.push("chunk", chunk, this.chunkTimeout).receive("ok", () => {
       this.entry.progress(this.offset / this.entry.file.size * 100);
       if (!this.isDone()) {
         this.chunkTimer = setTimeout(() => this.readNextChunk(), this.liveSocket.getLatencySim() || 0);
@@ -222,7 +225,7 @@ var isEmpty = (obj) => {
 var maybe = (el, callback) => el && callback(el);
 var channelUploader = function(entries, onError, resp, liveSocket) {
   entries.forEach((entry) => {
-    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket);
+    let entryUploader = new EntryUploader(entry, resp.config, liveSocket);
     entryUploader.upload();
   });
 };
