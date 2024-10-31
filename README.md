@@ -80,7 +80,7 @@ community at different stages of development:
 
 * [SaladUI](https://github.com/bluzky/salad_ui): Phoenix Liveview component library inspired by shadcn UI
 
-* [Mishka Chelekom](https://github.com/mishka-group/mishka_chelekom): Phoenix + LiveView UI kit and HEEX components
+* [Mishka Chelekom](https://github.com/mishka-group/mishka_chelekom): Phoenix + LiveView UI kit and HEEx components
 
 ## What makes LiveView unique?
 
