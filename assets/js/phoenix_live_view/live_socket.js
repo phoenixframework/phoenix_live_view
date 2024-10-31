@@ -848,7 +848,11 @@ export default class LiveSocket {
     for(let type of ["change", "input"]){
       this.on(type, e => {
         if(e instanceof CustomEvent && e.target.form === undefined){
-          throw new Error(`dispatching a custom ${type} event is only supported on input elements inside a form`)
+          // throw on invalid JS.dispatch target and noop if CustomEvent triggered outside JS.dispatch
+          if(e.detail && e.detail.dispatcher){
+            throw new Error(`dispatching a custom ${type} event is only supported on input elements inside a form`)
+          }
+          return
         }
         let phxChange = this.binding("change")
         let input = e.target
