@@ -78,7 +78,9 @@ community at different stages of development:
 
 * [PrimerLive](https://github.com/ArthurClemens/primer_live): An implementation of GitHub's Primer Design System using Phoenix LiveView
 
-* [SaladUI](https://github.com/bluzky/salad_ui): Phoenix Liveview component library inspired by shadcn UI 
+* [SaladUI](https://github.com/bluzky/salad_ui): Phoenix Liveview component library inspired by shadcn UI
+
+* [Mishka Chelekom](https://github.com/mishka-group/mishka_chelekom): Phoenix + LiveView UI kit and HEEx components
 
 ## What makes LiveView unique?
 
