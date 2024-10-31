@@ -2588,8 +2588,9 @@ defmodule Phoenix.Component do
 
   attr.(:id, :string,
     doc: """
-    The id to be used in the form, defaults to the concatenation of the given
-    field to the parent form id.
+    The id base to be used in the form inputs. Defaults to the parent form id. The computed
+    id will be the concatenation of the base id with the field name, along with a book keeping
+    index for each input in the list.
     """
   )
 
@@ -2658,7 +2659,13 @@ defmodule Phoenix.Component do
               %{} -> next_id(map_size(seen_ids), seen_ids)
             end
 
-          form_id = "#{parent_form.id}_#{field_name}_#{id}"
+          form_id =
+            if inputs_for_id = options[:id] do
+              "#{inputs_for_id}_#{field_name}_#{id}"
+            else
+              "#{parent_form.id}_#{field_name}_#{id}"
+            end
+
           new_params = Map.put(params, @persistent_id, id)
           new_hidden = [{@persistent_id, id} | form.hidden]
 

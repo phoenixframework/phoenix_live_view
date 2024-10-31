@@ -517,6 +517,22 @@ defmodule Phoenix.LiveView.ComponentsTest do
                ~X"""
                <form>
                  <input type="hidden" name="name[_persistent_id]" value="0"> </input>
+                 <input id="test_inner_0_foo" name="name[foo]" type="text"></input>
+               </form>
+               """
+
+      template = ~H"""
+      <.form :let={f} as={:myform}>
+        <.inputs_for :let={finner} field={f[:inner]} } as={:name}>
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
+        </.inputs_for>
+      </.form>
+      """
+
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input type="hidden" name="name[_persistent_id]" value="0"> </input>
                  <input id="myform_inner_0_foo" name="name[foo]" type="text"></input>
                </form>
                """
