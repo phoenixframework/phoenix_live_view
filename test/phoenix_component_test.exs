@@ -141,6 +141,33 @@ defmodule Phoenix.ComponentUnitTest do
              }
     end
 
+    test "does handover of previous assigns when handover_pid is present" do
+      pid =
+        spawn(fn ->
+          receive do
+            {:"$gen_call", {pid, _} = from, {:phoenix, :get_assigns, pid, [:existing]}} ->
+              GenServer.reply(from, {:ok, %{existing: "existing-handover"}})
+          end
+        end)
+
+      socket =
+        put_in(@socket.private[:assign_new], {%{}, []})
+        |> put_in([Access.key(:private), :handover_pid], pid)
+        |> assign(existing2: "existing2")
+        |> assign_new(:existing, fn -> "new-existing" end)
+        |> assign_new(:existing2, fn -> "new-existing2" end)
+        |> assign_new(:notexisting, fn -> "new-notexisting" end)
+
+      assert socket.assigns == %{
+               existing: "existing-handover",
+               existing2: "existing2",
+               notexisting: "new-notexisting",
+               live_action: nil,
+               flash: %{},
+               __changed__: %{existing: true, notexisting: true, existing2: true}
+             }
+    end
+
     test "has access to assigns" do
       socket =
         put_in(@socket.private[:assign_new], {%{existing: "existing-parent"}, []})

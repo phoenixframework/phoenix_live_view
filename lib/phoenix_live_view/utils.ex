@@ -48,7 +48,7 @@ defmodule Phoenix.LiveView.Utils do
       %{assigns: %{^key => _}} ->
         socket
 
-      %{private: %{assign_new: {assigns, keys}}} ->
+      %{private: %{assign_new: {assigns, keys}} = private} ->
         # It is important to store the keys even if they are not in assigns
         # because maybe the controller doesn't have it but the view does.
         socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
@@ -58,7 +58,7 @@ defmodule Phoenix.LiveView.Utils do
           key,
           case assigns do
             %{^key => value} -> value
-            %{} -> fun.(socket.assigns)
+            %{} -> maybe_handover_assign(socket, key, private[:handover_pid], fun)
           end
         )
 
@@ -72,14 +72,33 @@ defmodule Phoenix.LiveView.Utils do
       %{assigns: %{^key => _}} ->
         socket
 
-      %{private: %{assign_new: {assigns, keys}}} ->
+      %{private: %{assign_new: {assigns, keys}} = private} ->
         # It is important to store the keys even if they are not in assigns
         # because maybe the controller doesn't have it but the view does.
         socket = put_in(socket.private.assign_new, {assigns, [key | keys]})
-        Phoenix.LiveView.Utils.force_assign(socket, key, Map.get_lazy(assigns, key, fun))
+
+        Phoenix.LiveView.Utils.force_assign(
+          socket,
+          key,
+          Map.get_lazy(assigns, key, fn ->
+            maybe_handover_assign(socket, key, private[:handover_pid], fun)
+          end)
+        )
 
       %{} ->
         Phoenix.LiveView.Utils.force_assign(socket, key, fun.())
+    end
+  end
+
+  defp maybe_handover_assign(_socket, _key, nil, fun) when is_function(fun, 0), do: fun.()
+
+  defp maybe_handover_assign(socket, _key, nil, fun) when is_function(fun, 1),
+    do: fun.(socket.assigns)
+
+  defp maybe_handover_assign(socket, key, pid, fun) when is_pid(pid) do
+    case Phoenix.LiveView.Channel.get_assigns(pid, [key]) do
+      {:ok, %{^key => value}} -> value
+      _ -> maybe_handover_assign(socket, key, nil, fun)
     end
   end
 
@@ -194,7 +213,7 @@ defmodule Phoenix.LiveView.Utils do
     socket
     |> clear_changed()
     |> clear_temp()
-    |> drop_private([:connect_info, :connect_params, :assign_new])
+    |> drop_private([:connect_info, :connect_params, :assign_new, :handover_pid])
   end
 
   @doc """

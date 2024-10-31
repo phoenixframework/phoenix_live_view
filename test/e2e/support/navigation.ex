@@ -56,6 +56,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
   def mount(_params, _session, socket) do
     socket
     |> assign(:param_current, nil)
+    |> assign_new(:foo, fn -> "bar" end)
     |> then(&{:ok, &1})
   end
 
@@ -70,15 +71,23 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
   end
 
   @impl Phoenix.LiveView
+  def handle_event("push_navigate", _params, socket) do
+    {:noreply, push_navigate(socket, to: "/navigation/b")}
+  end
+
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <h1>This is page A</h1>
+    <p>Foo: <%= @foo %></p>
 
     <p>Current param: <%= @param_current %></p>
 
     <.styled_link patch={"/navigation/a?param=#{@param_next}"}>Patch this LiveView</.styled_link>
     <.styled_link patch={"/navigation/a?param=#{@param_next}"} replace>Patch (Replace)</.styled_link>
     <.styled_link navigate="/navigation/b#items-item-42">Navigate to 42</.styled_link>
+
+    <.styled_link phx-click="push_navigate">push_navigate</.styled_link>
     """
   end
 
@@ -100,6 +109,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket
+    |> assign_new(:foo, fn -> "baz" end)
     |> then(&{:ok, &1})
   end
 
@@ -125,9 +135,23 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_event("push_navigate", _params, socket) do
+    {:noreply, push_navigate(socket, to: "/navigation/a")}
+  end
+
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <h1>This is page B</h1>
+    <p>Foo: <%= @foo %></p>
+
+    <a
+      href="#"
+      phx-click="push_navigate"
+      style="margin-bottom: 8px; padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;"
+    >
+      push_navigate
+    </a>
 
     <a
       href="#items-item-42"
