@@ -1629,8 +1629,6 @@ defmodule Phoenix.LiveViewTest do
              payload,
              timeout \\ Application.fetch_env!(:ex_unit, :refute_receive_timeout)
            ) do
-    pattern = Macro.to_string(payload)
-
     quote do
       %{proxy: {ref, _topic, _}} = unquote(view)
 
@@ -1641,10 +1639,9 @@ defmodule Phoenix.LiveViewTest do
 
           Payload:
           #{inspect(data)}
-
-          (which matched #{unquote(pattern)})
           """)
 
+      after
         unquote(timeout) ->
           false
       end
