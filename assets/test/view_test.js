@@ -12,7 +12,7 @@ import {
   PHX_HAS_FOCUSED
 } from "phoenix_live_view/constants"
 
-import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility} from "./test_helpers"
+import {tag, simulateJoinedView, stubChannel, rootContainer, liveViewDOM, simulateVisibility, appendTitle} from "./test_helpers"
 
 let simulateUsedInput = (input) => {
   DOM.putPrivate(input, PHX_HAS_FOCUSED, true)
@@ -44,9 +44,10 @@ describe("View + DOM", function(){
     expect(view.rendered.get()).toEqual(updateDiff)
   })
 
-  test("applyDiff can set title to falsy values", async () => {
-    document.title = "Foo"
+  test("applyDiff with empty title uses default if present", async () => {
+    appendTitle({}, "Foo")
 
+    let titleEl = document.querySelector("title")
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
     let updateDiff = {
@@ -56,13 +57,17 @@ describe("View + DOM", function(){
     }
 
     let view = simulateJoinedView(el, liveSocket)
-    view.applyDiff("update", updateDiff, ({diff, events}) => view.update(diff, events))
+    view.applyDiff("mount", updateDiff, ({diff, events}) => view.update(diff, events))
 
     expect(view.el.firstChild.tagName).toBe("H2")
     expect(view.rendered.get()).toEqual(updateDiff)
 
     await new Promise(requestAnimationFrame)
-    expect(document.title).toBe("")
+    expect(document.title).toBe("Foo")
+    titleEl.setAttribute("data-default", "DEFAULT")
+    view.applyDiff("mount", updateDiff, ({diff, events}) => view.update(diff, events))
+    await new Promise(requestAnimationFrame)
+    expect(document.title).toBe("DEFAULT")
   })
 
   test("pushWithReply", function(){

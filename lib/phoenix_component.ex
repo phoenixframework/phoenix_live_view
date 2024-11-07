@@ -2084,14 +2084,14 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.live_title prefix="MyApp – ">
-    <%= assigns[:page_title] || "Welcome" %>
+  <.live_title default="Welcome" prefix="MyApp – ">
+    <%= assigns[:page_title] %>
   </.live_title>
   ```
 
   ```heex
-  <.live_title suffix="- MyApp">
-    <%= assigns[:page_title] || "Welcome" %>
+  <.live_title default="Welcome" suffix="- MyApp">
+    <%= assigns[:page_title] %>
   </.live_title>
   ```
   """
@@ -2101,13 +2101,31 @@ defmodule Phoenix.Component do
     doc: "A prefix added before the content of `inner_block`."
   )
 
+  attr.(:default, :string,
+    default: nil,
+    doc: "The default title to use if the inner block is empty on regular or connected mounts."
+  )
+
   attr.(:suffix, :string, default: nil, doc: "A suffix added after the content of `inner_block`.")
   slot.(:inner_block, required: true, doc: "Content rendered inside the `title` tag.")
 
   def live_title(assigns) do
     ~H"""
-    <title data-prefix={@prefix} data-suffix={@suffix} phx-no-format><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
+    <title data-prefix={@prefix} data-default={@default} data-suffix={@suffix} phx-no-format><%= @prefix %><%= render_present(render_slot(@inner_block), @default) %><%= @suffix %></title>
     """
+  end
+
+  defp render_present(rendered_block, default) do
+    block_str =
+      rendered_block
+      |> Phoenix.HTML.html_escape()
+      |> Phoenix.HTML.safe_to_string()
+
+    if String.trim(block_str) == "" do
+      default
+    else
+      rendered_block
+    end
   end
 
   @doc ~S'''

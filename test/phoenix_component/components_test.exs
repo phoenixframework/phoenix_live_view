@@ -185,6 +185,25 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(~H|<.live_title>My Title</.live_title>|) ==
                ~X|<title>My Title</title>|
     end
+
+    test "default with blank inner block" do
+      assigns = %{
+        val: """
+
+
+        """
+      }
+
+      assert t2h(~H|<.live_title default="DEFAULT" phx-no-format>   <%= @val %>   </.live_title>|) ==
+               ~X|<title data-default="DEFAULT">DEFAULT</title>|
+    end
+
+    test "default with present inner block" do
+      assigns = %{val: "My Title"}
+
+      assert t2h(~H|<.live_title default="DEFAULT" phx-no-format>   <%= @val %>   </.live_title>|) ==
+               ~X|<title data-default="DEFAULT">   My Title   </title>|
+    end
   end
 
   describe "dynamic_tag/1" do

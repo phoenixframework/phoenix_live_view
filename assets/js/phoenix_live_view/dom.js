@@ -213,8 +213,12 @@ let DOM = {
   putTitle(str){
     let titleEl = document.querySelector("title")
     if(titleEl){
-      let {prefix, suffix} = titleEl.dataset
-      document.title = `${prefix || ""}${str}${suffix || ""}`
+      let {prefix, suffix, default: defaultTitle} = titleEl.dataset
+      let isEmpty = typeof(str) !== "string" || str.trim() === ""
+      if(isEmpty && typeof(defaultTitle) !== "string"){ return }
+
+      let inner = isEmpty ? defaultTitle : str
+      document.title = `${prefix || ""}${inner || ""}${suffix || ""}`
     } else {
       document.title = str
     }
