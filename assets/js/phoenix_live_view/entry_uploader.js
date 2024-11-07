@@ -4,7 +4,6 @@ import {
 
 export default class EntryUploader {
   constructor(entry, config, liveSocket){
-    console.log(config)
     let {chunk_size, chunk_timeout} = config
     this.liveSocket = liveSocket
     this.entry = entry
