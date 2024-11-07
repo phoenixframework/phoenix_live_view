@@ -1616,7 +1616,7 @@ defmodule Phoenix.LiveViewTest do
   @doc """
   Refutes an event will be pushed within timeout
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
-  `assert_receive_timeout` (100 ms).
+  `refute_receive_timeout` (100 ms).
 
   ## Examples
 
