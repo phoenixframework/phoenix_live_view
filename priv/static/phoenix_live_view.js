@@ -151,7 +151,6 @@ var LiveView = (() => {
   // js/phoenix_live_view/entry_uploader.js
   var EntryUploader = class {
     constructor(entry, config, liveSocket) {
-      console.log(config);
       let { chunk_size, chunk_timeout } = config;
       this.liveSocket = liveSocket;
       this.entry = entry;
@@ -858,8 +857,13 @@ var LiveView = (() => {
     putTitle(str) {
       let titleEl = document.querySelector("title");
       if (titleEl) {
-        let { prefix, suffix } = titleEl.dataset;
-        document.title = `${prefix || ""}${str}${suffix || ""}`;
+        let { prefix, suffix, default: defaultTitle } = titleEl.dataset;
+        let isEmpty2 = typeof str !== "string" || str.trim() === "";
+        if (isEmpty2 && typeof defaultTitle !== "string") {
+          return;
+        }
+        let inner = isEmpty2 ? defaultTitle : str;
+        document.title = `${prefix || ""}${inner || ""}${suffix || ""}`;
       } else {
         document.title = str;
       }
@@ -3564,7 +3568,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.log(type, () => ["", clone(rawDiff)]);
       let { diff, reply, events, title } = Rendered.extract(rawDiff);
       callback({ diff, reply, events });
-      if (typeof title === "string") {
+      if (typeof title === "string" || type == "mount") {
         window.requestAnimationFrame(() => dom_default.putTitle(title));
       }
     }
