@@ -120,6 +120,7 @@ generated user module:
 
 ### Enhancements
 * Support `default` attribute for `<.live_title>` component
+* Add `refute_push_event` to `Phoenix.LiveViewTest`
 * Keep intentional newlines when formatting comments (#3486)
 * Support hook `pushEvent` returning a promise
 
