@@ -1613,7 +1613,6 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-
   @doc """
   Refutes an event will be pushed within timeout
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
@@ -1638,9 +1637,9 @@ defmodule Phoenix.LiveViewTest do
           Unexpectedly received event "#{unquote(event)}"
 
           Payload:
-          #{inspect(data)}
-          """)
 
+          \t#{inspect(data)}
+          """)
       after
         unquote(timeout) ->
           false
