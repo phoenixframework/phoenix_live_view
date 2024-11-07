@@ -19,6 +19,10 @@ defmodule Phoenix.LiveViewTest.Support.EventsLive do
     {:reply, reply, socket}
   end
 
+  def handle_event("dont-reply", _, socket) do
+    {:noreply, socket}
+  end
+
   def handle_call({:run, func}, _, socket), do: func.(socket)
 
   def handle_info({:run, func}, socket), do: func.(socket)

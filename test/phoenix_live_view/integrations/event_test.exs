@@ -69,7 +69,16 @@ defmodule Phoenix.LiveView.EventTest do
       )
 
       assert_push_event(view, "my-event", %{two: 2})
+
       assert render(view) =~ "count: 0"
+    end
+
+    test "sends no events if none are pushed", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events")
+
+      GenServer.call(view.pid, {:run, fn socket -> {:reply, :ok, socket} end})
+
+      refute_push_event(view, "my-event", _)
     end
 
     test "sends updates in root and child mounts", %{conn: conn} do

@@ -1614,6 +1614,41 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Refutes an event will be pushed within timeout.
+  
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `refute_receive_timeout` (100 ms).
+
+  ## Examples
+
+      refute_push_event view, "scores", %{points: _, user: "josé"}
+  """
+  defmacro refute_push_event(
+             view,
+             event,
+             payload,
+             timeout \\ Application.fetch_env!(:ex_unit, :refute_receive_timeout)
+           ) do
+    quote do
+      %{proxy: {ref, _topic, _}} = unquote(view)
+
+      receive do
+        {^ref, {:push_event, unquote(event), unquote(payload) = data}} ->
+          flunk("""
+          Unexpectedly received event "#{unquote(event)}"
+
+          Payload:
+
+          #{inspect(data, pretty: true)}
+          """)
+      after
+        unquote(timeout) ->
+          false
+      end
+    end
+  end
+
+  @doc """
   Asserts a hook reply was returned from a `handle_event` callback.
 
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
