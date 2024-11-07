@@ -1638,7 +1638,7 @@ defmodule Phoenix.LiveViewTest do
 
           Payload:
 
-          \t#{inspect(data)}
+          #{inspect(data, pretty: true)}
           """)
       after
         unquote(timeout) ->
