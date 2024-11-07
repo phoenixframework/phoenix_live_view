@@ -302,7 +302,7 @@ export default class View {
     this.log(type, () => ["", clone(rawDiff)])
     let {diff, reply, events, title} = Rendered.extract(rawDiff)
     callback({diff, reply, events})
-    if(typeof title === "string"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
+    if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
   }
 
   onJoin(resp){

@@ -118,6 +118,18 @@ describe("DOM", () => {
       DOM.putTitle("My Title")
       expect(document.title).toBe("PRE My Title POST")
     })
+
+    test("with default", () => {
+      appendTitle({default: "DEFAULT", prefix: "PRE ", suffix: " POST"})
+      DOM.putTitle(null)
+      expect(document.title).toBe("PRE DEFAULT POST")
+
+      DOM.putTitle(undefined)
+      expect(document.title).toBe("PRE DEFAULT POST")
+
+      DOM.putTitle("")
+      expect(document.title).toBe("PRE DEFAULT POST")
+    })
   })
 
   describe("findExistingParentCIDs", () => {
