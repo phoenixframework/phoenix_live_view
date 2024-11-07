@@ -112,6 +112,17 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.0
+
+### Bug fixes
+* Fix live upload issue where large `chunk_size` could cause a chunk timeout on slower connections by properly using the configured `chunk_timeout` on the client
+* Fix focused inputs losing focus stat in some update scenarios
+
+### Enhancements
+* Support `default` attribute for `<.live_title>` component
+* Keep intentional newlines when formatting comments (#3486)
+* Support hook `pushEvent` returning a promise
+
 ## 1.0.0-rc.7 (2024-10-17)
 
 ### Enhancements
