@@ -118,8 +118,8 @@ defmodule Phoenix.LiveView.Renderer do
     end
   end
 
-  defp render_assigns(%{assigns: assigns} = socket) do
-    socket = %Socket{socket | assigns: %Socket.AssignsNotInSocket{__assigns__: assigns}}
+  defp render_assigns(%Socket{assigns: assigns} = socket) do
+    socket = %{socket | assigns: %Socket.AssignsNotInSocket{__assigns__: assigns}}
     Map.put(assigns, :socket, socket)
   end
 

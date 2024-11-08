@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.Comprehension do
 
   @doc false
   def __mark_consumable__(%Phoenix.LiveView.LiveStream{} = stream) do
-    %Phoenix.LiveView.LiveStream{stream | consumable?: true}
+    %{stream | consumable?: true}
   end
 
   def __mark_consumable__(collection), do: collection

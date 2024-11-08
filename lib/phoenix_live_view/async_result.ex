@@ -51,7 +51,7 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   """
   def loading(%AsyncResult{} = result) do
-    %AsyncResult{result | loading: true, failed: nil}
+    %{result | loading: true, failed: nil}
   end
 
   def loading(loading_state) do
@@ -74,7 +74,7 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   """
   def loading(%AsyncResult{} = result, loading_state) do
-    %AsyncResult{result | loading: loading_state, failed: nil}
+    %{result | loading: loading_state, failed: nil}
   end
 
   @doc """
@@ -95,7 +95,7 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   """
   def failed(%AsyncResult{} = result, reason) do
-    %AsyncResult{result | failed: reason, loading: nil}
+    %{result | failed: reason, loading: nil}
   end
 
   @doc """
@@ -138,6 +138,6 @@ defmodule Phoenix.LiveView.AsyncResult do
 
   """
   def ok(%AsyncResult{} = result, value) do
-    %AsyncResult{result | failed: nil, loading: nil, ok?: true, result: value}
+    %{result | failed: nil, loading: nil, ok?: true, result: value}
   end
 end

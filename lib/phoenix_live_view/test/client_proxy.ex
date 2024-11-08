@@ -611,14 +611,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp put_child(state, %ClientProxy{} = parent, id, session) do
     update_in(state.views[parent.topic], fn %ClientProxy{} = parent ->
-      %ClientProxy{parent | children: [{id, session} | parent.children]}
+      %{parent | children: [{id, session} | parent.children]}
     end)
   end
 
   defp drop_child(state, %ClientProxy{} = parent, id, reason) do
     update_in(state.views[parent.topic], fn %ClientProxy{} = parent ->
       new_children = Enum.reject(parent.children, fn {cid, _session} -> id == cid end)
-      %ClientProxy{parent | children: new_children}
+      %{parent | children: new_children}
     end)
     |> drop_view_by_id(id, reason)
   end
@@ -634,7 +634,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp put_view(state, %ClientProxy{pid: pid} = view, rendered) do
     {:ok, %Phoenix.LiveView.Session{view: module}} = verify_session(view)
-    new_view = %ClientProxy{view | module: module, proxy: self(), pid: pid, rendered: rendered}
+    new_view = %{view | module: module, proxy: self(), pid: pid, rendered: rendered}
     Process.monitor(pid)
 
     rendered = maybe_push_events(rendered, state)
@@ -723,9 +723,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       state
     else
       case fetch_view_by_topic(state, topic) do
-        {:ok, view} ->
+        {:ok, %ClientProxy{} = view} ->
           rendered = DOM.merge_diff(view.rendered, diff)
-          new_view = %ClientProxy{view | rendered: rendered}
+          new_view = %{view | rendered: rendered}
           streams = DOM.extract_streams(rendered, rendered.streams)
 
           %{state | views: Map.update!(state.views, topic, fn _ -> new_view end)}

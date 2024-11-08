@@ -143,7 +143,7 @@ defmodule Phoenix.LiveView.Upload do
   Puts the entries into the `%UploadConfig{}`.
   """
   def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries, cid) do
-    case UploadConfig.put_entries(%UploadConfig{conf | cid: cid}, entries) do
+    case UploadConfig.put_entries(%{conf | cid: cid}, entries) do
       {:ok, new_config} ->
         {:ok, update_uploads(new_config, socket)}
 

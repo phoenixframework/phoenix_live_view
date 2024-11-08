@@ -43,11 +43,11 @@ defmodule Phoenix.LiveView.LiveStream do
   end
 
   def reset(%LiveStream{} = stream) do
-    %LiveStream{stream | reset?: true}
+    %{stream | reset?: true}
   end
 
   def prune(%LiveStream{} = stream) do
-    %LiveStream{stream | inserts: [], deletes: [], reset?: false}
+    %{stream | inserts: [], deletes: [], reset?: false}
   end
 
   def delete_item(%LiveStream{} = stream, item) do
@@ -55,13 +55,13 @@ defmodule Phoenix.LiveView.LiveStream do
   end
 
   def delete_item_by_dom_id(%LiveStream{} = stream, dom_id) do
-    %LiveStream{stream | deletes: [dom_id | stream.deletes]}
+    %{stream | deletes: [dom_id | stream.deletes]}
   end
 
   def insert_item(%LiveStream{} = stream, item, at, limit) do
     item_id = stream.dom_id.(item)
 
-    %LiveStream{stream | inserts: stream.inserts ++ [{item_id, at, item, limit}]}
+    %{stream | inserts: stream.inserts ++ [{item_id, at, item, limit}]}
   end
 
   defimpl Enumerable, for: LiveStream do

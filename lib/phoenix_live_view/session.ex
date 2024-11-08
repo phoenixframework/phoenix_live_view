@@ -30,7 +30,7 @@ defmodule Phoenix.LiveView.Session do
   end
 
   defp replace_root(%Session{} = session, new_root_view, root_pid) when is_pid(root_pid) do
-    %Session{
+    %{
       session
       | view: new_root_view,
         root_view: new_root_view,

@@ -184,7 +184,7 @@ defmodule Phoenix.LiveView.Channel do
                 if new_socket.redirected do
                   flash = Utils.changed_flash(new_socket)
                   send(new_socket.root_pid, {@prefix, :redirect, new_socket.redirected, flash})
-                  %Socket{new_socket | redirected: nil}
+                  %{new_socket | redirected: nil}
                 else
                   new_socket
                 end

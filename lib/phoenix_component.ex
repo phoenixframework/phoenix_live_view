@@ -1503,7 +1503,7 @@ defmodule Phoenix.Component do
     {action, options} = Keyword.pop(options, :action)
     options = Keyword.merge(data.options, options)
 
-    %Phoenix.HTML.Form{
+    %{
       data
       | action: action,
         errors: errors,
@@ -2689,7 +2689,7 @@ defmodule Phoenix.Component do
           new_params = Map.put(params, @persistent_id, id)
           new_hidden = [{@persistent_id, id} | form.hidden]
 
-          new_form = %Phoenix.HTML.Form{
+          new_form = %{
             form
             | id: form_id,
               params: new_params,

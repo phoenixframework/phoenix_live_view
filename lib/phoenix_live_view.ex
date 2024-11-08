@@ -660,7 +660,7 @@ defmodule Phoenix.LiveView do
     root_view
   )a
   def put_private(%Socket{} = socket, key, value) when key not in @reserved_privates do
-    %Socket{socket | private: Map.put(socket.private, key, value)}
+    %{socket | private: Map.put(socket.private, key, value)}
   end
 
   def put_private(%Socket{}, bad_key, _value) do
@@ -1085,7 +1085,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp put_redirect(%Socket{redirected: nil} = socket, command) do
-    %Socket{socket | redirected: command}
+    %{socket | redirected: command}
   end
 
   defp put_redirect(%Socket{redirected: to} = _socket, _command) do
