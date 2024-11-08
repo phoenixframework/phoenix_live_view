@@ -296,10 +296,6 @@ defmodule Phoenix.LiveView.Router do
         expected a map with string keys or an MFA tuple, got #{inspect(bad_session)}
         """
 
-      {:root_layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
-        template = Phoenix.LiveView.Utils.normalize_layout(template)
-        Map.put(acc, :root_layout, {mod, String.to_atom(template)})
-
       {:root_layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
         Map.put(acc, :root_layout, {mod, template})
 
@@ -312,10 +308,6 @@ defmodule Phoenix.LiveView.Router do
 
         expected a tuple with the view module and template atom name, got #{inspect(bad_layout)}
         """
-
-      {:layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
-        template = Phoenix.LiveView.Utils.normalize_layout(template)
-        Map.put(acc, :layout, {mod, template})
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
         Map.put(acc, :layout, {mod, template})
