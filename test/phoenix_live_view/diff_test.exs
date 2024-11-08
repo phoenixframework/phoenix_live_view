@@ -593,7 +593,7 @@ defmodule Phoenix.LiveView.DiffTest do
     @raises_inside_rendered_line __ENV__.line + 3
     defp raises_inside_rendered(assigns) do
       ~H"""
-      <%= raise "oops" %>
+      <%= Process.get(:unused, false) || raise "oops" %>
       """
     end
 
