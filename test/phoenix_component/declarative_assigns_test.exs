@@ -1077,12 +1077,12 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       :beam_lib.chunks(binary, [:abstract_code])
 
     assert Enum.find_value(abstract_code, fn
-             {:function, line, :identity, 1, _} -> line
+             {:function, anno, :identity, 1, _} -> :erl_anno.line(anno)
              _ -> nil
            end) == 24
 
     assert Enum.find_value(abstract_code, fn
-             {:function, line, :fun_doc_false, 1, _} -> line
+             {:function, anno, :fun_doc_false, 1, _} -> :erl_anno.line(anno)
              _ -> nil
            end) == 118
   end
