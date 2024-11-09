@@ -223,10 +223,10 @@ For authentication, with built-in LiveView support, run `mix phx.gen.auth Accoun
 ## Compartmentalize state, markup, and events in LiveView
 
 LiveView supports two extension mechanisms: function components, provided by
-`HEEx` templates, and stateful components.
+`HEEx` templates, and stateful components, known as LiveComponents.
 
-Function components are any function that receives an assigns map, similar
-to `render(assigns)` in our LiveView, and returns a `~H` template. For example:
+Similar to `render(assigns)` in our LiveView, a function components is any
+function that receives an assigns map and returns a `~H` template. For example:
 
     def weather_greeting(assigns) do
       ~H"""
@@ -241,19 +241,19 @@ You can learn more about function components in the `Phoenix.Component`
 module. At the end of the day, they are a useful mechanism to reuse markup
 in your LiveViews.
 
-However, sometimes you need to compartmentalize or reuse more than markup.
-Perhaps you want to move part of the state or part of the events in your
+However, sometimes you need to compartmentalize or reuse more than just markup.
+Perhaps you want to move part of the state or some of the events in your
 LiveView to a separate module. For these cases, LiveView provides
 `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
     <.live_component module={UserComponent} id={user.id} user={user} />
 
-Components have their own `mount/3` and `handle_event/3` callbacks, as
-well as their own state with change tracking support. Components are also
-lightweight as they "run" in the same process as the parent LiveView.
-However, this means an error in a component would cause the whole view to
-fail to render. See `Phoenix.LiveComponent` for a complete rundown on components.
+LiveComponents have their own `mount/3` and `handle_event/3` callbacks, as well
+as their own state with change tracking support. They are lightweight since they
+"run" in the same process as the parent LiveView. However, this means an error
+in a LiveComponent would cause the whole view to fail to render. For a complete
+rundown, see `Phoenix.LiveComponent`.
 
 Finally, if you want complete isolation between parts of a LiveView, you can
 always render a LiveView inside another LiveView by calling
@@ -267,9 +267,9 @@ identify the child. A child LiveView will only ever be rendered and mounted
 a single time, provided its ID remains unchanged. To force a child to re-mount
 with new session data, a new ID must be provided.
 
-Given that a LiveView runs on its own process, it is an excellent tool for creating
-completely isolated UI elements, but it is a slightly expensive abstraction if
-all you want is to compartmentalize markup or events (or both).
+Given that it runs in its own process, a nested LiveView is an excellent tool
+for creating completely isolated UI elements, but it is a slightly expensive
+abstraction if all you want is to compartmentalize markup or events (or both).
 
 To sum it up:
 

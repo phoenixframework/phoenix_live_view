@@ -34,7 +34,7 @@ defmodule Phoenix.LiveComponent do
 
   > #### Functional components or live components? {: .neutral}
   >
-  > Generally speaking, you should prefer functional components over live
+  > Generally speaking, you should prefer function components over live
   > components, as they are a simpler abstraction, with a smaller surface
   > area. The use case for live components only arises when there is a need
   > for encapsulating both event handling and additional state.
