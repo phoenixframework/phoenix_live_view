@@ -225,7 +225,7 @@ For authentication, with built-in LiveView support, run `mix phx.gen.auth Accoun
 LiveView supports two extension mechanisms: function components, provided by
 `HEEx` templates, and stateful components, known as LiveComponents.
 
-Similar to `render(assigns)` in our LiveView, a function components is any
+Similar to `render(assigns)` in our LiveView, a function component is any
 function that receives an assigns map and returns a `~H` template. For example:
 
     def weather_greeting(assigns) do
