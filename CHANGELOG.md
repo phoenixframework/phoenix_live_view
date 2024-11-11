@@ -51,7 +51,7 @@ This shows one example for the textarea input, but there are more cases that nee
      ~H"""
 -    <div phx-feedback-for={@name}>
 +    <div>
-       <.label for={@id}><%%= @label %></.label>
+       <.label for={@id}><%= @label %></.label>
        <textarea
          id={@id}
          name={@name}
