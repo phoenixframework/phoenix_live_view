@@ -12,8 +12,9 @@ let JS = {
       JSON.parse(phxEvent) : [[defaultKind, defaultArgs]]
 
     commands.forEach(([kind, args]) => {
-      if(kind === defaultKind && defaultArgs.data){
-        args.data = Object.assign(args.data || {}, defaultArgs.data)
+      if(kind === defaultKind){
+        // always prefer the args, but keep existing keys from the defaultArgs
+        args = {...defaultArgs, ...args}
         args.callback = args.callback || defaultArgs.callback
       }
       this.filterToEls(view.liveSocket, sourceEl, args).forEach(el => {
