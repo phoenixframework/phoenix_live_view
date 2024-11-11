@@ -1500,7 +1500,7 @@ defmodule Phoenix.Component do
 
     {_as, options} = Keyword.pop(options, :as)
     {errors, options} = Keyword.pop(options, :errors, data.errors)
-    {action, options} = Keyword.pop(options, :action)
+    {action, options} = Keyword.pop(options, :action, data.action)
     options = Keyword.merge(data.options, options)
 
     %Phoenix.HTML.Form{
