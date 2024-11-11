@@ -257,6 +257,38 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
+  test "interpolation outside of attributes is reserved" do
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/outside of attributes is reserved/,
+                 fn ->
+                   render("{x}", %{})
+                 end
+
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/outside of attributes is reserved/,
+                 fn ->
+                   render(" {x}", %{})
+                 end
+
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/outside of attributes is reserved/,
+                 fn ->
+                   render("<p>{x}</p>", %{})
+                 end
+
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/outside of attributes is reserved/,
+                 fn ->
+                   render("<p id={x}>{x}</p>", %{})
+                 end
+  end
+
+  test "escaped interpolation" do
+    assert render("\\{x}", %{}) == "{x}"
+    assert render(" \\{x}", %{}) == " {x}"
+    assert render("<div id={:foo}>\\{x}</div>", %{}) == "<div id=\"foo\">{x}</div>"
+  end
+
   def do_block(do: block), do: block
 
   test "handles do blocks with expressions" do

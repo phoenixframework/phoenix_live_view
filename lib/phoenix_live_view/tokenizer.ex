@@ -155,6 +155,18 @@ defmodule Phoenix.LiveView.Tokenizer do
     handle_tag_open(rest, line, column + 1, text_to_acc, %{state | context: []})
   end
 
+  defp handle_text("{" <> rest, line, column, [?\\ | buffer], acc, state) do
+    handle_text(rest, line, column + 1, [?{ | buffer], acc, state)
+  end
+
+  defp handle_text("{" <> _rest, line, column, _buffer, _acc, state) do
+    raise_syntax_error!(
+      "`{` outside of attributes is reserved, use `\\\\{` to escape",
+      %{line: line, column: column},
+      state
+    )
+  end
+
   defp handle_text(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
     handle_text(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
   end
