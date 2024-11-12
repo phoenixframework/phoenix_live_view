@@ -2057,7 +2057,7 @@ defmodule Phoenix.LiveView do
       html = render_async(view)
       assert html =~ "My assertion"
   
-  Not calling `render_async/2` to ensure all async assigns have finished might result in error logs, in 
+  Not calling `render_async/2` to ensure all async assigns have finished might result in errors in 
   cases where your process has side effects:
 
       [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
