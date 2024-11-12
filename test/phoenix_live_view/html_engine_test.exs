@@ -257,7 +257,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
-  test "interpolation outside of attributes is reserved" do
+  test "{} outside of attributes is reserved" do
     assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                  ~r/outside of attributes is reserved/,
                  fn ->
@@ -283,7 +283,25 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                  end
   end
 
-  test "escaped interpolation" do
+  test "{} inside <script> and <style>" do
+    html = """
+    <script>
+    if (true) { console.log("true") }
+    </script>\
+    """
+
+    assert render(html, %{}) == html
+
+    html = """
+    <style>
+    p { color: red; }
+    </style>\
+    """
+
+    assert render(html, %{}) == html
+  end
+
+  test "{} escaping" do
     assert render("\\{x}", %{}) == "{x}"
     assert render(" \\{x}", %{}) == " {x}"
     assert render("<div id={:foo}>\\{x}</div>", %{}) == "<div id=\"foo\">{x}</div>"
