@@ -55,7 +55,7 @@ so LiveView includes a latency simulator with the JavaScript client to ensure yo
 application provides a pleasant experience. Like the `enableDebug()` function above,
 the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disableLatencySim()`
 functions which apply throughout the current browser session. The `enableLatencySim` function
-accepts an integer in milliseconds for the round-trip-time to the server. For example:
+accepts an integer in milliseconds for the one-way latency to and from the server. For example:
 
 ```javascript
 // app.js
