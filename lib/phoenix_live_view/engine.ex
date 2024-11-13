@@ -242,7 +242,9 @@ defmodule Phoenix.LiveView.Engine do
   `Phoenix.LiveView` also tracks changes across live
   templates. Therefore, if your view has this:
 
-      <%= render "form.html", assigns %>
+  ```heex
+  <%= render "form.html", assigns %>
+  ```
 
   Phoenix will be able to track what is static and dynamic
   across templates, as well as what changed. A rendered
@@ -255,7 +257,9 @@ defmodule Phoenix.LiveView.Engine do
   which live template was rendered. For example,
   imagine this code:
 
-      <%= if something?, do: render("one.html", assigns), else: render("other.html", assigns) %>
+  ```heex
+  <%= if something?, do: render("one.html", assigns), else: render("other.html", assigns) %>
+  ```
 
   To solve this, all `Phoenix.LiveView.Rendered` structs
   also contain a fingerprint field that uniquely identifies
@@ -268,10 +272,12 @@ defmodule Phoenix.LiveView.Engine do
   Another optimization done by live templates is to
   track comprehensions. If your code has this:
 
-      <%= for point <- @points do %>
-        x: <%= point.x %>
-        y: <%= point.y %>
-      <% end %>
+  ```heex
+  <%= for point <- @points do %>
+    x: <%= point.x %>
+    y: <%= point.y %>
+  <% end %>
+  ```
 
   Instead of rendering all points with both static and
   dynamic parts, it returns a `Phoenix.LiveView.Comprehension`

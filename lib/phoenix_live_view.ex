@@ -761,7 +761,9 @@ defmodule Phoenix.LiveView do
 
   A hook declared via `phx-hook` can handle it via `handleEvent`:
 
-      this.handleEvent("scores", data => ...)
+  ```javascript
+  this.handleEvent("scores", data => ...)
+  ```
 
   ## `window` example
 
@@ -773,10 +775,12 @@ defmodule Phoenix.LiveView do
 
   And now in your app.js you can register and handle it:
 
-      window.addEventListener(
-        "phx:remove-el",
-        e => document.getElementById(e.detail.id).remove()
-      )
+  ```javascript
+  window.addEventListener(
+    "phx:remove-el",
+    e => document.getElementById(e.detail.id).remove()
+  )
+  ```
 
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
@@ -859,10 +863,12 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      <%= for entry <- @uploads.avatar.entries do %>
-        ...
-        <button phx-click="cancel-upload" phx-value-ref={entry.ref}>cancel</button>
-      <% end %>
+  ```heex
+  <%= for entry <- @uploads.avatar.entries do %>
+    ...
+    <button phx-click="cancel-upload" phx-value-ref={entry.ref}>cancel</button>
+  <% end %>
+  ```
 
       def handle_event("cancel-upload", %{"ref" => ref}, socket) do
         {:noreply, cancel_upload(socket, :avatar, ref)}
@@ -1236,8 +1242,10 @@ defmodule Phoenix.LiveView do
   To use this functionality, the first step is to annotate which static files
   you want to be tracked by LiveView, with the `phx-track-static`. For example:
 
-      <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-      <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+  ```heex
+  <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+  <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+  ```
 
   Now, whenever LiveView connects to the server, it will send a copy `src`
   or `href` attributes of all tracked statics and compare those values with
@@ -1255,11 +1263,13 @@ defmodule Phoenix.LiveView do
 
   And then in your views:
 
-      <%= if @static_changed? do %>
-        <div id="reload-static">
-          The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
-        </div>
-      <% end %>
+  ```heex
+  <%= if @static_changed? do %>
+    <div id="reload-static">
+      The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
+    </div>
+  <% end %>
+  ```
 
   If you prefer, you can also send a JavaScript script that immediately
   reloads the page.
@@ -1267,7 +1277,9 @@ defmodule Phoenix.LiveView do
   **Note:** only set `phx-track-static` on your own assets. For example, do
   not set it in external JavaScript files:
 
-      <script defer phx-track-static type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  ```heex
+  <script defer phx-track-static type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  ```
 
   Because you don't actually serve the file above, LiveView will interpret
   the static above as missing, and this function will return true.
@@ -1528,19 +1540,20 @@ defmodule Phoenix.LiveView do
 
   Replying to a client event:
 
-      # JavaScript:
-      # /**
-      #  * @type {Object.<string, import("phoenix_live_view").ViewHook>}
-      #  */
-      # let Hooks = {}
-      # Hooks.ClientHook = {
-      #   mounted() {
-      #     this.pushEvent("ClientHook:mounted", {hello: "world"}, (reply) => {
-      #       console.log("received reply:", reply)
-      #     })
-      #   }
-      # }
-      # let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+  ```javascript
+  /**
+   * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+   */
+  let Hooks = {}
+  Hooks.ClientHook = {
+    mounted() {
+      this.pushEvent("ClientHook:mounted", {hello: "world"}, (reply) => {
+        console.log("received reply:", reply)
+      })
+    }
+  }
+  let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+  ```
 
       def render(assigns) do
         ~H"\""
@@ -2057,7 +2070,7 @@ defmodule Phoenix.LiveView do
       html = render_async(view)
       assert html =~ "My assertion"
 
-  Not calling `render_async/2` to ensure all async assigns have finished might result in errors in 
+  Not calling `render_async/2` to ensure all async assigns have finished might result in errors in
   cases where your process has side effects:
 
       [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>

@@ -70,15 +70,19 @@ defmodule Phoenix.LiveView.TagEngine do
   and other engine implementations to render `Phoenix.Component`s. For example,
   the following:
 
-      <MyApp.Weather.city name="Kraków" />
+  ```heex
+  <MyApp.Weather.city name="Kraków" />
+  ```
 
   Is the same as:
 
-      <%= component(
-            &MyApp.Weather.city/1,
-            [name: "Kraków"],
-            {__ENV__.module, __ENV__.function, __ENV__.file, __ENV__.line}
-          ) %>
+  ```heex
+  <%= component(
+        &MyApp.Weather.city/1,
+        [name: "Kraków"],
+        {__ENV__.module, __ENV__.function, __ENV__.file, __ENV__.line}
+      ) %>
+  ```
 
   """
   def component(func, assigns, caller)

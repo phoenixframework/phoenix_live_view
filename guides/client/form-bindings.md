@@ -86,7 +86,7 @@ You may wish for an individual input to use its own change event or to target
 a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
-```
+```heex
 <.form for={@form} phx-change="validate" phx-submit="save">
   ...
   <.input field={@form[:email]}  phx-change="email_changed" phx-target={@myself} />
@@ -244,7 +244,9 @@ to trigger for recovery, which will receive the form params as usual. For exampl
 imagine a LiveView wizard form where the form is stateful and built based on what
 step the user is on and by prior selections:
 
-    <form id="wizard" phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
+```heex
+<form id="wizard" phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
+```
 
 On the server, the `"validate_wizard_step"` event is only concerned with the
 current client form data, but the server maintains the entire state of the wizard.
@@ -271,10 +273,12 @@ original values.
 After the form is reset, a `phx-change` event is emitted with the `_target` param
 containing the reset `name`. For example, the following element:
 
-    <form phx-change="changed">
-      ...
-      <button type="reset" name="reset">Reset</button>
-    </form>
+```heex
+<form phx-change="changed">
+  ...
+  <button type="reset" name="reset">Reset</button>
+</form>
+```
 
 Can be handled on the server differently from your regular change function:
 
@@ -356,11 +360,13 @@ You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
 with the following rules in your `app.css`:
 
-    .while-submitting { display: none; }
-    .inputs { display: block; }
+```css
+.while-submitting { display: none; }
+.inputs { display: block; }
 
-    .phx-submit-loading .while-submitting { display: block; }
-    .phx-submit-loading .inputs { display: none; }
+.phx-submit-loading .while-submitting { display: block; }
+.phx-submit-loading .inputs { display: none; }
+```
 
 You can show and hide content with the following markup:
 
@@ -387,7 +393,7 @@ store the selected state.
 In these cases, the event functions on the DOM API can be used, for example
 to trigger a `phx-change` event:
 
-```
+```javascript
 document.getElementById("my-select").dispatchEvent(
   new Event("input", {bubbles: true})
 )
@@ -398,7 +404,7 @@ outlined in the "Client hooks" documentation.
 
 It is also possible to trigger a `phx-submit` using a "submit" event:
 
-```
+```javascript
 document.getElementById("my-form").dispatchEvent(
   new Event("submit", {bubbles: true, cancelable: true})
 )

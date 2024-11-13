@@ -56,13 +56,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   Given HTML like this:
 
-  ```eex
+  ```heex
     <section><h1>   <b><%= @user.name %></b></h1></section>
   ```
 
   It will be formatted as:
 
-  ```eex
+  ```heex
   <section>
     <h1><b><%= @user.name %></b></h1>
   </section>
@@ -78,7 +78,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   It will also keep inline elements in their own lines if you intentionally write them this way:
 
-  ```eex
+  ```heex
   <section>
     <h1>
       <b><%= @user.name %></b>
@@ -89,7 +89,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   This formatter will place all attributes on their own lines when they do not all fit in the
   current line. Therefore this:
 
-  ```eex
+  ```heex
   <section id="user-section-id" class="sm:focus:block flex w-full p-3" phx-click="send-event">
     <p>Hi</p>
   </section>
@@ -97,7 +97,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   Will be formatted to:
 
-  ```eex
+  ```heex
   <section
     id="user-section-id"
     class="sm:focus:block flex w-full p-3"
@@ -138,7 +138,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   The formatter will keep intentional new lines. However, the formatter will
   always keep a maximum of one line break in case you have multiple ones:
 
-  ```eex
+  ```heex
   <p>
     text
 
@@ -149,7 +149,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   Will be formatted to:
 
-  ```eex
+  ```heex
   <p>
     text
 
@@ -175,13 +175,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   Therefore:
 
-  ```eex
+  ```heex
   <.textarea phx-no-format>My content</.textarea>
   ```
 
   Will be kept as is your code editor, but rendered as:
 
-  ```html
+  ```heex
   <textarea>My content</textarea>
   ```
 

@@ -14,7 +14,7 @@ Imagine your web application has a form. The form has a single email input and a
 
 Here is what could happen. The user has typed “hello@example.” and debounce kicks in, causing the client to send an event to the server. Here is how the client looks like at this moment:
 
-```
+```plain
 [ hello@example.    ]
 
     ------------
@@ -24,7 +24,7 @@ Here is what could happen. The user has typed “hello@example.” and debounce 
 
 While the server is processing this information, the user finishes typing the email and presses submit. The client sends the submit event to the server, then proceeds to disable the button, and change its value to “SUBMITTING”:
 
-```
+```plain
 [ hello@example.com ]
 
     ------------
@@ -34,7 +34,7 @@ While the server is processing this information, the user finishes typing the em
 
 Immediately after pressing submit, the client receives an update from the server, but this is an update from the debounce event! If the client were to simply render this server update, the client would effectively roll back the form to the previous state shown below, which would be a disaster:
 
-```
+```plain
 [ hello@example.    ] ✓
 
     ------------
