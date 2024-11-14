@@ -2051,11 +2051,16 @@ defmodule Phoenix.LiveView do
 
   When testing LiveViews and LiveComponents with async assigns, use
   `Phoenix.LiveViewTest.render_async/2` to ensure the test waits until the async operations
-  are complete before proceeding with assertions. For example:
+  are complete before proceeding with assertions or before ending the test. For example:
 
       {:ok, view, _html} = live(conn, "/my_live_view")
       html = render_async(view)
       assert html =~ "My assertion"
+  
+  Not calling `render_async/2` to ensure all async assigns have finished might result in errors in 
+  cases where your process has side effects:
+
+      [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
   """
   defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
     Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)
