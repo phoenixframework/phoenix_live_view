@@ -304,6 +304,9 @@ defmodule Phoenix.ComponentUnitTest do
 
       form = to_form(base, action: :validate)
       assert form.action == :validate
+
+      form = to_form(%{base | action: :validate})
+      assert form.action == :validate
     end
   end
 
