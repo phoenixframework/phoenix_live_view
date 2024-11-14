@@ -2056,7 +2056,7 @@ defmodule Phoenix.LiveView do
       {:ok, view, _html} = live(conn, "/my_live_view")
       html = render_async(view)
       assert html =~ "My assertion"
-  
+
   Not calling `render_async/2` to ensure all async assigns have finished might result in errors in 
   cases where your process has side effects:
 
