@@ -336,6 +336,22 @@ the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 <button type="submit" phx-disable-with="Saving...">Save</button>
 ```
 
+> #### A note on disabled buttons {: .info}
+>
+> By default, LiveView only disables submit buttons and inputs within forms
+> while waiting for a server acknowledgement. If you want a button outside of
+> a form to be disabled without changing its text, you can add `phx-disable-with`
+> without a value:
+>
+> ```heex
+>  <button type="button" phx-disable-with>...</button>
+> ```
+>
+> Note also that LiveView ignores clicks on elements that are currently awaiting
+> an acknowledgement from the server. This means that although a regular button
+> without `phx-disable-with` is not semantically disabled while waiting for a
+> server response, it will not trigger duplicate events.
+
 You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
 with the following rules in your `app.css`:
