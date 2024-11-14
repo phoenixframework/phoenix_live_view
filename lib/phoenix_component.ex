@@ -2441,7 +2441,7 @@ defmodule Phoenix.Component do
   inserts and removals. Like inputs, buttons with name/value pairs are serialized with
   form data on change and submit events. Libraries such as Ecto, or custom param
   filtering can then inspect the parameters and handle the added or removed fields.
-  This can be combined with `Ecto.Changeset.cast/3`'s `:sort_param` and `:drop_param`
+  This can be combined with `Ecto.Changeset.cast_assoc/3`'s `:sort_param` and `:drop_param`
   options. For example, imagine a parent with an `:emails` `has_many` or `embeds_many`
   association. To cast the user input from a nested form, one simply needs to configure
   the options:
