@@ -27,6 +27,10 @@ jobs:
             otp: 27.0
             lint: lint
 
+          # run against latest Elixir to catch warnings early
+          - elixir: main
+            otp: maint-27
+
     runs-on: ubuntu-latest
 
     steps:
@@ -67,7 +71,7 @@ jobs:
 
     - name: Compile & lint dependencies
       run: mix compile --warnings-as-errors
-      if: ${{ matrix.lint }}
+      if: ${{ matrix.lint }} or ${{ matrix.elixir == 'main' }}
       env:
         MIX_ENV: test
 
