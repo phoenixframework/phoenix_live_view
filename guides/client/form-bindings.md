@@ -146,7 +146,7 @@ decrease the number.
 
 One alternative is the `inputmode` attribute, which may serve your application's needs
 and users much better. According to [Can I Use?](https://caniuse.com/#search=inputmode),
-the following is supported by 86% of the global market (as of Sep 2021):
+the following is supported by 94% of the global market (as of Nov 2024):
 
 ```heex
 <input type="text" inputmode="numeric" pattern="[0-9]*">
