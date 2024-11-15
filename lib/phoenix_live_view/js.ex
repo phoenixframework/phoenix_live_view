@@ -329,6 +329,8 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Shows elements.
 
+  *Note*: Only targets elements that are visible, meaning they have a height and/or width greater than zero.
+
   ## Options
 
     * `:to` - An optional DOM selector to show.
@@ -380,6 +382,8 @@ defmodule Phoenix.LiveView.JS do
 
   @doc """
   Hides elements.
+
+  *Note*: Only targets elements that are visible, meaning they have a height and/or width greater than zero.
 
   ## Options
 
