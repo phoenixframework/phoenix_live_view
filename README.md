@@ -140,7 +140,7 @@ Note: The `shim-keyboard-event-key` polyfill is also required for [MS Edge 12-18
 
 Note: The `event-submitter-polyfill` package is also required for [MS Edge 12-80 &amp; Safari &lt; 15.4](https://caniuse.com/mdn-api_submitevent_submitter).
 
-```
+```javascript
 // assets/js/app.js
 import "mdn-polyfills/Object.assign"
 import "mdn-polyfills/CustomEvent"

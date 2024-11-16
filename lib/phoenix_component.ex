@@ -486,10 +486,12 @@ defmodule Phoenix.Component do
   module (`__DIR__`), and a wildcard pattern may be used to select all
   files within a directory tree. For example, imagine a directory listing:
 
-      ├── components.ex
-      ├── cards
-      │   ├── pricing_card.html.heex
-      │   └── features_card.html.heex
+  ```plain
+  ├── components.ex
+  ├── cards
+  │   ├── pricing_card.html.heex
+  │   └── features_card.html.heex
+  ```
 
   Then you can embed the page templates in your `components.ex` module
   and call them like any other function component:
@@ -1634,10 +1636,12 @@ defmodule Phoenix.Component do
   A wildcard pattern may be used to select all files within a directory tree.
   For example, imagine a directory listing:
 
-      ├── components.ex
-      ├── pages
-      │   ├── about_page.html.heex
-      │   └── welcome_page.html.heex
+  ```plain
+  ├── components.ex
+  ├── pages
+  │   ├── about_page.html.heex
+  │   └── welcome_page.html.heex
+  ```
 
   Then to embed the page templates in your `components.ex` module:
 
@@ -3256,7 +3260,9 @@ defmodule Phoenix.Component do
 
   Renders the following markup:
 
-      home <span class="sep">|</span> profile <span class="sep">|</span> settings
+  ```html
+  home <span class="sep">|</span> profile <span class="sep">|</span> settings
+  ```
   """
   @doc type: :component
   attr.(:enum, :any, required: true, doc: "the enumerable to intersperse with separators")

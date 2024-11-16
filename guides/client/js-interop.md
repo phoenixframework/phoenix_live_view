@@ -33,7 +33,7 @@ Calling `enableDebug()` turns on debug logging which includes LiveView life-cycl
 payload events as they come and go from client to server. In practice, you can expose
 your instance on `window` for quick access in the browser's web console, for example:
 
-```
+```javascript
 // app.js
 let liveSocket = new LiveSocket(...)
 liveSocket.connect()
@@ -267,7 +267,9 @@ Hooks.InfiniteScroll = {
 
 However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
-    <div id="chart" phx-hook="Chart">
+```heex
+<div id="chart" phx-hook="Chart">
+```
 
 And then on the client:
 

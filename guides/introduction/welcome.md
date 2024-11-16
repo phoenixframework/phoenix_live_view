@@ -177,7 +177,9 @@ In other words, you want to read the information about a given house, as long as
 Phoenix supports DOM element bindings for client-server interaction. For
 example, to react to a click on a button, you would render the element:
 
-    <button phx-click="inc_temperature">+</button>
+```heex
+<button phx-click="inc_temperature">+</button>
+```
 
 Then on the server, all LiveView bindings are handled with the `handle_event/3`
 callback, for example:
@@ -214,7 +216,9 @@ Phoenix v1.6 and later includes code generators for LiveView. If you want to see
 an example of how to structure your application, from the database all the way up
 to LiveViews, run the following:
 
-    mix phx.gen.live Blog Post posts title:string body:text
+```shell
+$ mix phx.gen.live Blog Post posts title:string body:text
+```
 
 For more information, run `mix help phx.gen.live`.
 
@@ -247,7 +251,9 @@ LiveView to a separate module. For these cases, LiveView provides
 `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
-    <.live_component module={UserComponent} id={user.id} user={user} />
+```heex
+<.live_component module={UserComponent} id={user.id} user={user} />
+```
 
 LiveComponents have their own `mount/3` and `handle_event/3` callbacks, as well
 as their own state with change tracking support. They are lightweight since they

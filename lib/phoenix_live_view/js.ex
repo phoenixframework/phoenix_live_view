@@ -65,33 +65,41 @@ defmodule Phoenix.LiveView.JS do
   with the event, apply loading states to external elements, etc. For example,
   given this basic `phx-click` event:
 
-      <button phx-click="inc">+</button>
+  ```heex
+  <button phx-click="inc">+</button>
+  ```
 
   Imagine you need to target your current component, and apply a loading state
   to the parent container while the client awaits the server acknowledgement:
 
       alias Phoenix.LiveView.JS
 
+      ~H"""
       <button phx-click={JS.push("inc", loading: ".thermo", target: @myself)}>+</button>
+      """
 
   Push commands also compose with all other utilities. For example,
   to add a class when pushing:
 
-      <button phx-click={
-        JS.push("inc", loading: ".thermo", target: @myself)
-        |> JS.add_class("warmer", to: ".thermo")
-      }>+</button>
+  ```heex
+  <button phx-click={
+    JS.push("inc", loading: ".thermo", target: @myself)
+    |> JS.add_class("warmer", to: ".thermo")
+  }>+</button>
+  ```
 
   Any `phx-value-*` attributes will also be included in the payload, their
   values will be overwritten by values given directly to `push/1`. Any
   `phx-target` attribute will also be used, and overwritten.
 
-      <button
-        phx-click={JS.push("inc", value: %{limit: 40})}
-        phx-value-room="bedroom"
-        phx-value-limit="this value will be 40"
-        phx-target={@myself}
-      >+</button>
+  ```heex
+  <button
+    phx-click={JS.push("inc", value: %{limit: 40})}
+    phx-value-room="bedroom"
+    phx-value-limit="this value will be 40"
+    phx-target={@myself}
+  >+</button>
+  ```
 
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
@@ -105,20 +113,24 @@ defmodule Phoenix.LiveView.JS do
   a copy-to-clipboard functionality in your application. You can
   add a custom event for it:
 
-      window.addEventListener("my_app:clipcopy", (event) => {
-        if ("clipboard" in navigator) {
-          const text = event.target.textContent;
-          navigator.clipboard.writeText(text);
-        } else {
-          alert("Sorry, your browser does not support clipboard copy.");
-        }
-      });
+  ```javascript
+  window.addEventListener("my_app:clipcopy", (event) => {
+    if ("clipboard" in navigator) {
+      const text = event.target.textContent;
+      navigator.clipboard.writeText(text);
+    } else {
+      alert("Sorry, your browser does not support clipboard copy.");
+    }
+  });
+  ```
 
   Now you can have a button like this:
 
-      <button phx-click={JS.dispatch("my_app:clipcopy", to: "#element-with-text-to-copy")}>
-        Copy content
-      </button>
+  ```heex
+  <button phx-click={JS.dispatch("my_app:clipcopy", to: "#element-with-text-to-copy")}>
+    Copy content
+  </button>
+  ```
 
   The combination of `dispatch/1` with `window.addEventListener` is
   a powerful mechanism to increase the amount of actions you can trigger
@@ -163,9 +175,11 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <button phx-click={JS.push("clicked")}>click me!</button>
-      <button phx-click={JS.push("clicked", value: %{id: @id})}>click me!</button>
-      <button phx-click={JS.push("clicked", page_loading: true)}>click me!</button>
+  ```heex
+  <button phx-click={JS.push("clicked")}>click me!</button>
+  <button phx-click={JS.push("clicked", value: %{id: @id})}>click me!</button>
+  <button phx-click={JS.push("clicked", page_loading: true)}>click me!</button>
+  ```
   """
   def push(event) when is_binary(event) do
     push(%JS{}, event, [])
@@ -217,9 +231,13 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      window.addEventListener("click", e => console.log("clicked!", e.detail))
+  ```javascript
+  window.addEventListener("click", e => console.log("clicked!", e.detail))
+  ```
 
-      <button phx-click={JS.dispatch("click", to: ".nav")}>Click me!</button>
+  ```heex
+  <button phx-click={JS.dispatch("click", to: ".nav")}>Click me!</button>
+  ```
   """
   def dispatch(js \\ %JS{}, event)
   def dispatch(%JS{} = js, event), do: dispatch(js, event, [])
@@ -295,15 +313,17 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="item">My Item</div>
+  ```heex
+  <div id="item">My Item</div>
 
-      <button phx-click={JS.toggle(to: "#item")}>
-        toggle item!
-      </button>
+  <button phx-click={JS.toggle(to: "#item")}>
+    toggle item!
+  </button>
 
-      <button phx-click={JS.toggle(to: "#item", in: "fade-in-scale", out: "fade-out-scale")}>
-        toggle fancy!
-      </button>
+  <button phx-click={JS.toggle(to: "#item", in: "fade-in-scale", out: "fade-out-scale")}>
+    toggle fancy!
+  </button>
+  ```
   """
   def toggle(opts \\ [])
   def toggle(%JS{} = js), do: toggle(js, [])
@@ -349,15 +369,17 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="item">My Item</div>
+  ```heex
+  <div id="item">My Item</div>
 
-      <button phx-click={JS.show(to: "#item")}>
-        show!
-      </button>
+  <button phx-click={JS.show(to: "#item")}>
+    show!
+  </button>
 
-      <button phx-click={JS.show(to: "#item", transition: "fade-in-scale")}>
-        show fancy!
-      </button>
+  <button phx-click={JS.show(to: "#item", transition: "fade-in-scale")}>
+    show fancy!
+  </button>
+  ```
   """
   def show(opts \\ [])
   def show(%JS{} = js), do: show(js, [])
@@ -400,15 +422,17 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="item">My Item</div>
+  ```heex
+  <div id="item">My Item</div>
 
-      <button phx-click={JS.hide(to: "#item")}>
-        hide!
-      </button>
+  <button phx-click={JS.hide(to: "#item")}>
+    hide!
+  </button>
 
-      <button phx-click={JS.hide(to: "#item", transition: "fade-out-scale")}>
-        hide fancy!
-      </button>
+  <button phx-click={JS.hide(to: "#item", transition: "fade-out-scale")}>
+    hide fancy!
+  </button>
+  ```
   """
   def hide(opts \\ [])
   def hide(%JS{} = js), do: hide(js, [])
@@ -447,10 +471,12 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="item">My Item</div>
-      <button phx-click={JS.add_class("highlight underline", to: "#item")}>
-        highlight!
-      </button>
+  ```heex
+  <div id="item">My Item</div>
+  <button phx-click={JS.add_class("highlight underline", to: "#item")}>
+    highlight!
+  </button>
+  ```
   """
   def add_class(names) when is_binary(names), do: add_class(%JS{}, names, [])
 
@@ -496,10 +522,12 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="item">My Item</div>
-      <button phx-click={JS.toggle_class("active", to: "#item")}>
-        toggle active!
-      </button>
+  ```heex
+  <div id="item">My Item</div>
+  <button phx-click={JS.toggle_class("active", to: "#item")}>
+    toggle active!
+  </button>
+  ```
   """
   def toggle_class(names) when is_binary(names), do: toggle_class(%JS{}, names, [])
 
@@ -543,10 +571,12 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="item">My Item</div>
-      <button phx-click={JS.remove_class("highlight underline", to: "#item")}>
-        remove highlight!
-      </button>
+  ```heex
+  <div id="item">My Item</div>
+  <button phx-click={JS.remove_class("highlight underline", to: "#item")}>
+    remove highlight!
+  </button>
+  ```
   """
   def remove_class(names) when is_binary(names), do: remove_class(%JS{}, names, [])
 
@@ -594,12 +624,14 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="item">My Item</div>
-      <button phx-click={JS.transition("shake", to: "#item")}>Shake!</button>
+  ```heex
+  <div id="item">My Item</div>
+  <button phx-click={JS.transition("shake", to: "#item")}>Shake!</button>
 
-      <div phx-mounted={JS.transition({"ease-out duration-300", "opacity-0", "opacity-100"}, time: 300)}>
-         duration-300 milliseconds matches time: 300 milliseconds
-      <div>
+  <div phx-mounted={JS.transition({"ease-out duration-300", "opacity-0", "opacity-100"}, time: 300)}>
+      duration-300 milliseconds matches time: 300 milliseconds
+  <div>
+  ```
   """
   def transition(transition) when is_binary(transition) or is_tuple(transition) do
     transition(%JS{}, transition, [])
@@ -641,9 +673,11 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <button phx-click={JS.set_attribute({"aria-expanded", "true"}, to: "#dropdown")}>
-        show
-      </button>
+  ```heex
+  <button phx-click={JS.set_attribute({"aria-expanded", "true"}, to: "#dropdown")}>
+    show
+  </button>
+  ```
   """
   def set_attribute({attr, val}), do: set_attribute(%JS{}, {attr, val}, [])
 
@@ -671,9 +705,11 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <button phx-click={JS.remove_attribute("aria-expanded", to: "#dropdown")}>
-        hide
-      </button>
+  ```heex
+  <button phx-click={JS.remove_attribute("aria-expanded", to: "#dropdown")}>
+    hide
+  </button>
+  ```
   """
   def remove_attribute(attr), do: remove_attribute(%JS{}, attr, [])
 
@@ -704,13 +740,15 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <button phx-click={JS.toggle_attribute({"aria-expanded", "true", "false"}, to: "#dropdown")}>
-        toggle
-      </button>
+  ```heex
+  <button phx-click={JS.toggle_attribute({"aria-expanded", "true", "false"}, to: "#dropdown")}>
+    toggle
+  </button>
 
-      <button phx-click={JS.toggle_attribute({"open", "true"}, to: "#dialog")}>
-        toggle
-      </button>
+  <button phx-click={JS.toggle_attribute({"open", "true"}, to: "#dialog")}>
+    toggle
+  </button>
+  ```
 
   """
   def toggle_attribute({attr, val}), do: toggle_attribute(%JS{}, {attr, val}, [])
@@ -889,8 +927,10 @@ defmodule Phoenix.LiveView.JS do
 
   ## Examples
 
-      <div id="modal" phx-remove={JS.hide("#modal")}>...</div>
-      <button phx-click={JS.exec("phx-remove", to: "#modal")}>close</button>
+  ```heex
+  <div id="modal" phx-remove={JS.hide("#modal")}>...</div>
+  <button phx-click={JS.exec("phx-remove", to: "#modal")}>close</button>
+  ```
   """
   def exec(attr) when is_binary(attr) do
     exec(%JS{}, attr, [])

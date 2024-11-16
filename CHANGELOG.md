@@ -1783,7 +1783,7 @@ Also note that **the session from now on will have string keys**. LiveView will 
   - All `phx-update` containers now require a unique ID
   - `LiveSocket` JavaScript constructor now requires explicit dependency injection of Phoenix Socket constructor. For example:
 
-```
+```javascript
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view"
 

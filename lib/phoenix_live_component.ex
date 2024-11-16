@@ -25,7 +25,9 @@ defmodule Phoenix.LiveComponent do
 
   A LiveComponent is rendered as:
 
-      <.live_component module={HeroComponent} id="hero" content={@content} />
+  ```heex
+  <.live_component module={HeroComponent} id="hero" content={@content} />
+  ```
 
   You must always pass the `module` and `id` attributes. The `id` will be
   available as an assign and it must be used to uniquely identify the
@@ -46,7 +48,9 @@ defmodule Phoenix.LiveComponent do
   Live components are identified by the component module and their ID.
   We often tie the component ID to some application based ID:
 
-      <.live_component module={UserComponent} id={@user.id} user={@user} />
+  ```heex
+  <.live_component module={UserComponent} id={@user.id} user={@user} />
+  ```
 
   When [`live_component/1`](`Phoenix.Component.live_component/1`) is called,
   `c:mount/1` is called once, when the component is first added to the page.
@@ -110,9 +114,11 @@ defmodule Phoenix.LiveComponent do
   `@myself` assign, which is an *internal unique reference* to the
   component instance:
 
-      <a href="#" phx-click="say_hello" phx-target={@myself}>
-        Say hello!
-      </a>
+  ```heex
+  <a href="#" phx-click="say_hello" phx-target={@myself}>
+    Say hello!
+  </a>
+  ```
 
   Note that `@myself` is not set for stateless components, as they cannot
   receive events.
@@ -122,9 +128,11 @@ defmodule Phoenix.LiveComponent do
   For example, if there is a `UserComponent` with the DOM ID of `"user-13"`,
   using a query selector, we can send an event to it with:
 
-      <a href="#" phx-click="say_hello" phx-target="#user-13">
-        Say hello!
-      </a>
+  ```heex
+  <a href="#" phx-click="say_hello" phx-target="#user-13">
+    Say hello!
+  </a>
+  ```
 
   In both cases, `c:handle_event/3` will be called with the
   "say_hello" event. When `c:handle_event/3` is called for a component,
@@ -135,9 +143,11 @@ defmodule Phoenix.LiveComponent do
   matched nodes are children of a LiveView or LiveComponent, for example
   to send the `close` event to multiple components:
 
-      <a href="#" phx-click="close" phx-target="#modal, #sidebar">
-        Dismiss
-      </a>
+  ```heex
+  <a href="#" phx-click="close" phx-target="#modal, #sidebar">
+    Dismiss
+  </a>
+  ```
 
   ### Update many
 
@@ -153,7 +163,9 @@ defmodule Phoenix.LiveComponent do
   let's see an example. Imagine you are implementing a component and the component
   needs to load some state from the database. For example:
 
-      <.live_component module={UserComponent} id={user_id} />
+  ```heex
+  <.live_component module={UserComponent} id={user_id} />
+  ```
 
   A possible implementation would be to load the user on the `c:update/2`
   callback:
@@ -273,9 +285,11 @@ defmodule Phoenix.LiveComponent do
   [`live_component/1`](`Phoenix.Component.live_component/1`)
   for each card, passing the card struct as argument to `CardComponent`:
 
-      <%= for card <- @cards do %>
-        <.live_component module={CardComponent} card={card} id={card.id} board_id={@id} />
-      <% end %>
+  ```heex
+  <%= for card <- @cards do %>
+    <.live_component module={CardComponent} card={card} id={card.id} board_id={@id} />
+  <% end %>
+  ```
 
   Now, when the user submits the form, `CardComponent.handle_event/3`
   will be triggered. However, if the update succeeds, you must not
@@ -340,9 +354,11 @@ defmodule Phoenix.LiveComponent do
   LiveView must only fetch the card ids, then render each component only by
   passing an ID:
 
-      <%= for card_id <- @card_ids do %>
-        <.live_component module={CardComponent} id={card_id} board_id={@id} />
-      <% end %>
+  ```heex
+  <%= for card_id <- @card_ids do %>
+    <.live_component module={CardComponent} id={card_id} board_id={@id} />
+  <% end %>
+  ```
 
   Now, each CardComponent will load its own card. Of course, doing so
   per card could be expensive and lead to N queries, where N is the
@@ -429,9 +445,11 @@ defmodule Phoenix.LiveComponent do
 
   LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
 
-      <.live_component module={MyComponent} id={@data.id} >
-        <div>Inner content here</div>
-      </.live_component>
+  ```heex
+  <.live_component module={MyComponent} id={@data.id} >
+    <div>Inner content here</div>
+  </.live_component>
+  ```
 
   If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
   includes the `:inner_block` assign it received.
@@ -456,11 +474,15 @@ defmodule Phoenix.LiveComponent do
   in each component. For example, avoid passing all of LiveView's assigns
   when rendering a component:
 
-      <.live_component module={MyComponent} {assigns} />
+  ```heex
+  <.live_component module={MyComponent} {assigns} />
+  ```
 
   Instead pass only the keys that you need:
 
-      <.live_component module={MyComponent} user={@user} org={@org} />
+  ```heex
+  <.live_component module={MyComponent} user={@user} org={@org} />
+  ```
 
   Luckily, because LiveViews and LiveComponents are in the same process,
   they share the data structure representations in memory. For example,
