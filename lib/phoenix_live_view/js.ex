@@ -329,7 +329,7 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Shows elements.
 
-  *Note*: Only targets elements that are visible, meaning they have a height and/or width greater than zero.
+  *Note*: Only targets elements that are hidden, meaning they have a height and/or width equal to zero.
 
   ## Options
 
