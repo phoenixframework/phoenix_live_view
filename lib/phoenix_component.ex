@@ -1486,33 +1486,33 @@ defmodule Phoenix.Component do
   """
   def to_form(data_or_params, options \\ [])
 
+  def to_form(%Phoenix.HTML.Form{} = data, []) do
+    data
+  end
+
   def to_form(%Phoenix.HTML.Form{} = data, options) do
-    {name, id} =
+    data =
       case Keyword.fetch(options, :as) do
         {:ok, as} ->
           name = if as == nil, do: as, else: to_string(as)
-          {name, Keyword.get(options, :id) || name}
+          %{data | name: name, id: Keyword.get(options, :id) || name}
 
         :error ->
           case Keyword.fetch(options, :id) do
-            {:ok, id} -> {data.name, id}
-            :error -> {data.name, data.id}
+            {:ok, id} -> %{data | id: id}
+            :error -> data
           end
       end
 
-    {_as, options} = Keyword.pop(options, :as)
-    {errors, options} = Keyword.pop(options, :errors, data.errors)
-    {action, options} = Keyword.pop(options, :action, data.action)
-    options = Keyword.merge(data.options, options)
+    {options, data} =
+      Enum.reduce(options, {data.options, data}, fn
+        {:as, _as}, {options, data} -> {options, data}
+        {:action, action}, {options, data} -> {options, %{data | action: action}}
+        {:errors, errors}, {options, data} -> {options, %{data | errors: errors}}
+        {key, value}, {options, data} -> {[{key, value} | Keyword.delete(options, key)], data}
+      end)
 
-    %{
-      data
-      | action: action,
-        errors: errors,
-        id: id,
-        name: name,
-        options: options
-    }
+    %{data | options: options}
   end
 
   def to_form(data, options) do
