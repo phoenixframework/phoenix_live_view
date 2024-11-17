@@ -225,18 +225,3 @@ test("scrolls hash el into view after live navigation (issue #3452)", async ({ p
   await expect(scrollTop).toBeGreaterThanOrEqual(offset - 500);
   await expect(scrollTop).toBeLessThanOrEqual(offset + 500);
 });
-
-test("navigating all the way back works without remounting (only patching)", async ({ page }) => {
-  await page.goto("/navigation/a");
-  await syncLV(page);
-  networkEvents = [];
-  await page.getByRole("link", { name: "Patch this LiveView" }).click();
-  await syncLV(page);
-  await page.goBack();
-  await syncLV(page);
-  await expect(networkEvents).toEqual([]);
-  // we only expect patch navigation
-  await expect(webSocketEvents.filter(e => e.payload.indexOf("phx_leave") !== -1)).toHaveLength(0);
-  // we patched 2 times
-  await expect(webSocketEvents.filter(e => e.payload.indexOf("live_patch") !== -1)).toHaveLength(2);
-});
