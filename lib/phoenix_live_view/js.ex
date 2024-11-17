@@ -960,7 +960,8 @@ defmodule Phoenix.LiveView.JS do
   """
   def concat(%JS{ops: first}, %JS{ops: second}), do: %JS{ops: first ++ second}
 
-  defp put_op(%JS{ops: ops} = js, kind, args) do
+  @doc false
+  def put_op(%JS{ops: ops} = js, kind, args) do
     args = drop_nil_values(args)
     struct!(js, ops: ops ++ [[kind, args]])
   end
