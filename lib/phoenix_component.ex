@@ -2408,7 +2408,7 @@ defmodule Phoenix.Component do
       <%= if @csrf_token do %>
         <input name="_csrf_token" type="hidden" hidden value={@csrf_token} />
       <% end %>
-      <%= render_slot(@inner_block, @form) %>
+      {render_slot(@inner_block, @form)}
     </form>
     """
   end
@@ -2716,7 +2716,7 @@ defmodule Phoenix.Component do
           <input type="hidden" name={name} value={value} />
         <% end %>
       <% end %>
-      <%= render_slot(@inner_block, finner) %>
+      {render_slot(@inner_block, finner)}
     <% end %>
     """
   end
@@ -2971,7 +2971,7 @@ defmodule Phoenix.Component do
 
   def link(%{} = assigns) do
     ~H"""
-    <a href="#" {@rest}><%= render_slot(@inner_block) %></a>
+    <a href="#" {@rest}>{render_slot(@inner_block)}</a>
     """
   end
 
@@ -3012,7 +3012,7 @@ defmodule Phoenix.Component do
     ~H"""
     <div id={@id} phx-hook="Phoenix.FocusWrap" {@rest}>
       <span id={"#{@id}-start"} tabindex="0" aria-hidden="true"></span>
-      <%= render_slot(@inner_block) %>
+      {render_slot(@inner_block)}
       <span id={"#{@id}-end"} tabindex="0" aria-hidden="true"></span>
     </div>
     """
@@ -3102,12 +3102,12 @@ defmodule Phoenix.Component do
 
     if assigns.inner_block != [] do
       ~H"""
-      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe,
-       [?<, ?/, @tag, ?>]} %>
+      {{:safe, [?<, @tag]}}{@escaped_attrs}{{:safe, [?>]}}{render_slot(@inner_block)}{{:safe,
+       [?<, ?/, @tag, ?>]}}
       """
     else
       ~H"""
-      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?/, ?>]} %>
+      {{:safe, [?<, @tag]}}{@escaped_attrs}{{:safe, [?/, ?>]}}
       """
     end
   end
@@ -3332,13 +3332,13 @@ defmodule Phoenix.Component do
   def async_result(%{assign: async_assign} = assigns) do
     cond do
       async_assign.ok? ->
-        ~H|<%= render_slot(@inner_block, @assign.result) %>|
+        ~H|{render_slot(@inner_block, @assign.result)}|
 
       async_assign.loading ->
-        ~H|<%= render_slot(@loading, @assign.loading) %>|
+        ~H|{render_slot(@loading, @assign.loading)}|
 
       async_assign.failed ->
-        ~H|<%= render_slot(@failed, @assign.failed) %>|
+        ~H|{render_slot(@failed, @assign.failed)}|
     end
   end
 end

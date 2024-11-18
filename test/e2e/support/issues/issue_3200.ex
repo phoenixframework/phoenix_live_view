@@ -41,7 +41,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3200 do
     defp tab_button(assigns) do
       ~H"""
       <button type="button" phx-click={JS.patch(@route)}>
-        <%= @text %>
+        {@text}
       </button>
       """
     end
@@ -106,7 +106,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3200 do
 
     def render(assigns) do
       ~H"""
-      <div><%= @message %></div>
+      <div>{@message}</div>
       """
     end
   end

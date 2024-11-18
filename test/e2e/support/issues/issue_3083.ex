@@ -36,7 +36,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3083Live do
     ~H"""
     <.form id="form" for={@form} phx-change="validate">
       <select id={@form[:ids].id} name={@form[:ids].name <> "[]"} multiple={true}>
-        <%= Phoenix.HTML.Form.options_for_select(@options, @form[:ids].value) %>
+        {Phoenix.HTML.Form.options_for_select(@options, @form[:ids].value)}
       </select>
       <input type="text" placeholder="focus me!" />
     </.form>

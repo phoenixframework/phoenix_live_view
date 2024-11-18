@@ -86,7 +86,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3040Live do
                 </button>
               </div>
               <div id={"#{@id}-content"}>
-                <%= render_slot(@inner_block) %>
+                {render_slot(@inner_block)}
               </div>
             </.focus_wrap>
           </div>

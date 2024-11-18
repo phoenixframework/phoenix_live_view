@@ -30,12 +30,12 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3378.AppBarLive do
   def render(assigns) do
     ~H"""
     <div>
-      <%= live_render(
+      {live_render(
         @socket,
         Phoenix.LiveViewTest.E2E.Issue3378.NotificationsLive,
         session: %{},
         id: :notifications
-      ) %>
+      )}
     </div>
     """
   end
@@ -50,12 +50,12 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3378.HomeLive do
 
   def render(assigns) do
     ~H"""
-    <%= live_render(
+    {live_render(
       @socket,
       Phoenix.LiveViewTest.E2E.Issue3378.AppBarLive,
       session: %{},
       id: :appbar
-    ) %>
+    )}
     """
   end
 end

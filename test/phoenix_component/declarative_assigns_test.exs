@@ -71,19 +71,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
     def button_with_values_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"]
-    def button_with_values(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_values_and_default_1_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"], default: "Save"
-    def button_with_values_and_default_1(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values_and_default_1(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_values_and_default_2_line, do: __ENV__.line
     attr :text, :string, default: "Save", values: ["Save", "Cancel"]
-    def button_with_values_and_default_2(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values_and_default_2(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_examples_line, do: __ENV__.line
     attr :text, :string, examples: ["Save", "Cancel"]
-    def button_with_examples(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_examples(assigns), do: ~H[<button>{@text}</button>]
 
     def render_line, do: __ENV__.line
 
@@ -385,13 +385,13 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       <table>
         <tr>
           <%= for col <- @col do %>
-            <th><%= col.label %></th>
+            <th>{col.label}</th>
           <% end %>
         </tr>
         <%= for row <- @rows do %>
           <tr>
             <%= for col <- @col do %>
-              <td><%= render_slot(col, row) %></td>
+              <td>{render_slot(col, row)}</td>
             <% end %>
           </tr>
         <% end %>
@@ -423,11 +423,11 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       <.table rows={@users}>
         <:col :let={user} label={@name}>
-          <%= user.name %>
+          {user.name}
         </:col>
 
         <:col :let={user} label="Address">
-          <%= user.address %>
+          {user.address}
         </:col>
       </.table>
       """
@@ -628,14 +628,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       def add(assigns) do
         assigns = Phoenix.Component.assign(assigns, :foo, :bar)
-        ~H[<%= @one + @two %>]
+        ~H[{@one + @two}]
       end
 
       attr :nil_default, :string, default: nil
-      def example(assigns), do: ~H[<%= inspect(@nil_default) %>]
+      def example(assigns), do: ~H[{inspect(@nil_default)}]
 
       attr :value, :string
-      def no_default(assigns), do: ~H[<%= inspect(@value) %>]
+      def no_default(assigns), do: ~H[{inspect(@value)}]
 
       attr :id, :any
       attr :errors, :list, default: []
@@ -668,10 +668,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       use Phoenix.Component
 
       slot(:inner_block)
-      def func(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+      def func(assigns), do: ~H[{render_slot(@inner_block)}]
 
       slot(:inner_block, required: true)
-      def func_required(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+      def func_required(assigns), do: ~H[{render_slot(@inner_block)}]
     end
 
     assigns = %{}
@@ -690,9 +690,9 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       def test(assigns) do
         ~H"""
         <div {@rest}>
-          <%= render_slot(@inner_block) %>
+          {render_slot(@inner_block)}
           <%= for col <- @col do %>
-            <%= render_slot(col) %>,
+            {render_slot(col)},
           <% end %>
         </div>
         """
@@ -1699,7 +1699,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, required: true
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end
@@ -1712,7 +1712,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, values: ["placeholder", "rel"]
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end
@@ -1725,7 +1725,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, examples: ["placeholder", "rel"]
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end

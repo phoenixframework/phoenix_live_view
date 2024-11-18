@@ -16,7 +16,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3448Live do
     <.form for={@form} id="my_form" phx-change="validate" class="flex flex-col gap-2">
       <.my_component>
         <:left_content :for={value <- @form[:a].value || []}>
-          <div><%= value %></div>
+          <div>{value}</div>
         </:left_content>
       </.my_component>
 
@@ -55,7 +55,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3448Live do
     ~H"""
     <div>
       <div :for={left_content <- @left_content}>
-        <%= render_slot(left_content) %>
+        {render_slot(left_content)}
       </div>
 
       <input id="search" type="search" name="value" phx-change="search" />

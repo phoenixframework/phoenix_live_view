@@ -4,19 +4,19 @@ defmodule Phoenix.LiveViewTest.Support.DebugAnno do
   use Phoenix.Component
 
   def remote(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>"
+    ~H"REMOTE COMPONENT: Value: {@value}"
   end
 
   def remote_with_root(assigns) do
-    ~H"<div>REMOTE COMPONENT: Value: <%= @value %></div>"
+    ~H"<div>REMOTE COMPONENT: Value: {@value}</div>"
   end
 
   def local(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>"
+    ~H"LOCAL COMPONENT: Value: {@value}"
   end
 
   def local_with_root(assigns) do
-    ~H"<div>LOCAL COMPONENT: Value: <%= @value %></div>"
+    ~H"<div>LOCAL COMPONENT: Value: {@value}</div>"
   end
 
   def nested(assigns) do

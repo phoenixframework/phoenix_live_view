@@ -51,7 +51,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def assigns_component(assigns) do
-    ~H"<%= inspect(Map.delete(assigns, :__changed__)) %>"
+    ~H"{inspect(Map.delete(assigns, :__changed__))}"
   end
 
   def textarea(assigns) do
@@ -62,38 +62,38 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def remote_function_component(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>"
+    ~H"REMOTE COMPONENT: Value: {@value}"
   end
 
   def remote_function_component_with_inner_block(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
+    ~H"REMOTE COMPONENT: Value: {@value}, Content: {render_slot(@inner_block)}"
   end
 
   def remote_function_component_with_inner_block_args(assigns) do
     ~H"""
-    REMOTE COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@inner_block, %{
+    REMOTE COMPONENT WITH ARGS: Value: {@value}
+    {render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
-    }) %>
+    })}
     """
   end
 
   defp local_function_component(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>"
+    ~H"LOCAL COMPONENT: Value: {@value}"
   end
 
   defp local_function_component_with_inner_block(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
+    ~H"LOCAL COMPONENT: Value: {@value}, Content: {render_slot(@inner_block)}"
   end
 
   defp local_function_component_with_inner_block_args(assigns) do
     ~H"""
-    LOCAL COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@inner_block, %{
+    LOCAL COMPONENT WITH ARGS: Value: {@value}
+    {render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
-    }) %>
+    })}
     """
   end
 
@@ -2078,7 +2078,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     def slot_if(assigns) do
       ~H"""
-      <div><%= @value %>-<%= render_slot(@slot, @value) %></div>
+      <div>{@value}-{render_slot(@slot, @value)}</div>
       """
     end
 

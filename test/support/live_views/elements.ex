@@ -5,15 +5,15 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
 
   def render(assigns) do
     ~H"""
-    <% # lookups %>
-    <div id="last-event"><%= @event %></div>
+    {# lookups}
+    <div id="last-event">{@event}</div>
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
     <div id="child-component">
       <.live_component module={Phoenix.LiveViewTest.Support.ElementsComponent} id={1} />
     </div>
 
-    <% # basic render_* %>
+    {# basic render_*}
     <span id="span-no-attr">This is a span</span>
 
     <span id="span-blur-no-value" phx-blur="span-blur">This is a span</span>
@@ -82,13 +82,13 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       This is a span
     </span>
 
-    <% # link handling %>
+    {# link handling}
     <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
     <a href="/" id="redirect-a">Regular Link</a>
     <.link navigate="/example" id="live-redirect-a">Live redirect</.link>
     <.link navigate="/example" id="live-redirect-replace-a" replace>Live redirect</.link>
-    <% # unrelated phx-click does not disable patching %>
+    {# unrelated phx-click does not disable patching}
     <.link patch="/elements?from=uri" id="live-patch-a" phx-click={JS.dispatch("noop")}>
       Live patch
     </.link>
@@ -121,11 +121,11 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       Last one wins
     </button>
 
-    <% # hooks %>
+    {# hooks}
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
     <section phx-hook="Example" id="hook-section-2" class="idless-hook">Section</section>
 
-    <% # forms %>
+    {# forms}
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>
     <form id="empty-form" phx-change="form-change" phx-submit="form-submit"></form>
     <form
@@ -202,13 +202,13 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       <input name="hello[ignore-submit]" type="submit" value="ignored" />
       <input name="hello[ignore-image]" type="image" value="ignored" />
       <input name="hello[date_text]" type="text" />
-      <%= PhoenixHTMLHelpers.Form.date_select(:hello, :date_select) %>
+      {PhoenixHTMLHelpers.Form.date_select(:hello, :date_select)}
       <input name="hello[time_text]" type="text" />
-      <%= PhoenixHTMLHelpers.Form.time_select(:hello, :time_select) %>
+      {PhoenixHTMLHelpers.Form.time_select(:hello, :time_select)}
       <input name="hello[naive_text]" type="text" />
-      <%= PhoenixHTMLHelpers.Form.datetime_select(:hello, :naive_select) %>
+      {PhoenixHTMLHelpers.Form.datetime_select(:hello, :naive_select)}
       <input name="hello[utc_text]" type="text" />
-      <%= PhoenixHTMLHelpers.Form.datetime_select(:hello, :utc_select, second: []) %>
+      {PhoenixHTMLHelpers.Form.datetime_select(:hello, :utc_select, second: [])}
       <input name="hello[individual]" type="text" phx-change="individual-changed" />
     </form>
 
@@ -255,7 +255,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
     </select>
     <button form="named" name="btn" type="submit" value="x">Submit</button>
 
-    <% # @page_title assign is unique %>
+    {# @page_title assign is unique}
     <svg>
       <title>SVG with title</title>
     </svg>
@@ -292,7 +292,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsComponent do
   def render(assigns) do
     ~H"""
     <div>
-      <div id="component-last-event"><%= @event %></div>
+      <div id="component-last-event">{@event}</div>
 
       <button
         id="component-button-js-click-target"

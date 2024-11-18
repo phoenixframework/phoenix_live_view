@@ -39,8 +39,8 @@ defmodule Phoenix.LiveViewTest.E2E.ErrorLive do
     @impl Phoenix.LiveView
     def render(assigns) do
       ~H"""
-      <%= if connected?(@socket), do: "Child connected", else: "Child rendered (dead)" %>
-      <p id="child-render-time">child rendered at: <%= DateTime.utc_now() %></p>
+      {if connected?(@socket), do: "Child connected", else: "Child rendered (dead)"}
+      <p id="child-render-time">child rendered at: {DateTime.utc_now()}</p>
 
       <button phx-click="boom">Crash child</button>
 
@@ -75,7 +75,7 @@ defmodule Phoenix.LiveViewTest.E2E.ErrorLive do
       window.liveSocket = liveSocket
     </script>
 
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 
@@ -138,7 +138,7 @@ defmodule Phoenix.LiveViewTest.E2E.ErrorLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <p id="render-time">main rendered at: <%= DateTime.utc_now() %></p>
+    <p id="render-time">main rendered at: {DateTime.utc_now()}</p>
 
     <button phx-click="boom">Crash main</button>
 
@@ -150,7 +150,7 @@ defmodule Phoenix.LiveViewTest.E2E.ErrorLive do
 
     <div style="border: 1px solid lightgray; padding: 4px; margin-top: 16px;">
       <%= if assigns[:child] do %>
-        <%= live_render(@socket, ChildLive, id: "child") %>
+        {live_render(@socket, ChildLive, id: "child")}
       <% end %>
     </div>
 

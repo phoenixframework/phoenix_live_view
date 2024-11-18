@@ -19,7 +19,7 @@ defmodule Phoenix.ComponentRenderingTest do
     assigns = assign_new(assigns, :name, fn -> "World" end)
 
     ~H"""
-    Hello <%= @name %>
+    Hello {@name}
     """
   end
 
@@ -65,7 +65,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
     def changed(assigns) do
       ~H"""
-      <%= inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true]) %>
+      {inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true])}
       """
     end
 
@@ -211,21 +211,21 @@ defmodule Phoenix.ComponentRenderingTest do
 
     defp wrapper(assigns) do
       ~H"""
-      <div><%= render_slot(@inner_block) %></div>
+      <div>{render_slot(@inner_block)}</div>
       """
     end
 
     defp inner_changed(assigns) do
       ~H"""
-      <%= inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true]) %>
-      <%= render_slot(@inner_block, "var") %>
+      {inspect(Map.get(assigns, :__changed__), custom_options: [sort_maps: true])}
+      {render_slot(@inner_block, "var")}
       """
     end
 
     test "with @inner_block" do
       assigns = %{foo: 1, __changed__: %{}}
       assert eval(~H|<.inner_changed foo={@foo}></.inner_changed>|) == [nil]
-      assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) == [nil]
+      assert eval(~H|<.inner_changed>{@foo}</.inner_changed>|) == [nil]
 
       assigns = %{foo: 1, __changed__: %{foo: true}}
 
@@ -233,11 +233,11 @@ defmodule Phoenix.ComponentRenderingTest do
                [["%{foo: true}", nil]]
 
       assert eval(
-               ~H|<.inner_changed foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
+               ~H|<.inner_changed foo={@foo}>{inspect(Map.get(assigns, :__changed__))}</.inner_changed>|
              ) ==
                [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
-      assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) ==
+      assert eval(~H|<.inner_changed>{@foo}</.inner_changed>|) ==
                [["%{inner_block: true}", ["1"]]]
 
       assigns = %{foo: 1, __changed__: %{foo: %{bar: true}}}
@@ -246,11 +246,11 @@ defmodule Phoenix.ComponentRenderingTest do
                [["%{foo: %{bar: true}}", nil]]
 
       assert eval(
-               ~H|<.inner_changed foo={@foo}><%= inspect(Map.get(assigns, :__changed__)) %></.inner_changed>|
+               ~H|<.inner_changed foo={@foo}>{inspect(Map.get(assigns, :__changed__))}</.inner_changed>|
              ) ==
                [["%{foo: %{bar: true}, inner_block: true}", ["%{foo: %{bar: true}}"]]]
 
-      assert eval(~H|<.inner_changed><%= @foo %></.inner_changed>|) ==
+      assert eval(~H|<.inner_changed>{@foo}</.inner_changed>|) ==
                [["%{inner_block: %{bar: true}}", ["1"]]]
     end
 
@@ -265,14 +265,14 @@ defmodule Phoenix.ComponentRenderingTest do
 
       assert eval(~H"""
              <.inner_changed :let={_foo} foo={@foo}>
-               <%= inspect(Map.get(assigns, :__changed__)) %>
+               {inspect(Map.get(assigns, :__changed__))}
              </.inner_changed>
              """) ==
                [["%{foo: true, inner_block: true}", ["%{foo: true}"]]]
 
       assert eval(~H"""
              <.inner_changed :let={_foo} foo={@foo}>
-               <%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %>
+               {"constant"}{inspect(Map.get(assigns, :__changed__))}
              </.inner_changed>
              """) ==
                [["%{foo: true, inner_block: true}", [nil, "%{foo: true}"]]]
@@ -280,7 +280,7 @@ defmodule Phoenix.ComponentRenderingTest do
       assert eval(~H"""
              <.inner_changed :let={foo} foo={@foo}>
                <.inner_changed :let={_bar} bar={foo}>
-                 <%= "constant" %><%= inspect(Map.get(assigns, :__changed__)) %>
+                 {"constant"}{inspect(Map.get(assigns, :__changed__))}
                </.inner_changed>
              </.inner_changed>
              """) ==
@@ -293,7 +293,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
       assert eval(~H"""
              <.inner_changed :let={foo} foo={@foo}>
-               <%= foo %><%= inspect(Map.get(assigns, :__changed__)) %>
+               {foo}{inspect(Map.get(assigns, :__changed__))}
              </.inner_changed>
              """) ==
                [["%{foo: true, inner_block: true}", ["var", "%{foo: true}"]]]
@@ -301,7 +301,7 @@ defmodule Phoenix.ComponentRenderingTest do
       assert eval(~H"""
              <.inner_changed :let={foo} foo={@foo}>
                <.inner_changed :let={bar} bar={foo}>
-                 <%= bar %><%= inspect(Map.get(assigns, :__changed__)) %>
+                 {bar}{inspect(Map.get(assigns, :__changed__))}
                </.inner_changed>
              </.inner_changed>
              """) ==
@@ -318,9 +318,9 @@ defmodule Phoenix.ComponentRenderingTest do
 
       assert eval(~H"""
              <.wrapper>
-               <%= @foo %>
+               {@foo}
                <.inner_changed :let={var} foo={@bar}>
-                 <%= var %>
+                 {var}
                </.inner_changed>
              </.wrapper>
              """) == [[["1", nil]]]
@@ -330,7 +330,7 @@ defmodule Phoenix.ComponentRenderingTest do
       assigns = assign_new(assigns, :inner_block, fn -> [] end)
 
       ~H"""
-      <div><%= render_slot(@inner_block) || "DEFAULT!" %></div>
+      <div>{render_slot(@inner_block) || "DEFAULT!"}</div>
       """
     end
 
@@ -339,7 +339,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
       assert eval(~H"""
              <.optional_wrapper>
-               <%= @foo %>
+               {@foo}
              </.optional_wrapper>
              """) == [[["1"]]]
 
@@ -347,7 +347,7 @@ defmodule Phoenix.ComponentRenderingTest do
 
       assert eval(~H"""
              <.optional_wrapper>
-               <%= @foo %>
+               {@foo}
              </.optional_wrapper>
              """) == [[["2"]]]
 

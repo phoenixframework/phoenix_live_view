@@ -58,9 +58,9 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
         <article :for={entry <- @uploads.avatar.entries} class="upload-entry">
           <figure>
             <.live_img_preview entry={entry} style="width: 500px" />
-            <figcaption><%= entry.client_name %></figcaption>
+            <figcaption>{entry.client_name}</figcaption>
           </figure>
-          <progress value={entry.progress} max="100"><%= entry.progress %>%</progress>
+          <progress value={entry.progress} max="100">{entry.progress}%</progress>
           <button
             type="button"
             phx-click="cancel-upload"
@@ -70,16 +70,16 @@ defmodule Phoenix.LiveViewTest.E2E.UploadLive do
             &times;
           </button>
           <p :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">
-            <%= error_to_string(err) %>
+            {error_to_string(err)}
           </p>
         </article>
         <p :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger">
-          <%= error_to_string(err) %>
+          {error_to_string(err)}
         </p>
       </section>
 
       <ul>
-        <li :for={file <- @uploaded_files}><a href={file}><%= Path.basename(file) %></a></li>
+        <li :for={file <- @uploaded_files}><a href={file}>{Path.basename(file)}</a></li>
       </ul>
     </form>
     """
