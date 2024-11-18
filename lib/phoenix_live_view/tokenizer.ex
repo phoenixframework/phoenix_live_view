@@ -159,7 +159,7 @@ defmodule Phoenix.LiveView.Tokenizer do
     %{braces: 0} = state
     text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
 
-    case handle_interpolation(rest, line, column, [], state) do
+    case handle_interpolation(rest, line, column + 1, [], state) do
       {:ok, value, new_line, new_column, rest, state} ->
         acc = [{:body_expr, value, %{line: line, column: column}} | text_to_acc]
         handle_text(rest, new_line, new_column, [], acc, state)

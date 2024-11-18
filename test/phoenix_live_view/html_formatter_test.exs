@@ -1804,6 +1804,12 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
+  test "respect interpolation when phx-no-format is present" do
+    assert_formatter_doesnt_change("""
+    <title data-prefix={@prefix} data-default={@default} data-suffix={@suffix} phx-no-format>{@prefix}{render_present(render_slot(@inner_block), @default)}{@suffix}</title>
+    """)
+  end
+
   test "respect nesting of children when phx-no-format is present" do
     assert_formatter_doesnt_change(
       """
