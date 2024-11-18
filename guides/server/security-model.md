@@ -32,7 +32,7 @@ In a regular web application, we perform authentication and authorization
 checks on every request. Given LiveViews start as a regular HTTP request,
 they share the authentication logic with regular requests through plugs.
 The request starts in your endpoint, which then invokes the router.
-Plugs are used to ensure the user is authentication and sstores the
+Plugs are used to ensure the user is authenticated and stores the
 relevant information in the session.
 
 Once the user is authenticated, we typically validate the sessions on
@@ -45,12 +45,12 @@ the `mount` callback. Authorization rules generally happen on `mount`
 The primary mechanism for grouping LiveViews is via the
 `Phoenix.LiveView.Router.live_session/2`. LiveView will then ensure
 that navigation events within the same `live_session` skip the regular
-HTTP requests and without going through the plug pipeline. Events across
-live sessions will go throuth the router.
+HTTP requests without going through the plug pipeline. Events across
+live sessions will go through the router.
 
 For example, imagine you need to authenticate two distinct types of users.
 Your regular users login via email and password, and you have an admin
-dashboard that uses http auth. You can specify different `live_session`s
+dashboard that uses HTTP auth. You can specify different `live_session`s
 for each authentication flow:
 
     live_session :default do
