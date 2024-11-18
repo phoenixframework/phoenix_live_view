@@ -31,10 +31,87 @@ authorization and the specific rules often change per application.
 In a regular web application, we perform authentication and authorization
 checks on every request. Given LiveViews start as a regular HTTP request,
 they share the authentication logic with regular requests through plugs.
+The request starts in your endpoint, which then invokes the router.
+Plugs are used to ensure the user is authentication and sstores the
+relevant information in the session.
+
 Once the user is authenticated, we typically validate the sessions on
 the `mount` callback. Authorization rules generally happen on `mount`
 (for instance, is the user allowed to see this page?) and also on
 `handle_event` (is the user allowed to delete this item?).
+
+## `live_session`
+
+The primary mechanism for grouping LiveViews is via the
+`Phoenix.LiveView.Router.live_session/2`. LiveView will then ensure
+that navigation events within the same `live_session` skip the regular
+HTTP requests and without going through the plug pipeline. Events across
+live sessions will go throuth the router.
+
+For example, imagine you need to authenticate two distinct types of users.
+Your regular users login via email and password, and you have an admin
+dashboard that uses http auth. You can specify different `live_session`s
+for each authentication flow:
+
+    live_session :default do
+      scope "/" do
+        pipe_through [:authenticate_user]
+        get ...
+        live ...
+      end
+    end
+
+    live_session :admin do
+      scope "/admin" do
+        pipe_through [:http_auth_admin]
+        get ...
+        live ...
+      end
+    end
+
+Now every time you try to navigate to an admin panel, and out of it,
+a regular page navigation will happen and a brand new live connection
+will be established.
+
+It is worth remembering that LiveViews require their own security checks,
+so we use `pipe_through` above to protect the regular routes (get, post, etc.)
+and the LiveViews should run their own checks on the `mount` callback
+(or using `Phoenix.LiveView.on_mount/1` hooks).
+
+For this purpose, you can combine `live_session` with `on_mount`, as well
+as other options, such as the `:root_layout`. Instead of declaring `on_mount`
+on every LiveView, you can declare it at the router level and it will enforce
+it on all LiveViews under it:
+
+    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
+      scope "/" do
+        pipe_through [:authenticate_user]
+        live ...
+      end
+    end
+
+    live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
+      scope "/admin" do
+        pipe_through [:authenticate_admin]
+        live ...
+      end
+    end
+
+Each live route under the `:default` `live_session` will invoke
+the `MyAppWeb.UserLiveAuth` hook on mount. This module was defined
+earlier in this guide. We will also pipe regular web requests through
+`:authenticate_user`, which must execute the same checks as
+`MyAppWeb.UserLiveAuth`, but tailored to plug.
+
+Similarly, the `:admin` `live_session` has its own authentication
+flow, powered by `MyAppWeb.AdminLiveAuth`. It also defines a plug
+equivalent named `:authenticate_admin`, which will be used by any
+regular request. If there are no regular web requests defined under
+a live session, then the `pipe_through` checks are not necessary.
+
+Declaring the `on_mount` on `live_session` is exactly the same as
+declaring it in each LiveView. Let's talk about which logic we typically
+execute on mount.
 
 ## Mounting considerations
 
@@ -63,9 +140,7 @@ should execute those same verifications:
       {:ok, socket}
     end
 
-Beginning with v0.17, LiveView includes the `on_mount` (`Phoenix.LiveView.on_mount/1`) hook,
-which allows you to encapsulate this logic and execute it on every mount,
-as you would with plug:
+The `on_mount` hook allows you to encapsulate this logic and execute it on every mount:
 
     defmodule MyAppWeb.UserLiveAuth do
       import Phoenix.Component
@@ -195,97 +270,16 @@ This is the same mechanism provided by `Phoenix.Channel`s. Therefore, if
 your application uses both channels and LiveViews, you can use the same
 technique to disconnect any stateful connection.
 
-## `live_session` and `push_navigate`
-
-LiveView supports live redirect, which allows users to navigate between
-pages over the LiveView connection. Whenever there is a `push_navigate`,
-a new LiveView will be mounted, skipping the regular HTTP requests and
-without going through the plug pipeline.
-
-However, if you want to draw stronger boundaries between parts of your
-application, you can also use `Phoenix.LiveView.Router.live_session/2`
-to group your live routes. This can be handy because you can only
-`push_navigate` between LiveViews in the same `live_session`.
-
-For example, imagine you need to authenticate two distinct types of users.
-Your regular users login via email and password, and you have an admin
-dashboard that uses http auth. You can specify different `live_session`s
-for each authentication flow:
-
-    live_session :default do
-      scope "/" do
-        pipe_through [:authenticate_user]
-        get ...
-        live ...
-      end
-    end
-
-    live_session :admin do
-      scope "/admin" do
-        pipe_through [:http_auth_admin]
-        get ...
-        live ...
-      end
-    end
-
-Now every time you try to navigate to an admin panel, and out of it,
-a regular page navigation will happen and a brand new live connection
-will be established.
-
-Once again, it is worth remembering that LiveViews require their own
-security checks, so we use `pipe_through` above to protect the regular
-routes (get, post, etc.) and the LiveViews should run their own checks
-using `on_mount` hooks.
-
-`live_session` can also be used to enforce each LiveView group has
-a different root layout, since layouts are not updated between live
-redirects:
-
-    live_session :default, root_layout: {Layouts, :root} do
-      ...
-    end
-
-    live_session :admin, root_layout: {Layouts, :admin} do
-      ...
-    end
-
-Finally, you can even combine `live_session` with `on_mount`. Instead
-of declaring `on_mount` on every LiveView, you can declare it at the
-router level and it will enforce it on all LiveViews under it:
-
-    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
-      scope "/" do
-        pipe_through [:authenticate_user]
-        live ...
-      end
-    end
-
-    live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
-      scope "/admin" do
-        pipe_through [:authenticate_admin]
-        live ...
-      end
-    end
-
-Each live route under the `:default` `live_session` will invoke
-the `MyAppWeb.UserLiveAuth` hook on mount. This module was defined
-earlier in this guide. We will also pipe regular web requests through
-`:authenticate_user`, which must execute the same checks as
-`MyAppWeb.UserLiveAuth`, but tailored to plug.
-
-Similarly, the `:admin` `live_session` has its own authentication
-flow, powered by `MyAppWeb.AdminLiveAuth`. It also defines a plug
-equivalent named `:authenticate_admin`, which will be used by any
-regular request. If there are no regular web requests defined under
-a live session, then the `pipe_through` checks are not necessary.
-
-Declaring the `on_mount` on `live_session` is exactly the same as
-declaring it in each LiveView. It will be executed every time a
-LiveView is mounted, even after `push_navigate`s.
-
 ## Summing up
 
 The important concepts to keep in mind are:
+
+  * `live_session` can be used to draw boundaries between groups of
+    LiveViews. While you could use `live_session` to draw lines between
+    different authorization rules, doing so would lead to frequent page
+    reloads. For this reason, we typically use `live_session` to enforce
+    different *authentication* requirements or whenever you need to
+    change root layouts
 
   * Your authentication logic (logging the user in) is typically part of
     your regular web request pipeline and it is shared by both controllers
@@ -300,10 +294,3 @@ The important concepts to keep in mind are:
     events (like "can the user delete this item?"). Those rules are often
     domain/business specific, and typically happen in your context modules.
     This is also a requirement for regular requests and responses
-
-  * `live_session` can be used to draw boundaries between groups of
-    LiveViews. While you could use `live_session` to draw lines between
-    different authorization rules, doing so would lead to frequent page
-    reloads. For this reason, we typically use `live_session` to enforce
-    different *authentication* requirements or whenever you need to
-    change root layouts
