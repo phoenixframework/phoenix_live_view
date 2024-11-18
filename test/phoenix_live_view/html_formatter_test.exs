@@ -1102,7 +1102,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   test "format <pre> tag with EEx" do
     assert_formatter_doesnt_change("""
     <pre>
-      :root &ltimes;
+      :root &lbrace;
         <%= 2 + 2 %>
         <%= 2 + 2 %>
       }
