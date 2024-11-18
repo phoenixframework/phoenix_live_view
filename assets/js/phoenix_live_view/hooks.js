@@ -60,7 +60,7 @@ let Hooks = {
 let findScrollContainer = (el) => {
   // the scroll event won't be fired on the html/body element even if overflow is set
   // therefore we return null to instead listen for scroll events on document
-  if (["HTML", "BODY"].indexOf(el.nodeName.toUpperCase()) >= 0) return null
+  if(["HTML", "BODY"].indexOf(el.nodeName.toUpperCase()) >= 0) return null
   if(["scroll", "auto"].indexOf(getComputedStyle(el).overflowY) >= 0) return el
   return findScrollContainer(el.parentElement)
 }
@@ -204,7 +204,7 @@ Hooks.InfiniteScroll = {
       let remainingTime = interval - (now - lastCallAt)
 
       if(remainingTime <= 0 || remainingTime > interval){
-        if(timer) {
+        if(timer){
           clearTimeout(timer)
           timer = null
         }

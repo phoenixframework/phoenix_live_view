@@ -37,7 +37,7 @@ const VOID_TAGS = new Set([
   "track",
   "wbr"
 ])
-const quoteChars = new Set(["'", '"'])
+const quoteChars = new Set(["'", "\""])
 
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0
@@ -45,7 +45,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML
 
   let lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
-  if(lookahead === null) { throw new Error(`malformed html ${html}`) }
+  if(lookahead === null){ throw new Error(`malformed html ${html}`) }
 
   i = lookahead[0].length
   beforeTag = lookahead[1]
@@ -57,15 +57,15 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
     if(html.charAt(i) === ">" ){ break }
     if(html.charAt(i) === "="){
       let isId = html.slice(i - 3, i) === " id"
-      i++;
+      i++
       let char = html.charAt(i)
-      if (quoteChars.has(char)) {
+      if(quoteChars.has(char)){
         let attrStartsAt = i
         i++
         for(i; i < html.length; i++){
           if(html.charAt(i) === char){ break }
         }
-        if (isId) {
+        if(isId){
           id = html.slice(attrStartsAt + 1, i)
           break
         }
@@ -97,12 +97,12 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
 
   let attrsStr =
     Object.keys(attrs)
-    .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
-    .join(" ")
+      .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
+      .join(" ")
 
   if(clearInnerHTML){
     // Keep the id if any
-    let idAttrStr = id ? ` id="${id}"` : "";
+    let idAttrStr = id ? ` id="${id}"` : ""
     if(VOID_TAGS.has(tag)){
       newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`
     } else {
@@ -280,7 +280,7 @@ export default class Rendered {
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
   templateStatic(part, templates){
-    if(typeof (part) === "number") {
+    if(typeof (part) === "number"){
       return templates[part]
     } else {
       return part

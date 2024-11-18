@@ -1,2 +1,2 @@
-import 'regenerator-runtime/runtime'
-import 'css.escape'
+import "regenerator-runtime/runtime"
+import "css.escape"

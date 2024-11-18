@@ -1038,7 +1038,7 @@ export default class View {
           })
         }
       }
-      el.dispatchEvent(new CustomEvent(`phx:push`, {
+      el.dispatchEvent(new CustomEvent("phx:push", {
         detail: detail,
         bubbles: true,
         cancelable: false
@@ -1312,11 +1312,11 @@ export default class View {
       let uploader = new LiveUploader(inputEl, this, () => {
         numFileInputsInProgress--
         if(numFileInputsInProgress === 0){ onComplete() }
-      });
+      })
 
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
-      if(entries.length === 0) {
+      if(entries.length === 0){
         numFileInputsInProgress--
         return
       }
@@ -1377,11 +1377,11 @@ export default class View {
     else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {detail: {files: filesOrBlobs}}) }
   }
 
-  targetCtxElement(targetCtx) {
+  targetCtxElement(targetCtx){
     if(isCid(targetCtx)){
       let [target] = DOM.findComponentNodeList(this.el, targetCtx)
       return target
-    } else if(targetCtx) {
+    } else if(targetCtx){
       return targetCtx
     } else {
       return null
