@@ -82,6 +82,8 @@ community at different stages of development:
 
 * [Mishka Chelekom](https://github.com/mishka-group/mishka_chelekom): Phoenix + LiveView UI kit and HEEx components
 
+* [Fluxon UI](https://fluxonui.com): Elegant and accessible UI components for Phoenix LiveView
+
 ## What makes LiveView unique?
 
 LiveView is server-centric. You no longer have to worry about managing
