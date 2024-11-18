@@ -2389,7 +2389,13 @@ defmodule Phoenix.Component do
 
     ~H"""
     <form {@attrs}>
-      <input :if={@hidden_method && @hidden_method not in ~w(get post)} name="_method" type="hidden" hidden value={@hidden_method} />
+      <input
+        :if={@hidden_method && @hidden_method not in ~w(get post)}
+        name="_method"
+        type="hidden"
+        hidden
+        value={@hidden_method}
+      />
       <input :if={@csrf_token} name="_csrf_token" type="hidden" hidden value={@csrf_token} />
       {render_slot(@inner_block, @form)}
     </form>
