@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.13.4
+          - elixir: 1.14.5
             otp: 24.3
 
           - elixir: 1.15.4
@@ -34,62 +34,62 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Install inotify-tools
-      run: |
-        sudo apt update
-        sudo apt install -y inotify-tools
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Install inotify-tools
+        run: |
+          sudo apt update
+          sudo apt install -y inotify-tools
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Set up Elixir
-      uses: erlef/setup-beam@v1
-      with:
-        elixir-version: ${{ matrix.elixir }}
-        otp-version: ${{ matrix.otp }}
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
 
-    - name: Restore deps and _build cache
-      uses: actions/cache@v4
-      with:
-        path: |
-          deps
-          _build
-        key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
-        restore-keys: |
-          deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
+      - name: Restore deps and _build cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            deps
+            _build
+          key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
+          restore-keys: |
+            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
 
-    - name: Install dependencies
-      run: mix deps.get --only test
+      - name: Install dependencies
+        run: mix deps.get --only test
 
-    - name: Remove compiled application files
-      run: mix clean
+      - name: Remove compiled application files
+        run: mix clean
 
-    - name: Compile dependencies
-      run: mix compile
-      if: ${{ !matrix.lint }}
-      env:
-        MIX_ENV: test
+      - name: Compile dependencies
+        run: mix compile
+        if: ${{ !matrix.lint }}
+        env:
+          MIX_ENV: test
 
-    - name: Compile & lint dependencies
-      run: mix compile --warnings-as-errors
-      if: ${{ matrix.lint }} or ${{ matrix.elixir == 'main' }}
-      env:
-        MIX_ENV: test
+      - name: Compile & lint dependencies
+        run: mix compile --warnings-as-errors
+        if: ${{ matrix.lint }} or ${{ matrix.elixir == 'main' }}
+        env:
+          MIX_ENV: test
 
-    - name: Check if formatted
-      run: mix format --check-formatted
-      if: ${{ matrix.lint }}
-      env:
-        MIX_ENV: test
+      - name: Check if formatted
+        run: mix format --check-formatted
+        if: ${{ matrix.lint }}
+        env:
+          MIX_ENV: test
 
-    - name: Run tests
-      run: mix test --cover --export-coverage default
+      - name: Run tests
+        run: mix test --cover --export-coverage default
 
-    - uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: mix-test-coverage-${{ matrix.otp }}-${{ matrix.elixir }}
-        path: cover/default.coverdata
-        retention-days: 7
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mix-test-coverage-${{ matrix.otp }}-${{ matrix.elixir }}
+          path: cover/default.coverdata
+          retention-days: 7
 
   npm_test:
     name: npm test
@@ -215,7 +215,7 @@ jobs:
           name: e2e-test-results
           path: test/e2e/test-results/
           retention-days: 7
-        
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

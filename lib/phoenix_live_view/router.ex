@@ -109,13 +109,9 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
-    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
-    live_view =
-      if Macro.quoted_literal?(live_view) do
-        Macro.prewalk(live_view, &expand_alias(&1, __CALLER__))
-      else
-        live_view
-      end
+    live_view = Macro.expand_literals(live_view, __CALLER__)
+    action = Macro.expand_literals(action, __CALLER__)
+    opts = Macro.expand_literals(opts, __CALLER__)
 
     quote bind_quoted: binding() do
       {action, router_options} =
@@ -235,12 +231,7 @@ defmodule Phoenix.LiveView.Router do
   and be executed via `on_mount` hooks.
   """
   defmacro live_session(name, opts \\ [], do: block) do
-    opts =
-      if Macro.quoted_literal?(opts) do
-        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
-      else
-        opts
-      end
+    opts = Macro.expand_literals(opts, __CALLER__)
 
     quote do
       unquote(__MODULE__).__live_session__(__MODULE__, unquote(opts), unquote(name))
@@ -248,11 +239,6 @@ defmodule Phoenix.LiveView.Router do
       Module.delete_attribute(__MODULE__, :phoenix_live_session_current)
     end
   end
-
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:mount, 3}})
-
-  defp expand_alias(other, _env), do: other
 
   @doc false
   def __live_session__(module, opts, name) do

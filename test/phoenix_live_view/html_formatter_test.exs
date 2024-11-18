@@ -4,18 +4,18 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   alias Phoenix.LiveView.HTMLFormatter
 
   defp assert_formatter_output(input, expected, dot_formatter_opts \\ []) do
-    first_pass = HTMLFormatter.format(input, dot_formatter_opts)
+    first_pass = HTMLFormatter.format(input, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == expected
 
-    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts)
+    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts) |> IO.iodata_to_binary()
     assert second_pass == expected
   end
 
   def assert_formatter_doesnt_change(code, dot_formatter_opts \\ []) do
-    first_pass = HTMLFormatter.format(code, dot_formatter_opts)
+    first_pass = HTMLFormatter.format(code, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == code
 
-    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts)
+    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts) |> IO.iodata_to_binary()
     assert second_pass == code
   end
 
@@ -2136,28 +2136,25 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  # TODO: Remove this `if` when we require Elixir 1.14+
-  if function_exported?(EEx, :tokenize, 2) do
-    test "handle EEx comments" do
-      assert_formatter_doesnt_change("""
-      <div>
-        <%!-- some --%>
-        <%!-- comment --%>
-        <%!--
-          <div>
-            <%= @user.name %>
-          </div>
-        --%>
-      </div>
-      """)
+  test "handle EEx comments" do
+    assert_formatter_doesnt_change("""
+    <div>
+      <%!-- some --%>
+      <%!-- comment --%>
+      <%!--
+        <div>
+          <%= @user.name %>
+        </div>
+      --%>
+    </div>
+    """)
 
-      assert_formatter_doesnt_change("""
-      <div>
-        <%= # some %>
-        <%= # comment %>
-        <%= # lines %>
-      </div>
-      """)
-    end
+    assert_formatter_doesnt_change("""
+    <div>
+      <%= # some %>
+      <%= # comment %>
+      <%= # lines %>
+    </div>
+    """)
   end
 end

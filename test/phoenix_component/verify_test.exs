@@ -1,7 +1,6 @@
 defmodule Phoenix.ComponentVerifyTest do
   use ExUnit.Case, async: true
 
-  @moduletag :after_verify
   import ExUnit.CaptureIO
 
   test "validate required attributes" do

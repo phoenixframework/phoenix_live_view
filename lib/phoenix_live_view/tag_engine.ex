@@ -1242,19 +1242,13 @@ defmodule Phoenix.LiveView.TagEngine do
     # warn if using name="id" on an input
     case Enum.find(attrs, &match?({"name", {:string, "id", _}, _}, &1)) do
       {_name, _value, attr_meta} ->
-        # TODO: Remove conditional once we require Elixir v1.14+
-        meta =
-          if Version.match?(System.version(), ">= 1.14.0") do
-            [
-              line: attr_meta.line,
-              column: attr_meta.column,
-              file: state.file,
-              module: state.caller.module,
-              function: state.caller.function
-            ]
-          else
-            Macro.Env.stacktrace(%{state.caller | line: attr_meta.line})
-          end
+        meta = [
+          line: attr_meta.line,
+          column: attr_meta.column,
+          file: state.file,
+          module: state.caller.module,
+          function: state.caller.function
+        ]
 
         IO.warn(
           """
