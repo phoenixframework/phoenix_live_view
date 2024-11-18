@@ -60,14 +60,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   Given HTML like this:
 
   ```heex
-    <section><h1>   <b><%= @user.name %></b></h1></section>
+    <section><h1>   <b>{@user.name}</b></h1></section>
   ```
 
   It will be formatted as:
 
   ```heex
   <section>
-    <h1><b><%= @user.name %></b></h1>
+    <h1><b>{@user.name}</b></h1>
   </section>
   ```
 
@@ -84,7 +84,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ```heex
   <section>
     <h1>
-      <b><%= @user.name %></b>
+      <b>{@user.name}</b>
     </h1>
   </section>
   ```

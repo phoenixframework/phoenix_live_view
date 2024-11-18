@@ -10,7 +10,7 @@ defmodule Phoenix.LiveViewTest do
 
       def greet(assigns) do
         ~H"""
-        <div>Hello, <%= @name %>!</div>
+        <div>Hello, {@name}!</div>
         """
       end
 
@@ -1905,7 +1905,7 @@ defmodule Phoenix.LiveViewTest do
 
   ```heex
   <%= for entry <- @uploads.avatar.entries do %>
-    <%= entry.name %>: <%= entry.progress %>%
+    {entry.name}: {entry.progress}%
   <% end %>
   ```
 

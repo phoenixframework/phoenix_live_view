@@ -12,7 +12,7 @@ defmodule Phoenix.Component do
 
         def greet(assigns) do
           ~H"""
-          <p>Hello, <%= @name %>!</p>
+          <p>Hello, {@name}!</p>
           """
         end
       end
@@ -20,8 +20,9 @@ defmodule Phoenix.Component do
   This function uses the `~H` sigil to return a rendered template.
   `~H` stands for HEEx (HTML + EEx). HEEx is a template language for
   writing HTML mixed with Elixir interpolation. We can write Elixir
-  code inside HEEx using `<%= ... %>` tags and we use `@name` to
-  access the key `name` defined inside `assigns`.
+  code inside `{...}` for HTML-aware interpolation inside tag attributes
+  and the body. We can also interpolate arbitrary HEEx blocks using `<%= ... %>`
+  We use `@name` to access the key `name` defined inside `assigns`.
 
   When invoked within a `~H` sigil or HEEx template file:
 
@@ -68,7 +69,7 @@ defmodule Phoenix.Component do
 
       def greet(assigns) do
         ~H"""
-        <p>Hello, <%= @name %>!</p>
+        <p>Hello, {@name}!</p>
         """
       end
 
@@ -110,8 +111,8 @@ defmodule Phoenix.Component do
       def celebrate(assigns) do
         ~H"""
         <p>
-          Happy birthday <%= @name %>!
-          You are <%= @age %> years old.
+          Happy birthday {@name}!
+          You are {@age} years old.
         </p>
         """
       end
@@ -143,7 +144,7 @@ defmodule Phoenix.Component do
 
         def heading(assigns) do
           ~H"""
-          <h1><%= @title %></h1>
+          <h1>{@title}</h1>
           """
         end
 
@@ -151,7 +152,7 @@ defmodule Phoenix.Component do
 
         def greet(assigns) do
           ~H"""
-          <p>Hello <%= @name %></p>
+          <p>Hello {@name}</p>
           """
         end
       end
@@ -178,7 +179,7 @@ defmodule Phoenix.Component do
 
       def notification(assigns) do
         ~H"""
-        <span {@rest}><%= @message %></span>
+        <span {@rest}>{@message}</span>
         """
       end
 
@@ -233,7 +234,7 @@ defmodule Phoenix.Component do
   slot :inner_block
   def button(assigns) do
     ~H"""
-    <button {@rest}><%= render_slot(@inner_block) %></button>
+    <button {@rest}>{render_slot(@inner_block)}</button>
     """
   end
   ```
@@ -281,7 +282,7 @@ defmodule Phoenix.Component do
       def button(assigns) do
         ~H"""
         <button>
-          <%= render_slot(@inner_block) %>
+          {render_slot(@inner_block)}
         </button>
         """
       end
@@ -327,10 +328,8 @@ defmodule Phoenix.Component do
 
       def unordered_list(assigns) do
         ~H"""
-        <ul>
-          <%= for entry <- @entries do %>
-            <li><%= render_slot(@inner_block, entry) %></li>
-          <% end %>
+        <ul :for={entry <- @entries}>
+          <li>{render_slot(@inner_block, entry)}</li>
         </ul>
         """
       end
@@ -340,7 +339,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
-    I like <b><%= fruit %></b>!
+    I like <b>{fruit}</b>!
   </.unordered_list>
   ```
 
@@ -370,13 +369,13 @@ defmodule Phoenix.Component do
         ~H"""
         <div class="modal">
           <div class="modal-header">
-            <%= render_slot(@header) || "Modal" %>
+            {render_slot(@header) || "Modal"}
           </div>
           <div class="modal-body">
-            <%= render_slot(@inner_block) %>
+            {render_slot(@inner_block)}
           </div>
           <div class="modal-footer">
-            <%= render_slot(@footer) %>
+            {render_slot(@footer)}
           </div>
         </div>
         """
@@ -429,18 +428,12 @@ defmodule Phoenix.Component do
       def table(assigns) do
         ~H"""
         <table>
-          <tr>
-            <%= for col <- @column do %>
-              <th><%= col.label %></th>
-            <% end %>
+          <tr :for={col <- @column}>
+            <th>{col.label}</th>
           </tr>
-          <%= for row <- @rows do %>
-            <tr>
-              <%= for col <- @column do %>
-                <td><%= render_slot(col, row) %></td>
-              <% end %>
-            </tr>
-          <% end %>
+          <tr :for={row <- @rows}>
+            <td :for={col <- @column}>{render_slot(col, row)}</td>
+          </tr>
         </table>
         """
       end
@@ -450,10 +443,10 @@ defmodule Phoenix.Component do
   ```heex
   <.table rows={[%{name: "Jane", age: "34"}, %{name: "Bob", age: "51"}]}>
     <:column :let={user} label="Name">
-      <%= user.name %>
+      {user.name}
     </:column>
     <:column :let={user} label="Age">
-      <%= user.age %>
+      {user.age}
     </:column>
   </.table>
   ```
@@ -663,7 +656,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <%= if @show_greeting? do %>
-    <p>Hello, <%= @name %></p>
+    <p>Hello, {@name}</p>
   <% end %>
   ```
 
@@ -701,7 +694,7 @@ defmodule Phoenix.Component do
   ```heex
   <table id="admin-table" :if={@admin?}>
     <tr :for={user <- @users}>
-      <td><%= user.name %></td>
+      <td>{user.name}</td>
     </tr>
   <table>
   ```
@@ -728,7 +721,7 @@ defmodule Phoenix.Component do
   ```heex
   <.table id="my-table" rows={@users}>
     <:col :for={header <- @headers} :let={user}>
-      <td><%= user[header] %></td>
+      <td>{user[header]}</td>
     </:col>
   <table>
   ```
@@ -839,7 +832,7 @@ defmodule Phoenix.Component do
 
         ~H"""
         <a href={@to} target={@target} {@extra}>
-          <%= render_slot(@inner_block) %>
+          {render_slot(@inner_block)}
         </a>
         """
       end
@@ -896,19 +889,19 @@ defmodule Phoenix.Component do
   When rendering from a controller/view, you can call:
 
   ```heex
-  <%= live_render(@conn, MyApp.ThermostatLive) %>
+  {live_render(@conn, MyApp.ThermostatLive)}
   ```
 
   Or:
 
   ```heex
-  <%= live_render(@conn, MyApp.ThermostatLive, session: %{"home_id" => @home.id}) %>
+  {live_render(@conn, MyApp.ThermostatLive, session:}"home_id" => @home.id}) %>
   ```
 
   Within another LiveView, you must pass the `:id` option:
 
   ```heex
-  <%= live_render(@socket, MyApp.ThermostatLive, id: "thermostat") %>
+  {live_render(@socket, MyApp.ThermostatLive, id: "thermostat")}
   ```
 
   ## Containers
@@ -954,7 +947,7 @@ defmodule Phoenix.Component do
   Renders a slot entry with the given optional `argument`.
 
   ```heex
-  <%= render_slot(@inner_block, @form) %>
+  {render_slot(@inner_block, @form)}
   ```
 
   If the slot has no entries, nil is returned.
@@ -968,11 +961,11 @@ defmodule Phoenix.Component do
   ```heex
   <.table rows={@users}>
     <:col :let={user} label="Name">
-      <%= user.name %>
+      {user.name}
     </:col>
 
     <:col :let={user} label="Address">
-      <%= user.address %>
+      {user.address}
     </:col>
   </.table>
   ```
@@ -985,18 +978,12 @@ defmodule Phoenix.Component do
       def table(assigns) do
         ~H"""
         <table>
-          <tr>
-            <%= for col <- @col do %>
-              <th><%= col.label %></th>
-            <% end %>
+          <tr :for={col <- @col}>
+            <th>{col.label}</th>
           </tr>
-          <%= for row <- @rows do %>
-            <tr>
-              <%= for col <- @col do %>
-                <td><%= render_slot(col, row) %></td>
-              <% end %>
-            </tr>
-          <% end %>
+          <tr :for={row <- @rows}>
+            <td :for={col <- @col}>{render_slot(col, row)}</td>
+          </tr>
         </table>
         """
       end
@@ -1023,7 +1010,7 @@ defmodule Phoenix.Component do
     assigns = %{entries: entries, changed: changed, argument: argument}
 
     ~H"""
-    <%= for entry <- @entries do %><%= call_inner_block!(entry, @changed, @argument) %><% end %>
+    <%= for entry <- @entries do %>{call_inner_block!(entry, @changed, @argument)}<% end %>
     """noformat
   end
 
@@ -1046,8 +1033,8 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <p class="alert alert-info"><%= live_flash(@flash, :info) %></p>
-  <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
+  <p class="alert alert-info">{live_flash(@flash, :info)}</p>
+  <p class="alert alert-danger">{live_flash(@flash, :error)}</p>
   ```
   """
   @deprecated "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
@@ -1072,7 +1059,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <div :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger">
-    <%= upload_error_to_string(err) %>
+    {upload_error_to_string(err)}
   </div>
   ```
   """
@@ -1103,7 +1090,7 @@ defmodule Phoenix.Component do
   ```heex
   <%= for entry <- @uploads.avatar.entries do %>
     <div :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">
-      <%= upload_error_to_string(err) %>
+      {upload_error_to_string(err)}
     </div>
   <% end %>
   ```
@@ -1595,13 +1582,13 @@ defmodule Phoenix.Component do
   <input type="text" name={@form[:title].name} value={@form[:title].value} />
 
   <div :if={used_input?(@form[:title])}>
-    <p :for={error <- @form[:title].errors}><%= error %></p>
+    <p :for={error <- @form[:title].errors}>{error}</p>
   </div>
 
   <input type="text" name={@form[:email].name} value={@form[:email].value} />
 
   <div :if={used_input?(@form[:email])}>
-    <p :for={error <- @form[:email].errors}><%= error %></p>
+    <p :for={error <- @form[:email].errors}>{error}</p>
   </div>
   ```
   """
@@ -1815,13 +1802,13 @@ defmodule Phoenix.Component do
         ~H"""
         <div class="modal">
           <div class="modal-header">
-            <%= render_slot(@header) || "Modal" %>
+            {render_slot(@header) || "Modal"}
           </div>
           <div class="modal-body">
-            <%= render_slot(@inner_block) %>
+            {render_slot(@inner_block)}
           </div>
           <div class="modal-footer">
-            <%= render_slot(@footer) || submit_button() %>
+            {render_slot(@footer) || submit_button()}
           </div>
         </div>
         """
@@ -1971,8 +1958,8 @@ defmodule Phoenix.Component do
       def celebrate(assigns) do
         ~H"""
         <p>
-          Happy birthday <%= @name %>!
-          You are <%= @age %> years old.
+          Happy birthday {@name}!
+          You are {@age} years old.
         </p>
         """
       end
@@ -2090,13 +2077,13 @@ defmodule Phoenix.Component do
 
   ```heex
   <.live_title default="Welcome" prefix="MyApp – ">
-    <%= assigns[:page_title] %>
+    {assigns[:page_title]}
   </.live_title>
   ```
 
   ```heex
   <.live_title default="Welcome" suffix="- MyApp">
-    <%= assigns[:page_title] %>
+    {assigns[:page_title]}
   </.live_title>
   ```
   """
@@ -2118,7 +2105,7 @@ defmodule Phoenix.Component do
 
   def live_title(assigns) do
     ~H"""
-    <title data-prefix={@prefix} data-default={@default} data-suffix={@suffix} phx-no-format><%= @prefix %><%= render_present(render_slot(@inner_block), @default) %><%= @suffix %></title>
+    <title data-prefix={@prefix} data-default={@default} data-suffix={@suffix} phx-no-format>{@prefix}{render_present(render_slot(@inner_block), @default)}{@suffix}</title>
     """
   end
 
@@ -2402,12 +2389,8 @@ defmodule Phoenix.Component do
 
     ~H"""
     <form {@attrs}>
-      <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
-        <input name="_method" type="hidden" hidden value={@hidden_method} />
-      <% end %>
-      <%= if @csrf_token do %>
-        <input name="_csrf_token" type="hidden" hidden value={@csrf_token} />
-      <% end %>
+      <input :if={@hidden_method && @hidden_method not in ~w(get post)} name="_method" type="hidden" hidden value={@hidden_method} />
+      <input :if={@csrf_token} name="_csrf_token" type="hidden" hidden value={@csrf_token} />
       {render_slot(@inner_block, @form)}
     </form>
     """
@@ -2709,7 +2692,7 @@ defmodule Phoenix.Component do
 
     ~H"""
     <%= for finner <- @forms do %>
-      <%= unless @skip_hidden do %>
+      <%= if !@skip_hidden do %>
         <%= for {name, value_or_values} <- finner.hidden,
                 name = name_for_value_or_values(finner, name, value_or_values),
                 value <- List.wrap(value_or_values) do %>
@@ -2937,7 +2920,7 @@ defmodule Phoenix.Component do
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       phx-no-format
       {@rest}
-    ><%= render_slot(@inner_block) %></a>
+    >{render_slot(@inner_block)}</a>
     """
   end
 
@@ -2949,7 +2932,7 @@ defmodule Phoenix.Component do
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       phx-no-format
       {@rest}
-    ><%= render_slot(@inner_block) %></a>
+    >{render_slot(@inner_block)}</a>
     """
   end
 
@@ -2965,7 +2948,7 @@ defmodule Phoenix.Component do
       data-to={if @method != "get", do: @href}
       phx-no-format
       {@rest}
-    ><%= render_slot(@inner_block) %></a>
+    >{render_slot(@inner_block)}</a>
     """
   end
 
@@ -3195,21 +3178,15 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <%= for entry <- @uploads.avatar.entries do %>
-    <.live_img_preview entry={entry} width="75" />
-  <% end %>
+  <.live_img_preview :for={entry <- @uploads.avatar.entries} entry={entry} width="75" />
   ```
 
   When you need to use it multiple times, make sure that they have distinct ids
 
   ```heex
-  <%= for entry <- @uploads.avatar.entries do %>
-    <.live_img_preview entry={entry} width="75" />
-  <% end %>
+  <.live_img_preview :for={entry <- @uploads.avatar.entries} entry={entry} width="75" />
 
-  <%= for entry <- @uploads.avatar.entries do %>
-    <.live_img_preview id={"modal-#{entry.ref}"} entry={entry} width="500" />
-  <% end %>
+  <.live_img_preview :for={entry <- @uploads.avatar.entries} id={"modal-#{entry.ref}"} entry={entry} width="500" />
   ```
   """
   @doc type: :component
@@ -3255,7 +3232,7 @@ defmodule Phoenix.Component do
     <:separator>
       <span class="sep">|</span>
     </:separator>
-    <%= item %>
+    {item}
   </.intersperse>
   ```
 
@@ -3298,7 +3275,7 @@ defmodule Phoenix.Component do
     <:loading>Loading organization...</:loading>
     <:failed :let={_failure}>there was an error loading the organization</:failed>
     <%= if org do %>
-      <%= org.name %>
+      {org.name}
     <% else %>
       You don't have an organization yet.
     <% end %>
