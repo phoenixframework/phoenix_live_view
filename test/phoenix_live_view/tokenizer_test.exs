@@ -620,6 +620,8 @@ defmodule Phoenix.LiveView.TokenizerTest do
     test "raise on incomplete attribute expression (EOF)" do
       message = """
       nofile:2:9: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div
       2 |   class={panel
@@ -700,6 +702,8 @@ defmodule Phoenix.LiveView.TokenizerTest do
     test "raise on incomplete expression (EOF)" do
       message = """
       nofile:2:3: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div
       2 |   {@attrs

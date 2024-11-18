@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.Tokenizer do
     %{
       file: file,
       column_offset: indentation + 1,
-      braces: [],
+      braces: 0,
       context: [],
       source: source,
       indentation: indentation,
@@ -153,6 +153,21 @@ defmodule Phoenix.LiveView.Tokenizer do
   defp handle_text("<" <> rest, line, column, buffer, acc, state) do
     text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
     handle_tag_open(rest, line, column + 1, text_to_acc, %{state | context: []})
+  end
+
+  defp handle_text("{" <> rest, line, column, buffer, acc, state) do
+    %{braces: 0} = state
+    text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
+
+    case handle_interpolation(rest, line, column, [], state) do
+      {:ok, value, new_line, new_column, rest, state} ->
+        acc = [{:body_expr, value, %{line: line, column: column}} | text_to_acc]
+        handle_text(rest, new_line, new_column, [], acc, state)
+
+      {:error, message} ->
+        meta = %{line: line, column: column}
+        raise_syntax_error!(message, meta, state)
+    end
   end
 
   defp handle_text(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
@@ -591,7 +606,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   ## handle_attr_value_as_expr
 
-  defp handle_attr_value_as_expr(text, line, column, acc, %{braces: []} = state) do
+  defp handle_attr_value_as_expr(text, line, column, acc, %{braces: 0} = state) do
     case handle_interpolation(text, line, column, [], state) do
       {:ok, value, new_line, new_column, rest, state} ->
         acc = put_attr_value(acc, {:expr, value, %{line: line, column: column}})
@@ -614,7 +629,7 @@ defmodule Phoenix.LiveView.Tokenizer do
     handle_interpolation(rest, line + 1, state.column_offset, ["\n" | buffer], state)
   end
 
-  defp handle_interpolation("}" <> rest, line, column, buffer, %{braces: []} = state) do
+  defp handle_interpolation("}" <> rest, line, column, buffer, %{braces: 0} = state) do
     value = buffer_to_string(buffer)
     {:ok, value, line, column + 1, rest, state}
   end
@@ -628,12 +643,12 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp handle_interpolation("}" <> rest, line, column, buffer, state) do
-    {_pos, state} = pop_brace(state)
+    state = pop_brace(state)
     handle_interpolation(rest, line, column + 1, ["}" | buffer], state)
   end
 
   defp handle_interpolation("{" <> rest, line, column, buffer, state) do
-    state = push_brace(state, {line, column})
+    state = push_brace(state)
     handle_interpolation(rest, line, column + 1, ["{" | buffer], state)
   end
 
@@ -642,7 +657,13 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp handle_interpolation(<<>>, _line, _column, _buffer, _state) do
-    {:error, "expected closing `}` for expression"}
+    {:error,
+     """
+     expected closing `}` for expression
+
+     In case you don't want `{` to begin a new interpolation, \
+     you may write it using `&lbrace;` or using `<%= "{" %>`\
+     """}
   end
 
   ## helpers
@@ -702,12 +723,12 @@ defmodule Phoenix.LiveView.Tokenizer do
     [{type, name, attrs, meta} | acc]
   end
 
-  defp push_brace(state, pos) do
-    %{state | braces: [pos | state.braces]}
+  defp push_brace(state) do
+    %{state | braces: state.braces + 1}
   end
 
-  defp pop_brace(%{braces: [pos | braces]} = state) do
-    {pos, %{state | braces: braces}}
+  defp pop_brace(state) do
+    %{state | braces: state.braces - 1}
   end
 
   defp strip_text_token_fully(tokens) do

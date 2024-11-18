@@ -577,7 +577,7 @@ defmodule Phoenix.Component do
 
       ~H"""
       <div title="My div" class={@class}>
-        <p>Hello <%= @name %></p>
+        <p>Hello {@name}</p>
         <MyApp.Weather.city name="Kraków"/>
       </div>
       """
@@ -589,43 +589,14 @@ defmodule Phoenix.Component do
 
   ### Interpolation
 
-  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
-  of HTML tags:
+  `HEEx` allows using `{...}` for HTML-aware interpolation, inside tag attributes
+  as well as the body:
 
   ```heex
-  <p>Hello, <%= @name %></p>
+  <p>Hello, {@name}</p>
   ```
 
-  Similarly, conditionals and other block Elixir constructs are supported:
-
-  ```heex
-  <%= if @show_greeting? do %>
-    <p>Hello, <%= @name %></p>
-  <% end %>
-  ```
-
-  Note we don't include the equal sign `=` in the closing `<% end %>` tag
-  (because the closing tag does not output anything).
-
-  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
-  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
-  Let's check it out.
-
-  ### HEEx extension: Defining attributes
-
-  Since `HEEx` must parse and validate the HTML structure, code interpolation using
-  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
-  HTML/component nodes and it cannot be applied within tags.
-
-  For instance, the following syntax is invalid:
-
-  ```heex
-  <div class="<%= @class %>">
-    ...
-  </div>
-  ```
-
-  Instead do:
+  If you want to interpolate an attribute, you write:
 
   ```heex
   <div class={@class}>
@@ -658,7 +629,7 @@ defmodule Phoenix.Component do
     as a different class. `nil` and `false` elements are discarded.
 
   For multiple dynamic attributes, you can use the same notation but without
-  assigning the expression to any specific attribute.
+  assigning the expression to any specific attribute:
 
   ```heex
   <div {@dynamic_attrs}>
@@ -666,52 +637,40 @@ defmodule Phoenix.Component do
   </div>
   ```
 
-  The expression inside `{...}` must be either a keyword list or a map containing
-  the key-value pairs representing the dynamic attributes.
+  In this case, the expression inside `{...}` must be either a keyword list or
+  a map containing the key-value pairs representing the dynamic attributes.
 
-  ### HEEx extension: Defining function components
+  ### Interpolating blocks
 
-  Function components are stateless components implemented as pure functions
-  with the help of the `Phoenix.Component` module. They can be either local
-  (same module) or remote (external module).
+  The curly brackets syntax is the default mechanism for interpolating code.
+  However, it cannot be used in all scenarios, in particular:
 
-  `HEEx` allows invoking these function components directly in the template
-  using an HTML-like notation. For example, a remote function:
+    * it cannot be used inside `<script>` and `<style>` tags,
+      as that would make writing JS and CSS quite tedious
 
-  ```heex
-  <MyApp.Weather.city name="Kraków"/>
-  ```
+    * it does not support block constructs
 
-  A local function can be invoked with a leading dot:
+  For example, if you need to interpolate a string inside a script tag,
+  you could do:
 
   ```heex
-  <.city name="Kraków"/>
+  <script>
+    window.URL = "<%= @my_url %>"
+  </script>
   ```
 
-  where the component could be defined as follows:
+  Similarly, for block constructs in Elixir, you can write:
 
-      defmodule MyApp.Weather do
-        use Phoenix.Component
+  ```heex
+  <%= if @show_greeting? do %>
+    <p>Hello, <%= @name %></p>
+  <% end %>
+  ```
 
-        def city(assigns) do
-          ~H"""
-          The chosen city is: <%= @name %>.
-          """
-        end
+  However, for conditionals and for-comprehensions, there are built-in constructs
+  in HEEx too, which we will explore next.
 
-        def country(assigns) do
-          ~H"""
-          The chosen country is: <%= @name %>.
-          """
-        end
-      end
-
-  It is typically best to group related functions into a single module, as
-  opposed to having many modules with a single `render/1` function. Function
-  components support other important features, such as slots. You can learn
-  more about components in `Phoenix.Component`.
-
-  ### HEEx extension: special attributes
+  ### Special attributes
 
   Apart from normal HTML attributes, HEEx also supports some special attributes
   such as `:let` and `:for`.
@@ -781,7 +740,49 @@ defmodule Phoenix.Component do
   ```
 
   Note that unlike Elixir's regular `for`, HEEx' `:for` does not support multiple
-  generators in one expression.
+  generators in one expression. In such cases, you must use `EEx`'s blocks.
+
+  ### Function components
+
+  Function components are stateless components implemented as pure functions
+  with the help of the `Phoenix.Component` module. They can be either local
+  (same module) or remote (external module).
+
+  `HEEx` allows invoking these function components directly in the template
+  using an HTML-like notation. For example, a remote function:
+
+  ```heex
+  <MyApp.Weather.city name="Kraków"/>
+  ```
+
+  A local function can be invoked with a leading dot:
+
+  ```heex
+  <.city name="Kraków"/>
+  ```
+
+  where the component could be defined as follows:
+
+      defmodule MyApp.Weather do
+        use Phoenix.Component
+
+        def city(assigns) do
+          ~H"""
+          The chosen city is: <%= @name %>.
+          """
+        end
+
+        def country(assigns) do
+          ~H"""
+          The chosen country is: <%= @name %>.
+          """
+        end
+      end
+
+  It is typically best to group related functions into a single module, as
+  opposed to having many modules with a single `render/1` function. Function
+  components support other important features, such as slots. You can learn
+  more about components in `Phoenix.Component`.
 
   ## Code formatting
 

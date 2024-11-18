@@ -135,6 +135,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
            """) == "Hello <div name=\"123\" phone=\"456\">text</div>"
   end
 
+  test "handles interpolated body" do
+    assert render("""
+           Hello <div>2 + 2 = {2 + 2}</div>
+           """) == "Hello <div>2 + 2 = 4</div>"
+  end
+
   test "handles interpolated attribute value containing special chars" do
     assert render("<div name={@val}/>", %{val: "1 < 2"}) == "<div name=\"1 &lt; 2\"></div>"
   end
@@ -1547,6 +1553,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "invalid tag" do
       message = """
       test/phoenix_live_view/html_engine_test.exs:1:10: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div foo={<%= @foo %>}>bar</div>
         |          ^\
@@ -1560,6 +1568,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       message = """
       test/phoenix_live_view/html_engine_test.exs:2:3: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div foo=
       2 |   {<%= @foo %>}>bar</div>
@@ -1579,6 +1589,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       message = """
       test/phoenix_live_view/html_engine_test.exs:2:6: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 |    <div foo=
       2 |      {<%= @foo %>}>bar</div>
