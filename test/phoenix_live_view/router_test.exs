@@ -283,5 +283,36 @@ defmodule Phoenix.LiveView.RouterTest do
       assert html_response(conn, 200) =~
                ~r|<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
     end
+
+    test "classifies route as external when same view, but different session" do
+      # previously, a patch to the same LV, but a different path in a different live_session
+      # would succeed when it should not
+      {_, %Route{live_session: %{vsn: vsn}}} =
+        Route.live_link_info(
+          @endpoint,
+          Phoenix.LiveViewTest.Support.Router,
+          "/clock-live-session"
+        )
+
+      socket = %Phoenix.LiveView.Socket{
+        router: Phoenix.LiveViewTest.Support.Router,
+        endpoint: @endpoint,
+        private: %{live_session_name: :test, live_session_vsn: vsn}
+      }
+
+      assert {:external, _} =
+               Route.live_link_info!(
+                 socket,
+                 Phoenix.LiveViewTest.Support.ClockLive,
+                 "/clock-live-session-admin"
+               )
+
+      assert {:internal, _} =
+               Route.live_link_info!(
+                 socket,
+                 Phoenix.LiveViewTest.Support.ClockLive,
+                 "/clock-live-session"
+               )
+    end
   end
 end
