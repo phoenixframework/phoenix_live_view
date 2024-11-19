@@ -21,8 +21,6 @@ import {
   THROTTLED,
 } from "./constants"
 
-import JS from "./js"
-
 import {
   logError
 } from "./utils"
@@ -96,10 +94,10 @@ let DOM = {
 
     try {
       url = new URL(href)
-    } catch (e){
+    } catch {
       try {
         url = new URL(href, currentLocation)
-      } catch (e){
+      } catch {
         // bad URL, fallback to let browser try it as external
         return true
       }

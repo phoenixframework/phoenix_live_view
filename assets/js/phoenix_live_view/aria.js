@@ -12,7 +12,7 @@ let ARIA = {
   },
 
   attemptFocus(el, interactiveOnly){
-    if(this.isFocusable(el, interactiveOnly)){ try { el.focus() } catch (e){} }
+    if(this.isFocusable(el, interactiveOnly)){ try { el.focus() } catch {} }
     return !!document.activeElement && document.activeElement.isSameNode(el)
   },
 
