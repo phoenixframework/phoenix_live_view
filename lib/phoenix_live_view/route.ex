@@ -29,8 +29,11 @@ defmodule Phoenix.LiveView.Route do
   end
 
   def live_link_info!(%Socket{} = socket, view, uri) do
+    %{private: %{live_session_name: session_name, live_session_vsn: session_version}} = socket
+
     case live_link_info(socket.endpoint, socket.router, uri) do
-      {:internal, %Route{view: ^view} = route} ->
+      {:internal,
+       %Route{view: ^view, live_session: %{name: ^session_name, vsn: ^session_version}} = route} ->
         {:internal, route}
 
       {:internal, %Route{view: _view} = route} ->
