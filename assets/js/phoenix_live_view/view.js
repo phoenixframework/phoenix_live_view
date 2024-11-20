@@ -54,7 +54,6 @@ import DOMPatch from "./dom_patch"
 import LiveUploader from "./live_uploader"
 import Rendered from "./rendered"
 import ViewHook from "./view_hook"
-import JS from "./js"
 
 export let prependFormDataKey = (key, prefix) => {
   let isArray = key.endsWith("[]")
@@ -1128,7 +1127,7 @@ export default class View {
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    }).then(({resp, reply}) => onReply && onReply(reply))
+    }).then(({reply}) => onReply && onReply(reply))
   }
 
   pushFileProgress(fileEl, entryRef, progress, onReply = function (){ }){
@@ -1275,7 +1274,7 @@ export default class View {
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els, opts]
-      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (uploads) => {
+      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
         // if we still having pending preflights it means we have invalid entries
         // and the phx-submit cannot be completed
         if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
