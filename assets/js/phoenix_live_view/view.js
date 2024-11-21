@@ -1211,7 +1211,7 @@ export default class View {
   }
 
   cancelSubmit(formEl, phxEvent){
-    this.formSubmits = this.formSubmits.filter(([el, ref, _callback]) => {
+    this.formSubmits = this.formSubmits.filter(([el, ref, _opts, _callback]) => {
       if(el.isSameNode(formEl)){
         this.undoRefs(ref, phxEvent)
         return false
