@@ -1031,7 +1031,8 @@ defmodule Phoenix.LiveView do
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
   whole page while also maintaining the current scroll position.
-  For live navigation to another LiveView, use `push_navigate/2`.
+  For live navigation to another LiveView in the same `live_session`,
+  use `push_navigate/2`. Otherwise, use `redirect/2`.
 
   ## Options
 
@@ -1051,7 +1052,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Annotates the socket for navigation to another LiveView.
+  Annotates the socket for navigation to another LiveView in the same `live_session`.
 
   The current LiveView will be shutdown and a new one will be mounted
   in its place, without reloading the whole page. This can

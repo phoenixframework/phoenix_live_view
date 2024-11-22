@@ -1532,10 +1532,23 @@ defmodule Phoenix.LiveView.Channel do
   defp authorize_session(%Session{} = session, endpoint, %{"redirect" => url}) do
     if redir_route = session_route(session, endpoint, url) do
       case Session.authorize_root_redirect(session, redir_route) do
-        {:ok, %Session{} = new_session} -> {:ok, new_session, redir_route, url}
-        {:error, :unauthorized} = err -> err
+        {:ok, %Session{} = new_session} ->
+          {:ok, new_session, redir_route, url}
+
+        :error ->
+          Logger.warning(
+            "navigate event to #{inspect(url)} failed because you are redirecting across live_sessions. " <>
+              "A full page reload will be performed instead"
+          )
+
+          {:error, :unauthorized}
       end
     else
+      Logger.warning(
+        "navigate event to #{inspect(url)} failed because the URL does not point to a LiveView. " <>
+          "A full page reload will be performed instead"
+      )
+
       {:error, :unauthorized}
     end
   end

@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.Session do
         {:ok, replace_root(session, route.view, self())}
 
       true ->
-        {:error, :unauthorized}
+        :error
     end
   end
 
