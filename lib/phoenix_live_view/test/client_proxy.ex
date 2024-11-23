@@ -1171,16 +1171,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       {:ok, node} ->
         collect_submitter(node, form, element, defaults)
 
-      {:error, _, msg} ->
+      {:error, :none, _} ->
         # If the form did not have the submitter
         # then check the inputs instead.
         case select_node_from_list(inputs, element) do
-          {:ok, node} ->
-            collect_submitter(node, inputs, element, defaults)
-
-          {:error, _, _} ->
-            {:error, :invalid, "invalid form submitter, " <> msg}
+          {:ok, node} -> collect_submitter(node, inputs, element, defaults)
+          {:error, _, msg} -> {:error, :invalid, "invalid form submitter, " <> msg}
         end
+
+      {:error, :many, msg} ->
+        {:error, :invalid, "invalid form submitter, " <> msg}
     end
   end
 
