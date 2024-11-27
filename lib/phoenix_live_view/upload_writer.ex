@@ -48,7 +48,7 @@ defmodule Phoenix.LiveView.UploadWriter do
 
         @impl true
         def close(state, reason) do
-          Logger.log(state.level, "closing upload after #{state.total} bytes}, #{inspect(reason)}")
+          Logger.log(state.level, "closing upload after #{state.total} bytes, #{inspect(reason)}")
           {:ok, state}
         end
       end
