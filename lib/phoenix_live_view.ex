@@ -688,7 +688,7 @@ defmodule Phoenix.LiveView do
 
   In a typical LiveView application, the message will be rendered by the CoreComponents’ flash/1 component.
   It is up to this function to determine what kind of messages it supports.
-  By default, the `:info` and `:error` kinds are handled.
+  By default, the `:info`, `:success`, and `:error` kinds are handled.
 
   ## Examples
 
