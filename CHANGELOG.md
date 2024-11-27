@@ -112,17 +112,25 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
-## 1.0.0
+## 1.0.0-rc.8
 
 ### Bug fixes
 * Fix live upload issue where large `chunk_size` could cause a chunk timeout on slower connections by properly using the configured `chunk_timeout` on the client
 * Fix focused inputs losing focus stat in some update scenarios
+* Fix rare `no component for cid` error when rapidly updating live components under latency
+* Fix browser back/forward buttons using `patch` instead of `navigate`, failing to update the page
+* Fix `inputs_for` not using the passed `id` when generating inputs
+* Do not throw an exception when dispatching a custom input event outside of JS.dispatch
+* Fix submitter not being sent when using `JS.push`
+* Fix form action not being inherited by `to_form` when passing an existing form
+* Fix live_session not being enforced when patching to the same LiveView under a different route
 
 ### Enhancements
 * Support `default` attribute for `<.live_title>` component
 * Add `refute_push_event` to `Phoenix.LiveViewTest`
 * Keep intentional newlines when formatting comments (#3486)
 * Support hook `pushEvent` returning a promise
+* Log a warning when a `push_navigate` fallbacks to a full page reload
 
 ## 1.0.0-rc.7 (2024-10-17)
 
