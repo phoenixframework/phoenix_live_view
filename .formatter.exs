@@ -9,5 +9,5 @@
     assert_redirect: :*,
     assert_redirected: :*,
     assert_reply: :*
-  }
+  ]
 ]
