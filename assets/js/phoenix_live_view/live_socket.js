@@ -787,6 +787,10 @@ export default class LiveSocket {
     this.withPageLoading({to: href, kind: "redirect"}, done => {
       this.replaceMain(href, flash, (linkRef) => {
         if(linkRef === this.linkRef){
+          // we must change the type of the current history state as well
+          // to ensure we also do a redirect type navigation when we navigate back;
+          // otherwise we run into https://github.com/phoenixframework/phoenix_live_view/issues/3536
+          if(history.state?.type === "patch"){ Browser.updateCurrentState((state) => ({...state, type: "redirect"})) }
           Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
           DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
           this.registerNewLocation(window.location)
