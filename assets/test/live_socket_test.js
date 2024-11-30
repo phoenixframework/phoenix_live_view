@@ -224,6 +224,7 @@ describe("LiveSocket", () => {
     let liveSocket = new LiveSocket("/live", Socket, {sessionStorage: override})
     liveSocket.getLatencySim()
 
-    expect(getItemCalls).toEqual(1)
+    // liveSocket constructor reads nav history position from sessionStorage
+    expect(getItemCalls).toEqual(2)
   })
 })

@@ -316,6 +316,10 @@ export default class View {
     if(this.root === this){
       this.formsForRecovery = this.getFormsForRecovery()
     }
+    if(this.isMain() && window.history.state === null){
+      // set initial history entry if this is the first page load
+      this.liveSocket.replaceRootHistory()
+    }
 
     if(liveview_version !== this.liveSocket.version()){
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`)
