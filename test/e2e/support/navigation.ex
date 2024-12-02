@@ -12,6 +12,10 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
       window.liveSocket = liveSocket
+
+      window.addEventListener("phx:navigate", (e) => {
+        console.log("navigate event", JSON.stringify(e.detail))
+      })
     </script>
 
     <style>

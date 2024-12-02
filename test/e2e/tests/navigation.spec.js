@@ -225,3 +225,92 @@ test("scrolls hash el into view after live navigation (issue #3452)", async ({pa
   expect(scrollTop).toBeGreaterThanOrEqual(offset - 500)
   expect(scrollTop).toBeLessThanOrEqual(offset + 500)
 })
+
+test("navigating all the way back works without remounting (only patching)", async ({page}) => {
+  await page.goto("/navigation/a")
+  await syncLV(page)
+  networkEvents = []
+  await page.getByRole("link", {name: "Patch this LiveView"}).click()
+  await syncLV(page)
+  await page.goBack()
+  await syncLV(page)
+  expect(networkEvents).toEqual([])
+  // we only expect patch navigation
+  expect(webSocketEvents.filter(e => e.payload.indexOf("phx_leave") !== -1)).toHaveLength(0)
+  // we patched 2 times
+  expect(webSocketEvents.filter(e => e.payload.indexOf("live_patch") !== -1)).toHaveLength(2)
+})
+
+// see https://github.com/phoenixframework/phoenix_live_view/pull/3513
+// see https://github.com/phoenixframework/phoenix_live_view/issues/3536
+test("back and forward navigation types are tracked", async ({page}) => {
+  let consoleMessages = []
+  page.on("console", msg => consoleMessages.push(msg.text()))
+  const getNavigationEvent = () => {
+    const ev = consoleMessages.find((e) => e.startsWith("navigate event"))
+    consoleMessages = []
+    return JSON.parse(ev.slice(15))
+  }
+  // initial page visit
+  await page.goto("/navigation/b")
+  await syncLV(page)
+  consoleMessages = []
+  networkEvents = []
+  // type: redirect
+  await page.getByRole("link", {name: "LiveView A"}).click()
+  await syncLV(page)
+  expect(getNavigationEvent()).toEqual({
+    href: "http://localhost:4004/navigation/a",
+    patch: false,
+    pop: false,
+    direction: "forward"
+  })
+  // type: patch
+  await page.getByRole("link", {name: "Patch this LiveView"}).click()
+  await syncLV(page)
+  expect(getNavigationEvent()).toEqual({
+    href: expect.stringMatching(/\/navigation\/a\?param=.*/),
+    patch: true,
+    pop: false,
+    direction: "forward"
+  })
+  // back should also be type: patch
+  await page.goBack()
+  await expect(page).toHaveURL("/navigation/a")
+  expect(getNavigationEvent()).toEqual({
+    href: "http://localhost:4004/navigation/a",
+    patch: true,
+    pop: true,
+    direction: "backward"
+  })
+  await page.goBack()
+  await expect(page).toHaveURL("/navigation/b")
+  expect(getNavigationEvent()).toEqual({
+    href: "http://localhost:4004/navigation/b",
+    patch: false,
+    pop: true,
+    direction: "backward"
+  })
+  await page.goForward()
+  await expect(page).toHaveURL("/navigation/a")
+  expect(getNavigationEvent()).toEqual({
+    href: "http://localhost:4004/navigation/a",
+    patch: false,
+    pop: true,
+    direction: "forward"
+  })
+  await page.goForward()
+  await expect(page).toHaveURL(/\/navigation\/a\?param=.*/)
+  expect(getNavigationEvent()).toEqual({
+    href: expect.stringMatching(/\/navigation\/a\?param=.*/),
+    patch: true,
+    pop: true,
+    direction: "forward"
+  })
+  // we don't expect any full page reloads
+  expect(networkEvents).toEqual([])
+  // we only expect 3 navigate navigations (from b to a, back from a to b, back to a)
+  expect(webSocketEvents.filter(e => e.payload.indexOf("phx_leave") !== -1)).toHaveLength(3)
+  // we expect 3 patches (a to a with param, back to a, back to a with param)
+  expect(webSocketEvents.filter(e => e.payload.indexOf("live_patch") !== -1)).toHaveLength(3)
+})
