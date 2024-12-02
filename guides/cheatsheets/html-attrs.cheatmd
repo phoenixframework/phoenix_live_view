@@ -172,5 +172,5 @@ let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
 
 ```heex
 <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-<script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}>
+<script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
 ```
