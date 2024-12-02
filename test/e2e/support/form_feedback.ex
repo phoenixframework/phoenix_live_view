@@ -73,7 +73,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
       window.liveSocket = liveSocket
     </script>
 
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 
@@ -111,15 +111,15 @@ defmodule Phoenix.LiveViewTest.E2E.FormFeedbackLive do
         display: none;
       }
     </style>
-    <p>Button Count: <%= @count %></p>
-    <p>Validate Count: <%= @validate_count %></p>
-    <p>Submit Count: <%= @submit_count %></p>
+    <p>Button Count: {@count}</p>
+    <p>Validate Count: {@validate_count}</p>
+    <p>Submit Count: {@submit_count}</p>
     <button phx-click="inc" class="bg-blue-500 text-white p-4">+</button>
     <button phx-click="dec" class="bg-blue-500 text-white p-4">-</button>
 
     <.myform />
 
-    <% # render inside function component to trigger the phx-magic-id optimization %>
+    {# render inside function component to trigger the phx-magic-id optimization}
     <.myfeedback feedback={@feedback} />
 
     <button phx-click="toggle-feedback">Toggle feedback</button>

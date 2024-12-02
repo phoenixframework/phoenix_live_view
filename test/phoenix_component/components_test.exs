@@ -154,7 +154,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
     test "dynamic attrs" do
       assigns = %{prefix: "MyApp – ", title: "My Title"}
 
-      assert t2h(~H|<.live_title prefix={@prefix}><%= @title %></.live_title>|) ==
+      assert t2h(~H|<.live_title prefix={@prefix}>{@title}</.live_title>|) ==
                ~X|<title data-prefix="MyApp – ">MyApp – My Title</title>|
     end
 
@@ -339,7 +339,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={form} for={@form} errors={[name: "can't be blank"]}>
-        <%= inspect(form.errors) %>
+        {inspect(form.errors)}
       </.form>
       """
 
@@ -441,7 +441,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
         phx-change="valid"
       >
         <input id={user_form[:foo].id} name={user_form[:foo].name} type="text" />
-        <%= inspect(user_form.errors) %>
+        {inspect(user_form.errors)}
       </.form>
       """
 
@@ -614,7 +614,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
       <.form :let={f} as={:myform}>
         <.inputs_for :let={finner} field={f[:inner]} } options={[foo: "bar"]}>
-          <p><%= finner.options[:foo] %></p>
+          <p>{finner.options[:foo]}</p>
         </.inputs_for>
       </.form>
       """
@@ -694,7 +694,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
       <.intersperse :let={item} enum={[1, 2, 3]}>
         <:separator><span class="sep">|</span></:separator>
-        Item<%= item %>
+        Item{item}
       </.intersperse>
       """
 
@@ -704,7 +704,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
       <.intersperse :let={item} enum={[1]}>
         <:separator><span class="sep">|</span></:separator>
-        Item<%= item %>
+        Item{item}
       </.intersperse>
       """
 

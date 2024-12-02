@@ -4,22 +4,22 @@ defmodule Phoenix.LiveViewTest.Support.UploadLive do
   def render(%{uploads: _} = assigns) do
     ~H"""
     <%= for preflight <- @preflights do %>
-      preflight:<%= inspect(preflight) %>
+      preflight:{inspect(preflight)}
     <% end %>
     <%= for name <- @consumed do %>
-      consumed:<%= name %>
+      consumed:{name}
     <% end %>
     <form phx-change="validate" phx-submit="save">
       <%= for entry <- @uploads.avatar.entries do %>
-        lv:<%= entry.client_name %>:<%= entry.progress %>%
-        channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
+        lv:{entry.client_name}:{entry.progress}%
+        channel:{inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry))}
         <%= for msg <- upload_errors(@uploads.avatar) do %>
-          config_error:<%= inspect(msg) %>
+          config_error:{inspect(msg)}
         <% end %>
         <%= for msg <- upload_errors(@uploads.avatar, entry) do %>
-          entry_error:<%= inspect(msg) %>
+          entry_error:{inspect(msg)}
         <% end %>
-        relative path:<%= entry.client_relative_path %>
+        relative path:{entry.client_relative_path}
       <% end %>
       <.live_file_input upload={@uploads.avatar} />
       <button type="submit">save</button>
@@ -84,20 +84,20 @@ defmodule Phoenix.LiveViewTest.Support.UploadComponent do
     ~H"""
     <div>
       <%= for preflight <- @preflights do %>
-        preflight:<%= inspect(preflight) %>
+        preflight:{inspect(preflight)}
       <% end %>
       <%= for name <- @consumed do %>
-        consumed:<%= name %>
+        consumed:{name}
       <% end %>
       <%= for msg <- upload_errors(@uploads.avatar) do %>
-        config_error:<%= inspect(msg) %>
+        config_error:{inspect(msg)}
       <% end %>
       <form phx-change="validate" id={@id} phx-submit="save" phx-target={@myself}>
         <%= for entry <- @uploads.avatar.entries do %>
-          component:<%= entry.client_name %>:<%= entry.progress %>%
-          channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
+          component:{entry.client_name}:{entry.progress}%
+          channel:{inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry))}
           <%= for msg <- upload_errors(@uploads.avatar, entry) do %>
-            entry_error:<%= inspect(msg) %>
+            entry_error:{inspect(msg)}
           <% end %>
         <% end %>
         <.live_file_input upload={@uploads.avatar} />

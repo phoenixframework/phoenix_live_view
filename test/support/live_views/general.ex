@@ -10,14 +10,14 @@ defmodule Phoenix.LiveViewTest.Support.ThermostatLive do
 
   def render(assigns) do
     ~H"""
-    <p>Redirect: <%= @redirect %></p>
-    <p>The temp is: <%= @val %><%= @greeting %></p>
+    <p>Redirect: {@redirect}</p>
+    <p>The temp is: {@val}{@greeting}</p>
     <button phx-click="dec">-</button>
     <button phx-click="inc">+</button>
     <%= if @nest do %>
-      <%= live_render(@socket, ClockLive, [id: :clock] ++ @nest) %>
+      {live_render(@socket, ClockLive, [id: :clock] ++ @nest)}
       <%= for user <- @users do %>
-        <i><%= user.name %> <%= user.email %></i>
+        <i>{user.name} {user.email}</i>
       <% end %>
     <% end %>
     """
@@ -91,11 +91,11 @@ defmodule Phoenix.LiveViewTest.Support.ClockLive do
 
   def render(assigns) do
     ~H"""
-    time: <%= @time %> <%= @name %>
-    <%= live_render(@socket, ClockControlsLive,
+    time: {@time} {@name}
+    {live_render(@socket, ClockControlsLive,
       id: :"#{String.replace(@name, " ", "-")}-controls",
       sticky: @sticky
-    ) %>
+    )}
     """
   end
 
@@ -139,7 +139,7 @@ defmodule Phoenix.LiveViewTest.Support.DashboardLive do
 
   def render(assigns) do
     ~H"""
-    session: <%= Phoenix.HTML.raw(inspect(@session)) %>
+    session: {Phoenix.HTML.raw(inspect(@session))}
     """
   end
 
@@ -154,7 +154,7 @@ defmodule Phoenix.LiveViewTest.Support.SameChildLive do
   def render(%{dup: true} = assigns) do
     ~H"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, id: :dup, session: %{"name" => name}) %>
+      {live_render(@socket, ClockLive, id: :dup, session: %{"name" => name})}
     <% end %>
     """
   end
@@ -162,7 +162,7 @@ defmodule Phoenix.LiveViewTest.Support.SameChildLive do
   def render(%{dup: false} = assigns) do
     ~H"""
     <%= for name <- @names do %>
-      <%= live_render(@socket, ClockLive, session: %{"name" => name, "count" => @count}, id: name) %>
+      {live_render(@socket, ClockLive, session: %{"name" => name, "count" => @count}, id: name)}
     <% end %>
     """
   end
@@ -182,10 +182,10 @@ defmodule Phoenix.LiveViewTest.Support.RootLive do
 
   def render(assigns) do
     ~H"""
-    root name: <%= @current_user.name %>
-    <%= live_render(@socket, ChildLive, id: :static, session: %{"child" => :static}) %>
+    root name: {@current_user.name}
+    {live_render(@socket, ChildLive, id: :static, session: %{"child" => :static})}
     <%= if @dynamic_child do %>
-      <%= live_render(@socket, ChildLive, id: @dynamic_child, session: %{"child" => :dynamic}) %>
+      {live_render(@socket, ChildLive, id: @dynamic_child, session: %{"child" => :dynamic})}
     <% end %>
     """
   end
@@ -209,7 +209,7 @@ defmodule Phoenix.LiveViewTest.Support.ChildLive do
 
   def render(assigns) do
     ~H"""
-    child <%= @id %> name: <%= @current_user.name %>
+    child {@id} name: {@current_user.name}
     """
   end
 
@@ -227,7 +227,7 @@ end
 defmodule Phoenix.LiveViewTest.Support.OptsLive do
   use Phoenix.LiveView
 
-  def render(assigns), do: ~H|<%= @description %>. <%= @canary %>|
+  def render(assigns), do: ~H|{@description}. {@canary}|
 
   def mount(_params, %{"opts" => opts}, socket) do
     {:ok, assign(socket, description: "long description", canary: "canary"), opts}
@@ -243,9 +243,9 @@ defmodule Phoenix.LiveViewTest.Support.RedirLive do
 
   def render(assigns) do
     ~H"""
-    Title: <%= @title %>
+    Title: {@title}
     <%= if @child_params do %>
-      <%= live_render(@socket, __MODULE__, id: :child, session: %{"child_redir" => @child_params}) %>
+      {live_render(@socket, __MODULE__, id: :child, session: %{"child_redir" => @child_params})}
     <% end %>
     """
   end
@@ -302,7 +302,7 @@ end
 defmodule Phoenix.LiveViewTest.Support.AssignsNotInSocketLive do
   use Phoenix.LiveView
 
-  def render(assigns), do: ~H|<%= boom(@socket) %>|
+  def render(assigns), do: ~H|{boom(@socket)}|
   def mount(_params, _session, socket), do: {:ok, socket}
   defp boom(socket), do: socket.assigns.boom
 end
@@ -360,8 +360,8 @@ defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive do
 
     <div :if={@data.loading}>data loading...</div>
     <div :if={@data.ok? && @data.result == nil}>no data found</div>
-    <div :if={@data.ok? && @data.result}>data: <%= inspect(@data.result) %></div>
-    <div :if={@data.failed}><%= inspect(@data.failed) %></div>
+    <div :if={@data.ok? && @data.result}>data: {inspect(@data.result)}</div>
+    <div :if={@data.failed}>{inspect(@data.failed)}</div>
     """
   end
 
@@ -473,12 +473,12 @@ defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive.LC do
     <div>
       <.async_result :let={data} assign={@lc_data}>
         <:loading>lc_data loading...</:loading>
-        <:failed :let={{kind, reason}}><%= kind %>: <%= inspect(reason) %></:failed>
-        lc_data: <%= inspect(data) %>
+        <:failed :let={{kind, reason}}>{kind}: {inspect(reason)}</:failed>
+        lc_data: {inspect(data)}
       </.async_result>
       <.async_result :let={data} assign={@other_data}>
         <:loading>other_data loading...</:loading>
-        other_data: <%= inspect(data) %>
+        other_data: {inspect(data)}
       </.async_result>
     </div>
     """
@@ -565,9 +565,9 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
       module={Phoenix.LiveViewTest.Support.StartAsyncLive.LC}
       test={@lc}
       id="lc"
-    /> result: <%= inspect(@result) %>
+    /> result: {inspect(@result)}
     <%= if flash = @flash["info"] do %>
-      flash: <%= flash %>
+      flash: {flash}
     <% end %>
     """
   end
@@ -745,7 +745,7 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.LC do
   def render(assigns) do
     ~H"""
     <div>
-      lc: <%= inspect(@result) %>
+      lc: {inspect(@result)}
     </div>
     """
   end

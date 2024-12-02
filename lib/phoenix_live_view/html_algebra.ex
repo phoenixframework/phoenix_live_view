@@ -11,8 +11,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   # * :preserve - for preserving text in <pre>, <script>, <style> and HTML Comment tags
   #
   def build(tree, opts) when is_list(tree) do
+    {migrate, opts} = Keyword.pop(opts, :migrate_eex_to_curly_brackets, true)
+
     tree
-    |> block_to_algebra(%{mode: :normal, opts: opts})
+    |> block_to_algebra(%{mode: :normal, migrate: migrate, opts: opts})
     |> group()
   end
 
@@ -179,6 +181,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp text_ends_with_line_break?(_node), do: false
 
   defp block_preserve?({:tag_block, _, _, _, %{mode: :preserve}}), do: true
+  defp block_preserve?({:body_expr, _, _}), do: true
   defp block_preserve?({:eex, _, _}), do: true
   defp block_preserve?(_node), do: false
 
@@ -314,13 +317,27 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:inline, concat(["<%!--", text, "--%>"])}
   end
 
-  defp to_algebra({:eex, text, %{opt: opt}}, %{mode: :preserve}) do
-    {:inline, concat(["<%#{opt} ", text, " %>"])}
+  defp to_algebra({:eex, text, %{opt: opt} = meta}, context) do
+    cond do
+      context.mode == :preserve ->
+        {:inline, concat(["<%#{opt} ", text, " %>"])}
+
+      context.migrate and opt == ~c"=" and safe_to_migrate?(text, 0) ->
+        to_algebra({:body_expr, text, meta}, context)
+
+      true ->
+        doc = expr_to_code_algebra(text, meta, context.opts)
+        {:inline, concat(["<%#{opt} ", doc, " %>"])}
+    end
   end
 
-  defp to_algebra({:eex, text, %{opt: opt} = meta}, context) do
-    doc = expr_to_code_algebra(text, meta, context.opts)
-    {:inline, concat(["<%#{opt} ", doc, " %>"])}
+  defp to_algebra({:body_expr, text, meta}, context) do
+    if context.mode == :preserve do
+      {:inline, concat(["{", text, "}"])}
+    else
+      doc = expr_to_code_algebra(text, meta, context.opts)
+      {:inline, concat(["{", doc, "}"])}
+    end
   end
 
   # Handle text within <pre>/<script>/<style>/comment tags.
@@ -445,7 +462,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp render_attribute({attr, {:string, value, _meta}, _}, _opts), do: ~s(#{attr}="#{value}")
 
   defp render_attribute({attr, {:expr, value, meta}, _}, opts) do
-    case expr_to_quoted(value, meta) do
+    case expr_to_quoted(value, meta, opts) do
       {{:__block__, meta, [string]} = block, []} when is_binary(string) ->
         has_quotes? = String.contains?(string, "\"")
         delimiter = Keyword.get(meta, :delimiter)
@@ -506,20 +523,21 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {concat(document, next), stab?}
   end
 
-  defp expr_to_quoted(expr, meta) do
+  defp expr_to_quoted(expr, meta, opts) do
     string_to_quoted_opts = [
       literal_encoder: &{:ok, {:__block__, &2, [&1]}},
       token_metadata: true,
       unescape: false,
       line: meta.line,
-      column: meta.column
+      column: meta.column,
+      file: Keyword.get(opts, :file, "nofile")
     ]
 
     Code.string_to_quoted_with_comments!(expr, string_to_quoted_opts)
   end
 
   defp expr_to_code_algebra(expr, meta, opts) do
-    {quoted, comments} = expr_to_quoted(expr, meta)
+    {quoted, comments} = expr_to_quoted(expr, meta, opts)
     quoted_to_code_algebra(quoted, comments, opts)
   end
 
@@ -571,4 +589,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp inline?({:tag_block, _, _, _, %{mode: :inline}}), do: true
   defp inline?(_), do: false
+
+  defp safe_to_migrate?(~S[\{] <> rest, acc), do: safe_to_migrate?(rest, acc)
+  defp safe_to_migrate?(~S[\}] <> rest, acc), do: safe_to_migrate?(rest, acc)
+  defp safe_to_migrate?("{" <> rest, acc), do: safe_to_migrate?(rest, acc + 1)
+  defp safe_to_migrate?("}" <> rest, acc), do: safe_to_migrate?(rest, acc - 1)
+  defp safe_to_migrate?(<<_::utf8, rest::binary>>, acc), do: safe_to_migrate?(rest, acc)
+  defp safe_to_migrate?(<<>>, acc), do: acc == 0
 end

@@ -3,7 +3,7 @@ defmodule Phoenix.LiveViewTest.Support.TZLive do
 
   def render(assigns) do
     ~H"""
-    time: <%= @time %> <%= @name %>
+    time: {@time} {@name}
     """
   end
 
@@ -19,10 +19,10 @@ defmodule Phoenix.LiveViewTest.Support.ShuffleLive do
     ~H"""
     <%= for zone <- @time_zones do %>
       <div id={"score-" <> zone["id"]}>
-        <%= live_render(@socket, Phoenix.LiveViewTest.Support.TZLive,
+        {live_render(@socket, Phoenix.LiveViewTest.Support.TZLive,
           id: "tz-#{zone["id"]}",
           session: %{"name" => zone["name"]}
-        ) %>
+        )}
       </div>
     <% end %>
     """

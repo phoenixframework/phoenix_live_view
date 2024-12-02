@@ -43,13 +43,13 @@ defmodule Example.HomeLive do
     <style>
       * { font-size: 1.1em; }
     </style>
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 
   def render(assigns) do
     ~H"""
-    <%= @count %>
+    {@count}
     <button phx-click="inc">+</button>
     <button phx-click="dec">-</button>
     """

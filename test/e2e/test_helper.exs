@@ -25,7 +25,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
 
   def render("root.html", assigns) do
     ~H"""
-    <%!-- no doctype -> quirks mode --%> <!DOCTYPE html> <%= @inner_content %>
+    <%!-- no doctype -> quirks mode --%> <!DOCTYPE html> {@inner_content}
     """
   end
 
@@ -56,7 +56,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     <style>
       * { font-size: 1.1em; }
     </style>
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 end

@@ -17,19 +17,19 @@ defmodule Phoenix.LiveViewTest.Support.LayoutView do
 
   def render("live.html", assigns) do
     ~H"""
-    LIVELAYOUTSTART-<%= @val %>-<%= @inner_content %>-LIVELAYOUTEND
+    LIVELAYOUTSTART-{@val}-{@inner_content}-LIVELAYOUTEND
     """
   end
 
   def render("live_override.html", assigns) do
     ~H"""
-    LIVEOVERRIDESTART-<%= @val %>-<%= @inner_content %>-LIVEOVERRIDEEND
+    LIVEOVERRIDESTART-{@val}-{@inner_content}-LIVEOVERRIDEEND
     """
   end
 
   def render("widget.html", assigns) do
     ~H"""
-    WIDGET:<%= live_render(@conn, Phoenix.LiveViewTest.Support.ClockLive) %>
+    WIDGET:{live_render(@conn, Phoenix.LiveViewTest.Support.ClockLive)}
     """
   end
 
@@ -42,7 +42,7 @@ defmodule Phoenix.LiveViewTest.Support.LayoutView do
   def render("layout-with-function-component.html", assigns) do
     ~H"""
     LAYOUT:<Phoenix.LiveViewTest.Support.FunctionComponent.render value="from layout" />
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 
@@ -69,7 +69,7 @@ defmodule Phoenix.LiveViewTest.Support.LayoutView do
         </script>
       </head>
       <body>
-        <%= @inner_content %>
+        {@inner_content}
       </body>
     </html>
     """
@@ -78,7 +78,7 @@ defmodule Phoenix.LiveViewTest.Support.LayoutView do
   def on_mount_layout(assigns) do
     ~H"""
     <div id="on-mount">
-      <%= @inner_content %>
+      {@inner_content}
     </div>
     """
   end

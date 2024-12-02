@@ -35,13 +35,13 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3496.ALive do
     <.base />
 
     <div>
-      <%= @inner_content %>
+      {@inner_content}
     </div>
 
-    <%= live_render(@socket, Phoenix.LiveViewTest.E2E.Issue3496.StickyLive,
+    {live_render(@socket, Phoenix.LiveViewTest.E2E.Issue3496.StickyLive,
       id: "sticky",
       sticky: true
-    ) %>
+    )}
     """
   end
 
@@ -50,7 +50,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3496.ALive do
     <.base />
 
     <div>
-      <%= @inner_content %>
+      {@inner_content}
     </div>
     """
   end

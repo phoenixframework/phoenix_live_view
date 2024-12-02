@@ -156,11 +156,11 @@ defmodule Phoenix.LiveViewTest.E2E.NestedFormLive do
 
   def render(assigns) do
     ~H"""
-    <%= live_render(@socket, Phoenix.LiveViewTest.E2E.FormLive,
+    {live_render(@socket, Phoenix.LiveViewTest.E2E.FormLive,
       id: "nested",
       layout: nil,
       session: @params
-    ) %>
+    )}
     """
   end
 end
@@ -170,14 +170,14 @@ defmodule Phoenix.LiveViewTest.E2E.FormStreamLive do
 
   def render(assigns) do
     ~H"""
-    <%= @count %>
+    {@count}
     <form id="test-form" phx-change="validate" phx-submit="save">
       <input name="myname" value={@count} />
       <input id="other" name="other" value={@count} />
       <div id="form-stream-hook" phx-hook="FormHook" phx-update="ignore"></div>
       <ul id="form-stream" phx-update="stream">
         <li :for={{id, item} <- @streams.items} id={id} phx-hook="FormStreamHook">
-          *<%= inspect(item) %>
+          *{inspect(item)}
         </li>
       </ul>
       <button id="submit" phx-disable-with="Saving...">Submit</button>

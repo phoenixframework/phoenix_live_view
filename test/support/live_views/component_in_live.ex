@@ -6,8 +6,8 @@ defmodule Phoenix.LiveViewTest.Support.ComponentInLive.Root do
   end
 
   def render(assigns) do
-    ~H"<%= @enabled &&
-  live_render(@socket, Phoenix.LiveViewTest.Support.ComponentInLive.Live, id: :nested_live) %>"
+    ~H"{@enabled &&
+  live_render(@socket, Phoenix.LiveViewTest.Support.ComponentInLive.Live, id: :nested_live)}"
   end
 
   def handle_info(:disable, socket) do
@@ -48,6 +48,6 @@ defmodule Phoenix.LiveViewTest.Support.ComponentInLive.Component do
   end
 
   def render(assigns) do
-    ~H"<div><%= @hello %> <%= @world %></div>"
+    ~H"<div>{@hello} {@world}</div>"
   end
 end

@@ -50,6 +50,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       ]
       ```
 
+    * `:migrate_eex_to_curly_brackets` - Automatically migrate single expression
+      `<%= ... %>` EEx expression to curly brackets one. Defaults to true.
+
   ## Formatting
 
   This formatter tries to be as consistent as possible with the Elixir formatter.
@@ -57,14 +60,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   Given HTML like this:
 
   ```heex
-    <section><h1>   <b><%= @user.name %></b></h1></section>
+    <section><h1>   <b>{@user.name}</b></h1></section>
   ```
 
   It will be formatted as:
 
   ```heex
   <section>
-    <h1><b><%= @user.name %></b></h1>
+    <h1><b>{@user.name}</b></h1>
   </section>
   ```
 
@@ -81,7 +84,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ```heex
   <section>
     <h1>
-      <b><%= @user.name %></b>
+      <b>{@user.name}</b>
     </h1>
   </section>
   ```
@@ -184,13 +187,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ```heex
   <textarea>My content</textarea>
   ```
-
-  ## Comments
-
-  Inline comments `<%# comment %>` are deprecated and the formatter will discard them
-  silently from templates. You must change them to the multi-line comment
-  `<%!-- comment --%>` on Elixir v1.14+ or introduce a space between `<%` and `#`,
-  such as `<% # comment %>`.
   """
 
   alias Phoenix.LiveView.HTMLAlgebra
@@ -242,7 +238,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
             |> Inspect.Algebra.format(line_length)
 
           {:error, line, column, message} ->
-            file = opts[:file] || "nofile"
+            file = Keyword.get(opts, :file, "nofile")
             raise ParseError, line: line, column: column, file: file, description: message
         end
 
@@ -463,6 +459,10 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       meta = %{newlines: count_newlines_until_text(text, 0)}
       to_tree(tokens, [{:text, text, meta} | buffer], stack, source)
     end
+  end
+
+  defp to_tree([{:body_expr, value, meta} | tokens], buffer, stack, source) do
+    to_tree(tokens, [{:body_expr, value, meta} | buffer], stack, source)
   end
 
   defp to_tree([{type, _name, attrs, %{closing: _} = meta} | tokens], buffer, stack, source)

@@ -4,6 +4,9 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   alias Phoenix.LiveView.HTMLFormatter
 
   defp assert_formatter_output(input, expected, dot_formatter_opts \\ []) do
+    dot_formatter_opts =
+      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
+
     first_pass = HTMLFormatter.format(input, dot_formatter_opts)
     assert first_pass == expected
 
@@ -12,6 +15,9 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   end
 
   def assert_formatter_doesnt_change(code, dot_formatter_opts \\ []) do
+    dot_formatter_opts =
+      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
+
     first_pass = HTMLFormatter.format(code, dot_formatter_opts)
     assert first_pass == code
 
@@ -98,7 +104,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_doesnt_change(input)
   end
 
-  test "do not break between eex tags when there is no space before or after" do
+  test "do not break between EEx tags when there is no space before or after" do
     assert_formatter_output(
       """
       <p>first <%= @name %>second</p>
@@ -393,6 +399,50 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_output(input, expected)
   end
 
+  test "format when there are curly interpolations" do
+    input = """
+      <section>
+        <p>pre{@user.name}pos</p>
+        <p>pre { @user.name}pos</p>
+        <p>pre{@user.name } pos</p>
+        <p>pre { @user.name } pos</p>
+      </section>
+    """
+
+    expected = """
+    <section>
+      <p>pre{@user.name}pos</p>
+      <p>pre {@user.name}pos</p>
+      <p>pre{@user.name} pos</p>
+      <p>pre {@user.name} pos</p>
+    </section>
+    """
+
+    assert_formatter_output(input, expected)
+  end
+
+  test "migrates from eex to curly brackets" do
+    input = """
+      <section>
+        <p><%= @user.name %></p>
+        <p><%= "{" %></p>
+        <script>window.url = "<%= @user.name %>"</script>
+      </section>
+    """
+
+    expected = """
+    <section>
+      <p>{@user.name}</p>
+      <p><%= "{" %></p>
+      <script>
+        window.url = "<%= @user.name %>"
+      </script>
+    </section>
+    """
+
+    assert_formatter_output(input, expected, migrate_eex_to_curly_brackets: true)
+  end
+
   test "format when there are EEx tags" do
     input = """
       <section>
@@ -400,7 +450,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
           <div>     <p>content 1</p><p>content 2</p></div>
         <% end %>
         <p><%= @user.name %></p>
-        <%= if true do %> <p>deu bom</p><% else %><p> deu ruim </p><% end %>
+        <%= if true do %> <p>it worked</p><% else %><p> it failed </p><% end %>
       </section>
     """
 
@@ -414,9 +464,9 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       <% end %>
       <p><%= @user.name %></p>
       <%= if true do %>
-        <p>deu bom</p>
+        <p>it worked</p>
       <% else %>
-        <p>deu ruim</p>
+        <p>it failed</p>
       <% end %>
     </section>
     """
@@ -453,7 +503,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  test "parse eex inside of html tags" do
+  test "parse EEx inside of html tags" do
     assert_formatter_output(
       """
         <button {build_phx_attrs_dynamically()}>Test</button>
@@ -464,7 +514,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  test "lines with inline or eex tags" do
+  test "lines with inline or EEx tags" do
     assert_formatter_output(
       """
         <p><span>this is a long long long long long looooooong text</span> <%= @product.value %> and more stuff over here</p>
@@ -540,7 +590,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
-  test "handle eex cond statement" do
+  test "handle EEx cond statement" do
     input = """
     <div>
     <%= cond do %>
@@ -901,7 +951,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  test "keep eex expressions in the next line" do
+  test "keep EEx expressions in the next line" do
     input = """
     <div class="mb-5">
       <%= live_file_input(@uploads.image_url) %>
@@ -912,7 +962,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_doesnt_change(input)
   end
 
-  test "keep intentional extra line break between eex expressions" do
+  test "keep intentional extra line break between EEx expressions" do
     input = """
     <div class="mb-5">
       <%= live_file_input(@uploads.image_url) %>
@@ -1052,7 +1102,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   test "format <pre> tag with EEx" do
     assert_formatter_doesnt_change("""
     <pre>
-      :root {
+      :root &lbrace;
         <%= 2 + 2 %>
         <%= 2 + 2 %>
       }
@@ -1146,7 +1196,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  test "formats eex within script tag" do
+  test "formats EEx within script tag" do
     assert_formatter_doesnt_change("""
     <script>
       var foo = 1;
@@ -1183,7 +1233,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
-  test "formats eex blocks within script tag" do
+  test "formats EEx blocks within script tag" do
     assert_formatter_doesnt_change("""
     <script>
       var foo = 1;
@@ -1459,7 +1509,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
-  test "keep eex along with the text" do
+  test "keep EEx along with the text" do
     assert_formatter_doesnt_change("""
     <div>
       _______________________________________________________ result<%= if(@row_count != 1, do: "s") %>
@@ -1607,7 +1657,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  test "preserve inline element on the same line when followed by a eex expression without whitespaces" do
+  test "preserve inline element on the same line when followed by a EEx expression without whitespaces" do
     assert_formatter_doesnt_change(
       """
       <%= some_function("arg") %><span>content</span>
@@ -1754,6 +1804,12 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
+  test "respect interpolation when phx-no-format is present" do
+    assert_formatter_doesnt_change("""
+    <title data-prefix={@prefix} data-default={@default} data-suffix={@suffix} phx-no-format>{@prefix}{render_present(render_slot(@inner_block), @default)}{@suffix}</title>
+    """)
+  end
+
   test "respect nesting of children when phx-no-format is present" do
     assert_formatter_doesnt_change(
       """
@@ -1818,7 +1874,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  test "handle html comments + eex expressions" do
+  test "handle html comments + EEx expressions" do
     assert_formatter_output(
       """
       <%= if @comment do %><!-- <%= @comment %> --><% end %>
@@ -2060,7 +2116,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
   end
 
-  test "handle multiple HTML comments with eex vars" do
+  test "handle multiple HTML comments with EEx vars" do
     assert_formatter_doesnt_change("""
     <!--
     <button><%= @var %></button>

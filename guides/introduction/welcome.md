@@ -47,7 +47,7 @@ defmodule MyAppWeb.ThermostatLive do
 
   def render(assigns) do
     ~H"""
-    Current temperature: <%= @temperature %>°F
+    Current temperature: {@temperature}°F
     <button phx-click="inc_temperature">+</button>
     """
   end
@@ -235,7 +235,7 @@ function that receives an assigns map and returns a `~H` template. For example:
     def weather_greeting(assigns) do
       ~H"""
       <div title="My div" class={@class}>
-        <p>Hello <%= @name %></p>
+        <p>Hello {@name}</p>
         <MyApp.Weather.city name="Kraków"/>
       </div>
       """

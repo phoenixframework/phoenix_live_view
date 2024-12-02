@@ -123,20 +123,20 @@ defmodule Phoenix.LiveViewTest.E2E.SelectLive do
       This page contains multiple select inputs to test various behaviors.
       Sadly, we cannot test all of them automatically, as there is no way to assert the state of an open select's native UI.
     </p>
-    Tick: <%= @tick %>
+    Tick: {@tick}
 
     <div style="display: flex; flex-direction: column; gap: 8px">
       <button phx-click="toggle-tick">
-        <%= if @tick_timer, do: "Disable", else: "Enable" %> ticking
+        {if @tick_timer, do: "Disable", else: "Enable"} ticking
       </button>
       <button :if={!@select2_timer} phx-click="schedule-select2-update">
         Schedule select2 update
       </button>
-      <span :if={@select2_timer}>Select 2 will update in <%= @select2_countdown %>s</span>
+      <span :if={@select2_timer}>Select 2 will update in {@select2_countdown}s</span>
       <button :if={!@select4_timer} phx-click="schedule-select4-update">
         Schedule select4 update
       </button>
-      <span :if={@select4_timer}>Select 4 will update in <%= @select4_countdown %>s</span>
+      <span :if={@select4_timer}>Select 4 will update in {@select4_countdown}s</span>
     </div>
 
     <.form for={@form} phx-change="validate">
@@ -227,8 +227,8 @@ defmodule Phoenix.LiveViewTest.E2E.SelectLive do
         multiple={@multiple}
         {@rest}
       >
-        <option :if={@prompt} value=""><%= @prompt %></option>
-        <%= Phoenix.HTML.Form.options_for_select(@options, @value) %>
+        <option :if={@prompt} value="">{@prompt}</option>
+        {Phoenix.HTML.Form.options_for_select(@options, @value)}
       </select>
     </div>
     """

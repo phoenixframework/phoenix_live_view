@@ -19,7 +19,7 @@ defmodule Phoenix.LiveViewTest.Support.LiveInComponent.Component do
   def render(assigns) do
     ~H"""
     <div>
-      <%= live_render(@socket, Phoenix.LiveViewTest.Support.LiveInComponent.Live, id: :nested_live) %>"
+      {live_render(@socket, Phoenix.LiveViewTest.Support.LiveInComponent.Live, id: :nested_live)}"
     </div>
     """
   end

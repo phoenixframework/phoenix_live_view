@@ -39,7 +39,7 @@ defmodule Example.HomeLive do
     <style>
       * { font-size: 1.1em; }
     </style>
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 

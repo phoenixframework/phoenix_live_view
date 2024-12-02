@@ -54,10 +54,10 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive do
 
   def render(assigns) do
     ~H"""
-    <p>last_on_mount:<%= inspect(assigns[:last_on_mount]) %></p>
-    <p>params_hook:<%= assigns[:params_hook_ref] %></p>
-    <p>count:<%= @count %></p>
-    <p>task:<%= @task %></p>
+    <p>last_on_mount:{inspect(assigns[:last_on_mount])}</p>
+    <p>params_hook:{assigns[:params_hook_ref]}</p>
+    <p>count:{@count}</p>
+    <p>task:{@task}</p>
     <button id="dec" phx-click="dec">-</button>
     <button id="inc" phx-click="inc">+</button>
     <button id="patch" phx-click="patch">?</button>
@@ -191,7 +191,7 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive.Noop do
   def render(assigns) do
     ~H"""
     <h1>Noop</h1>
-    last_on_mount:<%= inspect(assigns[:last_on_mount]) %>
+    last_on_mount:{inspect(assigns[:last_on_mount])}
     """
   end
 end
@@ -252,7 +252,7 @@ defmodule Phoenix.LiveViewTest.Support.HooksEventComponent do
     ~H"""
     <div>
       <div id="detach-component-hook" phx-click="detach" phx-target={@myself}>Detach</div>
-      <div id="hook" phx-click="event" phx-target={@myself}>counter: <%= @counter %></div>
+      <div id="hook" phx-click="event" phx-target={@myself}>counter: {@counter}</div>
     </div>
     """
   end
@@ -307,7 +307,7 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive.HandleParamsNotDefined do
      end)}
   end
 
-  def render(assigns), do: ~H"url=<%= assigns[:url] %>"
+  def render(assigns), do: ~H"url={assigns[:url]}"
 end
 
 defmodule Phoenix.LiveViewTest.Support.HooksLive.HandleInfoNotDefined do
@@ -323,7 +323,7 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive.HandleInfoNotDefined do
      end)}
   end
 
-  def render(assigns), do: ~H"data=<%= assigns[:data] %>"
+  def render(assigns), do: ~H"data={assigns[:data]}"
 end
 
 defmodule Phoenix.LiveViewTest.Support.HooksLive.OnMountOptions do
@@ -340,5 +340,5 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive.OnMountOptions do
     {:cont, socket, layout: {Phoenix.LiveViewTest.Support.LayoutView, :on_mount_layout}}
   end
 
-  def render(assigns), do: ~H"data-<%= @data %>"
+  def render(assigns), do: ~H"data-{@data}"
 end

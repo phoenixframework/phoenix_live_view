@@ -470,7 +470,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       ~H"""
       <div>
-        FROM <%= @from %> <%= @hello %>
+        FROM {@from} {@hello}
       </div>
       """
     end
@@ -482,7 +482,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     def render(assigns) do
       ~H"""
       <div>
-        RENDER ONLY <%= @from %>
+        RENDER ONLY {@from}
       </div>
       """
     end
@@ -503,8 +503,8 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
     def render(assigns) do
       ~H"""
-      <foo><%= @id %></foo>
-      <bar><%= @id %></bar>
+      <foo>{@id}</foo>
+      <bar>{@id}</bar>
       """
     end
   end

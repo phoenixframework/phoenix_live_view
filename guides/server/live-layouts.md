@@ -17,7 +17,7 @@ From Phoenix v1.7, your application is made of two layouts:
 Overall, those layouts are found in `components/layouts` and are
 embedded within `MyAppWeb.Layouts`.
 
-All layouts must call `<%= @inner_content %>` to inject the
+All layouts must call `{@inner_content}` to inject the
 content rendered by the layout.
 
 ## Root layout
@@ -71,7 +71,7 @@ mount:
 Then access `@page_title` in the root layout:
 
 ```heex
-<title><%= @page_title %></title>
+<title>{@page_title}</title>
 ```
 
 You can also use the `Phoenix.Component.live_title/1` component to support
@@ -79,8 +79,8 @@ adding automatic prefix and suffix to the page title when rendered and
 on subsequent updates:
 
 ```heex
-<Phoenix.Component.live_title prefix="MyApp – ">
-  <%= assigns[:page_title] || "Welcome" %>
+<Phoenix.Component.live_title default="Welcome" prefix="MyApp – ">
+  {assigns[:page_title]}
 </Phoenix.Component.live_title>
 ```
 

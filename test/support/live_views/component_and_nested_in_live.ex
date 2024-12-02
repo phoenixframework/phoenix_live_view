@@ -9,7 +9,7 @@ defmodule Phoenix.LiveViewTest.Support.ComponentAndNestedInLive do
     end
 
     def render(assigns) do
-      ~H"<div><%= @hello %></div>"
+      ~H"<div>{@hello}</div>"
     end
 
     def handle_event("disable", _params, socket) do
@@ -26,7 +26,7 @@ defmodule Phoenix.LiveViewTest.Support.ComponentAndNestedInLive do
     end
 
     def render(assigns) do
-      ~H"<div><%= @world %></div>"
+      ~H"<div>{@world}</div>"
     end
   end
 
@@ -37,7 +37,7 @@ defmodule Phoenix.LiveViewTest.Support.ComponentAndNestedInLive do
   def render(assigns) do
     ~H"""
     <%= if @enabled do %>
-      <%= live_render(@socket, NestedLive, id: :nested_live) %>
+      {live_render(@socket, NestedLive, id: :nested_live)}
       <.live_component module={NestedComponent} id={:_component} />
     <% end %>
     """
