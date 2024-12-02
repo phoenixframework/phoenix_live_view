@@ -114,7 +114,11 @@ generated user module:
 
 ## 1.0.0-rc.8
 
+### Backwards incompatible changes
+* Require Elixir v1.14+
+
 ### Bug fixes
+* Fix live navigation issue where LiveView would attempt a patch on back navigation instead of navigate under certain routing conditions
 * Fix live upload issue where large `chunk_size` could cause a chunk timeout on slower connections by properly using the configured `chunk_timeout` on the client
 * Fix focused inputs losing focus stat in some update scenarios
 * Fix rare `no component for cid` error when rapidly updating live components under latency
@@ -126,6 +130,7 @@ generated user module:
 * Fix live_session not being enforced when patching to the same LiveView under a different route
 
 ### Enhancements
+* Extend HEEx `{@foo}` syntax for interpolating variables inside tag bodies
 * Support `default` attribute for `<.live_title>` component
 * Add `refute_push_event` to `Phoenix.LiveViewTest`
 * Keep intentional newlines when formatting comments (#3486)
