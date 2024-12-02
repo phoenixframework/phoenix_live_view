@@ -1966,20 +1966,8 @@ defmodule Phoenix.Component do
   '''
   @doc type: :macro
   defmacro attr(name, type, opts \\ []) do
-    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
-    type =
-      if Macro.quoted_literal?(type) do
-        Macro.prewalk(type, &expand_alias(&1, __CALLER__))
-      else
-        type
-      end
-
-    opts =
-      if Macro.quoted_literal?(opts) do
-        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
-      else
-        opts
-      end
+    type = Macro.expand_literals(type, __CALLER__)
+    opts = Macro.expand_literals(opts, __CALLER__)
 
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
@@ -1992,11 +1980,6 @@ defmodule Phoenix.Component do
       )
     end
   end
-
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:__attr__, 3}})
-
-  defp expand_alias(other, _env), do: other
 
   ## Components
 

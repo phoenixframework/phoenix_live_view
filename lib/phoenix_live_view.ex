@@ -548,10 +548,10 @@ defmodule Phoenix.LiveView do
     mod_or_mod_arg =
       case mod_or_mod_arg do
         {mod, arg} ->
-          {expand_literals(mod, __CALLER__), expand_literals(arg, __CALLER__)}
+          {Macro.expand_literals(mod, __CALLER__), Macro.expand_literals(arg, __CALLER__)}
 
         mod_or_mod_arg ->
-          expand_literals(mod_or_mod_arg, __CALLER__)
+          Macro.expand_literals(mod_or_mod_arg, __CALLER__)
       end
 
     quote do
@@ -562,19 +562,6 @@ defmodule Phoenix.LiveView do
       )
     end
   end
-
-  defp expand_literals(ast, env) do
-    if Macro.quoted_literal?(ast) do
-      Macro.prewalk(ast, &expand_alias(&1, env))
-    else
-      ast
-    end
-  end
-
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:on_mount, 4}})
-
-  defp expand_alias(other, _env), do: other
 
   @doc """
   Returns true if the socket is connected.

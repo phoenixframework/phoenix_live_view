@@ -245,9 +245,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       # If the opening delimiter is a single character, such as ~H"...", or the formatted code is empty,
       # do not add trailing newline.
       newline = if match?(<<_>>, opts[:opening_delimiter]) or formatted == [], do: [], else: ?\n
-
-      # TODO: Remove IO.iodata_to_binary/1 call on Elixir v1.14+
-      IO.iodata_to_binary([formatted, newline])
+      [formatted, newline]
     end
   end
 
@@ -277,51 +275,29 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #   {::close, :tag, "section", %{column: 1, line: 2}}
   # ]
   #
-  # EEx.tokenize/2 was introduced in Elixir 1.14.
-  # TODO: Remove this when we no longer support earlier versions.
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
-  if Code.ensure_loaded?(EEx) && function_exported?(EEx, :tokenize, 2) do
-    defp tokenize(source) do
-      {:ok, eex_nodes} = EEx.tokenize(source)
-      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, source))
-      Tokenizer.finalize(tokens, "nofile", cont, source)
-    end
 
-    defp do_tokenize({:text, text, meta}, {tokens, cont}, source) do
-      text = List.to_string(text)
-      meta = [line: meta.line, column: meta.column]
-      state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
-      Tokenizer.tokenize(text, meta, tokens, cont, state)
-    end
+  defp tokenize(source) do
+    {:ok, eex_nodes} = EEx.tokenize(source)
+    {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, source))
+    Tokenizer.finalize(tokens, "nofile", cont, source)
+  end
 
-    defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents) do
-      {[{:eex_comment, List.to_string(text), meta} | tokens], cont}
-    end
+  defp do_tokenize({:text, text, meta}, {tokens, cont}, source) do
+    text = List.to_string(text)
+    meta = [line: meta.line, column: meta.column]
+    state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
+    Tokenizer.tokenize(text, meta, tokens, cont, state)
+  end
 
-    defp do_tokenize({type, opt, expr, %{column: column, line: line}}, {tokens, cont}, _contents)
-         when type in @eex_expr do
-      meta = %{opt: opt, line: line, column: column}
-      {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
-    end
-  else
-    defp tokenize(source) do
-      {:ok, eex_nodes} = EEx.Tokenizer.tokenize(source, 1, 1, %{indentation: 0, trim: false})
-      {tokens, cont} = Enum.reduce(eex_nodes, {[], :text}, &do_tokenize(&1, &2, source))
-      Tokenizer.finalize(tokens, "nofile", cont, source)
-    end
+  defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents) do
+    {[{:eex_comment, List.to_string(text), meta} | tokens], cont}
+  end
 
-    defp do_tokenize({:text, line, column, text}, {tokens, cont}, source) do
-      text = List.to_string(text)
-      meta = [line: line, column: column]
-      state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
-      Tokenizer.tokenize(text, meta, tokens, cont, state)
-    end
-
-    defp do_tokenize({type, line, column, opt, expr}, {tokens, cont}, _contents)
-         when type in @eex_expr do
-      meta = %{opt: opt, line: line, column: column}
-      {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
-    end
+  defp do_tokenize({type, opt, expr, %{column: column, line: line}}, {tokens, cont}, _contents)
+       when type in @eex_expr do
+    meta = %{opt: opt, line: line, column: column}
+    {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
   end
 
   defp do_tokenize(_node, acc, _contents) do

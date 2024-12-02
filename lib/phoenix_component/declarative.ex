@@ -612,8 +612,6 @@ defmodule Phoenix.Component.Declarative do
     end
   end
 
-  @after_verify_supported Version.match?(System.version(), ">= 1.14.0-dev")
-
   @doc false
   defmacro __before_compile__(env) do
     attrs = pop_attrs(env)
@@ -711,7 +709,7 @@ defmodule Phoenix.Component.Declarative do
       end
 
     def_components_calls_ast =
-      if components_calls != [] and @after_verify_supported do
+      if components_calls != [] do
         quote do
           @after_verify {__MODULE__, :__phoenix_component_verify__}
 

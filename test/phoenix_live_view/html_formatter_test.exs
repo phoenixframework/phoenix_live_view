@@ -7,10 +7,10 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     dot_formatter_opts =
       Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
 
-    first_pass = HTMLFormatter.format(input, dot_formatter_opts)
+    first_pass = HTMLFormatter.format(input, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == expected
 
-    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts)
+    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts) |> IO.iodata_to_binary()
     assert second_pass == expected
   end
 
@@ -18,10 +18,10 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     dot_formatter_opts =
       Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
 
-    first_pass = HTMLFormatter.format(code, dot_formatter_opts)
+    first_pass = HTMLFormatter.format(code, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == code
 
-    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts)
+    second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts) |> IO.iodata_to_binary()
     assert second_pass == code
   end
 
