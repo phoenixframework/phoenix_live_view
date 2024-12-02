@@ -93,6 +93,7 @@ var PHX_AUTO_RECOVER = "auto-recover";
 var PHX_LV_DEBUG = "phx:live-socket:debug";
 var PHX_LV_PROFILE = "phx:live-socket:profiling";
 var PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim";
+var PHX_LV_HISTORY_POSITION = "phx:nav-history-position";
 var PHX_PROGRESS = "progress";
 var PHX_MOUNTED = "mounted";
 var PHX_RELOAD_STATUS = "__phoenix_reload_status__";
@@ -3556,6 +3557,9 @@ var View = class _View {
     if (this.root === this) {
       this.formsForRecovery = this.getFormsForRecovery();
     }
+    if (this.isMain() && window.history.state === null) {
+      this.liveSocket.replaceRootHistory();
+    }
     if (liveview_version !== this.liveSocket.version()) {
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`);
     }
@@ -4715,6 +4719,7 @@ var LiveSocket = class {
       opts.dom || {}
     );
     this.transitions = new TransitionSet();
+    this.currentHistoryPosition = parseInt(this.sessionStorage.getItem(PHX_LV_HISTORY_POSITION)) || 0;
     window.addEventListener("pagehide", (_e) => {
       this.unloaded = true;
     });
@@ -4726,7 +4731,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.0.0-rc.7";
+    return "1.0.0-rc.8";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
@@ -5234,9 +5239,13 @@ var LiveSocket = class {
       if (!this.registerNewLocation(window.location)) {
         return;
       }
-      let { type, id, root, scroll } = event.state || {};
+      let { type, backType, id, root, scroll, position } = event.state || {};
       let href = window.location.href;
-      dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: type === "patch", pop: true } });
+      let isForward = position > this.currentHistoryPosition;
+      type = isForward ? type : backType || type;
+      this.currentHistoryPosition = position || 0;
+      this.sessionStorage.setItem(PHX_LV_HISTORY_POSITION, this.currentHistoryPosition.toString());
+      dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: type === "patch", pop: true, direction: isForward ? "forward" : "backward" } });
       this.requestDOMUpdate(() => {
         if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
           this.main.pushLinkPatch(event, href, null, () => {
@@ -5313,8 +5322,15 @@ var LiveSocket = class {
     if (!this.commitPendingLink(linkRef)) {
       return;
     }
-    browser_default.pushState(linkState, { type: "patch", id: this.main.id }, href);
-    dom_default.dispatchEvent(window, "phx:navigate", { detail: { patch: true, href, pop: false } });
+    this.currentHistoryPosition++;
+    this.sessionStorage.setItem(PHX_LV_HISTORY_POSITION, this.currentHistoryPosition.toString());
+    browser_default.updateCurrentState((state) => ({ ...state, backType: "patch" }));
+    browser_default.pushState(linkState, {
+      type: "patch",
+      id: this.main.id,
+      position: this.currentHistoryPosition
+    }, href);
+    dom_default.dispatchEvent(window, "phx:navigate", { detail: { patch: true, href, pop: false, direction: "forward" } });
     this.registerNewLocation(window.location);
   }
   historyRedirect(e, href, linkState, flash, targetEl) {
@@ -5332,8 +5348,16 @@ var LiveSocket = class {
     this.withPageLoading({ to: href, kind: "redirect" }, (done) => {
       this.replaceMain(href, flash, (linkRef) => {
         if (linkRef === this.linkRef) {
-          browser_default.pushState(linkState, { type: "redirect", id: this.main.id, scroll }, href);
-          dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false } });
+          this.currentHistoryPosition++;
+          this.sessionStorage.setItem(PHX_LV_HISTORY_POSITION, this.currentHistoryPosition.toString());
+          browser_default.updateCurrentState((state) => ({ ...state, backType: "redirect" }));
+          browser_default.pushState(linkState, {
+            type: "redirect",
+            id: this.main.id,
+            scroll,
+            position: this.currentHistoryPosition
+          }, href);
+          dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false, direction: "forward" } });
           this.registerNewLocation(window.location);
         }
         done();
@@ -5341,7 +5365,13 @@ var LiveSocket = class {
     });
   }
   replaceRootHistory() {
-    browser_default.pushState("replace", { root: true, type: "patch", id: this.main.id });
+    browser_default.pushState("replace", {
+      root: true,
+      type: "patch",
+      id: this.main.id,
+      position: this.currentHistoryPosition
+      // Preserve current position
+    });
   }
   registerNewLocation(newLocation) {
     let { pathname, search } = this.currentLocation;
