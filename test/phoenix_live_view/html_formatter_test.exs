@@ -4,8 +4,10 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   alias Phoenix.LiveView.HTMLFormatter
 
   defp assert_formatter_output(input, expected, dot_formatter_opts \\ []) do
-    first_pass = HTMLFormatter.format(input, dot_formatter_opts) |> IO.iodata_to_binary()
+    dot_formatter_opts =
+      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
 
+    first_pass = HTMLFormatter.format(input, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == expected
 
     second_pass = HTMLFormatter.format(first_pass, dot_formatter_opts) |> IO.iodata_to_binary()
@@ -13,6 +15,9 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   end
 
   def assert_formatter_doesnt_change(code, dot_formatter_opts \\ []) do
+    dot_formatter_opts =
+      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
+
     first_pass = HTMLFormatter.format(code, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == code
 
@@ -2187,25 +2192,28 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  test "handle EEx comments" do
-    assert_formatter_doesnt_change("""
-    <div>
-      <%!-- some --%>
-      <%!-- comment --%>
-      <%!--
-        <div>
-          <%= @user.name %>
-        </div>
-      --%>
-    </div>
-    """)
+  # TODO: Remove this `if` when we require Elixir 1.14+
+  if function_exported?(EEx, :tokenize, 2) do
+    test "handle EEx comments" do
+      assert_formatter_doesnt_change("""
+      <div>
+        <%!-- some --%>
+        <%!-- comment --%>
+        <%!--
+          <div>
+            <%= @user.name %>
+          </div>
+        --%>
+      </div>
+      """)
 
-    assert_formatter_doesnt_change("""
-    <div>
-      <%= # some %>
-      <%= # comment %>
-      <%= # lines %>
-    </div>
-    """)
+      assert_formatter_doesnt_change("""
+      <div>
+        <%= # some %>
+        <%= # comment %>
+        <%= # lines %>
+      </div>
+      """)
+    end
   end
 end
