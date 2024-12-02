@@ -245,7 +245,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       # If the opening delimiter is a single character, such as ~H"...", or the formatted code is empty,
       # do not add trailing newline.
       newline = if match?(<<_>>, opts[:opening_delimiter]) or formatted == [], do: [], else: ?\n
-      [formatted, newline]
+
+      IO.iodata_to_binary([formatted, newline])
     end
   end
 
