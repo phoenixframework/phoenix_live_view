@@ -1,14 +1,14 @@
 // playwright.config.js
 // @ts-check
-const { devices } = require("@playwright/test");
+const {devices} = require("@playwright/test")
 
 /** @type {import("@playwright/test").ReporterDescription} */
 const monocartReporter = ["monocart-reporter", {
   name: "Phoenix LiveView",
-  outputFile: './test-results/report.html',
+  outputFile: "./test-results/report.html",
   coverage: {
     reports: [
-      ["raw", { outputDir: "./raw" }],
+      ["raw", {outputDir: "./raw"}],
       ["v8"],
     ],
     entryFilter: (entry) => entry.url.indexOf("phoenix_live_view.esm.js") !== -1,
@@ -36,19 +36,19 @@ const config = {
   projects: [
     {
       name: "chromium",
-      use: { ...devices["Desktop Chrome"] },
+      use: {...devices["Desktop Chrome"]},
     },
     {
       name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      use: {...devices["Desktop Firefox"]},
     },
     {
       name: "webkit",
-      use: { ...devices["Desktop Safari"] },
+      use: {...devices["Desktop Safari"]},
     }
   ],
   outputDir: "test-results",
   globalTeardown: require.resolve("./teardown")
-};
+}
 
-module.exports = config;
+module.exports = config

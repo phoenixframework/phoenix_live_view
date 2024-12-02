@@ -11,8 +11,8 @@ defmodule Phoenix.LiveViewTest.Support.CidsDestroyedLive do
     def render(assigns) do
       ~H"""
       <div>
-        <button type="submit"><%= @text %></button>
-        <div id="bumper" phx-click="bump" phx-target={@myself}>Bump: <%= @counter %></div>
+        <button type="submit">{@text}</button>
+        <div id="bumper" phx-click="bump" phx-target={@myself}>Bump: {@counter}</div>
       </div>
       """
     end

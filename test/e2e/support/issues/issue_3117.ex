@@ -13,7 +13,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3117Live do
     def render(assigns) do
       ~H"""
       <div id={@id}>
-        Example LC Row <%= inspect(@foo.result) %>
+        Example LC Row {inspect(@foo.result)}
         <.fc />
       </div>
       """

@@ -57,7 +57,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3026Live do
     ~H"""
     <.form for={to_form(%{})} phx-change="change_status">
       <select name="status" type="select">
-        <%= Phoenix.HTML.Form.options_for_select(options(), @status) %>
+        {Phoenix.HTML.Form.options_for_select(options(), @status)}
       </select>
     </.form>
 
@@ -77,7 +77,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3026Live do
   defp status(assigns) do
     ~H"""
     <div class="p-8 bg-gray-200 mb-4">
-      <%= @status %>
+      {@status}
     </div>
     """
   end

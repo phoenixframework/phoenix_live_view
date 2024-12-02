@@ -51,7 +51,7 @@ defmodule Phoenix.LiveView.JS do
             phx-key="escape"
           >
             <button class="phx-modal-close" phx-click={hide_modal()}>✖</button>
-            <p><%= @text %></p>
+            <p>{@text}</p>
           </div>
         </div>
         """

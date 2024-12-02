@@ -4,7 +4,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.Components do
   def input(assigns) do
     ~H"""
     <div>
-      <%= @field.value %>
+      {@field.value}
       <input type="text" value={@field.value} />
       <.input_two field={@field} />
     </div>
@@ -14,7 +14,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.Components do
   def input_two(assigns) do
     ~H"""
     <div>
-      <%= @field.value %>
+      {@field.value}
       <input type="text" value={@field.value} />
     </div>
     """
@@ -22,7 +22,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live.Components do
 
   def test(assigns) do
     ~H"""
-    This is a test! <%= @var %>
+    This is a test! {@var}
     """
   end
 end
@@ -122,7 +122,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live do
       })
       liveSocket.connect()
     </script>
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 

@@ -78,7 +78,7 @@ element from the server to draw the user's attention:
 
 ```heex
 <div id={"item-#{item.id}"} class="item">
-  <%= item.title %>
+  {item.title}
 </div>
 ```
 
@@ -110,7 +110,7 @@ attribute:
 
 ```heex
 <div id={"item-#{item.id}"} class="item" data-highlight={JS.transition("highlight")}>
-  <%= item.title %>
+  {item.title}
 </div>
 ```
 

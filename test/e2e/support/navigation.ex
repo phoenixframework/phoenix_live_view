@@ -12,6 +12,10 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
       window.liveSocket = liveSocket
+
+      window.addEventListener("phx:navigate", (e) => {
+        console.log("navigate event", JSON.stringify(e.detail))
+      })
     </script>
 
     <style>
@@ -42,7 +46,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
       </div>
 
       <div style="margin-left: 22rem; flex: 1; padding: 2rem;">
-        <%= @inner_content %>
+        {@inner_content}
       </div>
     </div>
     """
@@ -74,7 +78,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
     ~H"""
     <h1>This is page A</h1>
 
-    <p>Current param: <%= @param_current %></p>
+    <p>Current param: {@param_current}</p>
 
     <.styled_link patch={"/navigation/a?param=#{@param_next}"}>Patch this LiveView</.styled_link>
     <.styled_link patch={"/navigation/a?param=#{@param_next}"} replace>Patch (Replace)</.styled_link>
@@ -88,7 +92,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
       style="padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;"
       {Map.delete(assigns, [:inner_block])}
     >
-      <%= render_slot(@inner_block) %>
+      {render_slot(@inner_block)}
     </.link>
     """
   end
@@ -148,7 +152,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
               patch={"/navigation/b/#{item.id}"}
               style="display: inline-flex; align-items: center; gap: 0.5rem;"
             >
-              Item <%= item.name %>
+              Item {item.name}
             </.link>
           </li>
         <% end %>
@@ -156,7 +160,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
     </div>
 
     <div :if={@live_action == :show}>
-      <p>Item <%= @id %></p>
+      <p>Item {@id}</p>
     </div>
     """
   end

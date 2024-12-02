@@ -90,7 +90,7 @@ defmodule Phoenix.LiveView.Helpers do
 
     assigns = %{opts: opts, content: block_or_text}
 
-    ~H|<a {@opts}><%= @content %></a>|
+    ~H|<a {@opts}>{@content}</a>|
   end
 
   @deprecated "Use <.live_title> instead"
@@ -99,7 +99,7 @@ defmodule Phoenix.LiveView.Helpers do
 
     ~H"""
     <Phoenix.Component.live_title prefix={@prefix} suffix={@suffix}>
-      <%= @title %>
+      {@title}
     </Phoenix.Component.live_title>
     """
   end

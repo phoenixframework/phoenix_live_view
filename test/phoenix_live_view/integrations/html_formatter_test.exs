@@ -75,7 +75,7 @@ defmodule Phoenix.LiveView.Integrations.HTMLFormatterTest do
           <p>content 2</p>
         </div>
       <% end %>
-      <p><%= @user.name %></p>
+      <p>{@user.name}</p>
       <%= if true do %>
         <p>good</p>
       <% else %>
@@ -118,14 +118,14 @@ defmodule Phoenix.LiveView.Integrations.HTMLFormatterTest do
 
   test "accept line_length as option" do
     input = """
-      <section><h1><b class="there are several classes"><%= @user.name %></b></h1></section>
+      <section><h1><b class="there are several classes">{@user.name}</b></h1></section>
     """
 
     expected = """
     <section>
       <h1>
         <b class="there are several classes">
-          <%= @user.name %>
+          {@user.name}
         </b>
       </h1>
     </section>
@@ -136,12 +136,12 @@ defmodule Phoenix.LiveView.Integrations.HTMLFormatterTest do
 
   test "heex_line_length overrides line_length" do
     input = """
-      <section><h1><b class="there are several classes"><%= @user.name %></b></h1></section>
+      <section><h1><b class="there are several classes">{@user.name}</b></h1></section>
     """
 
     expected = """
     <section>
-      <h1><b class="there are several classes"><%= @user.name %></b></h1>
+      <h1><b class="there are several classes">{@user.name}</b></h1>
     </section>
     """
 

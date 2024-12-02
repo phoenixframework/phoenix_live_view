@@ -3,11 +3,11 @@ defmodule Phoenix.LiveViewTest.Support.FlashLive do
 
   def render(assigns) do
     ~H"""
-    uri[<%= @uri %>]
-    root[<%= Phoenix.Flash.get(@flash, :info) %>]:info
-    root[<%= Phoenix.Flash.get(@flash, :error) %>]:error
+    uri[{@uri}]
+    root[{Phoenix.Flash.get(@flash, :info)}]:info
+    root[{Phoenix.Flash.get(@flash, :error)}]:error
     <.live_component module={Phoenix.LiveViewTest.Support.FlashComponent} id="flash-component" />
-    child[<%= live_render(@socket, Phoenix.LiveViewTest.Support.FlashChildLive, id: "flash-child") %>]
+    child[{live_render(@socket, Phoenix.LiveViewTest.Support.FlashChildLive, id: "flash-child")}]
     """
   end
 
@@ -50,10 +50,10 @@ defmodule Phoenix.LiveViewTest.Support.FlashComponent do
     <div id={@id} phx-target={@myself} phx-click="click">
       <span phx-target={@myself} phx-click="lv:clear-flash">Clear all</span>
       <span phx-target={@myself} phx-click="lv:clear-flash" phx-value-key="info">
-        component[<%= Phoenix.Flash.get(@flash, :info) %>]:info
+        component[{Phoenix.Flash.get(@flash, :info)}]:info
       </span>
       <span phx-target={@myself} phx-click="lv:clear-flash" phx-value-key="error">
-        component[<%= Phoenix.Flash.get(@flash, :error) %>]:error
+        component[{Phoenix.Flash.get(@flash, :error)}]:error
       </span>
     </div>
     """
@@ -85,7 +85,7 @@ defmodule Phoenix.LiveViewTest.Support.FlashChildLive do
 
   def render(assigns) do
     ~H"""
-    <%= Phoenix.Flash.get(@flash, :info) %>
+    {Phoenix.Flash.get(@flash, :info)}
     """
   end
 

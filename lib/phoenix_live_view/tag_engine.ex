@@ -230,6 +230,7 @@ defmodule Phoenix.LiveView.TagEngine do
     Enum.any?(tokens, fn
       {:text, _, _} -> false
       {:expr, _, _} -> false
+      {:body_expr, _, _} -> false
       _ -> true
     end)
   end
@@ -441,6 +442,14 @@ defmodule Phoenix.LiveView.TagEngine do
     state
     |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, [marker, expr])
+  end
+
+  defp handle_token({:body_expr, value, %{line: line, column: column}}, state) do
+    quoted = Code.string_to_quoted!(value, line: line, column: column, file: state.file)
+
+    state
+    |> set_root_on_not_tag()
+    |> update_subengine(:handle_expr, ["=", quoted])
   end
 
   # Text

@@ -47,7 +47,7 @@ defmodule MyAppWeb.ThermostatLive do
 
   def render(assigns) do
     ~H"""
-    Current temperature: <%= @temperature %>°F
+    Current temperature: {@temperature}°F
     <button phx-click="inc_temperature">+</button>
     """
   end
@@ -235,7 +235,7 @@ function that receives an assigns map and returns a `~H` template. For example:
     def weather_greeting(assigns) do
       ~H"""
       <div title="My div" class={@class}>
-        <p>Hello <%= @name %></p>
+        <p>Hello {@name}</p>
         <MyApp.Weather.city name="Kraków"/>
       </div>
       """
@@ -255,11 +255,11 @@ LiveView to a separate module. For these cases, LiveView provides
 <.live_component module={UserComponent} id={user.id} user={user} />
 ```
 
-LiveComponents have their own `mount/3` and `handle_event/3` callbacks, as well
-as their own state with change tracking support. They are lightweight since they
-"run" in the same process as the parent LiveView. However, this means an error
-in a LiveComponent would cause the whole view to fail to render. For a complete
-rundown, see `Phoenix.LiveComponent`.
+LiveComponents have their own `mount/1` and `handle_event/3` callbacks, as well
+as their own state with change tracking support, similar to LiveViews. They are
+lightweight since they "run" in the same process as the parent LiveView.
+However, this means an error in a LiveComponent would cause the whole view
+to fail to render. For a complete rundown, see `Phoenix.LiveComponent`.
 
 Finally, if you want complete isolation between parts of a LiveView, you can
 always render a LiveView inside another LiveView by calling

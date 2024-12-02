@@ -104,7 +104,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
       liveSocket.connect()
     </script>
 
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 
@@ -137,10 +137,10 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
               <tbody>
                 <%= for entry <- uploads_in_progress(@uploads) do %>
                   <tr>
-                    <td><%= entry.client_name %></td>
+                    <td>{entry.client_name}</td>
                     <td>
                       <progress value={entry.progress} max="100">
-                        <%= entry.progress %>%
+                        {entry.progress}%
                       </progress>
                     </td>
 
@@ -156,7 +156,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
                     </td>
                     <td>
                       <%= for err <- upload_errors(@uploads.files, entry) do %>
-                        <p style="color: red;"><%= error_to_string(err) %></p>
+                        <p style="color: red;">{error_to_string(err)}</p>
                       <% end %>
                     </td>
                   </tr>
@@ -165,7 +165,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
             </table>
           </div>
           <%= for err <- upload_errors(@uploads.files) do %>
-            <p style="text-red"><%= error_to_string(err) %></p>
+            <p style="text-red">{error_to_string(err)}</p>
           <% end %>
         </section>
       </.form>

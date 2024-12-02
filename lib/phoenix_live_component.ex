@@ -18,7 +18,7 @@ defmodule Phoenix.LiveComponent do
 
         def render(assigns) do
           ~H"""
-          <div class="hero"><%= @content %></div>
+          <div class="hero">{@content}</div>
           """
         end
       end
@@ -99,7 +99,7 @@ defmodule Phoenix.LiveComponent do
         def render(assigns) do
           ~H"""
           <div id={"user-#{@id}"} class="user">
-            <%= @user.name %>
+            {@user.name}
           </div>
           """
         end
@@ -266,7 +266,7 @@ defmodule Phoenix.LiveComponent do
         def render(assigns) do
           ~H"""
           <form phx-submit="..." phx-target={@myself}>
-            <input name="title"><%= @card.title %></input>
+            <input name="title">{@card.title}</input>
             ...
           </form>
           """
@@ -286,9 +286,13 @@ defmodule Phoenix.LiveComponent do
   for each card, passing the card struct as argument to `CardComponent`:
 
   ```heex
-  <%= for card <- @cards do %>
-    <.live_component module={CardComponent} card={card} id={card.id} board_id={@id} />
-  <% end %>
+  <.live_component
+    :for={card <- @cards}
+    module={CardComponent}
+    card={card}
+    id={card.id}
+    board_id={@id}
+  />
   ```
 
   Now, when the user submits the form, `CardComponent.handle_event/3`
@@ -355,9 +359,12 @@ defmodule Phoenix.LiveComponent do
   passing an ID:
 
   ```heex
-  <%= for card_id <- @card_ids do %>
-    <.live_component module={CardComponent} id={card_id} board_id={@id} />
-  <% end %>
+  <.live_component
+    :for={card_id <- @card_ids}
+    module={CardComponent}
+    id={card_id}
+    board_id={@id}
+  />
   ```
 
   Now, each CardComponent will load its own card. Of course, doing so
@@ -504,7 +511,7 @@ defmodule Phoenix.LiveComponent do
         def render(assigns) do
           ~H"""
           <button class="css-framework-class" phx-click="click">
-            <%= @text %>
+            {@text}
           </button>
           """
         end
@@ -520,7 +527,7 @@ defmodule Phoenix.LiveComponent do
       def my_button(%{text: _, click: _} = assigns) do
         ~H"""
         <button class="css-framework-class" phx-click={@click}>
-          <%= @text %>
+          {@text}
         </button>
         """
       end

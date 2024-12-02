@@ -3,7 +3,7 @@ defmodule Phoenix.LiveViewTest.Support.EventsLive do
 
   def render(assigns) do
     ~H"""
-    count: <%= @count %>
+    count: {@count}
     """
   end
 
@@ -34,7 +34,7 @@ defmodule Phoenix.LiveViewTest.Support.EventsMultiJSLive do
 
   def render(assigns) do
     ~H"""
-    count: <%= @count %>
+    count: {@count}
 
     <button
       id="add-one-and-ten"
@@ -114,7 +114,7 @@ defmodule Phoenix.LiveViewTest.Support.EventsInComponentMultiJSLive do
           One to everyone
         </button>
 
-        <%= @id %> count: <%= @count %>
+        {@id} count: {@count}
       </div>
       """
     end
@@ -123,7 +123,7 @@ defmodule Phoenix.LiveViewTest.Support.EventsInComponentMultiJSLive do
   def render(assigns) do
     ~H"""
     <.live_component module={Child} id={:child_1} />
-    <.live_component module={Child} id={:child_2} /> root count: <%= @count %>
+    <.live_component module={Child} id={:child_2} /> root count: {@count}
     """
   end
 
@@ -157,7 +157,7 @@ defmodule Phoenix.LiveViewTest.Support.EventsInMountLive do
   end
 
   def render(assigns) do
-    ~H"<%= live_render(@socket, Child, id: :child_live) %>"
+    ~H"{live_render(@socket, Child, id: :child_live)}"
   end
 
   def mount(_params, _session, socket) do

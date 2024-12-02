@@ -148,7 +148,7 @@ for example:
     def render(assigns) do
       ~H"""
       <div id="thermostat" phx-window-keyup="update_temp">
-        Current temperature: <%= @temperature %>
+        Current temperature: {@temperature}
       </div>
       """
     end
@@ -384,7 +384,7 @@ For example:
 
 ```heex
 <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
-  <%= Phoenix.Flash.get(@flash, :info) %>
+  {Phoenix.Flash.get(@flash, :info)}
 </p>
 ```
 

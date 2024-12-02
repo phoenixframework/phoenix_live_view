@@ -278,355 +278,6 @@ var Browser = {
 };
 var browser_default = Browser;
 
-// js/phoenix_live_view/aria.js
-var ARIA = {
-  anyOf(instance, classes) {
-    return classes.find((name) => instance instanceof name);
-  },
-  isFocusable(el, interactiveOnly) {
-    return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
-  },
-  attemptFocus(el, interactiveOnly) {
-    if (this.isFocusable(el, interactiveOnly)) {
-      try {
-        el.focus();
-      } catch (e) {
-      }
-    }
-    return !!document.activeElement && document.activeElement.isSameNode(el);
-  },
-  focusFirstInteractive(el) {
-    let child = el.firstElementChild;
-    while (child) {
-      if (this.attemptFocus(child, true) || this.focusFirstInteractive(child, true)) {
-        return true;
-      }
-      child = child.nextElementSibling;
-    }
-  },
-  focusFirst(el) {
-    let child = el.firstElementChild;
-    while (child) {
-      if (this.attemptFocus(child) || this.focusFirst(child)) {
-        return true;
-      }
-      child = child.nextElementSibling;
-    }
-  },
-  focusLast(el) {
-    let child = el.lastElementChild;
-    while (child) {
-      if (this.attemptFocus(child) || this.focusLast(child)) {
-        return true;
-      }
-      child = child.previousElementSibling;
-    }
-  }
-};
-var aria_default = ARIA;
-
-// js/phoenix_live_view/js.js
-var focusStack = [];
-var default_transition_time = 200;
-var JS = {
-  // private
-  exec(e, eventType, phxEvent, view, sourceEl, defaults) {
-    let [defaultKind, defaultArgs] = defaults || [null, { callback: defaults && defaults.callback }];
-    let commands = phxEvent.charAt(0) === "[" ? JSON.parse(phxEvent) : [[defaultKind, defaultArgs]];
-    commands.forEach(([kind, args]) => {
-      if (kind === defaultKind && defaultArgs.data) {
-        args.data = Object.assign(args.data || {}, defaultArgs.data);
-        args.callback = args.callback || defaultArgs.callback;
-      }
-      this.filterToEls(view.liveSocket, sourceEl, args).forEach((el) => {
-        this[`exec_${kind}`](e, eventType, phxEvent, view, sourceEl, el, args);
-      });
-    });
-  },
-  isVisible(el) {
-    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
-  },
-  // returns true if any part of the element is inside the viewport
-  isInViewport(el) {
-    const rect = el.getBoundingClientRect();
-    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
-    const windowWidth = window.innerWidth || document.documentElement.clientWidth;
-    return rect.right > 0 && rect.bottom > 0 && rect.left < windowWidth && rect.top < windowHeight;
-  },
-  // private
-  // commands
-  exec_exec(e, eventType, phxEvent, view, sourceEl, el, { attr, to }) {
-    let nodes = to ? dom_default.all(document, to) : [sourceEl];
-    nodes.forEach((node) => {
-      let encodedJS = node.getAttribute(attr);
-      if (!encodedJS) {
-        throw new Error(`expected ${attr} to contain JS command on "${to}"`);
-      }
-      view.liveSocket.execJS(node, encodedJS, eventType);
-    });
-  },
-  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { to, event, detail, bubbles }) {
-    detail = detail || {};
-    detail.dispatcher = sourceEl;
-    dom_default.dispatchEvent(el, event, { detail, bubbles });
-  },
-  exec_push(e, eventType, phxEvent, view, sourceEl, el, args) {
-    let { event, data, target, page_loading, loading, value, dispatcher, callback } = args;
-    let pushOpts = { loading, value, target, page_loading: !!page_loading };
-    let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
-    let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
-    view.withinTargets(phxTarget, (targetView, targetCtx) => {
-      if (!targetView.isConnected()) {
-        return;
-      }
-      if (eventType === "change") {
-        let { newCid, _target } = args;
-        _target = _target || (dom_default.isFormInput(sourceEl) ? sourceEl.name : void 0);
-        if (_target) {
-          pushOpts._target = _target;
-        }
-        targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback);
-      } else if (eventType === "submit") {
-        let { submitter } = args;
-        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, submitter, pushOpts, callback);
-      } else {
-        targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts, callback);
-      }
-    });
-  },
-  exec_navigate(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
-    view.liveSocket.historyRedirect(e, href, replace ? "replace" : "push", null, sourceEl);
-  },
-  exec_patch(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
-    view.liveSocket.pushHistoryPatch(e, href, replace ? "replace" : "push", sourceEl);
-  },
-  exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.attemptFocus(el));
-  },
-  exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
-  },
-  exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
-  },
-  exec_pop_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => {
-      const el2 = focusStack.pop();
-      if (el2) {
-        el2.focus();
-      }
-    });
-  },
-  exec_add_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
-    this.addOrRemoveClasses(el, names, [], transition, time, view, blocking);
-  },
-  exec_remove_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
-    this.addOrRemoveClasses(el, [], names, transition, time, view, blocking);
-  },
-  exec_toggle_class(e, eventType, phxEvent, view, sourceEl, el, { to, names, transition, time, blocking }) {
-    this.toggleClasses(el, names, transition, time, view, blocking);
-  },
-  exec_toggle_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
-    this.toggleAttr(el, attr, val1, val2);
-  },
-  exec_transition(e, eventType, phxEvent, view, sourceEl, el, { time, transition, blocking }) {
-    this.addOrRemoveClasses(el, [], [], transition, time, view, blocking);
-  },
-  exec_toggle(e, eventType, phxEvent, view, sourceEl, el, { display, ins, outs, time, blocking }) {
-    this.toggle(eventType, view, el, display, ins, outs, time, blocking);
-  },
-  exec_show(e, eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
-    this.show(eventType, view, el, display, transition, time, blocking);
-  },
-  exec_hide(e, eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
-    this.hide(eventType, view, el, display, transition, time, blocking);
-  },
-  exec_set_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val] }) {
-    this.setOrRemoveAttrs(el, [[attr, val]], []);
-  },
-  exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, { attr }) {
-    this.setOrRemoveAttrs(el, [], [attr]);
-  },
-  // utils for commands
-  show(eventType, view, el, display, transition, time, blocking) {
-    if (!this.isVisible(el)) {
-      this.toggle(eventType, view, el, display, transition, null, time, blocking);
-    }
-  },
-  hide(eventType, view, el, display, transition, time, blocking) {
-    if (this.isVisible(el)) {
-      this.toggle(eventType, view, el, display, null, transition, time, blocking);
-    }
-  },
-  toggle(eventType, view, el, display, ins, outs, time, blocking) {
-    time = time || default_transition_time;
-    let [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []];
-    let [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []];
-    if (inClasses.length > 0 || outClasses.length > 0) {
-      if (this.isVisible(el)) {
-        let onStart = () => {
-          this.addOrRemoveClasses(el, outStartClasses, inClasses.concat(inStartClasses).concat(inEndClasses));
-          window.requestAnimationFrame(() => {
-            this.addOrRemoveClasses(el, outClasses, []);
-            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, outEndClasses, outStartClasses));
-          });
-        };
-        let onEnd = () => {
-          this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses));
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-          el.dispatchEvent(new Event("phx:hide-end"));
-        };
-        el.dispatchEvent(new Event("phx:hide-start"));
-        if (blocking === false) {
-          onStart();
-          setTimeout(onEnd, time);
-        } else {
-          view.transition(time, onStart, onEnd);
-        }
-      } else {
-        if (eventType === "remove") {
-          return;
-        }
-        let onStart = () => {
-          this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses));
-          let stickyDisplay = display || this.defaultDisplay(el);
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
-          window.requestAnimationFrame(() => {
-            this.addOrRemoveClasses(el, inClasses, []);
-            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses));
-          });
-        };
-        let onEnd = () => {
-          this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses));
-          el.dispatchEvent(new Event("phx:show-end"));
-        };
-        el.dispatchEvent(new Event("phx:show-start"));
-        if (blocking === false) {
-          onStart();
-          setTimeout(onEnd, time);
-        } else {
-          view.transition(time, onStart, onEnd);
-        }
-      }
-    } else {
-      if (this.isVisible(el)) {
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:hide-start"));
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-          el.dispatchEvent(new Event("phx:hide-end"));
-        });
-      } else {
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:show-start"));
-          let stickyDisplay = display || this.defaultDisplay(el);
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
-          el.dispatchEvent(new Event("phx:show-end"));
-        });
-      }
-    }
-  },
-  toggleClasses(el, classes, transition, time, view, blocking) {
-    window.requestAnimationFrame(() => {
-      let [prevAdds, prevRemoves] = dom_default.getSticky(el, "classes", [[], []]);
-      let newAdds = classes.filter((name) => prevAdds.indexOf(name) < 0 && !el.classList.contains(name));
-      let newRemoves = classes.filter((name) => prevRemoves.indexOf(name) < 0 && el.classList.contains(name));
-      this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view, blocking);
-    });
-  },
-  toggleAttr(el, attr, val1, val2) {
-    if (el.hasAttribute(attr)) {
-      if (val2 !== void 0) {
-        if (el.getAttribute(attr) === val1) {
-          this.setOrRemoveAttrs(el, [[attr, val2]], []);
-        } else {
-          this.setOrRemoveAttrs(el, [[attr, val1]], []);
-        }
-      } else {
-        this.setOrRemoveAttrs(el, [], [attr]);
-      }
-    } else {
-      this.setOrRemoveAttrs(el, [[attr, val1]], []);
-    }
-  },
-  addOrRemoveClasses(el, adds, removes, transition, time, view, blocking) {
-    time = time || default_transition_time;
-    let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []];
-    if (transitionRun.length > 0) {
-      let onStart = () => {
-        this.addOrRemoveClasses(el, transitionStart, [].concat(transitionRun).concat(transitionEnd));
-        window.requestAnimationFrame(() => {
-          this.addOrRemoveClasses(el, transitionRun, []);
-          window.requestAnimationFrame(() => this.addOrRemoveClasses(el, transitionEnd, transitionStart));
-        });
-      };
-      let onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart));
-      if (blocking === false) {
-        onStart();
-        setTimeout(onDone, time);
-      } else {
-        view.transition(time, onStart, onDone);
-      }
-      return;
-    }
-    window.requestAnimationFrame(() => {
-      let [prevAdds, prevRemoves] = dom_default.getSticky(el, "classes", [[], []]);
-      let keepAdds = adds.filter((name) => prevAdds.indexOf(name) < 0 && !el.classList.contains(name));
-      let keepRemoves = removes.filter((name) => prevRemoves.indexOf(name) < 0 && el.classList.contains(name));
-      let newAdds = prevAdds.filter((name) => removes.indexOf(name) < 0).concat(keepAdds);
-      let newRemoves = prevRemoves.filter((name) => adds.indexOf(name) < 0).concat(keepRemoves);
-      dom_default.putSticky(el, "classes", (currentEl) => {
-        currentEl.classList.remove(...newRemoves);
-        currentEl.classList.add(...newAdds);
-        return [newAdds, newRemoves];
-      });
-    });
-  },
-  setOrRemoveAttrs(el, sets, removes) {
-    let [prevSets, prevRemoves] = dom_default.getSticky(el, "attrs", [[], []]);
-    let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
-    let newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
-    let newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
-    dom_default.putSticky(el, "attrs", (currentEl) => {
-      newRemoves.forEach((attr) => currentEl.removeAttribute(attr));
-      newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val));
-      return [newSets, newRemoves];
-    });
-  },
-  hasAllClasses(el, classes) {
-    return classes.every((name) => el.classList.contains(name));
-  },
-  isToggledOut(el, outClasses) {
-    return !this.isVisible(el) || this.hasAllClasses(el, outClasses);
-  },
-  filterToEls(liveSocket, sourceEl, { to }) {
-    let defaultQuery = () => {
-      if (typeof to === "string") {
-        return document.querySelectorAll(to);
-      } else if (to.closest) {
-        let toEl = sourceEl.closest(to.closest);
-        return toEl ? [toEl] : [];
-      } else if (to.inner) {
-        return sourceEl.querySelectorAll(to.inner);
-      }
-    };
-    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to, defaultQuery) : [sourceEl];
-  },
-  defaultDisplay(el) {
-    return { tr: "table-row", td: "table-cell" }[el.tagName.toLowerCase()] || "block";
-  },
-  transitionClasses(val) {
-    if (!val) {
-      return null;
-    }
-    let [trans, tStart, tEnd] = Array.isArray(val) ? val : [val.split(" "), [], []];
-    trans = Array.isArray(trans) ? trans : trans.split(" ");
-    tStart = Array.isArray(tStart) ? tStart : tStart.split(" ");
-    tEnd = Array.isArray(tEnd) ? tEnd : tEnd.split(" ");
-    return [trans, tStart, tEnd];
-  }
-};
-var js_default = JS;
-
 // js/phoenix_live_view/dom.js
 var DOM = {
   byId(id) {
@@ -696,10 +347,10 @@ var DOM = {
     }
     try {
       url = new URL(href);
-    } catch (e2) {
+    } catch {
       try {
         url = new URL(href, currentLocation);
-      } catch (e3) {
+      } catch {
         return true;
       }
     }
@@ -1367,6 +1018,53 @@ var LiveUploader = class _LiveUploader {
     }
   }
 };
+
+// js/phoenix_live_view/aria.js
+var ARIA = {
+  anyOf(instance, classes) {
+    return classes.find((name) => instance instanceof name);
+  },
+  isFocusable(el, interactiveOnly) {
+    return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
+  },
+  attemptFocus(el, interactiveOnly) {
+    if (this.isFocusable(el, interactiveOnly)) {
+      try {
+        el.focus();
+      } catch {
+      }
+    }
+    return !!document.activeElement && document.activeElement.isSameNode(el);
+  },
+  focusFirstInteractive(el) {
+    let child = el.firstElementChild;
+    while (child) {
+      if (this.attemptFocus(child, true) || this.focusFirstInteractive(child, true)) {
+        return true;
+      }
+      child = child.nextElementSibling;
+    }
+  },
+  focusFirst(el) {
+    let child = el.firstElementChild;
+    while (child) {
+      if (this.attemptFocus(child) || this.focusFirst(child)) {
+        return true;
+      }
+      child = child.nextElementSibling;
+    }
+  },
+  focusLast(el) {
+    let child = el.lastElementChild;
+    while (child) {
+      if (this.attemptFocus(child) || this.focusLast(child)) {
+        return true;
+      }
+      child = child.previousElementSibling;
+    }
+  }
+};
+var aria_default = ARIA;
 
 // js/phoenix_live_view/hooks.js
 var Hooks = {
@@ -2978,6 +2676,308 @@ var Rendered = class {
   }
 };
 
+// js/phoenix_live_view/js.js
+var focusStack = [];
+var default_transition_time = 200;
+var JS = {
+  // private
+  exec(e, eventType, phxEvent, view, sourceEl, defaults) {
+    let [defaultKind, defaultArgs] = defaults || [null, { callback: defaults && defaults.callback }];
+    let commands = phxEvent.charAt(0) === "[" ? JSON.parse(phxEvent) : [[defaultKind, defaultArgs]];
+    commands.forEach(([kind, args]) => {
+      if (kind === defaultKind) {
+        args = { ...defaultArgs, ...args };
+        args.callback = args.callback || defaultArgs.callback;
+      }
+      this.filterToEls(view.liveSocket, sourceEl, args).forEach((el) => {
+        this[`exec_${kind}`](e, eventType, phxEvent, view, sourceEl, el, args);
+      });
+    });
+  },
+  isVisible(el) {
+    return !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length > 0);
+  },
+  // returns true if any part of the element is inside the viewport
+  isInViewport(el) {
+    const rect = el.getBoundingClientRect();
+    const windowHeight = window.innerHeight || document.documentElement.clientHeight;
+    const windowWidth = window.innerWidth || document.documentElement.clientWidth;
+    return rect.right > 0 && rect.bottom > 0 && rect.left < windowWidth && rect.top < windowHeight;
+  },
+  // private
+  // commands
+  exec_exec(e, eventType, phxEvent, view, sourceEl, el, { attr, to }) {
+    let nodes = to ? dom_default.all(document, to) : [sourceEl];
+    nodes.forEach((node) => {
+      let encodedJS = node.getAttribute(attr);
+      if (!encodedJS) {
+        throw new Error(`expected ${attr} to contain JS command on "${to}"`);
+      }
+      view.liveSocket.execJS(node, encodedJS, eventType);
+    });
+  },
+  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { event, detail, bubbles }) {
+    detail = detail || {};
+    detail.dispatcher = sourceEl;
+    dom_default.dispatchEvent(el, event, { detail, bubbles });
+  },
+  exec_push(e, eventType, phxEvent, view, sourceEl, el, args) {
+    let { event, data, target, page_loading, loading, value, dispatcher, callback } = args;
+    let pushOpts = { loading, value, target, page_loading: !!page_loading };
+    let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
+    let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
+    view.withinTargets(phxTarget, (targetView, targetCtx) => {
+      if (!targetView.isConnected()) {
+        return;
+      }
+      if (eventType === "change") {
+        let { newCid, _target } = args;
+        _target = _target || (dom_default.isFormInput(sourceEl) ? sourceEl.name : void 0);
+        if (_target) {
+          pushOpts._target = _target;
+        }
+        targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback);
+      } else if (eventType === "submit") {
+        let { submitter } = args;
+        targetView.submitForm(sourceEl, targetCtx, event || phxEvent, submitter, pushOpts, callback);
+      } else {
+        targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts, callback);
+      }
+    });
+  },
+  exec_navigate(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+    view.liveSocket.historyRedirect(e, href, replace ? "replace" : "push", null, sourceEl);
+  },
+  exec_patch(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+    view.liveSocket.pushHistoryPatch(e, href, replace ? "replace" : "push", sourceEl);
+  },
+  exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
+    window.requestAnimationFrame(() => aria_default.attemptFocus(el));
+  },
+  exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
+    window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
+  },
+  exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
+    window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
+  },
+  exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el) {
+    window.requestAnimationFrame(() => {
+      const el = focusStack.pop();
+      if (el) {
+        el.focus();
+      }
+    });
+  },
+  exec_add_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
+    this.addOrRemoveClasses(el, names, [], transition, time, view, blocking);
+  },
+  exec_remove_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
+    this.addOrRemoveClasses(el, [], names, transition, time, view, blocking);
+  },
+  exec_toggle_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
+    this.toggleClasses(el, names, transition, time, view, blocking);
+  },
+  exec_toggle_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
+    this.toggleAttr(el, attr, val1, val2);
+  },
+  exec_transition(e, eventType, phxEvent, view, sourceEl, el, { time, transition, blocking }) {
+    this.addOrRemoveClasses(el, [], [], transition, time, view, blocking);
+  },
+  exec_toggle(e, eventType, phxEvent, view, sourceEl, el, { display, ins, outs, time, blocking }) {
+    this.toggle(eventType, view, el, display, ins, outs, time, blocking);
+  },
+  exec_show(e, eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
+    this.show(eventType, view, el, display, transition, time, blocking);
+  },
+  exec_hide(e, eventType, phxEvent, view, sourceEl, el, { display, transition, time, blocking }) {
+    this.hide(eventType, view, el, display, transition, time, blocking);
+  },
+  exec_set_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val] }) {
+    this.setOrRemoveAttrs(el, [[attr, val]], []);
+  },
+  exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, { attr }) {
+    this.setOrRemoveAttrs(el, [], [attr]);
+  },
+  // utils for commands
+  show(eventType, view, el, display, transition, time, blocking) {
+    if (!this.isVisible(el)) {
+      this.toggle(eventType, view, el, display, transition, null, time, blocking);
+    }
+  },
+  hide(eventType, view, el, display, transition, time, blocking) {
+    if (this.isVisible(el)) {
+      this.toggle(eventType, view, el, display, null, transition, time, blocking);
+    }
+  },
+  toggle(eventType, view, el, display, ins, outs, time, blocking) {
+    time = time || default_transition_time;
+    let [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []];
+    let [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []];
+    if (inClasses.length > 0 || outClasses.length > 0) {
+      if (this.isVisible(el)) {
+        let onStart = () => {
+          this.addOrRemoveClasses(el, outStartClasses, inClasses.concat(inStartClasses).concat(inEndClasses));
+          window.requestAnimationFrame(() => {
+            this.addOrRemoveClasses(el, outClasses, []);
+            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, outEndClasses, outStartClasses));
+          });
+        };
+        let onEnd = () => {
+          this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses));
+          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+          el.dispatchEvent(new Event("phx:hide-end"));
+        };
+        el.dispatchEvent(new Event("phx:hide-start"));
+        if (blocking === false) {
+          onStart();
+          setTimeout(onEnd, time);
+        } else {
+          view.transition(time, onStart, onEnd);
+        }
+      } else {
+        if (eventType === "remove") {
+          return;
+        }
+        let onStart = () => {
+          this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses));
+          let stickyDisplay = display || this.defaultDisplay(el);
+          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+          window.requestAnimationFrame(() => {
+            this.addOrRemoveClasses(el, inClasses, []);
+            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses));
+          });
+        };
+        let onEnd = () => {
+          this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses));
+          el.dispatchEvent(new Event("phx:show-end"));
+        };
+        el.dispatchEvent(new Event("phx:show-start"));
+        if (blocking === false) {
+          onStart();
+          setTimeout(onEnd, time);
+        } else {
+          view.transition(time, onStart, onEnd);
+        }
+      }
+    } else {
+      if (this.isVisible(el)) {
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:hide-start"));
+          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+          el.dispatchEvent(new Event("phx:hide-end"));
+        });
+      } else {
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:show-start"));
+          let stickyDisplay = display || this.defaultDisplay(el);
+          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+          el.dispatchEvent(new Event("phx:show-end"));
+        });
+      }
+    }
+  },
+  toggleClasses(el, classes, transition, time, view, blocking) {
+    window.requestAnimationFrame(() => {
+      let [prevAdds, prevRemoves] = dom_default.getSticky(el, "classes", [[], []]);
+      let newAdds = classes.filter((name) => prevAdds.indexOf(name) < 0 && !el.classList.contains(name));
+      let newRemoves = classes.filter((name) => prevRemoves.indexOf(name) < 0 && el.classList.contains(name));
+      this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view, blocking);
+    });
+  },
+  toggleAttr(el, attr, val1, val2) {
+    if (el.hasAttribute(attr)) {
+      if (val2 !== void 0) {
+        if (el.getAttribute(attr) === val1) {
+          this.setOrRemoveAttrs(el, [[attr, val2]], []);
+        } else {
+          this.setOrRemoveAttrs(el, [[attr, val1]], []);
+        }
+      } else {
+        this.setOrRemoveAttrs(el, [], [attr]);
+      }
+    } else {
+      this.setOrRemoveAttrs(el, [[attr, val1]], []);
+    }
+  },
+  addOrRemoveClasses(el, adds, removes, transition, time, view, blocking) {
+    time = time || default_transition_time;
+    let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []];
+    if (transitionRun.length > 0) {
+      let onStart = () => {
+        this.addOrRemoveClasses(el, transitionStart, [].concat(transitionRun).concat(transitionEnd));
+        window.requestAnimationFrame(() => {
+          this.addOrRemoveClasses(el, transitionRun, []);
+          window.requestAnimationFrame(() => this.addOrRemoveClasses(el, transitionEnd, transitionStart));
+        });
+      };
+      let onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart));
+      if (blocking === false) {
+        onStart();
+        setTimeout(onDone, time);
+      } else {
+        view.transition(time, onStart, onDone);
+      }
+      return;
+    }
+    window.requestAnimationFrame(() => {
+      let [prevAdds, prevRemoves] = dom_default.getSticky(el, "classes", [[], []]);
+      let keepAdds = adds.filter((name) => prevAdds.indexOf(name) < 0 && !el.classList.contains(name));
+      let keepRemoves = removes.filter((name) => prevRemoves.indexOf(name) < 0 && el.classList.contains(name));
+      let newAdds = prevAdds.filter((name) => removes.indexOf(name) < 0).concat(keepAdds);
+      let newRemoves = prevRemoves.filter((name) => adds.indexOf(name) < 0).concat(keepRemoves);
+      dom_default.putSticky(el, "classes", (currentEl) => {
+        currentEl.classList.remove(...newRemoves);
+        currentEl.classList.add(...newAdds);
+        return [newAdds, newRemoves];
+      });
+    });
+  },
+  setOrRemoveAttrs(el, sets, removes) {
+    let [prevSets, prevRemoves] = dom_default.getSticky(el, "attrs", [[], []]);
+    let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
+    let newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
+    let newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
+    dom_default.putSticky(el, "attrs", (currentEl) => {
+      newRemoves.forEach((attr) => currentEl.removeAttribute(attr));
+      newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val));
+      return [newSets, newRemoves];
+    });
+  },
+  hasAllClasses(el, classes) {
+    return classes.every((name) => el.classList.contains(name));
+  },
+  isToggledOut(el, outClasses) {
+    return !this.isVisible(el) || this.hasAllClasses(el, outClasses);
+  },
+  filterToEls(liveSocket, sourceEl, { to }) {
+    let defaultQuery = () => {
+      if (typeof to === "string") {
+        return document.querySelectorAll(to);
+      } else if (to.closest) {
+        let toEl = sourceEl.closest(to.closest);
+        return toEl ? [toEl] : [];
+      } else if (to.inner) {
+        return sourceEl.querySelectorAll(to.inner);
+      }
+    };
+    return to ? liveSocket.jsQuerySelectorAll(sourceEl, to, defaultQuery) : [sourceEl];
+  },
+  defaultDisplay(el) {
+    return { tr: "table-row", td: "table-cell" }[el.tagName.toLowerCase()] || "block";
+  },
+  transitionClasses(val) {
+    if (!val) {
+      return null;
+    }
+    let [trans, tStart, tEnd] = Array.isArray(val) ? val : [val.split(" "), [], []];
+    trans = Array.isArray(trans) ? trans : trans.split(" ");
+    tStart = Array.isArray(tStart) ? tStart : tStart.split(" ");
+    tEnd = Array.isArray(tEnd) ? tEnd : tEnd.split(" ");
+    return [trans, tStart, tEnd];
+  }
+};
+var js_default = JS;
+
 // js/phoenix_live_view/view_hook.js
 var HOOK_ID = "hookId";
 var viewHookID = 1;
@@ -3021,6 +3021,7 @@ var ViewHook = class {
   }
   __destroyed() {
     this.destroyed && this.destroyed();
+    dom_default.deletePrivate(this.el, HOOK_ID);
   }
   __reconnected() {
     if (this.__isDisconnected) {
@@ -3527,9 +3528,6 @@ var View = class _View {
     this.flash = null;
     if (this.root === this) {
       this.formsForRecovery = this.getFormsForRecovery();
-    }
-    if (this.isMain()) {
-      this.liveSocket.replaceRootHistory();
     }
     if (liveview_version !== this.liveSocket.version()) {
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`);
@@ -4207,7 +4205,7 @@ var View = class _View {
           });
         }
       };
-      el.dispatchEvent(new CustomEvent(`phx:push`, {
+      el.dispatchEvent(new CustomEvent("phx:push", {
         detail,
         bubbles: true,
         cancelable: false
@@ -4301,7 +4299,7 @@ var View = class _View {
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    }).then(({ resp, reply }) => onReply && onReply(reply));
+    }).then(({ reply }) => onReply && onReply(reply));
   }
   pushFileProgress(fileEl, entryRef, progress, onReply = function() {
   }) {
@@ -4382,7 +4380,7 @@ var View = class _View {
     this.formSubmits.push([formEl, ref, opts, callback]);
   }
   cancelSubmit(formEl, phxEvent) {
-    this.formSubmits = this.formSubmits.filter(([el, ref, _callback]) => {
+    this.formSubmits = this.formSubmits.filter(([el, ref, _opts, _callback]) => {
       if (el.isSameNode(formEl)) {
         this.undoRefs(ref, phxEvent);
         return false;
@@ -4437,7 +4435,7 @@ var View = class _View {
     } else if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
       let [ref, els] = refGenerator();
       let proxyRefGen = () => [ref, els, opts];
-      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (uploads) => {
+      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
         if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
           return this.undoRefs(ref, phxEvent);
         }
@@ -5043,7 +5041,7 @@ var LiveSocket = class {
     if (!dead) {
       this.bindForms();
     }
-    this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, targetEl, phxEvent, phxTarget) => {
+    this.bind({ keyup: "keyup", keydown: "keydown" }, (e, type, view, targetEl, phxEvent, _phxTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY));
       let pressedKey = e.key && e.key.toLowerCase();
       if (matchKey && matchKey.toLowerCase() !== pressedKey) {

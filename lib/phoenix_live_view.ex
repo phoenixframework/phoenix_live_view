@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView do
 
   ```heex
   <div :if={@org.loading}>Loading organization...</div>
-  <div :if={org = @org.ok? && @org.result}><%= org.name %> loaded!</div>
+  <div :if={org = @org.ok? && @org.result}>{org.name} loaded!</div>
   ```
 
   The `Phoenix.Component.async_result/1` function component can also be used to
@@ -138,7 +138,7 @@ defmodule Phoenix.LiveView do
   <.async_result :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
     <:failed :let={_failure}>there was an error loading the organization</:failed>
-    <%= org.name %>
+    {org.name}
   </.async_result>
   ```
 
@@ -698,7 +698,7 @@ defmodule Phoenix.LiveView do
 
   ```heex
   <p class="alert" phx-click="lv:clear-flash">
-    <%= Phoenix.Flash.get(@flash, :info) %>
+    {Phoenix.Flash.get(@flash, :info)}
   </p>
   ```
   """
@@ -717,7 +717,7 @@ defmodule Phoenix.LiveView do
 
   ```heex
   <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
-    <%= Phoenix.Flash.get(@flash, :info) %>
+    {Phoenix.Flash.get(@flash, :info)}
   </p>
   ```
   """
@@ -1018,7 +1018,8 @@ defmodule Phoenix.LiveView do
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
   whole page while also maintaining the current scroll position.
-  For live navigation to another LiveView, use `push_navigate/2`.
+  For live navigation to another LiveView in the same `live_session`,
+  use `push_navigate/2`. Otherwise, use `redirect/2`.
 
   ## Options
 
@@ -1038,7 +1039,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Annotates the socket for navigation to another LiveView.
+  Annotates the socket for navigation to another LiveView in the same `live_session`.
 
   The current LiveView will be shutdown and a new one will be mounted
   in its place, without reloading the whole page. This can
@@ -1251,11 +1252,9 @@ defmodule Phoenix.LiveView do
   And then in your views:
 
   ```heex
-  <%= if @static_changed? do %>
-    <div id="reload-static">
-      The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
-    </div>
-  <% end %>
+  <div :if={@static_changed?} id="reload-static">
+    The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
+  </div>
   ```
 
   If you prefer, you can also send a JavaScript script that immediately
@@ -1695,8 +1694,8 @@ defmodule Phoenix.LiveView do
         :for={{dom_id, song} <- @streams.songs}
         id={dom_id}
       >
-        <td><%= song.title %></td>
-        <td><%= song.duration %></td>
+        <td>{song.title}</td>
+        <td>{song.duration}</td>
       </tr>
     </tbody>
   </table>
@@ -1726,8 +1725,8 @@ defmodule Phoenix.LiveView do
         :for={{dom_id, song} <- @streams.songs}
         id={dom_id}
       >
-        <td><%= song.title %></td>
-        <td><%= song.duration %></td>
+        <td>{song.title}</td>
+        <td>{song.duration}</td>
       </tr>
     </tbody>
   </table>
@@ -1927,7 +1926,7 @@ defmodule Phoenix.LiveView do
               :for={{dom_id, song} <- @streams.songs}
               id={dom_id}
             >
-              <td><%= song.title %></td>
+              <td>{song.title}</td>
               <td><button phx-click={JS.push("delete", value: %{id: dom_id})}>delete</button></td>
             </tr>
           </tbody>

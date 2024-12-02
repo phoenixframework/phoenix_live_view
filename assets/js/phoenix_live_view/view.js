@@ -54,7 +54,6 @@ import DOMPatch from "./dom_patch"
 import LiveUploader from "./live_uploader"
 import Rendered from "./rendered"
 import ViewHook from "./view_hook"
-import JS from "./js"
 
 export let prependFormDataKey = (key, prefix) => {
   let isArray = key.endsWith("[]")
@@ -316,6 +315,10 @@ export default class View {
     this.flash = null
     if(this.root === this){
       this.formsForRecovery = this.getFormsForRecovery()
+    }
+    if(this.isMain() && window.history.state === null){
+      // set initial history entry if this is the first page load
+      this.liveSocket.replaceRootHistory()
     }
 
     if(liveview_version !== this.liveSocket.version()){
@@ -1038,7 +1041,7 @@ export default class View {
           })
         }
       }
-      el.dispatchEvent(new CustomEvent(`phx:push`, {
+      el.dispatchEvent(new CustomEvent("phx:push", {
         detail: detail,
         bubbles: true,
         cancelable: false
@@ -1128,7 +1131,7 @@ export default class View {
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    }).then(({resp, reply}) => onReply && onReply(reply))
+    }).then(({reply}) => onReply && onReply(reply))
   }
 
   pushFileProgress(fileEl, entryRef, progress, onReply = function (){ }){
@@ -1212,7 +1215,7 @@ export default class View {
   }
 
   cancelSubmit(formEl, phxEvent){
-    this.formSubmits = this.formSubmits.filter(([el, ref, _callback]) => {
+    this.formSubmits = this.formSubmits.filter(([el, ref, _opts, _callback]) => {
       if(el.isSameNode(formEl)){
         this.undoRefs(ref, phxEvent)
         return false
@@ -1275,7 +1278,7 @@ export default class View {
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els, opts]
-      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (uploads) => {
+      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
         // if we still having pending preflights it means we have invalid entries
         // and the phx-submit cannot be completed
         if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
@@ -1312,11 +1315,11 @@ export default class View {
       let uploader = new LiveUploader(inputEl, this, () => {
         numFileInputsInProgress--
         if(numFileInputsInProgress === 0){ onComplete() }
-      });
+      })
 
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
-      if(entries.length === 0) {
+      if(entries.length === 0){
         numFileInputsInProgress--
         return
       }
@@ -1377,11 +1380,11 @@ export default class View {
     else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {detail: {files: filesOrBlobs}}) }
   }
 
-  targetCtxElement(targetCtx) {
+  targetCtxElement(targetCtx){
     if(isCid(targetCtx)){
       let [target] = DOM.findComponentNodeList(this.el, targetCtx)
       return target
-    } else if(targetCtx) {
+    } else if(targetCtx){
       return targetCtx
     } else {
       return null

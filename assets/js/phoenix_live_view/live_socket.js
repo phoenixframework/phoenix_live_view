@@ -88,6 +88,7 @@ import {
   PHX_LV_DEBUG,
   PHX_LV_LATENCY_SIM,
   PHX_LV_PROFILE,
+  PHX_LV_HISTORY_POSITION,
   PHX_MAIN,
   PHX_PARENT_ID,
   PHX_VIEW_SELECTOR,
@@ -169,6 +170,7 @@ export default class LiveSocket {
       onBeforeElUpdated: closure()},
     opts.dom || {})
     this.transitions = new TransitionSet()
+    this.currentHistoryPosition = parseInt(this.sessionStorage.getItem(PHX_LV_HISTORY_POSITION)) || 0
     window.addEventListener("pagehide", _e => {
       this.unloaded = true
     })
@@ -523,7 +525,7 @@ export default class LiveSocket {
     if(!dead){ this.bindNav() }
     this.bindClicks()
     if(!dead){ this.bindForms() }
-    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, phxTarget) => {
+    this.bind({keyup: "keyup", keydown: "keydown"}, (e, type, view, targetEl, phxEvent, _phxTarget) => {
       let matchKey = targetEl.getAttribute(this.binding(PHX_KEY))
       let pressedKey = e.key && e.key.toLowerCase() // chrome clicked autocompletes send a keydown without key
       if(matchKey && matchKey.toLowerCase() !== pressedKey){ return }
@@ -687,10 +689,19 @@ export default class LiveSocket {
     })
     window.addEventListener("popstate", event => {
       if(!this.registerNewLocation(window.location)){ return }
-      let {type, id, root, scroll} = event.state || {}
+      let {type, backType, id, root, scroll, position} = event.state || {}
       let href = window.location.href
 
-      DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true}})
+      // Compare positions to determine direction
+      let isForward = position > this.currentHistoryPosition
+
+      type = isForward ? type : (backType || type)
+
+      // Update current position
+      this.currentHistoryPosition = position || 0
+      this.sessionStorage.setItem(PHX_LV_HISTORY_POSITION, this.currentHistoryPosition.toString())
+
+      DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true, direction: isForward ? "forward" : "backward"}})
       this.requestDOMUpdate(() => {
         if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
           this.main.pushLinkPatch(event, href, null, () => {
@@ -769,8 +780,20 @@ export default class LiveSocket {
   historyPatch(href, linkState, linkRef = this.setPendingLink(href)){
     if(!this.commitPendingLink(linkRef)){ return }
 
-    Browser.pushState(linkState, {type: "patch", id: this.main.id}, href)
-    DOM.dispatchEvent(window, "phx:navigate", {detail: {patch: true, href, pop: false}})
+    // Increment position for new state
+    this.currentHistoryPosition++
+    this.sessionStorage.setItem(PHX_LV_HISTORY_POSITION, this.currentHistoryPosition.toString())
+
+    // store the type for back navigation
+    Browser.updateCurrentState((state) => ({...state, backType: "patch"}))
+
+    Browser.pushState(linkState, {
+      type: "patch",
+      id: this.main.id,
+      position: this.currentHistoryPosition
+    }, href)
+
+    DOM.dispatchEvent(window, "phx:navigate", {detail: {patch: true, href, pop: false, direction: "forward"}})
     this.registerNewLocation(window.location)
   }
 
@@ -787,8 +810,21 @@ export default class LiveSocket {
     this.withPageLoading({to: href, kind: "redirect"}, done => {
       this.replaceMain(href, flash, (linkRef) => {
         if(linkRef === this.linkRef){
-          Browser.pushState(linkState, {type: "redirect", id: this.main.id, scroll: scroll}, href)
-          DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false}})
+          // Increment position for new state
+          this.currentHistoryPosition++
+          this.sessionStorage.setItem(PHX_LV_HISTORY_POSITION, this.currentHistoryPosition.toString())
+
+          // store the type for back navigation
+          Browser.updateCurrentState((state) => ({...state, backType: "redirect"}))
+
+          Browser.pushState(linkState, {
+            type: "redirect",
+            id: this.main.id,
+            scroll: scroll,
+            position: this.currentHistoryPosition
+          }, href)
+
+          DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false, direction: "forward"}})
           this.registerNewLocation(window.location)
         }
         done()
@@ -797,7 +833,12 @@ export default class LiveSocket {
   }
 
   replaceRootHistory(){
-    Browser.pushState("replace", {root: true, type: "patch", id: this.main.id})
+    Browser.pushState("replace", {
+      root: true,
+      type: "patch",
+      id: this.main.id,
+      position: this.currentHistoryPosition // Preserve current position
+    })
   }
 
   registerNewLocation(newLocation){

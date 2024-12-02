@@ -54,7 +54,7 @@ let JS = {
     })
   },
 
-  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, {to, event, detail, bubbles}){
+  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, {event, detail, bubbles}){
     detail = detail || {}
     detail.dispatcher = sourceEl
     DOM.dispatchEvent(el, event, {detail, bubbles})
@@ -101,7 +101,7 @@ let JS = {
     window.requestAnimationFrame(() => focusStack.push(el || sourceEl))
   },
 
-  exec_pop_focus(e, eventType, phxEvent, view, sourceEl, el){
+  exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el){
     window.requestAnimationFrame(() => {
       const el = focusStack.pop()
       if(el){ el.focus() }
@@ -116,7 +116,7 @@ let JS = {
     this.addOrRemoveClasses(el, [], names, transition, time, view, blocking)
   },
 
-  exec_toggle_class(e, eventType, phxEvent, view, sourceEl, el, {to, names, transition, time, blocking}){
+  exec_toggle_class(e, eventType, phxEvent, view, sourceEl, el, {names, transition, time, blocking}){
     this.toggleClasses(el, names, transition, time, view, blocking)
   },
 

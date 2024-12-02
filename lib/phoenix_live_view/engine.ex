@@ -243,7 +243,7 @@ defmodule Phoenix.LiveView.Engine do
   templates. Therefore, if your view has this:
 
   ```heex
-  <%= render "form.html", assigns %>
+  {render("form.html", assigns)}
   ```
 
   Phoenix will be able to track what is static and dynamic
@@ -274,8 +274,8 @@ defmodule Phoenix.LiveView.Engine do
 
   ```heex
   <%= for point <- @points do %>
-    x: <%= point.x %>
-    y: <%= point.y %>
+    x: {point.x}
+    y: {point.y}
   <% end %>
   ```
 
@@ -1142,14 +1142,14 @@ defmodule Phoenix.LiveView.Engine do
 
           def add(assigns) do
             result = assigns.a + assigns.b
-            ~H"the result is: <%= result %>"
+            ~H"the result is: {result}"
           end
 
       You must do:
 
           def add(assigns) do
             assigns = assign(assigns, :result, assigns.a + assigns.b)
-            ~H"the result is: <%= @result %>"
+            ~H"the result is: {@result}"
           end
       """
 

@@ -3,13 +3,13 @@ defmodule Phoenix.LiveViewTest.Support.FunctionComponent do
 
   def render(assigns) do
     ~H"""
-    COMPONENT:<%= @value %>
+    COMPONENT:{@value}
     """
   end
 
   def render_with_inner_content(assigns) do
     ~H"""
-    COMPONENT:<%= @value %>, Content: <%= render_slot(@inner_block) %>
+    COMPONENT:{@value}, Content: {render_slot(@inner_block)}
     """
   end
 end
@@ -210,7 +210,7 @@ defmodule Phoenix.LiveViewTest.Support.StatefulComponent do
   def render(%{socket: _} = assigns) do
     ~H"""
     <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
-      <%= @name %> says hi
+      {@name} says hi
       <.live_component :if={@dup_name} module={__MODULE__} id={@dup_name} name={@dup_name} />
     </div>
     """
@@ -256,7 +256,7 @@ defmodule Phoenix.LiveViewTest.Support.WithComponentLive do
 
   def render(assigns) do
     ~H"""
-    Redirect: <%= @redirect %>
+    Redirect: {@redirect}
     <%= for name <- @names do %>
       <.live_component
         module={Phoenix.LiveViewTest.Support.StatefulComponent}
@@ -317,7 +317,7 @@ defmodule Phoenix.LiveViewTest.Support.WithMultipleTargets do
   def render(assigns) do
     ~H"""
     <div id="parent_id" class="parent">
-      <%= @message %>
+      {@message}
       <%= for name <- @names do %>
         <.live_component
           module={Phoenix.LiveViewTest.Support.StatefulComponent}
