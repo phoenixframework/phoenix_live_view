@@ -120,7 +120,7 @@ generated user module:
 ### Bug fixes
 * Fix live navigation issue where LiveView would attempt a patch on back navigation instead of navigate under certain routing conditions
 * Fix live upload issue where large `chunk_size` could cause a chunk timeout on slower connections by properly using the configured `chunk_timeout` on the client
-* Fix focused inputs losing focus stat in some update scenarios
+* Fix focused inputs losing focus state in some update scenarios
 * Fix rare `no component for cid` error when rapidly updating live components under latency
 * Fix browser back/forward buttons using `patch` instead of `navigate`, failing to update the page
 * Fix `inputs_for` not using the passed `id` when generating inputs
