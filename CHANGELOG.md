@@ -112,7 +112,7 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
-## 1.0.0-rc.8
+## 1.0.0-rc.8 (2024-12-02)
 
 ### Backwards incompatible changes
 * Require Elixir v1.14+
