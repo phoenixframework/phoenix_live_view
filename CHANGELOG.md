@@ -32,7 +32,7 @@ you might want to migrate to the new approach.
 
 The following guides you through the necessary changes assuming a project generated
 with a recent (Phoenix 1.7), but pre LiveView 1.0 version of the phx generators.
-For more general use cases, please also have a look at the documentation for [`used_input?/1`](https://hexdocs.pm/phoenix_live_view/1.0.0-rc.0/Phoenix.Component.html#used_input?/1).
+For more general use cases, please also have a look at the documentation for [`used_input?/1`](https://hexdocs.pm/phoenix_live_view/1.0.0/Phoenix.Component.html#used_input?/1).
 
 First, ensure that you are using the latest versions of `:phoenix_ecto` and `:phoenix_html`. At the time of writing:
 
@@ -111,6 +111,8 @@ generated user module:
 +
      if valid_password?(changeset.data, password) do
 ```
+
+## 1.0.0 (2024-12-03) 🚀
 
 ## 1.0.0-rc.9 (2024-12-03)
 
