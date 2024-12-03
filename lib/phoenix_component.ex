@@ -635,12 +635,12 @@ defmodule Phoenix.Component do
 
   ### Interpolating blocks
 
-  The curly brackets syntax is the default mechanism for interpolating code.
+  The curly braces syntax is the default mechanism for interpolating code.
   However, it cannot be used in all scenarios, in particular:
 
-    * Curly brackets cannot be used inside `<script>` and `<style>` tags,
+    * Curly braces cannot be used inside `<script>` and `<style>` tags,
       as that would make writing JS and CSS quite tedious. You can also
-      fully disable curly brackets interpolation by in a given tag and
+      fully disable curly braces interpolation by in a given tag and
       its children by adding the `phx-no-curly-interpolation` attribute
 
     * it does not support multiline block constructs, such as `if`,
