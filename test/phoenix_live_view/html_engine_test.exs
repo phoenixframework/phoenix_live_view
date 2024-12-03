@@ -736,7 +736,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "when syntax error on HTML attributes" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      test/phoenix_live_view/html_engine_test.exs:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div>Bar</div>
       2 | <div id=>Foo</div>
