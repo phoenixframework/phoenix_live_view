@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.Tokenizer do
     %{
       file: file,
       column_offset: indentation + 1,
-      braces: true,
+      braces: :enabled,
       context: [],
       source: source,
       indentation: indentation,
@@ -155,7 +155,7 @@ defmodule Phoenix.LiveView.Tokenizer do
     handle_tag_open(rest, line, column + 1, text_to_acc, %{state | context: []})
   end
 
-  defp handle_text("{" <> rest, line, column, buffer, acc, %{braces: true} = state) do
+  defp handle_text("{" <> rest, line, column, buffer, acc, %{braces: :enabled} = state) do
     text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
 
     case handle_interpolation(rest, line, column + 1, [], 0, state) do
@@ -336,7 +336,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
           {type, name} ->
             acc = [{:close, type, name, meta} | acc]
-            handle_text(rest, line, new_column + 1, [], acc, state)
+            handle_text(rest, line, new_column + 1, [], acc, pop_braces(state))
         end
 
       {:ok, _, new_column, _} ->
@@ -403,7 +403,7 @@ defmodule Phoenix.LiveView.Tokenizer do
         handle_style(rest, line, column + 1, [], acc, state)
 
       acc ->
-        handle_text(rest, line, column + 1, [], acc, state)
+        handle_text(rest, line, column + 1, [], acc, push_braces(state))
     end
   end
 
@@ -452,6 +452,14 @@ defmodule Phoenix.LiveView.Tokenizer do
         attr_meta = %{line: line, column: column}
         {text, line, column, value} = handle_maybe_attr_value(rest, line, new_column, state)
         acc = put_attr(acc, name, attr_meta, value)
+
+        state =
+          if name == "phx-no-curly-interpolation" and state.braces == :enabled do
+            %{state | braces: 0}
+          else
+            state
+          end
+
         handle_maybe_tag_open_end(text, line, column, acc, state)
 
       {:error, message, column} ->
@@ -554,7 +562,7 @@ defmodule Phoenix.LiveView.Tokenizer do
   defp handle_attr_value_begin(_text, line, column, state) do
     message =
       "invalid attribute value after `=`. Expected either a value between quotes " <>
-        "(such as \"value\" or \'value\') or an Elixir expression between curly brackets (such as `{expr}`)"
+        "(such as \"value\" or \'value\') or an Elixir expression between curly braces (such as `{expr}`)"
 
     meta = %{line: line, column: column}
     raise_syntax_error!(message, meta, state)
@@ -695,6 +703,13 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   defp trim_context([:comment_end, :comment_start | [_ | _] = rest]), do: trim_context(rest)
   defp trim_context(rest), do: Enum.reverse(rest)
+
+  defp push_braces(%{braces: :enabled} = state), do: state
+  defp push_braces(%{braces: braces} = state), do: %{state | braces: braces + 1}
+
+  defp pop_braces(%{braces: :enabled} = state), do: state
+  defp pop_braces(%{braces: 1} = state), do: %{state | braces: :enabled}
+  defp pop_braces(%{braces: braces} = state), do: %{state | braces: braces - 1}
 
   defp put_attr([{type, name, attrs, meta} | acc], attr, attr_meta, value) do
     attrs = [{attr, value, attr_meta} | attrs]

@@ -313,7 +313,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
 
     test "raise on missing value" do
       message = """
-      nofile:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      nofile:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div
       2 |   class=>
@@ -328,7 +328,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       end
 
       message = """
-      nofile:1:13: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      nofile:1:13: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div class= >
         |             ^\
@@ -339,7 +339,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       end
 
       message = """
-      nofile:1:12: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      nofile:1:12: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div class=
         |            ^\
