@@ -11,7 +11,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   # * :preserve - for preserving text in <pre>, <script>, <style> and HTML Comment tags
   #
   def build(tree, opts) when is_list(tree) do
-    {migrate, opts} = Keyword.pop(opts, :migrate_eex_to_curly_brackets, true)
+    {migrate, opts} = Keyword.pop(opts, :migrate_eex_to_curly_interpolation, true)
 
     tree
     |> block_to_algebra(%{mode: :normal, migrate: migrate, opts: opts})

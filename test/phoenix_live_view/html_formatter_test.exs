@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
 
   defp assert_formatter_output(input, expected, dot_formatter_opts \\ []) do
     dot_formatter_opts =
-      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
+      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_interpolation, false)
 
     first_pass = HTMLFormatter.format(input, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == expected
@@ -16,7 +16,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
 
   def assert_formatter_doesnt_change(code, dot_formatter_opts \\ []) do
     dot_formatter_opts =
-      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_brackets, false)
+      Keyword.put_new(dot_formatter_opts, :migrate_eex_to_curly_interpolation, false)
 
     first_pass = HTMLFormatter.format(code, dot_formatter_opts) |> IO.iodata_to_binary()
     assert first_pass == code
@@ -421,7 +421,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_output(input, expected)
   end
 
-  test "migrates from eex to curly brackets" do
+  test "migrates from eex to curly braces" do
     input = """
       <section>
         <p><%= @user.name %></p>
@@ -440,7 +440,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     </section>
     """
 
-    assert_formatter_output(input, expected, migrate_eex_to_curly_brackets: true)
+    assert_formatter_output(input, expected, migrate_eex_to_curly_interpolation: true)
   end
 
   test "format when there are EEx tags" do

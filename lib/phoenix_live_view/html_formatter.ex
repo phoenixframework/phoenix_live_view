@@ -50,8 +50,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       ]
       ```
 
-    * `:migrate_eex_to_curly_brackets` - Automatically migrate single expression
-      `<%= ... %>` EEx expression to curly brackets one. Defaults to true.
+    * `:migrate_eex_to_curly_interpolation` - Automatically migrate single expression
+      `<%= ... %>` EEx expression to the curly braces one. Defaults to true.
 
   ## Formatting
 
