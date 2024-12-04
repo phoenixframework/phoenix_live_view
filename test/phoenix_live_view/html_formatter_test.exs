@@ -421,6 +421,20 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_output(input, expected)
   end
 
+  test "avoids additional whitespace on curly" do
+    assert_formatter_doesnt_change(
+      """
+      {@value}<span
+        :if={is_nil(@value)}
+        class={@class}
+        aria-label={@accessibility_text}
+        {@rest}
+      >{@placeholder}</span>
+      """,
+      line_length: 50
+    )
+  end
+
   test "migrates from eex to curly braces" do
     input = """
       <section>

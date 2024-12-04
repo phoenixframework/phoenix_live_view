@@ -569,6 +569,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp head_may_not_have_whitespace?([{:text, text, _meta} | _]),
     do: String.trim_leading(text) != "" and :binary.last(text) not in ~c"\s\t"
 
+  defp head_may_not_have_whitespace?([{:body_expr, _, _} | _]), do: true
   defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
   defp head_may_not_have_whitespace?(_), do: false
 
