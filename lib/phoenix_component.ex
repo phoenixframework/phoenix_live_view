@@ -666,6 +666,12 @@ defmodule Phoenix.Component do
   However, for conditionals and for-comprehensions, there are built-in constructs
   in HEEx too, which we will explore next.
 
+  > #### Curly braces in text within tag bodies {: .tip}
+  >
+  > If you have text in your tag bodies, which includes curly braces you can use
+  > `&brace;` or `<%= "{" %>` to prevent them from being considered the start of
+  > interpolation.
+
   ### Special attributes
 
   Apart from normal HTML attributes, HEEx also supports some special attributes
