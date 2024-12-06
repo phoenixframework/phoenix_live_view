@@ -184,7 +184,7 @@ defmodule Phoenix.LiveView.EventTest do
       {:ok, view, _html} = live(conn, "/events-multi-js-in-component")
 
       html =
-        element(view, "#child_1 #push-to-self")
+        element(view, "#push-to-self-child_1")
         |> render_click()
 
       assert html =~ "child_1 count: 11"
@@ -195,7 +195,7 @@ defmodule Phoenix.LiveView.EventTest do
       {:ok, view, _html} = live(conn, "/events-multi-js-in-component")
 
       html =
-        element(view, "#child_1 #push-to-other-targets")
+        element(view, "#push-to-other-targets-child_1")
         |> render_click()
 
       assert html =~ "child_1 count: 1"

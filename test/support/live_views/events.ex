@@ -94,7 +94,7 @@ defmodule Phoenix.LiveViewTest.Support.EventsInComponentMultiJSLive do
       ~H"""
       <div id={@id}>
         <button
-          id="push-to-self"
+          id={"push-to-self-#{@id}"}
           phx-click={
             JS.push("inc", target: "#child_1", value: %{inc: 1})
             |> JS.push("inc", target: "#child_1", value: %{inc: 10})
@@ -104,7 +104,7 @@ defmodule Phoenix.LiveViewTest.Support.EventsInComponentMultiJSLive do
         </button>
 
         <button
-          id="push-to-other-targets"
+          id={"push-to-other-targets-#{@id}"}
           phx-click={
             JS.push("inc", target: "#child_2", value: %{inc: 2})
             |> JS.push("inc", target: "#child_1", value: %{inc: 1})
