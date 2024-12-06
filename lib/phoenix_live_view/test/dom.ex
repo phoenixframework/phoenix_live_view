@@ -25,8 +25,39 @@ defmodule Phoenix.LiveViewTest.DOM do
         ]
   def parse(html) do
     {:ok, parsed} = Floki.parse_document(html)
+    detect_duplicate_ids(parsed)
+
     parsed
   end
+
+  defp detect_duplicate_ids(tree), do: detect_duplicate_ids(tree, MapSet.new())
+
+  defp detect_duplicate_ids([node | rest], ids) do
+    ids = detect_duplicate_ids(node, ids)
+    detect_duplicate_ids(rest, ids)
+  end
+
+  defp detect_duplicate_ids({_tag_name, _attrs, children} = node, ids) do
+    case Floki.attribute(node, "id") do
+      [id] ->
+        if MapSet.member?(ids, id) do
+          raise """
+          Duplicate id found: #{id}
+
+          LiveView requires that all elements have unique ids, duplicate IDs will cause
+          weird behavior at runtime, as DOM patching will not be able to target the correct
+          elements.
+          """
+        else
+          detect_duplicate_ids(children, MapSet.put(ids, id))
+        end
+
+      _ ->
+        detect_duplicate_ids(children, ids)
+    end
+  end
+
+  defp detect_duplicate_ids(_non_tag, seen_ids), do: seen_ids
 
   def all(html_tree, selector), do: Floki.find(html_tree, selector)
 
