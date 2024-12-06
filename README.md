@@ -62,6 +62,8 @@ Also follow these announcements from the Phoenix team on LiveView for more examp
 
   * [Build a real-time Twitter clone with LiveView](https://www.phoenixframework.org/blog/build-a-real-time-twitter-clone-in-15-minutes-with-live-view-and-phoenix-1-5)
 
+  * [Build a real-time Twitch clone with LiveView and Elixir WebRTC](https://www.youtube.com/watch?v=jziOb2Edfzk)
+
   * [Initial announcement](https://dockyard.com/blog/2018/12/12/phoenix-liveview-interactive-real-time-apps-no-need-to-write-javascript)
 
 ## Component systems
@@ -83,6 +85,8 @@ community at different stages of development:
 * [Mishka Chelekom](https://github.com/mishka-group/mishka_chelekom): Phoenix + LiveView UI kit and HEEx components
 
 * [Fluxon UI](https://fluxonui.com): Elegant and accessible UI components for Phoenix LiveView
+
+* [Live ExWebRTC](https://github.com/elixir-webrtc/live_ex_webrtc): Phoenix LiveView components for real-time streaming
 
 ## What makes LiveView unique?
 
