@@ -45,7 +45,7 @@ defmodule Phoenix.LiveViewTest.DOM do
           Duplicate id found: #{id}
 
           LiveView requires that all elements have unique ids, duplicate IDs will cause
-          weird behavior at runtime, as DOM patching will not be able to target the correct
+          undefined behavior at runtime, as DOM patching will not be able to target the correct
           elements.
           """
         else
