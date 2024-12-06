@@ -122,7 +122,7 @@ generated user module:
 ## 1.0.0-rc.8 (2024-12-02)
 
 ### Backwards incompatible changes
-* Require Elixir v1.14+
+* Require Elixir v1.14.1+
 
 ### Bug fixes
 * Fix live navigation issue where LiveView would attempt a patch on back navigation instead of navigate under certain routing conditions
