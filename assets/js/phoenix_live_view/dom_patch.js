@@ -14,6 +14,8 @@ import {
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
   PHX_VIEWPORT_BOTTOM,
+  PHX_PORTAL,
+  PHX_PORTAL_REF
 } from "./constants"
 
 import {
@@ -62,6 +64,7 @@ export default class DOMPatch {
     this.cidPatch = isCid(this.targetCID)
     this.pendingRemoves = []
     this.phxRemove = this.liveSocket.binding("remove")
+    this.portal = this.liveSocket.binding(PHX_PORTAL)
     this.targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
@@ -123,7 +126,18 @@ export default class DOMPatch {
         // tell morphdom how to add a child
         addChild: (parent, child) => {
           let {ref, streamAt} = this.getStreamInsert(child)
-          if(ref === undefined){ return parent.appendChild(child) }
+          if(ref === undefined){
+            // phx-portal optimization
+            if(child.getAttribute && child.getAttribute(PHX_PORTAL_REF) !== null){
+              const targetId = child.getAttribute(PHX_PORTAL_REF)
+              const portalTarget = DOM.byId(targetId)
+              child.removeAttribute(this.portal)
+              if(portalTarget.contains(child)){ return }
+              return portalTarget.appendChild(child)
+            }
+            // no special handling, we just append it to the parent
+            return parent.appendChild(child)
+          }
 
           this.setStreamRef(child, ref)
 
@@ -265,6 +279,24 @@ export default class DOMPatch {
 
           // input handling
           DOM.copyPrivates(toEl, fromEl)
+
+          // phx-portal handling
+          if(fromEl.hasAttribute(this.portal) || toEl.hasAttribute(this.portal)){
+            const targetId = toEl.getAttribute(this.portal)
+            const portalTarget = DOM.byId(targetId)
+            toEl.removeAttribute(this.portal)
+            toEl.setAttribute(PHX_PORTAL_REF, targetId)
+            const existing = document.getElementById(fromEl.id)
+            // if the child is already a descendent of the portal,
+            // keep it as is, to prevent unnecessary DOM operations
+            if(existing && portalTarget.contains(existing)){
+              return existing
+            } else {
+              // appendChild will move the element to the portal
+              portalTarget.appendChild(fromEl)
+              return fromEl
+            }
+          }
 
           // skip patching focused inputs unless focus is a select that has changed options
           if(isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged){
