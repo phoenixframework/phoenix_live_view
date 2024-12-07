@@ -687,6 +687,70 @@ defmodule Phoenix.LiveView.ComponentsTest do
     end
   end
 
+  describe "live_img_preview/1" do
+    test "basic usage" do
+      entry = %Phoenix.LiveView.UploadEntry{
+        progress: 100,
+        preflighted?: true,
+        upload_config: :poster_imgix_src,
+        upload_ref: "phx-Fz1Xjn4seffww0vC",
+        ref: "1",
+        uuid: "898e29b9-1724-4b5f-b42f-2389b85bb9f4",
+        valid?: true,
+        done?: true,
+        cancelled?: false,
+        client_name: "an_image.jpg",
+        client_relative_path: "",
+        client_size: 2065187,
+        client_type: "image/jpeg",
+        client_last_modified: 1646642130571
+      }
+      assigns = %{entry: entry}
+
+      assert render(~H|<.live_img_preview entry={@entry}/>|) == ~s|<img data-phx-upload-ref="phx-Fz1Xjn4seffww0vC" data-phx-entry-ref="1" data-phx-hook="Phoenix.LiveImgPreview" data-phx-update="ignore" id="phx-preview-1">|
+    end
+
+    test "requires an entry to be given" do
+      assigns = %{}
+
+      assert_raise ArgumentError, "missing required :entry attribute to <.live_img_preview/>",  fn ->
+        render(~H|<.live_img_preview />|)
+      end
+    end
+  end
+
+  describe "live_video_preview/1" do
+    test "basic usage" do
+      entry = %Phoenix.LiveView.UploadEntry{
+        progress: 100,
+        preflighted?: true,
+        upload_config: :some_field,
+        upload_ref: "phx-Fz1Xjn4tLhvww0xC",
+        ref: "0",
+        uuid: "e3ae39ee-8251-4e24-9655-d1574adef682",
+        valid?: true,
+        done?: true,
+        cancelled?: false,
+        client_name: "a_video.mp4",
+        client_relative_path: "",
+        client_size: 17116709,
+        client_type: "video/mp4",
+        client_last_modified: 1671742709575
+      }
+      assigns = %{entry: entry}
+
+      assert render(~H|<.live_video_preview entry={@entry}/>|) == ~s|<video controls data-phx-upload-ref="phx-Fz1Xjn4tLhvww0xC" data-phx-entry-ref="0" data-phx-hook="Phoenix.LiveImgPreview" data-phx-update="ignore" id="phx-preview-0"></video>|
+    end
+
+    test "requires an entry to be given" do
+      assigns = %{}
+
+      assert_raise ArgumentError, "missing required :entry attribute to <.live_video_preview/>",  fn ->
+        render(~H|<.live_video_preview />|)
+      end
+    end
+  end
+
   describe "intersperse" do
     test "generates form with no options" do
       assigns = %{}
