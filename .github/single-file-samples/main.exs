@@ -6,8 +6,8 @@ Application.put_env(:sample, Example.Endpoint,
 )
 
 Mix.install([
-  {:plug_cowboy, "~> 2.5"},
-  {:jason, "~> 1.0"},
+  {:plug_cowboy, "~> 2.7"},
+  {:jason, "~> 1.4"},
   {:phoenix, "~> 1.7"},
   # please test your issue using the latest version of LV from GitHub!
   {:phoenix_live_view, github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
