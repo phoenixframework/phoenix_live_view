@@ -152,10 +152,8 @@ describe("LiveSocket", () => {
 
     let _view = liveSocket.getViewByEl(container(1))
     let btn = document.querySelector("button")
-    let _callback = (view) => {
-      expect(view.id).toBe(view.id)
-    }
-    liveSocket.owner(btn, (view) => view.id)
+
+    liveSocket.owner(btn, (view) => expect(view.id).toBe(_view.id))
   })
 
   test("getActiveElement default before LiveSocket activeElement is set", async () => {
