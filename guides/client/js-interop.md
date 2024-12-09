@@ -24,6 +24,12 @@ except for the following LiveView specific options:
   * `uploaders` – a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
     [External uploads guide](external-uploads.md) for details.
+  * `rootViewSelector` - the optional CSS selector to scope which root LiveViews to connect.
+    Useful when running multiple liveSockets, each connected to a different application.
+    See the [Connecting multiple livesockets](#connecting-multiple-livesockets)
+    section below for details.
+
+  a CSS selector to scope which 
 
 ## Debugging client events
 
@@ -313,3 +319,42 @@ Hooks.Chart = {
 ```
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
+
+
+### Connecting multiple liveSockets
+
+LiveView allows connecting more than one `liveSocket`, each targeting different HTML nodes. This is useful to
+isolate the development cycle of a subset of the user interface. This means a different Phoenix application hosted
+in a different domain, can fully support an embedded LiveView. Think of it as Nested LiveViews, but instead of
+process-level isolation, it is a service-level isolation.
+
+Annotate your root views with a unique HTML attribute or class:
+
+```elixir
+# Main application serving a regular LiveView
+use GreatProductWeb.LiveView, container: {:div, "data-app": "root"}
+
+# Cats application, which will serve the cats component
+use CatsWeb.LiveView, container: {:div, "data-app": "cats"}
+```
+
+And initialise the liveSockets:
+
+```javascript
+# Fetch the disconnected render
+let disconnectedCatsHTML = await fetch("https://cats.io/live", { credentials: 'include' })
+  .then((response) => response.text())
+  .catch((error) => console.error(error));
+
+# Append it to HTML
+document.queryElementById("#cats-slot").innerHTML = disconnectedCatsHTML
+
+
+# Connect main liveSocket
+let liveSocket = new LiveSocket("https://root.io/live", Socket, {rootViewSelector: "[data-app='root']"})
+liveSocket.connect()
+
+# Connect the cats liveSocket
+let liveSocketCats = new LiveSocket("https://cats.io/live", Socket, {rootViewSelector: "[data-app='cats']"})
+liveSocketCats.connect()
+```
