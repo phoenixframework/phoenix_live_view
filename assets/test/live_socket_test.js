@@ -3,16 +3,22 @@ import LiveSocket from "phoenix_live_view/live_socket"
 
 let container = (num) => global.document.getElementById(`container${num}`)
 
-let prepareLiveViewDOM = (document) => {
+let createRootViewDiv = (containerNum, cssClass) => {
   const div = document.createElement("div")
-  div.setAttribute("data-phx-session", "abc123")
-  div.setAttribute("data-phx-root-id", "container1")
-  div.setAttribute("id", "container1")
+  div.setAttribute("data-phx-session", `abc-${containerNum}`)
+  div.setAttribute("data-phx-root-id", `container${containerNum}`)
+  div.setAttribute("id", `container${containerNum}`)
+  if(cssClass) div.classList.add(cssClass)
   div.innerHTML = `
     <label for="plus">Plus</label>
     <input id="plus" value="1" />
     <button phx-click="inc_temperature">Inc Temperature</button>
   `
+  return div
+}
+
+let prepareLiveViewDOM = (document) => {
+  const div = createRootViewDiv(1, "main")
   const button = div.querySelector("button")
   const input = div.querySelector("input")
   button.addEventListener("click", () => {
@@ -21,6 +27,8 @@ let prepareLiveViewDOM = (document) => {
     }, 200)
   })
   document.body.appendChild(div)
+
+  document.body.appendChild(createRootViewDiv(2, "extra"))
 }
 
 describe("LiveSocket", () => {
@@ -154,6 +162,19 @@ describe("LiveSocket", () => {
     let btn = document.querySelector("button")
 
     liveSocket.owner(btn, (view) => expect(view.id).toBe(_view.id))
+  })
+
+  test("owner with rootViewSelector option", async () => {
+    let liveSocket = new LiveSocket("/live", Socket, {rootViewSelector: ".main"})
+    liveSocket.connect()
+
+    let _view = liveSocket.getViewByEl(container(1))
+
+    let btn = document.querySelector(".main button")
+    liveSocket.owner(btn, (view) => expect(view.id).toBe(_view.id))
+
+    let btnExtra = document.querySelector(".extra button")
+    liveSocket.owner(btnExtra, (view) => expect(view).toBe(null))
   })
 
   test("getActiveElement default before LiveSocket activeElement is set", async () => {
