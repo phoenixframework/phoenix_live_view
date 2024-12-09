@@ -70,6 +70,8 @@
  * @param {Object} [opts.localStorage] - An optional Storage compatible object
  * Useful for when LiveView won't have access to `localStorage`.
  * See `opts.sessionStorage` for examples.
+ * @param {string} [opts.rootViewSelector] - The optional CSS selector to scope which root LiveViews to connect.
+ * Useful when running multiple liveSockets, each connected to a different application.
 */
 
 import {
@@ -159,6 +161,7 @@ export default class LiveSocket {
     this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
+    this.rootViewSelector = opts.rootViewSelector
     this.boundTopLevelEvents = false
     this.boundEventNames = new Set()
     this.serverCloseRef = null
@@ -366,9 +369,13 @@ export default class LiveSocket {
     }
   }
 
+  viewSelector(){
+    return `${PHX_VIEW_SELECTOR}${this.rootViewSelector || ""}`
+  }
+
   joinRootViews(){
     let rootsFound = false
-    DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
+    DOM.all(document, `${this.viewSelector()}:not([${PHX_PARENT_ID}])`, rootEl => {
       if(!this.getRootById(rootEl.id)){
         let view = this.newRootView(rootEl)
         view.setHref(this.getHref())
@@ -451,7 +458,11 @@ export default class LiveSocket {
   }
 
   owner(childEl, callback){
-    let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), el => this.getViewByEl(el)) || this.main
+    let view = maybe(childEl.closest(this.viewSelector()), el => this.getViewByEl(el))
+    // If there's a rootViewSelector, don't default to `this.main`
+    // since it's not guaranteed to belong to same liveSocket.
+    // Maybe `this.embbededMode = boolean()` would be a more clear check?
+    if(!view && !this.rootViewSelector){ view = this.main }
     return view && callback ? callback(view) : view
   }
 
