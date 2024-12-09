@@ -364,7 +364,9 @@ export default class LiveSocket {
       let view = this.newRootView(body)
       view.setHref(this.getHref())
       view.joinDead()
-      if(!this.main){ this.main = view }
+      // When there's a rootViewSelector it's not appropriate for document.body to be the
+      // main view since all the connected elements must be scoped under that selector
+      if(!this.main && !this.rootViewSelector){this.main = view }
       window.requestAnimationFrame(() => view.execNewMounted())
     }
   }
