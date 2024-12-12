@@ -21,11 +21,12 @@ defmodule Phoenix.LiveView.MixProject do
       homepage_url: "http://www.phoenixframework.org",
       description: """
       Rich, real-time user experiences with server-rendered HTML
-      """,
-      preferred_cli_env: [
-        docs: :docs
-      ]
+      """
     ]
+  end
+
+  def cli do
+    [preferred_envs: [docs: :docs]]
   end
 
   defp elixirc_paths(:e2e), do: ["lib", "test/support", "test/e2e/support"]
