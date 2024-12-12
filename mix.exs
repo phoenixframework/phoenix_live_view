@@ -52,13 +52,7 @@ defmodule Phoenix.LiveView.MixProject do
       {:jason, "~> 1.0", optional: true},
       {:floki, "~> 0.36", optional: true},
       {:ex_doc, "~> 0.29", only: :docs},
-      # TODO: change me when new makeup_elixir is released
-      # {:makeup_elixir, "~> 1.0", only: :docs},
-      {:makeup_elixir,
-       github: "elixir-makeup/makeup_elixir",
-       ref: "532ebf9e10989a4a54fff47cb51d36a621928b99",
-       only: :docs,
-       override: true},
+      {:makeup_elixir, "~> 1.0.1 or ~> 1.1", only: :docs},
       {:makeup_diff, "~> 0.1.1", only: :docs},
       # TODO: change me when makeup_lexers is not needed any more
       # {:makeup_eex, "~> 1.0", only: :docs},
