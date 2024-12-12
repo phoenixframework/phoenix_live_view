@@ -5,13 +5,17 @@ Application.put_env(:sample, Example.Endpoint,
   secret_key_base: String.duplicate("a", 64)
 )
 
-Mix.install([
-  {:plug_cowboy, "~> 2.5"},
-  {:jason, "~> 1.0"},
-  {:phoenix, "~> 1.7"},
-  # please test your issue using the latest version of LV from GitHub!
-  {:phoenix_live_view, github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
-])
+Mix.install(
+  [
+    {:plug_cowboy, "~> 2.5"},
+    {:jason, "~> 1.0"},
+    {:phoenix, "~> 1.7"},
+    # please test your issue using the latest version of LV from GitHub!
+    {:phoenix_live_view,
+     github: "phoenixframework/phoenix_live_view", branch: "main", override: true}
+  ],
+  force: true
+)
 
 # build the LiveView JavaScript assets (this needs mix and npm available in your path!)
 path = Phoenix.LiveView.__info__(:compile)[:source] |> Path.dirname() |> Path.join("../")
@@ -32,8 +36,10 @@ defmodule Example.HomeLive do
 
   def render("live.html", assigns) do
     ~H"""
-    <script src="/assets/phoenix/phoenix.js"></script>
-    <script src="/assets/phoenix_live_view/phoenix_live_view.js"></script>
+    <script src="/assets/phoenix/phoenix.js">
+    </script>
+    <script src="/assets/phoenix_live_view/phoenix_live_view.js">
+    </script>
     <%!-- uncomment to use enable tailwind --%>
     <%!-- <script src="https://cdn.tailwindcss.com"></script> --%>
     <script>

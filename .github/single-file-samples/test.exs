@@ -5,14 +5,18 @@ Application.put_env(:phoenix, Example.Endpoint,
   secret_key_base: String.duplicate("a", 64)
 )
 
-Mix.install([
-  {:plug_cowboy, "~> 2.5"},
-  {:jason, "~> 1.0"},
-  {:phoenix, "~> 1.7"},
-  # please test your issue using the latest version of LV from GitHub!
-  {:phoenix_live_view, github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
-  {:floki, ">= 0.30.0"}
-])
+Mix.install(
+  [
+    {:plug_cowboy, "~> 2.5"},
+    {:jason, "~> 1.0"},
+    {:phoenix, "~> 1.7"},
+    # please test your issue using the latest version of LV from GitHub!
+    {:phoenix_live_view,
+     github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
+    {:floki, ">= 0.30.0"}
+  ],
+  force: true
+)
 
 ExUnit.start()
 
@@ -30,8 +34,10 @@ defmodule Example.HomeLive do
 
   def render("live.html", assigns) do
     ~H"""
-    <script src="/assets/phoenix/phoenix.js"></script>
-    <script src="/assets/phoenix_live_view/phoenix_live_view.js"></script>
+    <script src="/assets/phoenix/phoenix.js">
+    </script>
+    <script src="/assets/phoenix_live_view/phoenix_live_view.js">
+    </script>
     <script>
       let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket)
       liveSocket.connect()
