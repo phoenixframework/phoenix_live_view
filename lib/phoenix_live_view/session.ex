@@ -20,11 +20,13 @@ defmodule Phoenix.LiveView.Session do
   def authorize_root_redirect(%Session{} = session, %Route{} = route) do
     %Session{live_session_name: session_name, live_session_vsn: session_vsn} = session
 
-    cond do
-      route.live_session.name == session_name and route.live_session.vsn == session_vsn ->
+    case route.live_session do
+      # We check the version because if there was a new deploy,
+      # we can use this opportunity to reload the whole thing.
+      %{name: ^session_name, vsn: ^session_vsn} ->
         {:ok, replace_root(session, route.view, self())}
 
-      true ->
+      %{} ->
         :error
     end
   end
