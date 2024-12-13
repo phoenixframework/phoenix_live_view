@@ -1564,11 +1564,16 @@ defmodule Phoenix.LiveView.Channel do
         %Route{view: ^view, live_session: %{name: ^session_name}} = route ->
           {:ok, session, route, url}
 
+        # if we have a sticky LV, it will be considered a main with no session
+        %Route{} when is_nil(session_name) ->
+          {:ok, session, nil, url}
+
+        # if if we have a session, then it no longer matches and is unauthorized
         %Route{} ->
-          {:error, :stale}
+          {:error, :unauthorized}
 
         nil ->
-          {:error, :stale}
+          {:error, :unauthorized}
       end
     else
       {:ok, session, _route = nil, _url = nil}
