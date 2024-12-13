@@ -76,7 +76,7 @@ community at different stages of development:
 
 * [Doggo](https://github.com/woylie/doggo): Headless UI components for Phoenix
 
-* [Petal Components](https://github.com/petalframework/petal_components): Phoenix + Live View HEEX Components 
+* [Petal Components](https://github.com/petalframework/petal_components): Phoenix + Live View HEEX Components
 
 * [PrimerLive](https://github.com/ArthurClemens/primer_live): An implementation of GitHub's Primer Design System using Phoenix LiveView
 
@@ -85,8 +85,6 @@ community at different stages of development:
 * [Mishka Chelekom](https://github.com/mishka-group/mishka_chelekom): Phoenix + LiveView UI kit and HEEx components
 
 * [Fluxon UI](https://fluxonui.com): Elegant and accessible UI components for Phoenix LiveView
-
-* [Live ExWebRTC](https://github.com/elixir-webrtc/live_ex_webrtc): Phoenix LiveView components for real-time streaming
 
 ## What makes LiveView unique?
 

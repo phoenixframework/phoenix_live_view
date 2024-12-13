@@ -112,12 +112,17 @@ generated user module:
      if valid_password?(changeset.data, password) do
 ```
 
+## 1.0.1 (2024-12-13)
+
+### Bug fixes
+* Fix live session verification causing logged errors and failed mounts when a cold deploy occurs
+
 ## 1.0.0 (2024-12-03) 🚀
 
 ## 1.0.0-rc.9 (2024-12-03)
 
 ### Enhancements
-  * Support `phx-no-curly-interpolation` to disable HEEx curly interpolation in a specific tag body
+* Support `phx-no-curly-interpolation` to disable HEEx curly interpolation in a specific tag body
 
 ## 1.0.0-rc.8 (2024-12-02)
 
