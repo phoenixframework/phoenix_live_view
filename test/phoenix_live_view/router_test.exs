@@ -79,7 +79,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.name == :test
       assert route.live_session.vsn
@@ -91,7 +95,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session-admin"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.name == :admin
       assert route.live_session.vsn
@@ -104,7 +112,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/thermo-live-session-mfa"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.name == :mfa
       assert route.live_session.vsn
@@ -117,7 +129,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/halt-connected-mount"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.extra == %{
                on_mount: [
@@ -144,7 +160,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-mod-arg"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.extra == %{
                on_mount: [
@@ -165,7 +185,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-mods"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.extra == %{
                on_mount: [
@@ -190,7 +214,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/lifecycle/mount-mods-args"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.extra == %{
                on_mount: [
@@ -253,7 +281,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/dashboard-live-session-layout"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.extra == %{
                layout: {Phoenix.LiveViewTest.Support.LayoutView, :live_override}
@@ -272,7 +304,11 @@ defmodule Phoenix.LiveView.RouterTest do
       path = "/dashboard-live-session-layout"
 
       assert {:internal, route} =
-               Route.live_link_info_without_checks(@endpoint, Phoenix.LiveViewTest.Support.Router, path)
+               Route.live_link_info_without_checks(
+                 @endpoint,
+                 Phoenix.LiveViewTest.Support.Router,
+                 path
+               )
 
       assert route.live_session.extra == %{
                layout: {Phoenix.LiveViewTest.Support.LayoutView, :live_override}
