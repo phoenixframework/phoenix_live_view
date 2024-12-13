@@ -1568,7 +1568,7 @@ defmodule Phoenix.LiveView.Channel do
         %Route{} when is_nil(session_name) ->
           {:ok, session, nil, url}
 
-        # if if we have a session, then it no longer matches and is unauthorized
+        # if we have a session, then it no longer matches and is unauthorized
         %Route{} ->
           {:error, :unauthorized}
 
