@@ -904,7 +904,7 @@ defmodule Phoenix.Component do
   Or:
 
   ```heex
-  {live_render(@conn, MyApp.ThermostatLive, session: %{"home_id" => @home.id}) %>
+  {live_render(@conn, MyApp.ThermostatLive, session: %{"home_id" => @home.id})}
   ```
 
   Within another LiveView, you must pass the `:id` option:
