@@ -1554,8 +1554,27 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp authorize_session(%Session{} = session, endpoint, %{"url" => url}) do
+    %Session{view: view, live_session_name: session_name} = session
+
     if Session.main?(session) do
-      {:ok, session, session_route(session, endpoint, url), url}
+      # Ensure the session's LV module and live session name still match on connect.
+      # If the route has changed the LV module or has moved live sessions, the client
+      # will fallback to full page redirect to the current URL.
+      case session_route(session, endpoint, url) do
+        %Route{view: ^view, live_session: %{name: ^session_name}} = route ->
+          {:ok, session, route, url}
+
+        # if we have a sticky LV, it will be considered a main with no live session
+        %Route{} when is_nil(session_name) ->
+          {:ok, session, nil, url}
+
+        # if we have a session, then it no longer matches and is unauthorized
+        %Route{} ->
+          {:error, :unauthorized}
+
+        nil ->
+          {:error, :unauthorized}
+      end
     else
       {:ok, session, _route = nil, _url = nil}
     end
@@ -1566,7 +1585,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp session_route(%Session{} = session, endpoint, url) do
-    case Route.live_link_info(endpoint, session.router, url) do
+    case Route.live_link_info_without_checks(endpoint, session.router, url) do
       {:internal, %Route{} = route} -> route
       _ -> nil
     end
