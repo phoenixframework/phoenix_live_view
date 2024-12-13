@@ -1561,8 +1561,8 @@ defmodule Phoenix.LiveView.Channel do
       # If the route has changed the LV module or has moved live sessions, the client
       # will fallback to full page redirect to the current URL.
       case session_route(session, endpoint, url) do
-        %Route{view: ^view, live_session: %{name: ^session_name}} ->
-          {:ok, session, session_route(session, endpoint, url), url}
+        %Route{view: ^view, live_session: %{name: ^session_name}} = route ->
+          {:ok, session, route, url}
 
         %Route{} ->
           {:error, :stale}
