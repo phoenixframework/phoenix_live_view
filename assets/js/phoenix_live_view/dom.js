@@ -19,6 +19,7 @@ import {
   PHX_STICKY,
   PHX_EVENT_CLASSES,
   THROTTLED,
+  PHX_ATTRS_IGNORED
 } from "./constants"
 
 import {
@@ -124,6 +125,18 @@ let DOM = {
 
   isIgnored(el, phxUpdate){
     return (el.getAttribute(phxUpdate) || el.getAttribute("data-phx-update")) === "ignore"
+  },
+
+  // TODO: New Proposal
+  /**
+  * Get the attributes that should be ignored when updating an element.
+    * @param {HTMLElement} el - The element to get the ignored attributes from.
+    * @returns {Array} An array of attributes to ignore.
+    * @example
+    */
+  getAttrsIgnored(el) {
+    const attrs = el.getAttribute(PHX_ATTRS_IGNORED, false);
+    return attrs ? [...attrs.split(" "), PHX_ATTRS_IGNORED]  : [];
   },
 
   isPhxUpdate(el, phxUpdate, updateTypes){

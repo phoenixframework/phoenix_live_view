@@ -144,6 +144,7 @@ export default class DOMPatch {
           }
         },
         onBeforeNodeAdded: (el) => {
+          console.log("onBeforeNodeAdded", el)
           DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom)
           this.trackBefore("added", el)
 
@@ -189,6 +190,7 @@ export default class DOMPatch {
           return true
         },
         onElUpdated: (el) => {
+          console.log("onElUpdated", el)
           if(DOM.isNowTriggerFormExternal(el, phxTriggerExternal)){
             externalFormTriggered = el
           }
@@ -196,6 +198,20 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          console.log("onBeforeElUpdated", fromEl, toEl);
+
+          // TODO: Refactor properly
+          const ignoredAttrs = DOM.getAttrsIgnored(fromEl);
+
+          console.log("ignoredAttrs", ignoredAttrs);
+
+          const keepingAttrs = ignoredAttrs.reduce((acc, attr) => {
+            acc[attr] = fromEl.getAttribute(attr);
+            return acc;
+          }, {});
+
+          console.log("keepingAttrs", keepingAttrs);
+
           // if we are patching the root target container and the id has changed, treat it as a new node
           // by replacing the fromEl with the toEl, which ensures hooks are torn down and re-created
           if(fromEl.id && fromEl.isSameNode(targetContainer) && fromEl.id !== toEl.id){
@@ -227,6 +243,14 @@ export default class DOMPatch {
             DOM.applyStickyOperations(fromEl)
             return false
           }
+
+          // Proposal
+          console.log("Ending onBeforeElUpdated", toEl, keepingAttrs)
+          Object.keys(keepingAttrs).forEach(attr => {
+            console.log("Setting back attrs", attr, keepingAttrs[attr])
+            toEl.setAttribute(attr, keepingAttrs[attr]);
+          });
+
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
           // If the element has  PHX_REF_SRC, it is loading or locked and awaiting an ack.
           // If it's locked, we clone the fromEl tree and instruct morphdom to use
@@ -286,7 +310,9 @@ export default class DOMPatch {
             this.trackBefore("updated", fromEl, toEl)
             return fromEl
           }
+
         }
+
       }
       morphdom(targetContainer, source, morphCallbacks)
     }

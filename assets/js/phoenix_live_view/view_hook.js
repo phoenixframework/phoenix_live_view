@@ -1,6 +1,8 @@
 import JS from "./js"
 import DOM from "./dom"
 
+import { PHX_ATTRS_IGNORED } from "./constants.js";
+
 const HOOK_ID = "hookId"
 
 let viewHookID = 1
@@ -293,6 +295,13 @@ export default class ViewHook {
     window.addEventListener(`phx:${event}`, callbackRef)
     this.__listeners.add(callbackRef)
     return callbackRef
+  }
+
+  ignoreDOMPatchAttributes(attrs) {
+    console.log("ignoreDOMPatchAttributes", attrs)
+    console.log("this.el", this.el)
+    if (!attrs || !Array.isArray(attrs)) { return }
+    this.el.setAttribute(PHX_ATTRS_IGNORED, attrs.join(" "))
   }
 
   removeHandleEvent(callbackRef){

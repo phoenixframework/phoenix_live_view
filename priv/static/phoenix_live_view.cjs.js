@@ -80,6 +80,7 @@ var PHX_STATIC = "data-phx-static";
 var PHX_READONLY = "data-phx-readonly";
 var PHX_DISABLED = "data-phx-disabled";
 var PHX_DISABLE_WITH = "disable-with";
+var PHX_ATTRS_IGNORED = "data-phx-update-ignored-attrs";
 var PHX_DISABLE_WITH_RESTORE = "data-phx-disable-with-restore";
 var PHX_HOOK = "hook";
 var PHX_DEBOUNCE = "debounce";
@@ -402,6 +403,17 @@ var DOM = {
   },
   isIgnored(el, phxUpdate) {
     return (el.getAttribute(phxUpdate) || el.getAttribute("data-phx-update")) === "ignore";
+  },
+  // TODO: New Proposal
+  /**
+  * Get the attributes that should be ignored when updating an element.
+    * @param {HTMLElement} el - The element to get the ignored attributes from.
+    * @returns {Array} An array of attributes to ignore.
+    * @example
+    */
+  getAttrsIgnored(el) {
+    const attrs = el.getAttribute(PHX_ATTRS_IGNORED, false);
+    return attrs ? [...attrs.split(" "), PHX_ATTRS_IGNORED] : [];
   },
   isPhxUpdate(el, phxUpdate, updateTypes) {
     return el.getAttribute && updateTypes.indexOf(el.getAttribute(phxUpdate)) >= 0;
@@ -2062,6 +2074,7 @@ var DOMPatch = class {
           }
         },
         onBeforeNodeAdded: (el) => {
+          console.log("onBeforeNodeAdded", el);
           dom_default.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom);
           this.trackBefore("added", el);
           let morphedEl = el;
@@ -2106,6 +2119,7 @@ var DOMPatch = class {
           return true;
         },
         onElUpdated: (el) => {
+          console.log("onElUpdated", el);
           if (dom_default.isNowTriggerFormExternal(el, phxTriggerExternal)) {
             externalFormTriggered = el;
           }
@@ -2113,6 +2127,14 @@ var DOMPatch = class {
           this.maybeReOrderStream(el, false);
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          console.log("onBeforeElUpdated", fromEl, toEl);
+          const ignoredAttrs = dom_default.getAttrsIgnored(fromEl);
+          console.log("ignoredAttrs", ignoredAttrs);
+          const keepingAttrs = ignoredAttrs.reduce((acc, attr) => {
+            acc[attr] = fromEl.getAttribute(attr);
+            return acc;
+          }, {});
+          console.log("keepingAttrs", keepingAttrs);
           if (fromEl.id && fromEl.isSameNode(targetContainer2) && fromEl.id !== toEl.id) {
             morphCallbacks.onNodeDiscarded(fromEl);
             fromEl.replaceWith(toEl);
@@ -2140,6 +2162,11 @@ var DOMPatch = class {
             dom_default.applyStickyOperations(fromEl);
             return false;
           }
+          console.log("Ending onBeforeElUpdated", toEl, keepingAttrs);
+          Object.keys(keepingAttrs).forEach((attr) => {
+            console.log("Setting back attrs", attr, keepingAttrs[attr]);
+            toEl.setAttribute(attr, keepingAttrs[attr]);
+          });
           if (fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)) {
             return false;
           }
@@ -3298,6 +3325,14 @@ var ViewHook = class {
     window.addEventListener(`phx:${event}`, callbackRef);
     this.__listeners.add(callbackRef);
     return callbackRef;
+  }
+  ignoreDOMPatchAttributes(attrs) {
+    console.log("ignoreDOMPatchAttributes", attrs);
+    console.log("this.el", this.el);
+    if (!attrs || !Array.isArray(attrs)) {
+      return;
+    }
+    this.el.setAttribute(PHX_ATTRS_IGNORED, attrs.join(" "));
   }
   removeHandleEvent(callbackRef) {
     let event = callbackRef(null, true);
