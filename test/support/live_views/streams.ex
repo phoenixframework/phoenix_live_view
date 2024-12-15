@@ -359,6 +359,8 @@ defmodule Phoenix.LiveViewTest.Support.StreamResetLive do
     <button phx-click="delete-insert-existing-at-one">Delete C and insert at 1</button>
     <button phx-click="prepend-existing">Prepend C</button>
     <button phx-click="append-existing">Append C</button>
+    <button phx-click="new-update-only">Add E (update only)</button>
+    <button phx-click="existing-update-only">Update C (update only)</button>
     """
   end
 
@@ -488,6 +490,18 @@ defmodule Phoenix.LiveViewTest.Support.StreamResetLive do
        :items,
        %{id: "c", name: "C"},
        at: -1
+     )}
+  end
+
+  def handle_event("new-update-only", _, socket) do
+    {:noreply, stream_insert(socket, :items, %{id: "e", name: "E"}, at: -1, update_only: true)}
+  end
+
+  def handle_event("existing-update-only", _, socket) do
+    {:noreply,
+     stream_insert(socket, :items, %{id: "c", name: "C #{System.unique_integer()}"},
+       at: -1,
+       update_only: true
      )}
   end
 end
