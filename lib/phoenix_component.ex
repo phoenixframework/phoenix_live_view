@@ -428,8 +428,8 @@ defmodule Phoenix.Component do
       def table(assigns) do
         ~H"""
         <table>
-          <tr :for={col <- @column}>
-            <th>{col.label}</th>
+          <tr>
+            <th :for={col <- @column}>{col.label}</th>
           </tr>
           <tr :for={row <- @rows}>
             <td :for={col <- @column}>{render_slot(col, row)}</td>
