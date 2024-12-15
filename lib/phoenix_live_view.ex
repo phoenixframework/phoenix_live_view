@@ -1843,6 +1843,9 @@ defmodule Phoenix.LiveView do
       here as well in order to be enforced. See `stream/4` for more information on
       limiting streams.
 
+    * `:update_only` - A boolean to only update the item in the stream. If the item does not
+      exist on the client, it will not be inserted. Defaults to `false`.
+
   ## Examples
 
   Imagine you define a stream on mount with a single item:
@@ -1892,8 +1895,9 @@ defmodule Phoenix.LiveView do
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
     limit = Keyword.get(opts, :limit)
+    update_only = Keyword.get(opts, :update_only, false)
 
-    update_stream(socket, name, &LiveStream.insert_item(&1, item, at, limit))
+    update_stream(socket, name, &LiveStream.insert_item(&1, item, at, limit, update_only))
   end
 
   @doc """

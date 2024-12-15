@@ -125,6 +125,11 @@ export default class DOMPatch {
           }
         },
         onBeforeNodeAdded: (el) => {
+          // don't add update_only nodes if they did not already exist 
+          if(this.getStreamInsert(el)?.updateOnly && !this.streamComponentRestore[el.id]){
+            return false
+          }
+
           DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom)
           this.trackBefore("added", el)
 
@@ -278,8 +283,8 @@ export default class DOMPatch {
 
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-        inserts.forEach(([key, streamAt, limit]) => {
-          this.streamInserts[key] = {ref, streamAt, limit, reset}
+        inserts.forEach(([key, streamAt, limit, updateOnly]) => {
+          this.streamInserts[key] = {ref, streamAt, limit, reset, updateOnly}
         })
         if(reset !== undefined){
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
