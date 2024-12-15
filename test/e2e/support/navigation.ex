@@ -43,6 +43,10 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
         <.link navigate="/stream" style="background-color: #f1f5f9; padding: 0.5rem;">
           LiveView (other session)
         </.link>
+
+        <.link navigate="/navigation/dead" style="background-color: #f1f5f9; padding: 0.5rem;">
+          Dead View
+        </.link>
       </div>
 
       <div style="margin-left: 22rem; flex: 1; padding: 2rem;">
@@ -162,6 +166,31 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
     <div :if={@live_action == :show}>
       <p>Item {@id}</p>
     </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.Navigation.Dead do
+  use Phoenix.Controller,
+    formats: [:html],
+    layouts: [html: {Phoenix.LiveViewTest.E2E.Navigation.Layout, :live}]
+
+  import Phoenix.Component, only: [sigil_H: 2]
+
+  def index(conn, _params) do
+    assigns = %{}
+
+    conn
+    |> render(:index)
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.Navigation.DeadHTML do
+  use Phoenix.Component
+
+  def index(assigns) do
+    ~H"""
+    <h1>Dead view</h1>
     """
   end
 end

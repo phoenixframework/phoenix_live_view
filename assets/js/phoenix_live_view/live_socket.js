@@ -362,7 +362,11 @@ export default class LiveSocket {
       view.setHref(this.getHref())
       view.joinDead()
       if(!this.main){ this.main = view }
-      window.requestAnimationFrame(() => view.execNewMounted())
+      window.requestAnimationFrame(() => {
+        view.execNewMounted()
+        // restore scroll position when navigating from an external / non-live page
+        this.maybeScroll(history.state?.scroll)
+      })
     }
   }
 
