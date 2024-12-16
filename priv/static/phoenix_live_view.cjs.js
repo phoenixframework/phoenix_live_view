@@ -4917,7 +4917,10 @@ var LiveSocket = class {
       if (!this.main) {
         this.main = view;
       }
-      window.requestAnimationFrame(() => view.execNewMounted());
+      window.requestAnimationFrame(() => {
+        view.execNewMounted();
+        this.maybeScroll(history.state?.scroll);
+      });
     }
   }
   joinRootViews() {

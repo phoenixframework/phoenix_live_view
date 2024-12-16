@@ -4946,7 +4946,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (!this.main) {
           this.main = view;
         }
-        window.requestAnimationFrame(() => view.execNewMounted());
+        window.requestAnimationFrame(() => {
+          var _a;
+          view.execNewMounted();
+          this.maybeScroll((_a = history.state) == null ? void 0 : _a.scroll);
+        });
       }
     }
     joinRootViews() {
