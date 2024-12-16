@@ -226,6 +226,33 @@ test("scrolls hash el into view after live navigation (issue #3452)", async ({pa
   expect(scrollTop).toBeLessThanOrEqual(offset + 500)
 })
 
+test("restores scroll position when navigating from dead view", async ({page}) => {
+  await page.goto("/navigation/b")
+  await syncLV(page)
+
+  await expect(page.locator("#items")).toContainText("Item 42")
+
+  expect(await page.evaluate(() => document.documentElement.scrollTop)).toEqual(0)
+  const offset = (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200
+  await page.evaluate((offset) => window.scrollTo(0, offset), offset)
+  // LiveView only updates the scroll position every 100ms
+  await page.waitForTimeout(150)
+
+  await page.getByRole("link", {name: "Dead"}).click()
+  await page.waitForURL("/navigation/dead")
+
+  await page.goBack()
+  await syncLV(page)
+
+  // scroll position is restored
+  await expect.poll(
+    async () => {
+      return await page.evaluate(() => document.documentElement.scrollTop)
+    },
+    {message: "scrollTop not restored", timeout: 5000}
+  ).toBe(offset)
+})
+
 test("navigating all the way back works without remounting (only patching)", async ({page}) => {
   await page.goto("/navigation/a")
   await syncLV(page)
