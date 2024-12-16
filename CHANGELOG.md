@@ -10,17 +10,17 @@ A backwards-compatible shim can be used to maintain `phx-feedback-for` in your e
 2. Import it into your `assets/js/app.js`.
 3. Add a new `dom` option to your `LiveSocket` constructor, or wrap the existing value:
 
-```javascript
-import {Socket} from "phoenix";
-import {LiveSocket} from "phoenix_live_view"
-import phxFeedbackDom from "./phx_feedback_dom"
-
-let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-let liveSocket = new LiveSocket("/live", Socket, {
-  params: {_csrf_token: csrfToken},
-  dom: phxFeedbackDom({})
-})
-```
+   ```javascript
+   import {Socket} from "phoenix";
+   import {LiveSocket} from "phoenix_live_view"
+   import phxFeedbackDom from "./phx_feedback_dom"
+   
+   let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+   let liveSocket = new LiveSocket("/live", Socket, {
+     params: {_csrf_token: csrfToken},
+     dom: phxFeedbackDom({})
+   })
+   ```
 
 Additionally, the `phx-page-loading` attribute has been removed in favor of using the `page_loading: true`
 option to `Phoenix.LiveView.JS.push/2` as needed.
@@ -43,51 +43,51 @@ First, ensure that you are using the latest versions of `:phoenix_ecto` and `:ph
 
 #### Core components
 
-1. Adjust the core components to omit the `phx-feedback-for` attribute and the `phx-no-feedback` classes.
-This shows one example for the textarea input, but there are more cases that need to be adjusted accordingly:
+1.  Adjust the core components to omit the `phx-feedback-for` attribute and the `phx-no-feedback` classes.
+    This shows one example for the textarea input, but there are more cases that need to be adjusted accordingly:
 
-```diff
-   def input(%{type: "textarea"} = assigns) do
-     ~H"""
--    <div phx-feedback-for={@name}>
-+    <div>
-       <.label for={@id}><%= @label %></.label>
-       <textarea
-         id={@id}
-         name={@name}
-         class={[
--          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
--          "min-h-[6rem] phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
-+          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6 min-h-[6rem]",
-           @errors == [] && "border-zinc-300 focus:border-zinc-400",
-           @errors != [] && "border-rose-400 focus:border-rose-400"
-         ]}
-```
-The following regex could be used to find and replace the relevant `phx-no-feedback` classes: `/phx-no-feedback:[\w\-\d:]+/`.
+    ```diff
+       def input(%{type: "textarea"} = assigns) do
+         ~H"""
+    -    <div phx-feedback-for={@name}>
+    +    <div>
+           <.label for={@id}><%= @label %></.label>
+           <textarea
+             id={@id}
+             name={@name}
+             class={[
+    -          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
+    -          "min-h-[6rem] phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
+    +          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6 min-h-[6rem]",
+               @errors == [] && "border-zinc-300 focus:border-zinc-400",
+               @errors != [] && "border-rose-400 focus:border-rose-400"
+             ]}
+    ```
+    The following regex could be used to find and replace the relevant `phx-no-feedback` classes: `/phx-no-feedback:[\w\-\d:]+/`.
 
-2. Filter the errors in the initial function for `Phoenix.HTML.FormField`s:
+2.  Filter the errors in the initial function for `Phoenix.HTML.FormField`s:
 
-```diff
-   def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
-+    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+    ```diff
+       def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+    +    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
+    
+         assigns
+         |> assign(field: nil, id: assigns.id || field.id)
+    -    |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
+    +    |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+         |> assign_new(:name, fn -> if assigns.multiple, do: field.name <> "[]", else: field.name end)
+         |> assign_new(:value, fn -> field.value end)
+         |> input()
+       end
+    ```
 
-     assigns
-     |> assign(field: nil, id: assigns.id || field.id)
--    |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
-+    |> assign(:errors, Enum.map(errors, &translate_error(&1)))
-     |> assign_new(:name, fn -> if assigns.multiple, do: field.name <> "[]", else: field.name end)
-     |> assign_new(:value, fn -> field.value end)
-     |> input()
-   end
-```
+3.  You can remove the phx-no-feedback tailwind variant helper from your `tailwind.config.js`:
 
-3. You can remove the phx-no-feedback tailwind variant helper from your `tailwind.config.js`:
-
-```diff
-    //
--   plugin(({addVariant}) => addVariant("phx-no-feedback", [".phx-no-feedback&", ".phx-no-feedback &"])),
-    plugin(({addVariant}) => addVariant("phx-click-loading", [".phx-click-loading&", ".phx-click-loading &"])),
-```
+    ```diff
+        //
+    -   plugin(({addVariant}) => addVariant("phx-no-feedback", [".phx-no-feedback&", ".phx-no-feedback &"])),
+        plugin(({addVariant}) => addVariant("phx-click-loading", [".phx-click-loading&", ".phx-click-loading &"])),
+    ```
 
 #### phx.gen.auth
 
@@ -96,21 +96,21 @@ Because of the way the current password is checked in previous variants of the c
 password is not visible when migrating to `used_input?`. To make this work, two changes need to be made to the
 generated user module:
 
-1. add a new virtual field `:current_password` to the schema:
+1.  add a new virtual field `:current_password` to the schema:
 
-```diff
-    field :hashed_password, :string, redact: true
-+   field :current_password, :string, virtual: true, redact: true
-```
+    ```diff
+        field :hashed_password, :string, redact: true
+    +   field :current_password, :string, virtual: true, redact: true
+    ```
 
-2. cast the `current_password` field in the `validate_current_password` function:
+2.  cast the `current_password` field in the `validate_current_password` function:
 
-```diff
-   def validate_current_password(changeset, password) do
-+    changeset = cast(changeset, %{current_password: password}, [:current_password])
-+
-     if valid_password?(changeset.data, password) do
-```
+    ```diff
+       def validate_current_password(changeset, password) do
+    +    changeset = cast(changeset, %{current_password: password}, [:current_password])
+    +
+         if valid_password?(changeset.data, password) do
+    ```
 
 ## 1.0.1 (2024-12-13)
 
