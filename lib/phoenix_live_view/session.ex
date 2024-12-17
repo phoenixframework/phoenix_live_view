@@ -15,7 +15,7 @@ defmodule Phoenix.LiveView.Session do
             live_session_vsn: nil,
             assign_new: []
 
-  def main?(%Session{} = session), do: !is_nil(session.router) and !session.parent_pid
+  def main?(%Session{} = session), do: session.router != nil and session.parent_pid == nil
 
   def authorize_root_redirect(%Session{} = session, %Route{} = route) do
     %Session{live_session_name: session_name, live_session_vsn: session_vsn} = session
