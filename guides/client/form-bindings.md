@@ -122,7 +122,6 @@ def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
 
   assigns
   |> assign(field: nil, id: assigns.id || field.id)
-  |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
   |> assign(:errors, Enum.map(errors, &translate_error(&1)))
 ```
 
