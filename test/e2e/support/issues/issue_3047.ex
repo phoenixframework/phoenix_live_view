@@ -45,7 +45,7 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Issue3047.Sticky do
   use Phoenix.LiveView
 
-  def mount(_params, _session, socket) do
+  def mount(:not_mounted_at_router, _session, socket) do
     items =
       Enum.map(1..10, fn x ->
         %{id: x, name: "item-#{x}"}
