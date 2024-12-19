@@ -1299,6 +1299,7 @@ defmodule Phoenix.LiveView.Engine do
   defp recur_changed_assign([], head, assigns, changed) do
     case {assigns, changed} do
       {%{^head => value}, %{^head => value}} -> false
+      {m1, m2} when not is_map_key(m1, head) and not is_map_key(m2, head) -> false
       {_, %{^head => value}} when is_map(value) -> value
       {_, _} -> true
     end
