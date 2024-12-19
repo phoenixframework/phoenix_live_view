@@ -640,7 +640,7 @@ defmodule Phoenix.Component do
 
     * Curly braces cannot be used inside `<script>` and `<style>` tags,
       as that would make writing JS and CSS quite tedious. You can also
-      fully disable curly braces interpolation by in a given tag and
+      fully disable curly braces interpolation in a given tag and
       its children by adding the `phx-no-curly-interpolation` attribute
 
     * it does not support multiline block constructs, such as `if`,
