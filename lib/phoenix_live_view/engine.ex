@@ -84,7 +84,9 @@ defmodule Phoenix.LiveView.Comprehension do
 
   @doc false
   def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
-    inserts = for {id, at, _item, limit} <- stream.inserts, do: [id, at, limit]
+    inserts =
+      for {id, at, _item, limit, update_only} <- stream.inserts, do: [id, at, limit, update_only]
+
     data = [stream.ref, inserts, stream.deletes]
 
     if stream.reset? do
