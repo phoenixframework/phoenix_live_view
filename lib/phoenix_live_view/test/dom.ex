@@ -18,46 +18,43 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  @spec parse(binary) :: [
+  @spec parse(html :: binary(), duplicate_id_target :: nil | {pid(), reference()}) :: [
           {:comment, binary}
           | {:pi | binary, binary | list, list}
           | {:doctype, binary, binary, binary}
         ]
-  def parse(html) do
+  def parse(html, duplicate_id_target \\ nil) do
     {:ok, parsed} = Floki.parse_document(html)
-    detect_duplicate_ids(parsed)
+
+    if duplicate_id_target do
+      detect_duplicate_ids(parsed, duplicate_id_target)
+    end
 
     parsed
   end
 
-  defp detect_duplicate_ids(tree), do: detect_duplicate_ids(tree, MapSet.new())
+  defp detect_duplicate_ids(tree, target), do: detect_duplicate_ids(tree, MapSet.new(), target)
 
-  defp detect_duplicate_ids([node | rest], ids) do
-    ids = detect_duplicate_ids(node, ids)
-    detect_duplicate_ids(rest, ids)
+  defp detect_duplicate_ids([node | rest], ids, target) do
+    ids = detect_duplicate_ids(node, ids, target)
+    detect_duplicate_ids(rest, ids, target)
   end
 
-  defp detect_duplicate_ids({_tag_name, _attrs, children} = node, ids) do
+  defp detect_duplicate_ids({_tag_name, _attrs, children} = node, ids, {pid, ref} = target) do
     case Floki.attribute(node, "id") do
       [id] ->
         if MapSet.member?(ids, id) do
-          raise """
-          Duplicate id found: #{id}
-
-          LiveView requires that all elements have unique ids, duplicate IDs will cause
-          undefined behavior at runtime, as DOM patching will not be able to target the correct
-          elements.
-          """
-        else
-          detect_duplicate_ids(children, MapSet.put(ids, id))
+          send(pid, {:duplicate_id, ref, id, node})
         end
 
+        detect_duplicate_ids(children, MapSet.put(ids, id), target)
+
       _ ->
-        detect_duplicate_ids(children, ids)
+        detect_duplicate_ids(children, ids, target)
     end
   end
 
-  defp detect_duplicate_ids(_non_tag, seen_ids), do: seen_ids
+  defp detect_duplicate_ids(_non_tag, seen_ids, _target), do: seen_ids
 
   def all(html_tree, selector), do: Floki.find(html_tree, selector)
 
