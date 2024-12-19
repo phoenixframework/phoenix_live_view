@@ -70,6 +70,18 @@
  * @param {Object} [opts.localStorage] - An optional Storage compatible object
  * Useful for when LiveView won't have access to `localStorage`.
  * See `opts.sessionStorage` for examples.
+ * @param {boolean} [opts.firePhxChangeWhileComposing] - If set to `true`, ensures that 
+ * `phx-change` events are triggered even while the user is composing input using IME 
+ * (Input Method Editor). This is determined by the `e.isComposing` property on keyboard events,
+ * which is `true` when the user is in the process of entering composed characters (e.g., typing 
+ * in languages like Japanese, Chinese, etc.). By default, `phx-change` will not fire during a 
+ * composition session to prevent potential issues, especially on Safari, where input updates 
+ * during composition can cause unexpected behavior. For more information, see:
+ * 
+ * - https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
+ * - https://github.com/phoenixframework/phoenix_live_view/issues/3322
+ * 
+ * Defaults to `false`.
 */
 
 import {
@@ -159,6 +171,7 @@ export default class LiveSocket {
     this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
+    this.firePhxChangeWhileComposing = opts.firePhxChangeWhileComposing || false
     this.boundTopLevelEvents = false
     this.boundEventNames = new Set()
     this.serverCloseRef = null
@@ -901,11 +914,8 @@ export default class LiveSocket {
         }
         let phxChange = this.binding("change")
         let input = e.target
-        // do not fire phx-change if we are in the middle of a composition session
-        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
-        // Safari has issues if the input is updated while composing
-        // see https://github.com/phoenixframework/phoenix_live_view/issues/3322
-        if(e.isComposing){
+        
+        if(!this.firePhxChangeWhileComposing && e.isComposing){
           const key = `composition-listener-${type}`
           if(!DOM.private(input, key)){
             DOM.putPrivate(input, key, true)
