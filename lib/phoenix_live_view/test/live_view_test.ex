@@ -371,6 +371,7 @@ defmodule Phoenix.LiveViewTest do
 
   defp start_proxy(path, %{} = opts) do
     ref = make_ref()
+    warn_pid = start_duplicate_id_check(ref)
 
     opts =
       Map.merge(opts, %{
@@ -382,7 +383,8 @@ defmodule Phoenix.LiveViewTest do
         endpoint: opts.endpoint,
         session: opts.session,
         url: opts.url,
-        test_supervisor: fetch_test_supervisor!()
+        test_supervisor: fetch_test_supervisor!(),
+        duplicate_id_target: {warn_pid, ref}
       })
 
     case ClientProxy.start_link(opts) do
@@ -398,6 +400,48 @@ defmodule Phoenix.LiveViewTest do
         receive do
           {^ref, {:error, reason}} -> {:error, reason}
         end
+    end
+  end
+
+  defp start_duplicate_id_check(ref) do
+    pid =
+      spawn(fn ->
+        receive do
+          {:collect, pid} ->
+            warn_duplicate_ids_loop(ref, pid, false)
+        end
+      end)
+
+    ExUnit.Callbacks.on_exit(fn ->
+      send(pid, {:collect, self()})
+
+      receive do
+        {^ref, :ok} -> :ok
+        {^ref, :raise} -> raise "Detected duplicate IDs! Check the warnings logged for details."
+      end
+    end)
+
+    pid
+  end
+
+  defp warn_duplicate_ids_loop(ref, pid, warned?) do
+    receive do
+      {:duplicate_id, ^ref, id, node} ->
+        IO.warn("""
+        Duplicate id found while testing LiveView: #{id}
+
+        #{DOM.inspect_html(node)}
+
+        LiveView requires that all elements have unique ids, duplicate IDs will cause
+        undefined behavior at runtime, as DOM patching will not be able to target the correct
+        elements.
+        """)
+
+        # there could be multiple messages waiting for us
+        warn_duplicate_ids_loop(ref, pid, true)
+    after
+      0 ->
+        send(pid, {ref, (warned? && :raise) || :ok})
     end
   end
 

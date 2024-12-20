@@ -82,12 +82,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       router: router,
       session: session,
       url: url,
-      test_supervisor: test_supervisor
+      test_supervisor: test_supervisor,
+      duplicate_id_target: duplicate_id_target
     } = opts
 
     # We can assume there is at least one LiveView
     # because the live_module assign was set.
-    root_html = DOM.parse(response_html)
+    root_html = DOM.parse(response_html, duplicate_id_target)
 
     {id, session_token, static_token, redirect_url} =
       case Map.fetch(opts, :live_redirect) do
