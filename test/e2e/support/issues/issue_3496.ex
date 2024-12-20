@@ -87,7 +87,7 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Issue3496.StickyLive do
   use Phoenix.LiveView
 
-  def mount(_params, _session, socket) do
+  def mount(:not_mounted_at_router, _session, socket) do
     {:ok, socket, layout: false}
   end
 
