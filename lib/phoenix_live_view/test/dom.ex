@@ -37,6 +37,9 @@ defmodule Phoenix.LiveViewTest.DOM do
     detect_duplicate_ids(rest, ids)
   end
 
+  # ignore declarations
+  defp detect_duplicate_ids({:pi, _type, _attrs}, seen_ids), do: seen_ids
+
   defp detect_duplicate_ids({_tag_name, _attrs, children} = node, ids) do
     case Floki.attribute(node, "id") do
       [id] ->
