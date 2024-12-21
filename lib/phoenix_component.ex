@@ -2068,13 +2068,13 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.live_title default="Welcome" prefix="MyApp – ">
+  <.live_title default="Welcome" prefix="MyApp · ">
     {assigns[:page_title]}
   </.live_title>
   ```
 
   ```heex
-  <.live_title default="Welcome" suffix="- MyApp">
+  <.live_title default="Welcome" suffix=" · MyApp">
     {assigns[:page_title]}
   </.live_title>
   ```
