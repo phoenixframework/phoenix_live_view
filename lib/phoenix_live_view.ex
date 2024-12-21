@@ -1668,7 +1668,7 @@ defmodule Phoenix.LiveView do
   When inserting single items using `stream_insert/4`, the limit needs to be passed
   as an option for it to be enforced on the client:
 
-      stream_insert(socket, :songs, song, limit: -10)
+      (socket, :songs, song, limit: -10)
 
   ## Required DOM attributes
 
@@ -1864,7 +1864,13 @@ defmodule Phoenix.LiveView do
   As shown, an existing item on the client can be updated by issuing a `stream_insert`
   for the existing item. When the client updates an existing item, the item will remain
   in the same location as it was previously, and will not be moved to the end of the
-  parent children. To both update an existing item and move it to another position,
+  parent children. 
+
+  One exception to this is if you call `stream` with a collection of items in your `mount` function, 
+  and then `stream_insert` an updated item that was previously streamed in your `handle_params` function. 
+  You will end up with a duplicate item. 
+
+  To both update an existing item and move it to another position,
   issue a `stream_delete`, followed by a `stream_insert`. For example:
 
       song = get_song!(id)
