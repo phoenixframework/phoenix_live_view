@@ -105,9 +105,9 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
-    live_view = Macro.expand_literals(live_view, __CALLER__)
-    action = Macro.expand_literals(action, __CALLER__)
-    opts = Macro.expand_literals(opts, __CALLER__)
+    live_view = Macro.expand_literals(live_view, %{__CALLER__ | function: {:live, 4}})
+    action = Macro.expand_literals(action, %{__CALLER__ | function: {:live, 4}})
+    opts = Macro.expand_literals(opts, %{__CALLER__ | function: {:live, 4}})
 
     quote bind_quoted: binding() do
       {action, router_options} =
@@ -227,7 +227,7 @@ defmodule Phoenix.LiveView.Router do
   and be executed via `on_mount` hooks.
   """
   defmacro live_session(name, opts \\ [], do: block) do
-    opts = Macro.expand_literals(opts, __CALLER__)
+    opts = Macro.expand_literals(opts, %{__CALLER__ | function: {:live_session, 3}})
 
     quote do
       unquote(__MODULE__).__live_session__(__MODULE__, unquote(opts), unquote(name))

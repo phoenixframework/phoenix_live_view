@@ -1975,8 +1975,8 @@ defmodule Phoenix.Component do
   '''
   @doc type: :macro
   defmacro attr(name, type, opts \\ []) do
-    type = Macro.expand_literals(type, __CALLER__)
-    opts = Macro.expand_literals(opts, __CALLER__)
+    type = Macro.expand_literals(type, %{__CALLER__ | function: {:attr, 3}})
+    opts = Macro.expand_literals(opts, %{__CALLER__ | function: {:attr, 3}})
 
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
