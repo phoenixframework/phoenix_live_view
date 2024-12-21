@@ -1668,7 +1668,7 @@ defmodule Phoenix.LiveView do
   When inserting single items using `stream_insert/4`, the limit needs to be passed
   as an option for it to be enforced on the client:
 
-      (socket, :songs, song, limit: -10)
+      stream_insert(socket, :songs, song, limit: -10)
 
   ## Required DOM attributes
 
