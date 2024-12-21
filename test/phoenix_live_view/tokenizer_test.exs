@@ -64,6 +64,15 @@ defmodule Phoenix.LiveView.TokenizerTest do
              ]
     end
 
+    test "followed by curly" do
+      assert tokenize("<!-- comment -->{hello}text") == [
+               {:text, "<!-- comment -->",
+                %{column_end: 17, context: [:comment_start, :comment_end], line_end: 1}},
+               {:body_expr, "hello", %{line: 1, column: 17}},
+               {:text, "text", %{line_end: 1, column_end: 28}}
+             ]
+    end
+
     test "multiple lines and wrapped by tags" do
       code = """
       <p>

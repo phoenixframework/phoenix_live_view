@@ -435,6 +435,15 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
+  test "avoids additional whitespace on curly with html comments" do
+    assert_formatter_doesnt_change("""
+    <select>
+      <!-- Comment -->
+      {hello + world}
+    </select>
+    """)
+  end
+
   test "migrates from eex to curly braces" do
     input = """
       <section>

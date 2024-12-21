@@ -157,6 +157,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   defp handle_text("{" <> rest, line, column, buffer, acc, %{braces: :enabled} = state) do
     text_to_acc = text_to_acc(buffer, acc, line, column, state.context)
+    state = put_in(state.context, [])
 
     case handle_interpolation(rest, line, column + 1, [], 0, state) do
       {:ok, value, new_line, new_column, rest} ->
