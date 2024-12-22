@@ -61,7 +61,12 @@ defmodule Phoenix.LiveView.LiveStream do
   def insert_item(%LiveStream{} = stream, item, at, limit) do
     item_id = stream.dom_id.(item)
 
-    %{stream | inserts: stream.inserts ++ [{item_id, at, item, limit}]}
+    updated_inserts =
+      stream.inserts
+      |> Enum.reject(fn {id, _at, _item, _limit} -> id == item_id end)
+      |> Kernel.++([{item_id, at, item, limit}])
+
+    %{stream | inserts: updated_inserts}
   end
 
   defimpl Enumerable, for: LiveStream do
