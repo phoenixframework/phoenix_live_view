@@ -375,7 +375,9 @@ export default class LiveSocket {
     DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
       if(!this.getRootById(rootEl.id)){
         let view = this.newRootView(rootEl)
-        view.setHref(this.getHref())
+        // stickies cannot be mounted at the router and therefore should not
+        // get a href set on them
+        if(!DOM.isPhxSticky(rootEl)){ view.setHref(this.getHref()) }
         view.join()
         if(rootEl.hasAttribute(PHX_MAIN)){ this.main = view }
       }
