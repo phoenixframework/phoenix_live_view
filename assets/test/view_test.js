@@ -1167,10 +1167,10 @@ describe("View + Component", function(){
     }
 
     view.onJoin({rendered: joinDiff, liveview_version})
-    expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
+    expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\" data-phx-view=\"container\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
 
     view.update(updateDiff, [])
-    expect(view.el.innerHTML.trim().replace("\n", "")).toBe("<h1 data-phx-id=\"m1-container\">1</h1><div data-phx-id=\"c0-container\" data-phx-component=\"0\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
+    expect(view.el.innerHTML.trim().replace("\n", "")).toBe("<h1 data-phx-id=\"m1-container\">1</h1><div data-phx-id=\"c0-container\" data-phx-component=\"0\" data-phx-view=\"container\" phx-click=\"show-rect\">Menu</div>\n<h2>2</h2>")
   })
 
   test("respects nested components", () => {
@@ -1190,7 +1190,7 @@ describe("View + Component", function(){
     }
 
     view.onJoin({rendered: joinDiff, liveview_version})
-    expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\">Hello</div><div data-phx-id=\"c1-container\" data-phx-component=\"1\">World</div>")
+    expect(view.el.innerHTML.trim()).toBe("<div data-phx-id=\"c0-container\" data-phx-component=\"0\" data-phx-view=\"container\">Hello</div><div data-phx-id=\"c1-container\" data-phx-component=\"1\" data-phx-view=\"container\">World</div>")
   })
 
   test("destroys children when they are removed by an update", () => {

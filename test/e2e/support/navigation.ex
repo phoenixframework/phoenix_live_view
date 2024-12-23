@@ -178,10 +178,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Dead do
   import Phoenix.Component, only: [sigil_H: 2]
 
   def index(conn, _params) do
-    assigns = %{}
-
-    conn
-    |> render(:index)
+    render(conn, :index)
   end
 end
 

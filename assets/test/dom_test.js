@@ -135,7 +135,7 @@ describe("DOM", () => {
   describe("findExistingParentCIDs", () => {
     test("returns only parent cids", () => {
       let view = tag("div", {}, `
-        <div data-phx-main="true"
+        <div id="foo" data-phx-main="true"
             data-phx-session="123"
             data-phx-static="456"
             id="phx-123"
@@ -145,35 +145,41 @@ describe("DOM", () => {
       `)
       document.body.appendChild(view)
 
-      view.appendChild(tag("div", {"data-phx-component": 1}, `
-        <div data-phx-component="2"></div>
+      view.appendChild(tag("div", {"data-phx-component": 1, "data-phx-view": "foo"}, `
+        <div data-phx-component="2" data-phx-view="foo"></div>
       `))
-      expect(DOM.findExistingParentCIDs(view, [1, 2])).toEqual(new Set([1]))
+      expect(DOM.findExistingParentCIDs("foo", [1, 2])).toEqual(new Set([1]))
 
-      view.appendChild(tag("div", {"data-phx-component": 1}, `
-        <div data-phx-component="2">
-          <div data-phx-component="3"></div>
+      view.appendChild(tag("div", {"data-phx-component": 1, "data-phx-view": "foo"}, `
+        <div data-phx-component="2" data-phx-view="foo">
+          <div data-phx-component="3" data-phx-view="foo"></div>
         </div>
       `))
-      expect(DOM.findExistingParentCIDs(view, [1, 2, 3])).toEqual(new Set([1]))
+      expect(DOM.findExistingParentCIDs("foo", [1, 2, 3])).toEqual(new Set([1]))
     })
   })
 
   describe("findComponentNodeList", () => {
     test("returns nodes with cid ID (except indirect children)", () => {
-      let component1 = tag("div", {"data-phx-component": 0}, "Hello")
-      let component2 = tag("div", {"data-phx-component": 0}, "World")
+      const view = tag("div", {"id": "foo"}, "")
+      let component1 = tag("div", {"data-phx-component": 0, "data-phx-view": "foo"}, "Hello")
+      let component2 = tag("div", {"data-phx-component": 0, "data-phx-view": "foo"}, "World")
       let component3 = tag("div", {"data-phx-session": "123"}, `
-        <div data-phx-component="0"></div>
+        <div data-phx-component="0" data-phx-view="123"></div>
       `)
-      document.body.appendChild(component1)
-      document.body.appendChild(component2)
-      document.body.appendChild(component3)
+      document.body.appendChild(view)
+      view.appendChild(component1)
+      view.appendChild(component2)
+      view.appendChild(component3)
 
-      expect(DOM.findComponentNodeList(document, 0)).toEqual([component1, component2])
+      expect(DOM.findComponentNodeList("foo", 0, document)).toEqual([component1, component2])
     })
 
     test("returns empty list with no matching cid", () => {
+      const view = tag("div", {"id": "foo"}, "")
+      let component1 = tag("div", {"data-phx-component": 0, "data-phx-view": "foo"}, "Hello")
+      document.body.appendChild(view)
+      view.appendChild(component1)
       expect(DOM.findComponentNodeList(document, 123)).toEqual([])
     })
   })

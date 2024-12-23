@@ -70,8 +70,6 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Issue3496.BLive do
   use Phoenix.LiveView
 
-  alias Phoenix.LiveView.JS
-
   def mount(_params, _session, socket) do
     {:ok, socket, layout: {Phoenix.LiveViewTest.E2E.Issue3496.ALive, :without_sticky}}
   end
