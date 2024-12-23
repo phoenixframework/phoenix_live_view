@@ -467,7 +467,7 @@ let DOM = {
   isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 },
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
-    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
+    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null && document.body.contains(el)
   },
 
   cleanChildNodes(container, phxUpdate){
