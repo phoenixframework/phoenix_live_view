@@ -20,7 +20,13 @@ defmodule Phoenix.LiveView.LiveStream do
             "stream :dom_id must return a function which accepts each item, got: #{inspect(dom_id)}"
     end
 
-    items_list = for item <- items, do: {dom_id.(item), -1, item, opts[:limit]}
+    # We need to go through the items one time to map them into the proper insert tuple format.
+    # Conveniently, we reverse the list in this pass, which we need to in order to be consistent
+    # with manually calling stream_insert multiple times, as stream_insert prepends.
+    items_list =
+      for item <- items, reduce: [] do
+        items -> [{dom_id.(item), -1, item, opts[:limit]} | items]
+      end
 
     %LiveStream{
       ref: ref,
@@ -61,7 +67,7 @@ defmodule Phoenix.LiveView.LiveStream do
   def insert_item(%LiveStream{} = stream, item, at, limit) do
     item_id = stream.dom_id.(item)
 
-    %{stream | inserts: stream.inserts ++ [{item_id, at, item, limit}]}
+    %{stream | inserts: [{item_id, at, item, limit} | stream.inserts]}
   end
 
   defimpl Enumerable, for: LiveStream do
@@ -69,8 +75,22 @@ defmodule Phoenix.LiveView.LiveStream do
 
     def member?(%LiveStream{}, _item), do: raise(RuntimeError, "not implemented")
 
-    def reduce(%LiveStream{inserts: inserts} = stream, acc, fun) do
+    def reduce(%LiveStream{} = stream, acc, fun) do
       if stream.consumable? do
+        # the inserts are stored in reverse insert order, so we need to reverse them
+        # before rendering; we also remove duplicates to only use the most recent
+        # inserts, which, as the items are reversed, are first
+        {inserts, _} =
+          for {id, _, _, _} = insert <- stream.inserts, reduce: {[], MapSet.new()} do
+            {inserts, ids} ->
+              if MapSet.member?(ids, id) do
+                # skip duplicates
+                {inserts, ids}
+              else
+                {[insert | inserts], MapSet.put(ids, id)}
+              end
+          end
+
         do_reduce(inserts, acc, fun)
       else
         raise ArgumentError, """
