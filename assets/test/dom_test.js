@@ -181,9 +181,15 @@ describe("DOM", () => {
   test("isNowTriggerFormExternal", () => {
     let form
     form = tag("form", {"phx-trigger-external": ""}, "")
+    document.body.appendChild(form)
     expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(true)
 
     form = tag("form", {}, "")
+    document.body.appendChild(form)
+    expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(false)
+
+    // not in the DOM -> false
+    form = tag("form", {"phx-trigger-external": ""}, "")
     expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(false)
   })
 
