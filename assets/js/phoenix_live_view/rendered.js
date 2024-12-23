@@ -4,6 +4,7 @@ import {
   TEMPLATES,
   EVENTS,
   PHX_COMPONENT,
+  PHX_VIEW_REF,
   PHX_SKIP,
   PHX_MAGIC_ID,
   REPLY,
@@ -382,7 +383,7 @@ export default class Rendered {
 
   recursiveCIDToString(components, cid, onlyCids){
     let component = components[cid] || logError(`no component for CID ${cid}`, components)
-    let attrs = {[PHX_COMPONENT]: cid}
+    let attrs = {[PHX_COMPONENT]: cid, [PHX_VIEW_REF]: this.viewId}
     let skip = onlyCids && !onlyCids.has(cid)
     // Two optimization paths apply here:
     //

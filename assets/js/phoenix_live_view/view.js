@@ -185,6 +185,7 @@ export default class View {
         sticky: this.el.hasAttribute(PHX_STICKY)
       }
     })
+    this.portalElementIds = []
   }
 
   setHref(href){ this.href = href }
@@ -222,6 +223,7 @@ export default class View {
 
   destroy(callback = function (){ }){
     this.destroyAllChildren()
+    this.destroyPortalElements()
     this.destroyed = true
     delete this.root.children[this.id]
     if(this.parent){ delete this.root.children[this.parent.id][this.id] }
@@ -292,7 +294,7 @@ export default class View {
   //  * a CID (Component ID), then we first search the component's element in the DOM
   //  * a selector, then we search the selector in the DOM and call the callback
   //    for each element found with the corresponding owner view
-  withinTargets(phxTarget, callback, dom = document, viewEl){
+  withinTargets(phxTarget, callback, dom = document){
     // in the form recovery case we search in a template fragment instead of
     // the real dom, therefore we optionally pass dom and viewEl
 
@@ -301,7 +303,7 @@ export default class View {
     }
 
     if(isCid(phxTarget)){
-      let targets = DOM.findComponentNodeList(viewEl || this.el, phxTarget)
+      let targets = DOM.findComponentNodeList(this.id, phxTarget, dom)
       if(targets.length === 0){
         logError(`no component found matching phx-target of ${phxTarget}`)
       } else {
@@ -411,24 +413,24 @@ export default class View {
   // by owner to ensure we aren't duplicating hooks across disconnect
   // and connected states. This also handles cases where hooks exist
   // in a root layout with a LV in the body
-  execNewMounted(parent = this.el){
+  execNewMounted(parent=document){
     let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
-    DOM.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
-      if(this.ownsElement(hookEl)){
-        DOM.maintainPrivateHooks(hookEl, hookEl, phxViewportTop, phxViewportBottom)
-        this.maybeAddNewHook(hookEl)
-      }
+    this.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
+      DOM.maintainPrivateHooks(hookEl, hookEl, phxViewportTop, phxViewportBottom)
+      this.maybeAddNewHook(hookEl)
     })
-    DOM.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
-      if(this.ownsElement(hookEl)){
-        this.maybeAddNewHook(hookEl)
-      }
+    this.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
+      this.maybeAddNewHook(hookEl)
     })
-    DOM.all(parent, `[${this.binding(PHX_MOUNTED)}]`, el => {
-      if(this.ownsElement(el)){
-        this.maybeMounted(el)
-      }
+    this.all(parent, `[${this.binding(PHX_MOUNTED)}]`, el => {
+      this.maybeMounted(el)
+    })
+  }
+
+  all(parent, selector, callback){
+    DOM.all(parent, selector, el => {
+      if(this.ownsElement(el)){ callback(el) }
     })
   }
 
@@ -545,7 +547,7 @@ export default class View {
   }
 
   joinNewChildren(){
-    DOM.findPhxChildren(this.el, this.id).forEach(el => this.joinChild(el))
+    DOM.findPhxChildren(document, this.id).forEach(el => this.joinChild(el))
   }
 
   maybeRecoverForms(html, callback){
@@ -676,7 +678,7 @@ export default class View {
     // Otherwise, patch entire LV container.
     if(this.rendered.isComponentOnlyDiff(diff)){
       this.liveSocket.time("component patch complete", () => {
-        let parentCids = DOM.findExistingParentCIDs(this.el, this.rendered.componentCIDs(diff))
+        let parentCids = DOM.findExistingParentCIDs(this.id, this.rendered.componentCIDs(diff))
         parentCids.forEach(parentCID => {
           if(this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID)){ phxChildrenAdded = true }
         })
@@ -1443,7 +1445,7 @@ export default class View {
 
   targetCtxElement(targetCtx){
     if(isCid(targetCtx)){
-      let [target] = DOM.findComponentNodeList(this.el, targetCtx)
+      let [target] = DOM.findComponentNodeList(this.id, targetCtx)
       return target
     } else if(targetCtx){
       return targetCtx
@@ -1485,7 +1487,7 @@ export default class View {
           if(pending === 0){ callback() }
         }
       }])
-    }, templateDom, templateDom)
+    }, templateDom)
   }
 
   pushLinkPatch(e, href, targetEl, callback){
@@ -1533,7 +1535,7 @@ export default class View {
 
   maybePushComponentsDestroyed(destroyedCIDs){
     let willDestroyCIDs = destroyedCIDs.filter(cid => {
-      return DOM.findComponentNodeList(this.el, cid).length === 0
+      return DOM.findComponentNodeList(this.id, cid).length === 0
     })
 
     if(willDestroyCIDs.length > 0){
@@ -1548,7 +1550,7 @@ export default class View {
           // See if any of the cids we wanted to destroy were added back,
           // if they were added back, we don't actually destroy them.
           let completelyDestroyCIDs = willDestroyCIDs.filter(cid => {
-            return DOM.findComponentNodeList(this.el, cid).length === 0
+            return DOM.findComponentNodeList(this.id, cid).length === 0
           })
 
           if(completelyDestroyCIDs.length > 0){
@@ -1562,7 +1564,7 @@ export default class View {
   }
 
   ownsElement(el){
-    let parentViewEl = el.closest(PHX_VIEW_SELECTOR)
+    let parentViewEl = DOM.closestViewEl(el)
     return el.getAttribute(PHX_PARENT_ID) === this.id ||
       (parentViewEl && parentViewEl.id === this.id) ||
       (!parentViewEl && this.isDead)
@@ -1579,4 +1581,14 @@ export default class View {
   }
 
   binding(kind){ return this.liveSocket.binding(kind) }
+
+  // phx-portal
+  pushPortalElement(id){ this.portalElementIds.push(id) }
+
+  destroyPortalElements(){
+    this.portalElementIds.forEach(id => {
+      const el = document.getElementById(id)
+      if(el){ el.remove()}
+    })
+  }
 }

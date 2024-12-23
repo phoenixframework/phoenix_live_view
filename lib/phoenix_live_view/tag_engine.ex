@@ -1279,14 +1279,14 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp validate_tag_attrs!(_attrs, _meta, _state), do: :ok
 
-  # Check if `phx-update` or `phx-hook` is present in attrs and raises in case
+  # Check if `phx-update`, `phx-hook` or `phx-portal` is present in attrs and raises in case
   # there is no ID attribute set.
   defp validate_phx_attrs!(attrs, meta, state) do
     validate_phx_attrs!(attrs, meta, state, nil, false)
   end
 
   defp validate_phx_attrs!([], meta, state, attr, false)
-       when attr in ["phx-update", "phx-hook"] do
+       when attr in ["phx-update", "phx-hook", "phx-portal"] do
     message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
 
     raise_syntax_error!(message, meta, state)
@@ -1298,6 +1298,19 @@ defmodule Phoenix.LiveView.TagEngine do
   # might be inserted dynamically so we can't raise at compile time.
   defp validate_phx_attrs!([{:root, _, _} | t], meta, state, attr, _id?),
     do: validate_phx_attrs!(t, meta, state, attr, true)
+
+  defp validate_phx_attrs!(
+         [{"phx-portal", _, _} | _t],
+         %{tag_name: tag_name} = meta,
+         state,
+         _attr,
+         _id?
+       )
+       when tag_name != "template" do
+    message = "\"phx-portal\" is only allowed on <template> tags"
+
+    raise_syntax_error!(message, meta, state)
+  end
 
   defp validate_phx_attrs!([{"id", _, _} | t], meta, state, attr, _id?),
     do: validate_phx_attrs!(t, meta, state, attr, true)
@@ -1337,6 +1350,9 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp validate_phx_attrs!([{"phx-hook", _, _} | t], meta, state, _attr, id?),
     do: validate_phx_attrs!(t, meta, state, "phx-hook", id?)
+
+  defp validate_phx_attrs!([{"phx-portal", _, _} | t], meta, state, _attr, id?),
+    do: validate_phx_attrs!(t, meta, state, "phx-portal", id?)
 
   defp validate_phx_attrs!([{special, value, attr_meta} | t], meta, state, attr, id?)
        when special in ~w(:if :for) do

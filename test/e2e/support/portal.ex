@@ -3,26 +3,38 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
 
   alias Phoenix.LiveView.JS
 
+  def render("root.html", assigns) do
+    ~H"""
+    <!DOCTYPE html>
+    <head>
+      <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
+      <script src="https://cdn.tailwindcss.com/3.4.3">
+      </script>
+      <script src="/assets/phoenix/phoenix.min.js">
+      </script>
+      <script type="module">
+        import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
+        let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+        let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+        liveSocket.connect()
+        window.liveSocket = liveSocket
+      </script>
+    </head>
+
+    <body>
+      <main style="flex: 1; padding: 2rem;">
+        {@inner_content}
+      </main>
+      <div id="root-portal"></div>
+    </body>
+    """
+  end
+
   def render("live.html", assigns) do
     ~H"""
-    <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
-    <script src="https://cdn.tailwindcss.com/3.4.3">
-    </script>
-    <script src="/assets/phoenix/phoenix.min.js">
-    </script>
-    <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
-      liveSocket.connect()
-      window.liveSocket = liveSocket
-    </script>
+    {@inner_content}
 
     <div id="portal-target"></div>
-
-    <main style="margin-left: 22rem; flex: 1; padding: 2rem;">
-      <%= @inner_content %>
-    </main>
     """
   end
 
@@ -36,6 +48,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
     socket
     |> assign(:param_current, nil)
     |> assign(:count, 0)
+    |> assign(:render_modal, true)
     |> then(&{:ok, &1, layout: {__MODULE__, :live}})
   end
 
@@ -59,32 +72,45 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
     {:noreply, assign(socket, :count, socket.assigns.count + 1)}
   end
 
+  def handle_event("toggle_modal", _params, socket) do
+    {:noreply, assign(socket, :render_modal, !socket.assigns.render_modal)}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <h1>Modal example</h1>
 
-    <p>Current param: <%= @param_current %></p>
+    <p>Current param: {@param_current}</p>
 
     <.button phx-click={JS.patch("/portal?param=#{@param_next}")}>Patch this LiveView</.button>
 
     <.button phx-click={show_modal("my-modal")}>Open modal</.button>
+    <.button phx-click="toggle_modal">Toggle modal render</.button>
     <.button phx-click={show_modal("my-modal-2")}>Open second modal</.button>
     <.button phx-click={JS.push("tick")}>Tick</.button>
 
-    <div id="portal-source" phx-portal="portal-target">
+    <.button phx-click={JS.navigate("/form")}>Live navigate</.button>
+
+    <template :if={@render_modal} id="portal-source" phx-portal="root-portal">
       <.modal id="my-modal">
         This is a modal.
-        <p>DOM patching works as expected: <%= @count %></p>
+        <p>DOM patching works as expected: {@count}</p>
         <.button phx-click={JS.patch("/portal?param=#{@param_next}")}>Patch this LiveView</.button>
       </.modal>
-    </div>
+    </template>
 
-    <div id="portal-source-2" phx-portal="portal-target">
+    <template id="portal-source-2" phx-portal="portal-target">
       <.modal id="my-modal-2">
         This is a second modal.
       </.modal>
-    </div>
+    </template>
+
+    <template id="portal-with-live-component" phx-portal="root-portal">
+      <.live_component module={Phoenix.LiveViewTest.E2E.PortalLive.LC} id="lc" />
+    </template>
+
+    {live_render(@socket, Phoenix.LiveViewTest.E2E.PortalLive.NestedLive, id: "nested")}
     """
   end
 
@@ -105,7 +131,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       ]}
       {@rest}
     >
-      <%= render_slot(@inner_block) %>
+      {render_slot(@inner_block)}
     </button>
     """
   end
@@ -153,7 +179,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
                 </button>
               </div>
               <div id={"#{@id}-content"}>
-                <%= render_slot(@inner_block) %>
+                {render_slot(@inner_block)}
               </div>
             </.focus_wrap>
           </div>
@@ -207,5 +233,85 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         {"transition-all ease-in duration-200", "opacity-100 translate-y-0 sm:scale-100",
          "opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"}
     )
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.PortalLive.NestedLive do
+  use Phoenix.LiveView
+
+  def handle_event("event", _params, socket) do
+    IO.puts("Nested LV got event!")
+    {:noreply, socket}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div class="border border-orange-200">
+      <h1>Nested LiveView</h1>
+
+      <button phx-click="event">Toggle event in nested LV</button>
+
+      <template id="nested-tpl" phx-portal="portal-target">
+        <div id="button-from-nested-lv">
+          <button phx-click="event">Toggle event in nested LV (from teleported button)</button>
+        </div>
+      </template>
+
+      <template id="teleported-nested-lv" phx-portal="portal-target">
+        <div id="nested-lv-container">
+          {live_render(@socket, Phoenix.LiveViewTest.E2E.PortalLive.NestedTeleportedLive,
+            id: "nested-teleported"
+          )}
+        </div>
+      </template>
+    </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.PortalLive.NestedTeleportedLive do
+  use Phoenix.LiveView
+
+  def handle_event("event", _params, socket) do
+    IO.puts("Nested teleported LV got event!")
+    {:noreply, socket}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div class="border border-green-200">
+      <h1>Nested teleport LiveView</h1>
+      <button phx-click="event">Toggle event in teleported LV</button>
+    </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.PortalLive.LC do
+  use Phoenix.LiveComponent
+
+  def update(assigns, socket) do
+    {:ok, stream(socket, :items, [%{id: 1, name: "Item 1"}, %{id: 2, name: "Item 2"}])}
+  end
+
+  def handle_event("prepend", _params, socket) do
+    rand = 1000 + floor(:rand.uniform() * 1000)
+    {:noreply, stream_insert(socket, :items, %{id: rand, name: "Item #{rand}"}, at: 0)}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div id="teleported-lc" class="border border-red-200">
+      <h1>LiveComponent</h1>
+
+      <ul id="stream-in-lc" phx-update="stream">
+        <li :for={{id, item} <- @streams.items} id={id}>
+          {item.name}
+        </li>
+      </ul>
+
+      <button phx-click="prepend" phx-target={@myself}>Prepend item</button>
+    </div>
+    """
   end
 end
