@@ -125,6 +125,7 @@ generated user module:
 * Deduplicate items on `stream/4` / `steam_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
 * Restore scroll position on initial navigation ([#3572](https://github.com/phoenixframework/phoenix_live_view/pull/3572))
 * Change-track non existing keys in maps ([#3584](https://github.com/phoenixframework/phoenix_live_view/pull/3584))
+* Only warn instead of raising when detecting a duplicate ID in LiveViewTest ([#3603](https://github.com/phoenixframework/phoenix_live_view/pull/3603))
 
 ## 1.0.1 (2024-12-13)
 
