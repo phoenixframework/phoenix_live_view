@@ -700,7 +700,7 @@ var DOM = {
     return FOCUSABLE_INPUTS.indexOf(el.type) >= 0;
   },
   isNowTriggerFormExternal(el, phxTriggerExternal) {
-    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null;
+    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null && document.body.contains(el);
   },
   cleanChildNodes(container, phxUpdate) {
     if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
@@ -1915,6 +1915,7 @@ var DOMPatch = class {
     let focused = liveSocket.getActiveElement();
     let { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
     let phxUpdate = liveSocket.binding(PHX_UPDATE);
+    let externalFormTriggered = null;
     morphdom_esm_default(container, clonedTree, {
       childrenOnly: false,
       onBeforeElUpdated: (fromEl, toEl) => {
@@ -1929,8 +1930,15 @@ var DOMPatch = class {
           dom_default.mergeFocusedInput(fromEl, toEl);
           return false;
         }
+        if (dom_default.isNowTriggerFormExternal(toEl, liveSocket.binding(PHX_TRIGGER_ACTION))) {
+          externalFormTriggered = toEl;
+        }
       }
     });
+    if (externalFormTriggered) {
+      liveSocket.unload();
+      Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered);
+    }
     liveSocket.silenceEvents(() => dom_default.restoreFocus(focused, selectionStart, selectionEnd));
   }
   constructor(view, container, id, html, streams, targetCID) {
