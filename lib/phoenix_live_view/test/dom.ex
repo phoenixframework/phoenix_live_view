@@ -44,16 +44,18 @@ defmodule Phoenix.LiveViewTest.DOM do
     case Floki.attribute(node, "id") do
       [id] ->
         if MapSet.member?(ids, id) do
-          raise """
-          Duplicate id found: #{id}
+          IO.warn("""
+          Duplicate id found while testing LiveView: #{id}
+
+          #{inspect_html(node)}
 
           LiveView requires that all elements have unique ids, duplicate IDs will cause
           undefined behavior at runtime, as DOM patching will not be able to target the correct
           elements.
-          """
-        else
-          detect_duplicate_ids(children, MapSet.put(ids, id))
+          """)
         end
+
+        detect_duplicate_ids(children, MapSet.put(ids, id))
 
       _ ->
         detect_duplicate_ids(children, ids)
