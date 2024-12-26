@@ -30,6 +30,7 @@ export default class DOMPatch {
     let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
+    let externalFormTriggered = null
 
     morphdom(container, clonedTree, {
       childrenOnly: false,
@@ -42,8 +43,18 @@ export default class DOMPatch {
           DOM.mergeFocusedInput(fromEl, toEl)
           return false
         }
+        if(DOM.isNowTriggerFormExternal(toEl, liveSocket.binding(PHX_TRIGGER_ACTION))){
+          externalFormTriggered = toEl
+        }
       }
     })
+
+    if(externalFormTriggered){
+      liveSocket.unload()
+      // use prototype's submit in case there's a form control with name or id of "submit"
+      // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
+      Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered)
+    }
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
   }
@@ -228,7 +239,7 @@ export default class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          // If the element has  PHX_REF_SRC, it is loading or locked and awaiting an ack.
+          // If the element has PHX_REF_SRC, it is loading or locked and awaiting an ack.
           // If it's locked, we clone the fromEl tree and instruct morphdom to use
           // the cloned tree as the source of the morph for this branch from here on out.
           // We keep a reference to the cloned tree in the element's private data, and
