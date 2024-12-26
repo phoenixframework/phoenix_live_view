@@ -112,6 +112,18 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.2
+
+### Bug fixes
+* Fix inconsistency between `mix format` and `mix format --check-formatted` with new curly interpolation syntax ([#3590](https://github.com/phoenixframework/phoenix_live_view/issues/3590))
+* Fix unnecessary compile time dependencies when using `attr` / `on_mount` / `live` ([#3592](https://github.com/phoenixframework/phoenix_live_view/issues/3592))
+* Fix crash when testing LiveViews with embedded XML (e.g. SVGs) ([#3594](https://github.com/phoenixframework/phoenix_live_view/issues/3594))
+* Fix type warning when using `follow_redirect` ([#3581](https://github.com/phoenixframework/phoenix_live_view/issues/3581))
+
+### Enhancements
+* Deduplicate items on `stream/4` / `steam_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
+* Restore scroll position on initial navigation ([#3572](https://github.com/phoenixframework/phoenix_live_view/pull/3572))
+
 ## 1.0.1 (2024-12-13)
 
 ### Bug fixes
