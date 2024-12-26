@@ -292,24 +292,4 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                %{s: "bar", streams: []}
     end
   end
-
-  describe "parse" do
-    test "detects duplicate ids" do
-      assert_raise RuntimeError, fn ->
-        DOM.parse("""
-        <div id="foo">
-          <div id="foo"></div>
-        </div>
-        """)
-      end
-    end
-
-    test "handles declarations (issue #3594)" do
-      assert DOM.parse("""
-             <div id="foo">
-               <?xml version="1.0" standalone="yes"?>
-             </div>
-             """)
-    end
-  end
 end

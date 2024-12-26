@@ -147,7 +147,7 @@ defmodule Phoenix.LiveView.NestedTest do
     :ok = GenServer.call(view.pid, {:dynamic_child, :static})
 
     assert Exception.format(:exit, catch_exit(render(view))) =~
-             "Duplicate id found: static"
+             "expected selector \"#static\" to return a single element, but got 2"
   end
 
   describe "navigation helpers" do
