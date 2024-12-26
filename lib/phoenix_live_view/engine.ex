@@ -153,10 +153,6 @@ defmodule Phoenix.LiveView.Rendered do
       Phoenix.HTML.Safe.to_iodata(struct)
     end
 
-    def to_iodata(nil) do
-      raise "cannot convert .heex/.leex template with change tracking to iodata"
-    end
-
     def to_iodata(other) do
       other
     end
