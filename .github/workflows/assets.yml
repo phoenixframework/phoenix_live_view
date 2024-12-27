@@ -10,8 +10,8 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     env:
-      elixir: 1.17.2
-      otp: 27.0
+      elixir: 1.18.1
+      otp: 27.2
     steps:
       - name: Checkout
         uses: actions/checkout@v4
