@@ -2791,7 +2791,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let pushOpts = { loading, value, target, page_loading: !!page_loading };
       let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
       let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
-      view.withinTargets(phxTarget, (targetView, targetCtx) => {
+      const handler = (targetView, targetCtx) => {
         if (!targetView.isConnected()) {
           return;
         }
@@ -2808,7 +2808,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         } else {
           targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts, callback);
         }
-      });
+      };
+      if (args.targetView && args.targetCtx) {
+        handler(args.targetView, args.targetCtx);
+      } else {
+        view.withinTargets(phxTarget, handler);
+      }
     },
     exec_navigate(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
       view.liveSocket.historyRedirect(e, href, replace ? "replace" : "push", null, sourceEl);
@@ -4621,12 +4626,19 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.withinTargets(phxTarget, (targetView, targetCtx) => {
         const cid = this.targetComponentID(newForm, targetCtx);
         pending++;
-        targetView.pushInput(input, targetCtx, cid, phxEvent, { _target: input.name }, () => {
-          pending--;
-          if (pending === 0) {
-            callback();
+        let e = new CustomEvent("phx:form-recovery", { detail: { sourceElement: oldForm } });
+        js_default.exec(e, "change", phxEvent, this, input, ["push", {
+          _target: input.name,
+          targetView,
+          targetCtx,
+          newCid: cid,
+          callback: () => {
+            pending--;
+            if (pending === 0) {
+              callback();
+            }
           }
-        });
+        }]);
       }, templateDom, templateDom);
     }
     pushLinkPatch(e, href, targetEl, callback) {
