@@ -120,6 +120,7 @@ generated user module:
 * Fix crash when testing LiveViews with embedded XML (e.g. SVGs) ([#3594](https://github.com/phoenixframework/phoenix_live_view/issues/3594))
 * Fix type warning when using `follow_redirect` ([#3581](https://github.com/phoenixframework/phoenix_live_view/issues/3581))
 * Prevent `phx-trigger-action` from clashing with locked forms ([#3591](https://github.com/phoenixframework/phoenix_live_view/issues/3591))
+* Fix form recovery sending wrong event name when using JS commands in `phx-change` ([#3607](https://github.com/phoenixframework/phoenix_live_view/issues/3607))
 
 ### Enhancements
 * Deduplicate items on `stream/4` / `steam_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
