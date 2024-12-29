@@ -84,6 +84,10 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
     update(socket, :params, &Map.delete(&1, "phx-change"))
   end
 
+  def update_params(socket, %{"js-change" => _}) do
+    update(socket, :params, &Map.put(&1, "phx-change", JS.push("validate")))
+  end
+
   def update_params(socket, _), do: socket
 
   @impl Phoenix.LiveView

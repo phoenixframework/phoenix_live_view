@@ -54,6 +54,7 @@ import DOMPatch from "./dom_patch"
 import LiveUploader from "./live_uploader"
 import Rendered from "./rendered"
 import ViewHook from "./view_hook"
+import JS from "./js"
 
 export let prependFormDataKey = (key, prefix) => {
   let isArray = key.endsWith("[]")
@@ -1413,10 +1414,17 @@ export default class View {
     this.withinTargets(phxTarget, (targetView, targetCtx) => {
       const cid = this.targetComponentID(newForm, targetCtx)
       pending++
-      targetView.pushInput(input, targetCtx, cid, phxEvent, {_target: input.name}, () => {
-        pending--
-        if(pending === 0){ callback() }
-      })
+      let e = new CustomEvent("phx:form-recovery", {detail: {sourceElement: oldForm}})
+      JS.exec(e, "change", phxEvent, this, input, ["push", {
+        _target: input.name,
+        targetView,
+        targetCtx,
+        newCid: cid,
+        callback: () => {
+          pending--
+          if(pending === 0){ callback() }
+        }
+      }])
     }, templateDom, templateDom)
   }
 
