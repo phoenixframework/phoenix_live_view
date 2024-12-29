@@ -110,6 +110,23 @@ for(let path of ["/form/nested", "/form"]){
         ]))
       })
 
+      test("JS command in phx-change works during recovery", async ({page}) => {
+        await page.goto(path + "?" + additionalParams + "&js-change=1")
+        await syncLV(page)
+
+        await page.locator("input[name=b]").fill("test")
+        await expect(page.locator("form")).toHaveAttribute("phx-change", /push/)
+        await syncLV(page)
+
+        await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)))
+        await expect(page.locator(".phx-loading")).toHaveCount(1)
+
+        await page.evaluate(() => window.liveSocket.connect())
+        await syncLV(page)
+        await expect(page.locator(".phx-loading")).toHaveCount(0)
+        await expect(page.locator("input[name=b]")).toHaveValue("test")
+      })
+
       test("does not recover when form is missing id", async ({page}) => {
         await page.goto(`${path}?no-id&${additionalParams}`)
         await syncLV(page)

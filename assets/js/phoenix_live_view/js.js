@@ -65,7 +65,7 @@ let JS = {
     let pushOpts = {loading, value, target, page_loading: !!page_loading}
     let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
     let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
-    view.withinTargets(phxTarget, (targetView, targetCtx) => {
+    const handler = (targetView, targetCtx) => {
       if(!targetView.isConnected()){ return }
       if(eventType === "change"){
         let {newCid, _target} = args
@@ -78,7 +78,14 @@ let JS = {
       } else {
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts, callback)
       }
-    })
+    }
+    // in case of formRecovery, targetView and targetCtx are passed as argument
+    // as they are looked up in a template element, not the real DOM
+    if(args.targetView && args.targetCtx){
+      handler(args.targetView, args.targetCtx)
+    } else {
+      view.withinTargets(phxTarget, handler)
+    }
   },
 
   exec_navigate(e, eventType, phxEvent, view, sourceEl, el, {href, replace}){
