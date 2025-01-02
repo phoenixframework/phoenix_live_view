@@ -108,14 +108,14 @@ defmodule Phoenix.LiveView.Tokenizer do
          {:close, :tag, "section", %{column: 16, line: 1}},
          {:tag, "div", [], %{column: 10, line: 1, closing: :self}},
          {:tag, "section", [], %{column: 1, line: 1}}
-       ], :text}
+       ], {:text, :enabled}}
   """
   def tokenize(text, meta, tokens, cont, state) do
     line = Keyword.get(meta, :line, 1)
     column = Keyword.get(meta, :column, 1)
 
     case cont do
-      :text -> handle_text(text, line, column, [], tokens, state)
+      {:text, braces} -> handle_text(text, line, column, [], tokens, %{state | braces: braces})
       :style -> handle_style(text, line, column, [], tokens, state)
       :script -> handle_script(text, line, column, [], tokens, state)
       {:comment, _, _} -> handle_comment(text, line, column, [], tokens, state)
@@ -175,7 +175,7 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp handle_text(<<>>, line, column, buffer, acc, state) do
-    ok(text_to_acc(buffer, acc, line, column, state.context), :text)
+    ok(text_to_acc(buffer, acc, line, column, state.context), {:text, state.braces})
   end
 
   ## handle_doctype

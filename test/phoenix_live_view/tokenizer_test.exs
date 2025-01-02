@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
   defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Phoenix.LiveView.HTMLEngine)
 
   defp tokenize(text) do
-    Tokenizer.tokenize(text, [], [], :text, tokenizer_state(text))
+    Tokenizer.tokenize(text, [], [], {:text, :enabled}, tokenizer_state(text))
     |> elem(0)
     |> Enum.reverse()
   end
@@ -98,7 +98,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {first_tokens, cont} =
-        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
+        Tokenizer.tokenize(first_part, [], [], {:text, :enabled}, tokenizer_state(first_part))
 
       second_part = """
       </div>
@@ -109,7 +109,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </div>
       """
 
-      {tokens, :text} =
+      {tokens, {:text, :enabled}} =
         Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       assert Enum.reverse(tokens) == [
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {first_tokens, cont} =
-        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
+        Tokenizer.tokenize(first_part, [], [], {:text, :enabled}, tokenizer_state(first_part))
 
       second_part = """
       -->
@@ -158,7 +158,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </p>
       """
 
-      {tokens, :text} =
+      {tokens, {:text, :enabled}} =
         Tokenizer.tokenize(third_part, [], second_tokens, cont, tokenizer_state(third_part))
 
       assert Enum.reverse(tokens) == [

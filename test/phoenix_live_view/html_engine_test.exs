@@ -113,6 +113,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
            """) == "Hello <div>world!</div>"
   end
 
+  test "handles phx-no-curly-interpolation" do
+    assert render("""
+           <div phx-no-curly-interpolation>{open}<%= :eval %>{close}</div>
+           """) == "<div>{open}eval{close}</div>"
+
+    assert render("""
+           <div phx-no-curly-interpolation>{open}{<%= :eval %>}{close}</div>
+           """) == "<div>{open}{eval}{close}</div>"
+  end
+
   test "handles string attributes" do
     assert render("""
            Hello <div name="my name" phone="111">text</div>
