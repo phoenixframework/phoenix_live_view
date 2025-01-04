@@ -18,12 +18,15 @@ except for the following LiveView specific options:
   * `params` - the `connect_params` to pass to the view's mount callback. May be
     a literal object or closure returning an object. When a closure is provided,
     the function receives the view's element.
-  * `hooks` – a reference to a user-defined hooks namespace, containing client
+  * `hooks` - a reference to a user-defined hooks namespace, containing client
     callbacks for server/client interop. See the [Client hooks](#client-hooks-via-phx-hook)
     section below for details.
-  * `uploaders` – a reference to a user-defined uploaders namespace, containing
+  * `uploaders` - a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
     [External uploads guide](external-uploads.md) for details.
+  * `metadata` - additional user-defined metadata that is sent along events to the server.
+    See the [Key events](bindings.html#key-events) section in the bindings guide
+    for an example.
 
 ## Debugging client events
 
