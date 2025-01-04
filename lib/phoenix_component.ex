@@ -613,10 +613,9 @@ defmodule Phoenix.Component do
     For example, `<input required={true}>` is the same as `<input required>`;
 
   * `false` or `nil` - if a value is `false` or `nil`, the attribute is omitted.
-    Some attributes may be rendered with an empty value, for optimization
-    purposes, if it has the same effect as omitting. For example,
-    `<checkbox checked={false}>` renders to `<checkbox>` while,
-    `<div class={false}>` renders to `<div class="">`;
+    Note the `class` and `style` attributes in regular HTML tags will be rendered
+    as empty strings, instead of ommitted, which has the same effect and allows
+    for rendering optimizations.
 
   * `list` (only for the `class` attribute) - each element of the list is processed
     as a different class. `nil` and `false` elements are discarded.
