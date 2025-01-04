@@ -265,6 +265,10 @@ export default class LiveSocket {
     this.transitions.after(callback);
   }
 
+  asyncTransition(promise) {
+    this.transitions.addAsyncTransition(promise);
+  }
+
   transition(time, onStart, onDone = function () {}) {
     this.transitions.addTransition(time, onStart, onDone);
   }
@@ -1206,6 +1210,7 @@ export default class LiveSocket {
 class TransitionSet {
   constructor() {
     this.transitions = new Set();
+    this.promises = new Set();
     this.pendingOps = [];
   }
 
@@ -1214,6 +1219,7 @@ class TransitionSet {
       clearTimeout(timer);
       this.transitions.delete(timer);
     });
+    this.promises.clear();
     this.flushPendingOps();
   }
 
@@ -1235,12 +1241,29 @@ class TransitionSet {
     this.transitions.add(timer);
   }
 
+  addAsyncTransition(promise) {
+    this.promises.add(promise);
+    promise.then(() => {
+      this.promises.delete(promise);
+      this.flushPendingOps();
+    });
+  }
+
+  addAsyncTransition(promise) {
+    this.promises.add(promise);
+    promise.then(() => {
+      this.promises.delete(promise);
+      this.flushPendingOps();
+    });
+  }
+
   pushPendingOp(op) {
     this.pendingOps.push(op);
   }
 
   size() {
     return this.transitions.size;
+    +this.promises.size;
   }
 
   flushPendingOps() {

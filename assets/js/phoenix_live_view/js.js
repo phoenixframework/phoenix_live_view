@@ -71,10 +71,16 @@ const JS = {
     view,
     sourceEl,
     el,
-    { event, detail, bubbles },
+    { event, detail, bubbles, blocking },
   ) {
     detail = detail || {};
     detail.dispatcher = sourceEl;
+    if (blocking) {
+      const promise = new Promise((resolve, _reject) => {
+        detail.done = resolve;
+      });
+      view.liveSocket.asyncTransition(promise);
+    }
     DOM.dispatchEvent(el, event, { detail, bubbles });
   },
 
