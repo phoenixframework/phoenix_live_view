@@ -607,15 +607,15 @@ defmodule Phoenix.Component do
   </div>
   ```
 
-  The following attribute values have special meaning:
+  The following attribute values have special meaning on HTML tags:
 
   * `true` - if a value is `true`, the attribute is rendered with no value at all.
     For example, `<input required={true}>` is the same as `<input required>`;
 
   * `false` or `nil` - if a value is `false` or `nil`, the attribute is omitted.
-    Note the `class` and `style` attributes in regular HTML tags will be rendered
-    as empty strings, instead of ommitted, which has the same effect and allows
-    for rendering optimizations.
+    Note the `class` and `style` attributes will be rendered as empty strings,
+    instead of ommitted, which has the same effect as not rendering them, but
+    allows for rendering optimizations.
 
   * `list` (only for the `class` attribute) - each element of the list is processed
     as a different class. `nil` and `false` elements are discarded.
@@ -1878,7 +1878,7 @@ defmodule Phoenix.Component do
 
   | Name            | Description                                                          |
   |-----------------|----------------------------------------------------------------------|
-  | `:any`          | any term                                                             |
+  | `:any`          | any term (including `nil`)                                           |
   | `:string`       | any binary string                                                    |
   | `:atom`         | any atom (including `true`, `false`, and `nil`)                      |
   | `:boolean`      | any boolean                                                          |
@@ -1888,6 +1888,8 @@ defmodule Phoenix.Component do
   | `:map`          | any map of any arbitrary types                                       |
   | `:global`       | any common HTML attributes, plus those defined by `:global_prefixes` |
   | A struct module | any module that defines a struct with `defstruct/1`                  |
+
+  Note only `:any` and `:atom` expect the value to be set to `nil`.
 
   ### Options
 
