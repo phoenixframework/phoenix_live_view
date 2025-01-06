@@ -70,7 +70,7 @@
  * @param {Object} [opts.localStorage] - An optional Storage compatible object
  * Useful for when LiveView won't have access to `localStorage`.
  * See `opts.sessionStorage` for examples.
- * @param {string} [opts.rootViewSelector] - The optional CSS selector to scope which root LiveViews to connect.
+ * @param {string} [opts.viewSelector] - The optional CSS selector to scope which root LiveViews to connect.
  * Useful when running multiple liveSockets, each connected to a different application.
 */
 
@@ -161,7 +161,7 @@ export default class LiveSocket {
     this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
-    this.rootViewSelector = opts.rootViewSelector
+    this.viewSelector = opts.viewSelector
     this.boundTopLevelEvents = false
     this.boundEventNames = new Set()
     this.serverCloseRef = null
@@ -364,15 +364,15 @@ export default class LiveSocket {
       let view = this.newRootView(body)
       view.setHref(this.getHref())
       view.joinDead()
-      // When there's a rootViewSelector it's not appropriate for document.body to be the
-      // main view since all the connected elements must be scoped under that selector
-      if(!this.main && !this.rootViewSelector){this.main = view }
+      // When there's a custom viewSelector it's not appropriate for document.body to be
+      // the main view since all the connected elements must be scoped under that selector
+      if(!this.main && !this.viewSelector){this.main = view }
       window.requestAnimationFrame(() => view.execNewMounted())
     }
   }
 
   viewSelector(){
-    return `${PHX_VIEW_SELECTOR}${this.rootViewSelector || ""}`
+    return this.viewSelector || PHX_VIEW_SELECTOR
   }
 
   joinRootViews(){
@@ -461,10 +461,10 @@ export default class LiveSocket {
 
   owner(childEl, callback){
     let view = maybe(childEl.closest(this.viewSelector()), el => this.getViewByEl(el))
-    // If there's a rootViewSelector, don't default to `this.main`
+    // If there's a viewSelector, don't default to `this.main`
     // since it's not guaranteed to belong to same liveSocket.
     // Maybe `this.embbededMode = boolean()` would be a more clear check?
-    if(!view && !this.rootViewSelector){ view = this.main }
+    if(!view && !this.viewSelector){ view = this.main }
     return view && callback ? callback(view) : view
   }
 

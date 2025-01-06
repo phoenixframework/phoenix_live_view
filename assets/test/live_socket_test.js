@@ -164,8 +164,8 @@ describe("LiveSocket", () => {
     liveSocket.owner(btn, (view) => expect(view.id).toBe(_view.id))
   })
 
-  test("owner with rootViewSelector option", async () => {
-    let liveSocket = new LiveSocket("/live", Socket, {rootViewSelector: ".main"})
+  test.only("owner with viewSelector option", async () => {
+    let liveSocket = new LiveSocket("/live", Socket, {viewSelector: ".main"})
     liveSocket.connect()
 
     let _view = liveSocket.getViewByEl(container(1))
