@@ -14,7 +14,7 @@ A backwards-compatible shim can be used to maintain `phx-feedback-for` in your e
    import {Socket} from "phoenix";
    import {LiveSocket} from "phoenix_live_view"
    import phxFeedbackDom from "./phx_feedback_dom"
-   
+
    let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
    let liveSocket = new LiveSocket("/live", Socket, {
      params: {_csrf_token: csrfToken},
@@ -70,7 +70,7 @@ First, ensure that you are using the latest versions of `:phoenix_ecto` and `:ph
     ```diff
        def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
     +    errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
-    
+
          assigns
          |> assign(field: nil, id: assigns.id || field.id)
     -    |> assign(:errors, Enum.map(field.errors, &translate_error(&1)))
@@ -112,7 +112,7 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
-## 1.0.2
+## 1.0.2 (2025-01-09)
 
 ### Bug fixes
 * Fix inconsistency between `mix format` and `mix format --check-formatted` with new curly interpolation syntax ([#3590](https://github.com/phoenixframework/phoenix_live_view/issues/3590))
