@@ -1558,21 +1558,15 @@ defmodule Phoenix.LiveView.Channel do
 
     if Session.main?(session) do
       # Ensure the session's LV module and live session name still match on connect.
-      # If the route has changed the LV module or has moved live sessions, the client
-      # will fallback to full page redirect to the current URL.
+      # If the route has changed the LV module or has moved live sessions (typically
+      # during a deployment), the client will fallback to full page redirect to the
+      # current URL.
       case session_route(session, endpoint, url) do
         %Route{view: ^view, live_session: %{name: ^session_name}} = route ->
           {:ok, session, route, url}
 
-        # if we have a sticky LV, it will be considered a main with no live session
-        %Route{} when is_nil(session_name) ->
-          {:ok, session, nil, url}
-
         # if we have a session, then it no longer matches and is unauthorized
-        %Route{} ->
-          {:error, :unauthorized}
-
-        nil ->
+        _ ->
           {:error, :unauthorized}
       end
     else

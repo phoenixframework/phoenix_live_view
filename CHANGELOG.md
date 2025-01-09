@@ -133,6 +133,7 @@ generated user module:
 ### Bug fixes
 * Raise when duplicate DOM IDs are found when rendering a LiveView during tests to avoid undefined behaviour
 * Fix live session verification causing logged errors, push_patch failures, and failed mounts when a cold deploy occurs
+* Fix a bug where the `live_session`'s `on_mount` hooks would be called for sticky live views on connected mount. Now a `sticky` live view is consistently marked as `:not_mounted_at_router`
 
 ## 1.0.0 (2024-12-03) 🚀
 
