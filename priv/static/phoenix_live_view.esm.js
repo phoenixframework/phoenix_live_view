@@ -4921,7 +4921,9 @@ var LiveSocket = class {
     dom_default.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, (rootEl) => {
       if (!this.getRootById(rootEl.id)) {
         let view = this.newRootView(rootEl);
-        view.setHref(this.getHref());
+        if (!dom_default.isPhxSticky(rootEl)) {
+          view.setHref(this.getHref());
+        }
         view.join();
         if (rootEl.hasAttribute(PHX_MAIN)) {
           this.main = view;
