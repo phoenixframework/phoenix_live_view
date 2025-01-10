@@ -725,9 +725,12 @@ export default class View {
   }
 
   destroyHook(hook){
+    // __destroyed clears the elementID from the hook, therefore
+    // we need to get it before calling __destroyed
+    const hookId = ViewHook.elementID(hook.el)
     hook.__destroyed()
     hook.__cleanup__()
-    delete this.viewHooks[ViewHook.elementID(hook.el)]
+    delete this.viewHooks[hookId]
   }
 
   applyPendingUpdates(){
