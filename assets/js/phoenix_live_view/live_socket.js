@@ -695,7 +695,7 @@ export default class LiveSocket {
     })
     window.addEventListener("popstate", event => {
       if(!this.registerNewLocation(window.location)){ return }
-      let {type, backType, id, root, scroll, position} = event.state || {}
+      let {type, backType, id, scroll, position} = event.state || {}
       let href = window.location.href
 
       // Compare positions to determine direction
@@ -709,15 +709,11 @@ export default class LiveSocket {
 
       DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: type === "patch", pop: true, direction: isForward ? "forward" : "backward"}})
       this.requestDOMUpdate(() => {
+        const callback = () => { this.maybeScroll(scroll) }
         if(this.main.isConnected() && (type === "patch" && id === this.main.id)){
-          this.main.pushLinkPatch(event, href, null, () => {
-            this.maybeScroll(scroll)
-          })
+          this.main.pushLinkPatch(event, href, null, callback)
         } else {
-          this.replaceMain(href, null, () => {
-            if(root){ this.replaceRootHistory() }
-            this.maybeScroll(scroll)
-          })
+          this.replaceMain(href, null, callback)
         }
       })
     }, false)
@@ -835,15 +831,6 @@ export default class LiveSocket {
         }
         done()
       })
-    })
-  }
-
-  replaceRootHistory(){
-    Browser.pushState("replace", {
-      root: true,
-      type: "patch",
-      id: this.main.id,
-      position: this.currentHistoryPosition // Preserve current position
     })
   }
 
