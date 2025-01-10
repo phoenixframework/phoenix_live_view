@@ -838,10 +838,10 @@ export default class LiveSocket {
     })
   }
 
-  replaceRootHistory(){
+  replaceRootHistory(type="redirect"){
     Browser.pushState("replace", {
       root: true,
-      type: "patch",
+      type,
       id: this.main.id,
       position: this.currentHistoryPosition // Preserve current position
     })

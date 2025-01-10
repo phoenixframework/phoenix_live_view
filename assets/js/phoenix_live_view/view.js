@@ -319,7 +319,7 @@ export default class View {
     }
     if(this.isMain() && window.history.state === null){
       // set initial history entry if this is the first page load
-      this.liveSocket.replaceRootHistory()
+      this.liveSocket.replaceRootHistory("patch")
     }
 
     if(liveview_version !== this.liveSocket.version()){
