@@ -148,7 +148,7 @@ let DOM = {
     cids.forEach(cid => {
       this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach(parent => {
         parentCids.add(cid)
-        this.all(parent, `[${PHX_COMPONENT}]`)
+        this.filterWithinSameLiveView(this.all(parent, `[${PHX_COMPONENT}]`), parent)
           .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
           .forEach(childCID => childrenCids.add(childCID))
       })
