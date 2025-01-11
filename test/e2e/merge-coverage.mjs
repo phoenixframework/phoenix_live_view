@@ -3,7 +3,7 @@ import {CoverageReport} from "monocart-coverage-reports"
 const coverageOptions = {
   name: "Phoenix LiveView JS Coverage",
   inputDir: [
-    "./assets/coverage/raw",
+    "./coverage/raw",
     "./test/e2e/test-results/coverage/raw"
   ],
   outputDir: "./cover/merged-js",

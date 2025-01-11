@@ -28,7 +28,7 @@ module.exports = {
   // An array of regexp pattern strings used to skip coverage collection
   coveragePathIgnorePatterns: [
     "/node_modules/",
-    "/test/"
+    "/assets/test/"
   ],
 
   collectCoverage: true,
@@ -82,8 +82,8 @@ module.exports = {
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
   moduleNameMapper: {
-    "^phoenix_live_view$": "<rootDir>/js/phoenix_live_view/index.js",
-    "^phoenix_live_view/(.*)$": "<rootDir>/js/phoenix_live_view/$1.js"
+    "^phoenix_live_view$": "<rootDir>/assets/js/phoenix_live_view/index.js",
+    "^phoenix_live_view/(.*)$": "<rootDir>/assets/js/phoenix_live_view/$1.js"
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader
@@ -173,7 +173,7 @@ module.exports = {
   // ],
 
   // The regexp pattern or array of patterns that Jest uses to detect test files
-  testRegex: "/test/.*_test\\.js$",
+  testRegex: "/assets/test/.*_test\\.js$",
 
   // This option allows the use of a custom results processor
   // testResultsProcessor: undefined,

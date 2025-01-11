@@ -48,7 +48,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: Install npm dependencies
-        run: npm ci --prefix assets
+        run: npm ci
 
       - name: Build assets
         run: mix assets.build

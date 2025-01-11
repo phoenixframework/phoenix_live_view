@@ -1458,7 +1458,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
   };
 
-  // node_modules/morphdom/dist/morphdom-esm.js
+  // ../node_modules/morphdom/dist/morphdom-esm.js
   var DOCUMENT_FRAGMENT_NODE = 11;
   function morphAttrs(fromNode, toNode) {
     var toNodeAttrs = toNode.attributes;
