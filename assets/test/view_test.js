@@ -3,7 +3,7 @@ import {LiveSocket, createHook} from "phoenix_live_view/index"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 
-import {version as liveview_version} from "../package.json"
+import {version as liveview_version} from "../../package.json"
 
 import {
   PHX_LOADING_CLASS,

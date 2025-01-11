@@ -11,6 +11,7 @@ export default [{
     jest,
   },
 
+  files: ["js/**/*.js", "test/**/*.js"],
   ignores: ["coverage/**"],
 
   languageOptions: {

@@ -2,7 +2,7 @@ import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 import View from "phoenix_live_view/view"
 
-import {version as liveview_version} from "../package.json"
+import {version as liveview_version} from "../../package.json"
 
 let containerId = 0
 

@@ -138,7 +138,7 @@ jobs:
             ${{ runner.os }}-node-
 
       - name: npm install and test
-        run: npm run js:test
+        run: npm run setup && npm run js:test
 
       - name: eslint
         run: cd assets && npx eslint
@@ -147,7 +147,7 @@ jobs:
         if: always()
         with:
           name: js-unit-coverage
-          path: assets/coverage/
+          path: coverage/
           retention-days: 7
 
   e2e_test:
@@ -161,7 +161,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.47.1-jammy
+      image: mcr.microsoft.com/playwright:v1.49.1-jammy
     env:
       ImageOS: ubuntu22
       HOME: /root
@@ -275,7 +275,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: js-unit-coverage
-          path: assets/coverage/
+          path: coverage/
 
       - name: Download e2e-test-results artifact
         uses: actions/download-artifact@v4

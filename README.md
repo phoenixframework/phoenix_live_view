@@ -194,18 +194,10 @@ $ npm run test
 Running the JavaScript unit tests:
 
 ```bash
-$ cd assets
-$ npm install
-$ npm run test
-# to automatically run tests for files that have been changed
-$ npm run test.watch
-```
-
-or simply:
-
-```bash
 $ npm run setup
 $ npm run js:test
+# to automatically run tests for files that have been changed
+$ npm run js:test.watch
 ```
 
 Running the JavaScript end-to-end tests:
