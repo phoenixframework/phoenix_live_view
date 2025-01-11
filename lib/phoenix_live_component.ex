@@ -181,7 +181,7 @@ defmodule Phoenix.LiveComponent do
   of all assigns and sockets, allowing us to update many at once:
 
       def update_many(assigns_sockets) do
-        list_of_ids = Enum.map(assigns_sockets, fn {assigns, _sockets} -> assigns.id end)
+        list_of_ids = Enum.map(assigns_sockets, fn {assigns, _socket} -> assigns.id end)
 
         users =
           from(u in User, where: u.id in ^list_of_ids, select: {u.id, u})
