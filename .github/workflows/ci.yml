@@ -141,7 +141,7 @@ jobs:
         run: npm run setup && npm run js:test
 
       - name: eslint
-        run: cd assets && npx eslint
+        run: npx eslint
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -204,9 +204,6 @@ jobs:
 
       - name: Run e2e tests
         run: npm run e2e:test
-
-      - name: eslint
-        run: npx eslint
 
       - uses: actions/upload-artifact@v4
         if: always()
