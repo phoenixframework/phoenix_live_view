@@ -541,6 +541,69 @@ defmodule Phoenix.Component do
       config :phoenix_live_view, debug_heex_annotations: true
 
   Changing this configuration will require `mix clean` and a full recompile.
+
+  ## Dynamic Component Rendering
+
+  One of the benefits of using functional components as defined [above](#content) is that we can leverage Elixir's [`apply/3`](https://hexdocs.pm/elixir/Kernel.html#apply/3) function to dynamically call a module and/or function passed in as an assign.
+
+  For example, using the following functional component definition:
+
+  ```elixir
+  attr :module, :atom, required: true
+  attr :function, :atom, required: true
+
+  slot :named_slot, required: true
+
+  def dynamic_component(assigns) do
+    {mod, assigns} = Map.pop(assigns, :module)
+    {func, assigns} = Map.pop(assigns, :function)
+
+    apply(mod, func, [assigns])
+  end
+  ```
+
+  You can then use the `dynamic_component` function like so:
+
+  ```heex
+  <.dynamic_component
+    module={MyAppWeb.MyModule}
+    function={:my_function}
+    shared="Yay Elixir!"
+  >
+    <p>Howdy from the inner block!</p>
+    <:named_slot>
+      <p>Howdy from the named slot!</p>
+    </:named_slot>
+  </.dynamic_component>
+  ```
+
+  This will call the `MyAppWeb.MyModule.my_function/1` function passing in the remaining assigns.
+
+  ```elixir
+  defmodule MyApp.MyModule do
+    attr :shared, :string, required: true
+
+    slot :named_slot, required: true
+
+    def my_function(assigns) do
+      ~H"""
+      <p>Dynamic component with shared assigns: {@shared}</p>
+      {render_slot(@inner_block)}
+      {render_slot(@named_slot)}
+      """
+    end
+  end
+  ```
+
+  Resulting in the following HTML:
+
+  ```html
+  <p>Dynamic component with shared assigns: Yay Elixir!</p>
+  <p>Howdy from the inner block!</p>
+  <p>Howdy from the named slot!</p>
+  ```
+
+  All while maintaining the benefits of the `attr/3` and `slot/3` macros for compile-time validations.
   '''
 
   ## Functions
