@@ -447,7 +447,7 @@ var LiveView = (() => {
       cids.forEach((cid) => {
         this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach((parent) => {
           parentCids.add(cid);
-          this.all(parent, `[${PHX_COMPONENT}]`).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => childrenCids.add(childCID));
+          this.filterWithinSameLiveView(this.all(parent, `[${PHX_COMPONENT}]`), parent).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => childrenCids.add(childCID));
         });
       });
       childrenCids.forEach((childCid) => parentCids.delete(childCid));
@@ -3949,9 +3949,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     destroyHook(hook) {
+      const hookId = ViewHook.elementID(hook.el);
       hook.__destroyed();
       hook.__cleanup__();
-      delete this.viewHooks[ViewHook.elementID(hook.el)];
+      delete this.viewHooks[hookId];
     }
     applyPendingUpdates() {
       this.pendingDiffs.forEach(({ diff, events }) => this.update(diff, events));
