@@ -285,9 +285,10 @@ export default class View {
     }
 
     if(isCid(phxTarget)){
-      let targets = DOM.findComponentNodeList(viewEl || this.el, phxTarget)
+      const el = viewEl || this.el
+      let targets = DOM.findComponentNodeList(el, phxTarget)
       if(targets.length === 0){
-        logError(`no component found matching phx-target of ${phxTarget}`)
+        logError(`no component found matching phx-target of ${phxTarget} within element`, el)
       } else {
         callback(this, parseInt(phxTarget))
       }
