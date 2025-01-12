@@ -794,7 +794,7 @@ describe("Custom Event Hook", function() {
         s: ["<div id=\"one\" phx-custom-events=\"my_event\"></div>"],
         fingerprint: 123
       },
-      liveview_version: require("../package.json").version
+      liveview_version
     })
 
     expect(view.el.outerHTML).toContain("Phoenix.CustomEvent")
