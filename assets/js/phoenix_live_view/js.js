@@ -54,9 +54,15 @@ let JS = {
     })
   },
 
-  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, {event, detail, bubbles}){
+  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, {event, detail, bubbles, blocking}){
     detail = detail || {}
     detail.dispatcher = sourceEl
+    if(blocking){
+      const promise = new Promise((resolve, _reject) => {
+        detail.done = resolve
+      })
+      liveSocket.asyncTransition(promise)
+    }
     DOM.dispatchEvent(el, event, {detail, bubbles})
   },
 
