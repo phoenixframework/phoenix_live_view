@@ -763,7 +763,7 @@ describe("View", function(){
   })
 })
 
-describe("Custom Event Hook", function() {
+describe("Custom Event Hook", function(){
   beforeEach(() => {
     global.document.body.innerHTML = liveViewDOM().outerHTML
   })
@@ -798,9 +798,9 @@ describe("Custom Event Hook", function() {
     })
 
     expect(view.el.outerHTML).toContain("Phoenix.CustomEvent")
-  });
+  })
 
-});
+})
 describe("View Hooks", function(){
   beforeEach(() => {
     global.document.body.innerHTML = liveViewDOM().outerHTML

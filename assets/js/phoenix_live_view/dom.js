@@ -324,7 +324,7 @@ let DOM = {
     if(toEl.hasAttribute && (toEl.hasAttribute(phxViewportTop) || toEl.hasAttribute(phxViewportBottom))){
       toEl.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
     }
-    if(toEl.hasAttribute && toEl.hasAttribute(phxCustomEvents)) {
+    if(toEl.hasAttribute && toEl.hasAttribute(phxCustomEvents)){
       toEl.setAttribute("data-phx-hook", "Phoenix.CustomEvents")
     }
   },

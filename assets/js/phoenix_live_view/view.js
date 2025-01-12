@@ -471,7 +471,7 @@ export default class View {
       this.liveSocket.triggerDOM("onNodeAdded", [el])
       let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
       let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
-      let phxCustomEvents = this.binding(PHX_CUSTOM_EVENTS);
+      let phxCustomEvents = this.binding(PHX_CUSTOM_EVENTS)
       DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom, phxCustomEvents)
       this.maybeAddNewHook(el)
       if(el.getAttribute){ this.maybeMounted(el) }

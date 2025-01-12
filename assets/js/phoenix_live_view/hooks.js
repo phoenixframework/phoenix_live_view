@@ -186,7 +186,7 @@ Hooks.InfiniteScroll = {
       window.addEventListener("scroll", this.onScroll)
     }
   },
-  
+
   destroyed(){
     if(this.scrollContainer){
       this.scrollContainer.removeEventListener("scroll", this.onScroll)
@@ -222,53 +222,53 @@ Hooks.InfiniteScroll = {
 }
 
 const serializeEvent = (event) => {
-  const { detail, target: { dataset } } = event;
-  return {...detail, ...dataset};
-};
+  const {detail, target: {dataset}} = event
+  return {...detail, ...dataset}
+}
 
 Hooks.CustomEvents = {
 
   listeners: [],
 
-  pushCustomEvent(eventName, phxEvent) {
-    const attrs = this.el.attributes;
-    const phxTarget = attrs["phx-target"] && attrs["phx-target"].value;
+  pushCustomEvent(eventName, phxEvent){
+    const attrs = this.el.attributes
+    const phxTarget = attrs["phx-target"] && attrs["phx-target"].value
     const pushEvent = phxTarget
       ? (event, payload, callback) =>
         this.pushEventTo(phxTarget, event, payload, callback)
-      : (event, payload, callback) => this.pushEvent(event, payload, callback);
+      : (event, payload, callback) => this.pushEvent(event, payload, callback)
     const listener = (evt) => {
-      const payload = serializeEvent(evt);
-      this.el.dispatchEvent(new CustomEvent('phx-event-start', { detail: { name: eventName, payload } }));
-      pushEvent(phxEvent, payload, e => {
-        this.el.dispatchEvent(new CustomEvent('phx-event-complete', { detail: { name: eventName, payload } }));
-      });
-    };
-    this.el.addEventListener(eventName, listener);
-    this.listeners.push({eventName, listener});
+      const payload = serializeEvent(evt)
+      this.el.dispatchEvent(new CustomEvent("phx-event-start", {detail: {name: eventName, payload}}))
+      pushEvent(phxEvent, payload, _e => {
+        this.el.dispatchEvent(new CustomEvent("phx-event-complete", {detail: {name: eventName, payload}}))
+      })
+    }
+    this.el.addEventListener(eventName, listener)
+    this.listeners.push({eventName, listener})
   },
 
-  mounted() {
-    const attrs = this.el.attributes;
-    for (var i = 0; i < attrs.length; i++) {
-      if (/^phx-custom-event-/.test(attrs[i].name)) {
-        const eventName = attrs[i].name.replace("phx-custom-event-", "");
-        const phxEvent = attrs[i].value;
-        this.pushCustomEvent(eventName, phxEvent);
+  mounted(){
+    const attrs = this.el.attributes
+    for(var i = 0; i < attrs.length; i++){
+      if(/^phx-custom-event-/.test(attrs[i].name)){
+        const eventName = attrs[i].name.replace("phx-custom-event-", "")
+        const phxEvent = attrs[i].value
+        this.pushCustomEvent(eventName, phxEvent)
       }
     }
 
-    if (this.el.getAttribute("phx-custom-events")) {
-      const eventsToSend = this.el.getAttribute("phx-custom-events").split(",");
-      eventsToSend.forEach((eventName) => this.pushCustomEvent(eventName, eventName));
+    if(this.el.getAttribute("phx-custom-events")){
+      const eventsToSend = this.el.getAttribute("phx-custom-events").split(",")
+      eventsToSend.forEach((eventName) => this.pushCustomEvent(eventName, eventName))
     }
   },
 
-  destroyed() {
+  destroyed(){
     this.listeners.forEach(({eventName, listener}) => {
-      this.el.removeEventListener(eventName, listener);
-    });
+      this.el.removeEventListener(eventName, listener)
+    })
   }
-};
+}
 
 export default Hooks
