@@ -544,7 +544,9 @@ defmodule Phoenix.Component do
 
   ## Dynamic Component Rendering
 
-  One of the benefits of using functional components as defined [above](#content) is that we can leverage Elixir's [`apply/3`](https://hexdocs.pm/elixir/Kernel.html#apply/3) function to dynamically call a module and/or function passed in as an assign.
+  One of the benefits of using functional components as defined [above](#content)
+  is that we can leverage Elixir's `apply/3` function to dynamically call a module and/or
+  function passed in as an assign.
 
   For example, using the following functional component definition:
 
