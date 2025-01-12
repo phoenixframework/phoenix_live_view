@@ -124,3 +124,8 @@ up to you. If the likelihood of everyone leaving the organization at the same
 time is low, then you may as well treat it as an unexpected scenario. Although
 other developers will be more comfortable by explicitly handling those cases.
 In both scenarios, LiveView has you covered.
+
+Finally, if your LiveView crashes, its current state will be lost. Luckily,
+LiveView has a series of mechanisms and best practices you can follow to ensure
+the user is shown the same page as before during reconnections. See the
+["Deployments and recovery"](deployments.md) guide for more information.

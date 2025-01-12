@@ -9,7 +9,8 @@ defmodule Phoenix.LiveView.ParamsTest do
   import Phoenix.LiveView.TelemetryTestHelpers
 
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -66,7 +67,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "telemetry events are emitted on exception", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :handle_params])
 
-      assert_raise Plug.Conn.WrapperError, ~r/boom/, fn ->
+      assert_raise RuntimeError, ~r/boom/, fn ->
         get(conn, "/errors", crash_on: "disconnected_handle_params")
       end
 
@@ -93,6 +94,16 @@ defmodule Phoenix.LiveView.ParamsTest do
              )
              |> get("/counter/123?from=handle_params")
              |> redirected_to() == "/"
+    end
+
+    test "hard redirects with a custom status", %{conn: conn} do
+      assert conn
+             |> put_serialized_session(
+               :on_handle_params,
+               &{:noreply, LiveView.redirect(&1, to: "/", status: 301)}
+             )
+             |> get("/counter/123?from=handle_params")
+             |> redirected_to(301) == "/"
     end
 
     test "hard redirect with flash message", %{conn: conn} do

@@ -417,14 +417,14 @@ defmodule Phoenix.LiveView.Utils do
     put_in(socket.private[:live_layout], normalize_layout(layout))
   end
 
-  defp handle_mount_option(socket, :temporary_assigns, temp_assigns) do
-    unless Keyword.keyword?(temp_assigns) do
+  defp handle_mount_option(%Socket{} = socket, :temporary_assigns, temp_assigns) do
+    if not Keyword.keyword?(temp_assigns) do
       raise "the :temporary_assigns mount option must be keyword list"
     end
 
     temp_assigns = Map.new(temp_assigns)
 
-    %Socket{
+    %{
       socket
       | assigns: Map.merge(temp_assigns, socket.assigns),
         private:
@@ -543,7 +543,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp drop_private(%Socket{private: private} = socket, keys) do
-    %Socket{socket | private: Map.drop(private, keys)}
+    %{socket | private: Map.drop(private, keys)}
   end
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do

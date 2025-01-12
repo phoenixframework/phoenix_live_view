@@ -128,7 +128,7 @@ defmodule Phoenix.LiveView do
 
   ```heex
   <div :if={@org.loading}>Loading organization...</div>
-  <div :if={org = @org.ok? && @org.result}><%= org.name %> loaded!</div>
+  <div :if={org = @org.ok? && @org.result}>{org.name} loaded!</div>
   ```
 
   The `Phoenix.Component.async_result/1` function component can also be used to
@@ -138,7 +138,7 @@ defmodule Phoenix.LiveView do
   <.async_result :let={org} assign={@org}>
     <:loading>Loading organization...</:loading>
     <:failed :let={_failure}>there was an error loading the organization</:failed>
-    <%= org.name %>
+    {org.name}
   </.async_result>
   ```
 
@@ -261,6 +261,11 @@ defmodule Phoenix.LiveView do
 
   It must always return `{:noreply, socket}`, where `:noreply`
   means no additional information is sent to the client.
+
+  > #### Note {: .warning}
+  >
+  > `handle_params` is only allowed on LiveViews mounted at the router,
+  > as it takes the current url of the page as the second parameter.
   """
   @callback handle_params(unsigned_params(), uri :: String.t(), socket :: Socket.t()) ::
               {:noreply, Socket.t()}
@@ -537,16 +542,18 @@ defmodule Phoenix.LiveView do
 
   """
   defmacro on_mount(mod_or_mod_arg) do
+    caller = %{__CALLER__ | function: {:on_mount, 1}}
+
     # While we could pass `mod_or_mod_arg` as a whole to
     # expand_literals, we want to also be able to expand only
     # the first element, even if the second element is not a literal.
     mod_or_mod_arg =
       case mod_or_mod_arg do
         {mod, arg} ->
-          {expand_literals(mod, __CALLER__), expand_literals(arg, __CALLER__)}
+          {Macro.expand_literals(mod, caller), Macro.expand_literals(arg, caller)}
 
         mod_or_mod_arg ->
-          expand_literals(mod_or_mod_arg, __CALLER__)
+          Macro.expand_literals(mod_or_mod_arg, caller)
       end
 
     quote do
@@ -557,19 +564,6 @@ defmodule Phoenix.LiveView do
       )
     end
   end
-
-  defp expand_literals(ast, env) do
-    if Macro.quoted_literal?(ast) do
-      Macro.prewalk(ast, &expand_alias(&1, env))
-    else
-      ast
-    end
-  end
-
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:on_mount, 4}})
-
-  defp expand_alias(other, _env), do: other
 
   @doc """
   Returns true if the socket is connected.
@@ -655,7 +649,7 @@ defmodule Phoenix.LiveView do
     root_view
   )a
   def put_private(%Socket{} = socket, key, value) when key not in @reserved_privates do
-    %Socket{socket | private: Map.put(socket.private, key, value)}
+    %{socket | private: Map.put(socket.private, key, value)}
   end
 
   def put_private(%Socket{}, bad_key, _value) do
@@ -706,7 +700,7 @@ defmodule Phoenix.LiveView do
 
   ```heex
   <p class="alert" phx-click="lv:clear-flash">
-    <%= Phoenix.Flash.get(@flash, :info) %>
+    {Phoenix.Flash.get(@flash, :info)}
   </p>
   ```
   """
@@ -725,7 +719,7 @@ defmodule Phoenix.LiveView do
 
   ```heex
   <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
-    <%= Phoenix.Flash.get(@flash, :info) %>
+    {Phoenix.Flash.get(@flash, :info)}
   </p>
   ```
   """
@@ -756,7 +750,9 @@ defmodule Phoenix.LiveView do
 
   A hook declared via `phx-hook` can handle it via `handleEvent`:
 
-      this.handleEvent("scores", data => ...)
+  ```javascript
+  this.handleEvent("scores", data => ...)
+  ```
 
   ## `window` example
 
@@ -768,10 +764,12 @@ defmodule Phoenix.LiveView do
 
   And now in your app.js you can register and handle it:
 
-      window.addEventListener(
-        "phx:remove-el",
-        e => document.getElementById(e.detail.id).remove()
-      )
+  ```javascript
+  window.addEventListener(
+    "phx:remove-el",
+    e => document.getElementById(e.detail.id).remove()
+  )
+  ```
 
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
@@ -854,10 +852,12 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      <%= for entry <- @uploads.avatar.entries do %>
-        ...
-        <button phx-click="cancel-upload" phx-value-ref={entry.ref}>cancel</button>
-      <% end %>
+  ```heex
+  <%= for entry <- @uploads.avatar.entries do %>
+    ...
+    <button phx-click="cancel-upload" phx-value-ref={entry.ref}>cancel</button>
+  <% end %>
+  ```
 
       def handle_event("cancel-upload", %{"ref" => ref}, socket) do
         {:noreply, cancel_upload(socket, :avatar, ref)}
@@ -959,39 +959,58 @@ defmodule Phoenix.LiveView do
   ## Options
 
     * `:to` - the path to redirect to. It must always be a local path
+    * `:status` - the HTTP status code to use for the redirect. Defaults to 302.
     * `:external` - an external path to redirect to. Either a string
       or `{scheme, url}` to redirect to a custom scheme
 
   ## Examples
 
       {:noreply, redirect(socket, to: "/")}
+      {:noreply, redirect(socket, to: "/", status: 301)}
       {:noreply, redirect(socket, external: "https://example.com")}
 
   """
-  def redirect(socket, opts \\ [])
+  def redirect(socket, opts \\ []) do
+    status = Keyword.get(opts, :status, 302)
 
-  def redirect(%Socket{} = socket, to: url) do
-    validate_local_url!(url, "redirect/2")
-    put_redirect(socket, {:redirect, %{to: url}})
+    cond do
+      Keyword.has_key?(opts, :to) ->
+        do_internal_redirect(socket, Keyword.fetch!(opts, :to), status)
+
+      Keyword.has_key?(opts, :external) ->
+        do_external_redirect(socket, Keyword.fetch!(opts, :external), status)
+
+      true ->
+        raise ArgumentError, "expected :to or :external option in redirect/2"
+    end
   end
 
-  def redirect(%Socket{} = socket, external: url) do
+  defp do_internal_redirect(%Socket{} = socket, url, redirect_status) do
+    validate_local_url!(url, "redirect/2")
+
+    put_redirect(socket, {:redirect, %{to: url, status: redirect_status}})
+  end
+
+  defp do_external_redirect(%Socket{} = socket, url, redirect_status) do
     case url do
       {scheme, rest} ->
-        put_redirect(socket, {:redirect, %{external: "#{scheme}:#{rest}"}})
+        put_redirect(
+          socket,
+          {:redirect, %{external: "#{scheme}:#{rest}", status: redirect_status}}
+        )
 
       url when is_binary(url) ->
         external_url = Phoenix.LiveView.Utils.valid_string_destination!(url, "redirect/2")
-        put_redirect(socket, {:redirect, %{external: external_url}})
+
+        put_redirect(
+          socket,
+          {:redirect, %{external: external_url, status: redirect_status}}
+        )
 
       other ->
         raise ArgumentError,
               "expected :external option in redirect/2 to be valid URL, got: #{inspect(other)}"
     end
-  end
-
-  def redirect(%Socket{}, _) do
-    raise ArgumentError, "expected :to or :external option in redirect/2"
   end
 
   @doc """
@@ -1001,7 +1020,8 @@ defmodule Phoenix.LiveView do
   immediately invoked to handle the change of params and URL state.
   Then the new state is pushed to the client, without reloading the
   whole page while also maintaining the current scroll position.
-  For live navigation to another LiveView, use `push_navigate/2`.
+  For live navigation to another LiveView in the same `live_session`,
+  use `push_navigate/2`. Otherwise, use `redirect/2`.
 
   ## Options
 
@@ -1021,7 +1041,7 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Annotates the socket for navigation to another LiveView.
+  Annotates the socket for navigation to another LiveView in the same `live_session`.
 
   The current LiveView will be shutdown and a new one will be mounted
   in its place, without reloading the whole page. This can
@@ -1061,7 +1081,7 @@ defmodule Phoenix.LiveView do
   end
 
   defp put_redirect(%Socket{redirected: nil} = socket, command) do
-    %Socket{socket | redirected: command}
+    %{socket | redirected: command}
   end
 
   defp put_redirect(%Socket{redirected: to} = _socket, _command) do
@@ -1212,8 +1232,10 @@ defmodule Phoenix.LiveView do
   To use this functionality, the first step is to annotate which static files
   you want to be tracked by LiveView, with the `phx-track-static`. For example:
 
-      <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
-      <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+  ```heex
+  <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
+  <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
+  ```
 
   Now, whenever LiveView connects to the server, it will send a copy `src`
   or `href` attributes of all tracked statics and compare those values with
@@ -1231,11 +1253,11 @@ defmodule Phoenix.LiveView do
 
   And then in your views:
 
-      <%= if @static_changed? do %>
-        <div id="reload-static">
-          The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
-        </div>
-      <% end %>
+  ```heex
+  <div :if={@static_changed?} id="reload-static">
+    The app has been updated. Click here to <a href="#" onclick="window.location.reload()">reload</a>.
+  </div>
+  ```
 
   If you prefer, you can also send a JavaScript script that immediately
   reloads the page.
@@ -1243,7 +1265,9 @@ defmodule Phoenix.LiveView do
   **Note:** only set `phx-track-static` on your own assets. For example, do
   not set it in external JavaScript files:
 
-      <script defer phx-track-static type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  ```heex
+  <script defer phx-track-static type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.4.1/jquery.min.js"></script>
+  ```
 
   Because you don't actually serve the file above, LiveView will interpret
   the static above as missing, and this function will return true.
@@ -1504,19 +1528,20 @@ defmodule Phoenix.LiveView do
 
   Replying to a client event:
 
-      # JavaScript:
-      # /**
-      #  * @type {Object.<string, import("phoenix_live_view").ViewHook>}
-      #  */
-      # let Hooks = {}
-      # Hooks.ClientHook = {
-      #   mounted() {
-      #     this.pushEvent("ClientHook:mounted", {hello: "world"}, (reply) => {
-      #       console.log("received reply:", reply)
-      #     })
-      #   }
-      # }
-      # let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+  ```javascript
+  /**
+   * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+   */
+  let Hooks = {}
+  Hooks.ClientHook = {
+    mounted() {
+      this.pushEvent("ClientHook:mounted", {hello: "world"}, (reply) => {
+        console.log("received reply:", reply)
+      })
+    }
+  }
+  let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
+  ```
 
       def render(assigns) do
         ~H"\""
@@ -1671,8 +1696,8 @@ defmodule Phoenix.LiveView do
         :for={{dom_id, song} <- @streams.songs}
         id={dom_id}
       >
-        <td><%= song.title %></td>
-        <td><%= song.duration %></td>
+        <td>{song.title}</td>
+        <td>{song.duration}</td>
       </tr>
     </tbody>
   </table>
@@ -1702,8 +1727,8 @@ defmodule Phoenix.LiveView do
         :for={{dom_id, song} <- @streams.songs}
         id={dom_id}
       >
-        <td><%= song.title %></td>
-        <td><%= song.duration %></td>
+        <td>{song.title}</td>
+        <td>{song.duration}</td>
       </tr>
     </tbody>
   </table>
@@ -1903,7 +1928,7 @@ defmodule Phoenix.LiveView do
               :for={{dom_id, song} <- @streams.songs}
               id={dom_id}
             >
-              <td><%= song.title %></td>
+              <td>{song.title}</td>
               <td><button phx-click={JS.push("delete", value: %{id: dom_id})}>delete</button></td>
             </tr>
           </tbody>
@@ -2022,6 +2047,21 @@ defmodule Phoenix.LiveView do
         # ...
         send_update(parent, Component, data)
       end)
+
+  ## Testing async operations
+
+  When testing LiveViews and LiveComponents with async assigns, use
+  `Phoenix.LiveViewTest.render_async/2` to ensure the test waits until the async operations
+  are complete before proceeding with assertions or before ending the test. For example:
+
+      {:ok, view, _html} = live(conn, "/my_live_view")
+      html = render_async(view)
+      assert html =~ "My assertion"
+
+  Not calling `render_async/2` to ensure all async assigns have finished might result in errors in
+  cases where your process has side effects:
+
+      [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
   """
   defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
     Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)
@@ -2034,6 +2074,10 @@ defmodule Phoenix.LiveView do
   The task is linked to the caller and errors/exits are wrapped.
   The result of the task is sent to the `c:handle_async/3` callback
   of the caller LiveView or LiveComponent.
+
+  If there is an in-flight task with the same `name`, the later `start_async` wins and the previous task’s result is ignored.
+  If you wish to replace an existing task, you can use `cancel_async/3` before `start_async/3`.
+  You are not restricted to just atoms for `name`, it can be any term such as a tuple.
 
   The task is only started when the socket is connected.
 

@@ -1,11 +1,11 @@
 # Assigns and HEEx templates
 
-All of the data in a LiveView is stored in the socket, which is a server 
+All of the data in a LiveView is stored in the socket, which is a server
 side struct called `Phoenix.LiveView.Socket`. Your own data is stored
 under the `assigns` key of said struct. The server data is never shared
 with the client beyond what your template renders.
 
-Phoenix template language is called HEEx (HTML+EEx). EEx is Embedded 
+Phoenix template language is called HEEx (HTML+EEx). EEx is Embedded
 Elixir, an Elixir string template engine. Those templates
 are either files with the `.heex` extension or they are created
 directly in source files via the `~H` sigil. You can learn more about
@@ -27,7 +27,7 @@ static and dynamic parts of the template to the client. Imagine the
 following template:
 
 ```heex
-<h1><%= expand_title(@title) %></h1>
+<h1>{expand_title(@title)}</h1>
 ```
 
 It has two static parts, `<h1>` and `</h1>` and one dynamic part
@@ -46,7 +46,7 @@ Take this template:
 
 ```heex
 <div id={"user_#{@user.id}"}>
-  <%= @user.name %>
+  {@user.name}
 </div>
 ```
 
@@ -58,7 +58,7 @@ The change tracking also works when rendering other templates as
 long as they are also `.heex` templates:
 
 ```heex
-<%= render "child_template.html", assigns %>
+{render("child_template.html", assigns)}
 ```
 
 Or when using function components:
@@ -73,7 +73,7 @@ query in your template:
 
 ```heex
 <%= for user <- Repo.all(User) do %>
-  <%= user.name %>
+  {user.name}
 <% end %>
 ```
 
@@ -102,13 +102,13 @@ this in your HEEx templates:
 
 ```heex
 <% some_var = @x + @y %>
-<%= some_var %>
+{some_var}
 ```
 
 Instead, use a function:
 
 ```heex
-<%= sum(@x, @y) %>
+{sum(@x, @y)}
 ```
 
 Similarly, **do not** define variables at the top of your `render` function
@@ -120,9 +120,9 @@ if either value changes, both must be re-rendered by LiveView.
       title = assigns.title
 
       ~H"""
-      <h1><%= title %></h1>
+      <h1>{title}</h1>
 
-      <%= sum %>
+      {sum}
       """
     end
 
@@ -141,9 +141,9 @@ The same functions can be used inside function components too:
       assigns = assign(assigns, sum: assigns.x + assigns.y)
 
       ~H"""
-      <h1><%= @title %></h1>
+      <h1>{@title}</h1>
 
-      <%= @sum %>
+      {@sum}
       """
     end
 
@@ -168,7 +168,7 @@ and instead use `@` for accessing specific keys. This also applies to
 function components. Let's see some examples.
 
 Sometimes you might want to pass all assigns from one function component to
-another. For example, imagine you have a complex `card` component with 
+another. For example, imagine you have a complex `card` component with
 header, content and footer section. You might refactor your component
 into three smaller components internally:
 
@@ -209,7 +209,7 @@ def card(assigns) do
   <div class="card">
     <.card_header title={@title} class={@title_class} />
     <.card_body>
-      <%= render_slot(@inner_block) %>
+      {render_slot(@inner_block)}
     </.card_body>
     <.card_footer on_close={@on_close} />
   </div>
@@ -225,9 +225,9 @@ templates is acceptable:
 def card(assigns) do
   ~H"""
   <div class="card">
-    <%= card_header(assigns) %>
-    <%= card_body(assigns) %>
-    <%= card_footer(assigns) %>
+    {card_header(assigns)}
+    {card_body(assigns)}
+    {card_footer(assigns)}
   </div>
   """
 end

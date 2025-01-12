@@ -43,12 +43,11 @@ file below to `lib/my_app_web/live/thermostat_live.ex`:
 
 ```elixir
 defmodule MyAppWeb.ThermostatLive do
-  # In Phoenix v1.6+ apps, the line is typically: use MyAppWeb, :live_view
-  use Phoenix.LiveView
+  use MyAppWeb, :live_view
 
   def render(assigns) do
     ~H"""
-    Current temperature: <%= @temperature %>°F
+    Current temperature: {@temperature}°F
     <button phx-click="inc_temperature">+</button>
     """
   end
@@ -102,10 +101,16 @@ directly from your router:
 
 ```elixir
 defmodule MyAppWeb.Router do
-  use Phoenix.Router
-  import Phoenix.LiveView.Router
+  use MyAppWeb, :router
+
+  pipeline :browser do
+    ...
+  end
 
   scope "/", MyAppWeb do
+    pipe_through :browser
+    ...
+
     live "/thermostat", ThermostatLive
   end
 end
@@ -172,7 +177,9 @@ In other words, you want to read the information about a given house, as long as
 Phoenix supports DOM element bindings for client-server interaction. For
 example, to react to a click on a button, you would render the element:
 
-    <button phx-click="inc_temperature">+</button>
+```heex
+<button phx-click="inc_temperature">+</button>
+```
 
 Then on the server, all LiveView bindings are handled with the `handle_event/3`
 callback, for example:
@@ -209,7 +216,9 @@ Phoenix v1.6 and later includes code generators for LiveView. If you want to see
 an example of how to structure your application, from the database all the way up
 to LiveViews, run the following:
 
-    mix phx.gen.live Blog Post posts title:string body:text
+```shell
+$ mix phx.gen.live Blog Post posts title:string body:text
+```
 
 For more information, run `mix help phx.gen.live`.
 
@@ -218,15 +227,15 @@ For authentication, with built-in LiveView support, run `mix phx.gen.auth Accoun
 ## Compartmentalize state, markup, and events in LiveView
 
 LiveView supports two extension mechanisms: function components, provided by
-`HEEx` templates, and stateful components.
+`HEEx` templates, and stateful components, known as LiveComponents.
 
-Function components are any function that receives an assigns map, similar
-to `render(assigns)` in our LiveView, and returns a `~H` template. For example:
+Similar to `render(assigns)` in our LiveView, a function component is any
+function that receives an assigns map and returns a `~H` template. For example:
 
     def weather_greeting(assigns) do
       ~H"""
       <div title="My div" class={@class}>
-        <p>Hello <%= @name %></p>
+        <p>Hello {@name}</p>
         <MyApp.Weather.city name="Kraków"/>
       </div>
       """
@@ -236,19 +245,21 @@ You can learn more about function components in the `Phoenix.Component`
 module. At the end of the day, they are a useful mechanism to reuse markup
 in your LiveViews.
 
-However, sometimes you need to compartmentalize or reuse more than markup.
-Perhaps you want to move part of the state or part of the events in your
+However, sometimes you need to compartmentalize or reuse more than just markup.
+Perhaps you want to move part of the state or some of the events in your
 LiveView to a separate module. For these cases, LiveView provides
 `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
-    <.live_component module={UserComponent} id={user.id} user={user} />
+```heex
+<.live_component module={UserComponent} id={user.id} user={user} />
+```
 
-Components have their own `mount/3` and `handle_event/3` callbacks, as
-well as their own state with change tracking support. Components are also
-lightweight as they "run" in the same process as the parent LiveView.
-However, this means an error in a component would cause the whole view to
-fail to render. See `Phoenix.LiveComponent` for a complete rundown on components.
+LiveComponents have their own `mount/1` and `handle_event/3` callbacks, as well
+as their own state with change tracking support, similar to LiveViews. They are
+lightweight since they "run" in the same process as the parent LiveView.
+However, this means an error in a LiveComponent would cause the whole view
+to fail to render. For a complete rundown, see `Phoenix.LiveComponent`.
 
 Finally, if you want complete isolation between parts of a LiveView, you can
 always render a LiveView inside another LiveView by calling
@@ -262,9 +273,9 @@ identify the child. A child LiveView will only ever be rendered and mounted
 a single time, provided its ID remains unchanged. To force a child to re-mount
 with new session data, a new ID must be provided.
 
-Given that a LiveView runs on its own process, it is an excellent tool for creating
-completely isolated UI elements, but it is a slightly expensive abstraction if
-all you want is to compartmentalize markup or events (or both).
+Given that it runs in its own process, a nested LiveView is an excellent tool
+for creating completely isolated UI elements, but it is a slightly expensive
+abstraction if all you want is to compartmentalize markup or events (or both).
 
 To sum it up:
 
@@ -286,20 +297,21 @@ split on server-side and client-side:
 These guides focus on server-side functionality:
 
 * [Assigns and HEEx templates](assigns-eex.md)
-* [Deployments](deployments.md)
+* [Deployments and recovery](deployments.md)
 * [Error and exception handling](error-handling.md)
+* [Gettext for internationalization](gettext.md)
 * [Live layouts](live-layouts.md)
 * [Live navigation](live-navigation.md)
 * [Security considerations](security-model.md)
 * [Telemetry](telemetry.md)
 * [Uploads](uploads.md)
-* [Gettext for internationalization](using-gettext.md)
 
 ### Client-side
 
 These guides focus on LiveView bindings and client-side integration:
 
 * [Bindings](bindings.md)
+* [External uploads](external-uploads.md)
 * [Form bindings](form-bindings.md)
 * [JavaScript interoperability](js-interop.md)
-* [External uploads](uploads-external.md)
+* [Syncing changes and optimistic UIs](syncing-changes.md)

@@ -154,7 +154,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
     test "dynamic attrs" do
       assigns = %{prefix: "MyApp – ", title: "My Title"}
 
-      assert t2h(~H|<.live_title prefix={@prefix}><%= @title %></.live_title>|) ==
+      assert t2h(~H|<.live_title prefix={@prefix}>{@title}</.live_title>|) ==
                ~X|<title data-prefix="MyApp – ">MyApp – My Title</title>|
     end
 
@@ -184,6 +184,25 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       assert t2h(~H|<.live_title>My Title</.live_title>|) ==
                ~X|<title>My Title</title>|
+    end
+
+    test "default with blank inner block" do
+      assigns = %{
+        val: """
+
+
+        """
+      }
+
+      assert t2h(~H|<.live_title default="DEFAULT" phx-no-format>   <%= @val %>   </.live_title>|) ==
+               ~X|<title data-default="DEFAULT">DEFAULT</title>|
+    end
+
+    test "default with present inner block" do
+      assigns = %{val: "My Title"}
+
+      assert t2h(~H|<.live_title default="DEFAULT" phx-no-format>   <%= @val %>   </.live_title>|) ==
+               ~X|<title data-default="DEFAULT">   My Title   </title>|
     end
   end
 
@@ -320,7 +339,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={form} for={@form} errors={[name: "can't be blank"]}>
-        <%= inspect(form.errors) %>
+        {inspect(form.errors)}
       </.form>
       """
 
@@ -422,7 +441,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
         phx-change="valid"
       >
         <input id={user_form[:foo].id} name={user_form[:foo].name} type="text" />
-        <%= inspect(user_form.errors) %>
+        {inspect(user_form.errors)}
       </.form>
       """
 
@@ -442,6 +461,39 @@ defmodule Phoenix.LiveView.ComponentsTest do
                  <input id="form_foo" name="user[foo]" type="text">
                  [name: "can't be blank"]
 
+               </form>
+               """
+    end
+
+    test "method is case insensitive when using get or post with action" do
+      assigns = %{}
+
+      template = ~H"""
+      <.form for={%{}} method="GET" action="/"></.form>
+      """
+
+      assert t2h(template) ==
+               ~x{<form method="get" action="/"></form>}
+
+      template = ~H"""
+      <.form for={%{}} method="PoST" action="/"></.form>
+      """
+
+      csrf = Plug.CSRFProtection.get_csrf_token_for("/")
+
+      assert t2h(template) ==
+               ~x{<form method="post" action="/"><input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}"></form>}
+
+      # for anything != get or post we use post and set the hidden _method field
+      template = ~H"""
+      <.form for={%{}} method="PuT" action="/"></.form>
+      """
+
+      assert t2h(template) ==
+               ~x"""
+               <form action="/" method="post">
+                 <input name="_method" type="hidden" hidden="hidden" value="PuT">
+                 <input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}">
                </form>
                """
     end
@@ -475,6 +527,22 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
       <.form :let={f} as={:myform}>
         <.inputs_for :let={finner} field={f[:inner]} } id="test" as={:name}>
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
+        </.inputs_for>
+      </.form>
+      """
+
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input type="hidden" name="name[_persistent_id]" value="0"> </input>
+                 <input id="test_inner_0_foo" name="name[foo]" type="text"></input>
+               </form>
+               """
+
+      template = ~H"""
+      <.form :let={f} as={:myform}>
+        <.inputs_for :let={finner} field={f[:inner]} } as={:name}>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
         </.inputs_for>
       </.form>
@@ -546,7 +614,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
       <.form :let={f} as={:myform}>
         <.inputs_for :let={finner} field={f[:inner]} } options={[foo: "bar"]}>
-          <p><%= finner.options[:foo] %></p>
+          <p>{finner.options[:foo]}</p>
         </.inputs_for>
       </.form>
       """
@@ -626,7 +694,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
       <.intersperse :let={item} enum={[1, 2, 3]}>
         <:separator><span class="sep">|</span></:separator>
-        Item<%= item %>
+        Item{item}
       </.intersperse>
       """
 
@@ -636,7 +704,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       template = ~H"""
       <.intersperse :let={item} enum={[1]}>
         <:separator><span class="sep">|</span></:separator>
-        Item<%= item %>
+        Item{item}
       </.intersperse>
       """
 

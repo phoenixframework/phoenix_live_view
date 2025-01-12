@@ -2,7 +2,7 @@
 
 LiveView supports interactive file uploads with progress for
 both direct to server uploads as well as direct-to-cloud
-[external uploads](uploads-external.html) on the client.
+[external uploads](external-uploads.html) on the client.
 
 ## Built-in Features
 
@@ -82,35 +82,27 @@ Let's look at an annotated example:
 
 <%!-- use phx-drop-target with the upload ref to enable file drag and drop --%>
 <section phx-drop-target={@uploads.avatar.ref}>
-
-<%!-- render each avatar entry --%>
-<%= for entry <- @uploads.avatar.entries do %>
-  <article class="upload-entry">
-
+  <%!-- render each avatar entry --%>
+  <article :for={entry <- @uploads.avatar.entries} class="upload-entry">
     <figure>
       <.live_img_preview entry={entry} />
-      <figcaption><%= entry.client_name %></figcaption>
+      <figcaption>{entry.client_name}</figcaption>
     </figure>
 
     <%!-- entry.progress will update automatically for in-flight entries --%>
-    <progress value={entry.progress} max="100"> <%= entry.progress %>% </progress>
+    <progress value={entry.progress} max="100"> {entry.progress}% </progress>
 
     <%!-- a regular click event whose handler will invoke Phoenix.LiveView.cancel_upload/3 --%>
     <button type="button" phx-click="cancel-upload" phx-value-ref={entry.ref} aria-label="cancel">&times;</button>
 
     <%!-- Phoenix.Component.upload_errors/2 returns a list of error atoms --%>
-    <%= for err <- upload_errors(@uploads.avatar, entry) do %>
-      <p class="alert alert-danger"><%= error_to_string(err) %></p>
-    <% end %>
-
+    <p :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">{error_to_string(err)}</p>
   </article>
-<% end %>
 
-<%!-- Phoenix.Component.upload_errors/1 returns a list of error atoms --%>
-<%= for err <- upload_errors(@uploads.avatar) do %>
-  <p class="alert alert-danger"><%= error_to_string(err) %></p>
-<% end %>
-
+  <%!-- Phoenix.Component.upload_errors/1 returns a list of error atoms --%>
+  <p :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger">
+    {error_to_string(err)}
+  </p>
 </section>
 ```
 
@@ -216,7 +208,7 @@ ultimately fail.
 For these reasons, it is best if uploads are stored elsewhere, such as the
 database (depending on the size and contents) or a separate storage service.
 For more information on implementing client-side, direct-to-cloud uploads,
-see the [External uploads guide](uploads-external.md) for details.
+see the [External uploads guide](external-uploads.md) for details.
 
 ## Appendix A: UploadLive
 

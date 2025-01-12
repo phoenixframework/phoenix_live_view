@@ -71,19 +71,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
     def button_with_values_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"]
-    def button_with_values(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_values_and_default_1_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"], default: "Save"
-    def button_with_values_and_default_1(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values_and_default_1(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_values_and_default_2_line, do: __ENV__.line
     attr :text, :string, default: "Save", values: ["Save", "Cancel"]
-    def button_with_values_and_default_2(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values_and_default_2(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_examples_line, do: __ENV__.line
     attr :text, :string, examples: ["Save", "Cancel"]
-    def button_with_examples(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_examples(assigns), do: ~H[<button>{@text}</button>]
 
     def render_line, do: __ENV__.line
 
@@ -385,13 +385,13 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       <table>
         <tr>
           <%= for col <- @col do %>
-            <th><%= col.label %></th>
+            <th>{col.label}</th>
           <% end %>
         </tr>
         <%= for row <- @rows do %>
           <tr>
             <%= for col <- @col do %>
-              <td><%= render_slot(col, row) %></td>
+              <td>{render_slot(col, row)}</td>
             <% end %>
           </tr>
         <% end %>
@@ -423,11 +423,11 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       <.table rows={@users}>
         <:col :let={user} label={@name}>
-          <%= user.name %>
+          {user.name}
         </:col>
 
         <:col :let={user} label="Address">
-          <%= user.address %>
+          {user.address}
         </:col>
       </.table>
       """
@@ -628,14 +628,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       def add(assigns) do
         assigns = Phoenix.Component.assign(assigns, :foo, :bar)
-        ~H[<%= @one + @two %>]
+        ~H[{@one + @two}]
       end
 
       attr :nil_default, :string, default: nil
-      def example(assigns), do: ~H[<%= inspect(@nil_default) %>]
+      def example(assigns), do: ~H[{inspect(@nil_default)}]
 
       attr :value, :string
-      def no_default(assigns), do: ~H[<%= inspect(@value) %>]
+      def no_default(assigns), do: ~H[{inspect(@value)}]
 
       attr :id, :any
       attr :errors, :list, default: []
@@ -668,10 +668,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       use Phoenix.Component
 
       slot(:inner_block)
-      def func(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+      def func(assigns), do: ~H[{render_slot(@inner_block)}]
 
       slot(:inner_block, required: true)
-      def func_required(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+      def func_required(assigns), do: ~H[{render_slot(@inner_block)}]
     end
 
     assigns = %{}
@@ -690,9 +690,9 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       def test(assigns) do
         ~H"""
         <div {@rest}>
-          <%= render_slot(@inner_block) %>
+          {render_slot(@inner_block)}
           <%= for col <- @col do %>
-            <%= render_slot(col) %>,
+            {render_slot(col)},
           <% end %>
         </div>
         """
@@ -862,7 +862,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
   test "inserts attr & slot docs into function component @doc string" do
     {_, _, :elixir, "text/markdown", _, _, docs} =
-      Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+      Code.fetch_docs(Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs)
 
     components = %{
       fun_attr_any: """
@@ -934,7 +934,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       fun_attr_struct: """
       ## Attributes
 
-      * `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)
+      * `attr` (`Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.Struct`)
       """,
       fun_attr_required: """
       ## Attributes
@@ -1069,7 +1069,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "stores correct line number on AST" do
-    module = Phoenix.LiveViewTest.FunctionComponentWithAttrs
+    module = Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs
 
     {^module, binary, _file} = :code.get_object_code(module)
 
@@ -1077,19 +1077,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       :beam_lib.chunks(binary, [:abstract_code])
 
     assert Enum.find_value(abstract_code, fn
-             {:function, line, :identity, 1, _} -> line
+             {:function, anno, :identity, 1, _} -> :erl_anno.line(anno)
              _ -> nil
            end) == 24
 
     assert Enum.find_value(abstract_code, fn
-             {:function, line, :fun_doc_false, 1, _} -> line
+             {:function, anno, :fun_doc_false, 1, _} -> :erl_anno.line(anno)
              _ -> nil
            end) == 118
   end
 
   test "does not override signature of Elixir functions" do
     {:docs_v1, _, :elixir, "text/markdown", _, _, docs} =
-      Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+      Code.fetch_docs(Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs)
 
     assert {{:function, :identity, 1}, _, ["identity(var)"], _, %{}} =
              List.keyfind(docs, {:function, :identity, 1}, 0)
@@ -1097,8 +1097,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert {{:function, :map_identity, 1}, _, ["map_identity(map)"], _, %{}} =
              List.keyfind(docs, {:function, :map_identity, 1}, 0)
 
-    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(:not_a_map) == :not_a_map
-    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(%{}) == %{}
+    assert Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.identity(:not_a_map) ==
+             :not_a_map
+
+    assert Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.identity(%{}) == %{}
   end
 
   test "raise if attr :doc is not a string" do
@@ -1697,7 +1699,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, required: true
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end
@@ -1710,7 +1712,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, values: ["placeholder", "rel"]
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end
@@ -1723,7 +1725,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, examples: ["placeholder", "rel"]
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end

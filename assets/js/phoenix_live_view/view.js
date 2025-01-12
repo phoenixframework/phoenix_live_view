@@ -9,7 +9,6 @@ import {
   PHX_DISABLE_WITH_RESTORE,
   PHX_DISABLED,
   PHX_LOADING_CLASS,
-  PHX_EVENT_CLASSES,
   PHX_CUSTOM_EVENTS,
   PHX_ERROR_CLASS,
   PHX_CLIENT_ERROR_CLASS,
@@ -17,7 +16,6 @@ import {
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_HOOK,
-  PHX_PAGE_LOADING,
   PHX_PARENT_ID,
   PHX_PROGRESS,
   PHX_READONLY,
@@ -37,6 +35,7 @@ import {
   PUSH_TIMEOUT,
   PHX_VIEWPORT_TOP,
   PHX_VIEWPORT_BOTTOM,
+  MAX_CHILD_JOIN_ATTEMPTS
 } from "./constants"
 
 import {
@@ -73,7 +72,7 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   const {submitter, ...meta} = metadata
 
   // We must inject the submitter in the order that it exists in the DOM
-  // releative to other inputs. For example, for checkbox groups, the order must be maintained.
+  // relative to other inputs. For example, for checkbox groups, the order must be maintained.
   let injectedElement
   if(submitter && submitter.name){
     const input = document.createElement("input")
@@ -150,6 +149,7 @@ export default class View {
     this.redirect = false
     this.href = null
     this.joinCount = this.parent ? this.parent.joinCount - 1 : 0
+    this.joinAttempts = 0
     this.joinPending = true
     this.destroyed = false
     this.joinCallback = function(onDone){ onDone && onDone() }
@@ -190,7 +190,9 @@ export default class View {
 
     if(manifest.length > 0){ params["_track_static"] = manifest }
     params["_mounts"] = this.joinCount
+    params["_mount_attempts"] = this.joinAttempts
     params["_live_referer"] = liveReferer
+    this.joinAttempts++
 
     return params
   }
@@ -301,7 +303,7 @@ export default class View {
     this.log(type, () => ["", clone(rawDiff)])
     let {diff, reply, events, title} = Rendered.extract(rawDiff)
     callback({diff, reply, events})
-    if(typeof title === "string"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
+    if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
   }
 
   onJoin(resp){
@@ -316,7 +318,8 @@ export default class View {
     if(this.root === this){
       this.formsForRecovery = this.getFormsForRecovery()
     }
-    if(this.isMain()){
+    if(this.isMain() && window.history.state === null){
+      // set initial history entry if this is the first page load
       this.liveSocket.replaceRootHistory()
     }
 
@@ -330,6 +333,7 @@ export default class View {
       let [html, streams] = this.renderContainer(null, "join")
       this.dropPendingRefs()
       this.joinCount++
+      this.joinAttempts = 0
 
       this.maybeRecoverForms(html, () => {
         this.onJoinComplete(resp, html, streams, events)
@@ -451,7 +455,7 @@ export default class View {
     }
   }
 
-  maybeAddNewHook(el, force){
+  maybeAddNewHook(el){
     let newHook = this.addHook(el)
     if(newHook){ newHook.__mounted() }
   }
@@ -592,7 +596,7 @@ export default class View {
     if(el.id === this.id){
       return this
     } else {
-      return this.children[el.getAttribute(PHX_PARENT_ID)][el.id]
+      return this.children[el.getAttribute(PHX_PARENT_ID)]?.[el.id]
     }
   }
 
@@ -725,9 +729,12 @@ export default class View {
   }
 
   destroyHook(hook){
+    // __destroyed clears the elementID from the hook, therefore
+    // we need to get it before calling __destroyed
+    const hookId = ViewHook.elementID(hook.el)
     hook.__destroyed()
     hook.__cleanup__()
-    delete this.viewHooks[ViewHook.elementID(hook.el)]
+    delete this.viewHooks[hookId]
   }
 
   applyPendingUpdates(){
@@ -771,7 +778,8 @@ export default class View {
   onLiveRedirect(redir){
     let {to, kind, flash} = redir
     let url = this.expandURL(to)
-    this.liveSocket.historyRedirect(url, kind, flash)
+    let e = new CustomEvent("phx:server-navigate", {detail: {to, kind, flash}})
+    this.liveSocket.historyRedirect(e, url, kind, flash)
   }
 
   onLivePatch(redir){
@@ -784,11 +792,16 @@ export default class View {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
-  onRedirect({to, flash}){ this.liveSocket.redirect(to, flash) }
+  onRedirect({to, flash, reloadToken}){ this.liveSocket.redirect(to, flash, reloadToken) }
 
   isDestroyed(){ return this.destroyed }
 
   joinDead(){ this.isDead = true }
+
+  joinPush(){
+    this.joinPush = this.joinPush || this.channel.join()
+    return this.joinPush
+  }
 
   join(callback){
     this.showLoader(this.liveSocket.loaderTimeout)
@@ -800,26 +813,22 @@ export default class View {
       onDone = onDone || function(){}
       callback ? callback(this.joinCount, onDone) : onDone()
     }
-    this.liveSocket.wrapPush(this, {timeout: false}, () => {
-      return this.channel.join()
-        .receive("ok", data => {
-          if(!this.isDestroyed()){
-            this.liveSocket.requestDOMUpdate(() => this.onJoin(data))
-          }
-        })
-        .receive("error", resp => !this.isDestroyed() && this.onJoinError(resp))
-        .receive("timeout", () => !this.isDestroyed() && this.onJoinError({reason: "timeout"}))
+
+    this.wrapPush(() => this.channel.join(), {
+      ok: (resp) => this.liveSocket.requestDOMUpdate(() => this.onJoin(resp)),
+      error: (error) => this.onJoinError(error),
+      timeout: () => this.onJoinError({reason: "timeout"})
     })
   }
 
   onJoinError(resp){
     if(resp.reason === "reload"){
-      this.log("error", () => [`failed mount with ${resp.status}. Falling back to page request`, resp])
-      if(this.isMain()){ this.onRedirect({to: this.href}) }
+      this.log("error", () => [`failed mount with ${resp.status}. Falling back to page reload`, resp])
+      this.onRedirect({to: this.root.href, reloadToken: resp.token})
       return
     } else if(resp.reason === "unauthorized" || resp.reason === "stale"){
       this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp])
-      if(this.isMain()){ this.onRedirect({to: this.href}) }
+      this.onRedirect({to: this.root.href})
       return
     }
     if(resp.redirect || resp.live_redirect){
@@ -828,14 +837,31 @@ export default class View {
     }
     if(resp.redirect){ return this.onRedirect(resp.redirect) }
     if(resp.live_redirect){ return this.onLiveRedirect(resp.live_redirect) }
-    this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
     this.log("error", () => ["unable to join", resp])
-    if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
+    if(this.isMain()){
+      this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+      if(this.liveSocket.isConnected()){ this.liveSocket.reloadWithJitter(this) }
+    } else {
+      if(this.joinAttempts >= MAX_CHILD_JOIN_ATTEMPTS){
+        // put the root review into permanent error state, but don't destroy it as it can remain active
+        this.root.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+        this.log("error", () => [`giving up trying to mount after ${MAX_CHILD_JOIN_ATTEMPTS} tries`, resp])
+        this.destroy()
+      }
+      let trueChildEl = DOM.byId(this.el.id)
+      if(trueChildEl){
+        DOM.mergeAttrs(trueChildEl, this.el)
+        this.displayError([PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS])
+        this.el = trueChildEl
+      } else {
+        this.destroy()
+      }
+    }
   }
 
   onClose(reason){
     if(this.isDestroyed()){ return }
-    if(this.liveSocket.hasPendingLink() && reason !== "leave"){
+    if(this.isMain() && this.liveSocket.hasPendingLink() && reason !== "leave"){
       return this.liveSocket.reloadWithJitter(this)
     }
     this.destroyAllChildren()
@@ -866,31 +892,49 @@ export default class View {
     this.execAll(this.binding("disconnected"))
   }
 
-  pushWithReply(refGenerator, event, payload, onReply = function (){ }){
-    if(!this.isConnected()){ return }
+  wrapPush(callerPush, receives){
+    let latency = this.liveSocket.getLatencySim()
+    let withLatency = latency ?
+      (cb) => setTimeout(() => !this.isDestroyed() && cb(), latency) :
+      (cb) => !this.isDestroyed() && cb()
+
+    withLatency(() => {
+      callerPush()
+        .receive("ok", resp => withLatency(() => receives.ok && receives.ok(resp)))
+        .receive("error", reason => withLatency(() => receives.error && receives.error(reason)))
+        .receive("timeout", () => withLatency(() => receives.timeout && receives.timeout()))
+    })
+  }
+
+  pushWithReply(refGenerator, event, payload){
+    if(!this.isConnected()){ return Promise.reject({error: "noconnection"}) }
 
     let [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}]
-    let onLoadingDone = function(){ }
-    if(opts.page_loading || (el && (el.getAttribute(this.binding(PHX_PAGE_LOADING)) !== null))){
+    let oldJoinCount = this.joinCount
+    let onLoadingDone = function(){}
+    if(opts.page_loading){
       onLoadingDone = this.liveSocket.withPageLoading({kind: "element", target: el})
     }
 
     if(typeof (payload.cid) !== "number"){ delete payload.cid }
-    return (
-      this.liveSocket.wrapPush(this, {timeout: true}, () => {
-        return this.channel.push(event, payload, PUSH_TIMEOUT).receive("ok", resp => {
+
+    return new Promise((resolve, reject) => {
+      this.wrapPush(() => this.channel.push(event, payload, PUSH_TIMEOUT), {
+        ok: (resp) => {
           if(ref !== null){ this.lastAckRef = ref }
           let finish = (hookReply) => {
             if(resp.redirect){ this.onRedirect(resp.redirect) }
             if(resp.live_patch){ this.onLivePatch(resp.live_patch) }
             if(resp.live_redirect){ this.onLiveRedirect(resp.live_redirect) }
             onLoadingDone()
-            onReply(resp, hookReply)
+            resolve({resp: resp, reply: hookReply})
           }
           if(resp.diff){
             this.liveSocket.requestDOMUpdate(() => {
               this.applyDiff("update", resp.diff, ({diff, reply, events}) => {
-                if(ref !== null){ this.undoRefs(ref, payload.event) }
+                if(ref !== null){
+                  this.undoRefs(ref, payload.event)
+                }
                 this.update(diff, events)
                 finish(reply)
               })
@@ -899,9 +943,18 @@ export default class View {
             if(ref !== null){ this.undoRefs(ref, payload.event) }
             finish(null)
           }
-        })
+        },
+        error: (reason) => reject({error: reason}),
+        timeout: () => {
+          reject({timeout: true})
+          if(this.joinCount === oldJoinCount){
+            this.liveSocket.reloadWithJitter(this, () => {
+              this.log("timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"])
+            })
+          }
+        }
       })
-    )
+    })
   }
 
   undoRefs(ref, phxEvent, onlyEls){
@@ -953,6 +1006,14 @@ export default class View {
 
       if(!loading || (opts.submitter && !(el === opts.submitter || el === opts.form))){ continue }
 
+      let lockCompletePromise = new Promise(resolve => {
+        el.addEventListener(`phx:undo-lock:${newRef}`, () => resolve(detail), {once: true})
+      })
+
+      let loadingCompletePromise = new Promise(resolve => {
+        el.addEventListener(`phx:undo-loading:${newRef}`, () => resolve(detail), {once: true})
+      })
+
       el.classList.add(`phx-${eventType}-loading`)
       let disableText = el.getAttribute(disableWith)
       if(disableText !== null){
@@ -964,6 +1025,7 @@ export default class View {
         el.setAttribute(PHX_DISABLED, el.getAttribute(PHX_DISABLED) || el.disabled)
         el.setAttribute("disabled", "")
       }
+
       let detail = {
         event: phxEvent,
         eventType: eventType,
@@ -976,28 +1038,18 @@ export default class View {
           els = Array.isArray(els) ? els : [els]
           this.undoRefs(newRef, phxEvent, els)
         },
-        getAck: new Promise(resolve => {
-          if(this.isAcked(newRef)){
-            resolve(detail)
-          } else {
-            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), {once: true})
-          }
-        }),
-        lock: (els) => {
-          if(this.isAcked(newRef)){ return new Promise.resolve(detail) }
-
-          els = Array.isArray(els) ? els : [els]
-          els.forEach(lockEl => {
+        lockComplete: lockCompletePromise,
+        loadingComplete: loadingCompletePromise,
+        lock: (lockEl) => {
+          return new Promise(resolve => {
+            if(this.isAcked(newRef)){ return resolve(detail) }
             lockEl.setAttribute(PHX_REF_LOCK, newRef)
             lockEl.setAttribute(PHX_REF_SRC, this.refSrc())
-          })
-
-          return new Promise(resolve => {
-            el.addEventListener(`phx:ack:${newRef}`, () => resolve(detail), {once: true})
+            lockEl.addEventListener(`phx:lock-stop:${newRef}`, () => resolve(detail), {once: true})
           })
         }
       }
-      el.dispatchEvent(new CustomEvent(`phx:push`, {
+      el.dispatchEvent(new CustomEvent("phx:push", {
         detail: detail,
         bubbles: true,
         cancelable: false
@@ -1054,7 +1106,7 @@ export default class View {
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }, (resp, reply) => onReply(reply, ref))
+    }).then(({resp: _resp, reply: hookReply}) => onReply(hookReply, ref))
 
     return ref
   }
@@ -1087,7 +1139,7 @@ export default class View {
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    }, (resp, reply) => onReply && onReply(reply))
+    }).then(({reply}) => onReply && onReply(reply))
   }
 
   pushFileProgress(fileEl, entryRef, progress, onReply = function (){ }){
@@ -1098,7 +1150,7 @@ export default class View {
         entry_ref: entryRef,
         progress: progress,
         cid: view.targetComponentID(fileEl.form, targetCtx)
-      }, onReply)
+      }).then(({resp}) => onReply(resp))
     })
   }
 
@@ -1135,7 +1187,7 @@ export default class View {
       uploads: uploads,
       cid: cid
     }
-    this.pushWithReply(refGenerator, "event", event, resp => {
+    this.pushWithReply(refGenerator, "event", event).then(({resp}) => {
       if(DOM.isUploadInput(inputEl) && DOM.isAutoUpload(inputEl)){
         if(LiveUploader.filesAwaitingPreflight(inputEl).length > 0){
           let [ref, _els] = refGenerator()
@@ -1171,7 +1223,7 @@ export default class View {
   }
 
   cancelSubmit(formEl, phxEvent){
-    this.formSubmits = this.formSubmits.filter(([el, ref, _callback]) => {
+    this.formSubmits = this.formSubmits.filter(([el, ref, _opts, _callback]) => {
       if(el.isSameNode(formEl)){
         this.undoRefs(ref, phxEvent)
         return false
@@ -1210,7 +1262,6 @@ export default class View {
         input.disabled = true
       }
     })
-    formEl.setAttribute(this.binding(PHX_PAGE_LOADING), "")
     let formEls = disables.concat(buttons).concat(inputs).map(el => {
       return {el, loading: true, lock: true}
     })
@@ -1235,7 +1286,7 @@ export default class View {
     } else if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
       let [ref, els] = refGenerator()
       let proxyRefGen = () => [ref, els, opts]
-      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (uploads) => {
+      this.uploadFiles(formEl, phxEvent, targetCtx, ref, cid, (_uploads) => {
         // if we still having pending preflights it means we have invalid entries
         // and the phx-submit cannot be completed
         if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
@@ -1248,7 +1299,7 @@ export default class View {
           event: phxEvent,
           value: formData,
           cid: cid
-        }, onReply)
+        }).then(({resp}) => onReply(resp))
       })
     } else if(!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))){
       let meta = this.extractMeta(formEl)
@@ -1258,7 +1309,7 @@ export default class View {
         event: phxEvent,
         value: formData,
         cid: cid
-      }, onReply)
+      }).then(({resp}) => onReply(resp))
     }
   }
 
@@ -1272,11 +1323,11 @@ export default class View {
       let uploader = new LiveUploader(inputEl, this, () => {
         numFileInputsInProgress--
         if(numFileInputsInProgress === 0){ onComplete() }
-      });
+      })
 
       let entries = uploader.entries().map(entry => entry.toPreflightPayload())
 
-      if(entries.length === 0) {
+      if(entries.length === 0){
         numFileInputsInProgress--
         return
       }
@@ -1289,7 +1340,7 @@ export default class View {
 
       this.log("upload", () => ["sending preflight request", payload])
 
-      this.pushWithReply(null, "allow_upload", payload, resp => {
+      this.pushWithReply(null, "allow_upload", payload).then(({resp}) => {
         this.log("upload", () => ["got preflight response", resp])
         // the preflight will reject entries beyond the max entries
         // so we error and cancel entries on the client that are missing from the response
@@ -1337,11 +1388,11 @@ export default class View {
     else { DOM.dispatchEvent(inputs[0], PHX_TRACK_UPLOADS, {detail: {files: filesOrBlobs}}) }
   }
 
-  targetCtxElement(targetCtx) {
+  targetCtxElement(targetCtx){
     if(isCid(targetCtx)){
       let [target] = DOM.findComponentNodeList(this.el, targetCtx)
       return target
-    } else if(targetCtx) {
+    } else if(targetCtx){
       return targetCtx
     } else {
       return null
@@ -1370,38 +1421,45 @@ export default class View {
     this.withinTargets(phxTarget, (targetView, targetCtx) => {
       const cid = this.targetComponentID(newForm, targetCtx)
       pending++
-      targetView.pushInput(input, targetCtx, cid, phxEvent, {_target: input.name}, () => {
-        pending--
-        if(pending === 0){ callback() }
-      })
+      let e = new CustomEvent("phx:form-recovery", {detail: {sourceElement: oldForm}})
+      JS.exec(e, "change", phxEvent, this, input, ["push", {
+        _target: input.name,
+        targetView,
+        targetCtx,
+        newCid: cid,
+        callback: () => {
+          pending--
+          if(pending === 0){ callback() }
+        }
+      }])
     }, templateDom, templateDom)
   }
 
-  pushLinkPatch(href, targetEl, callback){
+  pushLinkPatch(e, href, targetEl, callback){
     let linkRef = this.liveSocket.setPendingLink(href)
-    let refGen = targetEl ? () => this.putRef([{el: targetEl, loading: true, lock: true}], null, "click") : null
+    // only add loading states if event is trusted (it was triggered by user, such as click) and
+    // it's not a forward/back navigation from popstate
+    let loading = e.isTrusted && e.type !== "popstate"
+    let refGen = targetEl ? () => this.putRef([{el: targetEl, loading: loading, lock: true}], null, "click") : null
     let fallback = () => this.liveSocket.redirect(window.location.href)
     let url = href.startsWith("/") ? `${location.protocol}//${location.host}${href}` : href
 
-    let push = this.pushWithReply(refGen, "live_patch", {url}, resp => {
-      this.liveSocket.requestDOMUpdate(() => {
-        if(resp.link_redirect){
-          this.liveSocket.replaceMain(href, null, callback, linkRef)
-        } else {
-          if(this.liveSocket.commitPendingLink(linkRef)){
-            this.href = href
+    this.pushWithReply(refGen, "live_patch", {url}).then(
+      ({resp}) => {
+        this.liveSocket.requestDOMUpdate(() => {
+          if(resp.link_redirect){
+            this.liveSocket.replaceMain(href, null, callback, linkRef)
+          } else {
+            if(this.liveSocket.commitPendingLink(linkRef)){
+              this.href = href
+            }
+            this.applyPendingUpdates()
+            callback && callback(linkRef)
           }
-          this.applyPendingUpdates()
-          callback && callback(linkRef)
-        }
-      })
-    })
-
-    if(push){
-      push.receive("timeout", fallback)
-    } else {
-      fallback()
-    }
+        })
+      },
+      ({error: _error, timeout: _timeout}) => fallback()
+    )
   }
 
   getFormsForRecovery(){
@@ -1430,7 +1488,7 @@ export default class View {
       // could be added back from the server so we don't skip them
       willDestroyCIDs.forEach(cid => this.rendered.resetRender(cid))
 
-      this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}, () => {
+      this.pushWithReply(null, "cids_will_destroy", {cids: willDestroyCIDs}).then(() => {
         // we must wait for pending transitions to complete before determining
         // if the cids were added back to the DOM in the meantime (#3139)
         this.liveSocket.requestDOMUpdate(() => {
@@ -1441,7 +1499,7 @@ export default class View {
           })
 
           if(completelyDestroyCIDs.length > 0){
-            this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}, (resp) => {
+            this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}).then(({resp}) => {
               this.rendered.pruneCIDs(resp.cids)
             })
           }

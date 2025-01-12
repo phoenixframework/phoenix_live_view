@@ -143,7 +143,7 @@ defmodule Phoenix.LiveView.Upload do
   Puts the entries into the `%UploadConfig{}`.
   """
   def put_entries(%Socket{} = socket, %UploadConfig{} = conf, entries, cid) do
-    case UploadConfig.put_entries(%UploadConfig{conf | cid: cid}, entries) do
+    case UploadConfig.put_entries(%{conf | cid: cid}, entries) do
       {:ok, new_config} ->
         {:ok, update_uploads(new_config, socket)}
 
@@ -257,7 +257,7 @@ defmodule Phoenix.LiveView.Upload do
   """
   def consume_uploaded_entry(%Socket{} = socket, %UploadEntry{} = entry, func)
       when is_function(func, 1) do
-    unless entry.done?,
+    if !entry.done?,
       do: raise(ArgumentError, "cannot consume uploaded files when entries are still in progress")
 
     conf = Map.fetch!(socket.assigns[:uploads], entry.upload_config)
@@ -350,7 +350,8 @@ defmodule Phoenix.LiveView.Upload do
     client_meta = %{
       max_file_size: conf.max_file_size,
       max_entries: conf.max_entries,
-      chunk_size: conf.chunk_size
+      chunk_size: conf.chunk_size,
+      chunk_timeout: conf.chunk_timeout
     }
 
     {new_socket, new_conf, new_entries} = mark_preflighted(socket, conf, refs)

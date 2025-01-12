@@ -6,18 +6,19 @@ let default_transition_time = 200
 
 let JS = {
   // private
-  exec(eventType, phxEvent, view, sourceEl, defaults){
+  exec(e, eventType, phxEvent, view, sourceEl, defaults){
     let [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
     let commands = phxEvent.charAt(0) === "[" ?
       JSON.parse(phxEvent) : [[defaultKind, defaultArgs]]
 
     commands.forEach(([kind, args]) => {
-      if(kind === defaultKind && defaultArgs.data){
-        args.data = Object.assign(args.data || {}, defaultArgs.data)
+      if(kind === defaultKind){
+        // always prefer the args, but keep existing keys from the defaultArgs
+        args = {...defaultArgs, ...args}
         args.callback = args.callback || defaultArgs.callback
       }
       this.filterToEls(view.liveSocket, sourceEl, args).forEach(el => {
-        this[`exec_${kind}`](eventType, phxEvent, view, sourceEl, el, args)
+        this[`exec_${kind}`](e, eventType, phxEvent, view, sourceEl, el, args)
       })
     })
   },
@@ -44,7 +45,7 @@ let JS = {
 
   // commands
 
-  exec_exec(eventType, phxEvent, view, sourceEl, el, {attr, to}){
+  exec_exec(e, eventType, phxEvent, view, sourceEl, el, {attr, to}){
     let nodes = to ? DOM.all(document, to) : [sourceEl]
     nodes.forEach(node => {
       let encodedJS = node.getAttribute(attr)
@@ -53,18 +54,18 @@ let JS = {
     })
   },
 
-  exec_dispatch(eventType, phxEvent, view, sourceEl, el, {to, event, detail, bubbles}){
+  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, {event, detail, bubbles}){
     detail = detail || {}
     detail.dispatcher = sourceEl
     DOM.dispatchEvent(el, event, {detail, bubbles})
   },
 
-  exec_push(eventType, phxEvent, view, sourceEl, el, args){
+  exec_push(e, eventType, phxEvent, view, sourceEl, el, args){
     let {event, data, target, page_loading, loading, value, dispatcher, callback} = args
     let pushOpts = {loading, value, target, page_loading: !!page_loading}
     let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
     let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
-    view.withinTargets(phxTarget, (targetView, targetCtx) => {
+    const handler = (targetView, targetCtx) => {
       if(!targetView.isConnected()){ return }
       if(eventType === "change"){
         let {newCid, _target} = args
@@ -77,73 +78,80 @@ let JS = {
       } else {
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts, callback)
       }
-    })
+    }
+    // in case of formRecovery, targetView and targetCtx are passed as argument
+    // as they are looked up in a template element, not the real DOM
+    if(args.targetView && args.targetCtx){
+      handler(args.targetView, args.targetCtx)
+    } else {
+      view.withinTargets(phxTarget, handler)
+    }
   },
 
-  exec_navigate(eventType, phxEvent, view, sourceEl, el, {href, replace}){
-    view.liveSocket.historyRedirect(href, replace ? "replace" : "push")
+  exec_navigate(e, eventType, phxEvent, view, sourceEl, el, {href, replace}){
+    view.liveSocket.historyRedirect(e, href, replace ? "replace" : "push", null, sourceEl)
   },
 
-  exec_patch(eventType, phxEvent, view, sourceEl, el, {href, replace}){
-    view.liveSocket.pushHistoryPatch(href, replace ? "replace" : "push", sourceEl)
+  exec_patch(e, eventType, phxEvent, view, sourceEl, el, {href, replace}){
+    view.liveSocket.pushHistoryPatch(e, href, replace ? "replace" : "push", sourceEl)
   },
 
-  exec_focus(eventType, phxEvent, view, sourceEl, el){
+  exec_focus(e, eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => ARIA.attemptFocus(el))
   },
 
-  exec_focus_first(eventType, phxEvent, view, sourceEl, el){
+  exec_focus_first(e, eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el))
   },
 
-  exec_push_focus(eventType, phxEvent, view, sourceEl, el){
+  exec_push_focus(e, eventType, phxEvent, view, sourceEl, el){
     window.requestAnimationFrame(() => focusStack.push(el || sourceEl))
   },
 
-  exec_pop_focus(eventType, phxEvent, view, sourceEl, el){
+  exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el){
     window.requestAnimationFrame(() => {
       const el = focusStack.pop()
       if(el){ el.focus() }
     })
   },
 
-  exec_add_class(eventType, phxEvent, view, sourceEl, el, {names, transition, time, blocking}){
+  exec_add_class(e, eventType, phxEvent, view, sourceEl, el, {names, transition, time, blocking}){
     this.addOrRemoveClasses(el, names, [], transition, time, view, blocking)
   },
 
-  exec_remove_class(eventType, phxEvent, view, sourceEl, el, {names, transition, time, blocking}){
+  exec_remove_class(e, eventType, phxEvent, view, sourceEl, el, {names, transition, time, blocking}){
     this.addOrRemoveClasses(el, [], names, transition, time, view, blocking)
   },
 
-  exec_toggle_class(eventType, phxEvent, view, sourceEl, el, {to, names, transition, time, blocking}){
+  exec_toggle_class(e, eventType, phxEvent, view, sourceEl, el, {names, transition, time, blocking}){
     this.toggleClasses(el, names, transition, time, view, blocking)
   },
 
-  exec_toggle_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val1, val2]}){
+  exec_toggle_attr(e, eventType, phxEvent, view, sourceEl, el, {attr: [attr, val1, val2]}){
     this.toggleAttr(el, attr, val1, val2)
   },
 
-  exec_transition(eventType, phxEvent, view, sourceEl, el, {time, transition, blocking}){
+  exec_transition(e, eventType, phxEvent, view, sourceEl, el, {time, transition, blocking}){
     this.addOrRemoveClasses(el, [], [], transition, time, view, blocking)
   },
 
-  exec_toggle(eventType, phxEvent, view, sourceEl, el, {display, ins, outs, time, blocking}){
+  exec_toggle(e, eventType, phxEvent, view, sourceEl, el, {display, ins, outs, time, blocking}){
     this.toggle(eventType, view, el, display, ins, outs, time, blocking)
   },
 
-  exec_show(eventType, phxEvent, view, sourceEl, el, {display, transition, time, blocking}){
+  exec_show(e, eventType, phxEvent, view, sourceEl, el, {display, transition, time, blocking}){
     this.show(eventType, view, el, display, transition, time, blocking)
   },
 
-  exec_hide(eventType, phxEvent, view, sourceEl, el, {display, transition, time, blocking}){
+  exec_hide(e, eventType, phxEvent, view, sourceEl, el, {display, transition, time, blocking}){
     this.hide(eventType, view, el, display, transition, time, blocking)
   },
 
-  exec_set_attr(eventType, phxEvent, view, sourceEl, el, {attr: [attr, val]}){
+  exec_set_attr(e, eventType, phxEvent, view, sourceEl, el, {attr: [attr, val]}){
     this.setOrRemoveAttrs(el, [[attr, val]], [])
   },
 
-  exec_remove_attr(eventType, phxEvent, view, sourceEl, el, {attr}){
+  exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, {attr}){
     this.setOrRemoveAttrs(el, [], [attr])
   },
 

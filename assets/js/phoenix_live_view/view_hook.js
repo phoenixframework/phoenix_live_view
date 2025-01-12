@@ -33,7 +33,10 @@ export default class ViewHook {
   __mounted(){ this.mounted && this.mounted() }
   __updated(){ this.updated && this.updated() }
   __beforeUpdate(){ this.beforeUpdate && this.beforeUpdate() }
-  __destroyed(){ this.destroyed && this.destroyed() }
+  __destroyed(){
+    this.destroyed && this.destroyed()
+    DOM.deletePrivate(this.el, HOOK_ID) // https://github.com/phoenixframework/phoenix_live_view/issues/3496
+  }
   __reconnected(){
     if(this.__isDisconnected){
       this.__isDisconnected = false
@@ -249,11 +252,37 @@ export default class ViewHook {
     }
   }
 
-  pushEvent(event, payload = {}, onReply = function (){ }){
+  pushEvent(event, payload = {}, onReply){
+    if(onReply === undefined){
+      return new Promise((resolve, reject) => {
+        try {
+          const ref = this.__view().pushHookEvent(this.el, null, event, payload, (reply, _ref) => resolve(reply))
+          if(ref === false){
+            reject(new Error("unable to push hook event. LiveView not connected"))
+          }
+        } catch (error){
+          reject(error)
+        }
+      })
+    }
     return this.__view().pushHookEvent(this.el, null, event, payload, onReply)
   }
 
-  pushEventTo(phxTarget, event, payload = {}, onReply = function (){ }){
+  pushEventTo(phxTarget, event, payload = {}, onReply){
+    if(onReply === undefined){
+      return new Promise((resolve, reject) => {
+        try {
+          this.__view().withinTargets(phxTarget, (view, targetCtx) => {
+            const ref = view.pushHookEvent(this.el, targetCtx, event, payload, (reply, _ref) => resolve(reply))
+            if(ref === false){
+              reject(new Error("unable to push hook event. LiveView not connected"))
+            }
+          })
+        } catch (error){
+          reject(error)
+        }
+      })
+    }
     return this.__view().withinTargets(phxTarget, (view, targetCtx) => {
       return view.pushHookEvent(this.el, targetCtx, event, payload, onReply)
     })

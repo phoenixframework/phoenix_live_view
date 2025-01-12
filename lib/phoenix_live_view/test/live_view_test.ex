@@ -10,7 +10,7 @@ defmodule Phoenix.LiveViewTest do
 
       def greet(assigns) do
         ~H"""
-        <div>Hello, <%= @name %>!</div>
+        <div>Hello, {@name}!</div>
         """
       end
 
@@ -962,7 +962,7 @@ defmodule Phoenix.LiveViewTest do
       end
     end)
 
-    unless Process.cancel_timer(timeout_ref) do
+    if !Process.cancel_timer(timeout_ref) do
       receive do
         {^timeout_ref, :timeout} -> :noop
       after
@@ -1093,7 +1093,7 @@ defmodule Phoenix.LiveViewTest do
 
   defp call(view_or_element, tuple) do
     try do
-      GenServer.call(proxy_pid(view_or_element), tuple, 30_000)
+      GenServer.call(proxy_pid(view_or_element), tuple, :infinity)
     catch
       :exit, {{:shutdown, {kind, opts}}, _} when kind in [:redirect, :live_redirect] ->
         {:error, {kind, opts}}
@@ -1614,6 +1614,41 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
+  Refutes an event will be pushed within timeout.
+
+  The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
+  `refute_receive_timeout` (100 ms).
+
+  ## Examples
+
+      refute_push_event view, "scores", %{points: _, user: "josé"}
+  """
+  defmacro refute_push_event(
+             view,
+             event,
+             payload,
+             timeout \\ Application.fetch_env!(:ex_unit, :refute_receive_timeout)
+           ) do
+    quote do
+      %{proxy: {ref, _topic, _}} = unquote(view)
+
+      receive do
+        {^ref, {:push_event, unquote(event), unquote(payload) = data}} ->
+          flunk("""
+          Unexpectedly received event "#{unquote(event)}"
+
+          Payload:
+
+          #{inspect(data, pretty: true)}
+          """)
+      after
+        unquote(timeout) ->
+          false
+      end
+    end
+  end
+
+  @doc """
   Asserts a hook reply was returned from a `handle_event` callback.
 
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
@@ -1671,7 +1706,7 @@ defmodule Phoenix.LiveViewTest do
 
   """
   defmacro follow_redirect(reason, conn, to \\ nil) do
-    quote bind_quoted: binding() do
+    quote bind_quoted: binding(), generated: true do
       case reason do
         {:error, {:live_redirect, opts}} ->
           {conn, to} = Phoenix.LiveViewTest.__follow_redirect__(conn, @endpoint, to, opts)
@@ -1743,7 +1778,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
     live_module =
-      case Phoenix.LiveView.Route.live_link_info(root.endpoint, root.router, url) do
+      case Phoenix.LiveView.Route.live_link_info_without_checks(root.endpoint, root.router, url) do
         {:internal, route} ->
           route.view
 
@@ -1840,7 +1875,7 @@ defmodule Phoenix.LiveViewTest do
   def __render_trigger_submit__(%Element{} = form, name, required_attr, error_msg) do
     case render_tree(form) do
       {"form", attrs, _child_nodes} ->
-        unless List.keymember?(attrs, required_attr, 0) do
+        if not List.keymember?(attrs, required_attr, 0) do
           raise ArgumentError, error_msg <> ", got: #{inspect(attrs)}"
         end
 
@@ -1868,9 +1903,11 @@ defmodule Phoenix.LiveViewTest do
 
   Given the following LiveView template:
 
-      <%= for entry <- @uploads.avatar.entries do %>
-          <%= entry.name %>: <%= entry.progress %>%
-      <% end %>
+  ```heex
+  <%= for entry <- @uploads.avatar.entries do %>
+    {entry.name}: {entry.progress}%
+  <% end %>
+  ```
 
   Your test case can assert the uploaded content:
 
@@ -1913,7 +1950,7 @@ defmodule Phoenix.LiveViewTest do
         %{} -> nil
       end)
 
-    unless entry_name do
+    if !entry_name do
       raise ArgumentError, "no such entry with name #{inspect(entry_name)}"
     end
 

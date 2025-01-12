@@ -12,7 +12,7 @@ defmodule Phoenix.Component do
 
         def greet(assigns) do
           ~H"""
-          <p>Hello, <%= @name %>!</p>
+          <p>Hello, {@name}!</p>
           """
         end
       end
@@ -20,8 +20,9 @@ defmodule Phoenix.Component do
   This function uses the `~H` sigil to return a rendered template.
   `~H` stands for HEEx (HTML + EEx). HEEx is a template language for
   writing HTML mixed with Elixir interpolation. We can write Elixir
-  code inside HEEx using `<%= ... %>` tags and we use `@name` to
-  access the key `name` defined inside `assigns`.
+  code inside `{...}` for HTML-aware interpolation inside tag attributes
+  and the body. We can also interpolate arbitrary HEEx blocks using `<%= ... %>`
+  We use `@name` to access the key `name` defined inside `assigns`.
 
   When invoked within a `~H` sigil or HEEx template file:
 
@@ -68,7 +69,7 @@ defmodule Phoenix.Component do
 
       def greet(assigns) do
         ~H"""
-        <p>Hello, <%= @name %>!</p>
+        <p>Hello, {@name}!</p>
         """
       end
 
@@ -110,8 +111,8 @@ defmodule Phoenix.Component do
       def celebrate(assigns) do
         ~H"""
         <p>
-          Happy birthday <%= @name %>!
-          You are <%= @age %> years old.
+          Happy birthday {@name}!
+          You are {@age} years old.
         </p>
         """
       end
@@ -143,7 +144,7 @@ defmodule Phoenix.Component do
 
         def heading(assigns) do
           ~H"""
-          <h1><%= @title %></h1>
+          <h1>{@title}</h1>
           """
         end
 
@@ -151,7 +152,7 @@ defmodule Phoenix.Component do
 
         def greet(assigns) do
           ~H"""
-          <p>Hello <%= @name %></p>
+          <p>Hello {@name}</p>
           """
         end
       end
@@ -178,7 +179,7 @@ defmodule Phoenix.Component do
 
       def notification(assigns) do
         ~H"""
-        <span {@rest}><%= @message %></span>
+        <span {@rest}>{@message}</span>
         """
       end
 
@@ -233,7 +234,7 @@ defmodule Phoenix.Component do
   slot :inner_block
   def button(assigns) do
     ~H"""
-    <button {@rest}><%= render_slot(@inner_block) %></button>
+    <button {@rest}>{render_slot(@inner_block)}</button>
     """
   end
   ```
@@ -281,7 +282,7 @@ defmodule Phoenix.Component do
       def button(assigns) do
         ~H"""
         <button>
-          <%= render_slot(@inner_block) %>
+          {render_slot(@inner_block)}
         </button>
         """
       end
@@ -327,10 +328,8 @@ defmodule Phoenix.Component do
 
       def unordered_list(assigns) do
         ~H"""
-        <ul>
-          <%= for entry <- @entries do %>
-            <li><%= render_slot(@inner_block, entry) %></li>
-          <% end %>
+        <ul :for={entry <- @entries}>
+          <li>{render_slot(@inner_block, entry)}</li>
         </ul>
         """
       end
@@ -340,7 +339,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <.unordered_list :let={fruit} entries={~w(apples bananas cherries)}>
-    I like <b><%= fruit %></b>!
+    I like <b>{fruit}</b>!
   </.unordered_list>
   ```
 
@@ -370,13 +369,13 @@ defmodule Phoenix.Component do
         ~H"""
         <div class="modal">
           <div class="modal-header">
-            <%= render_slot(@header) || "Modal" %>
+            {render_slot(@header) || "Modal"}
           </div>
           <div class="modal-body">
-            <%= render_slot(@inner_block) %>
+            {render_slot(@inner_block)}
           </div>
           <div class="modal-footer">
-            <%= render_slot(@footer) %>
+            {render_slot(@footer)}
           </div>
         </div>
         """
@@ -430,17 +429,11 @@ defmodule Phoenix.Component do
         ~H"""
         <table>
           <tr>
-            <%= for col <- @column do %>
-              <th><%= col.label %></th>
-            <% end %>
+            <th :for={col <- @column}>{col.label}</th>
           </tr>
-          <%= for row <- @rows do %>
-            <tr>
-              <%= for col <- @column do %>
-                <td><%= render_slot(col, row) %></td>
-              <% end %>
-            </tr>
-          <% end %>
+          <tr :for={row <- @rows}>
+            <td :for={col <- @column}>{render_slot(col, row)}</td>
+          </tr>
         </table>
         """
       end
@@ -450,10 +443,10 @@ defmodule Phoenix.Component do
   ```heex
   <.table rows={[%{name: "Jane", age: "34"}, %{name: "Bob", age: "51"}]}>
     <:column :let={user} label="Name">
-      <%= user.name %>
+      {user.name}
     </:column>
     <:column :let={user} label="Age">
-      <%= user.age %>
+      {user.age}
     </:column>
   </.table>
   ```
@@ -486,10 +479,12 @@ defmodule Phoenix.Component do
   module (`__DIR__`), and a wildcard pattern may be used to select all
   files within a directory tree. For example, imagine a directory listing:
 
-      ├── components.ex
-      ├── cards
-      │   ├── pricing_card.html.heex
-      │   └── features_card.html.heex
+  ```plain
+  ├── components.ex
+  ├── cards
+  │   ├── pricing_card.html.heex
+  │   └── features_card.html.heex
+  ```
 
   Then you can embed the page templates in your `components.ex` module
   and call them like any other function component:
@@ -575,7 +570,7 @@ defmodule Phoenix.Component do
 
       ~H"""
       <div title="My div" class={@class}>
-        <p>Hello <%= @name %></p>
+        <p>Hello {@name}</p>
         <MyApp.Weather.city name="Kraków"/>
       </div>
       """
@@ -587,43 +582,14 @@ defmodule Phoenix.Component do
 
   ### Interpolation
 
-  Both `HEEx` and `EEx` templates use `<%= ... %>` for interpolating code inside the body
-  of HTML tags:
+  `HEEx` allows using `{...}` for HTML-aware interpolation, inside tag attributes
+  as well as the body:
 
   ```heex
-  <p>Hello, <%= @name %></p>
+  <p>Hello, {@name}</p>
   ```
 
-  Similarly, conditionals and other block Elixir constructs are supported:
-
-  ```heex
-  <%= if @show_greeting? do %>
-    <p>Hello, <%= @name %></p>
-  <% end %>
-  ```
-
-  Note we don't include the equal sign `=` in the closing `<% end %>` tag
-  (because the closing tag does not output anything).
-
-  There is one important difference between `HEEx` and Elixir's builtin `EEx`.
-  `HEEx` uses a specific annotation for interpolating HTML tags and attributes.
-  Let's check it out.
-
-  ### HEEx extension: Defining attributes
-
-  Since `HEEx` must parse and validate the HTML structure, code interpolation using
-  `<%= ... %>` and `<% ... %>` are restricted to the body (inner content) of the
-  HTML/component nodes and it cannot be applied within tags.
-
-  For instance, the following syntax is invalid:
-
-  ```heex
-  <div class="<%= @class %>">
-    ...
-  </div>
-  ```
-
-  Instead do:
+  If you want to interpolate an attribute, you write:
 
   ```heex
   <div class={@class}>
@@ -641,22 +607,21 @@ defmodule Phoenix.Component do
   </div>
   ```
 
-  The following attribute values have special meaning:
+  The following attribute values have special meaning on HTML tags:
 
   * `true` - if a value is `true`, the attribute is rendered with no value at all.
     For example, `<input required={true}>` is the same as `<input required>`;
 
   * `false` or `nil` - if a value is `false` or `nil`, the attribute is omitted.
-    Some attributes may be rendered with an empty value, for optimization
-    purposes, if it has the same effect as omitting. For example,
-    `<checkbox checked={false}>` renders to `<checkbox>` while,
-    `<div class={false}>` renders to `<div class="">`;
+    Note the `class` and `style` attributes will be rendered as empty strings,
+    instead of ommitted, which has the same effect as not rendering them, but
+    allows for rendering optimizations.
 
   * `list` (only for the `class` attribute) - each element of the list is processed
     as a different class. `nil` and `false` elements are discarded.
 
   For multiple dynamic attributes, you can use the same notation but without
-  assigning the expression to any specific attribute.
+  assigning the expression to any specific attribute:
 
   ```heex
   <div {@dynamic_attrs}>
@@ -664,52 +629,49 @@ defmodule Phoenix.Component do
   </div>
   ```
 
-  The expression inside `{...}` must be either a keyword list or a map containing
-  the key-value pairs representing the dynamic attributes.
+  In this case, the expression inside `{...}` must be either a keyword list or
+  a map containing the key-value pairs representing the dynamic attributes.
 
-  ### HEEx extension: Defining function components
+  ### Interpolating blocks
 
-  Function components are stateless components implemented as pure functions
-  with the help of the `Phoenix.Component` module. They can be either local
-  (same module) or remote (external module).
+  The curly braces syntax is the default mechanism for interpolating code.
+  However, it cannot be used in all scenarios, in particular:
 
-  `HEEx` allows invoking these function components directly in the template
-  using an HTML-like notation. For example, a remote function:
+    * Curly braces cannot be used inside `<script>` and `<style>` tags,
+      as that would make writing JS and CSS quite tedious. You can also
+      fully disable curly braces interpolation in a given tag and
+      its children by adding the `phx-no-curly-interpolation` attribute
+
+    * it does not support multiline block constructs, such as `if`,
+      `case`, and similar
+
+  For example, if you need to interpolate a string inside a script tag,
+  you could do:
 
   ```heex
-  <MyApp.Weather.city name="Kraków"/>
+  <script>
+    window.URL = "<%= @my_url %>"
+  </script>
   ```
 
-  A local function can be invoked with a leading dot:
+  Similarly, for block constructs in Elixir, you can write:
 
   ```heex
-  <.city name="Kraków"/>
+  <%= if @show_greeting? do %>
+    <p>Hello, {@name}</p>
+  <% end %>
   ```
 
-  where the component could be defined as follows:
+  However, for conditionals and for-comprehensions, there are built-in constructs
+  in HEEx too, which we will explore next.
 
-      defmodule MyApp.Weather do
-        use Phoenix.Component
+  > #### Curly braces in text within tag bodies {: .tip}
+  >
+  > If you have text in your tag bodies, which includes curly braces you can use
+  > `&lbrace;` or `<%= "{" %>` to prevent them from being considered the start of
+  > interpolation.
 
-        def city(assigns) do
-          ~H"""
-          The chosen city is: <%= @name %>.
-          """
-        end
-
-        def country(assigns) do
-          ~H"""
-          The chosen country is: <%= @name %>.
-          """
-        end
-      end
-
-  It is typically best to group related functions into a single module, as
-  opposed to having many modules with a single `render/1` function. Function
-  components support other important features, such as slots. You can learn
-  more about components in `Phoenix.Component`.
-
-  ### HEEx extension: special attributes
+  ### Special attributes
 
   Apart from normal HTML attributes, HEEx also supports some special attributes
   such as `:let` and `:for`.
@@ -740,7 +702,7 @@ defmodule Phoenix.Component do
   ```heex
   <table id="admin-table" :if={@admin?}>
     <tr :for={user <- @users}>
-      <td><%= user.name %></td>
+      <td>{user.name}</td>
     </tr>
   <table>
   ```
@@ -767,7 +729,7 @@ defmodule Phoenix.Component do
   ```heex
   <.table id="my-table" rows={@users}>
     <:col :for={header <- @headers} :let={user}>
-      <td><%= user[header] %></td>
+      <td>{user[header]}</td>
     </:col>
   <table>
   ```
@@ -779,7 +741,49 @@ defmodule Phoenix.Component do
   ```
 
   Note that unlike Elixir's regular `for`, HEEx' `:for` does not support multiple
-  generators in one expression.
+  generators in one expression. In such cases, you must use `EEx`'s blocks.
+
+  ### Function components
+
+  Function components are stateless components implemented as pure functions
+  with the help of the `Phoenix.Component` module. They can be either local
+  (same module) or remote (external module).
+
+  `HEEx` allows invoking these function components directly in the template
+  using an HTML-like notation. For example, a remote function:
+
+  ```heex
+  <MyApp.Weather.city name="Kraków"/>
+  ```
+
+  A local function can be invoked with a leading dot:
+
+  ```heex
+  <.city name="Kraków"/>
+  ```
+
+  where the component could be defined as follows:
+
+      defmodule MyApp.Weather do
+        use Phoenix.Component
+
+        def city(assigns) do
+          ~H"""
+          The chosen city is: {@name}.
+          """
+        end
+
+        def country(assigns) do
+          ~H"""
+          The chosen country is: {@name}.
+          """
+        end
+      end
+
+  It is typically best to group related functions into a single module, as
+  opposed to having many modules with a single `render/1` function. Function
+  components support other important features, such as slots. You can learn
+  more about components in `Phoenix.Component`.
 
   ## Code formatting
 
@@ -790,7 +794,7 @@ defmodule Phoenix.Component do
   @doc type: :macro
   defmacro sigil_H({:<<>>, meta, [expr]}, modifiers)
            when modifiers == [] or modifiers == ~c"noformat" do
-    unless Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
+    if not Macro.Env.has_var?(__CALLER__, {:assigns, nil}) do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
@@ -836,7 +840,7 @@ defmodule Phoenix.Component do
 
         ~H"""
         <a href={@to} target={@target} {@extra}>
-          <%= render_slot(@inner_block) %>
+          {render_slot(@inner_block)}
         </a>
         """
       end
@@ -883,28 +887,29 @@ defmodule Phoenix.Component do
   rendering a child LiveView.
 
   * `:sticky` - an optional flag to maintain the LiveView across live redirects, even if it is
-  nested within another LiveView. If you are rendering the sticky view within your live layout,
-  make sure that the sticky view itself does not use the same layout. You can do so by returning
-  `{:ok, socket, layout: false}` from mount.
+  nested within another LiveView. Note that this only works for LiveViews that are in the same
+  [live_session](`Phoenix.LiveView.Router.live_session/3`).
+  If you are rendering the sticky view within make sure that the sticky view itself does not use
+  the same layout. You can do so by returning `{:ok, socket, layout: false}` from mount.
 
   ## Examples
 
   When rendering from a controller/view, you can call:
 
   ```heex
-  <%= live_render(@conn, MyApp.ThermostatLive) %>
+  {live_render(@conn, MyApp.ThermostatLive)}
   ```
 
   Or:
 
   ```heex
-  <%= live_render(@conn, MyApp.ThermostatLive, session: %{"home_id" => @home.id}) %>
+  {live_render(@conn, MyApp.ThermostatLive, session: %{"home_id" => @home.id})}
   ```
 
   Within another LiveView, you must pass the `:id` option:
 
   ```heex
-  <%= live_render(@socket, MyApp.ThermostatLive, id: "thermostat") %>
+  {live_render(@socket, MyApp.ThermostatLive, id: "thermostat")}
   ```
 
   ## Containers
@@ -950,7 +955,7 @@ defmodule Phoenix.Component do
   Renders a slot entry with the given optional `argument`.
 
   ```heex
-  <%= render_slot(@inner_block, @form) %>
+  {render_slot(@inner_block, @form)}
   ```
 
   If the slot has no entries, nil is returned.
@@ -964,11 +969,11 @@ defmodule Phoenix.Component do
   ```heex
   <.table rows={@users}>
     <:col :let={user} label="Name">
-      <%= user.name %>
+      {user.name}
     </:col>
 
     <:col :let={user} label="Address">
-      <%= user.address %>
+      {user.address}
     </:col>
   </.table>
   ```
@@ -981,18 +986,12 @@ defmodule Phoenix.Component do
       def table(assigns) do
         ~H"""
         <table>
-          <tr>
-            <%= for col <- @col do %>
-              <th><%= col.label %></th>
-            <% end %>
+          <tr :for={col <- @col}>
+            <th>{col.label}</th>
           </tr>
-          <%= for row <- @rows do %>
-            <tr>
-              <%= for col <- @col do %>
-                <td><%= render_slot(col, row) %></td>
-              <% end %>
-            </tr>
-          <% end %>
+          <tr :for={row <- @rows}>
+            <td :for={col <- @col}>{render_slot(col, row)}</td>
+          </tr>
         </table>
         """
       end
@@ -1019,7 +1018,7 @@ defmodule Phoenix.Component do
     assigns = %{entries: entries, changed: changed, argument: argument}
 
     ~H"""
-    <%= for entry <- @entries do %><%= call_inner_block!(entry, @changed, @argument) %><% end %>
+    <%= for entry <- @entries do %>{call_inner_block!(entry, @changed, @argument)}<% end %>
     """noformat
   end
 
@@ -1042,8 +1041,8 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <p class="alert alert-info"><%= live_flash(@flash, :info) %></p>
-  <p class="alert alert-danger"><%= live_flash(@flash, :error) %></p>
+  <p class="alert alert-info">{live_flash(@flash, :info)}</p>
+  <p class="alert alert-danger">{live_flash(@flash, :error)}</p>
   ```
   """
   @deprecated "Use Phoenix.Flash.get/2 in Phoenix v1.7+"
@@ -1068,7 +1067,7 @@ defmodule Phoenix.Component do
 
   ```heex
   <div :for={err <- upload_errors(@uploads.avatar)} class="alert alert-danger">
-    <%= upload_error_to_string(err) %>
+    {upload_error_to_string(err)}
   </div>
   ```
   """
@@ -1099,7 +1098,7 @@ defmodule Phoenix.Component do
   ```heex
   <%= for entry <- @uploads.avatar.entries do %>
     <div :for={err <- upload_errors(@uploads.avatar, entry)} class="alert alert-danger">
-      <%= upload_error_to_string(err) %>
+      {upload_error_to_string(err)}
     </div>
   <% end %>
   ```
@@ -1483,33 +1482,33 @@ defmodule Phoenix.Component do
   """
   def to_form(data_or_params, options \\ [])
 
+  def to_form(%Phoenix.HTML.Form{} = data, []) do
+    data
+  end
+
   def to_form(%Phoenix.HTML.Form{} = data, options) do
-    {name, id} =
+    data =
       case Keyword.fetch(options, :as) do
         {:ok, as} ->
           name = if as == nil, do: as, else: to_string(as)
-          {name, Keyword.get(options, :id) || name}
+          %{data | name: name, id: Keyword.get(options, :id) || name}
 
         :error ->
           case Keyword.fetch(options, :id) do
-            {:ok, id} -> {data.name, id}
-            :error -> {data.name, data.id}
+            {:ok, id} -> %{data | id: id}
+            :error -> data
           end
       end
 
-    {_as, options} = Keyword.pop(options, :as)
-    {errors, options} = Keyword.pop(options, :errors, data.errors)
-    {action, options} = Keyword.pop(options, :action)
-    options = Keyword.merge(data.options, options)
+    {options, data} =
+      Enum.reduce(options, {data.options, data}, fn
+        {:as, _as}, {options, data} -> {options, data}
+        {:action, action}, {options, data} -> {options, %{data | action: action}}
+        {:errors, errors}, {options, data} -> {options, %{data | errors: errors}}
+        {key, value}, {options, data} -> {[{key, value} | Keyword.delete(options, key)], data}
+      end)
 
-    %Phoenix.HTML.Form{
-      data
-      | action: action,
-        errors: errors,
-        id: id,
-        name: name,
-        options: options
-    }
+    %{data | options: options}
   end
 
   def to_form(data, options) do
@@ -1548,7 +1547,7 @@ defmodule Phoenix.Component do
   Used inputs are tracked internally by the client sending a sibling key
   derived from each input name, which indicates the inputs that remain  unused
   on the client. For example, a form with email and title fields where only the
-  title has been modifed so far on the client, would send the following payload:
+  title has been modified so far on the client, would send the following payload:
 
       %{
         "title" => "new title",
@@ -1558,6 +1557,22 @@ defmodule Phoenix.Component do
 
   The `_unused_email` key indicates that the email field has not been used by the
   client, which is used to filter errors from the UI.
+
+  Nested fields are also supported. For example, a form with a nested datetime field
+  is considered used if any of the nested parameters are used.
+
+      %{
+        "bday" => %{
+          "year" => "",
+          "month" => "",
+          "day" => "",
+          "_unused_day" => ""
+        }
+      }
+
+  The `_unused_day` key indicates that the day field has not been used by the client,
+  but the year and month fields have been used, meaning the birthday field as a whole
+  was used.
 
   ## Examples
 
@@ -1575,21 +1590,31 @@ defmodule Phoenix.Component do
   <input type="text" name={@form[:title].name} value={@form[:title].value} />
 
   <div :if={used_input?(@form[:title])}>
-    <p :for={error <- @form[:title].errors}><%= error %></p>
+    <p :for={error <- @form[:title].errors}>{error}</p>
   </div>
 
   <input type="text" name={@form[:email].name} value={@form[:email].value} />
 
   <div :if={used_input?(@form[:email])}>
-    <p :for={error <- @form[:email].errors}><%= error %></p>
+    <p :for={error <- @form[:email].errors}>{error}</p>
   </div>
   ```
   """
   def used_input?(%Phoenix.HTML.FormField{field: field, form: form}) do
-    cond do
-      not is_map_key(form.params, "#{field}") -> false
-      is_map_key(form.params, "_unused_#{field}") -> false
-      true -> true
+    used_param?(form.params, field)
+  end
+
+  defp used_param?(_params, "_unused_" <> _), do: false
+
+  defp used_param?(params, field) do
+    field_str = "#{field}"
+    unused_field_str = "_unused_#{field}"
+
+    case params do
+      %{^field_str => _, ^unused_field_str => _} -> false
+      %{^field_str => %{} = nested} -> Enum.any?(Map.keys(nested), &used_param?(nested, &1))
+      %{^field_str => _val} -> true
+      %{} -> false
     end
   end
 
@@ -1607,10 +1632,12 @@ defmodule Phoenix.Component do
   A wildcard pattern may be used to select all files within a directory tree.
   For example, imagine a directory listing:
 
-      ├── components.ex
-      ├── pages
-      │   ├── about_page.html.heex
-      │   └── welcome_page.html.heex
+  ```plain
+  ├── components.ex
+  ├── pages
+  │   ├── about_page.html.heex
+  │   └── welcome_page.html.heex
+  ```
 
   Then to embed the page templates in your `components.ex` module:
 
@@ -1783,13 +1810,13 @@ defmodule Phoenix.Component do
         ~H"""
         <div class="modal">
           <div class="modal-header">
-            <%= render_slot(@header) || "Modal" %>
+            {render_slot(@header) || "Modal"}
           </div>
           <div class="modal-body">
-            <%= render_slot(@inner_block) %>
+            {render_slot(@inner_block)}
           </div>
           <div class="modal-footer">
-            <%= render_slot(@footer) || submit_button() %>
+            {render_slot(@footer) || submit_button()}
           </div>
         </div>
         """
@@ -1851,7 +1878,7 @@ defmodule Phoenix.Component do
 
   | Name            | Description                                                          |
   |-----------------|----------------------------------------------------------------------|
-  | `:any`          | any term                                                             |
+  | `:any`          | any term (including `nil`)                                           |
   | `:string`       | any binary string                                                    |
   | `:atom`         | any atom (including `true`, `false`, and `nil`)                      |
   | `:boolean`      | any boolean                                                          |
@@ -1861,6 +1888,8 @@ defmodule Phoenix.Component do
   | `:map`          | any map of any arbitrary types                                       |
   | `:global`       | any common HTML attributes, plus those defined by `:global_prefixes` |
   | A struct module | any module that defines a struct with `defstruct/1`                  |
+
+  Note only `:any` and `:atom` expect the value to be set to `nil`.
 
   ### Options
 
@@ -1939,28 +1968,16 @@ defmodule Phoenix.Component do
       def celebrate(assigns) do
         ~H"""
         <p>
-          Happy birthday <%= @name %>!
-          You are <%= @age %> years old.
+          Happy birthday {@name}!
+          You are {@age} years old.
         </p>
         """
       end
   '''
   @doc type: :macro
   defmacro attr(name, type, opts \\ []) do
-    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
-    type =
-      if Macro.quoted_literal?(type) do
-        Macro.prewalk(type, &expand_alias(&1, __CALLER__))
-      else
-        type
-      end
-
-    opts =
-      if Macro.quoted_literal?(opts) do
-        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
-      else
-        opts
-      end
+    type = Macro.expand_literals(type, %{__CALLER__ | function: {:attr, 3}})
+    opts = Macro.expand_literals(opts, %{__CALLER__ | function: {:attr, 3}})
 
     quote bind_quoted: [name: name, type: type, opts: opts] do
       Phoenix.Component.Declarative.__attr__!(
@@ -1973,11 +1990,6 @@ defmodule Phoenix.Component do
       )
     end
   end
-
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:__attr__, 3}})
-
-  defp expand_alias(other, _env), do: other
 
   ## Components
 
@@ -2057,14 +2069,14 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.live_title prefix="MyApp – ">
-    <%= assigns[:page_title] || "Welcome" %>
+  <.live_title default="Welcome" prefix="MyApp · ">
+    {assigns[:page_title]}
   </.live_title>
   ```
 
   ```heex
-  <.live_title suffix="- MyApp">
-    <%= assigns[:page_title] || "Welcome" %>
+  <.live_title default="Welcome" suffix=" · MyApp">
+    {assigns[:page_title]}
   </.live_title>
   ```
   """
@@ -2074,13 +2086,33 @@ defmodule Phoenix.Component do
     doc: "A prefix added before the content of `inner_block`."
   )
 
+  attr.(:default, :string,
+    default: nil,
+    doc:
+      "The default title to use if the inner block is empty on regular or connected mounts." <>
+        "*Note*: empty titles, such as `nil` or an empty string, fallsback to the default value."
+  )
+
   attr.(:suffix, :string, default: nil, doc: "A suffix added after the content of `inner_block`.")
   slot.(:inner_block, required: true, doc: "Content rendered inside the `title` tag.")
 
   def live_title(assigns) do
     ~H"""
-    <title data-prefix={@prefix} data-suffix={@suffix} phx-no-format><%= @prefix %><%= render_slot(@inner_block) %><%= @suffix %></title>
+    <title data-prefix={@prefix} data-default={@default} data-suffix={@suffix} phx-no-format>{@prefix}{render_present(render_slot(@inner_block), @default)}{@suffix}</title>
     """
+  end
+
+  defp render_present(rendered_block, default) do
+    block_str =
+      rendered_block
+      |> Phoenix.HTML.html_escape()
+      |> Phoenix.HTML.safe_to_string()
+
+    if String.trim(block_str) == "" do
+      default
+    else
+      rendered_block
+    end
   end
 
   @doc ~S'''
@@ -2350,20 +2382,27 @@ defmodule Phoenix.Component do
 
     ~H"""
     <form {@attrs}>
-      <%= if @hidden_method && @hidden_method not in ~w(get post) do %>
-        <input name="_method" type="hidden" hidden value={@hidden_method} />
-      <% end %>
-      <%= if @csrf_token do %>
-        <input name="_csrf_token" type="hidden" hidden value={@csrf_token} />
-      <% end %>
-      <%= render_slot(@inner_block, @form) %>
+      <input
+        :if={@hidden_method && @hidden_method not in ~w(get post)}
+        name="_method"
+        type="hidden"
+        hidden
+        value={@hidden_method}
+      />
+      <input :if={@csrf_token} name="_csrf_token" type="hidden" hidden value={@csrf_token} />
+      {render_slot(@inner_block, @form)}
     </form>
     """
   end
 
   defp form_method(nil), do: {"post", nil}
-  defp form_method(method) when method in ~w(get post), do: {method, nil}
-  defp form_method(method) when is_binary(method), do: {"post", method}
+
+  defp form_method(method) when is_binary(method) do
+    case String.downcase(method) do
+      method when method in ~w(get post) -> {method, nil}
+      _ -> {"post", method}
+    end
+  end
 
   @doc """
   Renders nested form inputs for associations or embeds.
@@ -2389,7 +2428,7 @@ defmodule Phoenix.Component do
   inserts and removals. Like inputs, buttons with name/value pairs are serialized with
   form data on change and submit events. Libraries such as Ecto, or custom param
   filtering can then inspect the parameters and handle the added or removed fields.
-  This can be combined with `Ecto.Changeset.cast/3`'s `:sort_param` and `:drop_param`
+  This can be combined with `Ecto.Changeset.cast_assoc/3`'s `:sort_param` and `:drop_param`
   options. For example, imagine a parent with an `:emails` `has_many` or `embeds_many`
   association. To cast the user input from a nested form, one simply needs to configure
   the options:
@@ -2467,9 +2506,86 @@ defmodule Phoenix.Component do
   and `value="new"` name with accompanied "add more" text. Please note that this button must
   have `type="button"` to prevent it from submitting the form.
   Ecto will treat unknown sort params as new children and build a new child.
-  This button is optional and only necessary if you want to dyamically add entries.
+  This button is optional and only necessary if you want to dynamically add entries.
   You can optionally add a similar button before the `<.inputs_for>`, in the case you want
   to prepend entries.
+
+  > ### A note on accessing a field's `value` {: .warning}
+  >
+  > You may be tempted to access `form[:field].value` or attempt to manipulate
+  > the form metadata in your templates. However, bear in mind that the `form[:field]`
+  > value reflects the most recent changes. For example, an `:integer` field may
+  > either contain integer values, but it may also hold a string, if the form has
+  > been submitted.
+  >
+  > This is particularly noticeable when using `inputs_for`. Accessing the `.value`
+  > of a nested field may either return a struct, a changeset, or raw parameters
+  > sent by the client (when using `drop_param`). This makes the `form[:field].value`
+  > impractical for deriving or computing other properties.
+  >
+  > The correct way to approach this problem is by computing any property either in
+  > your LiveViews, by traversing the relevant changesets and data structures, or by
+  > moving the logic to the `Ecto.Changeset` itself.
+  >
+  > As an example, imagine you are building a time tracking application where:
+  >
+  > - users enter the total work time for a day
+  > - individual activities are tracked as embeds
+  > - the sum of all activities should match the total time
+  > - the form should display the remaining time
+  >
+  > Instead of trying to calculate the remaining time in your template by
+  > doing something like `calculate_remaining(@form)` and accessing
+  > `form[:activities].value`, calculate the remaining time based
+  > on the changeset in your `handle_event` instead:
+  >
+  > ```elixir
+  > def handle_event("validate", %{"tracked_day" => params}, socket) do
+  >   changeset = TrackedDay.changeset(socket.assigns.tracked_day, params)
+  >   remaining = calculate_remaining(changeset)
+  >   {:noreply, assign(socket, form: to_form(changeset, action: :validate), remaining: remaining)}
+  > end
+  >
+  > # Helper function to calculate remaining time
+  > defp calculate_remaining(changeset) do
+  >   total = Ecto.Changeset.get_field(changeset)
+  >   activities = Ecto.Changeset.get_embed(changeset, :activities)
+  >
+  >   Enum.reduce(activities, total, fn activity, acc ->
+  >     duration =
+  >       case activity do
+  >         %{valid?: true} = changeset -> Ecto.Changeset.get_field(changeset, :duration)
+  >         # if the activity is invalid, we don't include its duration in the calculation
+  >         _ -> 0
+  >       end
+  >
+  >     acc - length
+  >   end)
+  > end
+  > ```
+  >
+  > This logic might also be implemented directly in your schema module and, if you
+  > often need the `:remaining` value, you could also add it as a `:virtual` field to
+  > your schema and run the calculation when validating the changeset:
+  >
+  > ```elixir
+  > def changeset(tracked_day, attrs) do
+  >   tracked_day
+  >   |> cast(attrs, [:total_duration])
+  >   |> cast_embed(:activities)
+  >   |> validate_required([:total_duration])
+  >   |> validate_number(:total_duration, greater_than: 0)
+  >   |> validate_and_put_remaining_time()
+  > end
+  >
+  > defp validate_and_put_remaining_time(changeset) do
+  >   remaining = calculate_remaining(changeset)
+  >   put_change(changeset, :remaining, remaining)
+  > end
+  > ```
+  >
+  > By using this approach, you can safely render the remaining time in your template
+  > using `@form[:remaining].value`, avoiding the pitfalls of directly accessing complex field values.
   """
   @doc type: :component
   attr.(:field, Phoenix.HTML.FormField,
@@ -2479,8 +2595,9 @@ defmodule Phoenix.Component do
 
   attr.(:id, :string,
     doc: """
-    The id to be used in the form, defaults to the concatenation of the given
-    field to the parent form id.
+    The id base to be used in the form inputs. Defaults to the parent form id. The computed
+    id will be the concatenation of the base id with the field name, along with a book keeping
+    index for each input in the list.
     """
   )
 
@@ -2549,11 +2666,17 @@ defmodule Phoenix.Component do
               %{} -> next_id(map_size(seen_ids), seen_ids)
             end
 
-          form_id = "#{parent_form.id}_#{field_name}_#{id}"
+          form_id =
+            if inputs_for_id = options[:id] do
+              "#{inputs_for_id}_#{field_name}_#{id}"
+            else
+              "#{parent_form.id}_#{field_name}_#{id}"
+            end
+
           new_params = Map.put(params, @persistent_id, id)
           new_hidden = [{@persistent_id, id} | form.hidden]
 
-          new_form = %Phoenix.HTML.Form{
+          new_form = %{
             form
             | id: form_id,
               params: new_params,
@@ -2568,14 +2691,14 @@ defmodule Phoenix.Component do
 
     ~H"""
     <%= for finner <- @forms do %>
-      <%= unless @skip_hidden do %>
+      <%= if !@skip_hidden do %>
         <%= for {name, value_or_values} <- finner.hidden,
                 name = name_for_value_or_values(finner, name, value_or_values),
                 value <- List.wrap(value_or_values) do %>
           <input type="hidden" name={name} value={value} />
         <% end %>
       <% end %>
-      <%= render_slot(@inner_block, finner) %>
+      {render_slot(@inner_block, finner)}
     <% end %>
     """
   end
@@ -2796,7 +2919,7 @@ defmodule Phoenix.Component do
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       phx-no-format
       {@rest}
-    ><%= render_slot(@inner_block) %></a>
+    >{render_slot(@inner_block)}</a>
     """
   end
 
@@ -2808,7 +2931,7 @@ defmodule Phoenix.Component do
       data-phx-link-state={if @replace, do: "replace", else: "push"}
       phx-no-format
       {@rest}
-    ><%= render_slot(@inner_block) %></a>
+    >{render_slot(@inner_block)}</a>
     """
   end
 
@@ -2824,13 +2947,13 @@ defmodule Phoenix.Component do
       data-to={if @method != "get", do: @href}
       phx-no-format
       {@rest}
-    ><%= render_slot(@inner_block) %></a>
+    >{render_slot(@inner_block)}</a>
     """
   end
 
   def link(%{} = assigns) do
     ~H"""
-    <a href="#" {@rest}><%= render_slot(@inner_block) %></a>
+    <a href="#" {@rest}>{render_slot(@inner_block)}</a>
     """
   end
 
@@ -2871,7 +2994,7 @@ defmodule Phoenix.Component do
     ~H"""
     <div id={@id} phx-hook="Phoenix.FocusWrap" {@rest}>
       <span id={"#{@id}-start"} tabindex="0" aria-hidden="true"></span>
-      <%= render_slot(@inner_block) %>
+      {render_slot(@inner_block)}
       <span id={"#{@id}-end"} tabindex="0" aria-hidden="true"></span>
     </div>
     """
@@ -2961,12 +3084,12 @@ defmodule Phoenix.Component do
 
     if assigns.inner_block != [] do
       ~H"""
-      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?>]} %><%= render_slot(@inner_block) %><%= {:safe,
-       [?<, ?/, @tag, ?>]} %>
+      {{:safe, [?<, @tag]}}{@escaped_attrs}{{:safe, [?>]}}{render_slot(@inner_block)}{{:safe,
+       [?<, ?/, @tag, ?>]}}
       """
     else
       ~H"""
-      <%= {:safe, [?<, @tag]} %><%= @escaped_attrs %><%= {:safe, [?/, ?>]} %>
+      {{:safe, [?<, @tag]}}{@escaped_attrs}{{:safe, [?/, ?>]}}
       """
     end
   end
@@ -3054,21 +3177,15 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <%= for entry <- @uploads.avatar.entries do %>
-    <.live_img_preview entry={entry} width="75" />
-  <% end %>
+  <.live_img_preview :for={entry <- @uploads.avatar.entries} entry={entry} width="75" />
   ```
 
   When you need to use it multiple times, make sure that they have distinct ids
 
   ```heex
-  <%= for entry <- @uploads.avatar.entries do %>
-    <.live_img_preview entry={entry} width="75" />
-  <% end %>
+  <.live_img_preview :for={entry <- @uploads.avatar.entries} entry={entry} width="75" />
 
-  <%= for entry <- @uploads.avatar.entries do %>
-    <.live_img_preview id={"modal-#{entry.ref}"} entry={entry} width="500" />
-  <% end %>
+  <.live_img_preview :for={entry <- @uploads.avatar.entries} id={"modal-#{entry.ref}"} entry={entry} width="500" />
   ```
   """
   @doc type: :component
@@ -3114,13 +3231,15 @@ defmodule Phoenix.Component do
     <:separator>
       <span class="sep">|</span>
     </:separator>
-    <%= item %>
+    {item}
   </.intersperse>
   ```
 
   Renders the following markup:
 
-      home <span class="sep">|</span> profile <span class="sep">|</span> settings
+  ```html
+  home <span class="sep">|</span> profile <span class="sep">|</span> settings
+  ```
   """
   @doc type: :component
   attr.(:enum, :any, required: true, doc: "the enumerable to intersperse with separators")
@@ -3155,7 +3274,7 @@ defmodule Phoenix.Component do
     <:loading>Loading organization...</:loading>
     <:failed :let={_failure}>there was an error loading the organization</:failed>
     <%= if org do %>
-      <%= org.name %>
+      {org.name}
     <% else %>
       You don't have an organization yet.
     <% end %>
@@ -3189,13 +3308,13 @@ defmodule Phoenix.Component do
   def async_result(%{assign: async_assign} = assigns) do
     cond do
       async_assign.ok? ->
-        ~H|<%= render_slot(@inner_block, @assign.result) %>|
+        ~H|{render_slot(@inner_block, @assign.result)}|
 
       async_assign.loading ->
-        ~H|<%= render_slot(@loading, @assign.loading) %>|
+        ~H|{render_slot(@loading, @assign.loading)}|
 
       async_assign.failed ->
-        ~H|<%= render_slot(@failed, @assign.failed) %>|
+        ~H|{render_slot(@failed, @assign.failed)}|
     end
   end
 end

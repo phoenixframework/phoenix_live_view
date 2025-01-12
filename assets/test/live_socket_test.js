@@ -167,17 +167,6 @@ describe("LiveSocket", () => {
     expect(liveSocket.getActiveElement()).toEqual(input)
   })
 
-  test("setActiveElement and getActiveElement", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
-
-    let input = document.querySelector("input")
-
-    // .activeElement
-    liveSocket.setActiveElement(input)
-    expect(liveSocket.activeElement).toEqual(input)
-    expect(liveSocket.getActiveElement()).toEqual(input)
-  })
-
   test("blurActiveElement", async () => {
     let liveSocket = new LiveSocket("/live", Socket)
 
@@ -215,7 +204,7 @@ describe("LiveSocket", () => {
     liveSocket.connect()
 
     let input = document.querySelector("input")
-    liveSocket.setActiveElement(input)
+    input.focus()
     liveSocket.blurActiveElement()
     expect(liveSocket.prevActive).toEqual(input)
 
@@ -235,6 +224,7 @@ describe("LiveSocket", () => {
     let liveSocket = new LiveSocket("/live", Socket, {sessionStorage: override})
     liveSocket.getLatencySim()
 
-    expect(getItemCalls).toEqual(1)
+    // liveSocket constructor reads nav history position from sessionStorage
+    expect(getItemCalls).toEqual(2)
   })
 })

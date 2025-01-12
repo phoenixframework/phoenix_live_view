@@ -12,6 +12,10 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
       liveSocket.connect()
       window.liveSocket = liveSocket
+
+      window.addEventListener("phx:navigate", (e) => {
+        console.log("navigate event", JSON.stringify(e.detail))
+      })
     </script>
 
     <style>
@@ -39,10 +43,14 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
         <.link navigate="/stream" style="background-color: #f1f5f9; padding: 0.5rem;">
           LiveView (other session)
         </.link>
+
+        <.link navigate="/navigation/dead" style="background-color: #f1f5f9; padding: 0.5rem;">
+          Dead View
+        </.link>
       </div>
 
       <div style="margin-left: 22rem; flex: 1; padding: 2rem;">
-        <%= @inner_content %>
+        {@inner_content}
       </div>
     </div>
     """
@@ -74,21 +82,21 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.ALive do
     ~H"""
     <h1>This is page A</h1>
 
-    <p>Current param: <%= @param_current %></p>
+    <p>Current param: {@param_current}</p>
 
-    <.link
-      patch={"/navigation/a?param=#{@param_next}"}
-      style="padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;"
-    >
-      Patch this LiveView
-    </.link>
+    <.styled_link patch={"/navigation/a?param=#{@param_next}"}>Patch this LiveView</.styled_link>
+    <.styled_link patch={"/navigation/a?param=#{@param_next}"} replace>Patch (Replace)</.styled_link>
+    <.styled_link navigate="/navigation/b#items-item-42">Navigate to 42</.styled_link>
+    """
+  end
 
+  defp styled_link(assigns) do
+    ~H"""
     <.link
-      patch={"/navigation/a?param=#{@param_next}"}
-      replace
       style="padding-left: 1rem; padding-right: 1rem; padding-top: 0.5rem; padding-bottom: 0.5rem; background-color: #e2e8f0; display: inline-flex; align-items: center; border-radius: 0.375rem; cursor: pointer;"
+      {Map.delete(assigns, [:inner_block])}
     >
-      Patch (Replace)
+      {render_slot(@inner_block)}
     </.link>
     """
   end
@@ -148,7 +156,7 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
               patch={"/navigation/b/#{item.id}"}
               style="display: inline-flex; align-items: center; gap: 0.5rem;"
             >
-              Item <%= item.name %>
+              Item {item.name}
             </.link>
           </li>
         <% end %>
@@ -156,8 +164,33 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.BLive do
     </div>
 
     <div :if={@live_action == :show}>
-      <p>Item <%= @id %></p>
+      <p>Item {@id}</p>
     </div>
+    """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.Navigation.Dead do
+  use Phoenix.Controller,
+    formats: [:html],
+    layouts: [html: {Phoenix.LiveViewTest.E2E.Navigation.Layout, :live}]
+
+  import Phoenix.Component, only: [sigil_H: 2]
+
+  def index(conn, _params) do
+    assigns = %{}
+
+    conn
+    |> render(:index)
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.Navigation.DeadHTML do
+  use Phoenix.Component
+
+  def index(assigns) do
+    ~H"""
+    <h1>Dead view</h1>
     """
   end
 end

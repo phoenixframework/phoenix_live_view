@@ -1,6 +1,5 @@
 import {
   PHX_COMPONENT,
-  PHX_DISABLE_WITH,
   PHX_PRUNE,
   PHX_ROOT_ID,
   PHX_SESSION,
@@ -29,8 +28,10 @@ import morphdom from "morphdom"
 
 export default class DOMPatch {
   static patchWithClonedTree(container, clonedTree, liveSocket){
-    let activeElement = liveSocket.getActiveElement()
+    let focused = liveSocket.getActiveElement()
+    let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
+    let externalFormTriggered = null
 
     morphdom(container, clonedTree, {
       childrenOnly: false,
@@ -39,12 +40,24 @@ export default class DOMPatch {
         // we cannot morph locked children
         if(!container.isSameNode(fromEl) && fromEl.hasAttribute(PHX_REF_LOCK)){ return false }
         if(DOM.isIgnored(fromEl, phxUpdate)){ return false }
-        if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
+        if(focused && focused.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
           DOM.mergeFocusedInput(fromEl, toEl)
           return false
         }
+        if(DOM.isNowTriggerFormExternal(toEl, liveSocket.binding(PHX_TRIGGER_ACTION))){
+          externalFormTriggered = toEl
+        }
       }
     })
+
+    if(externalFormTriggered){
+      liveSocket.unload()
+      // use prototype's submit in case there's a form control with name or id of "submit"
+      // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
+      Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered)
+    }
+
+    liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
   }
 
   constructor(view, container, id, html, streams, targetCID){
@@ -105,7 +118,7 @@ export default class DOMPatch {
     let externalFormTriggered = null
 
     function morph(targetContainer, source, withChildren=false){
-      morphdom(targetContainer, source, {
+      let morphCallbacks = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
         // when we are patching a live component, we do want to patch the root element as well;
@@ -196,6 +209,13 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          // if we are patching the root target container and the id has changed, treat it as a new node
+          // by replacing the fromEl with the toEl, which ensures hooks are torn down and re-created
+          if(fromEl.id && fromEl.isSameNode(targetContainer) && fromEl.id !== toEl.id){
+            morphCallbacks.onNodeDiscarded(fromEl)
+            fromEl.replaceWith(toEl)
+            return morphCallbacks.onNodeAdded(toEl)
+          }
           DOM.syncPendingAttrs(fromEl, toEl)
           DOM.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom, phxCustomEvents)
           DOM.cleanChildNodes(toEl, phxUpdate)
@@ -221,7 +241,7 @@ export default class DOMPatch {
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          // If the element has  PHX_REF_SRC, it is loading or locked and awaiting an ack.
+          // If the element has PHX_REF_SRC, it is loading or locked and awaiting an ack.
           // If it's locked, we clone the fromEl tree and instruct morphdom to use
           // the cloned tree as the source of the morph for this branch from here on out.
           // We keep a reference to the cloned tree in the element's private data, and
@@ -280,7 +300,8 @@ export default class DOMPatch {
             return fromEl
           }
         }
-      })
+      }
+      morphdom(targetContainer, source, morphCallbacks)
     }
 
     this.trackBefore("added", container)
@@ -457,11 +478,8 @@ export default class DOMPatch {
     if(!(fromEl instanceof HTMLSelectElement) || fromEl.multiple){ return false }
     if(fromEl.options.length !== toEl.options.length){ return true }
 
-    let fromSelected = fromEl.selectedOptions[0]
-    let toSelected = toEl.selectedOptions[0]
-    if(fromSelected && fromSelected.hasAttribute("selected")){
-      toSelected.setAttribute("selected", fromSelected.getAttribute("selected"))
-    }
+    // keep the current value
+    toEl.value = fromEl.value
 
     // in general we have to be very careful with using isEqualNode as it does not a reliable
     // DOM tree equality check, but for selection attributes and options it works fine

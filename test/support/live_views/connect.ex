@@ -1,14 +1,14 @@
-defmodule Phoenix.LiveViewTest.ConnectLive do
+defmodule Phoenix.LiveViewTest.Support.ConnectLive do
   use Phoenix.LiveView
 
   def render(assigns) do
     ~H"""
-    <p>params: <%= inspect(@params) %></p>
-    <p>uri: <%= URI.to_string(@uri) %></p>
-    <p>trace: <%= inspect(@trace) %></p>
-    <p>peer: <%= inspect(@peer, custom_options: [sort_maps: true]) %></p>
-    <p>x-headers: <%= inspect(@x_headers) %></p>
-    <p>user-agent: <%= inspect(@user_agent) %></p>
+    <p>params: {inspect(@params)}</p>
+    <p>uri: {URI.to_string(@uri)}</p>
+    <p>trace: {inspect(@trace)}</p>
+    <p>peer: {inspect(@peer, custom_options: [sort_maps: true])}</p>
+    <p>x-headers: {inspect(@x_headers)}</p>
+    <p>user-agent: {inspect(@user_agent)}</p>
     """
   end
 

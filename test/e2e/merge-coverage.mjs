@@ -1,10 +1,9 @@
-import fs from "fs";
-import { CoverageReport } from "monocart-coverage-reports";
+import {CoverageReport} from "monocart-coverage-reports"
 
 const coverageOptions = {
   name: "Phoenix LiveView JS Coverage",
   inputDir: [
-    "./assets/coverage/raw",
+    "./coverage/raw",
     "./test/e2e/test-results/coverage/raw"
   ],
   outputDir: "./cover/merged-js",
@@ -13,11 +12,11 @@ const coverageOptions = {
     ["console-summary"]
   ],
   sourcePath: (filePath) => {
-    if (!filePath.startsWith("assets")) {
-      return "assets/js/phoenix_live_view/" + filePath;
+    if(!filePath.startsWith("assets")){
+      return "assets/js/phoenix_live_view/" + filePath
     } else {
-      return filePath;
+      return filePath
     }
   },
-};
-await new CoverageReport(coverageOptions).generate();
+}
+await new CoverageReport(coverageOptions).generate()

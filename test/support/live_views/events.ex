@@ -1,9 +1,9 @@
-defmodule Phoenix.LiveViewTest.EventsLive do
+defmodule Phoenix.LiveViewTest.Support.EventsLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   def render(assigns) do
     ~H"""
-    count: <%= @count %>
+    count: {@count}
     """
   end
 
@@ -19,18 +19,22 @@ defmodule Phoenix.LiveViewTest.EventsLive do
     {:reply, reply, socket}
   end
 
+  def handle_event("dont-reply", _, socket) do
+    {:noreply, socket}
+  end
+
   def handle_call({:run, func}, _, socket), do: func.(socket)
 
   def handle_info({:run, func}, socket), do: func.(socket)
 end
 
-defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
+defmodule Phoenix.LiveViewTest.Support.EventsMultiJSLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveView.JS
 
   def render(assigns) do
     ~H"""
-    count: <%= @count %>
+    count: {@count}
 
     <button
       id="add-one-and-ten"
@@ -71,7 +75,7 @@ defmodule Phoenix.LiveViewTest.EventsMultiJSLive do
   def handle_info({:run, func}, socket), do: func.(socket)
 end
 
-defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
+defmodule Phoenix.LiveViewTest.Support.EventsInComponentMultiJSLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveView.JS
 
@@ -90,7 +94,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
       ~H"""
       <div id={@id}>
         <button
-          id="push-to-self"
+          id={"push-to-self-#{@id}"}
           phx-click={
             JS.push("inc", target: "#child_1", value: %{inc: 1})
             |> JS.push("inc", target: "#child_1", value: %{inc: 10})
@@ -100,7 +104,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
         </button>
 
         <button
-          id="push-to-other-targets"
+          id={"push-to-other-targets-#{@id}"}
           phx-click={
             JS.push("inc", target: "#child_2", value: %{inc: 2})
             |> JS.push("inc", target: "#child_1", value: %{inc: 1})
@@ -110,7 +114,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
           One to everyone
         </button>
 
-        <%= @id %> count: <%= @count %>
+        {@id} count: {@count}
       </div>
       """
     end
@@ -119,7 +123,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
   def render(assigns) do
     ~H"""
     <.live_component module={Child} id={:child_1} />
-    <.live_component module={Child} id={:child_2} /> root count: <%= @count %>
+    <.live_component module={Child} id={:child_2} /> root count: {@count}
     """
   end
 
@@ -132,7 +136,7 @@ defmodule Phoenix.LiveViewTest.EventsInComponentMultiJSLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.EventsInMountLive do
+defmodule Phoenix.LiveViewTest.Support.EventsInMountLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   defmodule Child do
@@ -153,7 +157,7 @@ defmodule Phoenix.LiveViewTest.EventsInMountLive do
   end
 
   def render(assigns) do
-    ~H"<%= live_render(@socket, Child, id: :child_live) %>"
+    ~H"{live_render(@socket, Child, id: :child_live)}"
   end
 
   def mount(_params, _session, socket) do
@@ -166,7 +170,7 @@ defmodule Phoenix.LiveViewTest.EventsInMountLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.EventsInComponentLive do
+defmodule Phoenix.LiveViewTest.Support.EventsInComponentLive do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
 
   defmodule Child do

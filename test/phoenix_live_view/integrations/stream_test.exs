@@ -4,7 +4,8 @@ defmodule Phoenix.LiveView.StreamTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.{StreamLive, DOM, Endpoint}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.{StreamLive, Endpoint}
 
   @endpoint Endpoint
 
@@ -406,14 +407,14 @@ defmodule Phoenix.LiveView.StreamTest do
 
       assert lv |> render() |> users_in_dom("c_users") == [{"c_users-2", "updated"}]
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StreamComponent,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.StreamComponent,
         id: "stream-component",
         reset: {:c_users, []}
       )
 
       assert lv |> render() |> users_in_dom("c_users") == []
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.StreamComponent,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.StreamComponent,
         id: "stream-component",
         send_assigns_to: self()
       )
@@ -526,7 +527,7 @@ defmodule Phoenix.LiveView.StreamTest do
   test "stream raises when attempting to consume ahead of for", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/stream")
 
-    assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
+    assert Phoenix.LiveViewTest.Support.HooksLive.exits_with(lv, ArgumentError, fn ->
              render_click(lv, "consume-stream-invalid", %{})
            end) =~ ~r/streams can only be consumed directly by a for comprehension/
   end
@@ -534,7 +535,7 @@ defmodule Phoenix.LiveView.StreamTest do
   test "stream raises when nodes without id are in container", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/stream")
 
-    assert Phoenix.LiveViewTest.HooksLive.exits_with(lv, ArgumentError, fn ->
+    assert Phoenix.LiveViewTest.Support.HooksLive.exits_with(lv, ArgumentError, fn ->
              render_click(lv, "stream-no-id", %{})
            end) =~
              ~r/setting phx-update to "stream" requires setting an ID on each child/

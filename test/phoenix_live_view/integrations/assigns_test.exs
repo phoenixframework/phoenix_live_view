@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.AssignsTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -66,8 +66,8 @@ defmodule Phoenix.LiveView.AssignsTest do
     end
 
     test "raises with invalid options", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError,
-                   ~r/invalid option returned from Phoenix.LiveViewTest.OptsLive.mount\/3/,
+      assert_raise ArgumentError,
+                   ~r/invalid option returned from Phoenix.LiveViewTest.Support.OptsLive.mount\/3/,
                    fn ->
                      conn
                      |> put_session(:opts, oops: [:description])

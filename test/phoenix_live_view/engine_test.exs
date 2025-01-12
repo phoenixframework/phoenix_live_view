@@ -172,6 +172,9 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: 123}, nil) == ["123"]
       assert changed(template, %{foo: 123}, %{}) == [nil]
       assert changed(template, %{foo: 123}, %{foo: true}) == ["123"]
+      assert changed(template, %{}, %{}) == [nil]
+      assert changed(template, %{}, %{foo: true}) == [""]
+      assert changed(template, %{}, %{foo: true}) == [""]
 
       template = "<%= Access.get(assigns, :foo) %>"
       assert changed(template, %{foo: 123}, nil) == ["123"]
@@ -266,6 +269,21 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, new_augmented, old) == [nil]
       assert changed(template, new_changed_foo, old) == ["777"]
       assert changed(template, new_changed_bar, old) == ["777"]
+    end
+
+    test "map access with non existing key" do
+      template = "<%= @map[:baz] || \"default\" %>"
+      old = %{map: %{foo: 123, bar: 456}}
+      new_augmented = %{map: %{foo: 123, bar: 456, baz: 789}}
+      new_changed_foo = %{map: %{foo: 321, bar: 456}}
+      new_changed_bar = %{map: %{foo: 123, bar: 654}}
+      assert changed(template, old, nil) == ["default"]
+      assert changed(template, old, %{}) == [nil]
+      assert changed(template, old, %{map: true}) == ["default"]
+      assert changed(template, new_augmented, old) == ["789"]
+      # no re-render when the key is still not present
+      assert changed(template, new_changed_foo, old) == [nil]
+      assert changed(template, new_changed_bar, old) == [nil]
     end
 
     test "renders dynamic with access tracking for forms" do

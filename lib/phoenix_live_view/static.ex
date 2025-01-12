@@ -1,3 +1,7 @@
+defmodule Phoenix.LiveView.ReloadError do
+  defexception [:message, :plug_status]
+end
+
 defmodule Phoenix.LiveView.Static do
   # Holds the logic for static rendering.
   @moduledoc false
@@ -6,6 +10,7 @@ defmodule Phoenix.LiveView.Static do
 
   # Token version. Should be changed whenever new data is stored.
   @token_vsn 5
+  @phoenix_reload_status "__phoenix_reload_status__"
 
   def token_vsn, do: @token_vsn
 
@@ -82,6 +87,41 @@ defmodule Phoenix.LiveView.Static do
     * `:container` - the optional tuple for the HTML tag and DOM attributes
   """
   def render(%Plug.Conn{} = conn, view, opts) do
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+
+    case conn.req_cookies do
+      %Plug.Conn.Unfetched{} ->
+        do_render(conn, endpoint, view, opts)
+
+      %{@phoenix_reload_status => status_token} ->
+        conn = Plug.Conn.delete_resp_cookie(conn, @phoenix_reload_status)
+
+        {status, exception, errored_view, stack} =
+          case verify_token(endpoint, status_token) do
+            {:ok, %{status: status, exception: exception, view: errored_view, stack: stack}}
+            when is_integer(status) ->
+              {status, exception, errored_view, stack}
+
+            {:error, _reason} ->
+              {500, nil, nil, []}
+          end
+
+        message = """
+        #{errored_view} raised #{exception} during connected mount sending a #{status} response
+        """
+
+        raise Plug.Conn.WrapperError,
+          conn: conn,
+          kind: :error,
+          reason: %Phoenix.LiveView.ReloadError{message: message, plug_status: status},
+          stack: stack
+
+      %{} ->
+        do_render(conn, endpoint, view, opts)
+    end
+  end
+
+  defp do_render(%Plug.Conn{} = conn, endpoint, view, opts) do
     conn_session = maybe_get_session(conn)
     {to_sign_session, mount_session} = load_session(conn_session, opts)
     live_session = live_session(conn)
@@ -90,7 +130,6 @@ defmodule Phoenix.LiveView.Static do
     {tag, extended_attrs} = container(config, opts)
     router = Keyword.get(opts, :router)
     action = Keyword.get(opts, :action)
-    endpoint = Phoenix.Controller.endpoint_module(conn)
     flash = Map.get(conn.assigns, :flash) || Map.get(conn.private, :phoenix_flash, %{})
     request_url = Plug.Conn.request_url(conn)
     host_uri = URI.parse(request_url)

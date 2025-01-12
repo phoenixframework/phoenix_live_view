@@ -2,6 +2,8 @@ import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 import View from "phoenix_live_view/view"
 
+import {version as liveview_version} from "../../package.json"
+
 let containerId = 0
 
 let simulateView = (liveSocket, events, innerHTML) => {
@@ -12,7 +14,7 @@ let simulateView = (liveSocket, events, innerHTML) => {
   document.body.appendChild(el)
 
   let view = new View(el, liveSocket)
-  view.onJoin({rendered: {e: events, s: [innerHTML]}, liveview_version: require("../package.json").version})
+  view.onJoin({rendered: {e: events, s: [innerHTML]}, liveview_version})
   view.isConnected = () => true
   return view
 }
@@ -32,7 +34,6 @@ let stubNextChannelReply = (view, replyPayload) => {
     }
   }
 }
-
 
 describe("events", () => {
   let processedEvents
@@ -150,7 +151,7 @@ describe("pushEvent replies", () => {
     processedReplies = []
   })
 
-  test("reply", () => {
+  test("reply", (done) => {
     let view
     let pushedRef = null
     let liveSocket = new LiveSocket("/live", Socket, {
@@ -160,6 +161,7 @@ describe("pushEvent replies", () => {
             stubNextChannelReply(view, {transactionID: "1001"})
             pushedRef = this.pushEvent("charge", {amount: 123}, (resp, ref) => {
               processedReplies.push({resp, ref})
+              view.el.dispatchEvent(new CustomEvent("replied", {detail: {resp, ref}}))
             })
           }
         }
@@ -173,8 +175,40 @@ describe("pushEvent replies", () => {
     `]
     }, [])
 
-    expect(pushedRef).toEqual(0)
-    expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
+    view.el.addEventListener("replied", () => {
+      expect(pushedRef).toEqual(0)
+      expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
+      done()
+    })
+  })
+
+  test("promise", (done) => {
+    let view
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Gateway: {
+          mounted(){
+            stubNextChannelReply(view, {transactionID: "1001"})
+            this.pushEvent("charge", {amount: 123}).then((reply) => {
+              processedReplies.push(reply)
+              view.el.dispatchEvent(new CustomEvent("replied", {detail: reply}))
+            })
+          }
+        }
+      }
+    })
+    view = simulateView(liveSocket, [], "")
+    view.update({
+      s: [`
+      <div id="gateway" phx-hook="Gateway">
+      </div>
+    `]
+    }, [])
+
+    view.el.addEventListener("replied", () => {
+      expect(processedReplies).toEqual([{transactionID: "1001"}])
+      done()
+    })
   })
 
   test("pushEvent without connection noops", () => {
@@ -185,7 +219,7 @@ describe("pushEvent replies", () => {
         Gateway: {
           mounted(){
             stubNextChannelReply(view, {transactionID: "1001"})
-            pushedRef = this.pushEvent("charge", {amount: 123})
+            pushedRef = this.pushEvent("charge", {amount: 123}, () => {})
           }
         }
       }

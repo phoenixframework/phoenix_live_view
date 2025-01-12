@@ -53,15 +53,15 @@ defmodule Phoenix.LiveView.Router do
   The current action will always be available inside the LiveView as
   the `@live_action` assign, that can be used to render a LiveComponent:
 
-      <%= if @live_action == :new do %>
-        <.live_component module={MyAppWeb.ArticleLive.FormComponent} id="form" />
-      <% end %>
+  ```heex
+  <.live_component :if={@live_action == :new} module={MyAppWeb.ArticleLive.FormComponent} id="form" />
+  ```
 
   Or can be used to show or hide parts of the template:
 
-      <%= if @live_action == :edit do %>
-        <%= render("form.html", user: @user) %>
-      <% end %>
+  ```heex
+  {if @live_action == :edit, do: render("form.html", user: @user)}
+  ```
 
   Note that `@live_action` will be `nil` if no action is given on the route definition.
 
@@ -105,13 +105,9 @@ defmodule Phoenix.LiveView.Router do
 
   """
   defmacro live(path, live_view, action \\ nil, opts \\ []) do
-    # TODO: Use Macro.expand_literals on Elixir v1.14.1+
-    live_view =
-      if Macro.quoted_literal?(live_view) do
-        Macro.prewalk(live_view, &expand_alias(&1, __CALLER__))
-      else
-        live_view
-      end
+    live_view = Macro.expand_literals(live_view, %{__CALLER__ | function: {:live, 4}})
+    action = Macro.expand_literals(action, %{__CALLER__ | function: {:live, 4}})
+    opts = Macro.expand_literals(opts, %{__CALLER__ | function: {:live, 4}})
 
     quote bind_quoted: binding() do
       {action, router_options} =
@@ -231,12 +227,7 @@ defmodule Phoenix.LiveView.Router do
   and be executed via `on_mount` hooks.
   """
   defmacro live_session(name, opts \\ [], do: block) do
-    opts =
-      if Macro.quoted_literal?(opts) do
-        Macro.prewalk(opts, &expand_alias(&1, __CALLER__))
-      else
-        opts
-      end
+    opts = Macro.expand_literals(opts, %{__CALLER__ | function: {:live_session, 3}})
 
     quote do
       unquote(__MODULE__).__live_session__(__MODULE__, unquote(opts), unquote(name))
@@ -245,17 +236,12 @@ defmodule Phoenix.LiveView.Router do
     end
   end
 
-  defp expand_alias({:__aliases__, _, _} = alias, env),
-    do: Macro.expand(alias, %{env | function: {:mount, 3}})
-
-  defp expand_alias(other, _env), do: other
-
   @doc false
   def __live_session__(module, opts, name) do
     Module.register_attribute(module, :phoenix_live_sessions, accumulate: true)
     vsn = session_vsn(module)
 
-    unless is_atom(name) do
+    if not is_atom(name) do
       raise ArgumentError, """
       expected live_session name to be an atom, got: #{inspect(name)}
       """
@@ -296,10 +282,6 @@ defmodule Phoenix.LiveView.Router do
         expected a map with string keys or an MFA tuple, got #{inspect(bad_session)}
         """
 
-      {:root_layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
-        template = Phoenix.LiveView.Utils.normalize_layout(template)
-        Map.put(acc, :root_layout, {mod, String.to_atom(template)})
-
       {:root_layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
         Map.put(acc, :root_layout, {mod, template})
 
@@ -312,10 +294,6 @@ defmodule Phoenix.LiveView.Router do
 
         expected a tuple with the view module and template atom name, got #{inspect(bad_layout)}
         """
-
-      {:layout, {mod, template}}, acc when is_atom(mod) and is_binary(template) ->
-        template = Phoenix.LiveView.Utils.normalize_layout(template)
-        Map.put(acc, :layout, {mod, template})
 
       {:layout, {mod, template}}, acc when is_atom(mod) and is_atom(template) ->
         Map.put(acc, :layout, {mod, template})
@@ -398,6 +376,8 @@ defmodule Phoenix.LiveView.Router do
       Module.get_attribute(router, :phoenix_live_session_current) ||
         %{name: :default, extra: %{}, vsn: session_vsn(router)}
 
+    helpers = Module.get_attribute(router, :phoenix_helpers)
+
     live_view = Phoenix.Router.scoped_alias(router, live_view)
     {private, metadata, warn_on_verify, opts} = validate_live_opts!(opts)
 
@@ -406,13 +386,18 @@ defmodule Phoenix.LiveView.Router do
       |> Keyword.put(:router, router)
       |> Keyword.put(:action, action)
 
-    {as_helper, as_action} = inferred_as(live_view, opts[:as], action)
+    {as_helper, as_action} =
+      if helpers do
+        inferred_as(live_view, opts[:as], action)
+      else
+        {nil, action}
+      end
 
     # TODO: Remove :log_module when we require Phoenix v1.8+
     metadata =
       metadata
       |> Map.put(:phoenix_live_view, {live_view, action, opts, live_session})
-      |> Map.put(:mfa, {live_view, :mount, 3})
+      |> Map.put(:mfa, {live_view, :__live__, 0})
       |> Map.put(:log_module, live_view)
 
     {as_action,

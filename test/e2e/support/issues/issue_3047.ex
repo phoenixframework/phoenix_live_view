@@ -3,10 +3,10 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3047ALive do
 
   def render("live.html", assigns) do
     ~H"""
-    <%= apply(Phoenix.LiveViewTest.E2E.Layout, :render, [
+    {apply(Phoenix.LiveViewTest.E2E.Layout, :render, [
       "live.html",
       Map.put(assigns, :inner_content, [])
-    ]) %>
+    ])}
 
     <div class="flex flex-col items-center justify-center">
       <div class="flex flex-row gap-3">
@@ -18,9 +18,9 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3047ALive do
         </.link>
       </div>
 
-      <%= @inner_content %>
+      {@inner_content}
 
-      <%= live_render(@socket, Phoenix.LiveViewTest.E2E.Issue3047.Sticky, id: "test", sticky: true) %>
+      {live_render(@socket, Phoenix.LiveViewTest.E2E.Issue3047.Sticky, id: "test", sticky: true)}
     </div>
     """
   end
@@ -45,7 +45,7 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Issue3047.Sticky do
   use Phoenix.LiveView
 
-  def mount(_params, _session, socket) do
+  def mount(:not_mounted_at_router, _session, socket) do
     items =
       Enum.map(1..10, fn x ->
         %{id: x, name: "item-#{x}"}
@@ -68,7 +68,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3047.Sticky do
     <div style="border: 2px solid black;">
       <h1>This is the sticky liveview</h1>
       <div id="items" phx-update="stream" style="display: flex; flex-direction: column; gap: 4px;">
-        <span :for={{dom_id, item} <- @streams.items} id={dom_id}><%= item.name %></span>
+        <span :for={{dom_id, item} <- @streams.items} id={dom_id}>{item.name}</span>
       </div>
 
       <button phx-click="reset">Reset</button>

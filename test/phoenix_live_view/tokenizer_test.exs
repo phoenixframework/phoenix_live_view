@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
   defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Phoenix.LiveView.HTMLEngine)
 
   defp tokenize(text) do
-    Tokenizer.tokenize(text, [], [], :text, tokenizer_state(text))
+    Tokenizer.tokenize(text, [], [], {:text, :enabled}, tokenizer_state(text))
     |> elem(0)
     |> Enum.reverse()
   end
@@ -64,6 +64,15 @@ defmodule Phoenix.LiveView.TokenizerTest do
              ]
     end
 
+    test "followed by curly" do
+      assert tokenize("<!-- comment -->{hello}text") == [
+               {:text, "<!-- comment -->",
+                %{column_end: 17, context: [:comment_start, :comment_end], line_end: 1}},
+               {:body_expr, "hello", %{line: 1, column: 17}},
+               {:text, "text", %{line_end: 1, column_end: 28}}
+             ]
+    end
+
     test "multiple lines and wrapped by tags" do
       code = """
       <p>
@@ -89,7 +98,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {first_tokens, cont} =
-        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
+        Tokenizer.tokenize(first_part, [], [], {:text, :enabled}, tokenizer_state(first_part))
 
       second_part = """
       </div>
@@ -100,7 +109,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </div>
       """
 
-      {tokens, :text} =
+      {tokens, {:text, :enabled}} =
         Tokenizer.tokenize(second_part, [], first_tokens, cont, tokenizer_state(second_part))
 
       assert Enum.reverse(tokens) == [
@@ -131,7 +140,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       """
 
       {first_tokens, cont} =
-        Tokenizer.tokenize(first_part, [], [], :text, tokenizer_state(first_part))
+        Tokenizer.tokenize(first_part, [], [], {:text, :enabled}, tokenizer_state(first_part))
 
       second_part = """
       -->
@@ -149,7 +158,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       </p>
       """
 
-      {tokens, :text} =
+      {tokens, {:text, :enabled}} =
         Tokenizer.tokenize(third_part, [], second_tokens, cont, tokenizer_state(third_part))
 
       assert Enum.reverse(tokens) == [
@@ -313,7 +322,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
 
     test "raise on missing value" do
       message = """
-      nofile:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      nofile:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div
       2 |   class=>
@@ -328,7 +337,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       end
 
       message = """
-      nofile:1:13: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      nofile:1:13: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div class= >
         |             ^\
@@ -339,7 +348,7 @@ defmodule Phoenix.LiveView.TokenizerTest do
       end
 
       message = """
-      nofile:1:12: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      nofile:1:12: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div class=
         |            ^\
@@ -620,6 +629,8 @@ defmodule Phoenix.LiveView.TokenizerTest do
     test "raise on incomplete attribute expression (EOF)" do
       message = """
       nofile:2:9: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div
       2 |   class={panel
@@ -700,6 +711,8 @@ defmodule Phoenix.LiveView.TokenizerTest do
     test "raise on incomplete expression (EOF)" do
       message = """
       nofile:2:3: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div
       2 |   {@attrs

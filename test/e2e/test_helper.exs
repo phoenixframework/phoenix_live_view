@@ -23,6 +23,12 @@ end
 defmodule Phoenix.LiveViewTest.E2E.Layout do
   use Phoenix.Component
 
+  def render("root.html", assigns) do
+    ~H"""
+    <%!-- no doctype -> quirks mode --%> <!DOCTYPE html> {@inner_content}
+    """
+  end
+
   def render("live.html", assigns) do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
@@ -50,7 +56,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     <style>
       * { font-size: 1.1em; }
     </style>
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 end
@@ -102,6 +108,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     plug :accepts, ["html"]
     plug :fetch_session
     plug :protect_from_forgery
+    plug :put_root_layout, html: {Phoenix.LiveViewTest.E2E.Layout, :root}
   end
 
   live_session :default,
@@ -110,13 +117,13 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     scope "/", Phoenix.LiveViewTest do
       pipe_through(:browser)
 
-      live "/stream", StreamLive
-      live "/stream/reset", StreamResetLive
-      live "/stream/reset-lc", StreamResetLCLive
-      live "/stream/limit", StreamLimitLive
-      live "/stream/nested-component-reset", StreamNestedComponentResetLive
-      live "/stream/inside-for", StreamInsideForLive
-      live "/healthy/:category", HealthyLive
+      live "/stream", Support.StreamLive
+      live "/stream/reset", Support.StreamResetLive
+      live "/stream/reset-lc", Support.StreamResetLCLive
+      live "/stream/limit", Support.StreamLimitLive
+      live "/stream/nested-component-reset", Support.StreamNestedComponentResetLive
+      live "/stream/inside-for", Support.StreamInsideForLive
+      live "/healthy/:category", Support.HealthyLive
 
       live "/upload", E2E.UploadLive
       live "/form", E2E.FormLive
@@ -124,18 +131,26 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form/nested", E2E.NestedFormLive
       live "/form/stream", E2E.FormStreamLive
       live "/js", E2E.JsLive
+      live "/select", E2E.SelectLive
     end
 
     scope "/issues", Phoenix.LiveViewTest.E2E do
       pipe_through(:browser)
 
+      live "/2787", Issue2787Live
       live "/3026", Issue3026Live
       live "/3040", Issue3040Live
+      live "/3083", Issue3083Live
+      live "/3107", Issue3107Live
       live "/3117", Issue3117Live
       live "/3200/messages", Issue3200.PanelLive, :messages_tab
       live "/3200/settings", Issue3200.PanelLive, :settings_tab
       live "/3194", Issue3194Live
       live "/3194/other", Issue3194Live.OtherLive
+      live "/3378", Issue3378.HomeLive
+      live "/3448", Issue3448Live
+      live "/3496/a", Issue3496.ALive
+      live "/3496/b", Issue3496.BLive
     end
   end
 
@@ -146,6 +161,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/a", Phoenix.LiveViewTest.E2E.Navigation.ALive
       live "/b", Phoenix.LiveViewTest.E2E.Navigation.BLive, :index
       live "/b/:id", Phoenix.LiveViewTest.E2E.Navigation.BLive, :show
+      get "/dead", Phoenix.LiveViewTest.E2E.Navigation.Dead, :index
     end
   end
 
@@ -155,6 +171,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
 
     live "/form/feedback", FormFeedbackLive
     live "/custom-events", CustomEventsLive
+    live "/errors", ErrorLive
 
     scope "/issues" do
       live "/2965", Issue2965Live
@@ -220,7 +237,7 @@ end
 
 IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
 
-unless IEx.started?() do
+if not IEx.started?() do
   # when running the test server manually, we halt after
   # reading from stdin
   spawn(fn ->

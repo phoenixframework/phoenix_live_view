@@ -18,12 +18,15 @@ except for the following LiveView specific options:
   * `params` - the `connect_params` to pass to the view's mount callback. May be
     a literal object or closure returning an object. When a closure is provided,
     the function receives the view's element.
-  * `hooks` – a reference to a user-defined hooks namespace, containing client
+  * `hooks` - a reference to a user-defined hooks namespace, containing client
     callbacks for server/client interop. See the [Client hooks](#client-hooks-via-phx-hook)
     section below for details.
-  * `uploaders` – a reference to a user-defined uploaders namespace, containing
+  * `uploaders` - a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
-    [External uploads guide](uploads-external.md) for details.
+    [External uploads guide](external-uploads.md) for details.
+  * `metadata` - additional user-defined metadata that is sent along events to the server.
+    See the [Key events](bindings.html#key-events) section in the bindings guide
+    for an example.
 
 ## Debugging client events
 
@@ -33,7 +36,7 @@ Calling `enableDebug()` turns on debug logging which includes LiveView life-cycl
 payload events as they come and go from client to server. In practice, you can expose
 your instance on `window` for quick access in the browser's web console, for example:
 
-```
+```javascript
 // app.js
 let liveSocket = new LiveSocket(...)
 liveSocket.connect()
@@ -55,7 +58,7 @@ so LiveView includes a latency simulator with the JavaScript client to ensure yo
 application provides a pleasant experience. Like the `enableDebug()` function above,
 the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disableLatencySim()`
 functions which apply throughout the current browser session. The `enableLatencySim` function
-accepts an integer in milliseconds for the round-trip-time to the server. For example:
+accepts an integer in milliseconds for the one-way latency to and from the server. For example:
 
 ```javascript
 // app.js
@@ -78,7 +81,7 @@ element from the server to draw the user's attention:
 
 ```heex
 <div id={"item-#{item.id}"} class="item">
-  <%= item.title %>
+  {item.title}
 </div>
 ```
 
@@ -110,7 +113,7 @@ attribute:
 
 ```heex
 <div id={"item-#{item.id}"} class="item" data-highlight={JS.transition("highlight")}>
-  <%= item.title %>
+  {item.title}
 </div>
 ```
 
@@ -267,7 +270,9 @@ Hooks.InfiniteScroll = {
 
 However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
-    <div id="chart" phx-hook="Chart">
+```heex
+<div id="chart" phx-hook="Chart">
+```
 
 And then on the client:
 

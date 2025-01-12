@@ -21,8 +21,6 @@ import {
   THROTTLED,
 } from "./constants"
 
-import JS from "./js"
-
 import {
   logError
 } from "./utils"
@@ -96,10 +94,10 @@ let DOM = {
 
     try {
       url = new URL(href)
-    } catch(e) {
+    } catch {
       try {
         url = new URL(href, currentLocation)
-      } catch(e) {
+      } catch {
         // bad URL, fallback to let browser try it as external
         return true
       }
@@ -150,7 +148,7 @@ let DOM = {
     cids.forEach(cid => {
       this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach(parent => {
         parentCids.add(cid)
-        this.all(parent, `[${PHX_COMPONENT}]`)
+        this.filterWithinSameLiveView(this.all(parent, `[${PHX_COMPONENT}]`), parent)
           .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
           .forEach(childCID => childrenCids.add(childCID))
       })
@@ -213,8 +211,12 @@ let DOM = {
   putTitle(str){
     let titleEl = document.querySelector("title")
     if(titleEl){
-      let {prefix, suffix} = titleEl.dataset
-      document.title = `${prefix || ""}${str}${suffix || ""}`
+      let {prefix, suffix, default: defaultTitle} = titleEl.dataset
+      let isEmpty = typeof(str) !== "string" || str.trim() === ""
+      if(isEmpty && typeof(defaultTitle) !== "string"){ return }
+
+      let inner = isEmpty ? defaultTitle : str
+      document.title = `${prefix || ""}${inner || ""}${suffix || ""}`
     } else {
       document.title = str
     }
@@ -468,7 +470,7 @@ let DOM = {
   isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 },
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
-    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
+    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null && document.body.contains(el)
   },
 
   cleanChildNodes(container, phxUpdate){
@@ -513,7 +515,7 @@ let DOM = {
   },
 
   getSticky(el, name, defaultVal){
-    let op = (DOM.private(el, "sticky") || []).find(([existingName, ]) => name === existingName)
+    let op = (DOM.private(el, "sticky") || []).find(([existingName,]) => name === existingName)
     if(op){
       let [_name, _op, stashedResult] = op
       return stashedResult
@@ -531,7 +533,7 @@ let DOM = {
   putSticky(el, name, op){
     let stashedResult = op(el)
     this.updatePrivate(el, "sticky", [], ops => {
-      let existingIndex = ops.findIndex(([existingName, ]) => name === existingName)
+      let existingIndex = ops.findIndex(([existingName,]) => name === existingName)
       if(existingIndex >= 0){
         ops[existingIndex] = [name, op, stashedResult]
       } else {

@@ -118,6 +118,18 @@ describe("DOM", () => {
       DOM.putTitle("My Title")
       expect(document.title).toBe("PRE My Title POST")
     })
+
+    test("with default", () => {
+      appendTitle({default: "DEFAULT", prefix: "PRE ", suffix: " POST"})
+      DOM.putTitle(null)
+      expect(document.title).toBe("PRE DEFAULT POST")
+
+      DOM.putTitle(undefined)
+      expect(document.title).toBe("PRE DEFAULT POST")
+
+      DOM.putTitle("")
+      expect(document.title).toBe("PRE DEFAULT POST")
+    })
   })
 
   describe("findExistingParentCIDs", () => {
@@ -145,6 +157,26 @@ describe("DOM", () => {
       `))
       expect(DOM.findExistingParentCIDs(view, [1, 2, 3])).toEqual(new Set([1]))
     })
+
+    test("ignores elements in child LiveViews #3626", () => {
+      let view = tag("div", {}, `
+        <div data-phx-main="true"
+            data-phx-session="123"
+            data-phx-static="456"
+            id="phx-123"
+            class="phx-connected"
+            data-phx-root-id="phx-FgFpFf-J8Gg-jEnh">
+        </div>
+      `)
+      document.body.appendChild(view)
+
+      view.appendChild(tag("div", {"data-phx-component": 1}, `
+        <div data-phx-session="123" data-phx-static="456" data-phx-parent="phx-123" id="phx-child-view">
+          <div data-phx-component="1"></div>
+        </div>
+      `))
+      expect(DOM.findExistingParentCIDs(view, [1])).toEqual(new Set([1]))
+    })
   })
 
   describe("findComponentNodeList", () => {
@@ -169,9 +201,15 @@ describe("DOM", () => {
   test("isNowTriggerFormExternal", () => {
     let form
     form = tag("form", {"phx-trigger-external": ""}, "")
+    document.body.appendChild(form)
     expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(true)
 
     form = tag("form", {}, "")
+    document.body.appendChild(form)
+    expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(false)
+
+    // not in the DOM -> false
+    form = tag("form", {"phx-trigger-external": ""}, "")
     expect(DOM.isNowTriggerFormExternal(form, "phx-trigger-external")).toBe(false)
   })
 

@@ -7,13 +7,13 @@ defmodule Phoenix.ComponentUnitTest do
   @socket Utils.configure_socket(
             %Socket{
               endpoint: Endpoint,
-              router: Phoenix.LiveViewTest.Router,
-              view: Phoenix.LiveViewTest.ParamCounterLive
+              router: Phoenix.LiveViewTest.Support.Router,
+              view: Phoenix.LiveViewTest.Support.ParamCounterLive
             },
             %{
               connect_params: %{},
               connect_info: %{},
-              root_view: Phoenix.LiveViewTest.ParamCounterLive,
+              root_view: Phoenix.LiveViewTest.Support.ParamCounterLive,
               __changed__: %{}
             },
             nil,
@@ -304,6 +304,9 @@ defmodule Phoenix.ComponentUnitTest do
 
       form = to_form(base, action: :validate)
       assert form.action == :validate
+
+      form = to_form(%{base | action: :validate})
+      assert form.action == :validate
     end
   end
 
@@ -327,5 +330,18 @@ defmodule Phoenix.ComponentUnitTest do
     form = to_form(params, as: "profile", action: :validate)
     refute used_input?(form[:username])
     refute used_input?(form[:email])
+
+    params = %{
+      "bday" => %{"day" => "", "month" => "", "year" => ""},
+      "published_at" => %{"date" => "", "time" => "", "_unused_date" => "", "_unused_time" => ""},
+      "deleted_at" => %{},
+      "inserted_at" => %{"date" => "", "time" => "", "_unused_time" => ""}
+    }
+
+    form = to_form(params, as: "profile", action: :validate)
+    assert used_input?(form[:bday])
+    refute used_input?(form[:published_at])
+    refute used_input?(form[:deleted_at])
+    assert used_input?(form[:inserted_at])
   end
 end

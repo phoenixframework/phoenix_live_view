@@ -217,7 +217,7 @@ describe("Rendered", () => {
   describe("toString", () => {
     test("stringifies a diff", () => {
       let rendered = new Rendered("123", simpleDiffResult)
-      let [str, streams] = rendered.toString()
+      let [str, _streams] = rendered.toString()
       expect(str.trim()).toEqual(
         `<div data-phx-id="m1-123" class="thermostat">
   <div class="bar cooling">
@@ -229,7 +229,7 @@ describe("Rendered", () => {
 
     test("reuses static in components and comprehensions", () => {
       let rendered = new Rendered("123", staticReuseDiff)
-      let [str, streams] = rendered.toString()
+      let [str, _streams] = rendered.toString()
       expect(str.trim()).toEqual(
         `<div data-phx-id="m1-123">
   <p>

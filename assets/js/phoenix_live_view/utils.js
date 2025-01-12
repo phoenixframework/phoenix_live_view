@@ -57,7 +57,7 @@ export let maybe = (el, callback) => el && callback(el)
 
 export let channelUploader = function (entries, onError, resp, liveSocket){
   entries.forEach(entry => {
-    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
+    let entryUploader = new EntryUploader(entry, resp.config, liveSocket)
     entryUploader.upload()
   })
 }

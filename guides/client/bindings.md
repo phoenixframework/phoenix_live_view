@@ -3,7 +3,9 @@
 Phoenix supports DOM element bindings for client-server interaction. For
 example, to react to a click on a button, you would render the element:
 
-    <button phx-click="inc_temperature">+</button>
+```heex
+<button phx-click="inc_temperature">+</button>
+```
 
 Then on the server, all LiveView bindings are handled with the `handle_event`
 callback, for example:
@@ -41,7 +43,9 @@ sent to the server will be chosen with the following priority:
 
   * Any number of optional `phx-value-` prefixed attributes, such as:
 
-        <div phx-click="inc" phx-value-myvar1="val1" phx-value-myvar2="val2">
+    ```heex
+    <div phx-click="inc" phx-value-myvar1="val1" phx-value-myvar2="val2">
+    ```
 
     will send the following map of params to the server:
 
@@ -54,18 +58,20 @@ sent to the server will be chosen with the following priority:
     For example, the following `LiveSocket` client option would send the coordinates and
     `altKey` information for all clicks:
 
-        let liveSocket = new LiveSocket("/live", Socket, {
-          params: {_csrf_token: csrfToken},
-          metadata: {
-            click: (e, el) => {
-              return {
-                altKey: e.altKey,
-                clientX: e.clientX,
-                clientY: e.clientY
-              }
-            }
+    ```javascript
+    let liveSocket = new LiveSocket("/live", Socket, {
+      params: {_csrf_token: csrfToken},
+      metadata: {
+        click: (e, el) => {
+          return {
+            altKey: e.altKey,
+            clientX: e.clientX,
+            clientY: e.clientY
           }
-        })
+        }
+      }
+    })
+    ```
 
 The `phx-click-away` event is fired when a click event happens outside of the element.
 This is useful for hiding toggled containers like drop-downs.
@@ -109,18 +115,20 @@ Escape key looks like this:
 To capture additional user-defined metadata, the `metadata` option for keydown events
 may be provided to the `LiveSocket` constructor. For example:
 
-    let liveSocket = new LiveSocket("/live", Socket, {
-      params: {_csrf_token: csrfToken},
-      metadata: {
-        keydown: (e, el) => {
-          return {
-            key: e.key,
-            metaKey: e.metaKey,
-            repeat: e.repeat
-          }
-        }
+```javascript
+let liveSocket = new LiveSocket("/live", Socket, {
+  params: {_csrf_token: csrfToken},
+  metadata: {
+    keydown: (e, el) => {
+      return {
+        key: e.key,
+        metaKey: e.metaKey,
+        repeat: e.repeat
       }
-    })
+    }
+  }
+})
+```
 
 To determine which key has been pressed you should use `key` value. The
 available options can be found on
@@ -140,7 +148,7 @@ for example:
     def render(assigns) do
       ~H"""
       <div id="thermostat" phx-window-keyup="update_temp">
-        Current temperature: <%= @temperature %>
+        Current temperature: {@temperature}
       </div>
       """
     end
@@ -190,7 +198,9 @@ the username at most every 2 seconds after a user changes the field:
 
 And to rate limit a volume up click to once every second:
 
-    <button phx-click="volume_up" phx-throttle="1000">+</button>
+```heex
+<button phx-click="volume_up" phx-throttle="1000">+</button>
+```
 
 Likewise, you may throttle held-down keydown:
 
@@ -374,7 +384,7 @@ For example:
 
 ```heex
 <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
-  <%= Phoenix.Flash.get(@flash, :info) %>
+  {Phoenix.Flash.get(@flash, :info)}
 </p>
 ```
 

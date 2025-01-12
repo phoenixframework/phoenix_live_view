@@ -4,7 +4,8 @@ defmodule Phoenix.LiveView.NavigationTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -45,7 +46,7 @@ defmodule Phoenix.LiveView.NavigationTest do
 
   describe "push_patch" do
     test "when disconnected", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError, ~r/attempted to live patch while/, fn ->
+      assert_raise RuntimeError, ~r/attempted to live patch while/, fn ->
         get(conn, "/redir?during=disconnected&kind=push_patch&to=/redir?patched=true")
       end
     end
@@ -59,7 +60,7 @@ defmodule Phoenix.LiveView.NavigationTest do
     end
 
     test "child when disconnected", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError,
+      assert_raise RuntimeError,
                    ~r/a LiveView cannot be mounted while issuing a live patch to the client/,
                    fn ->
                      get(

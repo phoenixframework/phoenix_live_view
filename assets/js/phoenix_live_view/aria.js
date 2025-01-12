@@ -2,7 +2,7 @@ let ARIA = {
   anyOf(instance, classes){ return classes.find(name => instance instanceof name) },
 
   isFocusable(el, interactiveOnly){
-    return(
+    return (
       (el instanceof HTMLAnchorElement && el.rel !== "ignore") ||
       (el instanceof HTMLAreaElement && el.href !== undefined) ||
       (!el.disabled && (this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]))) ||
@@ -12,7 +12,7 @@ let ARIA = {
   },
 
   attemptFocus(el, interactiveOnly){
-    if(this.isFocusable(el, interactiveOnly)){ try{ el.focus() } catch(e){} }
+    if(this.isFocusable(el, interactiveOnly)){ try { el.focus() } catch {} }
     return !!document.activeElement && document.activeElement.isSameNode(el)
   },
 

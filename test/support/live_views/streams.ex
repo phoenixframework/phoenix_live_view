@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.StreamLive do
+defmodule Phoenix.LiveViewTest.Support.StreamLive do
   use Phoenix.LiveView
 
   def run(lv, func) do
@@ -32,7 +32,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   def render(%{extra_item_with_id: true} = assigns) do
     ~H"""
     <div id="users" phx-update="stream">
-      <div :for={{id, user} <- @streams.users} id={id}><%= user.name %></div>
+      <div :for={{id, user} <- @streams.users} id={id}>{user.name}</div>
       <div id="users-empty" only-child>Empty!</div>
     </div>
 
@@ -51,7 +51,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     ~H"""
     <div id="users" phx-update="stream">
       <div :for={{id, user} <- @streams.users} id={id} data-count={@count}>
-        <%= user.name %>
+        {user.name}
         <button phx-click="delete" phx-value-id={id}>delete</button>
         <button phx-click="update" phx-value-id={id}>update</button>
         <button phx-click="move-to-first" phx-value-id={id}>make first</button>
@@ -64,14 +64,14 @@ defmodule Phoenix.LiveViewTest.StreamLive do
     </div>
     <div id="admins" phx-update="stream">
       <div :for={{id, user} <- @streams.admins} id={id} data-count={@count}>
-        <%= user.name %>
+        {user.name}
         <button phx-click="admin-delete" phx-value-id={id}>delete</button>
         <button phx-click="admin-update" phx-value-id={id}>update</button>
         <button phx-click="admin-move-to-first" phx-value-id={id}>make first</button>
         <button phx-click="admin-move-to-last" phx-value-id={id}>make last</button>
       </div>
     </div>
-    <.live_component id="stream-component" module={Phoenix.LiveViewTest.StreamComponent} />
+    <.live_component id="stream-component" module={Phoenix.LiveViewTest.Support.StreamComponent} />
 
     <button phx-click="reset-users">Reset users</button>
     <button phx-click="reset-users-reorder">Reorder users</button>
@@ -195,7 +195,7 @@ defmodule Phoenix.LiveViewTest.StreamLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamComponent do
+defmodule Phoenix.LiveViewTest.Support.StreamComponent do
   use Phoenix.LiveComponent
 
   def run(lv, func) do
@@ -206,7 +206,7 @@ defmodule Phoenix.LiveViewTest.StreamComponent do
     ~H"""
     <div id="c_users" phx-update="stream">
       <div :for={{id, user} <- @streams.c_users} id={id}>
-        <%= user.name %>
+        {user.name}
         <button phx-click="delete" phx-value-id={id} phx-target={@myself}>delete</button>
         <button phx-click="update" phx-value-id={id} phx-target={@myself}>update</button>
         <button phx-click="move-to-first" phx-value-id={id} phx-target={@myself}>make first</button>
@@ -263,7 +263,7 @@ defmodule Phoenix.LiveViewTest.StreamComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HealthyLive do
+defmodule Phoenix.LiveViewTest.Support.HealthyLive do
   use Phoenix.LiveView
 
   @healthy_stuff %{
@@ -283,11 +283,11 @@ defmodule Phoenix.LiveViewTest.HealthyLive do
       <.link patch={other(@category)}>Switch</.link>
     </p>
 
-    <h1><%= String.capitalize(@category) %></h1>
+    <h1>{String.capitalize(@category)}</h1>
 
     <ul id="items" phx-update="stream">
       <li :for={{dom_id, item} <- @streams.items} id={dom_id}>
-        <%= item.name %>
+        {item.name}
       </li>
     </ul>
     """
@@ -319,7 +319,7 @@ defmodule Phoenix.LiveViewTest.HealthyLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamResetLive do
+defmodule Phoenix.LiveViewTest.Support.StreamResetLive do
   use Phoenix.LiveView
 
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2994
@@ -344,7 +344,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
         id={id}
         phx-remove={if @use_phx_remove, do: Phoenix.LiveView.JS.hide()}
       >
-        <%= item.name %>
+        {item.name}
       </li>
     </ul>
 
@@ -492,7 +492,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamResetLCLive do
+defmodule Phoenix.LiveViewTest.Support.StreamResetLCLive do
   use Phoenix.LiveView
 
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2982
@@ -503,7 +503,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLCLive do
     def render(assigns) do
       ~H"""
       <li id={@id}>
-        <%= @item.name %>
+        {@item.name}
       </li>
       """
     end
@@ -553,7 +553,7 @@ defmodule Phoenix.LiveViewTest.StreamResetLCLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamLimitLive do
+defmodule Phoenix.LiveViewTest.Support.StreamLimitLive do
   use Phoenix.LiveView
 
   # see https://github.com/phoenixframework/phoenix_live_view/issues/2686
@@ -573,14 +573,14 @@ defmodule Phoenix.LiveViewTest.StreamLimitLive do
       <button type="submit">recreate stream</button>
     </form>
 
-    <div>configured with at: <%= @at %>, limit: <%= @limit %></div>
+    <div>configured with at: {@at}, limit: {@limit}</div>
 
     <button phx-click="insert_10">add 10</button>
     <button phx-click="insert_1">add 1</button>
     <button phx-click="clear">clear</button>
 
     <ul id="items" phx-update="stream">
-      <li :for={{id, item} <- @streams.items} id={id}><%= item.id %></li>
+      <li :for={{id, item} <- @streams.items} id={id}>{item.id}</li>
     </ul>
     """
   end
@@ -640,7 +640,7 @@ defmodule Phoenix.LiveViewTest.StreamLimitLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamNestedLive do
+defmodule Phoenix.LiveViewTest.Support.StreamNestedLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do
@@ -656,14 +656,14 @@ defmodule Phoenix.LiveViewTest.StreamNestedLive do
   def render(assigns) do
     ~H"""
     <div id="nested-container">
-      <%= @foo %>
-      <%= live_render(@socket, Phoenix.LiveViewTest.StreamResetLive, id: "nested") %>
+      {@foo}
+      {live_render(@socket, Phoenix.LiveViewTest.Support.StreamResetLive, id: "nested")}
     </div>
     """
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamInsideForLive do
+defmodule Phoenix.LiveViewTest.Support.StreamInsideForLive do
   # https://github.com/phoenixframework/phoenix_live_view/issues/3129
   use Phoenix.LiveView
 
@@ -691,7 +691,7 @@ defmodule Phoenix.LiveViewTest.StreamInsideForLive do
     <div :for={_i <- [1]}>
       <ul phx-update="stream" id="thelist">
         <li :for={{id, item} <- @streams.items} id={id}>
-          <%= item.name %>
+          {item.name}
         </li>
       </ul>
     </div>
@@ -699,7 +699,7 @@ defmodule Phoenix.LiveViewTest.StreamInsideForLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.StreamNestedComponentResetLive do
+defmodule Phoenix.LiveViewTest.Support.StreamNestedComponentResetLive do
   use Phoenix.LiveView
 
   defmodule InnerComponent do
@@ -747,9 +747,9 @@ defmodule Phoenix.LiveViewTest.StreamNestedComponentResetLive do
     def render(assigns) do
       ~H"""
       <li id={@id}>
-        <%= @item.name %>
+        {@item.name}
         <div id={@id <> "-nested"} phx-update="stream" style="display: flex; gap: 4px;">
-          <span :for={{id, item} <- @streams.nested} id={id}><%= item.name %></span>
+          <span :for={{id, item} <- @streams.nested} id={id}>{item.name}</span>
         </div>
         <button phx-click="reorder" phx-target={@myself}>Reorder</button>
       </li>
@@ -801,7 +801,7 @@ defmodule Phoenix.LiveViewTest.StreamNestedComponentResetLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.HighFrequencyStreamAndNoStreamUpdatesLive do
+defmodule Phoenix.LiveViewTest.Support.HighFrequencyStreamAndNoStreamUpdatesLive do
   use Phoenix.LiveView
 
   def mount(_params, _session, socket) do
@@ -822,10 +822,10 @@ defmodule Phoenix.LiveViewTest.HighFrequencyStreamAndNoStreamUpdatesLive do
     ~H"""
     <div id="mystream" phx-update="stream">
       <div :for={{id, item} <- @streams.items} id={id}>
-        <%= item.name %>, <%= item.id %>
+        {item.name}, {item.id}
       </div>
     </div>
-    <p><%= @foo %></p>
+    <p>{@foo}</p>
     """
   end
 end
