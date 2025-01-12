@@ -580,7 +580,7 @@ defmodule Phoenix.Component do
   This will call the `MyAppWeb.MyModule.my_function/1` function passing in the remaining assigns.
 
   ```elixir
-  defmodule MyApp.MyModule do
+  defmodule MyAppWeb.MyModule do
     attr :shared, :string, required: true
 
     slot :named_slot, required: true
