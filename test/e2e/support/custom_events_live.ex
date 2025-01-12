@@ -26,7 +26,7 @@ defmodule Phoenix.LiveViewTest.E2E.CustomEventsLive do
       liveSocket.connect()
       window.liveSocket = liveSocket
     </script>
-    <%= @inner_content %>
+    {@inner_content}
     """
   end
 
@@ -38,7 +38,7 @@ defmodule Phoenix.LiveViewTest.E2E.CustomEventsLive do
   def render(assigns) do
     ~H"""
     <my-button id="mybutton" phx-custom-events="my_event"></my-button>
-    <div id="foo"><%= @foo %></div>
+    <div id="foo">{@foo}</div>
     """
   end
 
