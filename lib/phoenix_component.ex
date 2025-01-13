@@ -611,7 +611,12 @@ defmodule Phoenix.Component do
   <p>Howdy from the named slot!</p>
   ```
 
-  All while maintaining the benefits of the `attr/3` and `slot/3` macros for compile-time validations.
+  Note that to get the most out of `Phoenix.Component`'s compile-time validations, it is beneficial to
+  define such a `dynamic_component` for a specific set of components sharing the same API, instead of
+  defining it for the general case.
+  In this example, we defined our `dynamic_component` to expect an assign called `shared`, as well as
+  two slots that all components we want to use with it must implement.
+  The called `my_function` component's attribute and slot definitions cannot be validated through the apply call.
   '''
 
   ## Functions
