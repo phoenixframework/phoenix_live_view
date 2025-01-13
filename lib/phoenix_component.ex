@@ -591,6 +591,7 @@ defmodule Phoenix.Component do
     attr :shared, :string, required: true
 
     slot :named_slot, required: true
+    slot :inner_block, required: true
 
     def my_function(assigns) do
       ~H"""
