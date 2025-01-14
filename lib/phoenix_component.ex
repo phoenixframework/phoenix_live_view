@@ -541,6 +541,82 @@ defmodule Phoenix.Component do
       config :phoenix_live_view, debug_heex_annotations: true
 
   Changing this configuration will require `mix clean` and a full recompile.
+
+  ## Dynamic Component Rendering
+
+  Sometimes you might need to decide at runtime which component to render.
+  Because function components are just regular functions, we can leverage
+  Elixir's `apply/3` function to dynamically call a module and/or function passed
+  in as an assign.
+
+  For example, using the following function component definition:
+
+  ```elixir
+  attr :module, :atom, required: true
+  attr :function, :atom, required: true
+  # any shared attributes
+  attr :shared, :string, required: true
+
+  # any shared slots
+  slot :named_slot, required: true
+  slot :inner_block, required: true
+
+  def dynamic_component(assigns) do
+    {mod, assigns} = Map.pop(assigns, :module)
+    {func, assigns} = Map.pop(assigns, :function)
+
+    apply(mod, func, [assigns])
+  end
+  ```
+
+  Then you can use the `dynamic_component` function like so:
+
+  ```heex
+  <.dynamic_component
+    module={MyAppWeb.MyModule}
+    function={:my_function}
+    shared="Yay Elixir!"
+  >
+    <p>Howdy from the inner block!</p>
+    <:named_slot>
+      <p>Howdy from the named slot!</p>
+    </:named_slot>
+  </.dynamic_component>
+  ```
+
+  This will call the `MyAppWeb.MyModule.my_function/1` function passing in the remaining assigns.
+
+  ```elixir
+  defmodule MyAppWeb.MyModule do
+    attr :shared, :string, required: true
+
+    slot :named_slot, required: true
+    slot :inner_block, required: true
+
+    def my_function(assigns) do
+      ~H"""
+      <p>Dynamic component with shared assigns: {@shared}</p>
+      {render_slot(@inner_block)}
+      {render_slot(@named_slot)}
+      """
+    end
+  end
+  ```
+
+  Resulting in the following HTML:
+
+  ```html
+  <p>Dynamic component with shared assigns: Yay Elixir!</p>
+  <p>Howdy from the inner block!</p>
+  <p>Howdy from the named slot!</p>
+  ```
+
+  Note that to get the most out of `Phoenix.Component`'s compile-time validations, it is beneficial to
+  define such a `dynamic_component` for a specific set of components sharing the same API, instead of
+  defining it for the general case.
+  In this example, we defined our `dynamic_component` to expect an assign called `shared`, as well as
+  two slots that all components we want to use with it must implement.
+  The called `my_function` component's attribute and slot definitions cannot be validated through the apply call.
   '''
 
   ## Functions
