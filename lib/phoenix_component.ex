@@ -569,7 +569,7 @@ defmodule Phoenix.Component do
   end
   ```
 
-  You can then use the `dynamic_component` function like so:
+  Then you can use the `dynamic_component` function like so:
 
   ```heex
   <.dynamic_component
