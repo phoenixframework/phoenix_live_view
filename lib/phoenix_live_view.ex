@@ -1753,8 +1753,8 @@ defmodule Phoenix.LiveView do
   prepend items (with `at: 0`) to the stream, the non-stream item will be pushed down.
 
   """
-  @spec stream(%Socket{}, name :: atom | String.t(), items :: Enumerable.t(), opts :: Keyword.t()) ::
-          %Socket{}
+  @spec stream(socket :: Socket.t(), name :: atom | String.t(), items :: Enumerable.t(), opts :: Keyword.t()) ::
+          Socket.t()
   def stream(%Socket{} = socket, name, items, opts \\ []) do
     socket
     |> ensure_streams()
@@ -1792,7 +1792,7 @@ defmodule Phoenix.LiveView do
 
   Returns an updated `socket`.
   """
-  @spec stream_configure(%Socket{}, name :: atom | String.t(), opts :: Keyword.t()) :: %Socket{}
+  @spec stream_configure(socket :: Socket.t(), name :: atom | String.t(), opts :: Keyword.t()) :: Socket.t()
   def stream_configure(%Socket{} = socket, name, opts) when is_list(opts) do
     new_socket = ensure_streams(socket)
 
@@ -1875,8 +1875,8 @@ defmodule Phoenix.LiveView do
 
   See `stream_delete/3` for more information on deleting items.
   """
-  @spec stream_insert(%Socket{}, name :: atom | String.t(), item :: any, opts :: Keyword.t()) ::
-          %Socket{}
+  @spec stream_insert(socket :: Socket.t(), name :: atom | String.t(), item :: any, opts :: Keyword.t()) ::
+          Socket.t()
   def stream_insert(%Socket{} = socket, name, item, opts \\ []) do
     at = Keyword.get(opts, :at, -1)
     limit = Keyword.get(opts, :limit)
@@ -1904,7 +1904,7 @@ defmodule Phoenix.LiveView do
 
   Returns an updated `socket`.
   """
-  @spec stream_delete(%Socket{}, name :: atom | String.t(), item :: any) :: %Socket{}
+  @spec stream_delete(socket :: Socket.t(), name :: atom | String.t(), item :: any) :: Socket.t()
   def stream_delete(%Socket{} = socket, name, item) do
     update_stream(socket, name, &LiveStream.delete_item(&1, item))
   end
@@ -1940,8 +1940,8 @@ defmodule Phoenix.LiveView do
         {:noreply, stream_delete_by_dom_id(socket, :songs, dom_id)}
       end
   '''
-  @spec stream_delete_by_dom_id(%Socket{}, name :: atom | String.t(), id :: String.t()) ::
-          %Socket{}
+  @spec stream_delete_by_dom_id(socket :: Socket.t(), name :: atom | String.t(), id :: String.t()) ::
+          Socket.t()
   def stream_delete_by_dom_id(%Socket{} = socket, name, id) do
     update_stream(socket, name, &LiveStream.delete_item_by_dom_id(&1, id))
   end
