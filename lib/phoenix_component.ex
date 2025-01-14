@@ -1886,6 +1886,8 @@ defmodule Phoenix.Component do
   | `:float`        | any float                                                            |
   | `:list`         | any list of any arbitrary types                                      |
   | `:map`          | any map of any arbitrary types                                       |
+  | `:fun`          | any function                                                         |
+  | `{:fun, arity}` | any function of arity                                                |
   | `:global`       | any common HTML attributes, plus those defined by `:global_prefixes` |
   | A struct module | any module that defines a struct with `defstruct/1`                  |
 
