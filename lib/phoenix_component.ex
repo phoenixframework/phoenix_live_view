@@ -2626,7 +2626,7 @@ defmodule Phoenix.Component do
   >
   > # Helper function to calculate remaining time
   > defp calculate_remaining(changeset) do
-  >   total = Ecto.Changeset.get_field(changeset)
+  >   total = Ecto.Changeset.get_field(changeset, :total)
   >   activities = Ecto.Changeset.get_embed(changeset, :activities)
   >
   >   Enum.reduce(activities, total, fn activity, acc ->
