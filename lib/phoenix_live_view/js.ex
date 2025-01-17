@@ -101,6 +101,38 @@ defmodule Phoenix.LiveView.JS do
   >+</button>
   ```
 
+  ## DOM Selectors
+
+  The client utility commands in this module all take an optional DOM selector
+  using the `:to` option.
+
+  This can be a string for a regular DOM selector such as:
+
+  ```elixir
+  JS.add_class("warmer", to: ".thermo")
+  JS.hide(to: "#modal")
+  JS.show(to: "body a:nth-child(2)")
+  ```
+
+  It is also possible to provide scopes to the DOM selector. The following scopes
+  are available:
+
+   * `{:inner, "selector"}` To target an element within the interacted element.
+   * `{:closest, "selector"}` To target the closest element from the interacted
+   element upwards.
+
+   For example, if building a dropdown component, the button could use the `:inner`
+   scope:
+
+   ```heex
+   <div phx-click={JS.show(to: {:inner, ".menu"})}>
+     <div>Open me</div>
+     <div class="menu hidden" phx-click-away={JS.hide()}>
+       I'm in the dropdown menu
+     </div>
+   </div>
+   ```
+
   ## Custom JS events with `JS.dispatch/1` and `window.addEventListener`
 
   `dispatch/1` can be used to dispatch custom JavaScript events to
@@ -223,7 +255,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to dispatch the event to.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:detail` - An optional detail map to dispatch along
       with the client event. The details will be available in the
       `event.detail` attribute for event listeners.
@@ -293,7 +326,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to toggle.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:in` - A string of classes to apply when toggling in, or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
@@ -354,7 +388,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to show.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:transition` - A string of classes to apply before showing or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
@@ -410,7 +445,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to hide.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:transition` - A string of classes to apply before hiding or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
@@ -464,7 +500,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to add classes to.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:transition` - A string of classes to apply before adding classes or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
@@ -515,7 +552,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to target.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:transition` - A string of classes to apply before adding classes or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
@@ -564,7 +602,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to remove classes from.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:transition` - A string of classes to apply before removing classes or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
@@ -621,7 +660,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to apply transitions to.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
@@ -673,7 +713,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to add attributes to.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
 
   ## Examples
 
@@ -705,7 +746,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to remove attributes from.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
 
   ## Examples
 
@@ -740,7 +782,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to set or remove attributes from.
-      Defaults to the interacted element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
 
   ## Examples
 
@@ -787,7 +830,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to send focus to.
-      Defaults to the current element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
 
   ## Examples
 
@@ -809,7 +853,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to focus.
-      Defaults to the current element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
 
   ## Examples
 
@@ -831,7 +876,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to push focus to.
-      Defaults to the current element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
 
   ## Examples
 
@@ -927,7 +973,8 @@ defmodule Phoenix.LiveView.JS do
   ## Options
 
     * `:to` - An optional DOM selector to fetch the attribute from.
-      Defaults to the current element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
 
   ## Examples
 
