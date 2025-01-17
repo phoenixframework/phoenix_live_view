@@ -67,7 +67,6 @@ defmodule Phoenix.LiveView.Socket do
             router: nil,
             assigns: %{__changed__: %{}},
             private: %{live_temp: %{}},
-            fingerprints: Phoenix.LiveView.Diff.new_fingerprints(),
             redirected: nil,
             host_uri: nil,
             transport_pid: nil
@@ -78,8 +77,6 @@ defmodule Phoenix.LiveView.Socket do
   @typedoc "The data in a LiveView as stored in the socket."
   @type assigns :: map | assigns_not_in_socket()
 
-  @type fingerprints :: {nil, map} | {binary, map}
-
   @type t :: %__MODULE__{
           id: binary(),
           endpoint: module(),
@@ -89,7 +86,6 @@ defmodule Phoenix.LiveView.Socket do
           router: module(),
           assigns: assigns,
           private: map(),
-          fingerprints: fingerprints,
           redirected: nil | tuple(),
           host_uri: URI.t() | :not_mounted_at_router,
           transport_pid: pid() | nil

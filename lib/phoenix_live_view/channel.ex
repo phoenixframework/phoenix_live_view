@@ -950,14 +950,16 @@ defmodule Phoenix.LiveView.Channel do
   defp render_diff(state, socket, force?) do
     changed? = Utils.changed?(socket)
 
-    {socket, diff, components} =
+    {socket, diff, fingerprints, components} =
       if force? or changed? do
         :telemetry.span(
           [:phoenix, :live_view, :render],
           %{socket: socket, force?: force?, changed?: changed?},
           fn ->
             rendered = Phoenix.LiveView.Renderer.to_rendered(socket, socket.view)
-            {socket, diff, components} = Diff.render(socket, rendered, state.components)
+
+            {diff, fingerprints, components} =
+              Diff.render(socket, rendered, state.fingerprints, state.components)
 
             socket =
               socket
@@ -965,19 +967,20 @@ defmodule Phoenix.LiveView.Channel do
               |> Utils.clear_changed()
 
             {
-              {socket, diff, components},
+              {socket, diff, fingerprints, components},
               %{socket: socket, force?: force?, changed?: changed?}
             }
           end
         )
       else
-        {socket, %{}, state.components}
+        {socket, %{}, state.fingerprints, state.components}
       end
 
     diff = Diff.render_private(socket, diff)
     new_socket = Utils.clear_temp(socket)
 
-    {:diff, diff, %{state | socket: new_socket, components: components}}
+    {:diff, diff,
+     %{state | socket: new_socket, fingerprints: fingerprints, components: components}}
   end
 
   defp reply(state, {ref, extra}, status, payload) do
@@ -1373,6 +1376,7 @@ defmodule Phoenix.LiveView.Channel do
       socket: lv_socket,
       topic: phx_socket.topic,
       components: Diff.new_components(),
+      fingerprints: Diff.new_fingerprints(),
       upload_names: %{},
       upload_pids: %{}
     }
