@@ -134,7 +134,7 @@ defmodule Phoenix.LiveView.Diff do
 
   def render(socket, %Rendered{} = rendered, prints, components) do
     {diff, prints, pending, components, nil} =
-      traverse(socket, rendered, prints, %{}, components, nil, true)
+      traverse(rendered, prints, %{}, components, nil, true)
 
     # cid_to_component is used by maybe_reuse_static and it must be a copy before changes.
     # However, given traverse does not change cid_to_component, we can read it now.
@@ -374,7 +374,6 @@ defmodule Phoenix.LiveView.Diff do
   ## Traversal
 
   defp traverse(
-         socket,
          %Rendered{fingerprint: fingerprint} = rendered,
          {fingerprint, children},
          pending,
@@ -387,7 +386,6 @@ defmodule Phoenix.LiveView.Diff do
 
     {_counter, diff, children, pending, components, nil} =
       traverse_dynamic(
-        socket,
         invoke_dynamic(rendered, changed?),
         children,
         pending,
@@ -400,7 +398,6 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         socket,
          %Rendered{fingerprint: fingerprint, static: static} = rendered,
          _,
          pending,
@@ -410,7 +407,6 @@ defmodule Phoenix.LiveView.Diff do
        ) do
     {_counter, diff, children, pending, components, template} =
       traverse_dynamic(
-        socket,
         invoke_dynamic(rendered, false),
         %{},
         pending,
@@ -425,7 +421,6 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         socket,
          %Component{} = component,
          _fingerprints_tree,
          pending,
@@ -433,12 +428,11 @@ defmodule Phoenix.LiveView.Diff do
          template,
          _changed?
        ) do
-    {cid, pending, components} = traverse_component(socket, component, pending, components)
+    {cid, pending, components} = traverse_component(component, pending, components)
     {cid, nil, pending, components, template}
   end
 
   defp traverse(
-         socket,
          %Comprehension{fingerprint: fingerprint, dynamics: dynamics, stream: stream},
          fingerprint,
          pending,
@@ -450,7 +444,7 @@ defmodule Phoenix.LiveView.Diff do
     nil = template
 
     {dynamics, {pending, components, template}} =
-      traverse_comprehension(socket, dynamics, pending, components, {%{}, %{}})
+      traverse_comprehension(dynamics, pending, components, {%{}, %{}})
 
     diff =
       %{@dynamics => dynamics}
@@ -461,7 +455,6 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         _socket,
          %Comprehension{dynamics: [], stream: stream},
          _,
          pending,
@@ -480,7 +473,6 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         socket,
          %Comprehension{fingerprint: print, static: static, dynamics: dynamics, stream: stream},
          _,
          pending,
@@ -490,7 +482,7 @@ defmodule Phoenix.LiveView.Diff do
        ) do
     if template do
       {dynamics, {pending, components, template}} =
-        traverse_comprehension(socket, dynamics, pending, components, template)
+        traverse_comprehension(dynamics, pending, components, template)
 
       {diff, template} =
         %{@dynamics => dynamics}
@@ -500,7 +492,7 @@ defmodule Phoenix.LiveView.Diff do
       {diff, print, pending, components, template}
     else
       {dynamics, {pending, components, template}} =
-        traverse_comprehension(socket, dynamics, pending, components, {%{}, %{}})
+        traverse_comprehension(dynamics, pending, components, {%{}, %{}})
 
       diff =
         %{@dynamics => dynamics, @static => static}
@@ -511,11 +503,11 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  defp traverse(_socket, nil, fingerprint_tree, pending, components, template, _changed?) do
+  defp traverse(nil, fingerprint_tree, pending, components, template, _changed?) do
     {nil, fingerprint_tree, pending, components, template}
   end
 
-  defp traverse(_socket, iodata, _, pending, components, template, _changed?) do
+  defp traverse(iodata, _, pending, components, template, _changed?) do
     {IO.iodata_to_binary(iodata), nil, pending, components, template}
   end
 
@@ -546,13 +538,13 @@ defmodule Phoenix.LiveView.Diff do
     [entry]
   end
 
-  defp traverse_dynamic(socket, dynamic, children, pending, components, template, changed?) do
+  defp traverse_dynamic(dynamic, children, pending, components, template, changed?) do
     Enum.reduce(dynamic, {0, %{}, children, pending, components, template}, fn
       entry, {counter, diff, children, pending, components, template} ->
         child = Map.get(children, counter)
 
         {serialized, child_fingerprint, pending, components, template} =
-          traverse(socket, entry, child, pending, components, template, changed?)
+          traverse(entry, child, pending, components, template, changed?)
 
         # If serialized is nil, it means no changes.
         # If it is an empty map, then it means it is a rendered struct
@@ -575,11 +567,11 @@ defmodule Phoenix.LiveView.Diff do
     end)
   end
 
-  defp traverse_comprehension(socket, dynamics, pending, components, template) do
+  defp traverse_comprehension(dynamics, pending, components, template) do
     Enum.map_reduce(dynamics, {pending, components, template}, fn rendereds, acc ->
       Enum.map_reduce(rendereds, acc, fn rendered, {pending, components, template} ->
         {diff, _, pending, components, template} =
-          traverse(socket, rendered, {nil, %{}}, pending, components, template, false)
+          traverse(rendered, {nil, %{}}, pending, components, template, false)
 
         {diff, {pending, components, template}}
       end)
@@ -614,7 +606,6 @@ defmodule Phoenix.LiveView.Diff do
   ## Stateful components helpers
 
   defp traverse_component(
-         _socket,
          %Component{id: id, assigns: assigns, component: component},
          pending,
          {cid_to_component, id_to_cid, uuids}
@@ -779,7 +770,7 @@ defmodule Phoenix.LiveView.Diff do
           maybe_reuse_static(rendered, component, prints, cids, components)
 
         {diff, prints, pending, components, nil} =
-          traverse(socket, rendered, prints, %{}, components, nil, changed?)
+          traverse(rendered, prints, %{}, components, nil, changed?)
 
         children_cids =
           for {_component, list} <- pending,
