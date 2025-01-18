@@ -1110,8 +1110,22 @@ var Hooks = {
     mounted() {
       this.focusStart = this.el.firstElementChild;
       this.focusEnd = this.el.lastElementChild;
-      this.focusStart.addEventListener("focus", () => aria_default.focusLast(this.el));
-      this.focusEnd.addEventListener("focus", () => aria_default.focusFirst(this.el));
+      this.focusStart.addEventListener("focus", (e) => {
+        if (!e.relatedTarget || !this.el.contains(e.relatedTarget)) {
+          const nextFocus = e.target.nextElementSibling;
+          aria_default.attemptFocus(nextFocus) || aria_default.focusFirst(nextFocus);
+        } else {
+          aria_default.focusLast(this.el);
+        }
+      });
+      this.focusEnd.addEventListener("focus", (e) => {
+        if (!e.relatedTarget || !this.el.contains(e.relatedTarget)) {
+          const nextFocus = e.target.previousElementSibling;
+          aria_default.attemptFocus(nextFocus) || aria_default.focusLast(nextFocus);
+        } else {
+          aria_default.focusFirst(this.el);
+        }
+      });
       this.el.addEventListener("phx:show-end", () => this.el.focus());
       if (window.getComputedStyle(this.el).display !== "none") {
         aria_default.focusFirst(this.el);
