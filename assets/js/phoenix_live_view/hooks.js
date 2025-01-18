@@ -47,8 +47,26 @@ let Hooks = {
     mounted(){
       this.focusStart = this.el.firstElementChild
       this.focusEnd = this.el.lastElementChild
-      this.focusStart.addEventListener("focus", () => ARIA.focusLast(this.el))
-      this.focusEnd.addEventListener("focus", () => ARIA.focusFirst(this.el))
+      this.focusStart.addEventListener("focus", (e) => {
+        if(!e.relatedTarget || !this.el.contains(e.relatedTarget)){ 
+          // Handle focus entering from outside (e.g. Tab when body is focused)
+          // https://github.com/phoenixframework/phoenix_live_view/issues/3636
+          const nextFocus = e.target.nextElementSibling
+          ARIA.attemptFocus(nextFocus) || ARIA.focusFirst(nextFocus)
+        } else {
+          ARIA.focusLast(this.el)
+        }
+      })
+      this.focusEnd.addEventListener("focus", (e) => {
+        if(!e.relatedTarget || !this.el.contains(e.relatedTarget)){ 
+          // Handle focus entering from outside (e.g. Shift+Tab when body is focused)
+          // https://github.com/phoenixframework/phoenix_live_view/issues/3636
+          const nextFocus = e.target.previousElementSibling
+          ARIA.attemptFocus(nextFocus) || ARIA.focusLast(nextFocus)
+        } else {
+          ARIA.focusFirst(this.el)
+        }
+      })
       this.el.addEventListener("phx:show-end", () => this.el.focus())
       if(window.getComputedStyle(this.el).display !== "none"){
         ARIA.focusFirst(this.el)
