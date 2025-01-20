@@ -18,6 +18,7 @@ import {
 
 import {
   detectDuplicateIds,
+  detectInvalidStreamInserts,
   isCid
 } from "./utils"
 
@@ -341,6 +342,7 @@ export default class DOMPatch {
 
     if(liveSocket.isDebugEnabled()){
       detectDuplicateIds()
+      detectInvalidStreamInserts(this.streamInserts)
       // warn if there are any inputs named "id"
       Array.from(document.querySelectorAll("input[name=id]")).forEach(node => {
         if(node.form){
