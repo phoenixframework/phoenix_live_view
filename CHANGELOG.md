@@ -112,6 +112,12 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.3
+
+### Bug fixes
+* Fix LiveComponents in nested LiveViews not updating under certain conditions ([#3626](https://github.com/phoenixframework/phoenix_live_view/issues/3626))
+* Fix client-side hooks not being cleared properly ([#3628](https://github.com/phoenixframework/phoenix_live_view/issues/3628))
+
 ## 1.0.2 (2025-01-09)
 
 ### Bug fixes
