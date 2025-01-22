@@ -1,14 +1,14 @@
 defmodule Phoenix.LiveComponent do
   @moduledoc ~S'''
   LiveComponents are a mechanism to compartmentalize state, markup, and
-  events in LiveView.
+  events for sharing across LiveViews.
 
   LiveComponents are defined by using `Phoenix.LiveComponent` and are used
   by calling `Phoenix.Component.live_component/1` in a parent LiveView.
   They run inside the LiveView process but have their own state and
   life-cycle. For this reason, they are also often called "stateful components".
   This is a contrast to `Phoenix.Component`, also known as "function components",
-  which are stateless and can only compartmentalize markup.
+  which are stateless and do not have a life-cycle.
 
   The smallest LiveComponent only needs to define a `c:render/1` function:
 
@@ -40,6 +40,11 @@ defmodule Phoenix.LiveComponent do
   > components, as they are a simpler abstraction, with a smaller surface
   > area. The use case for live components only arises when there is a need
   > for encapsulating both event handling and additional state.
+  >
+  > Similarly, avoid using LiveComponents for code design purposes, where
+  > their main goal is to organize code, rather than sharing it across
+  > LiveViews. When it comes to code organization and design, Elixir developers
+  > prefer to use functions and data structures.
 
   ## Life-cycle
 

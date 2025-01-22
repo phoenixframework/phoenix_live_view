@@ -4,8 +4,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   This is a `mix format` [plugin](https://hexdocs.pm/mix/main/Mix.Tasks.Format.html#module-plugins).
 
-  > Note: The HEEx HTML Formatter requires Elixir v1.13.4 or later.
-
   ## Setup
 
   Add it as a plugin to your `.formatter.exs` file and make sure to put

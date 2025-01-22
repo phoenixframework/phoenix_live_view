@@ -242,13 +242,12 @@ function that receives an assigns map and returns a `~H` template. For example:
     end
 
 You can learn more about function components in the `Phoenix.Component`
-module. At the end of the day, they are a useful mechanism to reuse markup
-in your LiveViews.
+module. At the end of the day, they are a useful mechanism for code organization
+and to reuse markup in your LiveViews.
 
-However, sometimes you need to compartmentalize or reuse more than just markup.
-Perhaps you want to move part of the state or some of the events in your
-LiveView to a separate module. For these cases, LiveView provides
-`Phoenix.LiveComponent`, which are rendered using
+However, sometimes you need to share more than just markup across LiveViews,
+and you also need to move events to a separate module. For these cases, LiveView
+provide `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
 ```heex
@@ -257,9 +256,10 @@ LiveView to a separate module. For these cases, LiveView provides
 
 LiveComponents have their own `mount/1` and `handle_event/3` callbacks, as well
 as their own state with change tracking support, similar to LiveViews. They are
-lightweight since they "run" in the same process as the parent LiveView.
-However, this means an error in a LiveComponent would cause the whole view
-to fail to render. For a complete rundown, see `Phoenix.LiveComponent`.
+lightweight since they "run" in the same process as the parent LiveView, but
+are more complex than function components themselves. Given they all run in the
+same process, errors in components cause the whole view to fail to render.
+For a complete rundown, see `Phoenix.LiveComponent`.
 
 Finally, if you want complete isolation between parts of a LiveView, you can
 always render a LiveView inside another LiveView by calling
@@ -279,9 +279,9 @@ abstraction if all you want is to compartmentalize markup or events (or both).
 
 To sum it up:
 
-  * use `Phoenix.Component` to compartmentalize/reuse markup
-  * use `Phoenix.LiveComponent` to compartmentalize state, markup, and events
-  * use nested `Phoenix.LiveView` to compartmentalize state, markup, events, and error isolation
+  * use `Phoenix.Component` for code organization and reusing markup
+  * use `Phoenix.LiveComponent` for sharing state, markup, and events between LiveViews
+  * use nested `Phoenix.LiveView` to compartmentalize state, markup, and events (with error isolation)
 
 ## Guides
 
