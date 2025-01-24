@@ -32,8 +32,12 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
   def render("live.html", assigns) do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
+    <script>
+      window.hooks = {}
+    </script>
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
+    {assigns[:pre_script]}
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
 
@@ -49,7 +53,10 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
         }
       }
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}, hooks: Hooks})
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
+        params: {_csrf_token: csrfToken},
+        hooks: {...Hooks, ...window.hooks}
+      })
       liveSocket.connect()
       window.liveSocket = liveSocket
     </script>
@@ -151,6 +158,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3448", Issue3448Live
       live "/3496/a", Issue3496.ALive
       live "/3496/b", Issue3496.BLive
+      live "/3651", Issue3651Live
     end
   end
 
@@ -177,6 +185,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3047/a", Issue3047ALive
       live "/3047/b", Issue3047BLive
       live "/3169", Issue3169Live
+      live "/3647", Issue3647Live
     end
   end
 
