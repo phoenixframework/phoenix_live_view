@@ -393,6 +393,28 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render("<div attr='1'/>") == "<div attr='1'></div>"
   end
 
+  describe "test attributes" do
+    import Phoenix.LiveViewTest.Support.TestAttributes
+
+    test "with value" do
+      assigns = %{test_id: "foo"}
+      assert compile("<.with_value test_id='foo'/>") == "<div></div>"
+      assert compile("<div data-test-id={@test_id}/>") == "<div data-test-id=\"foo\"></div>"
+    end
+
+    test "with static value" do
+      assigns = %{}
+      assert compile("<.with_static_value/>") == "<div></div>"
+      assert compile("<div data-test-name=\"foo\"/>") == "<div data-test-name=\"foo\"></div>"
+    end
+
+    test "without value" do
+      assigns = %{}
+      assert compile("<.without_value/>") == "<div></div>"
+      assert compile("<div data-test-attr/>") == "<div data-test-attr></div>"
+    end
+  end
+
   describe "debug annotations" do
     alias Phoenix.LiveViewTest.Support.DebugAnno
     import Phoenix.LiveViewTest.Support.DebugAnno

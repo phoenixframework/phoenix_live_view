@@ -854,6 +854,16 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp handle_tag_attrs(state, meta, attrs) do
+    attrs =
+      if Application.get_env(:phoenix_live_view, :strip_test_attributes, false) do
+        Enum.filter(attrs, fn
+          {<<"data-test-", _::binary>>, _, _} -> false
+          _ -> true
+        end)
+      else
+        attrs
+      end
+
     Enum.reduce(attrs, state, fn
       {:root, {:expr, _, _} = expr, _attr_meta}, state ->
         ast = parse_expr!(expr, state.file)

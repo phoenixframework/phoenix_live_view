@@ -542,6 +542,19 @@ defmodule Phoenix.Component do
 
   Changing this configuration will require `mix clean` and a full recompile.
 
+  ## Strip data-test- attributes
+
+  When testing a LiveView application, you use CSS selectors to target elements in your HTML.
+  Changes to layout or styling can break your tests even when functionality remains unchanged.
+  By using attributes beginning with `data-test-` you can target specific elements in your tests without having to rely
+  on the specifics of the layout.
+
+  These test attributes can be stripped from the HTML output in production by adding the following configuration to your `config/prod.exs` file:
+
+      config :phoenix_live_view, strip_test_attributes: true
+
+  Changing this configuration will require `mix clean` and a full recompile.
+
   ## Dynamic Component Rendering
 
   Sometimes you might need to decide at runtime which component to render.
