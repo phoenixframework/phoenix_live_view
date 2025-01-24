@@ -11,6 +11,15 @@ import {
 import DOM from "./dom"
 
 export default class ElementRef {
+  static onUnlock(el, callback){
+    if(!DOM.isLocked(el) && !el.closest(`[${PHX_REF_LOCK}]`)){ return callback() }
+    const closestLock = el.closest(`[${PHX_REF_LOCK}]`)
+    const ref = closestLock.closest(`[${PHX_REF_LOCK}]`).getAttribute(PHX_REF_LOCK)
+    closestLock.addEventListener(`phx:undo-lock:${ref}`, () => {
+      callback()
+    }, {once: true})
+  }
+
   constructor(el){
     this.el = el
     this.loadingRef = el.hasAttribute(PHX_REF_LOADING) ? parseInt(el.getAttribute(PHX_REF_LOADING), 10) : null

@@ -10,6 +10,7 @@ import {
   PHX_PARENT_ID,
   PHX_PRIVATE,
   PHX_REF_SRC,
+  PHX_REF_LOCK,
   PHX_PENDING_ATTRS,
   PHX_ROOT_ID,
   PHX_SESSION,
@@ -545,6 +546,10 @@ let DOM = {
     if(!ops){ return }
 
     ops.forEach(([name, op, _stashed]) => this.putSticky(el, name, op))
+  },
+
+  isLocked(el){
+    return el.hasAttribute && el.hasAttribute(PHX_REF_LOCK)
   }
 }
 

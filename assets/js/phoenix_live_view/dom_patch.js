@@ -26,40 +26,7 @@ import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
 export default class DOMPatch {
-  static patchWithClonedTree(container, clonedTree, liveSocket){
-    let focused = liveSocket.getActiveElement()
-    let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
-    let phxUpdate = liveSocket.binding(PHX_UPDATE)
-    let externalFormTriggered = null
-
-    morphdom(container, clonedTree, {
-      childrenOnly: false,
-      onBeforeElUpdated: (fromEl, toEl) => {
-        DOM.syncPendingAttrs(fromEl, toEl)
-        // we cannot morph locked children
-        if(!container.isSameNode(fromEl) && fromEl.hasAttribute(PHX_REF_LOCK)){ return false }
-        if(DOM.isIgnored(fromEl, phxUpdate)){ return false }
-        if(focused && focused.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
-          DOM.mergeFocusedInput(fromEl, toEl)
-          return false
-        }
-        if(DOM.isNowTriggerFormExternal(toEl, liveSocket.binding(PHX_TRIGGER_ACTION))){
-          externalFormTriggered = toEl
-        }
-      }
-    })
-
-    if(externalFormTriggered){
-      liveSocket.unload()
-      // use prototype's submit in case there's a form control with name or id of "submit"
-      // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
-      Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered)
-    }
-
-    liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
-  }
-
-  constructor(view, container, id, html, streams, targetCID){
+  constructor(view, container, id, html, streams, targetCID, opts={}){
     this.view = view
     this.liveSocket = view.liveSocket
     this.container = container
@@ -79,6 +46,8 @@ export default class DOMPatch {
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: [],
       aftertransitionsDiscarded: []
     }
+    this.withChildren = opts.withChildren || opts.undoRef || false
+    this.undoRef = opts.undoRef
   }
 
   before(kind, callback){ this.callbacks[`before${kind}`].push(callback) }
@@ -115,7 +84,7 @@ export default class DOMPatch {
 
     let externalFormTriggered = null
 
-    function morph(targetContainer, source, withChildren=false){
+    function morph(targetContainer, source, withChildren=this.withChildren){
       let morphCallbacks = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
@@ -247,7 +216,8 @@ export default class DOMPatch {
           // apply any changes that happened while the element was locked.
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
-          if(fromEl.hasAttribute(PHX_REF_SRC)){
+          // only perform the clone step if this is not a patch that unlocks
+          if(fromEl.hasAttribute(PHX_REF_SRC) && fromEl.getAttribute(PHX_REF_LOCK) != this.undoRef){
             if(DOM.isUploadInput(fromEl)){
               DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
               this.trackBefore("updated", fromEl, toEl)
