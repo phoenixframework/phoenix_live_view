@@ -22,7 +22,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             id: nil,
             uri: nil,
             connect_params: %{},
-            connect_info: %{}
+            connect_info: %{},
+            handle_errors: :raise
 
   alias Plug.Conn.Query
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload}
@@ -82,12 +83,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       router: router,
       session: session,
       url: url,
-      test_supervisor: test_supervisor
+      test_supervisor: test_supervisor,
+      handle_errors: handle_errors
     } = opts
 
     # We can assume there is at least one LiveView
     # because the live_module assign was set.
-    root_html = DOM.parse(response_html)
+    root_html = DOM.parse(response_html, fn msg -> send(self(), {:test_error, msg}) end)
 
     {id, session_token, static_token, redirect_url} =
       case Map.fetch(opts, :live_redirect) do
@@ -111,7 +113,10 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       router: router,
       uri: URI.parse(url),
       child_statics: Map.delete(DOM.find_static_views(root_html), id),
-      topic: "lv:#{id}"
+      topic: "lv:#{id}",
+      # we store handle_errors in the view ClientProxy struct as well
+      # to pass it when live_redirecting
+      handle_errors: handle_errors
     }
 
     # We build an absolute path to any relative
@@ -143,7 +148,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session,
       test_supervisor: test_supervisor,
       url: url,
-      page_title: :unset
+      page_title: :unset,
+      handle_errors: handle_errors
     }
 
     try do
@@ -474,6 +480,23 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
   end
 
+  def handle_info({:test_error, error}, state) do
+    case state.handle_errors do
+      :raise ->
+        raise """
+        #{String.trim(error)}
+
+        You can prevent this from raising by passing `handle_errors: :warn` to
+        `Phoenix.LiveViewTest.live/3` or `Phoenix.LiveViewTest.live_isolated/3`.
+        """
+
+      :warn ->
+        IO.warn(error, [])
+    end
+
+    {:noreply, state}
+  end
+
   def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
     payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
     topic = proxy_topic(el)
@@ -653,7 +676,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp patch_view(state, view, child_html, streams) do
-    case DOM.patch_id(view.id, state.html, child_html, streams) do
+    result =
+      DOM.patch_id(view.id, state.html, child_html, streams, fn msg ->
+        send(self(), {:test_error, msg})
+      end)
+
+    case result do
       {new_html, [_ | _] = will_destroy_cids} ->
         topic = view.topic
         state = %{state | html: new_html}

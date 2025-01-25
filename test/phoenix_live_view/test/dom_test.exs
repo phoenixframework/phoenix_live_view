@@ -292,4 +292,33 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                %{s: "bar", streams: []}
     end
   end
+
+  describe "parse" do
+    test "detects duplicate ids" do
+      assert DOM.parse(
+               """
+               <div id="foo">
+                 <div id="foo"></div>
+               </div>
+               """,
+               fn msg -> send(self(), {:error, msg}) end
+             )
+
+      assert_receive {:error, msg}
+      assert msg =~ "Duplicate id found while testing LiveView"
+    end
+
+    test "handles declarations (issue #3594)" do
+      assert DOM.parse(
+               """
+               <div id="foo">
+                 <?xml version="1.0" standalone="yes"?>
+               </div>
+               """,
+               fn msg -> send(self(), {:error, msg}) end
+             )
+
+      refute_receive {:error, _}
+    end
+  end
 end

@@ -23,31 +23,35 @@ defmodule Phoenix.LiveViewTest.DOM do
           | {:pi | binary, binary | list, list}
           | {:doctype, binary, binary, binary}
         ]
-  def parse(html) do
+  def parse(html, error_reporter \\ nil) do
     {:ok, parsed} = Floki.parse_document(html)
-    detect_duplicate_ids(parsed)
+
+    if is_function(error_reporter, 1) do
+      detect_duplicate_ids(parsed, error_reporter)
+    end
 
     parsed
   end
 
-  defp detect_duplicate_ids(tree), do: detect_duplicate_ids(tree, MapSet.new())
+  defp detect_duplicate_ids(tree, error_reporter),
+    do: detect_duplicate_ids(tree, tree, MapSet.new(), error_reporter)
 
-  defp detect_duplicate_ids([node | rest], ids) do
-    ids = detect_duplicate_ids(node, ids)
-    detect_duplicate_ids(rest, ids)
+  defp detect_duplicate_ids(tree, [node | rest], ids, error_reporter) do
+    ids = detect_duplicate_ids(tree, node, ids, error_reporter)
+    detect_duplicate_ids(tree, rest, ids, error_reporter)
   end
 
   # ignore declarations
-  defp detect_duplicate_ids({:pi, _type, _attrs}, seen_ids), do: seen_ids
+  defp detect_duplicate_ids(_tree, {:pi, _type, _attrs}, seen_ids, _error_reporter), do: seen_ids
 
-  defp detect_duplicate_ids({_tag_name, _attrs, children} = node, ids) do
+  defp detect_duplicate_ids(tree, {_tag_name, _attrs, children} = node, ids, error_reporter) do
     case Floki.attribute(node, "id") do
       [id] ->
         if MapSet.member?(ids, id) do
-          IO.warn("""
+          error_reporter.("""
           Duplicate id found while testing LiveView: #{id}
 
-          #{inspect_html(node)}
+          #{inspect_html(all(tree, "[id=#{id}]"))}
 
           LiveView requires that all elements have unique ids, duplicate IDs will cause
           undefined behavior at runtime, as DOM patching will not be able to target the correct
@@ -55,14 +59,32 @@ defmodule Phoenix.LiveViewTest.DOM do
           """)
         end
 
-        detect_duplicate_ids(children, MapSet.put(ids, id))
+        detect_duplicate_ids(tree, children, MapSet.put(ids, id), error_reporter)
 
       _ ->
-        detect_duplicate_ids(children, ids)
+        detect_duplicate_ids(tree, children, ids, error_reporter)
     end
   end
 
-  defp detect_duplicate_ids(_non_tag, seen_ids), do: seen_ids
+  defp detect_duplicate_ids(_tree, _non_tag, seen_ids, _error_reporter), do: seen_ids
+
+  defp detect_duplicate_components(tree, cids, error_reporter) do
+    cids
+    |> Enum.frequencies()
+    |> Enum.each(fn {cid, count} ->
+      if count > 1 do
+        error_reporter.("""
+        Duplicate live component found while testing LiveView:
+
+        #{inspect_html(all(tree, "[#{@phx_component}=#{cid}]"))}
+
+        This most likely means that you are conditionally rendering the same
+        LiveComponent multiple times with the same ID in the same LiveView.
+        This is not supported and will lead to broken behavior on the client.
+        """)
+      end
+    end)
+  end
 
   def all(html_tree, selector), do: Floki.find(html_tree, selector)
 
@@ -336,7 +358,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   # Patching
 
-  def patch_id(id, html_tree, inner_html, streams) do
+  def patch_id(id, html_tree, inner_html, streams, error_reporter \\ nil) do
     cids_before = component_ids(id, html_tree)
 
     phx_update_tree =
@@ -354,6 +376,12 @@ defmodule Phoenix.LiveViewTest.DOM do
       end)
 
     cids_after = component_ids(id, new_html)
+
+    if is_function(error_reporter, 1) do
+      detect_duplicate_ids(new_html, error_reporter)
+      detect_duplicate_components(new_html, cids_after, error_reporter)
+    end
+
     {new_html, cids_before -- cids_after}
   end
 

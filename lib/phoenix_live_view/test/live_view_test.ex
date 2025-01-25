@@ -203,6 +203,12 @@ defmodule Phoenix.LiveViewTest do
   `%Plug.Conn{}` is given, which will be converted to
   a LiveView immediately.
 
+  ## Options
+
+    * `:handle_errors` - Can be either `:raise` or `:warn` to control whether
+       detected errors like duplicate IDs or live components fail the test or just log
+       a warning. Defaults to `:raise`.
+
   ## Examples
 
       {:ok, view, html} = live(conn, "/path")
@@ -212,14 +218,14 @@ defmodule Phoenix.LiveViewTest do
       assert {:error, {:redirect, %{to: "/somewhere"}}} = live(conn, "/path")
 
   """
-  defmacro live(conn, path \\ nil) do
+  defmacro live(conn, path \\ nil, opts \\ []) do
     quote bind_quoted: binding(), generated: true do
       cond do
         is_binary(path) ->
-          Phoenix.LiveViewTest.__live__(get(conn, path), path)
+          Phoenix.LiveViewTest.__live__(get(conn, path), path, opts)
 
         is_nil(path) ->
-          Phoenix.LiveViewTest.__live__(conn)
+          Phoenix.LiveViewTest.__live__(conn, nil, opts)
 
         true ->
           raise RuntimeError, "path must be nil or a binary, got: #{inspect(path)}"
@@ -238,6 +244,9 @@ defmodule Phoenix.LiveViewTest do
   ## Options
 
     * `:session` - the session to be given to the LiveView
+    * `:handle_errors` - Can be either `:raise` or `:warn` to control whether
+       detected errors like duplicate IDs or live components fail the test or just log
+       a warning. Defaults to `:raise`.
 
   All other options are forwarded to the LiveView for rendering. Refer to
   `Phoenix.Component.live_render/3` for a list of supported render
@@ -272,16 +281,16 @@ defmodule Phoenix.LiveViewTest do
     |> Plug.Test.init_test_session(%{})
     |> Phoenix.LiveView.Router.fetch_live_flash([])
     |> Phoenix.LiveView.Controller.live_render(live_view, opts)
-    |> connect_from_static_token(nil)
+    |> connect_from_static_token(nil, opts)
   end
 
   @doc false
-  def __live__(%Plug.Conn{state: state, status: status} = conn) do
+  def __live__(%Plug.Conn{state: state, status: status} = conn, _path = nil, opts) do
     path = rebuild_path(conn)
 
     case {state, status} do
       {:sent, 200} ->
-        connect_from_static_token(conn, path)
+        connect_from_static_token(conn, path, opts)
 
       {:sent, 302} ->
         error_redirect_conn(conn)
@@ -311,13 +320,14 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc false
-  def __live__(conn, path) do
-    connect_from_static_token(conn, path)
+  def __live__(conn, path, opts) do
+    connect_from_static_token(conn, path, opts)
   end
 
   defp connect_from_static_token(
          %Plug.Conn{status: 200, assigns: %{live_module: live_module}} = conn,
-         path
+         path,
+         opts
        ) do
     DOM.ensure_loaded!()
 
@@ -336,15 +346,16 @@ defmodule Phoenix.LiveViewTest do
       router: router,
       endpoint: Phoenix.Controller.endpoint_module(conn),
       session: maybe_get_session(conn),
-      url: Plug.Conn.request_url(conn)
+      url: Plug.Conn.request_url(conn),
+      handle_errors: opts[:handle_errors] || :raise
     })
   end
 
-  defp connect_from_static_token(%Plug.Conn{status: 200}, _path) do
+  defp connect_from_static_token(%Plug.Conn{status: 200}, _path, _opts) do
     {:error, :nosession}
   end
 
-  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path)
+  defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
        when redir in [301, 302] do
     error_redirect_conn(conn)
   end
@@ -382,11 +393,12 @@ defmodule Phoenix.LiveViewTest do
         endpoint: opts.endpoint,
         session: opts.session,
         url: opts.url,
-        test_supervisor: fetch_test_supervisor!()
+        test_supervisor: fetch_test_supervisor!(),
+        handle_errors: opts.handle_errors
       })
 
     case ClientProxy.start_link(opts) do
-      {:ok, _} ->
+      {:ok, _pid} ->
         receive do
           {^ref, {:ok, view, html}} -> {:ok, view, html}
         end
@@ -1802,7 +1814,8 @@ defmodule Phoenix.LiveViewTest do
       endpoint: root.endpoint,
       router: root.router,
       session: session,
-      url: url
+      url: url,
+      handle_errors: root.handle_errors
     })
   end
 
