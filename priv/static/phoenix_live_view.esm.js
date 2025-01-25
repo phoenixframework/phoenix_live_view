@@ -165,6 +165,16 @@ function detectDuplicateIds() {
     }
   }
 }
+function detectInvalidStreamInserts(inserts) {
+  const errors = /* @__PURE__ */ new Set();
+  Object.keys(inserts).forEach((id) => {
+    const streamEl = document.getElementById(id);
+    if (streamEl && streamEl.parentElement && streamEl.parentElement.getAttribute("phx-update") !== "stream") {
+      errors.add(`The stream container with id "${streamEl.parentElement.id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`);
+    }
+  });
+  errors.forEach((error) => console.error(error));
+}
 var debug = (view, kind, msg, obj) => {
   if (view.liveSocket.isDebugEnabled()) {
     console.log(`${view.id} ${kind}: ${msg} - `, obj);
@@ -2224,6 +2234,7 @@ var DOMPatch = class {
     });
     if (liveSocket.isDebugEnabled()) {
       detectDuplicateIds();
+      detectInvalidStreamInserts(this.streamInserts);
       Array.from(document.querySelectorAll("input[name=id]")).forEach((node) => {
         if (node.form) {
           console.error('Detected an input with name="id" inside a form! This will cause problems when patching the DOM.\n', node);
