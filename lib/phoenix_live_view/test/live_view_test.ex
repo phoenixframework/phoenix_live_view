@@ -205,7 +205,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Options
 
-    * `:handle_errors` - Can be either `:raise` or `:warn` to control whether
+    * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
        a warning. Defaults to `:raise`.
 
@@ -244,7 +244,7 @@ defmodule Phoenix.LiveViewTest do
   ## Options
 
     * `:session` - the session to be given to the LiveView
-    * `:handle_errors` - Can be either `:raise` or `:warn` to control whether
+    * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
        a warning. Defaults to `:raise`.
 
@@ -347,7 +347,7 @@ defmodule Phoenix.LiveViewTest do
       endpoint: Phoenix.Controller.endpoint_module(conn),
       session: maybe_get_session(conn),
       url: Plug.Conn.request_url(conn),
-      handle_errors: opts[:handle_errors] || :raise
+      on_error: opts[:on_error] || :raise
     })
   end
 
@@ -394,7 +394,7 @@ defmodule Phoenix.LiveViewTest do
         session: opts.session,
         url: opts.url,
         test_supervisor: fetch_test_supervisor!(),
-        handle_errors: opts.handle_errors
+        on_error: opts.on_error
       })
 
     case ClientProxy.start_link(opts) do
@@ -1815,7 +1815,7 @@ defmodule Phoenix.LiveViewTest do
       router: root.router,
       session: session,
       url: url,
-      handle_errors: root.handle_errors
+      on_error: root.on_error
     })
   end
 

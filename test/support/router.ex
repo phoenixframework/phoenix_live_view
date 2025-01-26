@@ -49,6 +49,9 @@ defmodule Phoenix.LiveViewTest.Support.Router do
 
     live "/expensive-runtime-checks", ExpensiveRuntimeChecksLive
 
+    live "/duplicate-id", DuplicateIdLive
+    live "/dynamic-duplicate-component", DynamicDuplicateComponentLive
+
     # controller test
     get "/controller/:type", Controller, :incoming
     get "/widget", Controller, :widget

@@ -23,7 +23,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             uri: nil,
             connect_params: %{},
             connect_info: %{},
-            handle_errors: :raise
+            on_error: :raise
 
   alias Plug.Conn.Query
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload}
@@ -84,7 +84,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       session: session,
       url: url,
       test_supervisor: test_supervisor,
-      handle_errors: handle_errors
+      on_error: on_error
     } = opts
 
     # We can assume there is at least one LiveView
@@ -114,9 +114,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       uri: URI.parse(url),
       child_statics: Map.delete(DOM.find_static_views(root_html), id),
       topic: "lv:#{id}",
-      # we store handle_errors in the view ClientProxy struct as well
+      # we store on_error in the view ClientProxy struct as well
       # to pass it when live_redirecting
-      handle_errors: handle_errors
+      on_error: on_error
     }
 
     # We build an absolute path to any relative
@@ -149,7 +149,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       test_supervisor: test_supervisor,
       url: url,
       page_title: :unset,
-      handle_errors: handle_errors
+      on_error: on_error
     }
 
     try do
@@ -481,12 +481,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_info({:test_error, error}, state) do
-    case state.handle_errors do
+    case state.on_error do
       :raise ->
         raise """
         #{String.trim(error)}
 
-        You can prevent this from raising by passing `handle_errors: :warn` to
+        You can prevent this from raising by passing `on_error: :warn` to
         `Phoenix.LiveViewTest.live/3` or `Phoenix.LiveViewTest.live_isolated/3`.
         """
 
