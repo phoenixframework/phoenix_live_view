@@ -3880,6 +3880,9 @@ var View = class _View {
   }
   addHook(el) {
     let hookElId = ViewHook.elementID(el);
+    if (el.getAttribute && !this.ownsElement(el)) {
+      return;
+    }
     if (hookElId && !this.viewHooks[hookElId]) {
       let hook = dom_default.getCustomElHook(el) || logError(`no hook found for custom element: ${el.id}`);
       this.viewHooks[hookElId] = hook;
@@ -3889,9 +3892,6 @@ var View = class _View {
       return;
     } else {
       let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK));
-      if (hookName && !this.ownsElement(el)) {
-        return;
-      }
       let callbacks = this.liveSocket.getHookCallbacks(hookName);
       if (callbacks) {
         if (!el.id) {
