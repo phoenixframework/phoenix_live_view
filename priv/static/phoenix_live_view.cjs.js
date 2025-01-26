@@ -3581,7 +3581,11 @@ var View = class _View {
       this.formsForRecovery = this.getFormsForRecovery();
     }
     if (this.isMain() && window.history.state === null) {
-      this.liveSocket.replaceRootHistory();
+      browser_default.pushState("replace", {
+        type: "patch",
+        id: this.id,
+        position: this.liveSocket.currentHistoryPosition
+      });
     }
     if (liveview_version !== this.liveSocket.version()) {
       console.error(`LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`);
@@ -5276,7 +5280,7 @@ var LiveSocket = class {
       if (!this.registerNewLocation(window.location)) {
         return;
       }
-      let { type, backType, id, root, scroll, position } = event.state || {};
+      let { type, backType, id, scroll, position } = event.state || {};
       let href = window.location.href;
       let isForward = position > this.currentHistoryPosition;
       type = isForward ? type : backType || type;
@@ -5284,17 +5288,13 @@ var LiveSocket = class {
       this.sessionStorage.setItem(PHX_LV_HISTORY_POSITION, this.currentHistoryPosition.toString());
       dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: type === "patch", pop: true, direction: isForward ? "forward" : "backward" } });
       this.requestDOMUpdate(() => {
+        const callback = () => {
+          this.maybeScroll(scroll);
+        };
         if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
-          this.main.pushLinkPatch(event, href, null, () => {
-            this.maybeScroll(scroll);
-          });
+          this.main.pushLinkPatch(event, href, null, callback);
         } else {
-          this.replaceMain(href, null, () => {
-            if (root) {
-              this.replaceRootHistory();
-            }
-            this.maybeScroll(scroll);
-          });
+          this.replaceMain(href, null, callback);
         }
       });
     }, false);
@@ -5399,15 +5399,6 @@ var LiveSocket = class {
         }
         done();
       });
-    });
-  }
-  replaceRootHistory() {
-    browser_default.pushState("replace", {
-      root: true,
-      type: "patch",
-      id: this.main.id,
-      position: this.currentHistoryPosition
-      // Preserve current position
     });
   }
   registerNewLocation(newLocation) {
