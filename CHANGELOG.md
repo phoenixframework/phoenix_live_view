@@ -115,9 +115,21 @@ generated user module:
 ## 1.0.3
 
 ### Bug fixes
+* Fix regression where browser back/forward buttons used `patch` instead of `navigate`, failing to update the page ([#3529](https://github.com/phoenixframework/phoenix_live_view/issues/3529))
+* Fix client hooks inside streams that contain nested LiveViews ([#3530](https://github.com/phoenixframework/phoenix_live_view/issues/3530))
 * Fix LiveComponents in nested LiveViews not updating under certain conditions ([#3626](https://github.com/phoenixframework/phoenix_live_view/issues/3626))
 * Fix client-side hooks not being cleared properly ([#3628](https://github.com/phoenixframework/phoenix_live_view/issues/3628))
-* Fix regression where browser back/forward buttons used `patch` instead of `navigate`, failing to update the page ([#3529](https://github.com/phoenixframework/phoenix_live_view/issues/3529))
+* Fix LiveUpload from client hook not auto uploading when immediately followed by form event ([#3647](https://github.com/phoenixframework/phoenix_live_view/issues/3647))
+* Fix inputs being cleared in some cases when patching locked trees ([#3647](https://github.com/phoenixframework/phoenix_live_view/issues/3647))
+* Fix client hooks with dynamic IDs not being destroyed properly when parts of the DOM are locked ([#3651](https://github.com/phoenixframework/phoenix_live_view/issues/3651))
+
+### Enhancements
+* Raise again for duplicate IDs detected in LiveViewTest, but allow to change it to a warning by passing `on_error: :warn` to `Phoenix.LiveViewTest.live/3` / `Phoenix.LiveViewTest.live_isolated/3` ([#3653](https://github.com/phoenixframework/phoenix_live_view/pull/3653))
+* Also detect duplicate LiveComponents that are added dynamically to the page in LiveViewTest ([#3653](https://github.com/phoenixframework/phoenix_live_view/pull/3653))
+* Log an error in the JavaScript console when detecting a stream container with missing `phx-update="stream"` attribute ([#3645](https://github.com/phoenixframework/phoenix_live_view/pull/3645))
+* Update documentation to mention `:fun` and `{:fun, arity}` as valid attribute types for `Phoenix.Component.attr/3` ([#3635](https://github.com/phoenixframework/phoenix_live_view/pull/3635))
+* Update documentation to mention ways for [dynamically rendering function components](https://hexdocs.pm/phoenix_live_view/1.0.3/Phoenix.Component.html#module-dynamic-component-rendering) ([#3632](https://github.com/phoenixframework/phoenix_live_view/pull/3632))
+* Update documentation to mention `{:inner, selector}` and `{:closest, selector}` as [valid options for `to`](https://hexdocs.pm/phoenix_live_view/1.0.3/Phoenix.LiveView.JS.html#module-dom-selectors) in JS commands ([#3638](https://github.com/phoenixframework/phoenix_live_view/pull/3638))
 
 ## 1.0.2 (2025-01-09)
 
