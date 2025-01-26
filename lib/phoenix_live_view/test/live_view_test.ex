@@ -207,7 +207,7 @@ defmodule Phoenix.LiveViewTest do
 
     * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
-       a warning. Defaults to `:raise`.
+       a warning. Defaults to `:warn`.
 
   ## Examples
 
@@ -246,7 +246,7 @@ defmodule Phoenix.LiveViewTest do
     * `:session` - the session to be given to the LiveView
     * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
-       a warning. Defaults to `:raise`.
+       a warning. Defaults to `:warn`.
 
   All other options are forwarded to the LiveView for rendering. Refer to
   `Phoenix.Component.live_render/3` for a list of supported render
@@ -347,7 +347,7 @@ defmodule Phoenix.LiveViewTest do
       endpoint: Phoenix.Controller.endpoint_module(conn),
       session: maybe_get_session(conn),
       url: Plug.Conn.request_url(conn),
-      on_error: opts[:on_error] || :raise
+      on_error: opts[:on_error] || :warn
     })
   end
 

@@ -23,7 +23,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             uri: nil,
             connect_params: %{},
             connect_info: %{},
-            on_error: :raise
+            on_error: :warn
 
   alias Plug.Conn.Query
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload}
@@ -491,7 +491,13 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         """
 
       :warn ->
-        IO.warn(error, [])
+        IO.warn("""
+        #{String.trim(error)}
+
+        You can change this to raise and fail your test instead of warning
+        by passing `on_error: :raise` to `Phoenix.LiveViewTest.live/3` or
+        `Phoenix.LiveViewTest.live_isolated/3`.
+        """, [])
     end
 
     {:noreply, state}
