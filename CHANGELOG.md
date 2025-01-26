@@ -117,6 +117,7 @@ generated user module:
 ### Bug fixes
 * Fix LiveComponents in nested LiveViews not updating under certain conditions ([#3626](https://github.com/phoenixframework/phoenix_live_view/issues/3626))
 * Fix client-side hooks not being cleared properly ([#3628](https://github.com/phoenixframework/phoenix_live_view/issues/3628))
+* Fix regression where browser back/forward buttons used `patch` instead of `navigate`, failing to update the page ([#3529](https://github.com/phoenixframework/phoenix_live_view/issues/3529))
 
 ## 1.0.2 (2025-01-09)
 
