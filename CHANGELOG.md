@@ -124,7 +124,7 @@ generated user module:
 * Fix client hooks with dynamic IDs not being destroyed properly when parts of the DOM are locked ([#3651](https://github.com/phoenixframework/phoenix_live_view/issues/3651))
 
 ### Enhancements
-* Raise again for duplicate IDs detected in LiveViewTest, but allow to change it to a warning by passing `on_error: :warn` to `Phoenix.LiveViewTest.live/3` / `Phoenix.LiveViewTest.live_isolated/3` ([#3653](https://github.com/phoenixframework/phoenix_live_view/pull/3653))
+* Allow to configure if duplicate IDs / other detected errors should warn or raise by passing `on_error` to `Phoenix.LiveViewTest.live/3` / `Phoenix.LiveViewTest.live_isolated/3` ([#3653](https://github.com/phoenixframework/phoenix_live_view/pull/3653))
 * Also detect duplicate LiveComponents that are added dynamically to the page in LiveViewTest ([#3653](https://github.com/phoenixframework/phoenix_live_view/pull/3653))
 * Log an error in the JavaScript console when detecting a stream container with missing `phx-update="stream"` attribute ([#3645](https://github.com/phoenixframework/phoenix_live_view/pull/3645))
 * Update documentation to mention `:fun` and `{:fun, arity}` as valid attribute types for `Phoenix.Component.attr/3` ([#3635](https://github.com/phoenixframework/phoenix_live_view/pull/3635))
