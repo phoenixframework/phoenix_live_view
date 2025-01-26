@@ -15,21 +15,21 @@ defmodule Phoenix.LiveView.LiveViewTest do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
   end
 
-  defp simulate_bad_token_on_page(conn) do
+  defp simulate_bad_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
     [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
-    %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
+    %{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
-  defp simulate_outdated_token_on_page(conn) do
+  defp simulate_outdated_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
     [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
-    %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
+    %{conn | resp_body: String.replace(html, session_token, outdated_token)}
   end
 
-  defp simulate_expired_token_on_page(conn) do
+  defp simulate_expired_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
     [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
         signed_at: 0
       )
 
-    %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
+    %{conn | resp_body: String.replace(html, session_token, expired_token)}
   end
 
   describe "mounting" do
@@ -405,8 +405,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
 
-    test "renders a live view with custom session and a router", %{conn: conn} do
-      conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
+    test "renders a live view with custom session and a router", %{conn: %Plug.Conn{} = conn} do
+      conn = %{conn | request_path: "/router/thermo_defaults/123"}
 
       {:ok, view, _} =
         live_isolated(conn, Phoenix.LiveViewTest.Support.DashboardLive,

@@ -82,7 +82,7 @@ jobs:
           MIX_ENV: test
 
       - name: Run tests
-        run: mix test --cover --export-coverage default
+        run: mix test --cover --export-coverage default --warnings-as-errors
 
       - uses: actions/upload-artifact@v4
         if: always()
