@@ -504,7 +504,9 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp rendered_to_diff_string(rendered, socket) do
-    {_, diff, _} = Diff.render(socket, rendered, Diff.new_components())
+    {diff, _, _} =
+      Diff.render(socket, rendered, Diff.new_fingerprints(), Diff.new_components())
+
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
 
