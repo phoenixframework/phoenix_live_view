@@ -701,6 +701,9 @@ export default class View {
   addHook(el){
     let hookElId = ViewHook.elementID(el)
 
+    // only ever try to add hooks to elements owned by this view
+    if(el.getAttribute && !this.ownsElement(el)){ return }
+
     if(hookElId && !this.viewHooks[hookElId]){
       // hook created, but not attached (createHook for web component)
       let hook = DOM.getCustomElHook(el) || logError(`no hook found for custom element: ${el.id}`)
@@ -714,7 +717,6 @@ export default class View {
     } else {
       // new hook found with phx-hook attribute
       let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
-      if(hookName && !this.ownsElement(el)){ return }
       let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
       if(callbacks){
