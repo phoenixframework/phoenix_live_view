@@ -318,8 +318,12 @@ export default class View {
       this.formsForRecovery = this.getFormsForRecovery()
     }
     if(this.isMain() && window.history.state === null){
-      // set initial history entry if this is the first page load
-      this.liveSocket.replaceRootHistory()
+      // set initial history entry if this is the first page load (no history)
+      Browser.pushState("replace", {
+        type: "patch",
+        id: this.id,
+        position: this.liveSocket.currentHistoryPosition
+      })
     }
 
     if(liveview_version !== this.liveSocket.version()){
