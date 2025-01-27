@@ -159,6 +159,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
         {:ok, view, _html} = live(conn, "/duplicate-id", on_error: :raise)
         render(view)
       end
+
       assert catch_exit(fun.())
       assert_receive {:EXIT, _pid, {exception, _}}
       assert Exception.message(exception) =~ "Duplicate id found while testing LiveView: a"
@@ -428,6 +429,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
             Phoenix.LiveViewTest.Support.DuplicateIdLive,
             on_error: :raise
           )
+
         # errors are detected asynchronously, so we need to render again for the message to be processed
         render(view)
       end
@@ -447,6 +449,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
             Phoenix.LiveViewTest.Support.DynamicDuplicateComponentLive,
             on_error: :raise
           )
+
         view |> element("button", "Toggle duplicate LC") |> render_click()
         render(view)
       end

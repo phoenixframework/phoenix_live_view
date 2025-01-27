@@ -491,13 +491,16 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         """
 
       :warn ->
-        IO.warn("""
-        #{String.trim(error)}
+        IO.warn(
+          """
+          #{String.trim(error)}
 
-        You can change this to raise and fail your test instead of warning
-        by passing `on_error: :raise` to `Phoenix.LiveViewTest.live/3` or
-        `Phoenix.LiveViewTest.live_isolated/3`.
-        """, [])
+          You can change this to raise and fail your test instead of warning
+          by passing `on_error: :raise` to `Phoenix.LiveViewTest.live/3` or
+          `Phoenix.LiveViewTest.live_isolated/3`.
+          """,
+          []
+        )
     end
 
     {:noreply, state}
