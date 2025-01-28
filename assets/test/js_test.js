@@ -900,4 +900,24 @@ describe("JS", () => {
       expect(document.activeElement).toBe(modal1)
     })
   })
+
+  describe("exec_focus_first", () => {
+    test("focuses div with tabindex 0", () => {
+      let view = setupView(`
+      <div id="parent">
+        <div id="modal1" class="modal">modal 1</div>
+        <div id="modal2" tabindex="0" class="modal">modal 2</div>
+        <div id="modal3" tabindex="1" class="modal">modal 1</div>
+        <div id="push" phx-click='[["focus_first", {"to": "#parent"}]]'></div>
+      </div>
+      `)
+      let modal2 = document.querySelector("#modal2")
+      let push = document.querySelector("#push")
+
+      JS.exec(event, "click", push.getAttribute("phx-click"), view, push)
+
+      jest.runAllTimers()
+      expect(document.activeElement).toBe(modal2)
+    })
+  })
 })
