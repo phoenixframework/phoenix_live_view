@@ -13,15 +13,17 @@ Mix.install(
     # please test your issue using the latest version of LV from GitHub!
     {:phoenix_live_view,
      github: "phoenixframework/phoenix_live_view", branch: "main", override: true}
-  ],
-  force: true
+  ]
 )
 
-# build the LiveView JavaScript assets (this needs mix and npm available in your path!)
-path = Phoenix.LiveView.__info__(:compile)[:source] |> Path.dirname() |> Path.join("../")
-System.cmd("mix", ["deps.get"], cd: path, into: IO.binstream())
-System.cmd("npm", ["install"], cd: Path.join(path, "./assets"), into: IO.binstream())
-System.cmd("mix", ["assets.build"], cd: path, into: IO.binstream())
+# if you're trying to test a specific LV commit, it may be necessary to manually build
+# the JS assets. To do this, uncomment the following lines:
+# this needs mix and npm available in your path!
+#
+# path = Phoenix.LiveView.__info__(:compile)[:source] |> Path.dirname() |> Path.join("../")
+# System.cmd("mix", ["deps.get"], cd: path, into: IO.binstream())
+# System.cmd("npm", ["install"], cd: Path.join(path, "./assets"), into: IO.binstream())
+# System.cmd("mix", ["assets.build"], cd: path, into: IO.binstream())
 
 defmodule Example.ErrorView do
   def render(template, _), do: Phoenix.Controller.status_message_from_template(template)

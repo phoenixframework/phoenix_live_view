@@ -14,8 +14,7 @@ Mix.install(
     {:phoenix_live_view,
      github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
     {:floki, ">= 0.30.0"}
-  ],
-  force: true
+  ]
 )
 
 ExUnit.start()
