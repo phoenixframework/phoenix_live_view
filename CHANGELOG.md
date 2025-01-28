@@ -112,7 +112,7 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
-## 1.0.3
+## 1.0.3 (2025-01-28)
 
 ### Bug fixes
 * Fix regression where browser back/forward buttons used `patch` instead of `navigate`, failing to update the page ([#3529](https://github.com/phoenixframework/phoenix_live_view/issues/3529))
