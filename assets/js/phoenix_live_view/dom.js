@@ -316,7 +316,7 @@ let DOM = {
   // maintains or adds privately used hook information
   // fromEl and toEl can be the same element in the case of a newly added node
   // fromEl and toEl can be any HTML node type, so we need to check if it's an element node
-  maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom){
+  maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom, phxCustomEvents){
     // maintain the hooks created with createHook
     if(fromEl.hasAttribute && fromEl.hasAttribute("data-phx-hook") && !toEl.hasAttribute("data-phx-hook")){
       toEl.setAttribute("data-phx-hook", fromEl.getAttribute("data-phx-hook"))
@@ -324,6 +324,9 @@ let DOM = {
     // add hooks to elements with viewport attributes
     if(toEl.hasAttribute && (toEl.hasAttribute(phxViewportTop) || toEl.hasAttribute(phxViewportBottom))){
       toEl.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
+    }
+    if(toEl.hasAttribute && toEl.hasAttribute(phxCustomEvents)){
+      toEl.setAttribute("data-phx-hook", "Phoenix.CustomEvents")
     }
   },
 
