@@ -219,9 +219,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   @impl Mix.Tasks.Format
   def format(source, opts) do
-    if opts[:sigil] === :H and opts[:modifiers] === ~c"noformat" do
-      source
-    else
+    if formattable_heex?(opts) do
       line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
       newlines = :binary.matches(source, ["\r\n", "\n"])
 
@@ -245,6 +243,29 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       newline = if match?(<<_>>, opts[:opening_delimiter]) or formatted == [], do: [], else: ?\n
 
       IO.iodata_to_binary([formatted, newline])
+    else
+      source
+    end
+  end
+
+  defp formattable_heex?(opts) do
+    if opts[:sigil] == :H and opts[:modifiers] == ~c"noformat" do
+      false
+    else
+      file_content = File.read!(opts[:file])
+
+      ~r/defmodule ([[:alnum:]\.]+)/
+      |> Regex.scan(file_content)
+      |> Enum.with_index()
+      |> Enum.any?(fn {[_full_match, module_str], index} ->
+        module = Module.concat([module_str])
+
+        if index == 0 && not Code.loaded?(module) do
+          Code.compile_file(opts[:file])
+        end
+
+        function_exported?(module, :__live__, 0) || function_exported?(module, :__components__, 0)
+      end)
     end
   end
 
