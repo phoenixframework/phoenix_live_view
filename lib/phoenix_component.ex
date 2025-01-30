@@ -707,6 +707,7 @@ defmodule Phoenix.Component do
 
   In this case, the expression inside `{...}` must be either a keyword list or
   a map containing the key-value pairs representing the dynamic attributes.
+  If using a map, ensure your keys are atoms.
 
   ### Interpolating blocks
 
