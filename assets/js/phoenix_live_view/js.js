@@ -97,11 +97,11 @@ let JS = {
   },
 
   exec_focus(e, eventType, phxEvent, view, sourceEl, el){
-    window.requestAnimationFrame(() => ARIA.attemptFocus(el))
+    ARIA.attemptFocus(el)
   },
 
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el){
-    window.requestAnimationFrame(() => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el))
+    ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el)
   },
 
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el){
@@ -219,18 +219,14 @@ let JS = {
       }
     } else {
       if(this.isVisible(el)){
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:hide-start"))
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
-          el.dispatchEvent(new Event("phx:hide-end"))
-        })
+        el.dispatchEvent(new Event("phx:hide-start"))
+        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
+        el.dispatchEvent(new Event("phx:hide-end"))
       } else {
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:show-start"))
-          let stickyDisplay = display || this.defaultDisplay(el)
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
-          el.dispatchEvent(new Event("phx:show-end"))
-        })
+        el.dispatchEvent(new Event("phx:show-start"))
+        let stickyDisplay = display || this.defaultDisplay(el)
+        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
+        el.dispatchEvent(new Event("phx:show-end"))
       }
     }
   },

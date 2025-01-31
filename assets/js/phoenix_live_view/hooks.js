@@ -67,9 +67,12 @@ let Hooks = {
           ARIA.focusFirst(this.el)
         }
       })
-      this.el.addEventListener("phx:show-end", () => this.el.focus())
-      if(window.getComputedStyle(this.el).display !== "none"){
-        ARIA.focusFirst(this.el)
+      // only try to change the focus if it is not already inside
+      if(!this.el.contains(document.activeElement)){
+        this.el.addEventListener("phx:show-end", () => this.el.focus())
+        if(window.getComputedStyle(this.el).display !== "none"){
+          ARIA.focusFirst(this.el)
+        }
       }
     }
   }
