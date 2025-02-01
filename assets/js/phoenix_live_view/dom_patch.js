@@ -433,7 +433,7 @@ export default class DOMPatch {
   transitionPendingRemoves(){
     let {pendingRemoves, liveSocket} = this
     if(pendingRemoves.length > 0){
-      liveSocket.transitionRemoves(pendingRemoves, false, () => {
+      liveSocket.transitionRemoves(pendingRemoves, () => {
         pendingRemoves.forEach(el => {
           let child = DOM.firstPhxChild(el)
           if(child){ liveSocket.destroyViewByEl(child) }
