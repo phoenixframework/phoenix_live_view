@@ -1166,9 +1166,11 @@ var Hooks = {
           aria_default.focusFirst(this.el);
         }
       });
-      this.el.addEventListener("phx:show-end", () => this.el.focus());
-      if (window.getComputedStyle(this.el).display !== "none") {
-        aria_default.focusFirst(this.el);
+      if (!this.el.contains(document.activeElement)) {
+        this.el.addEventListener("phx:show-end", () => this.el.focus());
+        if (window.getComputedStyle(this.el).display !== "none") {
+          aria_default.focusFirst(this.el);
+        }
       }
     }
   }
@@ -2343,7 +2345,7 @@ var DOMPatch = class {
   transitionPendingRemoves() {
     let { pendingRemoves, liveSocket } = this;
     if (pendingRemoves.length > 0) {
-      liveSocket.transitionRemoves(pendingRemoves, false, () => {
+      liveSocket.transitionRemoves(pendingRemoves, () => {
         pendingRemoves.forEach((el) => {
           let child = dom_default.firstPhxChild(el);
           if (child) {
@@ -2803,10 +2805,10 @@ var JS = {
     view.liveSocket.pushHistoryPatch(e, href, replace ? "replace" : "push", sourceEl);
   },
   exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.attemptFocus(el));
+    aria_default.attemptFocus(el);
   },
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
+    aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el);
   },
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
     window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
@@ -2912,18 +2914,14 @@ var JS = {
       }
     } else {
       if (this.isVisible(el)) {
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:hide-start"));
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-          el.dispatchEvent(new Event("phx:hide-end"));
-        });
+        el.dispatchEvent(new Event("phx:hide-start"));
+        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+        el.dispatchEvent(new Event("phx:hide-end"));
       } else {
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:show-start"));
-          let stickyDisplay = display || this.defaultDisplay(el);
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
-          el.dispatchEvent(new Event("phx:show-end"));
-        });
+        el.dispatchEvent(new Event("phx:show-start"));
+        let stickyDisplay = display || this.defaultDisplay(el);
+        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+        el.dispatchEvent(new Event("phx:show-end"));
       }
     }
   },
@@ -4984,20 +4982,21 @@ var LiveSocket = class {
     browser_default.redirect(to, flash);
   }
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
-    let liveReferer = this.currentLocation.href;
+    const liveReferer = this.currentLocation.href;
     this.outgoingMainEl = this.outgoingMainEl || this.main.el;
-    let removeEls = dom_default.all(this.outgoingMainEl, `[${this.binding("remove")}]`);
-    let newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
+    const stickies = dom_default.findPhxSticky(document) || [];
+    const removeEls = dom_default.all(this.outgoingMainEl, `[${this.binding("remove")}]`).filter((el) => !dom_default.isChildOfAny(el, stickies));
+    const newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
     this.main.showLoader(this.loaderTimeout);
     this.main.destroy();
     this.main = this.newRootView(newMainEl, flash, liveReferer);
     this.main.setRedirect(href);
-    this.transitionRemoves(removeEls, true);
+    this.transitionRemoves(removeEls);
     this.main.join((joinCount, onDone) => {
       if (joinCount === 1 && this.commitPendingLink(linkRef)) {
         this.requestDOMUpdate(() => {
           removeEls.forEach((el) => el.remove());
-          dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
+          stickies.forEach((el) => newMainEl.appendChild(el));
           this.outgoingMainEl.replaceWith(newMainEl);
           this.outgoingMainEl = null;
           callback && callback(linkRef);
@@ -5006,12 +5005,8 @@ var LiveSocket = class {
       }
     });
   }
-  transitionRemoves(elements, skipSticky, callback) {
+  transitionRemoves(elements, callback) {
     let removeAttr = this.binding("remove");
-    if (skipSticky) {
-      const stickies = dom_default.findPhxSticky(document) || [];
-      elements = elements.filter((el) => !dom_default.isChildOfAny(el, stickies));
-    }
     let silenceEvents = (e) => {
       e.preventDefault();
       e.stopImmediatePropagation();
@@ -5371,7 +5366,8 @@ var LiveSocket = class {
     this.registerNewLocation(window.location);
   }
   historyRedirect(e, href, linkState, flash, targetEl) {
-    if (targetEl && e.isTrusted && e.type !== "popstate") {
+    const clickLoading = targetEl && e.isTrusted && e.type !== "popstate";
+    if (clickLoading) {
       targetEl.classList.add("phx-click-loading");
     }
     if (!this.isConnected() || !this.main.isMain()) {
@@ -5396,6 +5392,9 @@ var LiveSocket = class {
           }, href);
           dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false, direction: "forward" } });
           this.registerNewLocation(window.location);
+        }
+        if (clickLoading) {
+          targetEl.classList.remove("phx-click-loading");
         }
         done();
       });
