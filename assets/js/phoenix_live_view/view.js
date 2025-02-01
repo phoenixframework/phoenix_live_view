@@ -977,6 +977,7 @@ export default class View {
   }
 
   undoElRef(el, ref, phxEvent){
+    console.log("want to undo el ref", el, ref, phxEvent)
     let elRef = new ElementRef(el)
 
     elRef.maybeUndo(ref, phxEvent, clonedTree => {

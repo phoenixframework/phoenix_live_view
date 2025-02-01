@@ -393,22 +393,26 @@ export default class LiveSocket {
   }
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
-    let liveReferer = this.currentLocation.href
+    const liveReferer = this.currentLocation.href
     this.outgoingMainEl = this.outgoingMainEl || this.main.el
-    let removeEls = DOM.all(this.outgoingMainEl, `[${this.binding("remove")}]`)
-    let newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
+
+    const stickies = DOM.findPhxSticky(document) || []
+    const removeEls = DOM.all(this.outgoingMainEl, `[${this.binding("remove")}]`)
+      .filter(el => !DOM.isChildOfAny(el, stickies))
+
+    const newMainEl = DOM.cloneNode(this.outgoingMainEl, "")
     this.main.showLoader(this.loaderTimeout)
     this.main.destroy()
 
     this.main = this.newRootView(newMainEl, flash, liveReferer)
     this.main.setRedirect(href)
-    this.transitionRemoves(removeEls, true)
+    this.transitionRemoves(removeEls)
     this.main.join((joinCount, onDone) => {
       if(joinCount === 1 && this.commitPendingLink(linkRef)){
         this.requestDOMUpdate(() => {
           // remove phx-remove els right before we replace the main element
           removeEls.forEach(el => el.remove())
-          DOM.findPhxSticky(document).forEach(el => newMainEl.appendChild(el))
+          stickies.forEach(el => newMainEl.appendChild(el))
           this.outgoingMainEl.replaceWith(newMainEl)
           this.outgoingMainEl = null
           callback && callback(linkRef)
@@ -418,12 +422,8 @@ export default class LiveSocket {
     })
   }
 
-  transitionRemoves(elements, skipSticky, callback){
+  transitionRemoves(elements, callback){
     let removeAttr = this.binding("remove")
-    if(skipSticky){
-      const stickies = DOM.findPhxSticky(document) || []
-      elements = elements.filter(el => !DOM.isChildOfAny(el, stickies))
-    }
     let silenceEvents = (e) => {
       e.preventDefault()
       e.stopImmediatePropagation()
@@ -800,7 +800,8 @@ export default class LiveSocket {
   }
 
   historyRedirect(e, href, linkState, flash, targetEl){
-    if(targetEl && e.isTrusted && e.type !== "popstate"){ targetEl.classList.add("phx-click-loading") }
+    const clickLoading = targetEl && e.isTrusted && e.type !== "popstate"
+    if(clickLoading){ targetEl.classList.add("phx-click-loading") }
     if(!this.isConnected() || !this.main.isMain()){ return Browser.redirect(href, flash) }
 
     // convert to full href if only path prefix
@@ -829,6 +830,9 @@ export default class LiveSocket {
           DOM.dispatchEvent(window, "phx:navigate", {detail: {href, patch: false, pop: false, direction: "forward"}})
           this.registerNewLocation(window.location)
         }
+        // explicitly undo click-loading class
+        // (in case it originated in a sticky live view, otherwise it would be removed anyway)
+        if(clickLoading){ targetEl.classList.remove("phx-click-loading") }
         done()
       })
     })
