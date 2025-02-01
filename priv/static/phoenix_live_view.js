@@ -2374,7 +2374,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     transitionPendingRemoves() {
       let { pendingRemoves, liveSocket } = this;
       if (pendingRemoves.length > 0) {
-        liveSocket.transitionRemoves(pendingRemoves, false, () => {
+        liveSocket.transitionRemoves(pendingRemoves, () => {
           pendingRemoves.forEach((el) => {
             let child = dom_default.firstPhxChild(el);
             if (child) {
@@ -5012,20 +5012,21 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       browser_default.redirect(to, flash);
     }
     replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
-      let liveReferer = this.currentLocation.href;
+      const liveReferer = this.currentLocation.href;
       this.outgoingMainEl = this.outgoingMainEl || this.main.el;
-      let removeEls = dom_default.all(this.outgoingMainEl, `[${this.binding("remove")}]`);
-      let newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
+      const stickies = dom_default.findPhxSticky(document) || [];
+      const removeEls = dom_default.all(this.outgoingMainEl, `[${this.binding("remove")}]`).filter((el) => !dom_default.isChildOfAny(el, stickies));
+      const newMainEl = dom_default.cloneNode(this.outgoingMainEl, "");
       this.main.showLoader(this.loaderTimeout);
       this.main.destroy();
       this.main = this.newRootView(newMainEl, flash, liveReferer);
       this.main.setRedirect(href);
-      this.transitionRemoves(removeEls, true);
+      this.transitionRemoves(removeEls);
       this.main.join((joinCount, onDone) => {
         if (joinCount === 1 && this.commitPendingLink(linkRef)) {
           this.requestDOMUpdate(() => {
             removeEls.forEach((el) => el.remove());
-            dom_default.findPhxSticky(document).forEach((el) => newMainEl.appendChild(el));
+            stickies.forEach((el) => newMainEl.appendChild(el));
             this.outgoingMainEl.replaceWith(newMainEl);
             this.outgoingMainEl = null;
             callback && callback(linkRef);
@@ -5034,12 +5035,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
-    transitionRemoves(elements, skipSticky, callback) {
+    transitionRemoves(elements, callback) {
       let removeAttr = this.binding("remove");
-      if (skipSticky) {
-        const stickies = dom_default.findPhxSticky(document) || [];
-        elements = elements.filter((el) => !dom_default.isChildOfAny(el, stickies));
-      }
       let silenceEvents = (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
@@ -5399,7 +5396,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.registerNewLocation(window.location);
     }
     historyRedirect(e, href, linkState, flash, targetEl) {
-      if (targetEl && e.isTrusted && e.type !== "popstate") {
+      const clickLoading = targetEl && e.isTrusted && e.type !== "popstate";
+      if (clickLoading) {
         targetEl.classList.add("phx-click-loading");
       }
       if (!this.isConnected() || !this.main.isMain()) {
@@ -5424,6 +5422,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }, href);
             dom_default.dispatchEvent(window, "phx:navigate", { detail: { href, patch: false, pop: false, direction: "forward" } });
             this.registerNewLocation(window.location);
+          }
+          if (clickLoading) {
+            targetEl.classList.remove("phx-click-loading");
           }
           done();
         });
