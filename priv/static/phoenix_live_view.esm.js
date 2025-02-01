@@ -1139,9 +1139,11 @@ var Hooks = {
           aria_default.focusFirst(this.el);
         }
       });
-      this.el.addEventListener("phx:show-end", () => this.el.focus());
-      if (window.getComputedStyle(this.el).display !== "none") {
-        aria_default.focusFirst(this.el);
+      if (!this.el.contains(document.activeElement)) {
+        this.el.addEventListener("phx:show-end", () => this.el.focus());
+        if (window.getComputedStyle(this.el).display !== "none") {
+          aria_default.focusFirst(this.el);
+        }
       }
     }
   }
@@ -2776,10 +2778,10 @@ var JS = {
     view.liveSocket.pushHistoryPatch(e, href, replace ? "replace" : "push", sourceEl);
   },
   exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.attemptFocus(el));
+    aria_default.attemptFocus(el);
   },
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
+    aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el);
   },
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
     window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
@@ -2885,18 +2887,14 @@ var JS = {
       }
     } else {
       if (this.isVisible(el)) {
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:hide-start"));
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-          el.dispatchEvent(new Event("phx:hide-end"));
-        });
+        el.dispatchEvent(new Event("phx:hide-start"));
+        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+        el.dispatchEvent(new Event("phx:hide-end"));
       } else {
-        window.requestAnimationFrame(() => {
-          el.dispatchEvent(new Event("phx:show-start"));
-          let stickyDisplay = display || this.defaultDisplay(el);
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
-          el.dispatchEvent(new Event("phx:show-end"));
-        });
+        el.dispatchEvent(new Event("phx:show-start"));
+        let stickyDisplay = display || this.defaultDisplay(el);
+        dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+        el.dispatchEvent(new Event("phx:show-end"));
       }
     }
   },
