@@ -112,6 +112,13 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.4
+
+### Bug fixes
+* Fix elements with `phx-remove` inside sticky LiveViews being unintentionally removed on navigation ([#3658](https://github.com/phoenixframework/phoenix_live_view/issues/3658))
+* Fix `phx-click-loading` not being removed from links in sticky LiveViews ([#3656](https://github.com/phoenixframework/phoenix_live_view/issues/3656))
+* Fix `Phoenix.LiveView.JS.focus/2` and `Phoenix.LiveView.JS.focus_first/2` not properly focusing elements on Mobile Safari ([#3563](https://github.com/phoenixframework/phoenix_live_view/issues/3563))
+
 ## 1.0.3 (2025-01-28)
 
 ### Bug fixes
