@@ -112,7 +112,7 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
-## 1.0.4
+## 1.0.4 (2025-02-04)
 
 ### Bug fixes
 * Fix elements with `phx-remove` inside sticky LiveViews being unintentionally removed on navigation ([#3658](https://github.com/phoenixframework/phoenix_live_view/issues/3658))
