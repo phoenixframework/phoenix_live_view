@@ -46,9 +46,8 @@ defmodule Phoenix.LiveView.UploadEntry do
   end
 
   def put_progress(%UploadEntry{} = entry, progress, data) do
-    %{entry | progress: progress, progress_data: data,}
+    %{entry | progress: progress, progress_data: data}
   end
-
 end
 
 defmodule Phoenix.LiveView.UploadConfig do
@@ -126,7 +125,7 @@ defmodule Phoenix.LiveView.UploadConfig do
           ref: String.t(),
           auto_upload?: boolean(),
           writer: (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
-                     {module(), term()}),
+               {module(), term()}),
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {:noreply, Phoenix.LiveView.Socket.t()})
