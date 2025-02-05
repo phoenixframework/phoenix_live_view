@@ -120,15 +120,15 @@ defmodule Phoenix.LiveView.Upload do
   with an `"error"` key containing the information for a failed upload
   while in progress on the client.
   """
-  def update_progress(%Socket{} = socket, config_ref, entry_ref, progress)
+  def update_progress(%Socket{} = socket, config_ref, entry_ref, progress, data)
       when is_integer(progress) and progress >= 0 and progress <= 100 do
     socket
     |> get_upload_by_ref!(config_ref)
-    |> UploadConfig.update_progress(entry_ref, progress)
+    |> UploadConfig.update_progress(entry_ref, progress, data)
     |> update_uploads(socket)
   end
 
-  def update_progress(%Socket{} = socket, config_ref, entry_ref, %{"error" => reason})
+  def update_progress(%Socket{} = socket, config_ref, entry_ref, %{"error" => reason}, _data)
       when is_binary(reason) do
     conf = get_upload_by_ref!(socket, config_ref)
 

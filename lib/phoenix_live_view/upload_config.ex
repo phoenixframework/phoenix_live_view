@@ -6,6 +6,7 @@ defmodule Phoenix.LiveView.UploadEntry do
   alias Phoenix.LiveView.UploadEntry
 
   defstruct progress: 0,
+            progress_data: nil,
             preflighted?: false,
             upload_config: nil,
             upload_ref: nil,
@@ -23,6 +24,7 @@ defmodule Phoenix.LiveView.UploadEntry do
 
   @type t :: %__MODULE__{
           progress: integer(),
+          progress_data: map() | nil,
           upload_config: String.t() | :atom,
           upload_ref: String.t(),
           ref: String.t() | nil,
@@ -39,13 +41,14 @@ defmodule Phoenix.LiveView.UploadEntry do
         }
 
   @doc false
-  def put_progress(%UploadEntry{} = entry, 100) do
-    %{entry | progress: 100, done?: true}
+  def put_progress(%UploadEntry{} = entry, 100, data) do
+    %{entry | progress: 100, progress_data: data, done?: true}
   end
 
-  def put_progress(%UploadEntry{} = entry, progress) do
-    %{entry | progress: progress}
+  def put_progress(%UploadEntry{} = entry, progress, data) do
+    %{entry | progress: progress, progress_data: data,}
   end
+
 end
 
 defmodule Phoenix.LiveView.UploadConfig do
@@ -466,9 +469,9 @@ defmodule Phoenix.LiveView.UploadConfig do
   end
 
   @doc false
-  def update_progress(%UploadConfig{} = conf, entry_ref, progress)
+  def update_progress(%UploadConfig{} = conf, entry_ref, progress, data)
       when is_integer(progress) and progress >= 0 and progress <= 100 do
-    update_entry(conf, entry_ref, fn entry -> UploadEntry.put_progress(entry, progress) end)
+    update_entry(conf, entry_ref, fn entry -> UploadEntry.put_progress(entry, progress, data) end)
   end
 
   @doc false
