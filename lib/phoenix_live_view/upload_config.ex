@@ -124,7 +124,8 @@ defmodule Phoenix.LiveView.UploadConfig do
           errors: list(),
           ref: String.t(),
           auto_upload?: boolean(),
-          writer: (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
+          writer:
+            (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
                {module(), term()}),
           progress_event:
             (name :: atom() | String.t(), UploadEntry.t(), Phoenix.LiveView.Socket.t() ->
