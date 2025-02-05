@@ -498,7 +498,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
-    payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
+    payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress, "progress_data" => nil}, cid)
     topic = proxy_topic(el)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
