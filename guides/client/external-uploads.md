@@ -70,7 +70,7 @@ Finally, on the client-side, we use UpChunk to create an
 upload from the temporary URL generated on the server and
 attach listeners for its events to the entry's callbacks:
 
-```js
+```javascript
 import * as UpChunk from "@mux/upchunk"
 
 let Uploaders = {}
@@ -115,7 +115,7 @@ which allows uploading directly to the bucket.
 
 An example CORS config is:
 
-```js
+```json
 [
     {
         "AllowedHeaders": [ "*" ],
@@ -192,7 +192,7 @@ In this case, it's `"S3"`, as shown above.
 Add a new file `uploaders.js` in the following directory `assets/js/` next to `app.js`.
 The content for this `S3` client uploader:
 
-```js
+```javascript
 let Uploaders = {}
 
 Uploaders.S3 = function(entries, onViewError){
@@ -230,7 +230,7 @@ Finally, head over to `app.js` and add the `uploaders: Uploaders` key to
 the `LiveSocket` constructor to tell phoenix where to find the uploaders returned 
 within the external metadata.
 
-```js
+```javascript
 // for uploading to S3
 import Uploaders from "./uploaders"
 
@@ -276,7 +276,7 @@ end
 
 The new `Uploaders.S3`:
 
-```js
+```javascript
 Uploaders.S3 = function (entries, onViewError) {
   entries.forEach(entry => {
     let xhr = new XMLHttpRequest()
