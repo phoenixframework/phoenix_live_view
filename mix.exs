@@ -55,16 +55,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:floki, "~> 0.36", optional: true},
       {:ex_doc, "~> 0.29", only: :docs},
       {:makeup_elixir, "~> 1.0.1 or ~> 1.1", only: :docs},
-      {:makeup_diff, "~> 0.1.1", only: :docs},
-      # TODO: change me when makeup_lexers is not needed any more
-      # {:makeup_eex, "~> 1.0", only: :docs},
-      {:makeup_eex,
-       github: "SteffenDE/makeup_eex",
-       ref: "5cfc91389dbdfad885734bc8050af61840eab019",
-       only: :docs,
-       override: true},
-      # TODO: remove me when makeup_lexers is not needed any more
-      {:makeup_lexers, github: "SteffenDE/makeup_lexers", only: :docs},
+      {:makeup_eex, "~> 2.0", only: :docs},
+      {:makeup_syntect, "~> 0.1.0", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4", only: :test},
       {:phoenix_html_helpers, "~> 1.0", only: :test},
