@@ -649,7 +649,7 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Transitions elements.
 
-    * `transition` - A string of classes to apply before removing classes or
+    * `transition` - A string of classes to apply during the transition or
       a 3-tuple containing the transition class, the class to apply
       to start the transition, and the ending transition class, such as:
       `{"ease-out duration-300", "opacity-0", "opacity-100"}`
