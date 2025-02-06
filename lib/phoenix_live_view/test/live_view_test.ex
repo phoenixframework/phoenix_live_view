@@ -1958,7 +1958,7 @@ defmodule Phoenix.LiveViewTest do
       `{:error, {:redirect, %{to: url}}}`, which can be followed
       with `follow_redirect/2`
   """
-  def render_upload(%Upload{} = upload, entry_name, percent \\ 100) do
+  def render_upload(%Upload{} = upload, entry_name, percent \\ 100, data \\ nil) do
     entry_ref =
       Enum.find_value(upload.entries, fn
         %{"name" => ^entry_name, "ref" => ref} -> ref
@@ -1971,7 +1971,7 @@ defmodule Phoenix.LiveViewTest do
 
     case UploadClient.fetch_allow_acknowledged(upload, entry_name) do
       {:ok, _token} ->
-        render_chunk(upload, entry_name, percent)
+        render_chunk(upload, entry_name, percent, data)
 
       {:error, :nopreflight} ->
         case preflight_upload(upload) do
@@ -1981,7 +1981,7 @@ defmodule Phoenix.LiveViewTest do
               {:error, for(reason <- entry_errors, do: [entry_ref, reason])}
             else
               case UploadClient.allowed_ack(upload, ref, config, entry_name, entries_resp, errors) do
-                :ok -> render_chunk(upload, entry_name, percent)
+                :ok -> render_chunk(upload, entry_name, percent, data)
                 {:error, reason} -> {:error, reason}
               end
             end
@@ -2016,12 +2016,12 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp render_chunk(upload, entry_name, percent) do
+  defp render_chunk(upload, entry_name, percent, data) do
     %{proxy: {_ref, _topic, pid}} = upload.view
     monitor_ref = Process.monitor(pid)
 
     try do
-      case UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view)) do
+      case UploadClient.chunk(upload, entry_name, percent, data, proxy_pid(upload.view)) do
         {:ok, _} ->
           render(upload.view)
 
