@@ -169,7 +169,12 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   def to_html(html_tree), do: Floki.raw_html(html_tree)
 
-  def to_text(html_tree), do: Floki.text(html_tree)
+  def to_text(html_tree) do
+    html_tree
+    |> Floki.text()
+    |> String.replace(~r/[\s]+/, " ")
+    |> String.trim()
+  end
 
   # TODO: rewrite to use Floki.get_by_id/2
   # currently it does not raise when multiple elements are found

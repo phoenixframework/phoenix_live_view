@@ -12,6 +12,10 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
     <div id="child-component">
       <.live_component module={Phoenix.LiveViewTest.Support.ElementsComponent} id={1} />
     </div>
+    <span phx-no-format>
+      Normalize
+      <span> whitespace</span>
+    </span>
 
     {# basic render_*}
     <span id="span-no-attr">This is a span</span>

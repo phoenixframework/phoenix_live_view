@@ -27,6 +27,7 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert view |> element("#scoped-render") |> has_element?()
       assert view |> element("div", "This is a div") |> has_element?()
       assert view |> element("#scoped-render", ~r/^This is a div$/) |> has_element?()
+      assert view |> element("span", "Normalize whitespace") |> has_element?()
 
       refute view |> element("#unknown") |> has_element?()
       refute view |> element("div", "no matching text") |> has_element?()
