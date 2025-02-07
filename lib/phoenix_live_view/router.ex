@@ -13,9 +13,10 @@ defmodule Phoenix.LiveView.Router do
 
       live "/thermostat", ThermostatLive
 
-  By default, you can generate a route to this LiveView by using the `live_path` helper:
+  To navigate to this route within your app, you can use `Phoenix.VerifiedRoutes`:
 
-      live_path(@socket, ThermostatLive)
+      push_navigate(socket, to: ~p"/thermostat")
+      push_patch(socket, to: ~p"/thermostat?page=#{page}")
 
   > #### HTTP requests {: .info}
   >
