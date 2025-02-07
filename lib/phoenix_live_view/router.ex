@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.Router do
 
   @cookie_key "__phoenix_flash__"
 
-  @doc """
+  @doc ~S"""
   Defines a LiveView route.
 
   A LiveView can be routed to by using the `live` macro with a path and
