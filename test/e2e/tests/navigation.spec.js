@@ -70,8 +70,14 @@ test("handles live redirect loops", async ({page}) => {
 
   await page.getByRole("link", {name: "Redirect Loop"}).click()
 
+  await expect(async () => {
+    expect(webSocketEvents).toEqual(expect.arrayContaining([
+      expect.objectContaining({type: "received", payload: expect.stringContaining("phx_error")}),
+    ]))
+  }).toPass()
+
   // We need to wait for the LV to reconnect
-  await page.waitForTimeout(10000)
+  await syncLV(page)
   const message = page.locator("#message")
   await expect(message).toHaveText("Too many redirects")
 })
