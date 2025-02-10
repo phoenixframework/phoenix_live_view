@@ -185,6 +185,36 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Dead do
   end
 end
 
+defmodule Phoenix.LiveViewTest.E2E.Navigation.RedirectLoopLive do
+  use Phoenix.LiveView
+
+  @impl Phoenix.LiveView
+  def mount(params, _session, socket) do
+    if params["loop"] do
+      {:ok, assign(socket, message: "Too many redirects", loop: false)}
+    else
+      {:ok, assign(socket, message: nil, loop: true)}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_params(params, _uri, socket) do
+    if params["loop"] && socket.assigns.loop do
+      {:noreply, push_patch(socket, to: "/navigation/redirectloop?loop=true")}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def render(assigns) do
+    ~H"""
+    <div :if={@message} id="message">{@message}</div>
+    <.link patch="/navigation/redirectloop?loop=true">Redirect Loop</.link>
+    """
+  end
+end
+
 defmodule Phoenix.LiveViewTest.E2E.Navigation.DeadHTML do
   use Phoenix.Component
 
