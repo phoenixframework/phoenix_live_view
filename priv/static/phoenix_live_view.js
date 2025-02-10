@@ -148,6 +148,7 @@ var LiveView = (() => {
   var TITLE = "t";
   var TEMPLATES = "p";
   var STREAM = "stream";
+  var SESSION = "se";
 
   // js/phoenix_live_view/entry_uploader.js
   var EntryUploader = class {
@@ -2510,11 +2511,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   };
   var Rendered = class {
     static extract(diff) {
-      let { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;
+      let { [REPLY]: reply, [EVENTS]: events, [TITLE]: title, [SESSION]: session } = diff;
       delete diff[REPLY];
       delete diff[EVENTS];
       delete diff[TITLE];
-      return { diff, title, reply: reply || null, events: events || [] };
+      delete diff[SESSION];
+      return { diff, title, reply: reply || null, events: events || [], session };
     }
     constructor(viewId, rendered) {
       this.viewId = viewId;
@@ -3589,10 +3591,20 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     applyDiff(type, rawDiff, callback) {
       this.log(type, () => ["", clone(rawDiff)]);
-      let { diff, reply, events, title } = Rendered.extract(rawDiff);
-      callback({ diff, reply, events });
-      if (typeof title === "string" || type == "mount") {
-        window.requestAnimationFrame(() => dom_default.putTitle(title));
+      let { diff, reply, events, title, session: sessionToken } = Rendered.extract(rawDiff);
+      const onDone = () => {
+        if (typeof title === "string" || type == "mount") {
+          window.requestAnimationFrame(() => dom_default.putTitle(title));
+        }
+      };
+      if (sessionToken) {
+        this.liveSocket.updateSession(sessionToken).then(() => {
+          callback({ diff, reply, events });
+          onDone();
+        });
+      } else {
+        callback({ diff, reply, events });
+        onDone();
       }
     }
     onJoin(resp) {
@@ -4164,8 +4176,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               onLoadingDone();
               resolve({ resp, reply: hookReply });
             };
-            if (resp.diff) {
-              this.liveSocket.requestDOMUpdate(() => {
+            this.liveSocket.requestDOMUpdate(() => {
+              if (resp.diff) {
                 this.applyDiff("update", resp.diff, ({ diff, reply, events }) => {
                   if (ref !== null) {
                     this.undoRefs(ref, payload.event);
@@ -4173,13 +4185,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
                   this.update(diff, events);
                   finish(reply);
                 });
-              });
-            } else {
-              if (ref !== null) {
-                this.undoRefs(ref, payload.event);
+              } else {
+                if (ref !== null) {
+                  this.undoRefs(ref, payload.event);
+                }
+                finish(null);
               }
-              finish(null);
-            }
+            });
           },
           error: (reason) => reject({ error: reason }),
           timeout: () => {
@@ -4740,6 +4752,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `);
       }
+      this.socketUrl = url;
       this.socket = new phxSocket(url, opts);
       this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
       this.opts = opts;
@@ -4912,6 +4925,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     requestDOMUpdate(callback) {
       this.transitions.after(callback);
+    }
+    asyncTransition(promise) {
+      this.transitions.addAsyncTransition(promise);
+      return new Promise((resolve) => this.transitions.after(resolve));
     }
     transition(time, onStart, onDone = function() {
     }) {
@@ -5562,10 +5579,29 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let all = this.domCallbacks.jsQuerySelectorAll;
       return all ? all(sourceEl, query, defaultQuery) : defaultQuery();
     }
+    updateSession(token) {
+      const promise = fetch(this.socketUrl + "/session", {
+        method: "POST",
+        body: JSON.stringify({ t: token, s: this.main.getSession() }),
+        headers: {
+          "Content-Type": "application/json"
+        }
+      }).then((resp) => {
+        if (resp.ok) {
+          return resp.text().then((newSession) => {
+            this.main.el.setAttribute(PHX_SESSION, newSession);
+          });
+        } else {
+          logError("Failed to update session", resp);
+        }
+      });
+      return this.asyncTransition(promise);
+    }
   };
   var TransitionSet = class {
     constructor() {
       this.transitions = /* @__PURE__ */ new Set();
+      this.promises = /* @__PURE__ */ new Set();
       this.pendingOps = [];
     }
     reset() {
@@ -5573,6 +5609,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         clearTimeout(timer);
         this.transitions.delete(timer);
       });
+      this.promises.clear();
       this.flushPendingOps();
     }
     after(callback) {
@@ -5591,11 +5628,19 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }, time);
       this.transitions.add(timer);
     }
+    addAsyncTransition(promise) {
+      this.promises.add(promise);
+      promise.then(() => {
+        console.log("promise resolved");
+        this.promises.delete(promise);
+        this.flushPendingOps();
+      });
+    }
     pushPendingOp(op) {
       this.pendingOps.push(op);
     }
     size() {
-      return this.transitions.size;
+      return this.transitions.size + this.promises.size;
     }
     flushPendingOps() {
       if (this.size() > 0) {

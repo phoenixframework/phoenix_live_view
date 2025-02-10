@@ -11,6 +11,7 @@ import {
   TITLE,
   STREAM,
   ROOT,
+  SESSION
 } from "./constants"
 
 import {
@@ -118,11 +119,12 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
 
 export default class Rendered {
   static extract(diff){
-    let {[REPLY]: reply, [EVENTS]: events, [TITLE]: title} = diff
+    let {[REPLY]: reply, [EVENTS]: events, [TITLE]: title, [SESSION]: session} = diff
     delete diff[REPLY]
     delete diff[EVENTS]
     delete diff[TITLE]
-    return {diff, title, reply: reply || null, events: events || []}
+    delete diff[SESSION]
+    return {diff, title, reply: reply || null, events: events || [], session: session}
   }
 
   constructor(viewId, rendered){
