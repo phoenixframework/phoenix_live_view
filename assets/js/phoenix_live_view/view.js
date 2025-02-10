@@ -300,9 +300,19 @@ export default class View {
 
   applyDiff(type, rawDiff, callback){
     this.log(type, () => ["", clone(rawDiff)])
-    let {diff, reply, events, title} = Rendered.extract(rawDiff)
-    callback({diff, reply, events})
-    if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
+    let {diff, reply, events, title, session: sessionToken} = Rendered.extract(rawDiff)
+    const onDone = () => {
+      if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
+    }
+    if(sessionToken){
+      this.liveSocket.updateSession(sessionToken).then(() => {
+        callback({diff, reply, events})
+        onDone()
+      })
+    } else {
+      callback({diff, reply, events})
+      onDone()
+    }
   }
 
   onJoin(resp){
@@ -794,7 +804,9 @@ export default class View {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
-  onRedirect({to, flash, reloadToken}){ this.liveSocket.redirect(to, flash, reloadToken) }
+  onRedirect({to, flash, reloadToken}){
+    this.liveSocket.redirect(to, flash, reloadToken)
+  }
 
   isDestroyed(){ return this.destroyed }
 
@@ -931,8 +943,8 @@ export default class View {
             onLoadingDone()
             resolve({resp: resp, reply: hookReply})
           }
-          if(resp.diff){
-            this.liveSocket.requestDOMUpdate(() => {
+          this.liveSocket.requestDOMUpdate(() => {
+            if(resp.diff){
               this.applyDiff("update", resp.diff, ({diff, reply, events}) => {
                 if(ref !== null){
                   this.undoRefs(ref, payload.event)
@@ -940,11 +952,11 @@ export default class View {
                 this.update(diff, events)
                 finish(reply)
               })
-            })
-          } else {
-            if(ref !== null){ this.undoRefs(ref, payload.event) }
-            finish(null)
-          }
+            } else {
+              if(ref !== null){ this.undoRefs(ref, payload.event) }
+              finish(null)
+            }
+          })
         },
         error: (reason) => reject({error: reason}),
         timeout: () => {

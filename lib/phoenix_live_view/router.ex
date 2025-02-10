@@ -365,6 +365,24 @@ defmodule Phoenix.LiveView.Router do
     end
   end
 
+  @doc """
+  Applies LiveView session data for `live_render` calls and dead mounts.
+  """
+  def apply_lv_session(conn, _opts \\ []) do
+    # TODO: ugly!
+    # this is needed for dead live_render in controllers
+    Plug.Conn.register_before_send(conn, fn conn ->
+      receive do
+        {:put_session, session} ->
+          Enum.reduce(session, conn, fn {key, value}, conn ->
+            Plug.Conn.put_session(conn, key, value)
+          end)
+      after
+        0 -> conn
+      end
+    end)
+  end
+
   @doc false
   def __live__(router, live_view, action, opts)
       when is_list(action) and is_list(opts) do

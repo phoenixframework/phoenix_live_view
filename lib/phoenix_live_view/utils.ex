@@ -276,6 +276,14 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  Stores new session data in the socket to be either sent directly on dead
+  mounts, or over the websocket to be processed by `Phoenix.LiveView.Session` plug.
+  """
+  def put_session(%Socket{} = socket, key, value) do
+    update_in(socket.private.live_temp[:put_session], &Map.put(&1 || %{}, to_string(key), value))
+  end
+
+  @doc """
   Annotates the reply in the socket changes.
   """
   def put_reply(%Socket{} = socket, %{} = payload) do
@@ -287,6 +295,26 @@ defmodule Phoenix.LiveView.Utils do
   """
   def get_push_events(%Socket{} = socket) do
     Enum.reverse(socket.private.live_temp[:push_events] || [])
+  end
+
+  @doc """
+  Returns the session data in the socket.
+  """
+  def get_session(%Socket{} = socket) do
+    socket.private.live_temp[:put_session] || %{}
+  end
+
+  @doc """
+  Returns the encoded session data in the socket.
+  """
+  def get_encoded_session(%Socket{} = socket) do
+    data = get_session(socket)
+
+    if data != %{} do
+      Phoenix.LiveView.Static.sign_token(socket.endpoint, data)
+    else
+      nil
+    end
   end
 
   @doc """

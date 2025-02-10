@@ -154,8 +154,17 @@ defmodule Phoenix.LiveView.Static do
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
+        extra_session = put_session_data_and_notify(socket)
+
         data_attrs = [
-          phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
+          phx_session:
+            sign_root_session(
+              socket,
+              router,
+              view,
+              Map.merge(to_sign_session, extra_session),
+              live_session
+            ),
           phx_static: sign_static_token(socket)
         ]
 
@@ -175,8 +184,19 @@ defmodule Phoenix.LiveView.Static do
         end
 
       {:stop, socket} ->
+        _ = put_session_data_and_notify(socket)
         {:stop, socket}
     end
+  end
+
+  defp put_session_data_and_notify(socket) do
+    extra_session = Utils.get_session(socket)
+
+    if extra_session != %{} do
+      send(self(), {:put_session, extra_session})
+    end
+
+    extra_session
   end
 
   @doc """
