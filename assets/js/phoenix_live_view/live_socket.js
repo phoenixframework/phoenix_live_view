@@ -99,7 +99,8 @@ import {
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF_SRC,
-  PHX_RELOAD_STATUS
+  PHX_RELOAD_STATUS,
+  PHX_PUT_SESSION
 } from "./constants"
 
 import {
@@ -107,8 +108,7 @@ import {
   closestPhxBinding,
   closure,
   debug,
-  maybe,
-  logError
+  maybe
 } from "./utils"
 
 import Browser from "./browser"
@@ -989,28 +989,9 @@ export default class LiveSocket {
     return all ? all(sourceEl, query, defaultQuery) : defaultQuery()
   }
 
-  updateSession(token, csrfToken){
-    // session updates are POSTed against the LiveView's URL with a special header
-    // x-liveview-session-update that we intercept in the session plug
-    const promise = fetch(this.main.href, {
-      method: "POST",
-      body: JSON.stringify({t: token, s: this.main.getSession()}),
-      headers: {
-        "Content-Type": "application/json",
-        "X-LiveView-Session-Update": "1",
-        "X-CSRF-Token": csrfToken
-      }
-    }).then(resp => {
-      if(resp.ok){
-        return resp.text().then((newSession) => {
-          // the updated token is needed for live navigation
-          this.main.el.setAttribute(PHX_SESSION, newSession)
-        })
-      } else {
-        logError("Failed to update session", resp)
-      }
-    })
-    return this.asyncTransition(promise)
+  updateSession(token){
+    Browser.setCookie(PHX_PUT_SESSION, token)
+    this.main.updateUserSession(token)
   }
 }
 

@@ -1031,7 +1031,13 @@ defmodule Phoenix.LiveView.Channel do
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
     %Phoenix.Socket{endpoint: endpoint, topic: topic} = phx_socket
 
-    case Session.verify_session(endpoint, topic, session_token, params["static"]) do
+    case Session.verify_session(
+           endpoint,
+           topic,
+           session_token,
+           params["static"],
+           params["user_session"]
+         ) do
       {:ok, %Session{} = verified} ->
         %Phoenix.Socket{private: %{connect_info: connect_info}} = phx_socket
 
@@ -1137,6 +1143,7 @@ defmodule Phoenix.LiveView.Channel do
       parent_pid: parent,
       root_pid: root_pid,
       session: verified_user_session,
+      put_session: put_session,
       router: router
     } = verified
 
@@ -1186,14 +1193,26 @@ defmodule Phoenix.LiveView.Channel do
     merged_session = Map.merge(socket_session, verified_user_session)
     lifecycle = load_lifecycle(config, route)
 
-    case mount_private(verified, connect_params, connect_info, lifecycle) do
+    case mount_private(
+           verified,
+           connect_params,
+           connect_info,
+           lifecycle,
+           merged_session,
+           put_session
+         ) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
         try do
           socket
           |> load_layout(route)
-          |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
+          |> Utils.maybe_call_live_view_mount!(
+            view,
+            params,
+            Map.merge(merged_session, put_session),
+            url
+          )
           |> build_state(phx_socket)
           |> maybe_call_mount_handle_params(router, url, params)
           |> reply_mount(from, verified, route)
@@ -1276,7 +1295,14 @@ defmodule Phoenix.LiveView.Channel do
     socket
   end
 
-  defp mount_private(%Session{parent_pid: nil} = session, connect_params, connect_info, lifecycle) do
+  defp mount_private(
+         %Session{parent_pid: nil} = session,
+         connect_params,
+         connect_info,
+         lifecycle,
+         user_session,
+         put_session
+       ) do
     %{
       root_view: root_view,
       assign_new: assign_new,
@@ -1292,6 +1318,8 @@ defmodule Phoenix.LiveView.Channel do
        lifecycle: lifecycle,
        root_view: root_view,
        live_temp: %{},
+       session: user_session,
+       put_session: put_session,
        live_session_name: live_session_name,
        live_session_vsn: live_session_vsn
      }}
@@ -1301,7 +1329,9 @@ defmodule Phoenix.LiveView.Channel do
          %Session{parent_pid: parent} = session,
          connect_params,
          connect_info,
-         lifecycle
+         lifecycle,
+         user_session,
+         _put_session
        ) do
     %{
       root_view: root_view,
@@ -1322,6 +1352,10 @@ defmodule Phoenix.LiveView.Channel do
            lifecycle: lifecycle,
            root_view: root_view,
            live_temp: %{},
+           session: user_session,
+           # child LiveViews don't have access to not yet persisted put_session data,
+           # it must be explicitly passed in live_render instead
+           put_session: %{},
            live_session_name: live_session_name,
            live_session_vsn: live_session_vsn
          }}

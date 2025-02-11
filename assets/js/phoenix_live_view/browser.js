@@ -56,7 +56,7 @@ let Browser = {
 
   setCookie(name, value, maxAgeSeconds){
     let expires = typeof(maxAgeSeconds) === "number" ? ` max-age=${maxAgeSeconds};` : ""
-    document.cookie = `${name}=${value};${expires} path=/`
+    document.cookie = `${name}=${value};${expires} path=/;SameSite=Lax`
   },
 
   getCookie(name){

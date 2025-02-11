@@ -144,7 +144,8 @@ defmodule Phoenix.LiveView.Static do
           conn_session: conn_session,
           lifecycle: lifecycle,
           root_view: view,
-          live_temp: %{}
+          live_temp: %{},
+          put_session: %{}
         }
         |> maybe_put_live_layout(live_session),
         action,
@@ -154,7 +155,7 @@ defmodule Phoenix.LiveView.Static do
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
-        extra_session = put_session_data_and_notify(socket)
+        extra_session = put_session_data_and_notify(conn, socket)
 
         data_attrs = [
           phx_session:
@@ -184,16 +185,25 @@ defmodule Phoenix.LiveView.Static do
         end
 
       {:stop, socket} ->
-        _ = put_session_data_and_notify(socket)
+        _ = put_session_data_and_notify(conn, socket)
         {:stop, socket}
     end
   end
 
-  defp put_session_data_and_notify(socket) do
+  defp put_session_data_and_notify(conn, socket) do
     extra_session = Utils.get_session(socket)
+    ref = conn.private[:lv_put_session_ref]
 
     if extra_session != %{} do
-      send(self(), {:put_session, extra_session})
+      if ref == nil do
+        raise """
+        put_session was called without the `Phoenix.LiveView.Router.apply_lv_session/2` plug in the pipeline.
+
+        For put_session to work, you need to include `:apply_lv_session` in your browser pipeline.
+        """
+      end
+
+      send(self(), {ref, extra_session})
     end
 
     extra_session
@@ -237,7 +247,8 @@ defmodule Phoenix.LiveView.Static do
           lifecycle: config.lifecycle,
           live_layout: false,
           root_view: if(sticky?, do: view, else: parent.private.root_view),
-          live_temp: %{}
+          live_temp: %{},
+          put_session: %{}
         },
         nil,
         %{},
