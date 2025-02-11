@@ -812,12 +812,31 @@ defmodule Phoenix.LiveView.Channel do
       {:diff, diff, new_state} ->
         {:noreply,
          new_state
+         |> clear_live_patch_counter()
          |> push_live_patch(pending_live_patch)
          |> push_diff(diff, ref)}
 
       result ->
         handle_redirect(new_state, result, Utils.changed_flash(new_socket), ref)
     end
+  end
+
+  defp check_patch_redirect_limit!(state) do
+    current = state.redirect_count
+
+    if current == 20 do
+      raise RuntimeError, """
+      too many redirects for #{inspect(state.socket.view)} on action #{inspect(state.socket.assigns.live_action)}
+
+      Check the `handle_params/3` callback for an infinite patch redirect loop
+      """
+    else
+      %{state | redirect_count: current + 1}
+    end
+  end
+
+  defp clear_live_patch_counter(state) do
+    %{state | redirect_count: 0}
   end
 
   defp handle_redirect(new_state, result, flash, ref) do
@@ -857,6 +876,7 @@ defmodule Phoenix.LiveView.Channel do
 
         new_state
         |> drop_redirect()
+        |> check_patch_redirect_limit!()
         |> Map.update!(:socket, &Utils.replace_flash(&1, flash))
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
@@ -1373,6 +1393,7 @@ defmodule Phoenix.LiveView.Channel do
       socket: lv_socket,
       topic: phx_socket.topic,
       components: Diff.new_components(),
+      redirect_count: 0,
       upload_names: %{},
       upload_pids: %{}
     }

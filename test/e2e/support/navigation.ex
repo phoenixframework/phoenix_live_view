@@ -9,7 +9,11 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
+        params: {_csrf_token: csrfToken},
+        reloadJitterMin: 50,
+        reloadJitterMax: 500
+      })
       liveSocket.connect()
       window.liveSocket = liveSocket
 
@@ -182,6 +186,36 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Dead do
 
     conn
     |> render(:index)
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.Navigation.RedirectLoopLive do
+  use Phoenix.LiveView
+
+  @impl Phoenix.LiveView
+  def mount(params, _session, socket) do
+    if params["loop"] do
+      {:ok, assign(socket, message: "Too many redirects", loop: false)}
+    else
+      {:ok, assign(socket, message: nil, loop: true)}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def handle_params(params, _uri, socket) do
+    if params["loop"] && socket.assigns.loop do
+      {:noreply, push_patch(socket, to: "/navigation/redirectloop?loop=true")}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl Phoenix.LiveView
+  def render(assigns) do
+    ~H"""
+    <div :if={@message} id="message">{@message}</div>
+    <.link patch="/navigation/redirectloop?loop=true">Redirect Loop</.link>
+    """
   end
 end
 
