@@ -19,29 +19,33 @@ defmodule Phoenix.LiveView.Session do
   def init(opts), do: opts
 
   def call(conn, _opts) do
-    # TODO: the path should not be hardcoded
-    if conn.path_info == ["live", "session"] do
-      endpoint = Phoenix.Controller.endpoint_module(conn)
-      conn = Plug.Conn.fetch_session(conn)
+    case Plug.Conn.get_req_header(conn, "x-liveview-session-update") do
+      [_] ->
+        endpoint = Phoenix.Controller.endpoint_module(conn)
+        conn = Plug.Conn.fetch_session(conn)
+        opts = Plug.CSRFProtection.init([])
+        conn = Plug.CSRFProtection.call(conn, opts)
 
-      with %{"t" => update_token, "s" => session_token} <- conn.body_params,
-           {:ok, data} <- Static.verify_token(endpoint, update_token),
-           {:ok, session} <- Static.verify_token(endpoint, session_token) do
-        new_session = %{session | session: Map.merge(session.session, data)}
+        with %{"t" => update_token, "s" => session_token} <- conn.body_params,
+             {:ok, data} <- Static.verify_token(endpoint, update_token),
+             {:ok, session} <- Static.verify_token(endpoint, session_token) do
+          new_session = %{session | session: Map.merge(session.session, data)}
 
-        conn =
-          Enum.reduce(data, conn, fn {key, value}, conn ->
-            Plug.Conn.put_session(conn, key, value)
-          end)
+          conn =
+            Enum.reduce(data, conn, fn {key, value}, conn ->
+              Plug.Conn.put_session(conn, key, value)
+            end)
 
-        Plug.Conn.send_resp(conn, 200, Static.sign_token(endpoint, new_session))
-        |> Plug.Conn.halt()
-      else
-        _ ->
-          Plug.Conn.send_resp(conn, 400, "Invalid data") |> Plug.Conn.halt()
-      end
-    else
-      conn
+          conn
+          |> Plug.Conn.send_resp(200, Static.sign_token(endpoint, new_session))
+          |> Plug.Conn.halt()
+        else
+          _ ->
+            Plug.Conn.send_resp(conn, 400, "Invalid data") |> Plug.Conn.halt()
+        end
+
+      _ ->
+        conn
     end
   end
 

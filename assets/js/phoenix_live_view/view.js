@@ -300,12 +300,13 @@ export default class View {
 
   applyDiff(type, rawDiff, callback){
     this.log(type, () => ["", clone(rawDiff)])
-    let {diff, reply, events, title, session: sessionToken} = Rendered.extract(rawDiff)
+    let {diff, reply, events, title, session} = Rendered.extract(rawDiff)
     const onDone = () => {
       if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
     }
-    if(sessionToken){
-      this.liveSocket.updateSession(sessionToken).then(() => {
+    if(session){
+      const [sessionToken, csrfToken] = session
+      this.liveSocket.updateSession(sessionToken, csrfToken).then(() => {
         callback({diff, reply, events})
         onDone()
       })

@@ -3591,14 +3591,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     applyDiff(type, rawDiff, callback) {
       this.log(type, () => ["", clone(rawDiff)]);
-      let { diff, reply, events, title, session: sessionToken } = Rendered.extract(rawDiff);
+      let { diff, reply, events, title, session } = Rendered.extract(rawDiff);
       const onDone = () => {
         if (typeof title === "string" || type == "mount") {
           window.requestAnimationFrame(() => dom_default.putTitle(title));
         }
       };
-      if (sessionToken) {
-        this.liveSocket.updateSession(sessionToken).then(() => {
+      if (session) {
+        const [sessionToken, csrfToken] = session;
+        this.liveSocket.updateSession(sessionToken, csrfToken).then(() => {
           callback({ diff, reply, events });
           onDone();
         });
@@ -5579,12 +5580,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let all = this.domCallbacks.jsQuerySelectorAll;
       return all ? all(sourceEl, query, defaultQuery) : defaultQuery();
     }
-    updateSession(token) {
-      const promise = fetch(this.socketUrl + "/session", {
+    updateSession(token, csrfToken) {
+      const promise = fetch(this.main.href, {
         method: "POST",
         body: JSON.stringify({ t: token, s: this.main.getSession() }),
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "X-LiveView-Session-Update": "1",
+          "X-CSRF-Token": csrfToken
         }
       }).then((resp) => {
         if (resp.ok) {
