@@ -311,7 +311,8 @@ defmodule Phoenix.LiveView.Utils do
     data = get_session(socket)
 
     if data != %{} do
-      Phoenix.LiveView.Static.sign_token(socket.endpoint, data)
+      token = Phoenix.LiveView.Static.sign_token(socket.endpoint, data)
+      [token, Plug.CSRFProtection.get_csrf_token()]
     else
       nil
     end

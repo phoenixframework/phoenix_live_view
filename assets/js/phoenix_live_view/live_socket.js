@@ -989,12 +989,16 @@ export default class LiveSocket {
     return all ? all(sourceEl, query, defaultQuery) : defaultQuery()
   }
 
-  updateSession(token){
-    const promise = fetch(this.socketUrl + "/session", {
+  updateSession(token, csrfToken){
+    // session updates are POSTed against the LiveView's URL with a special header
+    // x-liveview-session-update that we intercept in the session plug
+    const promise = fetch(this.main.href, {
       method: "POST",
       body: JSON.stringify({t: token, s: this.main.getSession()}),
       headers: {
         "Content-Type": "application/json",
+        "X-LiveView-Session-Update": "1",
+        "X-CSRF-Token": csrfToken
       }
     }).then(resp => {
       if(resp.ok){
