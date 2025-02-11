@@ -4,6 +4,7 @@ defmodule Phoenix.LiveView.Router do
   """
 
   @cookie_key "__phoenix_flash__"
+  @put_session_cookie_key "__phoenix_lv_session__"
 
   @doc ~S"""
   Defines a LiveView route.
@@ -366,14 +367,32 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  Applies LiveView session data for `live_render` calls and dead mounts.
+  Applies `put_session` data.
   """
   def apply_lv_session(conn, _opts \\ []) do
-    # TODO: ugly!
-    # this is needed for dead live_render in controllers
+    {conn, data} = get_put_session_cookie(conn)
+
+    conn =
+      if data do
+        Enum.reduce(data, conn, fn {key, value}, conn ->
+          Plug.Conn.put_session(conn, key, value)
+        end)
+      else
+        conn
+      end
+
+    conn = Plug.Conn.put_private(conn, :lv_put_session_ref, make_ref())
+
+    # This is needed for dead live_render in controllers,
+    # because those only return the rendered content and not the conn.
+    #
+    # We also use this for regular dead mounts to simplify the code.
     Plug.Conn.register_before_send(conn, fn conn ->
+      lv_put_session_ref = conn.private[:lv_put_session_ref]
+
       receive do
-        {:put_session, session} ->
+        # TODO: scope the message somehow?
+        {^lv_put_session_ref, session} ->
           Enum.reduce(session, conn, fn {key, value}, conn ->
             Plug.Conn.put_session(conn, key, value)
           end)
@@ -506,6 +525,20 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
+
+  defp get_put_session_cookie(%Plug.Conn{cookies: %{@put_session_cookie_key => token}} = conn) do
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+
+    data =
+      case Phoenix.LiveView.Static.verify_token(endpoint, token) do
+        {:ok, data} -> data
+        _ -> nil
+      end
+
+    {Plug.Conn.delete_resp_cookie(conn, @put_session_cookie_key), data}
+  end
+
+  defp get_put_session_cookie(%Plug.Conn{} = conn), do: {conn, nil}
 
   defp session_vsn(module) do
     if vsn = Module.get_attribute(module, :phoenix_session_vsn) do

@@ -23,6 +23,7 @@ import {
   PHX_REF_LOCK,
   PHX_ROOT_ID,
   PHX_SESSION,
+  PHX_USER_SESSION,
   PHX_STATIC,
   PHX_TRACK_STATIC,
   PHX_TRACK_UPLOADS,
@@ -166,6 +167,7 @@ export default class View {
         url: this.redirect ? undefined : url || undefined,
         params: this.connectParams(liveReferer),
         session: this.getSession(),
+        user_session: this.getUserSession(),
         static: this.getStatic(),
         flash: this.flash,
       }
@@ -199,6 +201,12 @@ export default class View {
   isConnected(){ return this.channel.canPush() }
 
   getSession(){ return this.el.getAttribute(PHX_SESSION) }
+
+  getUserSession(){ return this.el.getAttribute(PHX_USER_SESSION) }
+
+  updateUserSession(token){
+    this.el.setAttribute(PHX_USER_SESSION, token)
+  }
 
   getStatic(){
     let val = this.el.getAttribute(PHX_STATIC)
@@ -305,11 +313,9 @@ export default class View {
       if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
     }
     if(session){
-      const [sessionToken, csrfToken] = session
-      this.liveSocket.updateSession(sessionToken, csrfToken).then(() => {
-        callback({diff, reply, events})
-        onDone()
-      })
+      this.liveSocket.updateSession(session)
+      callback({diff, reply, events})
+      onDone()
     } else {
       callback({diff, reply, events})
       onDone()
@@ -944,8 +950,8 @@ export default class View {
             onLoadingDone()
             resolve({resp: resp, reply: hookReply})
           }
-          this.liveSocket.requestDOMUpdate(() => {
-            if(resp.diff){
+          if(resp.diff){
+            this.liveSocket.requestDOMUpdate(() => {
               this.applyDiff("update", resp.diff, ({diff, reply, events}) => {
                 if(ref !== null){
                   this.undoRefs(ref, payload.event)
@@ -953,11 +959,11 @@ export default class View {
                 this.update(diff, events)
                 finish(reply)
               })
-            } else {
-              if(ref !== null){ this.undoRefs(ref, payload.event) }
-              finish(null)
-            }
-          })
+            })
+          } else {
+            if(ref !== null){ this.undoRefs(ref, payload.event) }
+            finish(null)
+          }
         },
         error: (reason) => reject({error: reason}),
         timeout: () => {

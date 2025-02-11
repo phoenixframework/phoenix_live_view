@@ -103,6 +103,7 @@ var LiveView = (() => {
   var CHECKABLE_INPUTS = ["checkbox", "radio"];
   var PHX_HAS_SUBMITTED = "phx-has-submitted";
   var PHX_SESSION = "data-phx-session";
+  var PHX_USER_SESSION = "data-phx-user-session";
   var PHX_VIEW_SELECTOR = `[${PHX_SESSION}]`;
   var PHX_STICKY = "data-phx-sticky";
   var PHX_STATIC = "data-phx-static";
@@ -126,6 +127,7 @@ var LiveView = (() => {
   var PHX_PROGRESS = "progress";
   var PHX_MOUNTED = "mounted";
   var PHX_RELOAD_STATUS = "__phoenix_reload_status__";
+  var PHX_PUT_SESSION = "__phoenix_lv_session__";
   var LOADER_TIMEOUT = 1;
   var MAX_CHILD_JOIN_ATTEMPTS = 3;
   var BEFORE_UNLOAD_LOADER_TIMEOUT = 200;
@@ -319,7 +321,7 @@ var LiveView = (() => {
     },
     setCookie(name, value, maxAgeSeconds) {
       let expires = typeof maxAgeSeconds === "number" ? ` max-age=${maxAgeSeconds};` : "";
-      document.cookie = `${name}=${value};${expires} path=/`;
+      document.cookie = `${name}=${value};${expires} path=/;SameSite=Lax`;
     },
     getCookie(name) {
       return document.cookie.replace(new RegExp(`(?:(?:^|.*;s*)${name}s*=s*([^;]*).*$)|^.*$`), "$1");
@@ -789,7 +791,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     },
     replaceRootContainer(container, tagName, attrs) {
-      let retainedAttrs = /* @__PURE__ */ new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID]);
+      let retainedAttrs = /* @__PURE__ */ new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID, PHX_USER_SESSION]);
       if (container.tagName.toLowerCase() === tagName.toLowerCase()) {
         Array.from(container.attributes).filter((attr) => !retainedAttrs.has(attr.name.toLowerCase())).forEach((attr) => container.removeAttribute(attr.name));
         Object.keys(attrs).filter((name) => !retainedAttrs.has(name.toLowerCase())).forEach((attr) => container.setAttribute(attr, attrs[attr]));
@@ -3467,6 +3469,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           url: this.redirect ? void 0 : url || void 0,
           params: this.connectParams(liveReferer),
           session: this.getSession(),
+          user_session: this.getUserSession(),
           static: this.getStatic(),
           flash: this.flash
         };
@@ -3499,6 +3502,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     getSession() {
       return this.el.getAttribute(PHX_SESSION);
+    }
+    getUserSession() {
+      return this.el.getAttribute(PHX_USER_SESSION);
+    }
+    updateUserSession(token) {
+      this.el.setAttribute(PHX_USER_SESSION, token);
     }
     getStatic() {
       let val = this.el.getAttribute(PHX_STATIC);
@@ -3598,11 +3607,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       };
       if (session) {
-        const [sessionToken, csrfToken] = session;
-        this.liveSocket.updateSession(sessionToken, csrfToken).then(() => {
-          callback({ diff, reply, events });
-          onDone();
-        });
+        this.liveSocket.updateSession(session);
+        callback({ diff, reply, events });
+        onDone();
       } else {
         callback({ diff, reply, events });
         onDone();
@@ -4177,8 +4184,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               onLoadingDone();
               resolve({ resp, reply: hookReply });
             };
-            this.liveSocket.requestDOMUpdate(() => {
-              if (resp.diff) {
+            if (resp.diff) {
+              this.liveSocket.requestDOMUpdate(() => {
                 this.applyDiff("update", resp.diff, ({ diff, reply, events }) => {
                   if (ref !== null) {
                     this.undoRefs(ref, payload.event);
@@ -4186,13 +4193,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
                   this.update(diff, events);
                   finish(reply);
                 });
-              } else {
-                if (ref !== null) {
-                  this.undoRefs(ref, payload.event);
-                }
-                finish(null);
+              });
+            } else {
+              if (ref !== null) {
+                this.undoRefs(ref, payload.event);
               }
-            });
+              finish(null);
+            }
           },
           error: (reason) => reject({ error: reason }),
           timeout: () => {
@@ -5580,25 +5587,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let all = this.domCallbacks.jsQuerySelectorAll;
       return all ? all(sourceEl, query, defaultQuery) : defaultQuery();
     }
-    updateSession(token, csrfToken) {
-      const promise = fetch(this.main.href, {
-        method: "POST",
-        body: JSON.stringify({ t: token, s: this.main.getSession() }),
-        headers: {
-          "Content-Type": "application/json",
-          "X-LiveView-Session-Update": "1",
-          "X-CSRF-Token": csrfToken
-        }
-      }).then((resp) => {
-        if (resp.ok) {
-          return resp.text().then((newSession) => {
-            this.main.el.setAttribute(PHX_SESSION, newSession);
-          });
-        } else {
-          logError("Failed to update session", resp);
-        }
-      });
-      return this.asyncTransition(promise);
+    updateSession(token) {
+      browser_default.setCookie(PHX_PUT_SESSION, token);
+      this.main.updateUserSession(token);
     }
   };
   var TransitionSet = class {

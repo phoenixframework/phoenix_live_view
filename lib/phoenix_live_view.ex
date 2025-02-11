@@ -644,6 +644,7 @@ defmodule Phoenix.LiveView do
     live_async
     live_layout
     live_temp
+    put_session
     lifecycle
     render_with
     root_view
@@ -778,6 +779,11 @@ defmodule Phoenix.LiveView do
   TODO!
   """
   defdelegate put_session(socket, key, value), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO!
+  """
+  defdelegate get_session(socket, key), to: Phoenix.LiveView.Utils
 
   @doc ~S"""
   Allows an upload for the provided name.
