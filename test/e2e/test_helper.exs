@@ -172,6 +172,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/a", Phoenix.LiveViewTest.E2E.Navigation.ALive
       live "/b", Phoenix.LiveViewTest.E2E.Navigation.BLive, :index
       live "/b/:id", Phoenix.LiveViewTest.E2E.Navigation.BLive, :show
+      live "/redirectloop", Phoenix.LiveViewTest.E2E.Navigation.RedirectLoopLive, :index
       get "/dead", Phoenix.LiveViewTest.E2E.Navigation.Dead, :index
     end
   end

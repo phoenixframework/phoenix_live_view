@@ -64,6 +64,24 @@ test("can navigate between LiveViews in the same live session over websocket", a
   ]))
 })
 
+test("handles live redirect loops", async ({page}) => {
+  await page.goto("/navigation/redirectloop")
+  await syncLV(page)
+
+  await page.getByRole("link", {name: "Redirect Loop"}).click()
+
+  await expect(async () => {
+    expect(webSocketEvents).toEqual(expect.arrayContaining([
+      expect.objectContaining({type: "received", payload: expect.stringContaining("phx_error")}),
+    ]))
+  }).toPass()
+
+  // We need to wait for the LV to reconnect
+  await syncLV(page)
+  const message = page.locator("#message")
+  await expect(message).toHaveText("Too many redirects")
+})
+
 test("popstate", async ({page}) => {
   await page.goto("/navigation/a")
   await syncLV(page)
