@@ -3296,6 +3296,46 @@ defmodule Phoenix.Component do
   end
 
   @doc """
+  Generates a video preview on the client for a selected file.
+
+  ## Examples
+
+  ```heex
+  <%= for entry <- @uploads.avatar.entries do %>
+    <.live_video_preview entry={entry} width="400" />
+  <% end %>
+  ```
+  """
+  @doc type: :component
+  def live_video_preview(assigns)
+
+  # attr :entry, Phoenix.LiveView.UploadEntry, required: true
+  # attr :rest, :global
+  def live_video_preview(%{entry: %Phoenix.LiveView.UploadEntry{ref: ref} = entry} = assigns) do
+    rest =
+      assigns
+      |> assigns_to_attributes([:entry])
+      |> Keyword.put_new_lazy(:id, fn -> "phx-preview-#{ref}" end)
+
+    assigns = assign(assigns, entry: entry, ref: ref, rest: rest)
+
+    ~H"""
+    <video
+      controls
+      data-phx-upload-ref={@entry.upload_ref}
+      data-phx-entry-ref={@ref}
+      data-phx-hook="Phoenix.LiveImgPreview"
+      data-phx-update="ignore"
+      {@rest}
+    />
+    """
+  end
+
+  def live_video_preview(_assigns) do
+    raise ArgumentError, "missing required :entry attribute to <.live_video_preview/>"
+  end
+
+  @doc """
   Intersperses separator slot between an enumerable.
 
   Useful when you need to add a separator between items such as when
