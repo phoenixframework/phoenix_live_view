@@ -198,11 +198,13 @@ let JS = {
         if(eventType === "remove"){ return }
         let onStart = () => {
           this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses))
-          let stickyDisplay = display || this.defaultDisplay(el)
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
           window.requestAnimationFrame(() => {
             this.addOrRemoveClasses(el, inClasses, [])
-            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses))
+            window.requestAnimationFrame(() => {
+              this.addOrRemoveClasses(el, inEndClasses, inStartClasses)
+              let stickyDisplay = display || this.defaultDisplay(el)
+              DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
+            })
           })
         }
         let onEnd = () => {
