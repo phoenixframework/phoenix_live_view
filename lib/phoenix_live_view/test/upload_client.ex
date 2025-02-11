@@ -22,8 +22,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     GenServer.call(pid, {:fetch_allow_acknowledged, entry_name})
   end
 
-  def chunk(%Upload{pid: pid, element: element}, name, percent, proxy_pid) do
-    GenServer.call(pid, {:chunk, name, percent, proxy_pid, element})
+  def chunk(%Upload{pid: pid, element: element}, name, percent, data, proxy_pid) do
+    GenServer.call(pid, {:chunk, name, percent, data, proxy_pid, element})
   catch
     :exit, {{:shutdown, :closed}, _} -> {:ok, :closed}
     :exit, {{:shutdown, {:redirect, opts}}, _} -> {:error, {:redirect, opts}}
@@ -88,8 +88,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     {:reply, pids, state}
   end
 
-  def handle_call({:chunk, entry_name, percent, proxy_pid, element}, from, state) do
-    {:noreply, chunk_upload(state, from, entry_name, percent, proxy_pid, element)}
+  def handle_call({:chunk, entry_name, percent, data, proxy_pid, element}, from, state) do
+    {:noreply, chunk_upload(state, from, entry_name, percent, data, proxy_pid, element)}
   end
 
   def handle_call({:simulate_attacker_chunk, entry_name, chunk}, _from, state) do
@@ -201,17 +201,17 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     }
   end
 
-  defp chunk_upload(state, from, entry_name, percent, proxy_pid, element) do
+  defp chunk_upload(state, from, entry_name, percent, data, proxy_pid, element) do
     entry = get_entry!(state, entry_name)
 
     if entry.chunk_percent >= 100 do
       state
     else
-      do_chunk(state, from, entry, proxy_pid, element, percent)
+      do_chunk(state, from, entry, proxy_pid, element, percent, data)
     end
   end
 
-  defp do_chunk(%{socket: nil, cid: cid} = state, from, entry, proxy_pid, element, percent) do
+  defp do_chunk(%{socket: nil, cid: cid} = state, from, entry, proxy_pid, element, percent, data) do
     stats = progress_stats(entry, percent)
 
     :ok =
@@ -221,13 +221,14 @@ defmodule Phoenix.LiveViewTest.UploadClient do
         element,
         entry.ref,
         stats.new_percent,
+        data,
         cid
       )
 
     update_entry_percent(state, entry, stats.new_percent)
   end
 
-  defp do_chunk(state, from, entry, proxy_pid, element, percent) do
+  defp do_chunk(state, from, entry, proxy_pid, element, percent, data) do
     stats = progress_stats(entry, percent)
 
     chunk =
@@ -248,6 +249,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
             element,
             entry.ref,
             stats.new_percent,
+            data,
             state.cid
           )
 
@@ -261,6 +263,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
             element,
             entry.ref,
             %{"error" => "failure"},
+            data,
             state.cid
           )
 

@@ -870,6 +870,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this._isDone = false;
       this._progress = 0;
       this._lastProgressSent = -1;
+      this._lastProgressDataSent = null;
       this._onDone = function() {
       };
       this._onElUpdated = this.onElUpdated.bind(this);
@@ -879,20 +880,22 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     metadata() {
       return this.meta;
     }
-    progress(progress) {
+    progress(progress, data) {
       this._progress = Math.floor(progress);
+      this._progressData = data;
       if (this._progress > this._lastProgressSent) {
+        this._lastProgressDataSent = this._progressData;
         if (this._progress >= 100) {
           this._progress = 100;
           this._lastProgressSent = 100;
           this._isDone = true;
-          this.view.pushFileProgress(this.fileEl, this.ref, 100, () => {
+          this.view.pushFileProgress(this.fileEl, this.ref, 100, this._progressData, () => {
             LiveUploader.untrackFile(this.fileEl, this.file);
             this._onDone();
           });
         } else {
           this._lastProgressSent = this._progress;
-          this.view.pushFileProgress(this.fileEl, this.ref, this._progress);
+          this.view.pushFileProgress(this.fileEl, this.ref, this._progress, this._progressData);
         }
       }
     }
@@ -4387,7 +4390,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         cid: this.targetComponentID(el, targetCtx, opts)
       }).then(({ reply }) => onReply && onReply(reply));
     }
-    pushFileProgress(fileEl, entryRef, progress, onReply = function() {
+    pushFileProgress(fileEl, entryRef, progress, data = null, onReply = function() {
     }) {
       this.liveSocket.withinOwners(fileEl.form, (view, targetCtx) => {
         view.pushWithReply(null, "progress", {
@@ -4395,6 +4398,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           ref: fileEl.getAttribute(PHX_UPLOAD_REF),
           entry_ref: entryRef,
           progress,
+          progress_data: data,
           cid: view.targetComponentID(fileEl.form, targetCtx)
         }).then(({ resp }) => onReply(resp));
       });

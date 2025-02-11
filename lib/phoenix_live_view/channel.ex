@@ -172,8 +172,10 @@ defmodule Phoenix.LiveView.Channel do
 
     new_state =
       write_socket(state, cid, msg.ref, fn socket, _ ->
-        %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress} = msg.payload
-        new_socket = Upload.update_progress(socket, ref, entry_ref, progress)
+        %{"ref" => ref, "entry_ref" => entry_ref, "progress" => progress, "progress_data" => data} =
+          msg.payload
+
+        new_socket = Upload.update_progress(socket, ref, entry_ref, progress, data)
         upload_conf = Upload.get_upload_by_ref!(new_socket, ref)
         entry = UploadConfig.get_entry_by_ref(upload_conf, entry_ref)
 

@@ -498,6 +498,31 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         refute File.exists?(tmp_path)
       end
 
+      @tag allow: [max_entries: 1, chunk_size: 50, accept: :any]
+      test "render_upload progress_data should be accessible for consume_uploaded_entries", %{
+        lv: lv
+      } do
+        parent = self()
+        name = "avatar.jpeg"
+        content = String.duplicate("0", 100)
+        avatar = file_input(lv, "form", :avatar, [%{name: name, content: content}])
+        part1 = %{"etag" => "abc", "part_number" => 1}
+        part2 = %{"etag" => "efg", "part_number" => 2}
+
+        assert render_upload(avatar, name, 50, %{"parts" => [part1]}) =~ "50%"
+        assert render_upload(avatar, name, 50, %{"parts" => [part1, part2]}) =~ "100%"
+
+        UploadLive.run(lv, fn socket ->
+          Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn _meta, entry ->
+            {:ok, send(parent, {:entry, entry.client_name, entry.progress_data})}
+          end)
+
+          {:reply, :ok, socket}
+        end)
+
+        assert_receive {:entry, ^name, %{"parts" => [^part1, ^part2]}}
+      end
+
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
       test "consume_uploaded_entries returns empty list when no uploads exist", %{lv: lv} do
         parent = self()

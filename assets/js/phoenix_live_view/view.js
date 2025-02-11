@@ -1145,13 +1145,14 @@ export default class View {
     }).then(({reply}) => onReply && onReply(reply))
   }
 
-  pushFileProgress(fileEl, entryRef, progress, onReply = function (){ }){
+  pushFileProgress(fileEl, entryRef, progress, data = null, onReply = function (){ }){
     this.liveSocket.withinOwners(fileEl.form, (view, targetCtx) => {
       view.pushWithReply(null, "progress", {
         event: fileEl.getAttribute(view.binding(PHX_PROGRESS)),
         ref: fileEl.getAttribute(PHX_UPLOAD_REF),
         entry_ref: entryRef,
         progress: progress,
+        progress_data: data,
         cid: view.targetComponentID(fileEl.form, targetCtx)
       }).then(({resp}) => onReply(resp))
     })

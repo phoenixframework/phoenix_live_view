@@ -50,8 +50,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   @doc """
   Reports upload progress to the proxy.
   """
-  def report_upload_progress(proxy_pid, from, element, entry_ref, percent, cid) do
-    GenServer.call(proxy_pid, {:upload_progress, from, element, entry_ref, percent, cid})
+  def report_upload_progress(proxy_pid, from, element, entry_ref, percent, data, cid) do
+    GenServer.call(proxy_pid, {:upload_progress, from, element, entry_ref, percent, data, cid})
   end
 
   @doc """
@@ -497,8 +497,17 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
-    payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
+  def handle_call(
+        {:upload_progress, from, %Element{} = el, entry_ref, progress, data, cid},
+        _,
+        state
+      ) do
+    payload =
+      maybe_put_cid(
+        %{"entry_ref" => entry_ref, "progress" => progress, "progress_data" => data},
+        cid
+      )
+
     topic = proxy_topic(el)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
     :ok = Phoenix.LiveView.Channel.ping(pid)
