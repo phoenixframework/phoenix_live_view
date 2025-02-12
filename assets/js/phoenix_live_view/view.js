@@ -1300,7 +1300,7 @@ export default class View {
         if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
           return this.undoRefs(ref, phxEvent)
         }
-        let meta = this.extractMeta(formEl)
+        let meta = this.extractMeta(formEl, {}, opts.value)
         let formData = serializeForm(formEl, {submitter, ...meta})
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
@@ -1310,7 +1310,7 @@ export default class View {
         }).then(({resp}) => onReply(resp))
       })
     } else if(!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))){
-      let meta = this.extractMeta(formEl)
+      let meta = this.extractMeta(formEl, {}, opts.value)
       let formData = serializeForm(formEl, {submitter, ...meta})
       this.pushWithReply(refGenerator, "event", {
         type: "form",

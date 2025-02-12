@@ -640,6 +640,28 @@ describe("JS", () => {
       JS.exec(event, "submit", form.getAttribute("phx-submit"), view, form, ["push", {}])
     })
 
+    test("submit event with phx-value and JS command value", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form"
+            phx-change="validate"
+            phx-submit='[["push", {"event": "save", "value": {"command_value": "command"}}]]'
+            phx-value-attribute_value="attribute"
+      >
+        <input type="text" name="username" id="username" />
+        <input type="text" name="desc" id="desc" phx-change="desc_changed" />
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+
+      view.pushWithReply = (refGen, event, payload) => {
+        let expectedValue = "username=&desc=&attribute_value=attribute&command_value=command"
+        expect(payload).toEqual({"cid": null, "event": "save", "type": "form", "value": expectedValue})
+        return Promise.resolve({resp: done()})
+      }
+      JS.exec(event, "submit", form.getAttribute("phx-submit"), view, form, ["push", {}])
+    })
+
     test("page_loading", done => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
