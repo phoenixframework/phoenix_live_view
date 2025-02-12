@@ -1186,7 +1186,7 @@ export default class View {
       ], phxEvent, "change", opts)
     }
     let formData
-    let meta  = this.extractMeta(inputEl.form)
+    let meta = this.extractMeta(inputEl.form, {}, opts.value)
     if(inputEl instanceof HTMLButtonElement){ meta.submitter = inputEl }
     if(inputEl.getAttribute(this.binding("change"))){
       formData = serializeForm(inputEl.form, {_target: opts._target, ...meta}, [inputEl.name])

@@ -529,6 +529,28 @@ describe("JS", () => {
       JS.exec(event, "change", form.getAttribute("phx-change"), view, input, args)
     })
 
+    test("form change event with phx-value and JS command value", done => {
+      let view = setupView(`
+      <div id="modal" class="modal">modal</div>
+      <form id="my-form"
+            phx-change='[["push", {"event": "validate", "_target": "username", "value": {"command_value": "command","nested":{"array":[1,2]}}}]]'
+            phx-submit="submit"
+            phx-value-attribute_value="attribute"
+      >
+        <input type="text" name="username" id="username" phx-click=''></div>
+      </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#username")
+      view.pushWithReply = (refGen, event, payload) => {
+        let expectedValue = "_unused_username=&username=&_target=username&attribute_value=attribute&command_value=command&nested%5Barray%5D%5B%5D=1&nested%5Barray%5D%5B%5D=2"
+        expect(payload).toEqual({"cid": null, "event": "validate", "type": "form", "value": expectedValue, "uploads": {}})
+        return Promise.resolve({resp: done()})
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec(event, "change", form.getAttribute("phx-change"), view, input, args)
+    })
+
     test("form change event with string event", done => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
