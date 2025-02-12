@@ -316,14 +316,15 @@ describe("View + DOM", function(){
         push(_evt, payload, _timeout){
           expect(payload.type).toBe("form")
           expect(payload.event).toBeDefined()
-          expect(payload.value).toBe("increment=1&note=2&attribute_value=attribute&command_value=command")
+          expect(payload.value).toBe("increment=1&note=2&attribute_value=attribute&nested%5Bcommand_value%5D=command&nested%5Barray%5D%5B%5D=1&nested%5Barray%5D%5B%5D=2")
           return {
             receive(){ return this }
           }
         }
       }
       view.channel = channelStub
-      view.submitForm(form, form, {target: form}, undefined, {value: {command_value: "command"}})
+      let opts = {value: {nested: {command_value: "command", array: [1, 2]}}}
+      view.submitForm(form, form, {target: form}, undefined, opts)
     })
 
     test("payload includes submitter when name is provided", function(){

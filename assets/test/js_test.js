@@ -645,7 +645,7 @@ describe("JS", () => {
       <div id="modal" class="modal">modal</div>
       <form id="my-form"
             phx-change="validate"
-            phx-submit='[["push", {"event": "save", "value": {"command_value": "command"}}]]'
+            phx-submit='[["push", {"event": "save", "value": {"command_value": "command","nested":{"array":[1,2]}}}]]'
             phx-value-attribute_value="attribute"
       >
         <input type="text" name="username" id="username" />
@@ -655,7 +655,7 @@ describe("JS", () => {
       let form = document.querySelector("#my-form")
 
       view.pushWithReply = (refGen, event, payload) => {
-        let expectedValue = "username=&desc=&attribute_value=attribute&command_value=command"
+        let expectedValue = "username=&desc=&attribute_value=attribute&command_value=command&nested%5Barray%5D%5B%5D=1&nested%5Barray%5D%5B%5D=2"
         expect(payload).toEqual({"cid": null, "event": "save", "type": "form", "value": expectedValue})
         return Promise.resolve({resp: done()})
       }

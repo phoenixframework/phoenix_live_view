@@ -119,9 +119,24 @@ let serializeForm = (form, metadata, onlyNames = []) => {
     submitter.parentElement.removeChild(injectedElement)
   }
 
-  for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
+  for(let metaKey in meta){
+    appendToUrlParams(params, metaKey, meta[metaKey])
+  }
 
   return params.toString()
+}
+
+let appendToUrlParams = (params, name, value) => {
+  if(Array.isArray(value)){
+    value.forEach((v) => appendToUrlParams(params, `${name}[]`, v))
+  } else if(value instanceof Object){
+    Object.entries(value).forEach(([key, v]) => {
+      appendToUrlParams(params, `${name}[${key}]`, v)
+    })
+  } else {
+    params.append(name, value)
+  }
+  return params
 }
 
 export default class View {
