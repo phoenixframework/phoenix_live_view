@@ -1069,9 +1069,10 @@ defmodule Phoenix.LiveViewTest do
              |> render() == "Snooze"
   """
   def render(view_or_element) do
-    view_or_element
-    |> render_tree()
-    |> DOM.to_html()
+    case render_tree(view_or_element) do
+      {:error, reason} -> {:error, reason}
+      html -> DOM.to_html(html)
+    end
   end
 
   @doc """
@@ -2015,12 +2016,29 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp render_chunk(upload, entry_name, percent) do
-    %{proxy: {_ref, _topic, pid}} = upload.view
+    pid = proxy_pid(upload.view)
     monitor_ref = Process.monitor(pid)
+    trap = Process.flag(:trap_exit, true)
 
     try do
       case UploadClient.chunk(upload, entry_name, percent, proxy_pid(upload.view)) do
         {:ok, _} ->
+          # The chunk function returns as soon as the upload is consumed, therefore
+          # the following could happen:
+          #
+          #   1. the upload is consumed, and the channel is closed
+          #     --> we receive :ok here
+          #     --> the progress callback redirected, the channel sends a message to itself
+          #   2. we try to render and send a message to the ClientProxy, which pings the channel
+          #   3. the channel receives the ping before it is scheduled to send the redirect message to
+          #      itself, therefore the ping succeeds
+          #   4. we receive the HTML, but we expected a redirect shutdown
+          #
+          # If we synchronize here, we ensure that the channel successfully sent the redirect message
+          # before we try to render. This way, either the first sync already fails, or the second sync
+          # inside the render fails because at that time, the redirect message must have been processed
+          # by the channel.
+          sync_with_root!(upload.view)
           render(upload.view)
 
         {:error, reason} ->
@@ -2037,6 +2055,14 @@ defmodule Phoenix.LiveViewTest do
         after
           0 -> exit(reason)
         end
+    after
+      Process.flag(:trap_exit, trap)
     end
+  end
+
+  defp sync_with_root!(%View{} = view) do
+    pid = proxy_pid(view)
+    proxy_topic = proxy_topic(view)
+    GenServer.call(pid, {:sync_with_root, proxy_topic})
   end
 end
