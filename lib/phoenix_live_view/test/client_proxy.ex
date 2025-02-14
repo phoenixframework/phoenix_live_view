@@ -501,9 +501,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
     topic = proxy_topic(el)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
-    :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render_event, el, :upload_progress, payload, from})
-    {:reply, :ok, state}
+
+    ping!(pid, state, fn ->
+      send(self(), {:sync_render_event, el, :upload_progress, payload, from})
+      {:reply, :ok, state}
+    end)
   end
 
   def handle_call(:page_title, _from, %{page_title: :unset} = state) do
@@ -529,17 +531,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   def handle_call({:live_children, topic}, from, state) do
     view = fetch_view_by_topic!(state, topic)
-    :ok = Phoenix.LiveView.Channel.ping(view.pid)
-    send(self(), {:sync_children, view.topic, from})
-    {:noreply, state}
+
+    ping!(view.pid, state, fn ->
+      send(self(), {:sync_children, view.topic, from})
+      {:noreply, state}
+    end)
   end
 
   def handle_call({:render_element, operation, topic_or_element}, from, state) do
     topic = proxy_topic(topic_or_element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
-    :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render_element, operation, topic_or_element, from})
-    {:noreply, state}
+
+    ping!(pid, state, fn ->
+      send(self(), {:sync_render_element, operation, topic_or_element, from})
+      {:noreply, state}
+    end)
   end
 
   def handle_call({:async_pids, topic_or_element}, _from, state) do
@@ -551,9 +557,11 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:render_event, topic_or_element, type, value}, from, state) do
     topic = proxy_topic(topic_or_element)
     %{pid: pid} = fetch_view_by_topic!(state, topic)
-    :ok = Phoenix.LiveView.Channel.ping(pid)
-    send(self(), {:sync_render_event, topic_or_element, type, value, from})
-    {:noreply, state}
+
+    ping!(pid, state, fn ->
+      send(self(), {:sync_render_event, topic_or_element, type, value, from})
+      {:noreply, state}
+    end)
   end
 
   def handle_call({:render_patch, topic, path}, from, state) do
@@ -581,6 +589,41 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     %{caller: {pid, _}} = state
     Process.unlink(pid)
     {:stop, :ok, reason, state}
+  end
+
+  def handle_call({:sync_with_root, topic}, _from, state) do
+    view = fetch_view_by_topic!(state, topic)
+
+    ping!(view.pid, state, fn ->
+      # if we target a child view, we ping the root view as well
+      if view.pid !== state.root_view.pid do
+        ping!(view.root_pid, state, fn ->
+          {:reply, :ok, state}
+        end)
+      else
+        {:reply, :ok, state}
+      end
+    end)
+  end
+
+  defp ping!(pid, state, fun) do
+    try do
+      # We send a message to the channel for synchronization purposes.
+      #
+      # It can happen that the channel shuts down before the ping is processed,
+      # or even that the channel is already dead, therefore we catch the exit
+      # and let it be handled by the regular handle_info callback for
+      # the DOWN message.
+      Phoenix.LiveView.Channel.ping(pid)
+    catch
+      :exit, _ ->
+        receive do
+          {:DOWN, _ref, :process, ^pid, _reason} = down ->
+            handle_info(down, state)
+        end
+    else
+      :ok -> fun.()
+    end
   end
 
   defp drop_view_by_id(state, id, reason) do
