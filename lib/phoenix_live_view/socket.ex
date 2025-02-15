@@ -66,7 +66,7 @@ defmodule Phoenix.LiveView.Socket do
             root_pid: nil,
             router: nil,
             assigns: %{__changed__: %{}},
-            private: %{live_temp: %{}},
+            private: %{live_temp: %{}, put_session: %{}},
             redirected: nil,
             host_uri: nil,
             transport_pid: nil

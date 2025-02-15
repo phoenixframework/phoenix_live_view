@@ -297,6 +297,45 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  Stores new session data in the socket to be either sent directly on dead
+  mounts, or over the websocket to be processed by `Phoenix.LiveView.Session` plug.
+  """
+  def put_session(%Socket{} = socket, key, value) do
+    update_in(socket.private.put_session, &Map.put(&1 || %{}, to_string(key), value))
+  end
+
+  @doc """
+  Returns the session data stored using put_session in the socket.
+
+  Does not include data that was already persisted in the plug session
+  and taken from connect_info.
+  """
+  def get_session(%Socket{} = socket) do
+    socket.private.put_session
+  end
+
+  @doc """
+  Gets a stored value from the session.
+  """
+  def get_session(%Socket{} = socket, key) do
+    key = to_string(key)
+    Map.get_lazy(socket.private.put_session, key, fn -> socket.private.session[key] end)
+  end
+
+  @doc """
+  Returns the encoded session data in the socket.
+  """
+  def get_encoded_session(%Socket{} = socket) do
+    data = socket.private.put_session
+
+    if data != %{} do
+      Phoenix.LiveView.Static.sign_token(socket.endpoint, data)
+    else
+      nil
+    end
+  end
+
+  @doc """
   Returns the configured signing salt for the endpoint.
   """
   def salt!(endpoint) when is_atom(endpoint) do
