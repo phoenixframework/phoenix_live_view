@@ -107,7 +107,8 @@ import {
   closestPhxBinding,
   closure,
   debug,
-  maybe
+  maybe,
+  logError
 } from "./utils"
 
 import Browser from "./browser"
@@ -131,6 +132,7 @@ export default class LiveSocket {
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `)
     }
+    this.socketUrl = url
     this.socket = new phxSocket(url, opts)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
@@ -298,6 +300,11 @@ export default class LiveSocket {
 
   requestDOMUpdate(callback){
     this.transitions.after(callback)
+  }
+
+  asyncTransition(promise){
+    this.transitions.addAsyncTransition(promise)
+    return new Promise((resolve) => this.transitions.after(resolve))
   }
 
   transition(time, onStart, onDone = function(){}){
@@ -981,11 +988,36 @@ export default class LiveSocket {
     let all = this.domCallbacks.jsQuerySelectorAll
     return all ? all(sourceEl, query, defaultQuery) : defaultQuery()
   }
+
+  updateSession(token, csrfToken){
+    // session updates are POSTed against the LiveView's URL with a special header
+    // x-liveview-session-update that we intercept in the session plug
+    const promise = fetch(this.main.href, {
+      method: "POST",
+      body: JSON.stringify({t: token, s: this.main.getSession()}),
+      headers: {
+        "Content-Type": "application/json",
+        "X-LiveView-Session-Update": "1",
+        "X-CSRF-Token": csrfToken
+      }
+    }).then(resp => {
+      if(resp.ok){
+        return resp.text().then((newSession) => {
+          // the updated token is needed for live navigation
+          this.main.el.setAttribute(PHX_SESSION, newSession)
+        })
+      } else {
+        logError("Failed to update session", resp)
+      }
+    })
+    return this.asyncTransition(promise)
+  }
 }
 
 class TransitionSet {
   constructor(){
     this.transitions = new Set()
+    this.promises = new Set()
     this.pendingOps = []
   }
 
@@ -994,6 +1026,7 @@ class TransitionSet {
       clearTimeout(timer)
       this.transitions.delete(timer)
     })
+    this.promises.clear()
     this.flushPendingOps()
   }
 
@@ -1015,9 +1048,18 @@ class TransitionSet {
     this.transitions.add(timer)
   }
 
+  addAsyncTransition(promise){
+    this.promises.add(promise)
+    promise.then(() => {
+      console.log("promise resolved")
+      this.promises.delete(promise)
+      this.flushPendingOps()
+    })
+  }
+
   pushPendingOp(op){ this.pendingOps.push(op) }
 
-  size(){ return this.transitions.size }
+  size(){ return this.transitions.size + this.promises.size }
 
   flushPendingOps(){
     if(this.size() > 0){ return }
