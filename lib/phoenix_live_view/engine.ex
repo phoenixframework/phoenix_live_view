@@ -290,9 +290,12 @@ defmodule Phoenix.LiveView.Engine do
         ]
       }
 
-  This allows live templates to drastically optimize
-  the data sent by comprehensions, as the static parts
-  are emitted only once, regardless of the number of items.
+  This allows live templates to send the static parts only once,
+  regardless of the number of items. On the other hand, keep in
+  mind the collection itself is not "diffed" across renders.
+  If one entry in the comprehension changes, the whole collection
+  is sent again. Consider using `Phoenix.LiveComponent` and
+  `Phoenix.LiveView.stream/4` to optimize those cases.
 
   The list of dynamics is always a list of iodatas or components,
   as we don't perform change tracking inside the comprehensions

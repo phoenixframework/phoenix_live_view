@@ -1680,6 +1680,7 @@ defmodule Phoenix.LiveView do
     2. Each stream item must include its DOM id on the item's element.
 
   > #### Note {: .warning}
+  >
   > Failing to place `phx-update="stream"` on the **immediate parent** for
   > **each stream** will result in broken behavior.
   >
