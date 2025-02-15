@@ -37,9 +37,8 @@ part if it changes.
 
 The tracking of changes is done via assigns. If the `@title` assign
 changes, then LiveView will execute the dynamic parts of the template,
-`expand_title(@title)`, and send
-the new content. If `@title` is the same, nothing is executed and
-nothing is sent.
+`expand_title(@title)`, and send the new content. If `@title` is the same,
+nothing is executed and nothing is sent.
 
 Change tracking also works when accessing map/struct fields.
 Take this template:
@@ -87,7 +86,7 @@ Generally speaking, **data loading should never happen inside the template**,
 regardless if you are using LiveView or not. The difference is that LiveView
 enforces this best practice.
 
-## Pitfalls
+## Common pitfalls
 
 There are some common pitfalls to keep in mind when using the `~H` sigil
 or `.heex` templates inside LiveViews.
@@ -149,8 +148,9 @@ The same functions can be used inside function components too:
 
 Generally speaking, avoid accessing variables inside `HEEx` templates, as code that
 access variables is always executed on every render. The exception are variables
-introduced by Elixir's block constructs. For example, accessing the `post` variable
-defined by the comprehension below works as expected:
+introduced by Elixir's block constructs, such as `if` and `for` comprehensions.
+For example, accessing the `post` variable defined by the comprehension below
+works as expected:
 
 ```heex
 <%= for post <- @posts do %>
@@ -237,6 +237,55 @@ This ensures that the change tracking information from the parent component
 is passed to each child component, only re-rendering what is necessary.
 However, generally speaking, it is best to avoid passing `assigns` altogether
 and instead let LiveView figure out the best way to track changes.
+
+### Comprehensions
+
+HEEx supports comprehensions in templates, which is a way to traverse lists
+and collections. For example:
+
+```heex
+<%= for post <- @posts do %>
+  <section>
+    <h1>{expand_title(post.title)}</h1>
+  </section>
+<% end %>
+```
+
+Or using the special `:for` attribute:
+
+```heex
+<section :for={post <- @posts>}>
+  <h1>{expand_title(post.title)}</h1>
+</section>
+```
+
+Comprehensions in templates are optimized so the static parts of
+a comprehension are only set once, regardless of the number of items.
+However, keep in mind LiveView does not track changes within the
+collection given to the comprehension. In other words, if one entry
+in `@posts` changes, all posts are sent again.
+
+There are two common solutions to this problem.
+
+The first one is to use `Phoenix.LiveComponent` for each item in the
+comprehension:
+
+```heex
+<section :for={post <- @posts>}>
+  <.live_component module={PostComponent} id={"post-#{post.id}"} post={post} />
+</section>
+```
+
+Since LiveComponents have their own assigns, LiveComponents would allow
+you to perform change tracking for each item. If the `@posts` variable
+changes, the client will simply send a list of component IDs (which are
+integers) and only the data for the posts that actually changed.
+
+Another solution is to use `Phoenix.LiveView.stream/4`, which gives you
+precise control over how elements are added, removed, and updated. Streams
+are particularly useful when you don't need to keep the collection in memory,
+allowing you to reduce the data sent over the wire and the server memory
+usage.
 
 ### Summary
 
