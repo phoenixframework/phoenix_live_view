@@ -505,7 +505,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} }>
+        <.inputs_for :let={finner} field={f[:inner]}>
           <% 0 = finner.index %>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
         </.inputs_for>
@@ -526,7 +526,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } id="test" as={:name}>
+        <.inputs_for :let={finner} field={f[:inner]} id="test" as={:name}>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
         </.inputs_for>
       </.form>
@@ -542,7 +542,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } as={:name}>
+        <.inputs_for :let={finner} field={f[:inner]} as={:name}>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
         </.inputs_for>
       </.form>
@@ -562,7 +562,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } default={%{foo: "123"}}>
+        <.inputs_for :let={finner} field={f[:inner]} default={%{foo: "123"}}>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
         </.inputs_for>
       </.form>
@@ -585,7 +585,6 @@ defmodule Phoenix.LiveView.ComponentsTest do
         <.inputs_for
           :let={finner}
           field={f[:inner]}
-          }
           default={[%{foo: "456"}]}
           prepend={[%{foo: "123"}]}
           append={[%{foo: "789"}]}
@@ -613,7 +612,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } options={[foo: "bar"]}>
+        <.inputs_for :let={finner} field={f[:inner]} options={[foo: "bar"]}>
           <p>{finner.options[:foo]}</p>
         </.inputs_for>
       </.form>
@@ -622,6 +621,35 @@ defmodule Phoenix.LiveView.ComponentsTest do
       html = t2h(template)
       assert [p] = Floki.find(html, "p")
       assert Floki.text(p) =~ "bar"
+    end
+
+    test "can disable persistent ids" do
+      assigns = %{}
+
+      template = ~H"""
+      <.form :let={f} as={:myform}>
+        <.inputs_for
+          :let={finner}
+          field={f[:inner]}
+          default={[%{foo: "456"}, %{foo: "789"}]}
+          prepend={[%{foo: "123"}]}
+          append={[%{foo: "101112"}]}
+          skip_persistent_id
+        >
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
+        </.inputs_for>
+      </.form>
+      """
+
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input id="myform_inner_0_foo" name="myform[inner][0][foo]" type="text" value="123"></input>
+                 <input id="myform_inner_1_foo" name="myform[inner][1][foo]" type="text" value="456"></input>
+                 <input id="myform_inner_2_foo" name="myform[inner][2][foo]" type="text" value="789"></input>
+                 <input id="myform_inner_3_foo" name="myform[inner][3][foo]" type="text" value="101112"></input>
+               </form>
+               """
     end
   end
 
