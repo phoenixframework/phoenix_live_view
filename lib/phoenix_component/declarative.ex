@@ -107,6 +107,7 @@ defmodule Phoenix.Component.Declarative do
     onwaiting
     part
     placeholder
+    popover
     rel
     role
     slot
