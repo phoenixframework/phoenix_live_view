@@ -1249,21 +1249,12 @@ class TransitionSet {
     });
   }
 
-  addAsyncTransition(promise) {
-    this.promises.add(promise);
-    promise.then(() => {
-      this.promises.delete(promise);
-      this.flushPendingOps();
-    });
-  }
-
   pushPendingOp(op) {
     this.pendingOps.push(op);
   }
 
   size() {
-    return this.transitions.size;
-    +this.promises.size;
+    return this.transitions.size + this.promises.size;
   }
 
   flushPendingOps() {
