@@ -260,7 +260,7 @@ Or using the special `:for` attribute:
 ```
 
 Comprehensions in templates are optimized so the static parts of
-a comprehension are only set once, regardless of the number of items.
+a comprehension are only sent once, regardless of the number of items.
 However, keep in mind LiveView does not track changes within the
 collection given to the comprehension. In other words, if one entry
 in `@posts` changes, all posts are sent again.
