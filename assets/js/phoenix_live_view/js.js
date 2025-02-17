@@ -61,7 +61,7 @@ let JS = {
       const promise = new Promise((resolve, _reject) => {
         detail.done = resolve
       })
-      liveSocket.asyncTransition(promise)
+      view.liveSocket.asyncTransition(promise)
     }
     DOM.dispatchEvent(el, event, {detail, bubbles})
   },
