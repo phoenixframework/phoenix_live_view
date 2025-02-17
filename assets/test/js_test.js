@@ -783,6 +783,66 @@ describe("JS", () => {
       }
       JS.exec(event, "exec", click.getAttribute("phx-click"), view, click)
     })
+
+    test("with no selector", () => {
+      let view = setupView(`
+      <div
+        id="click"
+        phx-click='[["exec", {"attr": "data-toggle"}]]''
+        data-toggle='[["toggle_attr", {"attr": ["open", "true"]}]]'
+      ></div>
+      `)
+      let click = document.querySelector("#click")
+
+      expect(click.getAttribute("open")).toEqual(null)
+      JS.exec(event, "click", click.getAttribute("phx-click"), view, click)
+      expect(click.getAttribute("open")).toEqual("true")
+    })
+
+    test("with to scope inner", () => {
+      let view = setupView(`
+      <div id="click" phx-click='[["exec",{"attr": "data-toggle", "to": {"inner": "#modal"}}]]'>
+        <div id="modal" data-toggle='[["toggle_attr", {"attr": ["open", "true"]}]]'>modal</div>
+      </div>
+      `)
+      let modal = document.querySelector("#modal")
+      let click = document.querySelector("#click")
+
+      expect(modal.getAttribute("open")).toEqual(null)
+      JS.exec(event, "click", click.getAttribute("phx-click"), view, click)
+      expect(modal.getAttribute("open")).toEqual("true")
+    })
+
+    test("with to scope closest", () => {
+      let view = setupView(`
+      <div id="modal" data-toggle='[["toggle_attr", {"attr": ["open", "true"]}]]'>
+        <div id="click" phx-click='[["exec",{"attr": "data-toggle", "to": {"closest": "#modal"}}]]'></div>
+      </div>
+      `)
+      let modal = document.querySelector("#modal")
+      let click = document.querySelector("#click")
+
+      expect(modal.getAttribute("open")).toEqual(null)
+      JS.exec(event, "click", click.getAttribute("phx-click"), view, click)
+      expect(modal.getAttribute("open")).toEqual("true")
+    })
+
+    test("with multiple selector", () => {
+      let view = setupView(`
+      <div id="modal1" data-toggle='[["toggle_attr", {"attr": ["open", "true"]}]]'>modal</div>
+      <div id="modal2" data-toggle='[["toggle_attr", {"attr": ["open", "true"]}]]' open='true'>modal</div>
+      <div id="click" phx-click='[["exec", {"attr": "data-toggle", "to": "#modal1, #modal2"}]]'></div>
+      `)
+      let modal1 = document.querySelector("#modal1")
+      let modal2 = document.querySelector("#modal2")
+      let click = document.querySelector("#click")
+
+      expect(modal1.getAttribute("open")).toEqual(null)
+      expect(modal2.getAttribute("open")).toEqual("true")
+      JS.exec(event, "click", click.getAttribute("phx-click"), view, click)
+      expect(modal1.getAttribute("open")).toEqual("true")
+      expect(modal2.getAttribute("open")).toEqual(null)
+    })
   })
 
   describe("exec_toggle_attr", () => {
