@@ -119,9 +119,24 @@ let serializeForm = (form, metadata, onlyNames = []) => {
     submitter.parentElement.removeChild(injectedElement)
   }
 
-  for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
+  for(let metaKey in meta){
+    appendToUrlParams(params, metaKey, meta[metaKey])
+  }
 
   return params.toString()
+}
+
+let appendToUrlParams = (params, name, value) => {
+  if(Array.isArray(value)){
+    value.forEach((v) => appendToUrlParams(params, `${name}[]`, v))
+  } else if(value instanceof Object){
+    Object.entries(value).forEach(([key, v]) => {
+      appendToUrlParams(params, `${name}[${key}]`, v)
+    })
+  } else {
+    params.append(name, value)
+  }
+  return params
 }
 
 export default class View {
@@ -1171,7 +1186,7 @@ export default class View {
       ], phxEvent, "change", opts)
     }
     let formData
-    let meta  = this.extractMeta(inputEl.form)
+    let meta = this.extractMeta(inputEl.form, {}, opts.value)
     if(inputEl instanceof HTMLButtonElement){ meta.submitter = inputEl }
     if(inputEl.getAttribute(this.binding("change"))){
       formData = serializeForm(inputEl.form, {_target: opts._target, ...meta}, [inputEl.name])
@@ -1300,7 +1315,7 @@ export default class View {
         if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
           return this.undoRefs(ref, phxEvent)
         }
-        let meta = this.extractMeta(formEl)
+        let meta = this.extractMeta(formEl, {}, opts.value)
         let formData = serializeForm(formEl, {submitter, ...meta})
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
@@ -1310,7 +1325,7 @@ export default class View {
         }).then(({resp}) => onReply(resp))
       })
     } else if(!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))){
-      let meta = this.extractMeta(formEl)
+      let meta = this.extractMeta(formEl, {}, opts.value)
       let formData = serializeForm(formEl, {submitter, ...meta})
       this.pushWithReply(refGenerator, "event", {
         type: "form",
