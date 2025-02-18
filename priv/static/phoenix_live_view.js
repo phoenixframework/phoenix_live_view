@@ -2784,14 +2784,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     // private
     // commands
     exec_exec(e, eventType, phxEvent, view, sourceEl, el, { attr, to }) {
-      let nodes = to ? dom_default.all(document, to) : [sourceEl];
-      nodes.forEach((node) => {
-        let encodedJS = node.getAttribute(attr);
-        if (!encodedJS) {
-          throw new Error(`expected ${attr} to contain JS command on "${to}"`);
-        }
-        view.liveSocket.execJS(node, encodedJS, eventType);
-      });
+      let encodedJS = el.getAttribute(attr);
+      if (!encodedJS) {
+        throw new Error(`expected ${attr} to contain JS command on "${to}"`);
+      }
+      view.liveSocket.execJS(el, encodedJS, eventType);
     },
     exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { event, detail, bubbles }) {
       detail = detail || {};
