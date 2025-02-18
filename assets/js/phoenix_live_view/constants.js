@@ -67,6 +67,7 @@ export const PHX_RELOAD_STATUS = "__phoenix_reload_status__"
 export const LOADER_TIMEOUT = 1
 export const MAX_CHILD_JOIN_ATTEMPTS = 3
 export const BEFORE_UNLOAD_LOADER_TIMEOUT = 200
+export const DISCONNECTED_TIMEOUT = 500
 export const BINDING_PREFIX = "phx-"
 export const PUSH_TIMEOUT = 30000
 export const LINK_HEADER = "x-requested-with"
