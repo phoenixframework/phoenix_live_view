@@ -112,6 +112,15 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.5
+
+### Bug fixes
+* Fix `JS.exec` failing when a selector is passed ([#3678](https://github.com/phoenixframework/phoenix_live_view/pull/3678))
+* Fix race conditions when testing a live upload that redirects in the progress callback ([#3676](https://github.com/phoenixframework/phoenix_live_view/pull/3676))
+
+### Enhancements
+* Detect infinite patch redirect loops and raise an error ([#3670](https://github.com/phoenixframework/phoenix_live_view/pull/3670))
+
 ## 1.0.4 (2025-02-04)
 
 ### Bug fixes
