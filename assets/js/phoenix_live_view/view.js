@@ -1,6 +1,5 @@
 import {
   BEFORE_UNLOAD_LOADER_TIMEOUT,
-  DISCONNECTED_TIMEOUT,
   CHECKABLE_INPUTS,
   CONSECUTIVE_RELOADS,
   PHX_AUTO_RECOVER,
@@ -900,7 +899,7 @@ export default class View {
   delayedDisconnected(){
     this.disconnectedTimer = setTimeout(() => {
       this.execAll(this.binding("disconnected"))
-    }, DISCONNECTED_TIMEOUT)
+    }, this.liveSocket.disconnectedTimeout)
   }
 
   wrapPush(callerPush, receives){
