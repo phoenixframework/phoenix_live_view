@@ -45,6 +45,10 @@ defmodule Phoenix.LiveComponent do
   > their main goal is to organize code, rather than sharing it across
   > LiveViews. When it comes to code organization and design, Elixir developers
   > prefer to use functions and data structures.
+  >
+  > - If you only need to extract html: use FunctionComponents
+  > - To extract html and related handle_events: consider [delegate_event/2](`Phoenix.LiveView.delegate_event/2`)
+  > - To extract html, handle_events, and encapsulate additional state: use LiveComponents
 
   ## Life-cycle
 

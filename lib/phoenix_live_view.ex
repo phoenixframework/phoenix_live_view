@@ -2145,4 +2145,120 @@ defmodule Phoenix.LiveView do
   def cancel_async(socket, async_or_keys, reason \\ {:shutdown, :cancel}) do
     Async.cancel_async(socket, async_or_keys, reason)
   end
+
+  @doc """
+  Helper to delegate a LiveView handle_event to another module
+
+  In LiveViews we may want to organize code by extracting related sections to another module
+
+  There are three common situations
+
+  1. Extract html
+  2. Extract html and related handle_events
+  3. Extract html, handle_events, and create additional separate state
+
+  For 1, we have [FunctionComponents](`Phoenix.Component`). 3 is covered by [LiveComponents](`Phoenix.LiveComponent`)
+
+  For 2, we can combine FunctionComponents and delegate_event
+
+  For example, if our LiveView starts to gather many handle_events, some of which have potential to be organized elsewhere:
+
+      defmodule Example.Live do
+        use Phoenix.LiveView
+
+        def render(assigns) do
+          ~H"""
+          <table phx-click="sort">...</table>
+
+          <form phx-change="validate" phx-submit="search">...</form>
+          \"""
+        end
+
+        def handle_event("sort", params, socket) do
+          socket
+          |> do_sorting_stuff(params)
+          |> noreply
+        end
+
+        def handle_event("validate", params, socket) do
+          socket
+          |> do_form_validation(params)
+          |> noreply
+        end
+
+        def handle_event("search", params, socket) do
+          socket
+          |> do_form_search(params)
+          |> noreply
+        end
+      end
+
+  We might instead do:
+
+      defmodule Example.Live do
+        use Phoenix.LiveView
+
+        alias Example.SortComponent
+        alias Example.SearchComponent
+
+        def render(assigns) do
+          ~H"""
+          <SortComponent.table />
+
+          <SearchComponent.form />
+          \"""
+        end
+
+        delegate_event "sort", to: SortComponent
+
+        delegate_event "validate", to: SearchComponent
+        delegate_event "search", to: SearchComponent
+      end
+
+      defmodule Example.SortComponent do
+        use Phoenix.Component
+
+        def table(assigns) do
+          ~H"""
+          <table phx-click="sort">...</table>
+          \"""
+        end
+
+        def handle_event("sort", params, socket) do
+          socket
+          |> do_sorting_stuff(params)
+          |> noreply
+        end
+      end
+
+      defmodule Example.SearchComponent do
+        use Phoenix.Component
+
+        def table(assigns) do
+          ~H"""
+          <form phx-change="validate" phx-submit="search">...</form>
+          \"""
+        end
+
+        def handle_event("validate", params, socket) do
+          socket
+          |> do_form_validation(params)
+          |> noreply
+        end
+
+        def handle_event("search", params, socket) do
+          socket
+          |> do_form_search(params)
+          |> noreply
+        end
+      end
+
+  Note that if your LiveView also contains *non*-delegated handle_events, they must still be placed directly next
+  to delegate_event calls to avoid a non-adjacent function clause compiler warning
+  """
+  defmacro delegate_event(event, to: module) do
+    quote do
+      def handle_event(unquote(event), params, socket), do: unquote(module).handle_event(unquote(event), params, socket)
+    end
+  end
 end
