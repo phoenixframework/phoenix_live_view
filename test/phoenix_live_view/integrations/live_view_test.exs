@@ -134,7 +134,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "live render with socket.assigns", %{conn: conn} do
       assert_raise KeyError,
-                   ~r/key :boom not found in: #Phoenix.LiveView.Socket.AssignsNotInSocket<>/,
+                   ~r/key :boom not found in:\s+#Phoenix.LiveView.Socket.AssignsNotInSocket<>/,
                    fn ->
                      live(conn, "/assigns-not-in-socket")
                    end
