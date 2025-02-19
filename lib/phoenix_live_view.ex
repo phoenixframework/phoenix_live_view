@@ -2258,7 +2258,8 @@ defmodule Phoenix.LiveView do
   """
   defmacro delegate_event(event, to: module) do
     quote do
-      def handle_event(unquote(event), params, socket), do: unquote(module).handle_event(unquote(event), params, socket)
+      def handle_event(unquote(event), params, socket),
+        do: unquote(module).handle_event(unquote(event), params, socket)
     end
   end
 end

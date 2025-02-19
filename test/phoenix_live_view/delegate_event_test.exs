@@ -9,9 +9,8 @@ defmodule Phoenix.LiveView.DelegateEventTest do
 
   defmodule ExampleView do
     import Phoenix.LiveView
-    delegate_event "make it so", to: ExampleComponent
+    delegate_event("make it so", to: ExampleComponent)
   end
-
 
   test "delegating an event handler" do
     assert ExampleView.handle_event("make it so", %{}, %{}) == :success
