@@ -2167,7 +2167,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.LiveView
 
         def render(assigns) do
-          ~H"""
+          ~H\"""
           <table phx-click="sort">...</table>
 
           <form phx-change="validate" phx-submit="search">...</form>
@@ -2202,7 +2202,7 @@ defmodule Phoenix.LiveView do
         alias Example.SearchComponent
 
         def render(assigns) do
-          ~H"""
+          ~H\"""
           <SortComponent.table />
 
           <SearchComponent.form />
@@ -2219,7 +2219,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.Component
 
         def table(assigns) do
-          ~H"""
+          ~H\"""
           <table phx-click="sort">...</table>
           \"""
         end
@@ -2235,7 +2235,7 @@ defmodule Phoenix.LiveView do
         use Phoenix.Component
 
         def table(assigns) do
-          ~H"""
+          ~H\"""
           <form phx-change="validate" phx-submit="search">...</form>
           \"""
         end
