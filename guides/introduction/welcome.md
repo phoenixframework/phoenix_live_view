@@ -253,16 +253,8 @@ However, sometimes you need to share more than just markup across LiveViews,
 and you also need to move events to a separate module. For these cases you
 can use `Phoenix.LiveView.attach_hook/4`
 
-    defmodule Helpers do
-      def ok(socket), do: {:ok, socket}
-      def noreply(socket), do: {:noreply, socket}
-      def halt(socket), do: {:halt, socket}
-      def cont(socket), do: {:cont, socket}
-    end
-
     defmodule DemoLive do
       use Phoenix.LiveView
-      import Helpers
 
       def render(assigns) do
         ~H"""
@@ -281,25 +273,23 @@ can use `Phoenix.LiveView.attach_hook/4`
         first_list = for(i <- 1..9, do: "First List #{i}") |> Enum.shuffle()
         second_list = for(i <- 1..9, do: "Second List #{i}") |> Enum.shuffle()
 
-        socket
-        |> assign(:counter, 0)
-        |> assign(first_list: first_list)
-        |> assign(second_list: second_list)
-        |> attach_hook(:sort, :handle_event, &MySortComponent.hooked_event/3)  # 2) Delegated event
-        |> ok
+        socket =
+          socket
+          |> assign(:counter, 0)
+          |> assign(first_list: first_list)
+          |> assign(second_list: second_list)
+          |> attach_hook(:sort, :handle_event, &MySortComponent.hooked_event/3)  # 2) Delegated events
+        {:ok, socket}
       end
 
       # 1) Normal event
       def handle_event("inc", _params, socket) do
-        socket
-        |> update(:counter, &(&1 + 1))
-        |> noreply
+        {:noreply, update(socket, :counter, &(&1 + 1))}
       end
     end
 
     defmodule MySortComponent do
       use Phoenix.Component
-      import Helpers
 
       def display(assigns) do
         ~H"""
@@ -315,20 +305,16 @@ can use `Phoenix.LiveView.attach_hook/4`
         key = String.to_existing_atom(key)
         shuffled = Enum.shuffle(socket.assigns[key])
 
-        socket
-        |> assign(key, shuffled)
-        |> halt
+        {:halt, assign(socket, key, shuffled)}
       end
 
       def hooked_event("sort", %{"list" => key}, socket) do
         key = String.to_existing_atom(key)
         sorted = Enum.sort(socket.assigns[key])
 
-        socket
-        |> assign(key, sorted)
-        |> halt
+        {:halt, assign(socket, key, sorted)}
       end
-      def hooked_event(_event, _params, socket), do: cont(socket)
+      def hooked_event(_event, _params, socket), do: {:cont, socket}
     end
 
 ### Live Components to encapsulate additional state
