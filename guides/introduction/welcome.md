@@ -314,6 +314,7 @@ can use `Phoenix.LiveView.attach_hook/4`
 
         {:halt, assign(socket, key, sorted)}
       end
+
       def hooked_event(_event, _params, socket), do: {:cont, socket}
     end
 
