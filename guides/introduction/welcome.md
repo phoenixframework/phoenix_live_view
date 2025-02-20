@@ -318,7 +318,7 @@ can use `Phoenix.LiveView.attach_hook/4`
       def hooked_event(_event, _params, socket), do: {:cont, socket}
     end
 
-### Live Components to encapsulate additional state
+### Live components to encapsulate additional state
 
 A component will occasionally need control over not only its own events,
 but also its own seperate state. For these cases, LiveView
