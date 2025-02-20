@@ -9,6 +9,7 @@ import {
   PHX_DISABLE_WITH_RESTORE,
   PHX_DISABLED,
   PHX_LOADING_CLASS,
+  PHX_CUSTOM_EVENTS,
   PHX_ERROR_CLASS,
   PHX_CLIENT_ERROR_CLASS,
   PHX_SERVER_ERROR_CLASS,
@@ -398,9 +399,11 @@ export default class View {
   execNewMounted(parent = this.el){
     let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
+    let phxCustomEvents = this.binding(PHX_CUSTOM_EVENTS)
+
     DOM.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, hookEl => {
       if(this.ownsElement(hookEl)){
-        DOM.maintainPrivateHooks(hookEl, hookEl, phxViewportTop, phxViewportBottom)
+        DOM.maintainPrivateHooks(hookEl, hookEl, phxViewportTop, phxViewportBottom, phxCustomEvents)
         this.maybeAddNewHook(hookEl)
       }
     })
@@ -472,7 +475,8 @@ export default class View {
       this.liveSocket.triggerDOM("onNodeAdded", [el])
       let phxViewportTop = this.binding(PHX_VIEWPORT_TOP)
       let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM)
-      DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom)
+      let phxCustomEvents = this.binding(PHX_CUSTOM_EVENTS)
+      DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom, phxCustomEvents)
       this.maybeAddNewHook(el)
       if(el.getAttribute){ this.maybeMounted(el) }
     })
