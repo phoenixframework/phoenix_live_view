@@ -25,7 +25,7 @@ defmodule Phoenix.LiveView.LiveStream do
     # with manually calling stream_insert multiple times, as stream_insert prepends.
     items_list =
       for item <- items, reduce: [] do
-        items -> [{dom_id.(item), -1, item, opts[:limit]} | items]
+        items -> [{dom_id.(item), -1, item, opts[:limit], opts[:update_only]} | items]
       end
 
     %LiveStream{
@@ -64,10 +64,10 @@ defmodule Phoenix.LiveView.LiveStream do
     %{stream | deletes: [dom_id | stream.deletes]}
   end
 
-  def insert_item(%LiveStream{} = stream, item, at, limit) do
+  def insert_item(%LiveStream{} = stream, item, at, limit, update_only) do
     item_id = stream.dom_id.(item)
 
-    %{stream | inserts: [{item_id, at, item, limit} | stream.inserts]}
+    %{stream | inserts: [{item_id, at, item, limit, update_only} | stream.inserts]}
   end
 
   defimpl Enumerable, for: LiveStream do
@@ -106,7 +106,7 @@ defmodule Phoenix.LiveView.LiveStream do
     defp do_reduce(list, {:suspend, acc}, fun), do: {:suspended, acc, &do_reduce(list, &1, fun)}
     defp do_reduce([], {:cont, acc}, _fun), do: {:done, acc}
 
-    defp do_reduce([{dom_id, _at, item, _limit} | tail], {:cont, acc}, fun) do
+    defp do_reduce([{dom_id, _at, item, _limit, _update_only} | tail], {:cont, acc}, fun) do
       do_reduce(tail, fun.({dom_id, item}, acc), fun)
     end
 
