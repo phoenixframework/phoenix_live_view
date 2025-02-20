@@ -229,6 +229,8 @@ For authentication, with built-in LiveView support, run `mix phx.gen.auth Accoun
 LiveView supports two extension mechanisms: function components, provided by
 `HEEx` templates, and stateful components, known as LiveComponents.
 
+### Function Components to organize markup
+
 Similar to `render(assigns)` in our LiveView, a function component is any
 function that receives an assigns map and returns a `~H` template. For example:
 
@@ -245,9 +247,99 @@ You can learn more about function components in the `Phoenix.Component`
 module. At the end of the day, they are a useful mechanism for code organization
 and to reuse markup in your LiveViews.
 
+### attach_hook/4 to organize event handling
+
 However, sometimes you need to share more than just markup across LiveViews,
-and you also need to move events to a separate module. For these cases, LiveView
-provide `Phoenix.LiveComponent`, which are rendered using
+and you also need to move events to a separate module. For these cases you
+can either use regular old functions to delegate, or make use of [attach_hook/4](`Phoenix.LiveView.attach_hook/4#extracting-events-for-code-organization`)
+
+    defmodule Helpers do
+      def ok(socket), do: {:ok, socket}
+      def noreply(socket), do: {:noreply, socket}
+      def halt(socket), do: {:halt, socket}
+      def cont(socket), do: {:cont, socket}
+    end
+
+    defmodule DemoLive do
+      use Phoenix.LiveView
+      import Helpers
+
+      def render(assigns) do
+        ~H"""
+        <div>
+          <div>
+            Counter: {@counter}
+            <button phx-click="inc">+</button>
+          </div>
+
+          <MySortComponent.display lists={[first_list: @first_list, second_list: @second_list]} />
+        </div>
+        """
+      end
+
+      def mount(_params, _session, socket) do
+        first_list = for(i <- 1..9, do: "First List #{i}") |> Enum.shuffle()
+        second_list = for(i <- 1..9, do: "Second List #{i}") |> Enum.shuffle()
+
+        socket
+        |> assign(:counter, 0)
+        |> assign(first_list: first_list)
+        |> assign(second_list: second_list)
+        |> attach_hook(:sort, :handle_event, &MySortComponent.hooked_event/3)  # 3) Delegated event using attach_hook
+        |> ok
+      end
+
+      # 1) Normal event
+      def handle_event("inc", _params, socket) do
+        socket
+        |> update(:counter, &(&1 + 1))
+        |> noreply
+      end
+
+      # 2) Delegated event using functions
+      def handle_event("shuffle", params, socket), do: MySortComponent.handle_event("shuffle", params, socket)
+    end
+
+    defmodule MySortComponent do
+      use Phoenix.Component
+      import Helpers
+
+      def display(assigns) do
+        ~H"""
+        <div :for={{key, list} <- @lists}>
+          <ul><li :for={item <- list}>{item}</li></ul>
+          <button phx-click="shuffle" phx-value-list={key}>Shuffle</button>
+          <button phx-click="sort" phx-value-list={key}>Sort</button>
+        </div>
+        """
+      end
+
+      def handle_event("shuffle", %{"list" => key}, socket) do
+        key = String.to_existing_atom(key)
+        shuffled = Enum.shuffle(socket.assigns[key])
+
+        socket
+        |> assign(key, shuffled)
+        |> noreply
+      end
+
+      def hooked_event("sort", %{"list" => key}, socket) do
+        key = String.to_existing_atom(key)
+        sorted = Enum.sort(socket.assigns[key])
+
+        socket
+        |> assign(key, sorted)
+        |> halt
+      end
+      def hooked_event(_event, _params, socket), do: cont(socket)
+    end
+
+
+### Live Components to encapsulate additional state
+
+A component will occasionally need control over not only it's own events,
+but also it's own seperate state. For these cases, LiveView
+provides `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
 ```heex
@@ -260,6 +352,11 @@ lightweight since they "run" in the same process as the parent LiveView, but
 are more complex than function components themselves. Given they all run in the
 same process, errors in components cause the whole view to fail to render.
 For a complete rundown, see `Phoenix.LiveComponent`.
+
+When in doubt over [Functional components or live components?](`Phoenix.LiveComponent#functional-components-or-live-components`), default to the former.
+Rely on the latter only when you need the additional state.
+
+### live_render/3 to encapsulate state (with error isolation)
 
 Finally, if you want complete isolation between parts of a LiveView, you can
 always render a LiveView inside another LiveView by calling
@@ -277,11 +374,23 @@ Given that it runs in its own process, a nested LiveView is an excellent tool
 for creating completely isolated UI elements, but it is a slightly expensive
 abstraction if all you want is to compartmentalize markup or events (or both).
 
-To sum it up:
+### Summary
 
-  * use `Phoenix.Component` for code organization and reusing markup
-  * use `Phoenix.LiveComponent` for sharing state, markup, and events between LiveViews
-  * use nested `Phoenix.LiveView` to compartmentalize state, markup, and events (with error isolation)
+In LiveViews we may want to organize code by extracting related sections to another module
+
+There are four common situations
+  1. Extract html
+  2. Extract html and related handle_events
+  3. Extract html, handle_events, and create additional separate state
+  4. Same as 3, but with error isolation
+
+  For 1, we have [FunctionComponents](`Phoenix.Component`)
+
+  For 2, we can combine FunctionComponents & either delegate the events with regular functions or [attach_hook/4](`Phoenix.LiveView.attach_hook/4#extracting-events-for-code-organization`)
+
+  Situation 3 is covered by [LiveComponents](`Phoenix.LiveComponent`)
+
+  Finally, for 4 we use nested `Phoenix.LiveView` via live_render/3
 
 ## Guides
 
