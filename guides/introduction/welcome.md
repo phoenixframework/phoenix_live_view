@@ -371,7 +371,7 @@ There are four common situations
 
   For 2, we can combine function components & [attach_hook/4](`Phoenix.LiveView.attach_hook/4`)
 
-  Situation 3 is covered by [LiveComponents](`Phoenix.LiveComponent`)
+  Situation 3 is covered by [live components](`Phoenix.LiveComponent`)
 
   Finally, for 4 we use nested `Phoenix.LiveView` via live_render/3
 
