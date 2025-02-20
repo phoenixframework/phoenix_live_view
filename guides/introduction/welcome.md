@@ -320,8 +320,8 @@ can use `Phoenix.LiveView.attach_hook/4`
 
 ### Live Components to encapsulate additional state
 
-A component will occasionally need control over not only it's own events,
-but also it's own seperate state. For these cases, LiveView
+A component will occasionally need control over not only its own events,
+but also its own seperate state. For these cases, LiveView
 provides `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
