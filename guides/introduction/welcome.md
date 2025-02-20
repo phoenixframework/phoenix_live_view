@@ -367,7 +367,7 @@ There are four common situations
   3. Extract html, events, and create additional separate state
   4. Same as 3, but with error isolation
 
-  For 1, we have [FunctionComponents](`Phoenix.Component`)
+  For 1, we have [function components](`Phoenix.Component`)
 
   For 2, we can combine FunctionComponents & [attach_hook/4](`Phoenix.LiveView.attach_hook/4`)
 
