@@ -1508,6 +1508,12 @@ defmodule Phoenix.LiveView do
   interoperability](js-interop.html#client-hooks-via-phx-hook) because a client hook
   can push an event and receive a reply.
 
+  ## Organizing code
+
+  Hooks are an excellent way to extract related events out of the parent LiveView and
+  into seperate modules without resorting unnecessarily to LiveComponents for organization.
+  An example can be found in ["Compartmentalize state, markup, and events in LiveView"](welcome.md#attach_hook-4-to-organize-event-handling)
+
   ## Examples
 
   Attaching and detaching a hook:
@@ -1561,52 +1567,6 @@ defmodule Phoenix.LiveView do
 
         {:ok, socket}
       end
-
-  ### Extracting events for code organization
-
-      defmodule Example.Live do
-        use Phoenix.LiveView
-        alias Example.SortComponent
-
-        def mount(_params, _session, socket) do
-          socket
-          |> attach_hook(:my_sorting_hook, :handle_event, &SortComponent.handle_event/3)
-          |> ok
-        end
-
-        def handle_event("other_normal_event", _params, socket) do
-          socket
-          |> do_other_stuff
-          |> noreply
-        end
-
-        defp ok(socket), do: {:ok, socket}
-        defp noreply(socket), do: {:noreply, socket}
-      end
-
-      defmodule Example.SortComponent do
-        use Phoenix.Component
-
-        def table(assigns) do
-          ~H\"""
-          <table phx-click="sort">...</table>
-          \"""
-        end
-
-        def handle_event("sort", params, socket) do
-          socket
-          |> do_sorting_stuff(params)
-          |> halt
-        end
-        def handle_event(_event, _params, socket), do: {:cont, socket}
-
-        defp halt(socket), {:halt, socket}
-      end
-
-  Note:
-  - As mentioned [above](`attach_hook/4#halting-the-lifecycle`), the return type of
-  handle_event changes to `{:halt, socket}` instead of `{:noreply, socket}`
-  - A catch-all clause returning `{:cont, socket}` also needs to be added
   """
   defdelegate attach_hook(socket, name, stage, fun), to: Phoenix.LiveView.Lifecycle
 
