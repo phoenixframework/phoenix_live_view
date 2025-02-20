@@ -369,7 +369,7 @@ There are four common situations
 
   For 1, we have [function components](`Phoenix.Component`)
 
-  For 2, we can combine FunctionComponents & [attach_hook/4](`Phoenix.LiveView.attach_hook/4`)
+  For 2, we can combine function components & [attach_hook/4](`Phoenix.LiveView.attach_hook/4`)
 
   Situation 3 is covered by [LiveComponents](`Phoenix.LiveComponent`)
 
