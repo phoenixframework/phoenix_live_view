@@ -1562,7 +1562,7 @@ defmodule Phoenix.LiveView do
         {:ok, socket}
       end
 
-  Extracting event handling to another module for code organization:
+  ### Extracting events for code organization
 
       defmodule Example.Live do
         use Phoenix.LiveView
