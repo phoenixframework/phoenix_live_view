@@ -1510,7 +1510,7 @@ defmodule Phoenix.LiveView do
 
   ## Organizing code
 
-  Hooks are an excellent way to extract related events out of the parent LiveView and
+  Lifecycle hooks are an excellent way to extract related events out of the parent LiveView and
   into seperate modules without resorting unnecessarily to LiveComponents for organization.
   An example can be found in ["Compartmentalize state, markup, and events in LiveView"](welcome.md#attach_hook-4-to-organize-event-handling)
 
