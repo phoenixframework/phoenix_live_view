@@ -363,8 +363,8 @@ In LiveViews we may want to organize code by extracting related sections to anot
 
 There are four common situations
   1. Extract html
-  2. Extract html and related handle_events
-  3. Extract html, handle_events, and create additional separate state
+  2. Extract html and related events
+  3. Extract html, events, and create additional separate state
   4. Same as 3, but with error isolation
 
   For 1, we have [FunctionComponents](`Phoenix.Component`)
