@@ -229,7 +229,7 @@ For authentication, with built-in LiveView support, run `mix phx.gen.auth Accoun
 LiveView supports two extension mechanisms: function components, provided by
 `HEEx` templates, and stateful components, known as LiveComponents.
 
-### Function Components to organize markup
+### Function components to organize markup
 
 Similar to `render(assigns)` in our LiveView, a function component is any
 function that receives an assigns map and returns a `~H` template. For example:
