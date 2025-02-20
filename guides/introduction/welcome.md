@@ -251,7 +251,7 @@ and to reuse markup in your LiveViews.
 
 However, sometimes you need to share more than just markup across LiveViews,
 and you also need to move events to a separate module. For these cases you
-can either use regular old functions to delegate, or make use of [attach_hook/4](`Phoenix.LiveView.attach_hook/4#extracting-events-for-code-organization`)
+can use `Phoenix.LiveView.attach_hook/4`
 
     defmodule Helpers do
       def ok(socket), do: {:ok, socket}
@@ -285,7 +285,7 @@ can either use regular old functions to delegate, or make use of [attach_hook/4]
         |> assign(:counter, 0)
         |> assign(first_list: first_list)
         |> assign(second_list: second_list)
-        |> attach_hook(:sort, :handle_event, &MySortComponent.hooked_event/3)  # 3) Delegated event using attach_hook
+        |> attach_hook(:sort, :handle_event, &MySortComponent.hooked_event/3)  # 2) Delegated event
         |> ok
       end
 
@@ -295,9 +295,6 @@ can either use regular old functions to delegate, or make use of [attach_hook/4]
         |> update(:counter, &(&1 + 1))
         |> noreply
       end
-
-      # 2) Delegated event using functions
-      def handle_event("shuffle", params, socket), do: MySortComponent.handle_event("shuffle", params, socket)
     end
 
     defmodule MySortComponent do
@@ -314,13 +311,13 @@ can either use regular old functions to delegate, or make use of [attach_hook/4]
         """
       end
 
-      def handle_event("shuffle", %{"list" => key}, socket) do
+      def hooked_event("shuffle", %{"list" => key}, socket) do
         key = String.to_existing_atom(key)
         shuffled = Enum.shuffle(socket.assigns[key])
 
         socket
         |> assign(key, shuffled)
-        |> noreply
+        |> halt
       end
 
       def hooked_event("sort", %{"list" => key}, socket) do
@@ -333,7 +330,6 @@ can either use regular old functions to delegate, or make use of [attach_hook/4]
       end
       def hooked_event(_event, _params, socket), do: cont(socket)
     end
-
 
 ### Live Components to encapsulate additional state
 
@@ -386,7 +382,7 @@ There are four common situations
 
   For 1, we have [FunctionComponents](`Phoenix.Component`)
 
-  For 2, we can combine FunctionComponents & either delegate the events with regular functions or [attach_hook/4](`Phoenix.LiveView.attach_hook/4#extracting-events-for-code-organization`)
+  For 2, we can combine FunctionComponents & [attach_hook/4](`Phoenix.LiveView.attach_hook/4`)
 
   Situation 3 is covered by [LiveComponents](`Phoenix.LiveComponent`)
 
