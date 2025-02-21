@@ -229,7 +229,7 @@ For authentication, with built-in LiveView support, run `mix phx.gen.auth Accoun
 LiveView supports two extension mechanisms: function components, provided by
 `HEEx` templates, and stateful components, known as LiveComponents.
 
-### Function components to organize markup
+### Function components to organize markup and event handling
 
 Similar to `render(assigns)` in our LiveView, a function component is any
 function that receives an assigns map and returns a `~H` template. For example:
@@ -247,11 +247,10 @@ You can learn more about function components in the `Phoenix.Component`
 module. At the end of the day, they are a useful mechanism for code organization
 and to reuse markup in your LiveViews.
 
-### attach_hook/4 to organize event handling
-
-However, sometimes you need to share more than just markup across LiveViews,
-and you also need to move events to a separate module. For these cases you
-can use [`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`)
+Sometimes you need to share more than just markup across LiveViews. When you also
+want to move events to a seperate module, or use the same event handler in multiple
+places, function components can be paired with
+[`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`)
 
 ### Live components to encapsulate additional state
 
@@ -293,22 +292,10 @@ for creating completely isolated UI elements, but it is a slightly expensive
 abstraction if all you want is to compartmentalize markup or events (or both).
 
 ### Summary
-
-In LiveViews we may want to organize code by extracting related sections to another module
-
-There are four common situations
-  1. Extract html
-  2. Extract html and related events
-  3. Extract html, events, and create additional separate state
-  4. Same as 3, but with error isolation
-
-  For 1, we have [function components](`Phoenix.Component`)
-
-  For 2, we can combine function components & [attach_hook/4](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`)
-
-  Situation 3 is covered by [live components](`Phoenix.LiveComponent`)
-
-  Finally, for 4 we use nested `Phoenix.LiveView` via live_render/3
+  * use `Phoenix.Component` for code organization and reusing markup
+  * pair `Phoenix.Component` with [`attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`) to organize and reuse event handling
+  * use `Phoenix.LiveComponent` for sharing state, markup, and events between LiveViews
+  * use nested `Phoenix.LiveView` to compartmentalize state, markup, and events (with error isolation)
 
 ## Guides
 
