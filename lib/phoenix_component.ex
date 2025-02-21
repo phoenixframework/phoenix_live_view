@@ -2711,6 +2711,14 @@ defmodule Phoenix.Component do
     """
   )
 
+  attr.(:skip_persistent_id, :boolean,
+    default: false,
+    doc: """
+    Skip the automatic rendering of hidden _persistent_id fields used for reordering
+    inputs.
+    """
+  )
+
   attr.(:options, :list,
     default: [],
     doc: """
@@ -2733,11 +2741,42 @@ defmodule Phoenix.Component do
       |> Keyword.merge(assigns.options)
 
     forms = parent_form.impl.to_form(parent_form.source, parent_form, field_name, options)
+
+    forms =
+      case assigns do
+        %{skip_persistent_id: true} ->
+          forms
+
+        _ ->
+          apply_persistent_id(
+            parent_form,
+            forms,
+            field_name,
+            options
+          )
+      end
+
+    assigns = assign(assigns, :forms, forms)
+
+    ~H"""
+    <%= for finner <- @forms do %>
+      <%= if !@skip_hidden do %>
+        <%= for {name, value_or_values} <- finner.hidden,
+                name = name_for_value_or_values(finner, name, value_or_values),
+                value <- List.wrap(value_or_values) do %>
+          <input type="hidden" name={name} value={value} />
+        <% end %>
+      <% end %>
+      {render_slot(@inner_block, finner)}
+    <% end %>
+    """
+  end
+
+  defp apply_persistent_id(parent_form, forms, field_name, options) do
     seen_ids = for f <- forms, vid = f.params[@persistent_id], into: %{}, do: {vid, true}
-    acc = {seen_ids, 0}
 
     {forms, _} =
-      Enum.map_reduce(forms, acc, fn
+      Enum.map_reduce(forms, {seen_ids, 0}, fn
         %Phoenix.HTML.Form{params: params} = form, {seen_ids, index} ->
           id =
             case params do
@@ -2766,20 +2805,7 @@ defmodule Phoenix.Component do
           {new_form, {Map.put(seen_ids, id, true), index + 1}}
       end)
 
-    assigns = assign(assigns, :forms, forms)
-
-    ~H"""
-    <%= for finner <- @forms do %>
-      <%= if !@skip_hidden do %>
-        <%= for {name, value_or_values} <- finner.hidden,
-                name = name_for_value_or_values(finner, name, value_or_values),
-                value <- List.wrap(value_or_values) do %>
-          <input type="hidden" name={name} value={value} />
-        <% end %>
-      <% end %>
-      {render_slot(@inner_block, finner)}
-    <% end %>
-    """
+    forms
   end
 
   defp next_id(idx, %{} = seen_ids) do
