@@ -248,7 +248,7 @@ module. At the end of the day, they are a useful mechanism for code organization
 and to reuse markup in your LiveViews.
 
 Sometimes you need to share more than just markup across LiveViews. When you also
-want to move events to a seperate module, or use the same event handler in multiple
+want to move events to a separate module, or use the same event handler in multiple
 places, function components can be paired with
 [`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`)
 
@@ -292,8 +292,7 @@ for creating completely isolated UI elements, but it is a slightly expensive
 abstraction if all you want is to compartmentalize markup or events (or both).
 
 ### Summary
-  * use `Phoenix.Component` for code organization and reusing markup
-  * pair `Phoenix.Component` with [`attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`) to organize and reuse event handling
+  * use `Phoenix.Component` for code organization and reusing markup (optionally with [`attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`) for event handling reuse)
   * use `Phoenix.LiveComponent` for sharing state, markup, and events between LiveViews
   * use nested `Phoenix.LiveView` to compartmentalize state, markup, and events (with error isolation)
 
