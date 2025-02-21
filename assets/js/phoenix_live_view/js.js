@@ -216,14 +216,18 @@ let JS = {
       }
     } else {
       if(this.isVisible(el)){
-        el.dispatchEvent(new Event("phx:hide-start"))
-        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
-        el.dispatchEvent(new Event("phx:hide-end"))
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:hide-start"))
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
+          el.dispatchEvent(new Event("phx:hide-end"))
+        })
       } else {
-        el.dispatchEvent(new Event("phx:show-start"))
-        let stickyDisplay = display || this.defaultDisplay(el)
-        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
-        el.dispatchEvent(new Event("phx:show-end"))
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:show-start"))
+          let stickyDisplay = display || this.defaultDisplay(el)
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
+          el.dispatchEvent(new Event("phx:show-end"))
+        })
       }
     }
   },
