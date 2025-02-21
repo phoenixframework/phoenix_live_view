@@ -251,7 +251,7 @@ and to reuse markup in your LiveViews.
 
 However, sometimes you need to share more than just markup across LiveViews,
 and you also need to move events to a separate module. For these cases you
-can use [`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#organizing-code`)
+can use [`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`)
 
 ### Live components to encapsulate additional state
 
@@ -304,7 +304,7 @@ There are four common situations
 
   For 1, we have [function components](`Phoenix.Component`)
 
-  For 2, we can combine function components & [attach_hook/4](`Phoenix.LiveView.attach_hook/4#organizing-code`)
+  For 2, we can combine function components & [attach_hook/4](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`)
 
   Situation 3 is covered by [live components](`Phoenix.LiveComponent`)
 

@@ -1508,7 +1508,7 @@ defmodule Phoenix.LiveView do
   interoperability](js-interop.html#client-hooks-via-phx-hook) because a client hook
   can push an event and receive a reply.
 
-  ## Organizing code
+  ## Sharing event handling logic
 
   Lifecycle hooks are an excellent way to extract related events out of the parent LiveView and
   into seperate modules without resorting unnecessarily to LiveComponents for organization.
