@@ -1511,7 +1511,7 @@ defmodule Phoenix.LiveView do
   ## Sharing event handling logic
 
   Lifecycle hooks are an excellent way to extract related events out of the parent LiveView and
-  into seperate modules without resorting unnecessarily to LiveComponents for organization.
+  into separate modules without resorting unnecessarily to LiveComponents for organization.
 
       defmodule DemoLive do
         use Phoenix.LiveView

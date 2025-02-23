@@ -250,12 +250,12 @@ and to reuse markup in your LiveViews.
 Sometimes you need to share more than just markup across LiveViews. When you also
 want to move events to a separate module, or use the same event handler in multiple
 places, function components can be paired with
-[`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`)
+[`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`).
 
 ### Live components to encapsulate additional state
 
 A component will occasionally need control over not only its own events,
-but also its own seperate state. For these cases, LiveView
+but also its own separate state. For these cases, LiveView
 provides `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
