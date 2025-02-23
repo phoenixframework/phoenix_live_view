@@ -229,6 +229,8 @@ For authentication, with built-in LiveView support, run `mix phx.gen.auth Accoun
 LiveView supports two extension mechanisms: function components, provided by
 `HEEx` templates, and stateful components, known as LiveComponents.
 
+### Function components to organize markup and event handling
+
 Similar to `render(assigns)` in our LiveView, a function component is any
 function that receives an assigns map and returns a `~H` template. For example:
 
@@ -245,9 +247,16 @@ You can learn more about function components in the `Phoenix.Component`
 module. At the end of the day, they are a useful mechanism for code organization
 and to reuse markup in your LiveViews.
 
-However, sometimes you need to share more than just markup across LiveViews,
-and you also need to move events to a separate module. For these cases, LiveView
-provide `Phoenix.LiveComponent`, which are rendered using
+Sometimes you need to share more than just markup across LiveViews. When you also
+want to move events to a separate module, or use the same event handler in multiple
+places, function components can be paired with
+[`Phoenix.LiveView.attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`).
+
+### Live components to encapsulate additional state
+
+A component will occasionally need control over not only its own events,
+but also its own separate state. For these cases, LiveView
+provides `Phoenix.LiveComponent`, which are rendered using
 [`live_component/1`](`Phoenix.Component.live_component/1`):
 
 ```heex
@@ -260,6 +269,11 @@ lightweight since they "run" in the same process as the parent LiveView, but
 are more complex than function components themselves. Given they all run in the
 same process, errors in components cause the whole view to fail to render.
 For a complete rundown, see `Phoenix.LiveComponent`.
+
+When in doubt over [Functional components or live components?](`Phoenix.LiveComponent#functional-components-or-live-components`), default to the former.
+Rely on the latter only when you need the additional state.
+
+### live_render/3 to encapsulate state (with error isolation)
 
 Finally, if you want complete isolation between parts of a LiveView, you can
 always render a LiveView inside another LiveView by calling
@@ -277,9 +291,8 @@ Given that it runs in its own process, a nested LiveView is an excellent tool
 for creating completely isolated UI elements, but it is a slightly expensive
 abstraction if all you want is to compartmentalize markup or events (or both).
 
-To sum it up:
-
-  * use `Phoenix.Component` for code organization and reusing markup
+### Summary
+  * use `Phoenix.Component` for code organization and reusing markup (optionally with [`attach_hook/4`](`Phoenix.LiveView.attach_hook/4#sharing-event-handling-logic`) for event handling reuse)
   * use `Phoenix.LiveComponent` for sharing state, markup, and events between LiveViews
   * use nested `Phoenix.LiveView` to compartmentalize state, markup, and events (with error isolation)
 
