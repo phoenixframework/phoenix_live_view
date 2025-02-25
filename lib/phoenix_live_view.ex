@@ -1888,9 +1888,19 @@ defmodule Phoenix.LiveView do
   end
 
   defp ensure_streams(%Socket{} = socket) do
-    Phoenix.LiveView.Utils.assign_new(socket, :streams, fn ->
-      %{__ref__: 0, __changed__: MapSet.new(), __configured__: %{}}
-    end)
+    # don't use assign_new here because we DON'T want to copy parent streams
+    # during the dead render of nested or sticky LiveViews
+    case socket.assigns do
+      %{streams: _} ->
+        socket
+
+      _ ->
+        Phoenix.LiveView.Utils.assign(socket, :streams, %{
+          __ref__: 0,
+          __changed__: MapSet.new(),
+          __configured__: %{}
+        })
+    end
   end
 
   @doc """
