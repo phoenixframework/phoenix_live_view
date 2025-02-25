@@ -245,7 +245,11 @@ export default class DOMPatch {
             return false
           }
 
-          // input handling
+          // if we are undoing a lock, copy potentially nested clones over
+          if(this.undoRef && DOM.private(toEl, PHX_REF_LOCK)){
+            DOM.putPrivate(fromEl, PHX_REF_LOCK, DOM.private(toEl, PHX_REF_LOCK))
+          }
+          // now copy regular DOM.private data
           DOM.copyPrivates(toEl, fromEl)
 
           // skip patching focused inputs unless focus is a select that has changed options
