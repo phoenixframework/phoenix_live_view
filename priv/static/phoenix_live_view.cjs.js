@@ -2190,6 +2190,9 @@ var DOMPatch = class {
             dom_default.applyStickyOperations(fromEl);
             return false;
           }
+          if (this.undoRef && dom_default.private(toEl, PHX_REF_LOCK)) {
+            dom_default.putPrivate(fromEl, PHX_REF_LOCK, dom_default.private(toEl, PHX_REF_LOCK));
+          }
           dom_default.copyPrivates(toEl, fromEl);
           if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
             this.trackBefore("updated", fromEl, toEl);
