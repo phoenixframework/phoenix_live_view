@@ -2217,6 +2217,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               dom_default.applyStickyOperations(fromEl);
               return false;
             }
+            if (this.undoRef && dom_default.private(toEl, PHX_REF_LOCK)) {
+              dom_default.putPrivate(fromEl, PHX_REF_LOCK, dom_default.private(toEl, PHX_REF_LOCK));
+            }
             dom_default.copyPrivates(toEl, fromEl);
             if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
               this.trackBefore("updated", fromEl, toEl);
@@ -2262,12 +2265,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
         if (isJoinPatch) {
           dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => {
-            this.liveSocket.owner(el, (view2) => {
-              if (view2 === this.view) {
-                Array.from(el.children).forEach((child) => {
-                  this.removeStreamChildElement(child);
-                });
-              }
+            Array.from(el.children).forEach((child) => {
+              this.removeStreamChildElement(child);
             });
           });
         }
@@ -2313,6 +2312,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     removeStreamChildElement(child) {
+      if (!this.view.ownsElement(child)) {
+        return;
+      }
       if (this.streamInserts[child.id]) {
         this.streamComponentRestore[child.id] = child;
         child.remove();
