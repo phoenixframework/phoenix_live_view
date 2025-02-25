@@ -117,6 +117,9 @@ generated user module:
 ### Bug fixes
 * Fix `JS.exec` failing when a selector is passed ([#3678](https://github.com/phoenixframework/phoenix_live_view/pull/3678))
 * Fix race conditions when testing a live upload that redirects in the progress callback ([#3676](https://github.com/phoenixframework/phoenix_live_view/pull/3676))
+* Revert bug fix that changed the behavior of chained JS.show/hide/toggle calls that relied on a previous call not being completed yet. Note: this breaks JS.focus() on mobile Safari again. The change will be included in 1.1. (See [#3653](https://github.com/phoenixframework/phoenix_live_view/issues/3563), [#3657](https://github.com/phoenixframework/phoenix_live_view/pull/3657), [#3675](https://github.com/phoenixframework/phoenix_live_view/issues/3675))
+* Fix streams in sticky LiveView being reset under some circumstances when another LiveView also contains a stream ([#3681](https://github.com/phoenixframework/phoenix_live_view/issues/3681))
+* Fix recursively locked elements not being correctly patched on unlock ([#3684](https://github.com/phoenixframework/phoenix_live_view/issues/3684))
 
 ### Enhancements
 * Detect infinite patch redirect loops and raise an error ([#3670](https://github.com/phoenixframework/phoenix_live_view/pull/3670))
