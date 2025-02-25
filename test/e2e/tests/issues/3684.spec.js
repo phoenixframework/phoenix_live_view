@@ -8,8 +8,8 @@ test("nested clones are correctly applied", async ({page}) => {
 
   await expect(page.locator("#dewey")).not.toHaveAttribute("checked")
 
-  await page.locator("#dewey").click();
-  await syncLV(page);
+  await page.locator("#dewey").click()
+  await syncLV(page)
 
   await expect(page.locator("#dewey")).toHaveAttribute("checked")
 })

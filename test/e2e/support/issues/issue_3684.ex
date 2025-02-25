@@ -42,18 +42,8 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3684Live do
       <fieldset>
         <legend>Radio example:</legend>
         <%= for type <- [:huey, :dewey] do %>
-          <div
-            phx-click="change-type"
-            phx-value-type={type}
-            phx-target={@myself}
-          >
-            <input
-              type="radio"
-              id={type}
-              name="type"
-              value={type}
-              checked={@type == type}
-            />
+          <div phx-click="change-type" phx-value-type={type} phx-target={@myself}>
+            <input type="radio" id={type} name="type" value={type} checked={@type == type} />
             <label for={type}>{type}</label>
           </div>
         <% end %>
@@ -86,12 +76,7 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3684Live do
 
   def render(assigns) do
     ~H"""
-    <.live_component
-      id="badge_form"
-      module={__MODULE__.BadgeForm}
-      action={@live_action}
-      form={@form}
-    />
+    <.live_component id="badge_form" module={__MODULE__.BadgeForm} action={@live_action} form={@form} />
     """
   end
 

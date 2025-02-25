@@ -246,7 +246,7 @@ export default class DOMPatch {
           }
 
           // if we are undoing a lock, copy potentially nested clones over
-          if(this.undoRef && DOM.private(toEl, PHX_REF_LOCK)) {
+          if(this.undoRef && DOM.private(toEl, PHX_REF_LOCK)){
             DOM.putPrivate(fromEl, PHX_REF_LOCK, DOM.private(toEl, PHX_REF_LOCK))
           }
           // now copy regular DOM.private data
