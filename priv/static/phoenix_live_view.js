@@ -2264,12 +2264,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
         if (isJoinPatch) {
           dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => {
-            this.liveSocket.owner(el, (view2) => {
-              if (view2 === this.view) {
-                Array.from(el.children).forEach((child) => {
-                  this.removeStreamChildElement(child);
-                });
-              }
+            Array.from(el.children).forEach((child) => {
+              this.removeStreamChildElement(child);
             });
           });
         }
@@ -2315,6 +2311,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     removeStreamChildElement(child) {
+      if (!this.view.ownsElement(child)) {
+        return;
+      }
       if (this.streamInserts[child.id]) {
         this.streamComponentRestore[child.id] = child;
         child.remove();
