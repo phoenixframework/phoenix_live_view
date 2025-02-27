@@ -95,9 +95,9 @@ let JS = {
 
   exec_focus(e, eventType, phxEvent, view, sourceEl, el){
     ARIA.attemptFocus(el)
-    // in case the JS.focus command is in a JS.show/hide/toggle chain, in the show case
-    // we need to wait for the element to actually be visible, which takes two animation frames
-    // see exec_toggle
+    // in case the JS.focus command is in a JS.show/hide/toggle chain, for show we need
+    // to wait for JS.show to have updated the element's display property (see exec_toggle)
+    // but that run in nested animation frames, therefore we need to use them here as well
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => ARIA.attemptFocus(el))
     })
@@ -105,9 +105,7 @@ let JS = {
 
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el){
     ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el)
-    // in case the JS.focus command is in a JS.show/hide/toggle chain, in the show case
-    // we need to wait for the element to actually be visible, which takes two animation frames
-    // see exec_toggle
+    // if you wonder about the nested animation frames, see exec_focus
     window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el))
     })
@@ -121,7 +119,7 @@ let JS = {
     const el = focusStack.pop()
     if(el){
       el.focus()
-      // two animation frames in case a JS.show is chained
+      // if you wonder about the nested animation frames, see exec_focus
       window.requestAnimationFrame(() => {
         window.requestAnimationFrame(() => el.focus())
       })
