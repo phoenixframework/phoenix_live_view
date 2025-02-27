@@ -2834,20 +2834,27 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     },
     exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
       aria_default.attemptFocus(el);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => aria_default.attemptFocus(el));
+      });
     },
     exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
       aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el);
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
+      });
     },
     exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
-      window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
+      focusStack.push(el || sourceEl);
     },
     exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el) {
-      window.requestAnimationFrame(() => {
-        const el = focusStack.pop();
-        if (el) {
-          el.focus();
-        }
-      });
+      const el = focusStack.pop();
+      if (el) {
+        el.focus();
+        window.requestAnimationFrame(() => {
+          window.requestAnimationFrame(() => el.focus());
+        });
+      }
     },
     exec_add_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
       this.addOrRemoveClasses(el, names, [], transition, time, view, blocking);
@@ -2921,11 +2928,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           }
           let onStart = () => {
             this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses));
-            let stickyDisplay = display || this.defaultDisplay(el);
-            dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+            const stickyDisplay = display || this.defaultDisplay(el);
             window.requestAnimationFrame(() => {
               this.addOrRemoveClasses(el, inClasses, []);
-              window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses));
+              window.requestAnimationFrame(() => {
+                dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+                this.addOrRemoveClasses(el, inEndClasses, inStartClasses);
+              });
             });
           };
           let onEnd = () => {
@@ -2942,14 +2951,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       } else {
         if (this.isVisible(el)) {
-          el.dispatchEvent(new Event("phx:hide-start"));
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
-          el.dispatchEvent(new Event("phx:hide-end"));
+          window.requestAnimationFrame(() => {
+            el.dispatchEvent(new Event("phx:hide-start"));
+            dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = "none");
+            el.dispatchEvent(new Event("phx:hide-end"));
+          });
         } else {
-          el.dispatchEvent(new Event("phx:show-start"));
-          let stickyDisplay = display || this.defaultDisplay(el);
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
-          el.dispatchEvent(new Event("phx:show-end"));
+          window.requestAnimationFrame(() => {
+            el.dispatchEvent(new Event("phx:show-start"));
+            let stickyDisplay = display || this.defaultDisplay(el);
+            dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+            el.dispatchEvent(new Event("phx:show-end"));
+          });
         }
       }
     },
