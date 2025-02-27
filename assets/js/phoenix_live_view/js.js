@@ -95,21 +95,35 @@ let JS = {
 
   exec_focus(e, eventType, phxEvent, view, sourceEl, el){
     ARIA.attemptFocus(el)
+    // in case the JS.focus command is in a JS.show/hide/toggle chain, for show we need
+    // to wait for JS.show to have updated the element's display property (see exec_toggle)
+    // but that run in nested animation frames, therefore we need to use them here as well
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => ARIA.attemptFocus(el))
+    })
   },
 
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el){
     ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el)
+    // if you wonder about the nested animation frames, see exec_focus
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => ARIA.focusFirstInteractive(el) || ARIA.focusFirst(el))
+    })
   },
 
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el){
-    window.requestAnimationFrame(() => focusStack.push(el || sourceEl))
+    focusStack.push(el || sourceEl)
   },
 
   exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el){
-    window.requestAnimationFrame(() => {
-      const el = focusStack.pop()
-      if(el){ el.focus() }
-    })
+    const el = focusStack.pop()
+    if(el){
+      el.focus()
+      // if you wonder about the nested animation frames, see exec_focus
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => el.focus())
+      })
+    }
   },
 
   exec_add_class(e, eventType, phxEvent, view, sourceEl, el, {names, transition, time, blocking}){
@@ -195,11 +209,19 @@ let JS = {
         if(eventType === "remove"){ return }
         let onStart = () => {
           this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses))
-          let stickyDisplay = display || this.defaultDisplay(el)
-          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
+          const stickyDisplay = display || this.defaultDisplay(el)
           window.requestAnimationFrame(() => {
+            // first add the starting + active class, THEN make the element visible
+            // otherwise if we toggled the visibility earlier css animations
+            // would flicker, as the element becomes visible before the active animation
+            // class is set (see https://github.com/phoenixframework/phoenix_live_view/issues/3456)
             this.addOrRemoveClasses(el, inClasses, [])
-            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses))
+            // addOrRemoveClasses uses a requestAnimationFrame itself, therefore we need to move the putSticky
+            // into the next requestAnimationFrame...
+            window.requestAnimationFrame(() => {
+              DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
+              this.addOrRemoveClasses(el, inEndClasses, inStartClasses)
+            })
           })
         }
         let onEnd = () => {
@@ -216,14 +238,18 @@ let JS = {
       }
     } else {
       if(this.isVisible(el)){
-        el.dispatchEvent(new Event("phx:hide-start"))
-        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
-        el.dispatchEvent(new Event("phx:hide-end"))
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:hide-start"))
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
+          el.dispatchEvent(new Event("phx:hide-end"))
+        })
       } else {
-        el.dispatchEvent(new Event("phx:show-start"))
-        let stickyDisplay = display || this.defaultDisplay(el)
-        DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
-        el.dispatchEvent(new Event("phx:show-end"))
+        window.requestAnimationFrame(() => {
+          el.dispatchEvent(new Event("phx:show-start"))
+          let stickyDisplay = display || this.defaultDisplay(el)
+          DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
+          el.dispatchEvent(new Event("phx:show-end"))
+        })
       }
     }
   },
