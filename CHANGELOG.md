@@ -112,7 +112,7 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
-## 1.0.5
+## 1.0.5 (2025-02-27)
 
 ### Bug fixes
 * Fix `JS.exec` failing when a selector is passed ([#3678](https://github.com/phoenixframework/phoenix_live_view/pull/3678))
