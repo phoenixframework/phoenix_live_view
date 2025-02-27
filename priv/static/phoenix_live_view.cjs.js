@@ -2802,21 +2802,28 @@ var JS = {
     view.liveSocket.pushHistoryPatch(e, href, replace ? "replace" : "push", sourceEl);
   },
   exec_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.attemptFocus(el));
+    aria_default.attemptFocus(el);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => aria_default.attemptFocus(el));
+    });
   },
   exec_focus_first(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
+    aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el);
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => aria_default.focusFirstInteractive(el) || aria_default.focusFirst(el));
+    });
   },
   exec_push_focus(e, eventType, phxEvent, view, sourceEl, el) {
-    window.requestAnimationFrame(() => focusStack.push(el || sourceEl));
+    focusStack.push(el || sourceEl);
   },
   exec_pop_focus(_e, _eventType, _phxEvent, _view, _sourceEl, _el) {
-    window.requestAnimationFrame(() => {
-      const el = focusStack.pop();
-      if (el) {
-        el.focus();
-      }
-    });
+    const el = focusStack.pop();
+    if (el) {
+      el.focus();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => el.focus());
+      });
+    }
   },
   exec_add_class(e, eventType, phxEvent, view, sourceEl, el, { names, transition, time, blocking }) {
     this.addOrRemoveClasses(el, names, [], transition, time, view, blocking);
@@ -2890,11 +2897,13 @@ var JS = {
         }
         let onStart = () => {
           this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses));
-          let stickyDisplay = display || this.defaultDisplay(el);
-          dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+          const stickyDisplay = display || this.defaultDisplay(el);
           window.requestAnimationFrame(() => {
             this.addOrRemoveClasses(el, inClasses, []);
-            window.requestAnimationFrame(() => this.addOrRemoveClasses(el, inEndClasses, inStartClasses));
+            window.requestAnimationFrame(() => {
+              dom_default.putSticky(el, "toggle", (currentEl) => currentEl.style.display = stickyDisplay);
+              this.addOrRemoveClasses(el, inEndClasses, inStartClasses);
+            });
           });
         };
         let onEnd = () => {
