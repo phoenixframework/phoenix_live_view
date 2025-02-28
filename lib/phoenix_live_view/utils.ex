@@ -302,7 +302,10 @@ defmodule Phoenix.LiveView.Utils do
   mounts, or over the websocket to be processed by `Phoenix.LiveView.Session` plug.
   """
   def put_session(%Socket{} = socket, key, value) do
-    update_in(socket.private.put_session, &[%{type: :put, key: key, value: value} | &1])
+    update_in(
+      socket.private.put_session,
+      &[%{type: :put, key: session_key(key), value: value} | &1]
+    )
   end
 
   @doc """
@@ -333,7 +336,25 @@ defmodule Phoenix.LiveView.Utils do
   and taken from connect_info.
   """
   def get_session(%Socket{} = socket) do
-    socket.private.put_session
+    Enum.reverse(socket.private.put_session)
+  end
+
+  @doc """
+  Gets a stored value from the session.
+  """
+  def get_session(%Socket{} = socket, key, default \\ nil) do
+    key = session_key(key)
+
+    existing =
+      Enum.find_value(socket.private.put_session, :error, fn
+        %{type: :put, key: ^key, value: value} -> {:ok, value}
+        _ -> nil
+      end)
+
+    case existing do
+      {:ok, value} -> value
+      :error -> Map.get(socket.private.session, key, default)
+    end
   end
 
   @doc """
@@ -379,6 +400,9 @@ defmodule Phoenix.LiveView.Utils do
     end
   end
 
+  defp session_key(binary) when is_binary(binary), do: binary
+  defp session_key(atom) when is_atom(atom), do: Atom.to_string(atom)
+
   @doc """
   Drops session operations from the socket.
   """
@@ -390,7 +414,7 @@ defmodule Phoenix.LiveView.Utils do
   Returns the encoded session data in the socket.
   """
   def get_encoded_session(%Socket{} = socket) do
-    data = socket.private.put_session
+    data = get_session(socket)
 
     if data != [] do
       encrypt_session(socket.endpoint, data)

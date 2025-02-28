@@ -1213,7 +1213,7 @@ defmodule Phoenix.LiveView.Channel do
     merged_session = Map.merge(socket_session, verified_user_session)
     lifecycle = load_lifecycle(config, route)
 
-    case mount_private(verified, connect_params, connect_info, lifecycle) do
+    case mount_private(verified, connect_params, connect_info, lifecycle, merged_session) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
@@ -1303,7 +1303,13 @@ defmodule Phoenix.LiveView.Channel do
     socket
   end
 
-  defp mount_private(%Session{parent_pid: nil} = session, connect_params, connect_info, lifecycle) do
+  defp mount_private(
+         %Session{parent_pid: nil} = session,
+         connect_params,
+         connect_info,
+         lifecycle,
+         merged_session
+       ) do
     %{
       root_view: root_view,
       assign_new: assign_new,
@@ -1319,6 +1325,7 @@ defmodule Phoenix.LiveView.Channel do
        lifecycle: lifecycle,
        root_view: root_view,
        live_temp: %{},
+       session: merged_session,
        put_session: [],
        live_session_name: live_session_name,
        live_session_vsn: live_session_vsn
@@ -1329,7 +1336,8 @@ defmodule Phoenix.LiveView.Channel do
          %Session{parent_pid: parent} = session,
          connect_params,
          connect_info,
-         lifecycle
+         lifecycle,
+         merged_session
        ) do
     %{
       root_view: root_view,
@@ -1350,6 +1358,7 @@ defmodule Phoenix.LiveView.Channel do
            lifecycle: lifecycle,
            root_view: root_view,
            live_temp: %{},
+           session: merged_session,
            put_session: [],
            live_session_name: live_session_name,
            live_session_vsn: live_session_vsn

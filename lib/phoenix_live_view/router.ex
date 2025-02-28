@@ -404,9 +404,9 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp verify_csrf!(conn, token) do
-    csrf_state = Plug.CSRFProtection.dump_state() |> dbg
+    csrf_state = Plug.CSRFProtection.dump_state()
 
-    if Plug.CSRFProtection.valid_state_and_csrf_token?(csrf_state, token) |> dbg do
+    if Plug.CSRFProtection.valid_state_and_csrf_token?(csrf_state, token) do
       conn
     else
       raise Plug.CSRFProtection.InvalidCSRFTokenError

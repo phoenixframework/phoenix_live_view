@@ -778,6 +778,11 @@ defmodule Phoenix.LiveView do
   @doc """
   TODO!
   """
+  defdelegate get_session(socket, key, default \\ nil), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO!
+  """
   defdelegate clear_session(socket), to: Phoenix.LiveView.Utils
 
   @doc """

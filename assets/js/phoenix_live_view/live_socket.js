@@ -387,10 +387,10 @@ export default class LiveSocket {
     return rootsFound
   }
 
-  redirect(to, flash, session,reloadToken){
+  redirect(to, flash, session, reloadToken){
     if(reloadToken){ Browser.setCookie(PHX_RELOAD_STATUS, reloadToken, 60) }
     this.unload()
-    Browser.redirect(to, flash)
+    Browser.redirect(to, flash, session)
   }
 
   replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)){
