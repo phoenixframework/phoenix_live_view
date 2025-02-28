@@ -367,18 +367,22 @@ defmodule Phoenix.LiveView.Router do
   end
 
   @doc """
-  Applies `put_session` data.
+  Applies Liveview session data.
+
+  This plug must be placed **after** the `:protect_from_forgery` plug.
   """
-  def apply_lv_session(conn, _opts \\ []) do
+  def fetch_liveview_session(conn, _opts \\ []) do
     {conn, data} = get_put_session_cookie(conn)
 
     conn =
-      if data do
-        Enum.reduce(data, conn, fn {key, value}, conn ->
-          Plug.Conn.put_session(conn, key, value)
-        end)
-      else
-        conn
+      case data do
+        %{csrf_token: csrf_token, ops: ops} ->
+          conn
+          |> verify_csrf!(csrf_token)
+          |> apply_session_ops(ops)
+
+        _ ->
+          conn
       end
 
     conn = Plug.Conn.put_private(conn, :lv_put_session_ref, make_ref())
@@ -391,14 +395,37 @@ defmodule Phoenix.LiveView.Router do
       lv_put_session_ref = conn.private[:lv_put_session_ref]
 
       receive do
-        # TODO: scope the message somehow?
-        {^lv_put_session_ref, session} ->
-          Enum.reduce(session, conn, fn {key, value}, conn ->
-            Plug.Conn.put_session(conn, key, value)
-          end)
+        {^lv_put_session_ref, ops} ->
+          apply_session_ops(conn, ops)
       after
         0 -> conn
       end
+    end)
+  end
+
+  defp verify_csrf!(conn, token) do
+    csrf_state = Plug.CSRFProtection.dump_state() |> dbg
+
+    if Plug.CSRFProtection.valid_state_and_csrf_token?(csrf_state, token) |> dbg do
+      conn
+    else
+      raise Plug.CSRFProtection.InvalidCSRFTokenError
+    end
+  end
+
+  defp apply_session_ops(conn, ops) do
+    Enum.reduce(ops, conn, fn
+      %{type: :configure, opts: opts}, conn ->
+        Plug.Conn.configure_session(conn, opts)
+
+      %{type: :clear}, conn ->
+        Plug.Conn.clear_session(conn)
+
+      %{type: :put, key: key, value: value}, conn ->
+        Plug.Conn.put_session(conn, key, value)
+
+      %{type: :delete, key: key}, conn ->
+        Plug.Conn.delete_session(conn, key)
     end)
   end
 
@@ -528,12 +555,7 @@ defmodule Phoenix.LiveView.Router do
 
   defp get_put_session_cookie(%Plug.Conn{cookies: %{@put_session_cookie_key => token}} = conn) do
     endpoint = Phoenix.Controller.endpoint_module(conn)
-
-    data =
-      case Phoenix.LiveView.Static.verify_token(endpoint, token) do
-        {:ok, data} -> data
-        _ -> nil
-      end
+    data = Phoenix.LiveView.Utils.decrypt_and_verify_session(endpoint, token)
 
     {Plug.Conn.delete_resp_cookie(conn, @put_session_cookie_key), data}
   end

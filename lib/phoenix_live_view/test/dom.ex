@@ -5,7 +5,6 @@ defmodule Phoenix.LiveViewTest.DOM do
   @phx_component "data-phx-component"
   @static :s
   @components :c
-  @session :se
   @stream_id :stream
 
   def ensure_loaded! do
@@ -263,8 +262,6 @@ defmodule Phoenix.LiveViewTest.DOM do
     # must extract streams from diff before we pop components
     streams = extract_streams(diff, [])
     {new, diff} = Map.pop(diff, @components)
-    # TODO: handle session
-    diff = Map.delete(diff, @session)
     rendered = deep_merge_diff(rendered, diff)
 
     # If we have any component, we need to get the components

@@ -145,7 +145,7 @@ defmodule Phoenix.LiveView.Static do
           lifecycle: lifecycle,
           root_view: view,
           live_temp: %{},
-          put_session: %{}
+          put_session: []
         }
         |> maybe_put_live_layout(live_session),
         action,
@@ -155,17 +155,10 @@ defmodule Phoenix.LiveView.Static do
 
     case call_mount_and_handle_params!(socket, view, mount_session, conn.params, request_url) do
       {:ok, socket} ->
-        extra_session = put_session_data_and_notify(conn, socket)
+        _ = put_session_data_and_notify(conn, socket)
 
         data_attrs = [
-          phx_session:
-            sign_root_session(
-              socket,
-              router,
-              view,
-              Map.merge(to_sign_session, extra_session),
-              live_session
-            ),
+          phx_session: sign_root_session(socket, router, view, to_sign_session, live_session),
           phx_static: sign_static_token(socket)
         ]
 
@@ -191,22 +184,22 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp put_session_data_and_notify(conn, socket) do
-    extra_session = Utils.get_session(socket)
+    session = Utils.get_session(socket)
     ref = conn.private[:lv_put_session_ref]
 
-    if extra_session != %{} do
+    if session != [] do
       if ref == nil do
         raise """
-        put_session was called without the `Phoenix.LiveView.Router.apply_lv_session/2` plug in the pipeline.
+        put_session was called without the `Phoenix.LiveView.Router.fetch_liveview_session/2` plug in the pipeline.
 
-        For put_session to work, you need to include `:apply_lv_session` in your browser pipeline.
+        For put_session to work, you need to include `:fetch_liveview_session` in your browser pipeline.
         """
       end
 
-      send(self(), {ref, extra_session})
+      send(self(), {ref, session})
     end
 
-    extra_session
+    :ok
   end
 
   @doc """
@@ -248,7 +241,7 @@ defmodule Phoenix.LiveView.Static do
           live_layout: false,
           root_view: if(sticky?, do: view, else: parent.private.root_view),
           live_temp: %{},
-          put_session: %{}
+          put_session: []
         },
         nil,
         %{},

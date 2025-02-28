@@ -14,7 +14,7 @@ defmodule Phoenix.LiveView.RouterTest do
     [{id, session_token, static_token} | _] = html |> DOM.parse() |> DOM.find_live_views()
 
     {:ok, live_session} =
-      Session.verify_session(@endpoint, "lv:#{id}", session_token, static_token, nil)
+      Session.verify_session(@endpoint, "lv:#{id}", session_token, static_token)
 
     live_session.session
   end

@@ -8,7 +8,7 @@ defmodule Phoenix.LiveView.Session do
             parent_pid: nil,
             root_pid: nil,
             session: %{},
-            put_session: %{},
+            put_session: [],
             redirected?: false,
             router: nil,
             flash: nil,
@@ -59,13 +59,11 @@ defmodule Phoenix.LiveView.Session do
       iex> verify_session(AppWeb.Endpoint, "topic", "expired", "expired static")
       {:error, :expired}
   """
-  def verify_session(endpoint, topic, session_token, static_token, put_session_token) do
+  def verify_session(endpoint, topic, session_token, static_token) do
     with {:ok, %{id: id} = session} <- Static.verify_token(endpoint, session_token),
          :ok <- verify_topic(topic, id),
-         {:ok, static} <- verify_static_token(endpoint, id, static_token),
-         {:ok, put_session} <- verify_put_session_token(endpoint, put_session_token) do
+         {:ok, static} <- verify_static_token(endpoint, id, static_token) do
       merged_session = Map.merge(session, static)
-
       {live_session_name, vsn} = merged_session[:live_session] || {nil, nil}
 
       session = %Session{
@@ -75,7 +73,6 @@ defmodule Phoenix.LiveView.Session do
         parent_pid: merged_session.parent_pid,
         root_pid: merged_session.root_pid,
         session: merged_session.session,
-        put_session: put_session,
         assign_new: merged_session.assign_new,
         live_session_name: live_session_name,
         live_session_vsn: vsn,
@@ -100,7 +97,4 @@ defmodule Phoenix.LiveView.Session do
       {:error, _} = error -> error
     end
   end
-
-  defp verify_put_session_token(_endpoint, nil), do: {:ok, %{}}
-  defp verify_put_session_token(endpoint, token), do: Static.verify_token(endpoint, token)
 end

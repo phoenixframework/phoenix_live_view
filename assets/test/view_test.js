@@ -739,7 +739,7 @@ describe("View", function(){
 
     expect(view.channel.params()).toEqual({
       "flash": undefined, "params": {"_mounts": 0, "_mount_attempts": 0, "_live_referer": undefined},
-      "session": "abc123", "static": null, "url": undefined, "redirect": undefined, "user_session": null}
+      "session": "abc123", "static": null, "url": undefined, "redirect": undefined}
     )
 
     el.innerHTML += "<link rel=\"stylesheet\" href=\"/css/app-123.css?vsn=d\" phx-track-static=\"\">"
@@ -748,7 +748,7 @@ describe("View", function(){
     el.innerHTML += "<img src=\"/img/untracked.png\">"
 
     expect(view.channel.params()).toEqual({
-      "flash": undefined, "session": "abc123", "static": null, "url": undefined, "user_session": null,
+      "flash": undefined, "session": "abc123", "static": null, "url": undefined,
       "redirect": undefined,
       "params": {
         "_mounts": 0,

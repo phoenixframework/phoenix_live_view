@@ -8,7 +8,8 @@ defmodule Phoenix.LiveView.Utils do
   # All available mount options
   @mount_opts [:temporary_assigns, :layout]
 
-  @max_flash_age :timer.seconds(60)
+  @max_flash_age 60
+  @max_put_session_age 60
 
   @valid_uri_schemes [
     "http:",
@@ -301,7 +302,28 @@ defmodule Phoenix.LiveView.Utils do
   mounts, or over the websocket to be processed by `Phoenix.LiveView.Session` plug.
   """
   def put_session(%Socket{} = socket, key, value) do
-    update_in(socket.private.put_session, &Map.put(&1 || %{}, to_string(key), value))
+    update_in(socket.private.put_session, &[%{type: :put, key: key, value: value} | &1])
+  end
+
+  @doc """
+  Stores a delete session operation in the socket.
+  """
+  def delete_session(%Socket{} = socket, key) do
+    update_in(socket.private.put_session, &[%{type: :delete, key: key} | &1])
+  end
+
+  @doc """
+  Stores a clear session operation in the socket.
+  """
+  def clear_session(%Socket{} = socket) do
+    update_in(socket.private.put_session, &[%{type: :clear} | &1])
+  end
+
+  @doc """
+  Stores a configure session operation in the socket.
+  """
+  def configure_session(%Socket{} = socket, opts) do
+    update_in(socket.private.put_session, &[%{type: :configure, opts: opts} | &1])
   end
 
   @doc """
@@ -315,11 +337,53 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
-  Gets a stored value from the session.
+  Returns the session data if the socket redirected. Raises if it is
+  a live navigation / patch.
   """
-  def get_session(%Socket{} = socket, key) do
-    key = to_string(key)
-    Map.get_lazy(socket.private.put_session, key, fn -> socket.private.session[key] end)
+  def get_session_for_redirect!(%Socket{redirected: redirected} = socket) do
+    case {get_session(socket), redirected} do
+      {session, _} when session == [] ->
+        nil
+
+      {session, {:redirect, %{to: _to}}} ->
+        session
+
+      {_session, {:redirect, %{external: _url}}} ->
+        raise """
+        manipulating the session data from LiveView requires a local redirect!
+
+        Instead of `redirect(socket, external: url)` you must redirect to a local URL.
+        """
+
+      {_session, {:live, _type, _}} ->
+        raise """
+        manipulating the session data from LiveView requires a dead redirect!
+
+        Instead of `Phoenix.LiveView.push_navigate/2` or `Phoenix.LiveView.push_patch/2`,
+        you must use `Phoenix.LiveView.redirect/2` instead.
+        """
+    end
+  end
+
+  @doc """
+  Verifies that no session operations are stored in the socket, as those require a redirect.
+  """
+  def verify_no_session!(%Socket{} = socket) do
+    if socket.private.put_session != [] do
+      raise """
+      manipulating the session data from LiveView requires a dead redirect!
+
+      Make sure that `put_session/3`, `delete_session/3`, `clear_session/2`,
+      `configure_session/3` are followed by a `redirect/2` call.
+      """
+    end
+  end
+
+  @doc """
+  Drops session operations from the socket.
+  """
+  def drop_session_ops(%Socket{} = socket) do
+    put_in(socket.private.put_session, [])
   end
 
   @doc """
@@ -328,8 +392,8 @@ defmodule Phoenix.LiveView.Utils do
   def get_encoded_session(%Socket{} = socket) do
     data = socket.private.put_session
 
-    if data != %{} do
-      Phoenix.LiveView.Static.sign_token(socket.endpoint, data)
+    if data != [] do
+      encrypt_session(socket.endpoint, data)
     else
       nil
     end
@@ -571,6 +635,29 @@ defmodule Phoenix.LiveView.Utils do
     end
   end
 
+  @doc """
+  Encrypts the socket's put_session and put_flash data into a token.
+  """
+  def encrypt_session(endpoint_mod, session_ops) do
+    data = %{csrf_token: Plug.CSRFProtection.get_csrf_token(), ops: session_ops}
+
+    Phoenix.Token.encrypt(endpoint_mod, session_salt(endpoint_mod), data)
+  end
+
+  @doc """
+  Verifies the socket's put_session token.
+  """
+  def decrypt_and_verify_session(endpoint_mod, put_session_token) do
+    salt = session_salt(endpoint_mod)
+
+    case Phoenix.Token.decrypt(endpoint_mod, salt, put_session_token,
+           max_age: @max_put_session_age
+         ) do
+      {:ok, data} -> data
+      {:error, _reason} -> %{}
+    end
+  end
+
   defp random_encoded_bytes do
     binary = <<
       System.system_time(:nanosecond)::64,
@@ -587,6 +674,10 @@ defmodule Phoenix.LiveView.Utils do
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do
     "flash:" <> salt!(endpoint_mod)
+  end
+
+  defp session_salt(endpoint_mod) when is_atom(endpoint_mod) do
+    "session:" <> salt!(endpoint_mod)
   end
 
   def valid_destination!(%URI{} = uri, context) do

@@ -14,7 +14,6 @@ import {
   PHX_PENDING_ATTRS,
   PHX_ROOT_ID,
   PHX_SESSION,
-  PHX_USER_SESSION,
   PHX_STATIC,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
@@ -491,7 +490,7 @@ let DOM = {
   },
 
   replaceRootContainer(container, tagName, attrs){
-    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID, PHX_USER_SESSION])
+    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID])
     if(container.tagName.toLowerCase() === tagName.toLowerCase()){
       Array.from(container.attributes)
         .filter(attr => !retainedAttrs.has(attr.name.toLowerCase()))

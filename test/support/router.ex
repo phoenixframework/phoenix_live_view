@@ -15,6 +15,8 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     plug :setup_session
     plug :accepts, ["html"]
     plug :fetch_live_flash
+    plug :protect_from_forgery
+    plug :fetch_liveview_session
   end
 
   pipeline :bad_layout do

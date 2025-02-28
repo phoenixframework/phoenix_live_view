@@ -132,7 +132,6 @@ export default class LiveSocket {
           let liveSocket = new LiveSocket("/live", Socket, {...})
       `)
     }
-    this.socketUrl = url
     this.socket = new phxSocket(url, opts)
     this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX
     this.opts = opts
@@ -302,11 +301,6 @@ export default class LiveSocket {
     this.transitions.after(callback)
   }
 
-  asyncTransition(promise){
-    this.transitions.addAsyncTransition(promise)
-    return new Promise((resolve) => this.transitions.after(resolve))
-  }
-
   transition(time, onStart, onDone = function(){}){
     this.transitions.addTransition(time, onStart, onDone)
   }
@@ -393,7 +387,7 @@ export default class LiveSocket {
     return rootsFound
   }
 
-  redirect(to, flash, reloadToken){
+  redirect(to, flash, session,reloadToken){
     if(reloadToken){ Browser.setCookie(PHX_RELOAD_STATUS, reloadToken, 60) }
     this.unload()
     Browser.redirect(to, flash)
@@ -988,17 +982,11 @@ export default class LiveSocket {
     let all = this.domCallbacks.jsQuerySelectorAll
     return all ? all(sourceEl, query, defaultQuery) : defaultQuery()
   }
-
-  updateSession(token){
-    Browser.setCookie(PHX_PUT_SESSION, token)
-    this.main.updateUserSession(token)
-  }
 }
 
 class TransitionSet {
   constructor(){
     this.transitions = new Set()
-    this.promises = new Set()
     this.pendingOps = []
   }
 
@@ -1007,7 +995,6 @@ class TransitionSet {
       clearTimeout(timer)
       this.transitions.delete(timer)
     })
-    this.promises.clear()
     this.flushPendingOps()
   }
 
@@ -1029,18 +1016,9 @@ class TransitionSet {
     this.transitions.add(timer)
   }
 
-  addAsyncTransition(promise){
-    this.promises.add(promise)
-    promise.then(() => {
-      console.log("promise resolved")
-      this.promises.delete(promise)
-      this.flushPendingOps()
-    })
-  }
-
   pushPendingOp(op){ this.pendingOps.push(op) }
 
-  size(){ return this.transitions.size + this.promises.size }
+  size(){ return this.transitions.size }
 
   flushPendingOps(){
     if(this.size() > 0){ return }

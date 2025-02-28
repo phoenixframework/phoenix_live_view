@@ -183,8 +183,14 @@ defmodule Phoenix.LiveView.Channel do
               new_socket =
                 if new_socket.redirected do
                   flash = Utils.changed_flash(new_socket)
-                  send(new_socket.root_pid, {@prefix, :redirect, new_socket.redirected, flash})
-                  %{new_socket | redirected: nil}
+                  session = Utils.get_session_for_redirect!(new_socket)
+
+                  send(
+                    new_socket.root_pid,
+                    {@prefix, :redirect, new_socket.redirected, flash, session}
+                  )
+
+                  Utils.drop_session_ops(%{new_socket | redirected: nil})
                 else
                   new_socket
                 end
@@ -329,8 +335,8 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  def handle_info({@prefix, :redirect, command, flash}, state) do
-    handle_redirect(state, command, flash, nil)
+  def handle_info({@prefix, :redirect, command, flash, session}, state) do
+    handle_redirect(state, command, flash, session, nil)
   end
 
   def handle_info({{Phoenix.LiveView.Async, keys, cid, kind}, ref, :process, _pid, reason}, state) do
@@ -578,15 +584,22 @@ defmodule Phoenix.LiveView.Channel do
         {:ok, diff, redir, new_state}
 
       {:redirect, %{to: _to} = opts} ->
-        {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
+        opts =
+          copy_flash(new_socket, Utils.get_flash(new_socket), opts)
+          |> copy_session(new_socket, nil)
+
+        {:redirect, opts, new_state}
 
       {:redirect, %{external: url}} ->
-        {:redirect, copy_flash(new_state, Utils.get_flash(new_socket), %{to: url}), new_state}
+        Utils.verify_no_session!(new_socket)
+        {:redirect, copy_flash(new_socket, Utils.get_flash(new_socket), %{to: url}), new_state}
 
       {:live, :redirect, %{to: _to} = opts} ->
-        {:live_redirect, copy_flash(new_state, Utils.get_flash(new_socket), opts), new_state}
+        Utils.verify_no_session!(new_socket)
+        {:live_redirect, copy_flash(new_socket, Utils.get_flash(new_socket), opts), new_state}
 
       {:live, :patch, %{to: to} = opts} ->
+        Utils.verify_no_session!(new_socket)
         {params, action} = patch_params_and_action!(new_socket, opts)
 
         %{socket: new_socket} = new_state = drop_redirect(new_state)
@@ -670,7 +683,7 @@ defmodule Phoenix.LiveView.Channel do
         if redirected do
           new_state
           |> push_diff(diff, nil)
-          |> handle_redirect(redirected, flash, ref)
+          |> handle_redirect(redirected, flash, nil, ref)
         else
           {:noreply, push_diff(new_state, diff, ref)}
         end
@@ -817,7 +830,7 @@ defmodule Phoenix.LiveView.Channel do
          |> push_diff(diff, ref)}
 
       result ->
-        handle_redirect(new_state, result, Utils.changed_flash(new_socket), ref)
+        handle_redirect(new_state, result, Utils.changed_flash(new_socket), nil, ref)
     end
   end
 
@@ -839,14 +852,16 @@ defmodule Phoenix.LiveView.Channel do
     %{state | redirect_count: 0}
   end
 
-  defp handle_redirect(new_state, result, flash, ref) do
+  defp handle_redirect(new_state, result, flash, session, ref) do
     %{socket: new_socket} = new_state
     root_pid = new_socket.root_pid
 
     case result do
       {:redirect, %{external: to} = opts} ->
+        Utils.verify_no_session!(new_socket)
+
         opts =
-          copy_flash(new_state, flash, opts)
+          copy_flash(new_socket, flash, opts)
           |> Map.delete(:external)
           |> Map.put(:to, to)
 
@@ -856,7 +871,9 @@ defmodule Phoenix.LiveView.Channel do
         |> stop_shutdown_redirect(:redirect, opts)
 
       {:redirect, %{to: _to} = opts} ->
-        opts = copy_flash(new_state, flash, opts)
+        opts =
+          copy_flash(new_socket, flash, opts)
+          |> copy_session(new_socket, session)
 
         new_state
         |> push_pending_events_on_redirect(new_socket)
@@ -864,7 +881,7 @@ defmodule Phoenix.LiveView.Channel do
         |> stop_shutdown_redirect(:redirect, opts)
 
       {:live, :redirect, %{to: _to} = opts} ->
-        opts = copy_flash(new_state, flash, opts)
+        opts = copy_flash(new_socket, flash, opts)
 
         new_state
         |> push_pending_events_on_redirect(new_socket)
@@ -881,7 +898,7 @@ defmodule Phoenix.LiveView.Channel do
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
       {:live, :patch, %{to: _to, kind: _kind}} = patch ->
-        send(new_socket.root_pid, {@prefix, :redirect, patch, flash})
+        send(new_socket.root_pid, {@prefix, :redirect, patch, flash, nil})
         {:diff, diff, new_state} = render_diff(new_state, new_socket, false)
 
         {:noreply,
@@ -893,7 +910,6 @@ defmodule Phoenix.LiveView.Channel do
 
   defp push_pending_events_on_redirect(state, socket) do
     if diff = Diff.get_push_events_diff(socket), do: push_diff(state, diff, nil)
-    if diff = Diff.get_session_diff(socket), do: push_diff(state, diff, nil)
     state
   end
 
@@ -958,11 +974,21 @@ defmodule Phoenix.LiveView.Channel do
   defp push_diff(state, diff, nil = _ref), do: push(state, "diff", diff)
   defp push_diff(state, diff, ref), do: reply(state, ref, :ok, %{diff: diff})
 
-  defp copy_flash(_state, flash, opts) when flash == %{},
+  defp copy_flash(_socket, flash, opts) when flash == %{},
     do: opts
 
-  defp copy_flash(state, flash, opts),
-    do: Map.put(opts, :flash, Utils.sign_flash(state.socket.endpoint, flash))
+  defp copy_flash(socket, flash, opts),
+    do: Map.put(opts, :flash, Utils.sign_flash(socket.endpoint, flash))
+
+  defp copy_session(opts, socket, session) do
+    session = session || Utils.get_encoded_session(socket)
+
+    if session do
+      Map.put(opts, :session, session)
+    else
+      opts
+    end
+  end
 
   defp maybe_diff(%{socket: socket} = state, force?) do
     socket.redirected || render_diff(state, socket, force?)
@@ -998,6 +1024,7 @@ defmodule Phoenix.LiveView.Channel do
       end
 
     diff = Diff.render_private(socket, diff)
+    Utils.verify_no_session!(socket)
     new_socket = Utils.clear_temp(socket)
 
     {:diff, diff,
@@ -1031,13 +1058,7 @@ defmodule Phoenix.LiveView.Channel do
   defp mount(%{"session" => session_token} = params, from, phx_socket) do
     %Phoenix.Socket{endpoint: endpoint, topic: topic} = phx_socket
 
-    case Session.verify_session(
-           endpoint,
-           topic,
-           session_token,
-           params["static"],
-           params["user_session"]
-         ) do
+    case Session.verify_session(endpoint, topic, session_token, params["static"]) do
       {:ok, %Session{} = verified} ->
         %Phoenix.Socket{private: %{connect_info: connect_info}} = phx_socket
 
@@ -1143,7 +1164,6 @@ defmodule Phoenix.LiveView.Channel do
       parent_pid: parent,
       root_pid: root_pid,
       session: verified_user_session,
-      put_session: put_session,
       router: router
     } = verified
 
@@ -1193,26 +1213,14 @@ defmodule Phoenix.LiveView.Channel do
     merged_session = Map.merge(socket_session, verified_user_session)
     lifecycle = load_lifecycle(config, route)
 
-    case mount_private(
-           verified,
-           connect_params,
-           connect_info,
-           lifecycle,
-           merged_session,
-           put_session
-         ) do
+    case mount_private(verified, connect_params, connect_info, lifecycle) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
         try do
           socket
           |> load_layout(route)
-          |> Utils.maybe_call_live_view_mount!(
-            view,
-            params,
-            Map.merge(merged_session, put_session),
-            url
-          )
+          |> Utils.maybe_call_live_view_mount!(view, params, merged_session, url)
           |> build_state(phx_socket)
           |> maybe_call_mount_handle_params(router, url, params)
           |> reply_mount(from, verified, route)
@@ -1295,14 +1303,7 @@ defmodule Phoenix.LiveView.Channel do
     socket
   end
 
-  defp mount_private(
-         %Session{parent_pid: nil} = session,
-         connect_params,
-         connect_info,
-         lifecycle,
-         user_session,
-         put_session
-       ) do
+  defp mount_private(%Session{parent_pid: nil} = session, connect_params, connect_info, lifecycle) do
     %{
       root_view: root_view,
       assign_new: assign_new,
@@ -1318,8 +1319,7 @@ defmodule Phoenix.LiveView.Channel do
        lifecycle: lifecycle,
        root_view: root_view,
        live_temp: %{},
-       session: user_session,
-       put_session: put_session,
+       put_session: [],
        live_session_name: live_session_name,
        live_session_vsn: live_session_vsn
      }}
@@ -1329,9 +1329,7 @@ defmodule Phoenix.LiveView.Channel do
          %Session{parent_pid: parent} = session,
          connect_params,
          connect_info,
-         lifecycle,
-         user_session,
-         _put_session
+         lifecycle
        ) do
     %{
       root_view: root_view,
@@ -1352,10 +1350,7 @@ defmodule Phoenix.LiveView.Channel do
            lifecycle: lifecycle,
            root_view: root_view,
            live_temp: %{},
-           session: user_session,
-           # child LiveViews don't have access to not yet persisted put_session data,
-           # it must be explicitly passed in live_render instead
-           put_session: %{},
+           put_session: [],
            live_session_name: live_session_name,
            live_session_vsn: live_session_vsn
          }}

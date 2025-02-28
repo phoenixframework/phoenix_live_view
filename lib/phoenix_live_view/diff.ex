@@ -13,7 +13,6 @@ defmodule Phoenix.LiveView.Diff do
   @reply :r
   @title :t
   @template :p
-  @session :se
   @stream :stream
 
   # We use this to track which components have been marked
@@ -118,7 +117,6 @@ defmodule Phoenix.LiveView.Diff do
     diff
     |> maybe_put_reply(socket)
     |> maybe_put_events(socket)
-    |> maybe_put_session(socket)
   end
 
   @doc """
@@ -160,13 +158,6 @@ defmodule Phoenix.LiveView.Diff do
     if events = Utils.get_push_events(socket), do: %{@events => events}
   end
 
-  @doc """
-  Returns a diff containing only the session data.
-  """
-  def get_session_diff(socket) do
-    if session = Utils.get_encoded_session(socket), do: %{@session => session}
-  end
-
   defp maybe_put_title(diff, socket) do
     if Utils.changed?(socket.assigns, :page_title) do
       Map.put(diff, @title, socket.assigns.page_title)
@@ -179,16 +170,6 @@ defmodule Phoenix.LiveView.Diff do
     case Utils.get_push_events(socket) do
       [_ | _] = events -> Map.update(diff, @events, events, &(&1 ++ events))
       [] -> diff
-    end
-  end
-
-  defp maybe_put_session(diff, socket) do
-    session = Utils.get_encoded_session(socket)
-
-    if session do
-      Map.put(diff, @session, session)
-    else
-      diff
     end
   end
 
@@ -724,10 +705,7 @@ defmodule Phoenix.LiveView.Diff do
          cids,
          {pending, diffs, components}
        ) do
-    diffs =
-      diffs
-      |> maybe_put_events(socket)
-      |> maybe_put_session(socket)
+    diffs = maybe_put_events(diffs, socket)
 
     {new_pending, diffs, components} =
       render_component(socket, component, id, prints, cid, new?, cids, diffs, components)
@@ -934,7 +912,7 @@ defmodule Phoenix.LiveView.Diff do
       socket.private
       |> Map.take([:conn_session, :root_view])
       |> Map.put(:live_temp, %{})
-      |> Map.put(:put_session, %{})
+      |> Map.put(:put_session, [])
       |> Map.put(:children_cids, [])
       |> Map.put(:lifecycle, %Phoenix.LiveView.Lifecycle{})
 

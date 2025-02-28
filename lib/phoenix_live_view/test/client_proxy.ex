@@ -694,9 +694,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       view.endpoint,
       view.topic,
       view.session_token,
-      view.static_token,
-      # TODO: handle put_session_token
-      nil
+      view.static_token
     )
   end
 

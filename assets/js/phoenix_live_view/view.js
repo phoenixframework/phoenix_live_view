@@ -23,7 +23,6 @@ import {
   PHX_REF_LOCK,
   PHX_ROOT_ID,
   PHX_SESSION,
-  PHX_USER_SESSION,
   PHX_STATIC,
   PHX_TRACK_STATIC,
   PHX_TRACK_UPLOADS,
@@ -167,7 +166,6 @@ export default class View {
         url: this.redirect ? undefined : url || undefined,
         params: this.connectParams(liveReferer),
         session: this.getSession(),
-        user_session: this.getUserSession(),
         static: this.getStatic(),
         flash: this.flash,
       }
@@ -201,12 +199,6 @@ export default class View {
   isConnected(){ return this.channel.canPush() }
 
   getSession(){ return this.el.getAttribute(PHX_SESSION) }
-
-  getUserSession(){ return this.el.getAttribute(PHX_USER_SESSION) }
-
-  updateUserSession(token){
-    this.el.setAttribute(PHX_USER_SESSION, token)
-  }
 
   getStatic(){
     let val = this.el.getAttribute(PHX_STATIC)
@@ -308,18 +300,9 @@ export default class View {
 
   applyDiff(type, rawDiff, callback){
     this.log(type, () => ["", clone(rawDiff)])
-    let {diff, reply, events, title, session} = Rendered.extract(rawDiff)
-    const onDone = () => {
-      if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
-    }
-    if(session){
-      this.liveSocket.updateSession(session)
-      callback({diff, reply, events})
-      onDone()
-    } else {
-      callback({diff, reply, events})
-      onDone()
-    }
+    let {diff, reply, events, title} = Rendered.extract(rawDiff)
+    callback({diff, reply, events})
+    if(typeof title === "string" || type == "mount"){ window.requestAnimationFrame(() => DOM.putTitle(title)) }
   }
 
   onJoin(resp){
@@ -785,7 +768,7 @@ export default class View {
         this.applyDiff("update", rawDiff, ({diff, events}) => this.update(diff, events))
       })
     })
-    this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
+    this.onChannel("redirect", redir => this.onRedirect(redir)),
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
     this.channel.onError(reason => this.onError(reason))
@@ -811,8 +794,8 @@ export default class View {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
-  onRedirect({to, flash, reloadToken}){
-    this.liveSocket.redirect(to, flash, reloadToken)
+  onRedirect({to, flash, session, reloadToken}){
+    this.liveSocket.redirect(to, flash, session, reloadToken)
   }
 
   isDestroyed(){ return this.destroyed }
