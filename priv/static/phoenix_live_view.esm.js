@@ -262,7 +262,7 @@ var Browser = {
   },
   setCookie(name, value, maxAgeSeconds) {
     let expires = typeof maxAgeSeconds === "number" ? ` max-age=${maxAgeSeconds};` : "";
-    document.cookie = `${name}=${value};${expires} path=/`;
+    document.cookie = `${name}=${value};${expires} path=/;SameSite=Lax`;
   },
   getCookie(name) {
     return document.cookie.replace(new RegExp(`(?:(?:^|.*;s*)${name}s*=s*([^;]*).*$)|^.*$`), "$1");
@@ -270,9 +270,12 @@ var Browser = {
   deleteCookie(name) {
     document.cookie = `${name}=; max-age=-1; path=/`;
   },
-  redirect(toURL, flash) {
+  redirect(toURL, flash, session) {
     if (flash) {
       this.setCookie("__phoenix_flash__", flash, 60);
+    }
+    if (session) {
+      this.setCookie("__phoenix_lv_session__", session, 60);
     }
     window.location = toURL;
   },
@@ -3947,8 +3950,7 @@ var View = class _View {
         this.applyDiff("update", rawDiff, ({ diff, events }) => this.update(diff, events));
       });
     });
-    this.onChannel("redirect", ({ to, flash }) => this.onRedirect({ to, flash }));
-    this.onChannel("live_patch", (redir) => this.onLivePatch(redir));
+    this.onChannel("redirect", (redir) => this.onRedirect(redir)), this.onChannel("live_patch", (redir) => this.onLivePatch(redir));
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir));
     this.channel.onError((reason) => this.onError(reason));
     this.channel.onClose((reason) => this.onClose(reason));
@@ -3970,8 +3972,8 @@ var View = class _View {
   expandURL(to) {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to;
   }
-  onRedirect({ to, flash, reloadToken }) {
-    this.liveSocket.redirect(to, flash, reloadToken);
+  onRedirect({ to, flash, session, reloadToken }) {
+    this.liveSocket.redirect(to, flash, session, reloadToken);
   }
   isDestroyed() {
     return this.destroyed;
@@ -4959,7 +4961,7 @@ var LiveSocket = class {
     });
     return rootsFound;
   }
-  redirect(to, flash, reloadToken) {
+  redirect(to, flash, session, reloadToken) {
     if (reloadToken) {
       browser_default.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
     }
