@@ -912,6 +912,7 @@ defmodule Phoenix.LiveView.Diff do
       socket.private
       |> Map.take([:conn_session, :root_view])
       |> Map.put(:live_temp, %{})
+      |> Map.put(:put_session, [])
       |> Map.put(:children_cids, [])
       |> Map.put(:lifecycle, %Phoenix.LiveView.Lifecycle{})
 

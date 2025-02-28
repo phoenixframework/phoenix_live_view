@@ -64,6 +64,7 @@ export const PHX_LV_HISTORY_POSITION = "phx:nav-history-position"
 export const PHX_PROGRESS = "progress"
 export const PHX_MOUNTED = "mounted"
 export const PHX_RELOAD_STATUS = "__phoenix_reload_status__"
+export const PHX_PUT_SESSION = "__phoenix_lv_session__"
 export const LOADER_TIMEOUT = 1
 export const MAX_CHILD_JOIN_ATTEMPTS = 3
 export const BEFORE_UNLOAD_LOADER_TIMEOUT = 200

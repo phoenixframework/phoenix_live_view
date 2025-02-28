@@ -56,7 +56,7 @@ let Browser = {
 
   setCookie(name, value, maxAgeSeconds){
     let expires = typeof(maxAgeSeconds) === "number" ? ` max-age=${maxAgeSeconds};` : ""
-    document.cookie = `${name}=${value};${expires} path=/`
+    document.cookie = `${name}=${value};${expires} path=/;SameSite=Lax`
   },
 
   getCookie(name){
@@ -67,8 +67,9 @@ let Browser = {
     document.cookie = `${name}=; max-age=-1; path=/`
   },
 
-  redirect(toURL, flash){
+  redirect(toURL, flash, session){
     if(flash){ this.setCookie("__phoenix_flash__", flash, 60) }
+    if(session){ this.setCookie("__phoenix_lv_session__", session, 60) }
     window.location = toURL
   },
 

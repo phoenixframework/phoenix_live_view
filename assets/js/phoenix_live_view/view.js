@@ -768,7 +768,7 @@ export default class View {
         this.applyDiff("update", rawDiff, ({diff, events}) => this.update(diff, events))
       })
     })
-    this.onChannel("redirect", ({to, flash}) => this.onRedirect({to, flash}))
+    this.onChannel("redirect", redir => this.onRedirect(redir)),
     this.onChannel("live_patch", (redir) => this.onLivePatch(redir))
     this.onChannel("live_redirect", (redir) => this.onLiveRedirect(redir))
     this.channel.onError(reason => this.onError(reason))
@@ -794,7 +794,9 @@ export default class View {
     return to.startsWith("/") ? `${window.location.protocol}//${window.location.host}${to}` : to
   }
 
-  onRedirect({to, flash, reloadToken}){ this.liveSocket.redirect(to, flash, reloadToken) }
+  onRedirect({to, flash, session, reloadToken}){
+    this.liveSocket.redirect(to, flash, session, reloadToken)
+  }
 
   isDestroyed(){ return this.destroyed }
 

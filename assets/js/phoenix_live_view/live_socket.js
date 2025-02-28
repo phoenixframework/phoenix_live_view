@@ -99,7 +99,8 @@ import {
   RELOAD_JITTER_MIN,
   RELOAD_JITTER_MAX,
   PHX_REF_SRC,
-  PHX_RELOAD_STATUS
+  PHX_RELOAD_STATUS,
+  PHX_PUT_SESSION
 } from "./constants"
 
 import {
@@ -386,7 +387,7 @@ export default class LiveSocket {
     return rootsFound
   }
 
-  redirect(to, flash, reloadToken){
+  redirect(to, flash, session,reloadToken){
     if(reloadToken){ Browser.setCookie(PHX_RELOAD_STATUS, reloadToken, 60) }
     this.unload()
     Browser.redirect(to, flash)

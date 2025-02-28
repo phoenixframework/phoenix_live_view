@@ -4,6 +4,7 @@ defmodule Phoenix.LiveView.Router do
   """
 
   @cookie_key "__phoenix_flash__"
+  @put_session_cookie_key "__phoenix_lv_session__"
 
   @doc ~S"""
   Defines a LiveView route.
@@ -365,6 +366,69 @@ defmodule Phoenix.LiveView.Router do
     end
   end
 
+  @doc """
+  Applies Liveview session data.
+
+  This plug must be placed **after** the `:protect_from_forgery` plug.
+  """
+  def fetch_liveview_session(conn, _opts \\ []) do
+    {conn, data} = get_put_session_cookie(conn)
+
+    conn =
+      case data do
+        %{csrf_token: csrf_token, ops: ops} ->
+          conn
+          |> verify_csrf!(csrf_token)
+          |> apply_session_ops(ops)
+
+        _ ->
+          conn
+      end
+
+    conn = Plug.Conn.put_private(conn, :lv_put_session_ref, make_ref())
+
+    # This is needed for dead live_render in controllers,
+    # because those only return the rendered content and not the conn.
+    #
+    # We also use this for regular dead mounts to simplify the code.
+    Plug.Conn.register_before_send(conn, fn conn ->
+      lv_put_session_ref = conn.private[:lv_put_session_ref]
+
+      receive do
+        {^lv_put_session_ref, ops} ->
+          apply_session_ops(conn, ops)
+      after
+        0 -> conn
+      end
+    end)
+  end
+
+  defp verify_csrf!(conn, token) do
+    csrf_state = Plug.CSRFProtection.dump_state() |> dbg
+
+    if Plug.CSRFProtection.valid_state_and_csrf_token?(csrf_state, token) |> dbg do
+      conn
+    else
+      raise Plug.CSRFProtection.InvalidCSRFTokenError
+    end
+  end
+
+  defp apply_session_ops(conn, ops) do
+    Enum.reduce(ops, conn, fn
+      %{type: :configure, opts: opts}, conn ->
+        Plug.Conn.configure_session(conn, opts)
+
+      %{type: :clear}, conn ->
+        Plug.Conn.clear_session(conn)
+
+      %{type: :put, key: key, value: value}, conn ->
+        Plug.Conn.put_session(conn, key, value)
+
+      %{type: :delete, key: key}, conn ->
+        Plug.Conn.delete_session(conn, key)
+    end)
+  end
+
   @doc false
   def __live__(router, live_view, action, opts)
       when is_list(action) and is_list(opts) do
@@ -488,6 +552,15 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
+
+  defp get_put_session_cookie(%Plug.Conn{cookies: %{@put_session_cookie_key => token}} = conn) do
+    endpoint = Phoenix.Controller.endpoint_module(conn)
+    data = Phoenix.LiveView.Utils.decrypt_and_verify_session(endpoint, token)
+
+    {Plug.Conn.delete_resp_cookie(conn, @put_session_cookie_key), data}
+  end
+
+  defp get_put_session_cookie(%Plug.Conn{} = conn), do: {conn, nil}
 
   defp session_vsn(module) do
     if vsn = Module.get_attribute(module, :phoenix_session_vsn) do

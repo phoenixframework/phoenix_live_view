@@ -644,6 +644,7 @@ defmodule Phoenix.LiveView do
     live_async
     live_layout
     live_temp
+    put_session
     lifecycle
     render_with
     root_view
@@ -773,6 +774,26 @@ defmodule Phoenix.LiveView do
 
   """
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO!
+  """
+  defdelegate clear_session(socket), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO!
+  """
+  defdelegate configure_session(socket, opts), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO!
+  """
+  defdelegate put_session(socket, key, value), to: Phoenix.LiveView.Utils
+
+  @doc """
+  TODO!
+  """
+  defdelegate delete_session(socket, key), to: Phoenix.LiveView.Utils
 
   @doc ~S"""
   Allows an upload for the provided name.
@@ -1036,6 +1057,7 @@ defmodule Phoenix.LiveView do
 
   """
   def push_patch(%Socket{} = socket, opts) do
+    Phoenix.LiveView.Utils.verify_no_session!(socket)
     opts = push_opts!(opts, "push_patch/2")
     put_redirect(socket, {:live, :patch, opts})
   end
@@ -1062,6 +1084,7 @@ defmodule Phoenix.LiveView do
 
   """
   def push_navigate(%Socket{} = socket, opts) do
+    Phoenix.LiveView.Utils.verify_no_session!(socket)
     opts = push_opts!(opts, "push_navigate/2")
     put_redirect(socket, {:live, :redirect, opts})
   end
@@ -1069,6 +1092,7 @@ defmodule Phoenix.LiveView do
   @doc false
   @deprecated "Use push_navigate/2 instead"
   def push_redirect(%Socket{} = socket, opts) do
+    Phoenix.LiveView.Utils.verify_no_session!(socket)
     opts = push_opts!(opts, "push_redirect/2")
     put_redirect(socket, {:live, :redirect, opts})
   end

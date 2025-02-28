@@ -8,6 +8,7 @@ defmodule Phoenix.LiveView.Session do
             parent_pid: nil,
             root_pid: nil,
             session: %{},
+            put_session: [],
             redirected?: false,
             router: nil,
             flash: nil,

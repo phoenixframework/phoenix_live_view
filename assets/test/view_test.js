@@ -738,7 +738,7 @@ describe("View", function(){
     stubChannel(view)
 
     expect(view.channel.params()).toEqual({
-      "flash": undefined, "params": {"_mounts": 0, "_mount_attempts": 0, "_live_referrer": undefined},
+      "flash": undefined, "params": {"_mounts": 0, "_mount_attempts": 0, "_live_referer": undefined},
       "session": "abc123", "static": null, "url": undefined, "redirect": undefined}
     )
 
@@ -753,7 +753,7 @@ describe("View", function(){
       "params": {
         "_mounts": 0,
         "_mount_attempts": 1,
-        "_live_referrer": undefined,
+        "_live_referer": undefined,
         "_track_static": [
           "http://localhost/css/app-123.css?vsn=d",
           "http://localhost/img/tracked.png",

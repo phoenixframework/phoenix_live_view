@@ -16,7 +16,8 @@ defmodule Phoenix.LiveViewUnitTest do
               connect_params: %{},
               connect_info: %{},
               root_view: Phoenix.LiveViewTest.Support.ParamCounterLive,
-              live_temp: %{}
+              live_temp: %{},
+              put_session: []
             },
             nil,
             %{},
