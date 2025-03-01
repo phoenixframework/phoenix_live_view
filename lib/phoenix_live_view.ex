@@ -659,10 +659,16 @@ defmodule Phoenix.LiveView do
   @doc """
   Adds a flash message to the socket to be displayed.
 
-  *Note*: While you can use `put_flash/3` inside a `Phoenix.LiveComponent`,
-  components have their own `@flash` assigns. The `@flash` assign
-  in a component is only copied to its parent LiveView if the component
-  calls `push_navigate/2` or `push_patch/2`.
+  The flash message will stick around until it is read.
+  If you perform a redirect or a navigation event, the message will be
+  signed and temporarily stored in the client. Therefore it is important
+  to use flash messages only for user-facing notifications. Do not store
+  sensitive information in flash messages.
+
+  In a typical LiveView application, the message will be rendered by the
+  CoreComponents’ `flash/1` component. It is up to this function to determine
+  what kind of messages it supports. By default, the `:info` and `:error`
+  kinds are handled.
 
   *Note*: You must also place the `Phoenix.LiveView.Router.fetch_live_flash/2`
   plug in your browser's pipeline in place of `fetch_flash` for LiveView flash
@@ -675,16 +681,18 @@ defmodule Phoenix.LiveView do
         plug :fetch_live_flash
       end
 
-  In a typical LiveView application, the message will be rendered by the CoreComponents’ flash/1 component.
-  It is up to this function to determine what kind of messages it supports.
-  By default, the `:info` and `:error` kinds are handled.
-
   ## Examples
 
       iex> put_flash(socket, :info, "It worked!")
       iex> put_flash(socket, :error, "You can't access that page")
-  """
 
+  ## Inside components
+
+  You can use `put_flash/3` inside a `Phoenix.LiveComponent` and
+  components have their own `@flash` assigns. The `@flash` assign
+  in a component is only copied to its parent LiveView if the component
+  calls `push_navigate/2` or `push_patch/2`.
+  """
   defdelegate put_flash(socket, kind, msg), to: Phoenix.LiveView.Utils
 
   @doc """
