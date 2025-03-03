@@ -3357,12 +3357,28 @@ var serializeForm = (form, metadata, onlyNames = []) => {
   });
   toRemove.forEach((key) => formData.delete(key));
   const params = new URLSearchParams();
-  let elements = Array.from(form.elements);
+  const { inputsUnused, onlyHiddenInputs } = Array.from(form.elements).reduce((acc, input) => {
+    const { inputsUnused: inputsUnused2, onlyHiddenInputs: onlyHiddenInputs2 } = acc;
+    const key = input.name;
+    if (!key) {
+      return acc;
+    }
+    if (inputsUnused2[key] === void 0) {
+      inputsUnused2[key] = true;
+    }
+    if (onlyHiddenInputs2[key] === void 0) {
+      onlyHiddenInputs2[key] = true;
+    }
+    const isUsed = dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED);
+    const isHidden = input.type === "hidden";
+    inputsUnused2[key] = inputsUnused2[key] && !isUsed;
+    onlyHiddenInputs2[key] = onlyHiddenInputs2[key] && isHidden;
+    return acc;
+  }, { inputsUnused: {}, onlyHiddenInputs: {} });
   for (let [key, val] of formData.entries()) {
     if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
-      let inputs = elements.filter((input) => input.name === key);
-      let isUnused = !inputs.some((input) => dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
-      let hidden = inputs.every((input) => input.type === "hidden");
+      let isUnused = inputsUnused[key];
+      let hidden = onlyHiddenInputs[key];
       if (isUnused && !(submitter && submitter.name == key) && !hidden) {
         params.append(prependFormDataKey(key, "_unused_"), "");
       }
