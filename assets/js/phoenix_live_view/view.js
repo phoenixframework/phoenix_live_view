@@ -103,10 +103,10 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   const {inputsUnused, onlyHiddenInputs} = Array.from(form.elements).reduce((acc, input) => {
     const {inputsUnused, onlyHiddenInputs} = acc
     const key = input.name
-    if (!key) { return acc }
+    if(!key){ return acc }
 
-    if(inputsUnused[key] === undefined) { inputsUnused[key] = true }
-    if(onlyHiddenInputs[key] === undefined) { onlyHiddenInputs[key] = true }
+    if(inputsUnused[key] === undefined){ inputsUnused[key] = true }
+    if(onlyHiddenInputs[key] === undefined){ onlyHiddenInputs[key] = true }
 
     const isUsed = DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED)
     const isHidden = input.type === "hidden"
