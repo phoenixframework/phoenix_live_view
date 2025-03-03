@@ -68,6 +68,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
        Enum.into(params, %{
          "a" => "foo",
          "b" => "bar",
+         "c" => "baz",
          "id" => "test-form",
          "phx-change" => "validate"
        })
@@ -139,6 +140,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
     >
       <input type="text" name="a" readonly value={@params["a"]} />
       <input type="text" name="b" value={@params["b"]} />
+      <input type="text" name="c" value={@params["c"]} />
       <button type="submit" phx-disable-with="Submitting" phx-click={JS.dispatch("test")}>
         Submit with JS
       </button>

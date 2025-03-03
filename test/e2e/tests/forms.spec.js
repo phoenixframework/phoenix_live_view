@@ -84,6 +84,8 @@ for(let path of ["/form/nested", "/form"]){
         await syncLV(page)
 
         await page.locator("input[name=b]").fill("test")
+        await page.locator("input[name=c]").fill("hello world")
+        await expect(page.locator("input[name=c]")).toBeFocused()
         await syncLV(page)
 
         await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)))
@@ -102,6 +104,10 @@ for(let path of ["/form/nested", "/form"]){
         await expect(page.locator(".phx-loading")).toHaveCount(0)
 
         await expect(page.locator("input[name=b]")).toHaveValue("test")
+        // c should still be focused (at least when not using a nested LV)
+        if(path === "/form"){
+          await expect(page.locator("input[name=c]")).toBeFocused()
+        }
 
         expect(webSocketEvents).toEqual(expect.arrayContaining([
           {type: "sent", payload: expect.stringContaining("phx_join")},
@@ -115,6 +121,8 @@ for(let path of ["/form/nested", "/form"]){
         await syncLV(page)
 
         await page.locator("input[name=b]").fill("test")
+        // blur, otherwise the input would not be morphed anyway
+        await page.locator("input[name=b]").blur()
         await expect(page.locator("form")).toHaveAttribute("phx-change", /push/)
         await syncLV(page)
 
@@ -132,6 +140,8 @@ for(let path of ["/form/nested", "/form"]){
         await syncLV(page)
 
         await page.locator("input[name=b]").fill("test")
+        // blur, otherwise the input would not be morphed anyway
+        await page.locator("input[name=b]").blur()
         await syncLV(page)
 
         await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)))
@@ -149,6 +159,8 @@ for(let path of ["/form/nested", "/form"]){
         await syncLV(page)
 
         await page.locator("input[name=b]").fill("test")
+        // blur, otherwise the input would not be morphed anyway
+        await page.locator("input[name=b]").blur()
         await syncLV(page)
 
         await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)))
@@ -166,6 +178,8 @@ for(let path of ["/form/nested", "/form"]){
         await syncLV(page)
 
         await page.locator("input[name=b]").fill("test")
+        // blur, otherwise the input would not be morphed anyway
+        await page.locator("input[name=b]").blur()
         await syncLV(page)
 
         await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)))

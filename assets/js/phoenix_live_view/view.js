@@ -868,8 +868,6 @@ export default class View {
     }
     this.destroyAllChildren()
     this.liveSocket.dropActiveElement(this)
-    // document.activeElement can be null in Internet Explorer 11
-    if(document.activeElement){ document.activeElement.blur() }
     if(this.liveSocket.isUnloaded()){
       this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT)
     }

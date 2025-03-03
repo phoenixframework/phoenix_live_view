@@ -138,7 +138,6 @@ export default class LiveSocket {
     this.viewLogger = opts.viewLogger
     this.metadataCallbacks = opts.metadata || {}
     this.defaults = Object.assign(clone(DEFAULTS), opts.defaults || {})
-    this.activeElement = null
     this.prevActive = null
     this.silenced = false
     this.main = null
