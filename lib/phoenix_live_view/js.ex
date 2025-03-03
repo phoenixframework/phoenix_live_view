@@ -674,7 +674,7 @@ defmodule Phoenix.LiveView.JS do
 
   <div phx-mounted={JS.transition({"ease-out duration-300", "opacity-0", "opacity-100"}, time: 300)}>
       duration-300 milliseconds matches time: 300 milliseconds
-  <div>
+  </div>
   ```
   """
   def transition(transition) when is_binary(transition) or is_tuple(transition) do
