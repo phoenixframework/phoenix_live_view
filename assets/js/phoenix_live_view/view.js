@@ -100,12 +100,26 @@ let serializeForm = (form, metadata, onlyNames = []) => {
 
   const params = new URLSearchParams()
 
-  let elements = Array.from(form.elements)
+  const {inputsUnused, onlyHiddenInputs} = Array.from(form.elements).reduce((acc, input) => {
+    const {inputsUnused, onlyHiddenInputs} = acc
+    const key = input.name
+    if(!key){ return acc }
+
+    if(inputsUnused[key] === undefined){ inputsUnused[key] = true }
+    if(onlyHiddenInputs[key] === undefined){ onlyHiddenInputs[key] = true }
+
+    const isUsed = DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED)
+    const isHidden = input.type === "hidden"
+    inputsUnused[key] = inputsUnused[key] && !isUsed
+    onlyHiddenInputs[key] = onlyHiddenInputs[key] && isHidden
+
+    return acc
+  }, {inputsUnused: {}, onlyHiddenInputs: {}})
+
   for(let [key, val] of formData.entries()){
     if(onlyNames.length === 0 || onlyNames.indexOf(key) >= 0){
-      let inputs = elements.filter(input => input.name === key)
-      let isUnused = !inputs.some(input => (DOM.private(input, PHX_HAS_FOCUSED) || DOM.private(input, PHX_HAS_SUBMITTED)))
-      let hidden = inputs.every(input => input.type === "hidden")
+      let isUnused = inputsUnused[key]
+      let hidden = onlyHiddenInputs[key]
       if(isUnused && !(submitter && submitter.name == key) && !hidden){
         params.append(prependFormDataKey(key, "_unused_"), "")
       }
