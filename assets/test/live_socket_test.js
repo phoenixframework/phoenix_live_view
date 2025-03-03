@@ -39,7 +39,6 @@ describe("LiveSocket", () => {
     expect(liveSocket.viewLogger).toBeUndefined()
     expect(liveSocket.unloaded).toBe(false)
     expect(liveSocket.bindingPrefix).toBe("phx-")
-    expect(liveSocket.activeElement).toBe(null)
     expect(liveSocket.prevActive).toBe(null)
   })
 
@@ -49,7 +48,6 @@ describe("LiveSocket", () => {
     expect(liveSocket.socket.onOpen).toBeDefined()
     expect(liveSocket.unloaded).toBe(false)
     expect(liveSocket.bindingPrefix).toBe("phx-")
-    expect(liveSocket.activeElement).toBe(null)
     expect(liveSocket.prevActive).toBe(null)
   })
 
