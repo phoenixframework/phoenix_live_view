@@ -116,6 +116,7 @@ import Hooks from "./hooks"
 import LiveUploader from "./live_uploader"
 import View from "./view"
 import JS from "./js"
+import jsCommands from "./js_commands"
 
 export let isUsedInput = (el) => DOM.isUsedInput(el)
 
@@ -259,15 +260,12 @@ export default class LiveSocket {
     this.owner(el, view => JS.exec(e, eventType, encodedJS, view, el))
   }
 
-  // private
-
-  execJSHookPush(el, phxEvent, data, callback){
-    this.withinOwners(el, view => {
-      let e = new CustomEvent("phx:exec", {detail: {sourceElement: el}})
-      JS.exec(e, "hook", phxEvent, view, el, ["push", {data, callback}])
-    })
+  js(){
+    return jsCommands(this, "js")
   }
 
+  // private
+  
   unload(){
     if(this.unloaded){ return }
     if(this.main && this.isConnected()){ this.log(this.main, "socket", () => ["disconnect for page nav"]) }
