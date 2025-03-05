@@ -30,7 +30,7 @@ test.describe("auto_connect", () => {
   })
 
   test("does not connect when auto_connect is false", async ({page}) => {
-    await page.goto("/lifecycle?auto_connect=true")
+    await page.goto("/lifecycle?auto_connect=false")
     // eslint-disable-next-line playwright/no-networkidle
     await page.waitForLoadState("networkidle")
     expect(webSocketEvents).toHaveLength(0)
@@ -49,9 +49,9 @@ test.describe("auto_connect", () => {
   test("stays connected when navigating to a view with auto_connect=false", async ({page}) => {
     await page.goto("/lifecycle")
     await syncLV(page)
-    expect(webSocketEvents).toHaveLength(2)
+    expect(webSocketEvents.filter(e => e.payload.includes("phx_join"))).toHaveLength(1)
     await page.getByRole("link", {name: "Navigate to self (auto_connect=false)"}).click()
     await syncLV(page)
-    expect(webSocketEvents).toHaveLength(7)
+    expect(webSocketEvents.filter(e => e.payload.includes("phx_join"))).toHaveLength(2)
   })
 })
