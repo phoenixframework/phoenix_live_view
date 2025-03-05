@@ -743,10 +743,10 @@ export default class View {
         // e.g. for LiveDashboard a regular <script> with type javascript and nonce would be better
         // so maybe switch away from type="text/phx-hook" and use another attribute to identify hooks
         const runtimeHook = document.querySelector(`script[type="text/phx-hook"][name="${CSS.escape(hookName)}"][bundle="runtime"]`)
-        if (runtimeHook) {
+        if(runtimeHook){
           // if you really want runtime hooks, I
           callbacks = new Function(runtimeHook.textContent)()
-          if (callbacks && typeof callbacks === "object") {
+          if(callbacks && typeof callbacks === "object"){
             if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }
             let hook = new ViewHook(this, el, callbacks)
             this.viewHooks[ViewHook.elementID(hook.el)] = hook
