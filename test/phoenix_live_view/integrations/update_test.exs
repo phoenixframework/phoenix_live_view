@@ -1,9 +1,10 @@
 defmodule Phoenix.LiveView.UpdateTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 

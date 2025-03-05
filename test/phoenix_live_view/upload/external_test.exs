@@ -1,12 +1,12 @@
 defmodule Phoenix.LiveView.UploadExternalTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
+  @endpoint Phoenix.LiveViewTest.Support.Endpoint
 
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.UploadLive
+  alias Phoenix.LiveViewTest.Support.UploadLive
 
   def inspect_html_safe(term) do
     term
@@ -224,19 +224,25 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     parent = self()
 
     avatar =
-      file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: String.duplicate("ok", 100)}])
+      file_input(lv, "form", :avatar, [
+        %{
+          name: "foo.jpeg",
+          content: String.duplicate("ok", 100),
+          last_modified: 1_594_171_879_000
+        }
+      ])
 
     assert render_upload(avatar, "foo.jpeg", 100) =~ upload_complete
 
     run(lv, fn socket ->
       Phoenix.LiveView.consume_uploaded_entries(socket, :avatar, fn meta, entry ->
-        {:ok, send(parent, {:consume, meta, entry.client_name})}
+        {:ok, send(parent, {:consume, meta, entry.client_name, entry.client_last_modified})}
       end)
 
       {:reply, :ok, socket}
     end)
 
-    assert_receive {:consume, %{uploader: "S3"}, "foo.jpeg"}
+    assert_receive {:consume, %{uploader: "S3"}, "foo.jpeg", 1_594_171_879_000}
     refute render(lv) =~ upload_complete
   end
 

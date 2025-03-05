@@ -1,9 +1,9 @@
 defmodule Phoenix.LiveView.ConnectTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Phoenix.LiveViewTest
   import Phoenix.ConnTest
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
+  @endpoint Phoenix.LiveViewTest.Support.Endpoint
 
   describe "connect_params" do
     test "can be read on mount" do

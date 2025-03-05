@@ -1,18 +1,19 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "0.20.3"
+  @version "1.1.0-dev"
 
   def project do
     [
       app: :phoenix_live_view,
       version: @version,
-      elixir: "~> 1.12",
+      elixir: "~> 1.14.1 or ~> 1.15",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
-      package: package(),
+      test_coverage: [summary: [threshold: 85], ignore_modules: coverage_ignore_modules()],
       xref: [exclude: [Floki]],
+      package: package(),
       deps: deps(),
       aliases: aliases(),
       docs: &docs/0,
@@ -20,10 +21,17 @@ defmodule Phoenix.LiveView.MixProject do
       homepage_url: "http://www.phoenixframework.org",
       description: """
       Rich, real-time user experiences with server-rendered HTML
-      """
+      """,
+      # ignore misnamed test file warnings for e2e support files
+      test_ignore_filters: [&String.starts_with?(&1, "test/e2e/support")]
     ]
   end
 
+  def cli do
+    [preferred_envs: [docs: :docs]]
+  end
+
+  defp elixirc_paths(:e2e), do: ["lib", "test/support", "test/e2e/support"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
@@ -38,18 +46,23 @@ defmodule Phoenix.LiveView.MixProject do
     [
       {:phoenix, "~> 1.6.15 or ~> 1.7.0"},
       {:plug, "~> 1.15"},
-      {:phoenix_view, "~> 2.0", optional: true},
       {:phoenix_template, "~> 1.0"},
-      {:phoenix_html, "~> 3.3 or ~> 4.0"},
-      {:esbuild, "~> 0.2", only: :dev},
+      {:phoenix_html, "~> 3.3 or ~> 4.0 or ~> 4.1"},
       {:telemetry, "~> 0.4.2 or ~> 1.0"},
+      {:esbuild, "~> 0.2", only: :dev},
+      {:phoenix_view, "~> 2.0", optional: true},
       {:jason, "~> 1.0", optional: true},
-      {:floki, "~> 0.30.0", only: :test},
+      {:floki, "~> 0.36", optional: true},
       {:ex_doc, "~> 0.29", only: :docs},
-      {:makeup_eex, ">= 0.1.1", only: :docs},
-      {:makeup_diff, "~> 0.1", only: :docs},
+      {:makeup_elixir, "~> 1.0.1 or ~> 1.1", only: :docs},
+      {:makeup_eex, "~> 2.0", only: :docs},
+      {:makeup_syntect, "~> 0.1.0", only: :docs},
       {:html_entities, ">= 0.0.0", only: :test},
-      {:phoenix_live_reload, "~> 1.4.1", only: :test}
+      {:phoenix_live_reload, "~> 1.4", only: :test},
+      {:phoenix_html_helpers, "~> 1.0", only: :test},
+      {:bandit, "~> 1.5", only: :e2e},
+      {:ecto, "~> 3.11", only: :e2e},
+      {:phoenix_ecto, "~> 4.5", only: :e2e}
     ]
   end
 
@@ -62,7 +75,7 @@ defmodule Phoenix.LiveView.MixProject do
       extras: extras(),
       groups_for_extras: groups_for_extras(),
       groups_for_modules: groups_for_modules(),
-      groups_for_functions: [
+      groups_for_docs: [
         Components: &(&1[:type] == :component),
         Macros: &(&1[:type] == :macro)
       ],
@@ -119,14 +132,17 @@ defmodule Phoenix.LiveView.MixProject do
   defp before_closing_body_tag(_), do: ""
 
   defp extras do
-    ["CHANGELOG.md"] ++ Path.wildcard("guides/*/*.md")
+    ["CHANGELOG.md"] ++
+      Path.wildcard("guides/*/*.md") ++
+      Path.wildcard("guides/cheatsheets/*.cheatmd")
   end
 
   defp groups_for_extras do
     [
-      Introduction: ~r/guides\/introduction\/.?/,
-      "Server-side features": ~r/guides\/server\/.?/,
-      "Client-side integration": ~r/guides\/client\/.?/
+      Introduction: ~r"guides/introduction/",
+      "Server-side features": ~r"guides/server/",
+      "Client-side integration": ~r"guides/client/",
+      Cheatsheets: ~r"guides/cheatsheets/"
     ]
   end
 
@@ -187,6 +203,14 @@ defmodule Phoenix.LiveView.MixProject do
     [
       "assets.build": ["esbuild module", "esbuild cdn", "esbuild cdn_min", "esbuild main"],
       "assets.watch": ["esbuild module --watch"]
+    ]
+  end
+
+  defp coverage_ignore_modules do
+    [
+      ~r/Phoenix\.LiveViewTest\.Support\..*/,
+      ~r/Phoenix\.LiveViewTest\.E2E\..*/,
+      ~r/Inspect\..*/
     ]
   end
 end

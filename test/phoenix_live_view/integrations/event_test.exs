@@ -1,11 +1,11 @@
 defmodule Phoenix.LiveView.EventTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.{Endpoint}
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -46,7 +46,7 @@ defmodule Phoenix.LiveView.EventTest do
              |> Component.assign(count: 123)
              |> LiveView.push_event("my-event", %{one: 1})
              |> LiveView.push_event("my-event", %{one: 2})
-             |> LiveView.push_redirect(to: "/events")
+             |> LiveView.push_navigate(to: "/events")
 
            {:reply, :ok, new_socket}
          end}
@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView.EventTest do
 
       assert_push_event(view, "my-event", %{one: 1})
       assert_push_event(view, "my-event", %{one: 2})
-      assert_redirected(view, "/events")
+      assert_redirect(view, "/events")
     end
 
     test "sends updates with no assigns diff", %{conn: conn} do
@@ -69,7 +69,16 @@ defmodule Phoenix.LiveView.EventTest do
       )
 
       assert_push_event(view, "my-event", %{two: 2})
+
       assert render(view) =~ "count: 0"
+    end
+
+    test "sends no events if none are pushed", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events")
+
+      GenServer.call(view.pid, {:run, fn socket -> {:reply, :ok, socket} end})
+
+      refute_push_event(view, "my-event", _)
     end
 
     test "sends updates in root and child mounts", %{conn: conn} do
@@ -128,7 +137,7 @@ defmodule Phoenix.LiveView.EventTest do
                   end}
                )
 
-               assert_receive {:DOWN, _ref, :process, ^pid, _reason}
+               assert_receive {:DOWN, _ref, :process, ^pid, _reason}, 500
              end) =~ "Got: {:reply, :boom"
     end
 
@@ -175,7 +184,7 @@ defmodule Phoenix.LiveView.EventTest do
       {:ok, view, _html} = live(conn, "/events-multi-js-in-component")
 
       html =
-        element(view, "#child_1 #push-to-self")
+        element(view, "#push-to-self-child_1")
         |> render_click()
 
       assert html =~ "child_1 count: 11"
@@ -186,7 +195,7 @@ defmodule Phoenix.LiveView.EventTest do
       {:ok, view, _html} = live(conn, "/events-multi-js-in-component")
 
       html =
-        element(view, "#child_1 #push-to-other-targets")
+        element(view, "#push-to-other-targets-child_1")
         |> render_click()
 
       assert html =~ "child_1 count: 1"

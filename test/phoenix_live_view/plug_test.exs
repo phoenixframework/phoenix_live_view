@@ -4,10 +4,10 @@ defmodule Phoenix.LiveView.PlugTest do
   import Phoenix.ConnTest
 
   alias Phoenix.LiveView.Plug, as: LiveViewPlug
-  alias Phoenix.LiveViewTest.{ThermostatLive, DashboardLive, Endpoint}
+  alias Phoenix.LiveViewTest.Support.{ThermostatLive, DashboardLive, Endpoint}
 
   defp call(conn, view, opts \\ []) do
-    opts = Keyword.merge([router: Phoenix.LiveViewTest.Router, layout: false], opts)
+    opts = Keyword.merge([router: Phoenix.LiveViewTest.Support.Router, layout: false], opts)
 
     conn
     |> Plug.Test.init_test_session(%{})
@@ -53,6 +53,6 @@ defmodule Phoenix.LiveView.PlugTest do
     conn = call(conn, DashboardLive, container: {:span, style: "phx-flex"})
 
     assert conn.resp_body =~
-             ~r/<span[^>]*class="Phoenix.LiveViewTest.DashboardLive"[^>]*style="phx-flex">/
+             ~r/<span[^>]*class="Phoenix.LiveViewTest.Support.DashboardLive"[^>]*style="phx-flex">/
   end
 end

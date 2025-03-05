@@ -146,7 +146,7 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
 
   * `[:phoenix, :live_view, :render, :start]` - Dispatched by a `Phoenix.LiveView`
     immediately before [`render/1`](`c:Phoenix.LiveComponent.render/1`) is invoked.
-    
+
     * Measurement:
 
           %{system_time: System.monotonic_time}
@@ -207,7 +207,7 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           %{
             socket: Phoenix.LiveView.Socket.t,
             component: atom,
-            assigns_sockets: {map(), Phoenix.LiveView.Socket.t}
+            assigns_sockets: [{map(), Phoenix.LiveView.Socket.t}]
           }
 
   * `[:phoenix, :live_component, :update, :stop]` - Dispatched by a `Phoenix.LiveComponent`
@@ -226,8 +226,8 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
           %{
             socket: Phoenix.LiveView.Socket.t,
             component: atom,
-            assigns_sockets: {map(), Phoenix.LiveView.Socket.t},
-            sockets: Phoenix.LiveView.Socket.t
+            assigns_sockets: [{map(), Phoenix.LiveView.Socket.t}],
+            sockets: [Phoenix.LiveView.Socket.t]
           }
 
   * `[:phoenix, :live_component, :update, :exception]` - Dispatched by a `Phoenix.LiveComponent`
@@ -248,7 +248,7 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             kind: atom,
             reason: term,
             component: atom,
-            assigns_sockets: {map(), Phoenix.LiveView.Socket.t}
+            assigns_sockets: [{map(), Phoenix.LiveView.Socket.t}]
           }
 
   * `[:phoenix, :live_component, :handle_event, :start]` - Dispatched by a `Phoenix.LiveComponent`

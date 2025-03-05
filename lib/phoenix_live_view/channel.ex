@@ -180,6 +180,15 @@ defmodule Phoenix.LiveView.Channel do
         if event = entry && upload_conf.progress_event do
           case event.(upload_conf.name, entry, new_socket) do
             {:noreply, %Socket{} = new_socket} ->
+              new_socket =
+                if new_socket.redirected do
+                  flash = Utils.changed_flash(new_socket)
+                  send(new_socket.root_pid, {@prefix, :redirect, new_socket.redirected, flash})
+                  %{new_socket | redirected: nil}
+                else
+                  new_socket
+                end
+
               {new_socket, {:ok, {msg.ref, %{}}, state}}
 
             other ->
@@ -209,7 +218,8 @@ defmodule Phoenix.LiveView.Channel do
 
         {ok_or_error, reply, %Socket{} = new_socket} =
           with {:ok, new_socket} <- Upload.put_entries(socket, conf, entries, cid) do
-            Upload.generate_preflight_response(new_socket, conf.name, cid)
+            refs = Enum.map(entries, fn %{"ref" => ref} -> ref end)
+            Upload.generate_preflight_response(new_socket, conf.name, cid, refs)
           end
 
         new_upload_names =
@@ -334,7 +344,8 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_info({:phoenix_live_reload, _topic, _changed_file}, %{socket: socket} = state) do
-    Phoenix.CodeReloader.reload(socket.endpoint)
+    {mod, fun, args} = socket.private.phoenix_reloader
+    apply(mod, fun, [socket.endpoint | args])
 
     new_socket =
       Enum.reduce(socket.assigns, socket, fn {key, val}, socket ->
@@ -529,7 +540,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp exported?(m, f, a) do
-    function_exported?(m, f, a) || (Code.ensure_loaded?(m) && function_exported?(m, f, a))
+    function_exported?(m, f, a) or (Code.ensure_loaded?(m) and function_exported?(m, f, a))
   end
 
   defp maybe_call_mount_handle_params(%{socket: socket} = state, router, url, params) do
@@ -611,7 +622,7 @@ defmodule Phoenix.LiveView.Channel do
     Expected one of:
 
         {:noreply, %Socket{}}
-        {:reply, map, %Socket}
+        {:reply, map, %Socket{}}
 
     Got: #{inspect(result)}
     """
@@ -652,8 +663,14 @@ defmodule Phoenix.LiveView.Channel do
       {diff, new_components, {redirected, flash}} ->
         new_state = %{state | components: new_components}
 
+        # If there is a redirect, we don't send the ack (the ref) with the
+        # component diff, because otherwise the user may see transient
+        # state (such as the component unlocking refs just to be
+        # removed). The ref is sent with the redirect.
         if redirected do
-          handle_redirect(new_state, redirected, flash, nil, ref && {diff, ref})
+          new_state
+          |> push_diff(diff, nil)
+          |> handle_redirect(redirected, flash, ref)
         else
           {:noreply, push_diff(new_state, diff, ref)}
         end
@@ -716,29 +733,45 @@ defmodule Phoenix.LiveView.Channel do
       fn ->
         component_socket =
           %Socket{redirected: redirected, assigns: assigns} =
-          case component.handle_event(event, val, component_socket) do
-            {:noreply, component_socket} ->
+          case Lifecycle.handle_event(event, val, component_socket) do
+            {:halt, %Socket{} = component_socket} ->
               component_socket
 
-            {:reply, %{} = reply, component_socket} ->
-              Utils.put_reply(component_socket, reply)
+            {:cont, %Socket{} = component_socket} ->
+              case component.handle_event(event, val, component_socket) do
+                {:noreply, component_socket} ->
+                  component_socket
+
+                {:reply, %{} = reply, component_socket} ->
+                  Utils.put_reply(component_socket, reply)
+
+                other ->
+                  raise ArgumentError, """
+                  invalid return from #{inspect(component)}.handle_event/3 callback.
+
+                  Expected one of:
+
+                      {:noreply, %Socket{}}
+                      {:reply, map, %Socket}
+
+                  Got: #{inspect(other)}
+                  """
+              end
 
             other ->
-              raise ArgumentError, """
-              invalid return from #{inspect(component)}.handle_event/3 callback.
+              raise_bad_callback_response!(other, component_socket.view, :handle_event, 3)
+          end
 
-              Expected one of:
-
-                  {:noreply, %Socket{}}
-                  {:reply, map, %Socket}
-
-              Got: #{inspect(other)}
-              """
+        new_component_socket =
+          if redirected do
+            Utils.clear_flash(component_socket)
+          else
+            component_socket
           end
 
         {
-          {component_socket, {redirected, assigns.flash}},
-          %{socket: component_socket, component: component, event: event, params: val}
+          {new_component_socket, {redirected, assigns.flash}},
+          %{socket: new_component_socket, component: component, event: event, params: val}
         }
       end
     )
@@ -779,6 +812,7 @@ defmodule Phoenix.LiveView.Channel do
       {:diff, diff, new_state} ->
         {:noreply,
          new_state
+         |> clear_live_patch_counter()
          |> push_live_patch(pending_live_patch)
          |> push_diff(diff, ref)}
 
@@ -787,10 +821,25 @@ defmodule Phoenix.LiveView.Channel do
     end
   end
 
-  defp maybe_push_pending_diff_ack(state, nil), do: state
-  defp maybe_push_pending_diff_ack(state, {diff, ref}), do: push_diff(state, diff, ref)
+  defp check_patch_redirect_limit!(state) do
+    current = state.redirect_count
 
-  defp handle_redirect(new_state, result, flash, ref, pending_diff_ack \\ nil) do
+    if current == 20 do
+      raise RuntimeError, """
+      too many redirects for #{inspect(state.socket.view)} on action #{inspect(state.socket.assigns.live_action)}
+
+      Check the `handle_params/3` callback for an infinite patch redirect loop
+      """
+    else
+      %{state | redirect_count: current + 1}
+    end
+  end
+
+  defp clear_live_patch_counter(state) do
+    %{state | redirect_count: 0}
+  end
+
+  defp handle_redirect(new_state, result, flash, ref) do
     %{socket: new_socket} = new_state
     root_pid = new_socket.root_pid
 
@@ -819,7 +868,7 @@ defmodule Phoenix.LiveView.Channel do
 
         new_state
         |> push_pending_events_on_redirect(new_socket)
-        |> push_live_redirect(opts, ref, pending_diff_ack)
+        |> push_live_redirect(opts, ref)
         |> stop_shutdown_redirect(:live_redirect, opts)
 
       {:live, :patch, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
@@ -827,7 +876,7 @@ defmodule Phoenix.LiveView.Channel do
 
         new_state
         |> drop_redirect()
-        |> maybe_push_pending_diff_ack(pending_diff_ack)
+        |> check_patch_redirect_limit!()
         |> Map.update!(:socket, &Utils.replace_flash(&1, flash))
         |> sync_handle_params_with_live_redirect(params, action, opts, ref)
 
@@ -838,7 +887,6 @@ defmodule Phoenix.LiveView.Channel do
         {:noreply,
          new_state
          |> drop_redirect()
-         |> maybe_push_pending_diff_ack(pending_diff_ack)
          |> push_diff(diff, ref)}
     end
   end
@@ -894,15 +942,11 @@ defmodule Phoenix.LiveView.Channel do
     reply(state, ref, :ok, %{redirect: opts})
   end
 
-  defp push_live_redirect(state, opts, nil = _ref, {_diff, ack_ref}) do
-    reply(state, ack_ref, :ok, %{live_redirect: opts})
-  end
-
-  defp push_live_redirect(state, opts, nil = _ref, _pending_diff_ack) do
+  defp push_live_redirect(state, opts, nil = _ref) do
     push(state, "live_redirect", opts)
   end
 
-  defp push_live_redirect(state, opts, ref, _pending_diff_ack) do
+  defp push_live_redirect(state, opts, ref) do
     reply(state, ref, :ok, %{live_redirect: opts})
   end
 
@@ -926,14 +970,16 @@ defmodule Phoenix.LiveView.Channel do
   defp render_diff(state, socket, force?) do
     changed? = Utils.changed?(socket)
 
-    {socket, diff, components} =
+    {socket, diff, fingerprints, components} =
       if force? or changed? do
         :telemetry.span(
           [:phoenix, :live_view, :render],
           %{socket: socket, force?: force?, changed?: changed?},
           fn ->
             rendered = Phoenix.LiveView.Renderer.to_rendered(socket, socket.view)
-            {socket, diff, components} = Diff.render(socket, rendered, state.components)
+
+            {diff, fingerprints, components} =
+              Diff.render(socket, rendered, state.fingerprints, state.components)
 
             socket =
               socket
@@ -941,19 +987,20 @@ defmodule Phoenix.LiveView.Channel do
               |> Utils.clear_changed()
 
             {
-              {socket, diff, components},
+              {socket, diff, fingerprints, components},
               %{socket: socket, force?: force?, changed?: changed?}
             }
           end
         )
       else
-        {socket, %{}, state.components}
+        {socket, %{}, state.fingerprints, state.components}
       end
 
     diff = Diff.render_private(socket, diff)
     new_socket = Utils.clear_temp(socket)
 
-    {:diff, diff, %{state | socket: new_socket, components: components}}
+    {:diff, diff,
+     %{state | socket: new_socket, fingerprints: fingerprints, components: components}}
   end
 
   defp reply(state, {ref, extra}, status, payload) do
@@ -1086,11 +1133,9 @@ defmodule Phoenix.LiveView.Channel do
     %Session{
       id: id,
       view: view,
-      root_view: root_view,
       parent_pid: parent,
       root_pid: root_pid,
       session: verified_user_session,
-      assign_new: assign_new,
       router: router
     } = verified
 
@@ -1140,7 +1185,7 @@ defmodule Phoenix.LiveView.Channel do
     merged_session = Map.merge(socket_session, verified_user_session)
     lifecycle = load_lifecycle(config, route)
 
-    case mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
+    case mount_private(verified, connect_params, connect_info, lifecycle) do
       {:ok, mount_priv} ->
         socket = Utils.configure_socket(socket, mount_priv, action, flash, host_uri)
 
@@ -1157,7 +1202,24 @@ defmodule Phoenix.LiveView.Channel do
             status = Plug.Exception.status(exception)
 
             if status >= 400 and status < 500 do
-              GenServer.reply(from, {:error, %{reason: "reload", status: status}})
+              # only forward the stack and exception module to the signed cookie if debug_errors is enabled
+              # which already exposes the stacktrace and exception information to the client
+              {exception_mod, stack} =
+                if endpoint.config(:debug_errors) do
+                  {inspect(exception.__struct__), __STACKTRACE__}
+                else
+                  {nil, []}
+                end
+
+              token =
+                Phoenix.LiveView.Static.sign_token(endpoint, %{
+                  status: status,
+                  view: inspect(view),
+                  exception: exception_mod,
+                  stack: stack
+                })
+
+              GenServer.reply(from, {:error, %{reason: "reload", status: status, token: token}})
               {:stop, :shutdown, :no_state}
             else
               reraise(exception, __STACKTRACE__)
@@ -1213,7 +1275,14 @@ defmodule Phoenix.LiveView.Channel do
     socket
   end
 
-  defp mount_private(nil, root_view, assign_new, connect_params, connect_info, lifecycle) do
+  defp mount_private(%Session{parent_pid: nil} = session, connect_params, connect_info, lifecycle) do
+    %{
+      root_view: root_view,
+      assign_new: assign_new,
+      live_session_name: live_session_name,
+      live_session_vsn: live_session_vsn
+    } = session
+
     {:ok,
      %{
        connect_params: connect_params,
@@ -1221,11 +1290,25 @@ defmodule Phoenix.LiveView.Channel do
        assign_new: {%{}, assign_new},
        lifecycle: lifecycle,
        root_view: root_view,
-       live_temp: %{}
+       live_temp: %{},
+       live_session_name: live_session_name,
+       live_session_vsn: live_session_vsn
      }}
   end
 
-  defp mount_private(parent, root_view, assign_new, connect_params, connect_info, lifecycle) do
+  defp mount_private(
+         %Session{parent_pid: parent} = session,
+         connect_params,
+         connect_info,
+         lifecycle
+       ) do
+    %{
+      root_view: root_view,
+      assign_new: assign_new,
+      live_session_name: live_session_name,
+      live_session_vsn: live_session_vsn
+    } = session
+
     case sync_with_parent(parent, assign_new) do
       {:ok, parent_assigns} ->
         # Child live views always ignore the layout on `:use`.
@@ -1237,7 +1320,9 @@ defmodule Phoenix.LiveView.Channel do
            live_layout: false,
            lifecycle: lifecycle,
            root_view: root_view,
-           live_temp: %{}
+           live_temp: %{},
+           live_session_name: live_session_name,
+           live_session_vsn: live_session_vsn
          }}
 
       {:error, :noproc} ->
@@ -1275,14 +1360,22 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp reply_mount(result, from, %Session{} = session, route) do
+    lv_vsn = to_string(Application.spec(:phoenix_live_view)[:vsn])
+
     case result do
       {:ok, diff, :mount, new_state} ->
-        reply = put_container(session, route, %{rendered: diff})
+        reply = put_container(session, route, %{rendered: diff, liveview_version: lv_vsn})
         GenServer.reply(from, {:ok, reply})
         {:noreply, post_verified_mount(new_state)}
 
       {:ok, diff, {:live_patch, opts}, new_state} ->
-        reply = put_container(session, route, %{rendered: diff, live_patch: opts})
+        reply =
+          put_container(session, route, %{
+            rendered: diff,
+            live_patch: opts,
+            liveview_version: lv_vsn
+          })
+
         GenServer.reply(from, {:ok, reply})
         {:noreply, post_verified_mount(new_state)}
 
@@ -1303,6 +1396,8 @@ defmodule Phoenix.LiveView.Channel do
       socket: lv_socket,
       topic: phx_socket.topic,
       components: Diff.new_components(),
+      fingerprints: Diff.new_fingerprints(),
+      redirect_count: 0,
       upload_names: %{},
       upload_pids: %{}
     }
@@ -1462,17 +1557,43 @@ defmodule Phoenix.LiveView.Channel do
   defp authorize_session(%Session{} = session, endpoint, %{"redirect" => url}) do
     if redir_route = session_route(session, endpoint, url) do
       case Session.authorize_root_redirect(session, redir_route) do
-        {:ok, %Session{} = new_session} -> {:ok, new_session, redir_route, url}
-        {:error, :unauthorized} = err -> err
+        {:ok, %Session{} = new_session} ->
+          {:ok, new_session, redir_route, url}
+
+        :error ->
+          Logger.warning(
+            "navigate event to #{inspect(url)} failed because you are redirecting across live_sessions. " <>
+              "A full page reload will be performed instead"
+          )
+
+          {:error, :unauthorized}
       end
     else
+      Logger.warning(
+        "navigate event to #{inspect(url)} failed because the URL does not point to a LiveView. " <>
+          "A full page reload will be performed instead"
+      )
+
       {:error, :unauthorized}
     end
   end
 
   defp authorize_session(%Session{} = session, endpoint, %{"url" => url}) do
+    %Session{view: view, live_session_name: session_name} = session
+
     if Session.main?(session) do
-      {:ok, session, session_route(session, endpoint, url), url}
+      # Ensure the session's LV module and live session name still match on connect.
+      # If the route has changed the LV module or has moved live sessions (typically
+      # during a deployment), the client will fallback to full page redirect to the
+      # current URL.
+      case session_route(session, endpoint, url) do
+        %Route{view: ^view, live_session: %{name: ^session_name}} = route ->
+          {:ok, session, route, url}
+
+        # if we have a session, then it no longer matches and is unauthorized
+        _ ->
+          {:error, :unauthorized}
+      end
     else
       {:ok, session, _route = nil, _url = nil}
     end
@@ -1483,7 +1604,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp session_route(%Session{} = session, endpoint, url) do
-    case Route.live_link_info(endpoint, session.router, url) do
+    case Route.live_link_info_without_checks(endpoint, session.router, url) do
       {:internal, %Route{} = route} -> route
       _ -> nil
     end
@@ -1494,9 +1615,13 @@ defmodule Phoenix.LiveView.Channel do
 
     if live_reload_config[:notify][:live_view] do
       state.socket.endpoint.subscribe("live_view")
-    end
 
-    {:noreply, state}
+      reloader = live_reload_config[:reloader] || {Phoenix.CodeReloader, :reload, []}
+      state = put_in(state.socket.private[:phoenix_reloader], reloader)
+      {:noreply, state}
+    else
+      {:noreply, state}
+    end
   end
 
   defp maybe_subscribe_to_live_reload(response), do: response

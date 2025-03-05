@@ -1,6 +1,6 @@
 # Form bindings
 
-## Form Events
+## Form events
 
 To handle form changes and submissions, use the `phx-change` and `phx-submit`
 events. In general, it is preferred to handle input changes at the form level,
@@ -53,8 +53,7 @@ callbacks, to validate and attempt to save the parameter accordingly:
       form =
         %User{}
         |> Accounts.change_user(params)
-        |> Map.put(:action, :insert)
-        |> to_form()
+        |> to_form(action: :validate)
 
       {:noreply, assign(socket, form: form)}
     end
@@ -87,7 +86,7 @@ You may wish for an individual input to use its own change event or to target
 a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
-```
+```heex
 <.form for={@form} phx-change="validate" phx-submit="save">
   ...
   <.input field={@form[:email]}  phx-change="email_changed" phx-target={@myself} />
@@ -102,51 +101,31 @@ def handle_event("email_changed", %{"user" => %{"email" => email}}, socket) do
 end
 ```
 
-_Note_: only the individual input is sent as params for an input marked with `phx-change`.
+> #### Note {: .warning}
+> 1. Only the individual input is sent as params for an input marked with `phx-change`.
+> 2. While it is possible to use `phx-change` on individual inputs, those inputs
+>    must still be within a form.
 
-## `phx-feedback-for`
+## Error feedback
 
-For proper form error tag updates, the error tag must specify which
-input it belongs to. This is accomplished with the `phx-feedback-for` attribute,
-which specifies the name (or id, for backwards compatibility) of the input it belongs to.
-Failing to add the `phx-feedback-for` attribute will result in displaying error
-messages for form fields that the user has not changed yet (e.g. required
-fields further down on the page).
+For proper error feedback on form updates, LiveView sends special parameters on form events
+starting with `_unused_` to indicate that the input for the specific field has not been interacted with yet.
+
+When creating a form from these parameters through `Phoenix.Component.to_form/2` or `Phoenix.Component.form/1`,
+`Phoenix.Component.used_input?/1` can be used to filter error messages.
 
 For example, your `MyAppWeb.CoreComponents` may use this function:
 
-    def input(assigns) do
-      ~H"""
-      <div phx-feedback-for={@name}>
-        <input
-          type={@type}
-          name={@name}
-          id={@id || @name}
-          value={Phoenix.HTML.Form.normalize_value(@type, @value)}
-          class={[
-            "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
-            "border-zinc-300 focus:border-zinc-400 focus:ring-zinc-800/5",
-          ]}
-          {@rest}
-        />
-        <.error :for={msg <- @errors}><%= msg %></.error>
-      </div>
-      """
-    end
+```elixir
+def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
+  errors = if Phoenix.Component.used_input?(field), do: field.errors, else: []
 
-    def error(assigns) do
-      ~H"""
-      <p class="phx-no-feedback:hidden">
-        <Heroicons.exclamation_circle mini class="mt-0.5 h-5 w-5 flex-none fill-rose-500" />
-        <%= render_slot(@inner_block) %>
-      </p>
-      """
-    end
+  assigns
+  |> assign(field: nil, id: assigns.id || field.id)
+  |> assign(:errors, Enum.map(errors, &translate_error(&1)))
+```
 
-Now, any DOM container with the `phx-feedback-for` attribute will receive a
-`phx-no-feedback` class in cases where the form fields has yet to receive
-user input/focus. Using new CSS rules or tailwindcss variants allows you
-errors to be shown, hidden, and styled as feedback changes.
+Now only errors for fields that were interacted with are shown.
 
 ## Number inputs
 
@@ -166,7 +145,7 @@ decrease the number.
 
 One alternative is the `inputmode` attribute, which may serve your application's needs
 and users much better. According to [Can I Use?](https://caniuse.com/#search=inputmode),
-the following is supported by 86% of the global market (as of Sep 2021):
+the following is supported by 94% of the global market (as of Nov 2024):
 
 ```heex
 <input type="text" inputmode="numeric" pattern="[0-9]*">
@@ -190,7 +169,7 @@ it will add the necessary hidden input fields for tracking ids of Ecto associati
 
 ```heex
 <.inputs_for :let={fp} field={f[:friends]}>
-  <.input field={fp[:name]} type="text">
+  <.input field={fp[:name]} type="text" />
 </.inputs_for>
 ```
 
@@ -220,7 +199,7 @@ annotate the `phx-trigger-action` with a boolean assign:
 
 ```heex
 <.form :let={f} for={@changeset}
-  action={Routes.reset_password_path(@socket, :create)}
+  action={~p"/users/reset_password"}
   phx-submit="save"
   phx-trigger-action={@trigger_submit}>
 ```
@@ -264,7 +243,9 @@ to trigger for recovery, which will receive the form params as usual. For exampl
 imagine a LiveView wizard form where the form is stateful and built based on what
 step the user is on and by prior selections:
 
-    <form id="wizard" phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
+```heex
+<form id="wizard" phx-change="validate_wizard_step" phx-auto-recover="recover_wizard">
+```
 
 On the server, the `"validate_wizard_step"` event is only concerned with the
 current client form data, but the server maintains the entire state of the wizard.
@@ -283,18 +264,20 @@ above, which would wire up to the following server callbacks in your LiveView:
 
 To forgo automatic form recovery, set `phx-auto-recover="ignore"`.
 
-## Resetting Forms
+## Resetting forms
 
 To reset a LiveView form, you can use the standard `type="reset"` on a
 form button or input. When clicked, the form inputs will be reset to their
-original values, and Phoenix will hide errors for `phx-feedback-for` elements.
+original values.
 After the form is reset, a `phx-change` event is emitted with the `_target` param
 containing the reset `name`. For example, the following element:
 
-    <form phx-change="changed">
-      ...
-      <button type="reset" name="reset">Reset</button>
-    </form>
+```heex
+<form phx-change="changed">
+  ...
+  <button type="reset" name="reset">Reset</button>
+</form>
+```
 
 Can be handled on the server differently from your regular change function:
 
@@ -356,15 +339,33 @@ the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 <button type="submit" phx-disable-with="Saving...">Save</button>
 ```
 
+> #### A note on disabled buttons {: .info}
+>
+> By default, LiveView only disables submit buttons and inputs within forms
+> while waiting for a server acknowledgement. If you want a button outside of
+> a form to be disabled without changing its text, you can add `phx-disable-with`
+> without a value:
+>
+> ```heex
+>  <button type="button" phx-disable-with>...</button>
+> ```
+>
+> Note also that LiveView ignores clicks on elements that are currently awaiting
+> an acknowledgement from the server. This means that although a regular button
+> without `phx-disable-with` is not semantically disabled while waiting for a
+> server response, it will not trigger duplicate events.
+
 You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
 with the following rules in your `app.css`:
 
-    .while-submitting { display: none; }
-    .inputs { display: block; }
+```css
+.while-submitting { display: none; }
+.inputs { display: block; }
 
-    .phx-submit-loading .while-submitting { display: block; }
-    .phx-submit-loading .inputs { display: none; }
+.phx-submit-loading .while-submitting { display: block; }
+.phx-submit-loading .inputs { display: none; }
+```
 
 You can show and hide content with the following markup:
 
@@ -391,7 +392,7 @@ store the selected state.
 In these cases, the event functions on the DOM API can be used, for example
 to trigger a `phx-change` event:
 
-```
+```javascript
 document.getElementById("my-select").dispatchEvent(
   new Event("input", {bubbles: true})
 )
@@ -402,7 +403,7 @@ outlined in the "Client hooks" documentation.
 
 It is also possible to trigger a `phx-submit` using a "submit" event:
 
-```
+```javascript
 document.getElementById("my-form").dispatchEvent(
   new Event("submit", {bubbles: true, cancelable: true})
 )

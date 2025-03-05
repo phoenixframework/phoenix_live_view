@@ -20,6 +20,14 @@ let container = () => {
     <input type="text" name="debounce-200" phx-debounce="200" />
     <input type="text" name="throttle-200" phx-throttle="200" />
     <button id="throttle-200" phx-throttle="200" />+</button>
+    <input
+      name="throttle-range-with-blur"
+      type="range"
+      min="100"
+      max="1000"
+      phx-throttle="200"
+      phx-change="change-tick-frequency"
+    />
   </form>
   <div id="throttle-keydown" phx-keydown="keydown" phx-throttle="200"></div>
   `
@@ -232,6 +240,59 @@ describe("throttle", function (){
     after(100, () => {
       expect(calls).toBe(2)
       expect(el.value).toBe("changed3")
+      done()
+    })
+  })
+
+  test("triggers only once when there is only one event", done => {
+    let calls = 0
+    let el = container().querySelector("#throttle-200")
+
+    el.addEventListener("click", e => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
+        calls++
+        el.innerText = `now:${calls}`
+      })
+    })
+    DOM.dispatchEvent(el, "click")
+    expect(calls).toBe(1)
+    expect(el.innerText).toBe("now:1")
+    after(250, () => {
+      expect(calls).toBe(1)
+      done()
+    })
+  })
+
+  test("sends value on blur when phx-blur dispatches change", done => {
+    let calls = 0
+    let el = container().querySelector("input[name=throttle-range-with-blur]")
+
+    el.addEventListener("input", e => {
+      DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
+        calls++
+        el.innerText = `now:${calls}`
+      })
+    })
+    el.value = 500
+    DOM.dispatchEvent(el, "input")
+    // these will be throttled
+    for(let i = 0; i < 100; i++){
+      el.value = i
+      DOM.dispatchEvent(el, "input")
+    }
+    expect(calls).toBe(1)
+    expect(el.innerText).toBe("now:1")
+    // when using phx-blur={JS.dispatch("change")} we would trigger another
+    // input event immediately after the blur
+    // therefore starting a new throttle cycle
+    DOM.dispatchEvent(el, "blur")
+    // simulate phx-blur
+    DOM.dispatchEvent(el, "input")
+    expect(calls).toBe(2)
+    expect(el.innerText).toBe("now:2")
+    after(250, () => {
+      expect(calls).toBe(2)
+      expect(el.innerText).toBe("now:2")
       done()
     })
   })

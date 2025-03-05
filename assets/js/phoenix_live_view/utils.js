@@ -23,6 +23,17 @@ export function detectDuplicateIds(){
   }
 }
 
+export function detectInvalidStreamInserts(inserts){
+  const errors = new Set()
+  Object.keys(inserts).forEach((id) => {
+    const streamEl = document.getElementById(id)
+    if(streamEl && streamEl.parentElement && streamEl.parentElement.getAttribute("phx-update") !== "stream"){
+      errors.add(`The stream container with id "${streamEl.parentElement.id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`)
+    }
+  })
+  errors.forEach(error => console.error(error))
+}
+
 export let debug = (view, kind, msg, obj) => {
   if(view.liveSocket.isDebugEnabled()){
     console.log(`${view.id} ${kind}: ${msg} - `, obj)
@@ -57,7 +68,7 @@ export let maybe = (el, callback) => el && callback(el)
 
 export let channelUploader = function (entries, onError, resp, liveSocket){
   entries.forEach(entry => {
-    let entryUploader = new EntryUploader(entry, resp.config.chunk_size, liveSocket)
+    let entryUploader = new EntryUploader(entry, resp.config, liveSocket)
     entryUploader.upload()
   })
 }

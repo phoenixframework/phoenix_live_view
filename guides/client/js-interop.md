@@ -18,14 +18,17 @@ except for the following LiveView specific options:
   * `params` - the `connect_params` to pass to the view's mount callback. May be
     a literal object or closure returning an object. When a closure is provided,
     the function receives the view's element.
-  * `hooks` – a reference to a user-defined hooks namespace, containing client
+  * `hooks` - a reference to a user-defined hooks namespace, containing client
     callbacks for server/client interop. See the [Client hooks](#client-hooks-via-phx-hook)
     section below for details.
-  * `uploaders` – a reference to a user-defined uploaders namespace, containing
+  * `uploaders` - a reference to a user-defined uploaders namespace, containing
     client callbacks for client-side direct-to-cloud uploads. See the
-    [External Uploads guide](uploads-external.md) for details.
+    [External uploads guide](external-uploads.md) for details.
+  * `metadata` - additional user-defined metadata that is sent along events to the server.
+    See the [Key events](bindings.html#key-events) section in the bindings guide
+    for an example.
 
-## Debugging Client Events
+## Debugging client events
 
 To aid debugging on the client when troubleshooting issues, the `enableDebug()`
 and `disableDebug()` functions are exposed on the `LiveSocket` JavaScript instance.
@@ -33,7 +36,7 @@ Calling `enableDebug()` turns on debug logging which includes LiveView life-cycl
 payload events as they come and go from client to server. In practice, you can expose
 your instance on `window` for quick access in the browser's web console, for example:
 
-```
+```javascript
 // app.js
 let liveSocket = new LiveSocket(...)
 liveSocket.connect()
@@ -55,7 +58,7 @@ so LiveView includes a latency simulator with the JavaScript client to ensure yo
 application provides a pleasant experience. Like the `enableDebug()` function above,
 the `LiveSocket` instance includes `enableLatencySim(milliseconds)` and `disableLatencySim()`
 functions which apply throughout the current browser session. The `enableLatencySim` function
-accepts an integer in milliseconds for the round-trip-time to the server. For example:
+accepts an integer in milliseconds for the one-way latency to and from the server. For example:
 
 ```javascript
 // app.js
@@ -69,52 +72,7 @@ window.liveSocket = liveSocket
       Call disableLatencySim() to disable
 ```
 
-## Event listeners
-
-LiveView emits several events to the browsers and allows developers to submit
-their own events too.
-
-### Live navigation events
-
-For live page navigation via `<.link navigate={...}>` and `<.link patch={...}>`,
-their server-side equivalents `push_redirect` and `push_patch`, as well as form
-submits via `phx-submit`, the JavaScript events `"phx:page-loading-start"` and
-`"phx:page-loading-stop"` are dispatched on window. Additionally, any `phx-`
-event may dispatch page loading events by annotating the DOM element with
-`phx-page-loading`. This is useful for showing main page loading status, for example:
-
-```
-// app.js
-import topbar from "topbar"
-window.addEventListener("phx:page-loading-start", info => topbar.show())
-window.addEventListener("phx:page-loading-stop", info => topbar.hide())
-```
-
-Within the callback, `info.detail` will be an object that contains a `kind`
-key, with a value that depends on the triggering event:
-
-  - `"redirect"` - the event was triggered by a redirect
-  - `"patch"` - the event was triggered by a patch
-  - `"initial"` - the event was triggered by initial page load
-  - `"element"` - the event was triggered by a `phx-` bound element, such as `phx-click`
-
-For all kinds of page loading events, all but `"element"` will receive an additional `to`
-key in the info metadata pointing to the href associated with the page load.
-
-In the case of an `"element"` page loading event, the info will contain a
-`"target"` key containing the DOM element which triggered the page loading
-state.
-
-A lower level `phx:navigate` event is also triggered any time the browser's URL bar
-is programmatically changed by Phoenix or the user navigation forward or back. The
-`info.detail` will contain the following information:
-
-  - `"href"` - the location the URL bar was navigated to.
-  - `"patch"` - the boolean flag indicating this was a patch navigation.
-  - `"pop"` - the boolean flag indication this was a navigation via `popstate`
-    from a user navigation forward or back in history.
-
-### Handling server-pushed events
+## Handling server-pushed events
 
 When the server uses `Phoenix.LiveView.push_event/3`, the event name
 will be dispatched in the browser with the `phx:` prefix. For example,
@@ -123,7 +81,7 @@ element from the server to draw the user's attention:
 
 ```heex
 <div id={"item-#{item.id}"} class="item">
-  <%= item.title %>
+  {item.title}
 </div>
 ```
 
@@ -155,7 +113,7 @@ attribute:
 
 ```heex
 <div id={"item-#{item.id}"} class="item" data-highlight={JS.transition("highlight")}>
-  <%= item.title %>
+  {item.title}
 </div>
 ```
 
@@ -204,7 +162,8 @@ The above life-cycle callbacks have in-scope access to the following attributes:
     to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is
     defined in, where its value can be either a query selector or an actual DOM element. If the query selector returns
     more than one element it will send the event to all of them, even if all the elements are in the same LiveComponent
-    or LiveView.
+    or LiveView. `pushEventTo` supports passing the node element e.g. `this.el` instead of selector e.g. `"#" + this.el.id`
+    as the first parameter for target.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server
   * `upload(name, files)` - method to inject a list of file-like objects into an uploader.
   * `uploadTo(selectorOrTarget, name, files)` - method to inject a list of file-like objects into an uploader.
@@ -223,6 +182,9 @@ like this:
 Then a hook callback object could be defined and passed to the socket:
 
 ```javascript
+/**
+ * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+ */
 let Hooks = {}
 Hooks.PhoneNumber = {
   mounted() {
@@ -252,10 +214,17 @@ and the return value is ignored.
 For example, the following option could be used to guarantee that some attributes set on the client-side are kept intact:
 
 ```javascript
-onBeforeElUpdated(from, to){
-  for (const attr of from.attributes){
-    if (attr.name.startsWith("data-js-")){
-      to.setAttribute(attr.name, attr.value);
+...
+let liveSocket = new LiveSocket("/live", Socket, {
+  params: {_csrf_token: csrfToken},
+  hooks: Hooks,
+  dom: {
+    onBeforeElUpdated(from, to) {
+      for (const attr of from.attributes) {
+        if (attr.name.startsWith("data-js-")) {
+          to.setAttribute(attr.name, attr.value);
+        }
+      }
     }
   }
 }
@@ -281,6 +250,9 @@ For example, to implement infinite scrolling, one can pass the current page usin
 And then in the client:
 
 ```javascript
+/**
+ * @type {import("phoenix_live_view").ViewHook}
+ */
 Hooks.InfiniteScroll = {
   page() { return this.el.dataset.page },
   mounted(){
@@ -298,12 +270,16 @@ Hooks.InfiniteScroll = {
 
 However, the data attribute approach is not a good approach if you need to frequently push data to the client. To push out-of-band events to the client, for example to render charting points, one could do:
 
-    <div id="chart" phx-hook="Chart">
-    {:noreply, push_event(socket, "points", %{points: new_points})}
+```heex
+<div id="chart" phx-hook="Chart">
+```
 
 And then on the client:
 
 ```javascript
+/**
+ * @type {import("phoenix_live_view").ViewHook}
+ */
 Hooks.Chart = {
   mounted(){
     this.handleEvent("points", ({points}) => MyChartLib.addPoints(points))
@@ -311,7 +287,32 @@ Hooks.Chart = {
 }
 ```
 
-*Note*: remember events pushed from the server via `push_event` are global and will be dispatched
-to all active hooks on the client who are handling that event.
+And then you can push events as:
+
+    {:noreply, push_event(socket, "points", %{points: new_points})}
+
+Events pushed from the server via `push_event` are global and will be dispatched
+to all active hooks on the client who are handling that event. If you need to scope events
+(for example when pushing from a live component that has siblings on the current live view),
+then this must be done by namespacing them:
+
+    def update(%{id: id, points: points} = assigns, socket) do
+      socket =
+        socket
+        |> assign(assigns)
+        |> push_event("points-#{id}", points)
+
+      {:ok, socket}
+    end
+
+And then on the client:
+
+```javascript
+Hooks.Chart = {
+  mounted(){
+    this.handleEvent(`points-${this.el.id}`, (points) => MyChartLib.addPoints(points));
+  }
+}
+```
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.

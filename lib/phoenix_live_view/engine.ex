@@ -62,7 +62,7 @@ defmodule Phoenix.LiveView.Comprehension do
   defstruct [:static, :dynamics, :fingerprint, :stream]
 
   @type t :: %__MODULE__{
-          stream: String.t() | atom() | nil,
+          stream: list() | nil,
           static: [String.t()],
           dynamics: [
             [
@@ -77,14 +77,14 @@ defmodule Phoenix.LiveView.Comprehension do
 
   @doc false
   def __mark_consumable__(%Phoenix.LiveView.LiveStream{} = stream) do
-    %Phoenix.LiveView.LiveStream{stream | consumable?: true}
+    %{stream | consumable?: true}
   end
 
   def __mark_consumable__(collection), do: collection
 
   @doc false
   def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
-    inserts = for {id, at, _item, limit} <- stream.inserts, into: %{}, do: {id, [at, limit]}
+    inserts = for {id, at, _item, limit} <- stream.inserts, do: [id, at, limit]
     data = [stream.ref, inserts, stream.deletes]
 
     if stream.reset? do
@@ -128,15 +128,14 @@ defmodule Phoenix.LiveView.Rendered do
 
   @type t :: %__MODULE__{
           static: [String.t()],
-          dynamic:
-            (boolean() ->
-               [
-                 nil
-                 | iodata()
-                 | Phoenix.LiveView.Rendered.t()
-                 | Phoenix.LiveView.Comprehension.t()
-                 | Phoenix.LiveView.Component.t()
-               ]),
+          dynamic: (boolean() ->
+                      [
+                        nil
+                        | iodata()
+                        | Phoenix.LiveView.Rendered.t()
+                        | Phoenix.LiveView.Comprehension.t()
+                        | Phoenix.LiveView.Component.t()
+                      ]),
           fingerprint: integer(),
           root: nil | true | false,
           caller:
@@ -152,10 +151,6 @@ defmodule Phoenix.LiveView.Rendered do
 
     def to_iodata(%_{} = struct) do
       Phoenix.HTML.Safe.to_iodata(struct)
-    end
-
-    def to_iodata(nil) do
-      raise "cannot convert .heex/.leex template with change tracking to iodata"
     end
 
     def to_iodata(other) do
@@ -243,7 +238,9 @@ defmodule Phoenix.LiveView.Engine do
   `Phoenix.LiveView` also tracks changes across live
   templates. Therefore, if your view has this:
 
-      <%= render "form.html", assigns %>
+  ```heex
+  {render("form.html", assigns)}
+  ```
 
   Phoenix will be able to track what is static and dynamic
   across templates, as well as what changed. A rendered
@@ -256,7 +253,9 @@ defmodule Phoenix.LiveView.Engine do
   which live template was rendered. For example,
   imagine this code:
 
-      <%= if something?, do: render("one.html", assigns), else: render("other.html", assigns) %>
+  ```heex
+  <%= if something?, do: render("one.html", assigns), else: render("other.html", assigns) %>
+  ```
 
   To solve this, all `Phoenix.LiveView.Rendered` structs
   also contain a fingerprint field that uniquely identifies
@@ -269,10 +268,12 @@ defmodule Phoenix.LiveView.Engine do
   Another optimization done by live templates is to
   track comprehensions. If your code has this:
 
-      <%= for point <- @points do %>
-        x: <%= point.x %>
-        y: <%= point.y %>
-      <% end %>
+  ```heex
+  <%= for point <- @points do %>
+    x: {point.x}
+    y: {point.y}
+  <% end %>
+  ```
 
   Instead of rendering all points with both static and
   dynamic parts, it returns a `Phoenix.LiveView.Comprehension`
@@ -289,9 +290,12 @@ defmodule Phoenix.LiveView.Engine do
         ]
       }
 
-  This allows live templates to drastically optimize
-  the data sent by comprehensions, as the static parts
-  are emitted only once, regardless of the number of items.
+  This allows live templates to send the static parts only once,
+  regardless of the number of items. On the other hand, keep in
+  mind the collection itself is not "diffed" across renders.
+  If one entry in the comprehension changes, the whole collection
+  is sent again. Consider using `Phoenix.LiveComponent` and
+  `Phoenix.LiveView.stream/4` to optimize those cases.
 
   The list of dynamics is always a list of iodatas or components,
   as we don't perform change tracking inside the comprehensions
@@ -466,13 +470,13 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns, caller) do
     with {:for, meta, [gen | args]} <- expr,
+         {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller)
 
       gen_var = Macro.unique_var(:for, __MODULE__)
-      {:<-, gen_meta, [gen_pattern, gen_collection]} = gen
 
       gen_collection =
         quote do
@@ -504,9 +508,8 @@ defmodule Phoenix.LiveView.Engine do
     call = extract_call(left)
 
     args =
-      if classify_taint(call, args) == :live do
-        {args, [opts]} = Enum.split(args, -1)
-
+      with :live <- classify_taint(call, args),
+           {args, [opts]} when is_list(opts) <- Enum.split(args, -1) do
         # The reason we can safely ignore assigns here is because
         # each branch in the live/render constructs are their own
         # rendered struct and, if the rendered has a new fingerprint,
@@ -540,7 +543,7 @@ defmodule Phoenix.LiveView.Engine do
 
         args ++ [opts]
       else
-        args
+        _ -> args
       end
 
     args =
@@ -559,10 +562,6 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct(expr, _vars, _assigns, _caller) do
     to_safe(expr, true)
   end
-
-  # TODO: Remove me when live_component/2/3 are removed
-  defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :Helpers]}, func]}),
-    do: func
 
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, func]}),
     do: func
@@ -1142,14 +1141,14 @@ defmodule Phoenix.LiveView.Engine do
 
           def add(assigns) do
             result = assigns.a + assigns.b
-            ~H"the result is: <%= result %>"
+            ~H"the result is: {result}"
           end
 
       You must do:
 
           def add(assigns) do
             assigns = assign(assigns, :result, assigns.a + assigns.b)
-            ~H"the result is: <%= @result %>"
+            ~H"the result is: {@result}"
           end
       """
 
@@ -1282,7 +1281,10 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp recur_changed_assign([{:access, head}], %Form{} = form1, %Form{} = form2) do
-    Form.input_changed?(form1, form2, head)
+    # Phoenix.HTML does not know about LiveView's _unused_ input tracking,
+    # therefore we also need to check if the input's unused state changed
+    Form.input_changed?(form1, form2, head) or
+      Phoenix.Component.used_input?(form1[head]) !== Phoenix.Component.used_input?(form2[head])
   end
 
   defp recur_changed_assign([{:access, head} | tail], assigns, changed) do
@@ -1296,6 +1298,7 @@ defmodule Phoenix.LiveView.Engine do
   defp recur_changed_assign([], head, assigns, changed) do
     case {assigns, changed} do
       {%{^head => value}, %{^head => value}} -> false
+      {m1, m2} when not is_map_key(m1, head) and not is_map_key(m2, head) -> false
       {_, %{^head => value}} when is_map(value) -> value
       {_, _} -> true
     end
@@ -1323,16 +1326,12 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:receive, [_]), do: :live
 
   # with/for are specially handled during analyze
-  defp classify_taint(:with, _), do: :live
-  defp classify_taint(:for, _), do: :live
+  defp classify_taint(:with, [_ | _]), do: :live
+  defp classify_taint(:for, [_ | _]), do: :live
 
   # Constructs from Phoenix and TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
-
-  # TODO: Remove me when live_component/2/3 are removed
-  defp classify_taint(:live_component, [_, [do: _]]), do: :live
-  defp classify_taint(:live_component, [_, _, [do: _]]), do: :live
 
   # Special forms are forbidden and raise.
   defp classify_taint(:alias, [_]), do: :special_form

@@ -37,7 +37,7 @@ const VOID_TAGS = new Set([
   "track",
   "wbr"
 ])
-const quoteChars = new Set(["'", '"'])
+const quoteChars = new Set(["'", "\""])
 
 export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0
@@ -45,7 +45,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML
 
   let lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
-  if(lookahead === null) { throw new Error(`malformed html ${html}`) }
+  if(lookahead === null){ throw new Error(`malformed html ${html}`) }
 
   i = lookahead[0].length
   beforeTag = lookahead[1]
@@ -57,15 +57,15 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
     if(html.charAt(i) === ">" ){ break }
     if(html.charAt(i) === "="){
       let isId = html.slice(i - 3, i) === " id"
-      i++;
+      i++
       let char = html.charAt(i)
-      if (quoteChars.has(char)) {
+      if(quoteChars.has(char)){
         let attrStartsAt = i
         i++
         for(i; i < html.length; i++){
           if(html.charAt(i) === char){ break }
         }
-        if (isId) {
+        if(isId){
           id = html.slice(attrStartsAt + 1, i)
           break
         }
@@ -97,12 +97,12 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
 
   let attrsStr =
     Object.keys(attrs)
-    .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
-    .join(" ")
+      .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
+      .join(" ")
 
   if(clearInnerHTML){
     // Keep the id if any
-    let idAttrStr = id ? ` id="${id}"` : "";
+    let idAttrStr = id ? ` id="${id}"` : ""
     if(VOID_TAGS.has(tag)){
       newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`
     } else {
@@ -154,6 +154,14 @@ export default class Rendered {
   }
 
   getComponent(diff, cid){ return diff[COMPONENTS][cid] }
+
+  resetRender(cid){
+    // we are racing a component destroy, it could not exist, so
+    // make sure that we don't try to set reset on undefined
+    if(this.rendered[COMPONENTS][cid]){
+      this.rendered[COMPONENTS][cid].reset = true
+    }
+  }
 
   mergeDiff(diff){
     let newc = diff[COMPONENTS]
@@ -242,6 +250,8 @@ export default class Rendered {
       let targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
         merged[key] = this.cloneMerge(targetVal, val, pruneMagicId)
+      } else if(val === undefined && isObject(targetVal)){
+        merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId)
       }
     }
     if(pruneMagicId){
@@ -270,7 +280,7 @@ export default class Rendered {
   isNewFingerprint(diff = {}){ return !!diff[STATIC] }
 
   templateStatic(part, templates){
-    if(typeof (part) === "number") {
+    if(typeof (part) === "number"){
       return templates[part]
     } else {
       return part
@@ -279,14 +289,14 @@ export default class Rendered {
 
   nextMagicID(){
     this.magicId++
-    return `${this.parentViewId()}-${this.magicId}`
+    return `m${this.magicId}-${this.parentViewId()}`
   }
 
   // Converts rendered tree to output buffer.
   //
   // changeTracking controls if we can apply the PHX_SKIP optimization.
   // It is disabled for comprehensions since we must re-render the entire collection
-  // and no invidial element is tracked inside the comprehension.
+  // and no individual element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}){
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
@@ -295,6 +305,8 @@ export default class Rendered {
     let prevBuffer = output.buffer
     if(isRoot){ output.buffer = "" }
 
+    // this condition is called when first rendering an optimizable function component.
+    // LC have their magicId previously set
     if(changeTracking && isRoot && !rendered.magicId){
       rendered.newRender = true
       rendered.magicId = this.nextMagicID()
@@ -313,13 +325,17 @@ export default class Rendered {
     if(isRoot){
       let skip = false
       let attrs
-      if(changeTracking || Object.keys(rootAttrs).length > 0){
-        skip = !rendered.newRender
+      // When a LC is re-added to the page, we need to re-render the entire LC tree,
+      // therefore changeTracking is false; however, we need to keep all the magicIds
+      // from any function component so the next time the LC is updated, we can apply
+      // the skip optimization
+      if(changeTracking || rendered.magicId){
+        skip = changeTracking && !rendered.newRender
         attrs = {[PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs}
       } else {
         attrs = rootAttrs
       }
-      if(skip){ attrs[PHX_SKIP] = true}
+      if(skip){ attrs[PHX_SKIP] = true }
       let [newRoot, commentBefore, commentAfter] = modifyRoot(output.buffer, attrs, skip)
       rendered.newRender = false
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter
@@ -376,15 +392,26 @@ export default class Rendered {
     //
     //   2. The root PHX_SKIP optimization generalizes to all HEEx function components, and
     //     works in the same PHX_SKIP attribute fashion as 1, but the newRender tracking is done
-    //     at the general diff merge level. If we merge a diff with new dynamics, we necessariy have
+    //     at the general diff merge level. If we merge a diff with new dynamics, we necessarily have
     //     experienced a change which must be a newRender, and thus we can't skip the render.
     //
     // Both optimization flows apply here. newRender is set based on the onlyCids optimization, and
     // we track a deterministic magicId based on the cid.
+    //
+    // changeTracking is about the entire tree
+    // newRender is about the current root in the tree
+    //
+    // By default changeTracking is enabled, but we special case the flow where the client is pruning
+    // cids and the server adds the component back. In such cases, we explicitly disable changeTracking
+    // with resetRender for this cid, then re-enable it after the recursive call to skip the optimization
+    // for the entire component tree.
     component.newRender = !skip
-    component.magicId = `${this.parentViewId()}-c-${cid}`
-    let changeTracking = true
+    component.magicId = `c${cid}-${this.parentViewId()}`
+    // enable change tracking as long as the component hasn't been reset
+    let changeTracking = !component.reset
     let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
+    // disable reset after we've rendered
+    delete component.reset
 
     return [html, streams]
   }

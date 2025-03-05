@@ -1,12 +1,13 @@
 defmodule Phoenix.LiveView.LiveViewTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.HTML
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -14,21 +15,21 @@ defmodule Phoenix.LiveView.LiveViewTest do
     {:ok, conn: Plug.Test.init_test_session(build_conn(), config[:session] || %{})}
   end
 
-  defp simulate_bad_token_on_page(conn) do
+  defp simulate_bad_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
     [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
-    %Plug.Conn{conn | resp_body: String.replace(html, session_token, "badsession")}
+    %{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
-  defp simulate_outdated_token_on_page(conn) do
+  defp simulate_outdated_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
     [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
-    %Plug.Conn{conn | resp_body: String.replace(html, session_token, outdated_token)}
+    %{conn | resp_body: String.replace(html, session_token, outdated_token)}
   end
 
-  defp simulate_expired_token_on_page(conn) do
+  defp simulate_expired_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
     [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
@@ -38,7 +39,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
         signed_at: 0
       )
 
-    %Plug.Conn{conn | resp_body: String.replace(html, session_token, expired_token)}
+    %{conn | resp_body: String.replace(html, session_token, expired_token)}
   end
 
   describe "mounting" do
@@ -94,7 +95,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
       html = html_response(conn, 200)
 
       assert html =~ """
-             The temp is: 0
+             <p>The temp is: 0</p>
              <button phx-click="dec">-</button>
              <button phx-click="inc">+</button>
              """
@@ -104,7 +105,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {_tag, _attrs, children} = html |> DOM.parse() |> DOM.by_id!(view.id)
 
       assert children == [
-               "Redirect: none\nThe temp is: 1\n",
+               {"p", [], ["Redirect: none"]},
+               {"p", [], ["The temp is: 1"]},
                {"button", [{"phx-click", "dec"}], ["-"]},
                {"button", [{"phx-click", "inc"}], ["+"]}
              ]
@@ -131,8 +133,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
     end
 
     test "live render with socket.assigns", %{conn: conn} do
-      assert_raise Plug.Conn.WrapperError,
-                   ~r/\(KeyError\) key :boom not found in: #Phoenix.LiveView.Socket.AssignsNotInSocket<>/,
+      assert_raise KeyError,
+                   ~r/key :boom not found in:\s+#Phoenix.LiveView.Socket.AssignsNotInSocket<>/,
                    fn ->
                      live(conn, "/assigns-not-in-socket")
                    end
@@ -148,6 +150,66 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "live render with container giving class as list", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/classlist")
       assert html =~ ~s|class="foo bar"|
+    end
+
+    test "raises for duplicate ids by default", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} = live(conn, "/duplicate-id")
+        render(view)
+      end
+
+      assert catch_exit(fun.())
+      assert_receive {:EXIT, _pid, {exception, _}}
+      assert Exception.message(exception) =~ "Duplicate id found while testing LiveView: a"
+    end
+
+    test "raises for duplicate ids when on_error: :raise", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} = live(conn, "/duplicate-id", on_error: :raise)
+        render(view)
+      end
+
+      assert catch_exit(fun.())
+      assert_receive {:EXIT, _pid, {exception, _}}
+      assert Exception.message(exception) =~ "Duplicate id found while testing LiveView: a"
+    end
+
+    test "raises for duplicate components by default", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} = live(conn, "/dynamic-duplicate-component", on_error: :raise)
+        view |> element("button", "Toggle duplicate LC") |> render_click()
+        render(view)
+      end
+
+      assert catch_exit(fun.())
+      assert_receive {:EXIT, _pid, {exception, _}}
+      message = Exception.message(exception)
+      assert message =~ "Duplicate live component found while testing LiveView:"
+      assert message =~ "I am LiveComponent2"
+      refute message =~ "I am a LC inside nested LV"
+    end
+
+    test "raises for duplicate components when on_error: :raise", %{conn: conn} do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} = live(conn, "/dynamic-duplicate-component", on_error: :raise)
+        view |> element("button", "Toggle duplicate LC") |> render_click()
+        render(view)
+      end
+
+      assert catch_exit(fun.())
+      assert_receive {:EXIT, _pid, {exception, _}}
+      message = Exception.message(exception)
+      assert message =~ "Duplicate live component found while testing LiveView:"
+      assert message =~ "I am LiveComponent2"
+      refute message =~ "I am a LC inside nested LV"
     end
   end
 
@@ -224,7 +286,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
                     {"class", "thermo"}
                   ],
                   [
-                    _text,
+                    _p1,
+                    _p2,
                     _btn_down,
                     _btn_up,
                     {"section",
@@ -265,7 +328,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
                     {"style", "thermo-flex<script>"}
                   ],
                   [
-                    _text,
+                    _p1,
+                    _p2,
                     _btn_down,
                     _btn_up,
                     {"p",
@@ -304,14 +368,16 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert DOM.parse(render_click(view, :inc)) ==
                DOM.parse("""
-               Redirect: none\nThe temp is: 4
+               <p>Redirect: none</p>
+               <p>The temp is: 4</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
 
       assert DOM.parse(render_click(view, :dec)) ==
                DOM.parse("""
-               Redirect: none\nThe temp is: 3
+               <p>Redirect: none</p>
+               <p>The temp is: 3</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
@@ -320,7 +386,8 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       assert child_nodes ==
                DOM.parse("""
-               Redirect: none\nThe temp is: 3
+               <p>Redirect: none</p>
+               <p>The temp is: 3</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
                """)
@@ -332,22 +399,29 @@ defmodule Phoenix.LiveView.LiveViewTest do
       {:ok, view, _html} = live(conn, "/thermo")
       GenServer.call(view.pid, {:set, :page_title, "New Title"})
       assert page_title(view) =~ "New Title"
+
+      GenServer.call(view.pid, {:set, :page_title, "<i>New Title</i>"})
+      assert page_title(view) =~ "&lt;i&gt;New Title&lt;/i&gt;"
     end
   end
 
   describe "live_isolated" do
     test "renders a live view with custom session", %{conn: conn} do
       {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
+        live_isolated(conn, Phoenix.LiveViewTest.Support.DashboardLive,
+          session: %{"hello" => "world"}
+        )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
 
-    test "renders a live view with custom session and a router", %{conn: conn} do
-      conn = %Plug.Conn{conn | request_path: "/router/thermo_defaults/123"}
+    test "renders a live view with custom session and a router", %{conn: %Plug.Conn{} = conn} do
+      conn = %{conn | request_path: "/router/thermo_defaults/123"}
 
       {:ok, view, _} =
-        live_isolated(conn, Phoenix.LiveViewTest.DashboardLive, session: %{"hello" => "world"})
+        live_isolated(conn, Phoenix.LiveViewTest.Support.DashboardLive,
+          session: %{"hello" => "world"}
+        )
 
       assert render(view) =~ "session: %{&quot;hello&quot; =&gt; &quot;world&quot;}"
     end
@@ -355,12 +429,12 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "raises if handle_params is implemented", %{conn: conn} do
       assert_raise ArgumentError,
                    ~r/it is not mounted nor accessed through the router live\/3 macro/,
-                   fn -> live_isolated(conn, Phoenix.LiveViewTest.ParamCounterLive) end
+                   fn -> live_isolated(conn, Phoenix.LiveViewTest.Support.ParamCounterLive) end
     end
 
     test "works without an initialized session" do
       {:ok, view, _} =
-        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.Support.DashboardLive,
           session: %{"hello" => "world"}
         )
 
@@ -369,10 +443,96 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
     test "raises on session with atom keys" do
       assert_raise ArgumentError, ~r"LiveView :session must be a map with string keys,", fn ->
-        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.DashboardLive,
+        live_isolated(Phoenix.ConnTest.build_conn(), Phoenix.LiveViewTest.Support.DashboardLive,
           session: %{hello: "world"}
         )
       end
+    end
+
+    test "raises for duplicate ids by default" do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} =
+          live_isolated(
+            Phoenix.ConnTest.build_conn(),
+            Phoenix.LiveViewTest.Support.DuplicateIdLive
+          )
+
+        # errors are detected asynchronously, so we need to render again for the message to be processed
+        render(view)
+      end
+
+      assert catch_exit(fun.())
+      assert_receive {:EXIT, _, {exception, _}}
+      assert Exception.message(exception) =~ "Duplicate id found while testing LiveView: a"
+    end
+
+    test "raises for duplicate ids when on_error: raise" do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} =
+          live_isolated(
+            Phoenix.ConnTest.build_conn(),
+            Phoenix.LiveViewTest.Support.DuplicateIdLive,
+            on_error: :raise
+          )
+
+        # errors are detected asynchronously, so we need to render again for the message to be processed
+        render(view)
+      end
+
+      assert catch_exit(fun.())
+      assert_receive {:EXIT, _, {exception, _}}
+      assert Exception.message(exception) =~ "Duplicate id found while testing LiveView: a"
+    end
+
+    test "raises for duplicate components by default" do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} =
+          live_isolated(
+            Phoenix.ConnTest.build_conn(),
+            Phoenix.LiveViewTest.Support.DynamicDuplicateComponentLive
+          )
+
+        view |> element("button", "Toggle duplicate LC") |> render_click()
+        render(view)
+      end
+
+      # errors are detected asynchronously, so we need to render again for the message to be processed
+      assert catch_exit(fun.())
+
+      assert_receive {:EXIT, _, {exception, _}}
+
+      assert Exception.message(exception) =~
+               "Duplicate live component found while testing LiveView:"
+    end
+
+    test "raises for duplicate components when on_error: raise" do
+      Process.flag(:trap_exit, true)
+
+      fun = fn ->
+        {:ok, view, _html} =
+          live_isolated(
+            Phoenix.ConnTest.build_conn(),
+            Phoenix.LiveViewTest.Support.DynamicDuplicateComponentLive,
+            on_error: :raise
+          )
+
+        view |> element("button", "Toggle duplicate LC") |> render_click()
+        render(view)
+      end
+
+      # errors are detected asynchronously, so we need to render again for the message to be processed
+      assert catch_exit(fun.())
+
+      assert_receive {:EXIT, _, {exception, _}}
+
+      assert Exception.message(exception) =~
+               "Duplicate live component found while testing LiveView:"
     end
   end
 
@@ -390,7 +550,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
                   header: ~c"Status for generic server " ++ _,
                   data: _gen_server_data,
                   data: [
-                    {~c"LiveView", Phoenix.LiveViewTest.ClockLive},
+                    {~c"LiveView", Phoenix.LiveViewTest.Support.ClockLive},
                     {~c"Parent pid", nil},
                     {~c"Transport pid", _},
                     {~c"Topic", <<_::binary>>},
@@ -428,23 +588,50 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   describe "connected mount exceptions" do
     test "when disconnected, raises normally per plug wrapper", %{conn: conn} do
-      assert_raise(Plug.Conn.WrapperError, ~r/Phoenix.LiveViewTest.ThermostatLive.Error/, fn ->
-        get(conn, "/thermo?raise_disconnected=500")
-      end)
+      assert_raise(
+        Phoenix.LiveViewTest.Support.ThermostatLive.Error,
+        fn ->
+          get(conn, "/thermo?raise_disconnected=500")
+        end
+      )
 
-      assert_raise(Plug.Conn.WrapperError, ~r/Phoenix.LiveViewTest.ThermostatLive.Error/, fn ->
-        get(conn, "/thermo?raise_disconnected=404")
-      end)
+      assert_raise(
+        Phoenix.LiveViewTest.Support.ThermostatLive.Error,
+        fn ->
+          get(conn, "/thermo?raise_disconnected=404")
+        end
+      )
     end
 
     test "when connected, raises and exits for 5xx", %{conn: conn} do
       assert {{exception, _}, _} = catch_exit(live(conn, "/thermo?raise_connected=500"))
-      assert %Phoenix.LiveViewTest.ThermostatLive.Error{plug_status: 500} = exception
+      assert %Phoenix.LiveViewTest.Support.ThermostatLive.Error{plug_status: 500} = exception
     end
 
     test "when connected, raises and wraps 4xx in client response", %{conn: conn} do
       assert {reason, _} = catch_exit(live(conn, "/thermo?raise_connected=404"))
-      assert %{reason: "reload", status: 404} = reason
+      assert %{reason: "reload", status: 404, token: token} = reason
+
+      # does not expose stack or exception module by default
+      assert Phoenix.LiveView.Static.verify_token(@endpoint, token) ==
+               {:ok,
+                %{
+                  status: 404,
+                  exception: nil,
+                  stack: [],
+                  view: "Phoenix.LiveViewTest.Support.ThermostatLive"
+                }}
+
+      response =
+        assert_error_sent(404, fn ->
+          conn
+          |> put_req_cookie("__phoenix_reload_status__", token)
+          |> get("/thermo")
+        end)
+
+      # deletes cookie with response
+      {404, resp_headers, "Not Found"} = response
+      assert %{"set-cookie" => "__phoenix_reload_status__=;" <> _} = Map.new(resp_headers)
     end
   end
 end

@@ -1,9 +1,9 @@
 defmodule Phoenix.LiveView.ElementsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint}
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -27,6 +27,7 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert view |> element("#scoped-render") |> has_element?()
       assert view |> element("div", "This is a div") |> has_element?()
       assert view |> element("#scoped-render", ~r/^This is a div$/) |> has_element?()
+      assert view |> element("span", "Normalize whitespace") |> has_element?()
 
       refute view |> element("#unknown") |> has_element?()
       refute view |> element("div", "no matching text") |> has_element?()
@@ -467,6 +468,14 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar"}|
     end
 
+    test "submits data passed as phx-value-* attributes", %{live: view} do
+      assert view |> element("#phx-value-form") |> render_submit()
+      assert last_event(view) =~ ~s|form-submit: %{"foo" => "bar", "key" => "val"}|
+
+      assert view |> element("#phx-value-form") |> render_submit(foo: "baz")
+      assert last_event(view) =~ ~s|form-submit: %{"foo" => "baz", "key" => "val"}|
+    end
+
     test "raises on invalid submitter", %{live: view} do
       assert_raise ArgumentError, ~r"invalid form submitter", fn ->
         assert view
@@ -618,6 +627,20 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert conn.method == "GET"
       assert conn.request_path == "/not_found"
       assert conn.query_string == "foo=bar"
+    end
+
+    test "named form", %{live: view, conn: _conn} do
+      view
+      |> form("#named", %{foo: "a", bar: "b", baz: "c", child: "cc"})
+      |> put_submitter("[name=btn]")
+      |> render_submit()
+
+      assert last_event(view) =~ ~s|form-submit-named: %{|
+      assert last_event(view) =~ ~s|"foo" => "a"|
+      assert last_event(view) =~ ~s|"bar" => "b"|
+      assert last_event(view) =~ ~s|"baz" => "c"|
+      assert last_event(view) =~ ~s|"child" => "cc"|
+      assert last_event(view) =~ ~s|"btn" => "x"|
     end
   end
 

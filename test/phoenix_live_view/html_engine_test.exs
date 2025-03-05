@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
   use ExUnit.Case, async: true
 
+  import ExUnit.CaptureIO
+
   import Phoenix.Component
 
   alias Phoenix.LiveView.Tokenizer.ParseError
@@ -49,7 +51,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def assigns_component(assigns) do
-    ~H"<%= inspect(Map.delete(assigns, :__changed__)) %>"
+    ~H"{inspect(Map.delete(assigns, :__changed__))}"
   end
 
   def textarea(assigns) do
@@ -60,38 +62,38 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def remote_function_component(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>"
+    ~H"REMOTE COMPONENT: Value: {@value}"
   end
 
   def remote_function_component_with_inner_block(assigns) do
-    ~H"REMOTE COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
+    ~H"REMOTE COMPONENT: Value: {@value}, Content: {render_slot(@inner_block)}"
   end
 
   def remote_function_component_with_inner_block_args(assigns) do
     ~H"""
-    REMOTE COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@inner_block, %{
+    REMOTE COMPONENT WITH ARGS: Value: {@value}
+    {render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
-    }) %>
+    })}
     """
   end
 
   defp local_function_component(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>"
+    ~H"LOCAL COMPONENT: Value: {@value}"
   end
 
   defp local_function_component_with_inner_block(assigns) do
-    ~H"LOCAL COMPONENT: Value: <%= @value %>, Content: <%= render_slot(@inner_block) %>"
+    ~H"LOCAL COMPONENT: Value: {@value}, Content: {render_slot(@inner_block)}"
   end
 
   defp local_function_component_with_inner_block_args(assigns) do
     ~H"""
-    LOCAL COMPONENT WITH ARGS: Value: <%= @value %>
-    <%= render_slot(@inner_block, %{
+    LOCAL COMPONENT WITH ARGS: Value: {@value}
+    {render_slot(@inner_block, %{
       downcase: String.downcase(@value),
       upcase: String.upcase(@value)
-    }) %>
+    })}
     """
   end
 
@@ -109,6 +111,16 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render("""
            Hello <div>w<%= if true do %>orld<% end %>!</div>
            """) == "Hello <div>world!</div>"
+  end
+
+  test "handles phx-no-curly-interpolation" do
+    assert render("""
+           <div phx-no-curly-interpolation>{open}<%= :eval %>{close}</div>
+           """) == "<div>{open}eval{close}</div>"
+
+    assert render("""
+           <div phx-no-curly-interpolation>{open}{<%= :eval %>}{close}</div>
+           """) == "<div>{open}{eval}{close}</div>"
   end
 
   test "handles string attributes" do
@@ -131,6 +143,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     assert render("""
            Hello <div name={to_string(123)} phone={to_string(456)}>text</div>
            """) == "Hello <div name=\"123\" phone=\"456\">text</div>"
+  end
+
+  test "handles interpolated body" do
+    assert render("""
+           Hello <div>2 + 2 = {2 + 2}</div>
+           """) == "Hello <div>2 + 2 = 4</div>"
   end
 
   test "handles interpolated attribute value containing special chars" do
@@ -376,8 +394,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   describe "debug annotations" do
-    alias Phoenix.LiveViewTest.DebugAnno
-    import Phoenix.LiveViewTest.DebugAnno
+    alias Phoenix.LiveViewTest.Support.DebugAnno
+    import Phoenix.LiveViewTest.Support.DebugAnno
 
     test "without root tag" do
       assigns = %{}
@@ -389,17 +407,17 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assigns = %{}
 
       assert compile("<DebugAnno.remote_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.remote_with_root> test/support/live_views/debug_anno.ex:9 --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.remote_with_root> -->"
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.remote_with_root> test/support/live_views/debug_anno.exs:11 () --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.remote_with_root> -->"
 
       assert compile("<.local_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->"
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> -->"
     end
 
     test "nesting" do
       assigns = %{}
 
       assert compile("<DebugAnno.nested value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.DebugAnno.nested> test/support/live_views/debug_anno.ex:21 --><div>\n  <!-- <Phoenix.LiveViewTest.DebugAnno.local_with_root> test/support/live_views/debug_anno.ex:17 --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.DebugAnno.nested> -->"
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.nested> test/support/live_views/debug_anno.exs:23 () --><div>\n  <!-- @caller test/support/live_views/debug_anno.exs:25 () --><!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.nested> -->"
     end
   end
 
@@ -728,7 +746,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "when syntax error on HTML attributes" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly brackets (such as `{expr}`)
+      test/phoenix_live_view/html_engine_test.exs:2:9: invalid attribute value after `=`. Expected either a value between quotes (such as \"value\" or 'value') or an Elixir expression between curly braces (such as `{expr}`)
         |
       1 | <div>Bar</div>
       2 | <div id=>Foo</div>
@@ -771,7 +789,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE SLOT
       <%= render_slot(@sample) %>
       AFTER SLOT
-      """
+      """noformat
     end
 
     def function_component_with_slots(assigns) do
@@ -781,7 +799,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
-      """
+      """noformat
     end
 
     def function_component_with_slots_and_default(assigns) do
@@ -791,7 +809,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       TEXT:<%= render_slot(@inner_block) %>:TEXT
       <%= render_slot(@footer) %>
       AFTER FOOTER
-      """
+      """noformat
     end
 
     def function_component_with_slots_and_args(assigns) do
@@ -799,7 +817,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       BEFORE SLOT
       <%= render_slot(@sample, 1) %>
       AFTER SLOT
-      """
+      """noformat
     end
 
     def function_component_with_slot_attrs(assigns) do
@@ -809,7 +827,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= render_slot(entry) %>
       <%= entry.b %>
       <% end %>
-      """
+      """noformat
     end
 
     def function_component_with_multiple_slots_entries(assigns) do
@@ -817,7 +835,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= for entry <- @sample do %>
         <%= entry.id %>: <%= render_slot(entry, %{}) %>
       <% end %>
-      """
+      """noformat
     end
 
     def function_component_with_self_close_slots(assigns) do
@@ -825,15 +843,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       <%= for entry <- @sample do %>
         <%= entry.id %>
       <% end %>
-      """
+      """noformat
     end
 
     def render_slot_name(assigns) do
-      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"
+      ~H"<%= for entry <- @sample do %>[<%= entry.__slot__ %>]<% end %>"noformat
     end
 
     def render_inner_block_slot_name(assigns) do
-      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"
+      ~H"<%= for entry <- @inner_block do %>[<%= entry.__slot__ %>]<% end %>"noformat
     end
 
     test "single slot" do
@@ -1545,6 +1563,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "invalid tag" do
       message = """
       test/phoenix_live_view/html_engine_test.exs:1:10: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div foo={<%= @foo %>}>bar</div>
         |          ^\
@@ -1558,6 +1578,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       message = """
       test/phoenix_live_view/html_engine_test.exs:2:3: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 | <div foo=
       2 |   {<%= @foo %>}>bar</div>
@@ -1577,6 +1599,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       message = """
       test/phoenix_live_view/html_engine_test.exs:2:6: expected closing `}` for expression
+
+      In case you don't want `{` to begin a new interpolation, you may write it using `&lbrace;` or using `<%= "{" %>`
         |
       1 |    <div foo=
       2 |      {<%= @foo %>}>bar</div>
@@ -1738,7 +1762,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     test "raise on unsupported special attrs" do
       message = """
-      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":let\" in tags
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute :let in tags
         |
       1 | <div :let={@user}>Content</div>
         |      ^\
@@ -1751,7 +1775,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
 
       message = """
-      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute \":foo\" in tags
+      test/phoenix_live_view/html_engine_test.exs:1:6: unsupported attribute :foo in tags
         |
       1 | <div :foo=\"something\" />
         |      ^\
@@ -1762,6 +1786,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         <div :foo="something" />
         """)
       end)
+    end
+
+    test "warns when input has id as name" do
+      assert capture_io(:stderr, fn ->
+               eval("""
+               <input name="id" value="foo">
+               """)
+             end) =~
+               "Setting the \"name\" attribute to \"id\" on an input tag overrides the ID of the corresponding form element"
     end
   end
 
@@ -1854,6 +1887,19 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_raise(ParseError, message, fn ->
         eval("""
         <div :for="1">Content</div>
+        """)
+      end)
+
+      message = """
+      test/phoenix_live_view/html_engine_test.exs:1:7: :for must be an expression between {...}
+        |
+      1 | <.div :for=\"1\">Content</.div>
+        |       ^\
+      """
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.div :for="1">Content</.div>
         """)
       end)
     end
@@ -2042,14 +2088,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     def slot_if(assigns) do
       ~H"""
-      <div><%= @value %>-<%= render_slot(@slot, @value) %></div>
+      <div>{@value}-{render_slot(@slot, @value)}</div>
       """
     end
 
     def slot_if_self_close(assigns) do
       ~H"""
       <div><%= @value %>-<%= for slot <- @slot do %><%= slot.val %>-<% end %></div>
-      """
+      """noformat
     end
 
     test ":if in slots" do
@@ -2150,8 +2196,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       )
     end
 
-    @supports_columns? Version.match?(System.version(), ">= 1.14.0")
-
     test "handles imports" do
       tracer_eval(__ENV__.line, """
       <.focus_wrap>Ok</.focus_wrap>
@@ -2159,7 +2203,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_receive {:imported_function, meta, Phoenix.Component, :focus_wrap, 1}
       assert meta[:line] == __ENV__.line - 4
-      if @supports_columns?, do: assert(meta[:column] == 7)
+      assert meta[:column] == 7
     end
 
     test "handles remote calls" do
@@ -2169,11 +2213,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_receive {:alias_reference, meta, Phoenix.Component}
       assert meta[:line] == __ENV__.line - 4
-      if @supports_columns?, do: assert(meta[:column] == 7)
+      assert meta[:column] == 7
 
       assert_receive {:remote_function, meta, Phoenix.Component, :focus_wrap, 1}
       assert meta[:line] == __ENV__.line - 8
-      if @supports_columns?, do: assert(meta[:column] == 26)
+      assert meta[:column] == 26
     end
 
     test "handles aliases" do
@@ -2191,7 +2235,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert_receive {:remote_function, meta, Phoenix.Component, :focus_wrap, 1}
       assert meta[:line] == __ENV__.line - 12
-      if @supports_columns?, do: assert(meta[:column] == 10)
+      assert meta[:column] == 10
     end
   end
 end

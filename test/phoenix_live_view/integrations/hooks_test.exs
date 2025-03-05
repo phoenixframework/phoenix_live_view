@@ -1,11 +1,11 @@
 defmodule Phoenix.LiveView.HooksTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
   alias Phoenix.Component
-  alias Phoenix.LiveViewTest.{Endpoint, HooksLive}
+  alias Phoenix.LiveViewTest.Support.{Endpoint, HooksLive}
 
   @endpoint Endpoint
 
@@ -14,8 +14,8 @@ defmodule Phoenix.LiveView.HooksTest do
   end
 
   test "on_mount hook raises when hook result is invalid", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
-                 ~r(invalid return from hook {Phoenix.LiveViewTest.HooksLive.BadMount, :default}),
+    assert_raise ArgumentError,
+                 ~r(invalid return from hook {Phoenix.LiveViewTest.Support.HooksLive.BadMount, :default}),
                  fn ->
                    live(conn, "/lifecycle/bad-mount")
                  end
@@ -32,16 +32,16 @@ defmodule Phoenix.LiveView.HooksTest do
   end
 
   test "on_mount hook raises when :halt is returned without a redirected socket", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
-                 ~r(the hook {Phoenix.LiveViewTest.HooksLive.HaltMount, :hook} for lifecycle event :mount attempted to halt without redirecting.),
+    assert_raise ArgumentError,
+                 ~r(the hook {Phoenix.LiveViewTest.Support.HooksLive.HaltMount, :hook} for lifecycle event :mount attempted to halt without redirecting.),
                  fn ->
                    live(conn, "/lifecycle/halt-mount")
                  end
   end
 
   test "on_mount hook raises when :cont is returned with a redirected socket", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
-                 ~r(the hook {Phoenix.LiveViewTest.HooksLive.RedirectMount, :default} for lifecycle event :mount attempted to redirect without halting.),
+    assert_raise ArgumentError,
+                 ~r(the hook {Phoenix.LiveViewTest.Support.HooksLive.RedirectMount, :default} for lifecycle event :mount attempted to redirect without halting.),
                  fn ->
                    live(conn, "/lifecycle/redirect-cont-mount")
                  end
@@ -149,7 +149,7 @@ defmodule Phoenix.LiveView.HooksTest do
 
   test "handle_params/3 attached after connected", %{conn: conn} do
     {:ok, lv, html} = live(conn, "/lifecycle")
-    assert html =~ "params_hook:\n"
+    assert html =~ "params_hook:</p>"
 
     HooksLive.attach_hook(lv, :hook, :handle_params, fn
       _params, _uri, %{assigns: %{params_hook_ref: _}} = socket ->
@@ -174,7 +174,7 @@ defmodule Phoenix.LiveView.HooksTest do
 
   test "handle_params/3 when callback is not exported raises without halt", %{conn: conn} do
     {:ok, lv, html} = live(conn, "/lifecycle")
-    assert html =~ "params_hook:\n"
+    assert html =~ "params_hook:</p>"
 
     HooksLive.attach_hook(lv, :hook, :handle_params, fn
       _params, _uri, %{assigns: %{params_hook_ref: 0}} = socket ->
@@ -201,7 +201,7 @@ defmodule Phoenix.LiveView.HooksTest do
                :exit, _ -> :ok
              end
            end) =~
-             "** (UndefinedFunctionError) function Phoenix.LiveViewTest.HooksLive.handle_params/3 is undefined"
+             "** (UndefinedFunctionError) function Phoenix.LiveViewTest.Support.HooksLive.handle_params/3 is undefined"
   end
 
   test "handle_info/2 raises when hook result is invalid", %{conn: conn} do
@@ -271,12 +271,12 @@ defmodule Phoenix.LiveView.HooksTest do
     end)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o.\n"
+    assert render_async(lv) =~ "task:o.</p>"
 
     HooksLive.detach_hook(lv, :hook, :handle_async)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o..\n"
+    assert render_async(lv) =~ "task:o..</p>"
   end
 
   test "handle_async/3 halts", %{conn: conn} do
@@ -287,16 +287,38 @@ defmodule Phoenix.LiveView.HooksTest do
     end)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o\n"
+    assert render_async(lv) =~ "task:o</p>"
 
     HooksLive.detach_hook(lv, :hook, :handle_async)
 
     lv |> element("#async") |> render_click()
-    assert render_async(lv) =~ "task:o.\n"
+    assert render_async(lv) =~ "task:o.</p>"
+  end
+
+  test "attach/detach_hook with a handle_event live component socket", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/components/handle_event")
+    lv |> element("#attach") |> render_click()
+    lv |> element("#hook") |> render_click()
+    assert render_async(lv) =~ "counter: 1"
+
+    lv |> element("#hook") |> render_click()
+    assert render_async(lv) =~ "counter: 2"
+
+    lv |> element("#detach-component-hook") |> render_click()
+    Process.flag(:trap_exit, true)
+
+    assert ExUnit.CaptureLog.capture_log(fn ->
+             try do
+               lv |> element("#hook") |> render_click()
+             catch
+               :exit, _ -> :ok
+             end
+           end) =~
+             "** (UndefinedFunctionError) function Phoenix.LiveViewTest.Support.HooksEventComponent.handle_event/3 is undefined"
   end
 
   test "attach_hook raises when given a live component socket", %{conn: conn} do
-    {:ok, lv, _html} = live(conn, "/lifecycle/components")
+    {:ok, lv, _html} = live(conn, "/lifecycle/components/handle_info")
 
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
              lv |> element("#attach") |> render_click()
@@ -304,7 +326,7 @@ defmodule Phoenix.LiveView.HooksTest do
   end
 
   test "detach_hook raises when given a live component socket", %{conn: conn} do
-    {:ok, lv, _html} = live(conn, "/lifecycle/components")
+    {:ok, lv, _html} = live(conn, "/lifecycle/components/handle_info")
 
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
              lv |> element("#detach") |> render_click()
@@ -360,7 +382,7 @@ defmodule Phoenix.LiveView.HooksTest do
            }
   end
 
-  test "afte_render hook", %{conn: conn} do
+  test "after_render hook", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle")
 
     assert render(lv) =~ "count:0"

@@ -96,12 +96,17 @@ defmodule Phoenix.LiveView.Utils do
   def force_assign(assigns, nil, key, val), do: Map.put(assigns, key, val)
 
   def force_assign(assigns, changed, key, val) do
-    # If the current value is a map, we store it in changed so
-    # we can perform nested change tracking. Also note the use
-    # of put_new is important. We want to keep the original value
-    # from assigns and not any intermediate ones that may appear.
-    current_val = Map.get(assigns, key)
-    changed_val = if is_map(current_val), do: current_val, else: true
+    # If the current value is a composite type (list, map, tuple),
+    # we store it in changed so we can perform nested change tracking.
+    # Also note the use of put_new is important.
+    # We want to keep the original value from assigns and not any
+    # intermediate ones that may appear.
+    changed_val =
+      case Map.get(assigns, key) do
+        val when is_list(val) or is_map(val) or is_tuple(val) -> val
+        _ -> true
+      end
+
     changed = Map.put_new(changed, key, changed_val)
     Map.put(%{assigns | __changed__: changed}, key, val)
   end
@@ -195,26 +200,15 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Validate and normalizes the layout.
   """
-  def normalize_layout(false, _warn_ctx), do: false
+  def normalize_layout(false), do: false
 
-  def normalize_layout({mod, layout}, _warn_ctx) when is_atom(mod) and is_atom(layout) do
+  def normalize_layout({mod, layout}) when is_atom(mod) and is_atom(layout) do
     {mod, Atom.to_string(layout)}
   end
 
-  def normalize_layout({mod, layout}, warn_ctx) when is_atom(mod) and is_binary(layout) do
-    root_template = Path.rootname(layout)
-
-    IO.warn(
-      "passing a string as a layout template in #{warn_ctx} is deprecated, please pass " <>
-        "{#{inspect(mod)}, :#{root_template}} instead of {#{inspect(mod)}, \"#{root_template}.html\"}"
-    )
-
-    {mod, root_template}
-  end
-
-  def normalize_layout(other, _warn_ctx) do
+  def normalize_layout(other) do
     raise ArgumentError,
-          ":layout expects a tuple of the form {MyLayoutView, :my_template} or false, " <>
+          ":layout expects a tuple of the form {MyLayouts, :my_template} or false, " <>
             "got: #{inspect(other)}"
   end
 
@@ -413,24 +407,24 @@ defmodule Phoenix.LiveView.Utils do
         raise ArgumentError, """
         invalid option returned from #{inspect(mod)}.#{fun}/#{arity}.
 
-        Expected keys to be one of #{inspect(@mount_opts)}
+        Expected keys to be one of #{inspect(@mount_opts)},
         got: #{inspect(key)}: #{inspect(val)}
         """
     end)
   end
 
   defp handle_mount_option(socket, :layout, layout) do
-    put_in(socket.private[:live_layout], normalize_layout(layout, "mount options"))
+    put_in(socket.private[:live_layout], normalize_layout(layout))
   end
 
-  defp handle_mount_option(socket, :temporary_assigns, temp_assigns) do
-    unless Keyword.keyword?(temp_assigns) do
+  defp handle_mount_option(%Socket{} = socket, :temporary_assigns, temp_assigns) do
+    if not Keyword.keyword?(temp_assigns) do
       raise "the :temporary_assigns mount option must be keyword list"
     end
 
     temp_assigns = Map.new(temp_assigns)
 
-    %Socket{
+    %{
       socket
       | assigns: Map.merge(temp_assigns, socket.assigns),
         private:
@@ -549,7 +543,7 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   defp drop_private(%Socket{private: private} = socket, keys) do
-    %Socket{socket | private: Map.drop(private, keys)}
+    %{socket | private: Map.drop(private, keys)}
   end
 
   defp flash_salt(endpoint_mod) when is_atom(endpoint_mod) do

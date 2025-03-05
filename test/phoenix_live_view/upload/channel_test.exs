@@ -5,9 +5,10 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.{UploadClient, UploadLive, UploadLiveWithComponent}
+  alias Phoenix.LiveViewTest.UploadClient
+  alias Phoenix.LiveViewTest.Support.{UploadLive, UploadLiveWithComponent}
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
+  @endpoint Phoenix.LiveViewTest.Support.Endpoint
 
   defmodule TestWriter do
     @behaviour Phoenix.LiveView.UploadWriter
@@ -70,13 +71,16 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   def build_entries(count, opts \\ []) do
+    content = String.duplicate("0", 100)
+    size = byte_size(content)
+
     for i <- 1..count do
       Enum.into(opts, %{
         last_modified: 1_594_171_879_000,
         name: "myfile#{i}.jpeg",
         relative_path: "./myfile#{i}.jpeg",
-        content: String.duplicate("0", 100),
-        size: 1_396_009,
+        content: content,
+        size: size,
         type: "image/jpeg"
       })
     end
@@ -100,15 +104,28 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   def consume(%LiveView.UploadEntry{} = entry, socket) do
     socket =
-      if entry.done? do
-        name =
-          Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ ->
-            {:ok, entry.client_name}
-          end)
+      cond do
+        entry.client_name == "redirect.jpeg" ->
+          Phoenix.LiveView.push_navigate(socket, to: "/redirected")
 
-        Phoenix.Component.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
-      else
-        socket
+        entry.client_name == "consume-and-redirect.jpeg" and entry.done? ->
+          _ =
+            Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ ->
+              {:ok, entry.client_name}
+            end)
+
+          Phoenix.LiveView.push_navigate(socket, to: "/redirected")
+
+        entry.done? ->
+          name =
+            Phoenix.LiveView.consume_uploaded_entry(socket, entry, fn _ ->
+              {:ok, entry.client_name}
+            end)
+
+          Phoenix.Component.update(socket, :consumed, fn consumed -> [name] ++ consumed end)
+
+        true ->
+          socket
       end
 
     {:noreply, socket}
@@ -120,7 +137,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   test "rejects invalid token" do
-    {:ok, socket} = Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{}, %{})
+    {:ok, socket} = Phoenix.ChannelTest.connect(Phoenix.LiveView.Socket, %{})
 
     assert {:error, %{reason: :invalid_token}} =
              Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:123", %{"token" => "bad"})
@@ -322,6 +339,31 @@ defmodule Phoenix.LiveView.UploadChannelTest do
           ])
 
         assert render_upload(avatar, "foo.jpeg") =~ "consumed:foo.jpeg"
+      end
+
+      @tag allow: [max_entries: 3, chunk_size: 20, accept: :any, progress: :consume]
+      test "render_upload uploads with progress redirect", %{lv: lv} do
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "redirect.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        assert {:error, {:live_redirect, redir}} = render_upload(avatar, "redirect.jpeg")
+        assert redir[:to] == "/redirected"
+      end
+
+      @tag allow: [max_entries: 3, chunk_size: 20, accept: :any, progress: :consume]
+      test "render_upload uploads with progress consume + redirect", %{lv: lv} do
+        # this is similar to https://github.com/phoenixframework/phoenix_live_view/issues/3662
+        avatar =
+          file_input(lv, "form", :avatar, [
+            %{name: "consume-and-redirect.jpeg", content: String.duplicate("0", 100)}
+          ])
+
+        assert {:error, {:live_redirect, redir}} =
+                 render_upload(avatar, "consume-and-redirect.jpeg")
+
+        assert redir[:to] == "/redirected"
       end
 
       @tag allow: [max_entries: 3, chunk_size: 20, accept: :any]
@@ -837,7 +879,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              {:reply, :ok, new_socket}
            end
 
-           LiveView.send_update(Phoenix.LiveViewTest.UploadComponent,
+           LiveView.send_update(Phoenix.LiveViewTest.Support.UploadComponent,
              id: "upload1",
              run: {run, nil}
            )
@@ -932,7 +974,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
              {:reply, :ok, new_socket}
            end
 
-           LiveView.send_update(Phoenix.LiveViewTest.UploadComponent,
+           LiveView.send_update(Phoenix.LiveViewTest.Support.UploadComponent,
              id: "upload1",
              run: {run, nil}
            )

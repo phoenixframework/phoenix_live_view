@@ -26,6 +26,8 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     GenServer.call(pid, {:chunk, name, percent, proxy_pid, element})
   catch
     :exit, {{:shutdown, :closed}, _} -> {:ok, :closed}
+    :exit, {{:shutdown, {:redirect, opts}}, _} -> {:error, {:redirect, opts}}
+    :exit, {{:shutdown, {:live_redirect, opts}}, _} -> {:error, {:live_redirect, opts}}
   end
 
   def simulate_attacker_chunk(%Upload{pid: pid}, name, chunk) do

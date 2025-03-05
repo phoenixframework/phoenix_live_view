@@ -10,7 +10,6 @@ import {
 } from "./utils"
 
 import LiveUploader from "./live_uploader"
-import DOM from "./dom"
 
 export default class UploadEntry {
   static isActive(fileEl, file){
@@ -26,7 +25,15 @@ export default class UploadEntry {
     return isPreflighted && this.isActive(fileEl, file)
   }
 
-  constructor(fileEl, file, view){
+  static isPreflightInProgress(file){
+    return file._preflightInProgress === true
+  }
+
+  static markPreflightInProgress(file){
+    file._preflightInProgress = true
+  }
+
+  constructor(fileEl, file, view, autoUpload){
     this.ref = LiveUploader.genFileRef(file)
     this.fileEl = fileEl
     this.file = file
@@ -36,9 +43,10 @@ export default class UploadEntry {
     this._isDone = false
     this._progress = 0
     this._lastProgressSent = -1
-    this._onDone = function (){ }
+    this._onDone = function(){ }
     this._onElUpdated = this.onElUpdated.bind(this)
     this.fileEl.addEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated)
+    this.autoUpload = autoUpload
   }
 
   metadata(){ return this.meta }
@@ -61,7 +69,10 @@ export default class UploadEntry {
     }
   }
 
+  isCancelled(){ return this._isCancelled }
+
   cancel(){
+    this.file._preflightInProgress = false
     this._isCancelled = true
     this._isDone = true
     this._onDone()
@@ -72,8 +83,10 @@ export default class UploadEntry {
   error(reason = "failed"){
     this.fileEl.removeEventListener(PHX_LIVE_FILE_UPDATED, this._onElUpdated)
     this.view.pushFileProgress(this.fileEl, this.ref, {error: reason})
-    if(!DOM.isAutoUpload(this.fileEl)){ LiveUploader.clearFiles(this.fileEl) }
+    if(!this.isAutoUpload()){ LiveUploader.clearFiles(this.fileEl) }
   }
+
+  isAutoUpload(){ return this.autoUpload }
 
   //private
 
@@ -86,7 +99,10 @@ export default class UploadEntry {
 
   onElUpdated(){
     let activeRefs = this.fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
-    if(activeRefs.indexOf(this.ref) === -1){ this.cancel() }
+    if(activeRefs.indexOf(this.ref) === -1){
+      LiveUploader.untrackFile(this.fileEl, this.file)
+      this.cancel()
+    }
   }
 
   toPreflightPayload(){

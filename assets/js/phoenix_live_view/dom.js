@@ -4,22 +4,22 @@ import {
   DEBOUNCE_TRIGGER,
   FOCUSABLE_INPUTS,
   PHX_COMPONENT,
-  PHX_EVENT_CLASSES,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_MAIN,
-  PHX_NO_FEEDBACK_CLASS,
   PHX_PARENT_ID,
   PHX_PRIVATE,
-  PHX_REF,
   PHX_REF_SRC,
+  PHX_REF_LOCK,
+  PHX_PENDING_ATTRS,
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
   PHX_UPLOAD_REF,
   PHX_VIEW_SELECTOR,
   PHX_STICKY,
-  THROTTLED
+  PHX_EVENT_CLASSES,
+  THROTTLED,
 } from "./constants"
 
 import {
@@ -50,7 +50,11 @@ let DOM = {
 
   isAutoUpload(inputEl){ return inputEl.hasAttribute("data-phx-auto-upload") },
 
-  findUploadInputs(node){ return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`) },
+  findUploadInputs(node){
+    const formId = node.id
+    const inputsOutsideForm = this.all(document, `input[type="file"][${PHX_UPLOAD_REF}][form="${formId}"]`)
+    return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`).concat(inputsOutsideForm)
+  },
 
   findComponentNodeList(node, cid){
     return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node)
@@ -64,7 +68,8 @@ let DOM = {
     let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
     let isDownload = (e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download"))
     let isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank"
-    return wantsNewTab || isTargetBlank || isDownload
+    let isTargetNamedTab = e.target.hasAttribute("target") && !e.target.getAttribute("target").startsWith("_")
+    return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab
   },
 
   isUnloadableFormSubmit(e){
@@ -90,10 +95,10 @@ let DOM = {
 
     try {
       url = new URL(href)
-    } catch(e) {
+    } catch {
       try {
         url = new URL(href, currentLocation)
-      } catch(e) {
+      } catch {
         // bad URL, fallback to let browser try it as external
         return true
       }
@@ -132,20 +137,27 @@ let DOM = {
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`)
   },
 
-  findParentCIDs(node, cids){
-    let initial = new Set(cids)
-    let parentCids =
-      cids.reduce((acc, cid) => {
-        let selector = `[${PHX_COMPONENT}="${cid}"] [${PHX_COMPONENT}]`
+  findExistingParentCIDs(node, cids){
+    // we only want to find parents that exist on the page
+    // if a cid is not on the page, the only way it can be added back to the page
+    // is if a parent adds it back, therefore if a cid does not exist on the page,
+    // we should not try to render it by itself (because it would be rendered twice,
+    // one by the parent, and a second time by itself)
+    let parentCids = new Set()
+    let childrenCids = new Set()
 
-        this.filterWithinSameLiveView(this.all(node, selector), node)
+    cids.forEach(cid => {
+      this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach(parent => {
+        parentCids.add(cid)
+        this.filterWithinSameLiveView(this.all(parent, `[${PHX_COMPONENT}]`), parent)
           .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
-          .forEach(childCID => acc.delete(childCID))
+          .forEach(childCID => childrenCids.add(childCID))
+      })
+    })
 
-        return acc
-      }, initial)
+    childrenCids.forEach(childCid => parentCids.delete(childCid))
 
-    return parentCids.size === 0 ? new Set(cids) : parentCids
+    return parentCids
   },
 
   filterWithinSameLiveView(nodes, parent){
@@ -181,6 +193,16 @@ let DOM = {
     }
   },
 
+  syncPendingAttrs(fromEl, toEl){
+    if(!fromEl.hasAttribute(PHX_REF_SRC)){ return }
+    PHX_EVENT_CLASSES.forEach(className => {
+      fromEl.classList.contains(className) && toEl.classList.add(className)
+    })
+    PHX_PENDING_ATTRS.filter(attr => fromEl.hasAttribute(attr)).forEach(attr => {
+      toEl.setAttribute(attr, fromEl.getAttribute(attr))
+    })
+  },
+
   copyPrivates(target, source){
     if(source[PHX_PRIVATE]){
       target[PHX_PRIVATE] = source[PHX_PRIVATE]
@@ -190,8 +212,12 @@ let DOM = {
   putTitle(str){
     let titleEl = document.querySelector("title")
     if(titleEl){
-      let {prefix, suffix} = titleEl.dataset
-      document.title = `${prefix || ""}${str}${suffix || ""}`
+      let {prefix, suffix, default: defaultTitle} = titleEl.dataset
+      let isEmpty = typeof(str) !== "string" || str.trim() === ""
+      if(isEmpty && typeof(defaultTitle) !== "string"){ return }
+
+      let inner = isEmpty ? defaultTitle : str
+      document.title = `${prefix || ""}${inner || ""}${suffix || ""}`
     } else {
       document.title = str
     }
@@ -209,7 +235,9 @@ let DOM = {
 
       case "blur":
         if(this.once(el, "debounce-blur")){
-          el.addEventListener("blur", () => callback())
+          el.addEventListener("blur", () => {
+            if(asyncFilter()){ callback() }
+          })
         }
         return
 
@@ -230,10 +258,10 @@ let DOM = {
             return false
           } else {
             callback()
-            this.putPrivate(el, THROTTLED, true)
-            setTimeout(() => {
+            const t = setTimeout(() => {
               if(asyncFilter()){ this.triggerCycle(el, DEBOUNCE_TRIGGER) }
             }, timeout)
+            this.putPrivate(el, THROTTLED, t)
           }
         } else {
           setTimeout(() => {
@@ -252,7 +280,13 @@ let DOM = {
           })
         }
         if(this.once(el, "bind-debounce")){
-          el.addEventListener("blur", () => this.triggerCycle(el, DEBOUNCE_TRIGGER))
+          el.addEventListener("blur", () => {
+            // because we trigger the callback here,
+            // we also clear the throttle timeout to prevent the callback
+            // from being called again after the timeout fires
+            clearTimeout(this.private(el, THROTTLED))
+            this.triggerCycle(el, DEBOUNCE_TRIGGER)
+          })
         }
     }
   },
@@ -279,46 +313,44 @@ let DOM = {
     return currentCycle
   },
 
-  maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom){
-    if(el.hasAttribute && (el.hasAttribute(phxViewportTop) || el.hasAttribute(phxViewportBottom))){
-      el.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
+  // maintains or adds privately used hook information
+  // fromEl and toEl can be the same element in the case of a newly added node
+  // fromEl and toEl can be any HTML node type, so we need to check if it's an element node
+  maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom){
+    // maintain the hooks created with createHook
+    if(fromEl.hasAttribute && fromEl.hasAttribute("data-phx-hook") && !toEl.hasAttribute("data-phx-hook")){
+      toEl.setAttribute("data-phx-hook", fromEl.getAttribute("data-phx-hook"))
+    }
+    // add hooks to elements with viewport attributes
+    if(toEl.hasAttribute && (toEl.hasAttribute(phxViewportTop) || toEl.hasAttribute(phxViewportBottom))){
+      toEl.setAttribute("data-phx-hook", "Phoenix.InfiniteScroll")
     }
   },
 
-  maybeHideFeedback(container, inputs, phxFeedbackFor){
-    let feedbacks = []
-    inputs.forEach(input => {
-      if(!(this.private(input, PHX_HAS_FOCUSED) || this.private(input, PHX_HAS_SUBMITTED))){
-        feedbacks.push(input.name)
-        if(input.name.endsWith("[]")){ feedbacks.push(input.name.slice(0, -2)) }
-      }
-    })
-    if(feedbacks.length > 0){
-      let selector = feedbacks.map(f => `[${phxFeedbackFor}="${f}"]`).join(", ")
-      DOM.all(container, selector, el => el.classList.add(PHX_NO_FEEDBACK_CLASS))
+  putCustomElHook(el, hook){
+    if(el.isConnected){
+      el.setAttribute("data-phx-hook", "")
+    } else {
+      console.error(`
+        hook attached to non-connected DOM element
+        ensure you are calling createHook within your connectedCallback. ${el.outerHTML}
+      `)
     }
+    this.putPrivate(el, "custom-el-hook", hook)
   },
 
-  resetForm(form, phxFeedbackFor){
+  getCustomElHook(el){ return this.private(el, "custom-el-hook") },
+
+  isUsedInput(el){
+    return (el.nodeType === Node.ELEMENT_NODE &&
+      (this.private(el, PHX_HAS_FOCUSED) || this.private(el, PHX_HAS_SUBMITTED)))
+  },
+
+  resetForm(form){
     Array.from(form.elements).forEach(input => {
-      let query = `[${phxFeedbackFor}="${input.id}"],
-                   [${phxFeedbackFor}="${input.name}"],
-                   [${phxFeedbackFor}="${input.name.replace(/\[\]$/, "")}"]`
-
       this.deletePrivate(input, PHX_HAS_FOCUSED)
       this.deletePrivate(input, PHX_HAS_SUBMITTED)
-      this.all(document, query, feedbackEl => {
-        feedbackEl.classList.add(PHX_NO_FEEDBACK_CLASS)
-      })
     })
-  },
-
-  showError(inputEl, phxFeedbackFor){
-    if(inputEl.id || inputEl.name){
-      this.all(inputEl.form, `[${phxFeedbackFor}="${inputEl.id}"], [${phxFeedbackFor}="${inputEl.name}"]`, (el) => {
-        this.removeClass(el, PHX_NO_FEEDBACK_CLASS)
-      })
-    }
   },
 
   isPhxChild(node){
@@ -338,7 +370,12 @@ let DOM = {
   },
 
   dispatchEvent(target, name, opts = {}){
-    let bubbles = opts.bubbles === undefined ? true : !!opts.bubbles
+    let defaultBubble = true
+    let isUploadTarget = target.nodeName === "INPUT" && target.type === "file"
+    if(isUploadTarget && name === "click"){
+      defaultBubble = false
+    }
+    let bubbles = opts.bubbles === undefined ? defaultBubble : !!opts.bubbles
     let eventOpts = {bubbles: bubbles, cancelable: true, detail: opts.detail || {}}
     let event = name === "click" ? new MouseEvent("click", eventOpts) : new CustomEvent(name, eventOpts)
     target.dispatchEvent(event)
@@ -354,20 +391,40 @@ let DOM = {
     }
   },
 
+  // merge attributes from source to target
+  // if an element is ignored, we only merge data attributes
+  // including removing data attributes that are no longer in the source
   mergeAttrs(target, source, opts = {}){
-    let exclude = opts.exclude || []
+    let exclude = new Set(opts.exclude || [])
     let isIgnored = opts.isIgnored
     let sourceAttrs = source.attributes
     for(let i = sourceAttrs.length - 1; i >= 0; i--){
       let name = sourceAttrs[i].name
-      if(exclude.indexOf(name) < 0){ target.setAttribute(name, source.getAttribute(name)) }
+      if(!exclude.has(name)){
+        const sourceValue = source.getAttribute(name)
+        if(target.getAttribute(name) !== sourceValue && (!isIgnored || (isIgnored && name.startsWith("data-")))){
+          target.setAttribute(name, sourceValue)
+        }
+      } else {
+        // We exclude the value from being merged on focused inputs, because the
+        // user's input should always win.
+        // We can still assign it as long as the value property is the same, though.
+        // This prevents a situation where the updated hook is not being triggered
+        // when an input is back in its "original state", because the attribute
+        // was never changed, see:
+        // https://github.com/phoenixframework/phoenix_live_view/issues/2163
+        if(name === "value" && target.value === source.value){
+          // actually set the value attribute to sync it with the value property
+          target.setAttribute("value", source.getAttribute(name))
+        }
+      }
     }
 
     let targetAttrs = target.attributes
     for(let i = targetAttrs.length - 1; i >= 0; i--){
       let name = targetAttrs[i].name
       if(isIgnored){
-        if(name.startsWith("data-") && !source.hasAttribute(name) && ![PHX_REF, PHX_REF_SRC].includes(name)){ target.removeAttribute(name) }
+        if(name.startsWith("data-") && !source.hasAttribute(name) && !PHX_PENDING_ATTRS.includes(name)){ target.removeAttribute(name) }
       } else {
         if(!source.hasAttribute(name)){ target.removeAttribute(name) }
       }
@@ -394,7 +451,6 @@ let DOM = {
     if(!DOM.isTextualInput(focused)){ return }
 
     let wasFocused = focused.matches(":focus")
-    if(focused.readOnly){ focused.blur() }
     if(!wasFocused){ focused.focus() }
     if(this.hasSelectionRange(focused)){
       focused.setSelectionRange(selectionStart, selectionEnd)
@@ -412,26 +468,7 @@ let DOM = {
   isTextualInput(el){ return FOCUSABLE_INPUTS.indexOf(el.type) >= 0 },
 
   isNowTriggerFormExternal(el, phxTriggerExternal){
-    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null
-  },
-
-  syncPendingRef(fromEl, toEl, disableWith){
-    let ref = fromEl.getAttribute(PHX_REF)
-    if(ref === null){ return true }
-    let refSrc = fromEl.getAttribute(PHX_REF_SRC)
-
-    if(DOM.isFormInput(fromEl) || fromEl.getAttribute(disableWith) !== null){
-      if(DOM.isUploadInput(fromEl)){ DOM.mergeAttrs(fromEl, toEl, {isIgnored: true}) }
-      DOM.putPrivate(fromEl, PHX_REF, toEl)
-      return false
-    } else {
-      PHX_EVENT_CLASSES.forEach(className => {
-        fromEl.classList.contains(className) && toEl.classList.add(className)
-      })
-      toEl.setAttribute(PHX_REF, ref)
-      toEl.setAttribute(PHX_REF_SRC, refSrc)
-      return true
-    }
+    return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null && document.body.contains(el)
   },
 
   cleanChildNodes(container, phxUpdate){
@@ -441,7 +478,7 @@ let DOM = {
         if(!childNode.id){
           // Skip warning if it's an empty text node (e.g. a new-line)
           let isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue.trim() === ""
-          if(!isEmptyTextNode){
+          if(!isEmptyTextNode && childNode.nodeType !== Node.COMMENT_NODE){
             logError("only HTML element tags with an id are allowed inside containers with phx-update.\n\n" +
               `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`)
           }
@@ -476,7 +513,7 @@ let DOM = {
   },
 
   getSticky(el, name, defaultVal){
-    let op = (DOM.private(el, "sticky") || []).find(([existingName, ]) => name === existingName)
+    let op = (DOM.private(el, "sticky") || []).find(([existingName,]) => name === existingName)
     if(op){
       let [_name, _op, stashedResult] = op
       return stashedResult
@@ -494,7 +531,7 @@ let DOM = {
   putSticky(el, name, op){
     let stashedResult = op(el)
     this.updatePrivate(el, "sticky", [], ops => {
-      let existingIndex = ops.findIndex(([existingName, ]) => name === existingName)
+      let existingIndex = ops.findIndex(([existingName,]) => name === existingName)
       if(existingIndex >= 0){
         ops[existingIndex] = [name, op, stashedResult]
       } else {
@@ -509,6 +546,10 @@ let DOM = {
     if(!ops){ return }
 
     ops.forEach(([name, op, _stashed]) => this.putSticky(el, name, op))
+  },
+
+  isLocked(el){
+    return el.hasAttribute && el.hasAttribute(PHX_REF_LOCK)
   }
 }
 

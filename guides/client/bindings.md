@@ -3,7 +3,9 @@
 Phoenix supports DOM element bindings for client-server interaction. For
 example, to react to a click on a button, you would render the element:
 
-    <button phx-click="inc_temperature">+</button>
+```heex
+<button phx-click="inc_temperature">+</button>
+```
 
 Then on the server, all LiveView bindings are handled with the `handle_event`
 callback, for example:
@@ -17,13 +19,13 @@ callback, for example:
 |------------------------|------------|
 | [Params](#click-events) | `phx-value-*` |
 | [Click Events](#click-events) | `phx-click`, `phx-click-away` |
-| [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-feedback-for`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
+| [Form Events](form-bindings.md) | `phx-change`, `phx-submit`, `phx-disable-with`, `phx-trigger-action`, `phx-auto-recover` |
 | [Focus Events](#focus-and-blur-events) | `phx-blur`, `phx-focus`, `phx-window-blur`, `phx-window-focus` |
 | [Key Events](#key-events) | `phx-keydown`, `phx-keyup`, `phx-window-keydown`, `phx-window-keyup`, `phx-key` |
-| [Scroll Events](#scroll-events-and-infinite-stream-pagination) | `phx-viewport-top`, `phx-viewport-bottom` |
-| [DOM Patching](dom-patching.md) | `phx-mounted`, `phx-update`, `phx-remove` |
-| [JS Interop](js-interop.md#client-hooks) | `phx-hook` |
-| [Lifecycle Events](#lifecycle-events) | `phx-mounted`, `phx-disconnected`, `phx-connected` |
+| [Scroll Events](#scroll-events-and-infinite-pagination) | `phx-viewport-top`, `phx-viewport-bottom` |
+| [DOM Patching](#dom-patching) | `phx-update`, `phx-mounted`, `phx-remove` |
+| [JS Interop](js-interop.md#client-hooks-via-phx-hook) | `phx-hook` |
+| [Lifecycle Events](#lifecycle-events) | `phx-connected`, `phx-disconnected` |
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [Static tracking](`Phoenix.LiveView.static_changed?/1`) | `phx-track-static` |
 
@@ -41,7 +43,9 @@ sent to the server will be chosen with the following priority:
 
   * Any number of optional `phx-value-` prefixed attributes, such as:
 
-        <div phx-click="inc" phx-value-myvar1="val1" phx-value-myvar2="val2">
+    ```heex
+    <div phx-click="inc" phx-value-myvar1="val1" phx-value-myvar2="val2">
+    ```
 
     will send the following map of params to the server:
 
@@ -54,18 +58,20 @@ sent to the server will be chosen with the following priority:
     For example, the following `LiveSocket` client option would send the coordinates and
     `altKey` information for all clicks:
 
-        let liveSocket = new LiveSocket("/live", Socket, {
-          params: {_csrf_token: csrfToken},
-          metadata: {
-            click: (e, el) => {
-              return {
-                altKey: e.altKey,
-                clientX: e.clientX,
-                clientY: e.clientY
-              }
-            }
+    ```javascript
+    let liveSocket = new LiveSocket("/live", Socket, {
+      params: {_csrf_token: csrfToken},
+      metadata: {
+        click: (e, el) => {
+          return {
+            altKey: e.altKey,
+            clientX: e.clientX,
+            clientY: e.clientY
           }
-        })
+        }
+      }
+    })
+    ```
 
 The `phx-click-away` event is fired when a click event happens outside of the element.
 This is useful for hiding toggled containers like drop-downs.
@@ -109,18 +115,20 @@ Escape key looks like this:
 To capture additional user-defined metadata, the `metadata` option for keydown events
 may be provided to the `LiveSocket` constructor. For example:
 
-    let liveSocket = new LiveSocket("/live", Socket, {
-      params: {_csrf_token: csrfToken},
-      metadata: {
-        keydown: (e, el) => {
-          return {
-            key: e.key,
-            metaKey: e.metaKey,
-            repeat: e.repeat
-          }
-        }
+```javascript
+let liveSocket = new LiveSocket("/live", Socket, {
+  params: {_csrf_token: csrfToken},
+  metadata: {
+    keydown: (e, el) => {
+      return {
+        key: e.key,
+        metaKey: e.metaKey,
+        repeat: e.repeat
       }
-    })
+    }
+  }
+})
+```
 
 To determine which key has been pressed you should use `key` value. The
 available options can be found on
@@ -140,7 +148,7 @@ for example:
     def render(assigns) do
       ~H"""
       <div id="thermostat" phx-window-keyup="update_temp">
-        Current temperature: <%= @temperature %>
+        Current temperature: {@temperature}
       </div>
       """
     end
@@ -158,90 +166,6 @@ for example:
     def handle_event("update_temp", _, socket) do
       {:noreply, socket}
     end
-
-
-## Scroll Events and Infinite Stream pagination
-
-The `phx-viewport-top` and `phx-viewport-bottom` bindings allow you to detect when a container's
-first child reaches the top of the viewport, or the last child reaches the bottom of the viewport.
-This is useful for infinite scrolling where you want to send paging events for the next results set or previous results set as the user is scrolling up and down and reaches the top or bottom of the viewport.
-
-Generally, applications will add padding above and below a container when performing infinite scrolling to allow smooth scrolling as results are loaded. Combined with `Phoenix.LiveView.stream/3`, the `phx-viewport-top` and `phx-viewport-bottom` allow for infinite virtualized list that only keeps a small set of actual elements in the DOM. For example:
-
-    def mount(_, _, socket) do
-      {:ok,
-       socket
-       |> assign(page: 1, per_page: 20)
-       |> paginate_posts(1)}
-    end
-
-    defp paginate_posts(socket, new_page) when new_page >= 1 do
-      %{per_page: per_page, page: cur_page} = socket.assigns
-      posts = Blog.list_posts(offset: (new_page - 1) * per_page, limit: per_page)
-
-      {posts, at, limit} =
-        if new_page >= cur_page do
-          {posts, -1, per_page * 3 * -1}
-        else
-          {Enum.reverse(posts), 0, per_page * 3}
-        end
-
-      case posts do
-        [] ->
-          assign(socket, end_of_timeline?: at == -1)
-
-        [_ | _] = posts ->
-          socket
-          |> assign(end_of_timeline?: false)
-          |> assign(:page, new_page)
-          |> stream(:posts, posts, at: at, limit: limit)
-      end
-    end
-
-Our `paginate_posts` function fetches a page of posts, and determines if the user is paging to a previous page or next page. Based on the direction of paging, the stream is either prepended to, or appended to with `at` of `0` or `-1` respectively. We also set the `limit` of the stream to three times the `per_page` to allow enough posts in the UI to appear as an infinite list, but small enough to maintain UI performance. We also set an `@end_of_timeline?` assign to track whether the user is at the end of results or not. Finally, we update the `@page` assign and posts stream. We can then wire up our container to support the viewport events:
-
-```heex
-<ul
-  id="posts"
-  phx-update="stream"
-  phx-viewport-top={@page > 1 && "prev-page"}
-  phx-viewport-bottom={!@end_of_timeline? && "next-page"}
-  phx-page-loading
-  class={[
-    if(@end_of_timeline?, do: "pb-10", else: "pb-[calc(200vh)]"),
-    if(@page == 1, do: "pt-10", else: "pt-[calc(200vh)]")
-  ]}
->
-  <li :for={{id, post} <- @streams.posts} id={id}>
-    <.post_card post={post}>
-  </li>
-</ul>
-<div :if={@end_of_timeline?} class="mt-5 text-[50px] text-center">
-  🎉 You made it to the beginning of time 🎉
-</div>
-```
-
-There's not much here, but that's the point! This little snippet of UI is driving a fully virtualized list with bidirectional infinite scrolling. We use the `phx-viewport-top` binding to send the `"prev-page"` event to the LiveView, but only if the user is beyond the first page. It doesn't make sense to load negative page results, so we remove the binding entirely in those cases. Next, we wire up `phx-viewport-bottom` to send the `"next-page"` event, but only if we've yet to reach the end of the timeline. Finally, we conditionally apply some css classes which sets a large top and bottom padding to twice the viewport height based on the current pagination for smooth scrolling.
-
-To complete our solution, we only need to handle the `"prev-page"` and `"next-page"` events in the LiveView:
-
-    def handle_event("next-page", _, socket) do
-      {:noreply, paginate_posts(socket, socket.assigns.page + 1)}
-    end
-
-    def handle_event("prev-page", %{"_overran" => true}, socket) do
-      {:noreply, paginate_posts(socket, 1)}
-    end
-
-    def handle_event("prev-page", _, socket) do
-      if socket.assigns.page > 1 do
-        {:noreply, paginate_posts(socket, socket.assigns.page - 1)}
-      else
-        {:noreply, socket}
-      end
-    end
-
-This code simply calls the `paginate_posts` function we defined as our first step, using the current or next page to drive the results. Notice that we match on a special `"_overran" => true` parameter in our `"prev-page"` event. The viewport events send this parameter when the user has "overran" the viewport top or bottom. Imagine the case where the user is scrolling back up through many pages of results, but grabs the scrollbar and returns immediately to the top of the page. This means our `<ul id="posts">` container was overrun by the top of the viewport, and we need to reset the the UI to page the first page.
 
 ## Rate limiting events with Debounce and Throttle
 
@@ -274,7 +198,9 @@ the username at most every 2 seconds after a user changes the field:
 
 And to rate limit a volume up click to once every second:
 
-    <button phx-click="volume_up" phx-throttle="1000">+</button>
+```heex
+<button phx-click="volume_up" phx-throttle="1000">+</button>
+```
 
 Likewise, you may throttle held-down keydown:
 
@@ -299,7 +225,7 @@ The following specialized behavior is performed for forms and keydown bindings:
   * A `phx-keydown` binding is only throttled for key repeats. Unique keypresses
     back-to-back will dispatch the pressed key events.
 
-## JS Commands
+## JS commands
 
 LiveView bindings support a JavaScript command interface via the `Phoenix.LiveView.JS` module, which allows you to specify utility operations that execute on the client when firing `phx-` binding events, such as `phx-click`, `phx-change`, etc. Commands compose together to allow you to push events, add classes to elements, transition elements in and out, and more.
 See the `Phoenix.LiveView.JS` documentation for full usage.
@@ -375,7 +301,7 @@ The `Phoenix.LiveView.JS.push/3` command is particularly powerful in allowing yo
 <button phx-click="clicked">click</button>
 ```
 
-Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targeted, which element should receive css loading state classes, etc. This can be accomplished with options on the JS push command. For example:
+Now imagine you want to customize what happens when the `"clicked"` event is pushed, such as which component should be targeted, which element should receive CSS loading state classes, etc. This can be accomplished with options on the JS push command. For example:
 
 ```heex
 <button phx-click={JS.push("clicked", target: @myself, loading: ".container")}>click</button>
@@ -383,23 +309,58 @@ Now imagine you want to customize what happens when the `"clicked"` event is pus
 
 See `Phoenix.LiveView.JS.push/3` for all supported options.
 
-## Lifecycle Events
+## DOM patching
 
-LiveView supports the `phx-mounted`, `phx-connected`, and `phx-disconnected` events to react to
-different lifecycle events with JS commands.
+A container can be marked with `phx-update` to configure how the DOM
+is updated. The following values are supported:
 
-To execute commands when an element first appears on the page, you can leverage `phx-mounted`,
-such as to animate a notice into view:
+  * `replace` - the default operation. Replaces the element with the contents
+
+  * `stream` - supports stream operations. Streams are used to manage large
+    collections in the UI without having to store the collection on the server
+
+  * `ignore` - ignores updates to the DOM regardless of new content changes.
+    This is useful for client-side interop with existing libraries that do
+    their own DOM operations
+
+When using `phx-update`, a unique DOM ID must always be set in the
+container. If using "stream", a DOM ID must also be set
+for each child. When inserting stream elements containing an
+ID already present in the container, LiveView will replace the existing
+element with the new content. See `Phoenix.LiveView.stream/3` for more
+information.
+
+The "ignore" behaviour is frequently used when you need to integrate
+with another JS library. Updates from the server to the element's content
+and attributes are ignored, *except for data attributes*. Changes, additions,
+and removals from the server to data attributes are merged with the ignored
+element which can be used to pass data to the JS handler.
+
+To react to elements being mounted to the DOM, the `phx-mounted` binding
+can be used. For example, to animate an element on mount:
 
 ```heex
-<div id="flash" class="hidden" phx-mounted={JS.show(transition: ...)}>
-  Welcome back!
-</div>
+<div phx-mounted={JS.transition("animate-ping", time: 500)}>
 ```
 
-If `phx-mounted` is used on the initial page render, it will be invoked only after the initial WebSocket connection is established.
+If `phx-mounted` is used on the initial page render, it will be invoked only
+after the initial WebSocket connection is established.
 
-To manage the connection lifecycle, you can combine `phx-disconnected` and `phx-connected` to show an element when the LiveView has lost its connection, and hide it when the connection recovers:
+To react to elements being removed from the DOM, the `phx-remove` binding
+may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
+The `phx-remove` command is only executed for the removed parent element.
+It does not cascade to children.
+
+To react to elements being updated in the DOM, you'll need to use a
+[hook](js-interop.md#client-hooks-via-phx-hook), which gives you full access
+to the element life-cycle.
+
+## Lifecycle events
+
+LiveView supports the `phx-connected` and `phx-disconnected` bindings to react
+to connection lifecycle events with JS commands. For example, to show an element
+when the LiveView has lost its connection and hide it when the connection
+recovers:
 
 ```heex
 <div id="status" class="hidden" phx-disconnected={JS.show()} phx-connected={JS.hide()}>
@@ -407,16 +368,10 @@ To manage the connection lifecycle, you can combine `phx-disconnected` and `phx-
 </div>
 ```
 
-### LiveView vs static view
-
 `phx-connected` and `phx-disconnected` are only executed when operating
 inside a LiveView container. For static templates, they will have no effect.
 
-For LiveView, the `phx-mounted` binding is executed as soon as the LiveView is
-mounted with a connection. When using `phx-mounted` in static views, it is executed
-as soon as the DOM is ready.
-
-## LiveView Specific Events
+## LiveView events prefix
 
 The `lv:` event prefix supports LiveView specific features that are handled
 by LiveView without calling the user's `handle_event/3` callbacks. Today,
@@ -429,43 +384,93 @@ For example:
 
 ```heex
 <p class="alert" phx-click="lv:clear-flash" phx-value-key="info">
-  <%= live_flash(@flash, :info) %>
+  {Phoenix.Flash.get(@flash, :info)}
 </p>
 ```
 
-## Loading states and errors
+## Scroll events and infinite pagination
 
-All `phx-` event bindings apply their own css classes when pushed. For example
-the following markup:
+The `phx-viewport-top` and `phx-viewport-bottom` bindings allow you to detect when a container's
+first child reaches the top of the viewport, or the last child reaches the bottom of the viewport.
+This is useful for infinite scrolling where you want to send paging events for the next results set or previous results set as the user is scrolling up and down and reaches the top or bottom of the viewport.
 
-```heex
-<button phx-click="clicked" phx-window-keydown="key">...</button>
+Generally, applications will add padding above and below a container when performing infinite scrolling to allow smooth scrolling as results are loaded. Combined with `Phoenix.LiveView.stream/3`, the `phx-viewport-top` and `phx-viewport-bottom` allow for infinite virtualized list that only keeps a small set of actual elements in the DOM. For example:
+
+```elixir
+def mount(_, _, socket) do
+  {:ok,
+    socket
+    |> assign(page: 1, per_page: 20)
+    |> paginate_posts(1)}
+end
+
+defp paginate_posts(socket, new_page) when new_page >= 1 do
+  %{per_page: per_page, page: cur_page} = socket.assigns
+  posts = Blog.list_posts(offset: (new_page - 1) * per_page, limit: per_page)
+
+  {posts, at, limit} =
+    if new_page >= cur_page do
+      {posts, -1, per_page * 3 * -1}
+    else
+      {Enum.reverse(posts), 0, per_page * 3}
+    end
+
+  case posts do
+    [] ->
+      assign(socket, end_of_timeline?: at == -1)
+
+    [_ | _] = posts ->
+      socket
+      |> assign(end_of_timeline?: false)
+      |> assign(:page, new_page)
+      |> stream(:posts, posts, at: at, limit: limit)
+  end
+end
 ```
 
-On click, would receive the `phx-click-loading` class, and on keydown would receive
-the `phx-keydown-loading` class. The css loading classes are maintained until an
-acknowledgement is received on the client for the pushed event.
+Our `paginate_posts` function fetches a page of posts, and determines if the user is paging to a previous page or next page. Based on the direction of paging, the stream is either prepended to, or appended to with `at` of `0` or `-1` respectively. We also set the `limit` of the stream to three times the `per_page` to allow enough posts in the UI to appear as an infinite list, but small enough to maintain UI performance. We also set an `@end_of_timeline?` assign to track whether the user is at the end of results or not. Finally, we update the `@page` assign and posts stream. We can then wire up our container to support the viewport events:
 
-In the case of forms, when a `phx-change` is sent to the server, the input element
-which emitted the change receives the `phx-change-loading` class, along with the
-parent form tag. The following events receive css loading classes:
+```heex
+<ul
+  id="posts"
+  phx-update="stream"
+  phx-viewport-top={@page > 1 && "prev-page"}
+  phx-viewport-bottom={!@end_of_timeline? && "next-page"}
+  phx-page-loading
+  class={[
+    if(@end_of_timeline?, do: "pb-10", else: "pb-[calc(200vh)]"),
+    if(@page == 1, do: "pt-10", else: "pt-[calc(200vh)]")
+  ]}
+>
+  <li :for={{id, post} <- @streams.posts} id={id}>
+    <.post_card post={post} />
+  </li>
+</ul>
+<div :if={@end_of_timeline?} class="mt-5 text-[50px] text-center">
+  🎉 You made it to the beginning of time 🎉
+</div>
+```
 
-  - `phx-click` - `phx-click-loading`
-  - `phx-change` - `phx-change-loading`
-  - `phx-submit` - `phx-submit-loading`
-  - `phx-focus` - `phx-focus-loading`
-  - `phx-blur` - `phx-blur-loading`
-  - `phx-window-keydown` - `phx-keydown-loading`
-  - `phx-window-keyup` - `phx-keyup-loading`
+There's not much here, but that's the point! This little snippet of UI is driving a fully virtualized list with bidirectional infinite scrolling. We use the `phx-viewport-top` binding to send the `"prev-page"` event to the LiveView, but only if the user is beyond the first page. It doesn't make sense to load negative page results, so we remove the binding entirely in those cases. Next, we wire up `phx-viewport-bottom` to send the `"next-page"` event, but only if we've yet to reach the end of the timeline. Finally, we conditionally apply some CSS classes which sets a large top and bottom padding to twice the viewport height based on the current pagination for smooth scrolling.
 
-Additionally, the following classes are applied to the LiveView's parent
-container:
+To complete our solution, we only need to handle the `"prev-page"` and `"next-page"` events in the LiveView:
 
-  - `"phx-connected"` - applied when the view has connected to the server
-  - `"phx-loading"` - applied when the view is not connected to the server
-  - `"phx-error"` - applied when an error occurs on the server. Note, this
-    class will be applied in conjunction with `"phx-loading"` if connection
-    to the server is lost.
+```elixir
+def handle_event("next-page", _, socket) do
+  {:noreply, paginate_posts(socket, socket.assigns.page + 1)}
+end
 
-For navigation related loading states (both automatic and manual), see `phx-page-loading` as described in
-[JavaScript interoperability: Live navigation events](js-interop.html#live-navigation-events).
+def handle_event("prev-page", %{"_overran" => true}, socket) do
+  {:noreply, paginate_posts(socket, 1)}
+end
+
+def handle_event("prev-page", _, socket) do
+  if socket.assigns.page > 1 do
+    {:noreply, paginate_posts(socket, socket.assigns.page - 1)}
+  else
+    {:noreply, socket}
+  end
+end
+```
+
+This code simply calls the `paginate_posts` function we defined as our first step, using the current or next page to drive the results. Notice that we match on a special `"_overran" => true` parameter in our `"prev-page"` event. The viewport events send this parameter when the user has "overran" the viewport top or bottom. Imagine the case where the user is scrolling back up through many pages of results, but grabs the scrollbar and returns immediately to the top of the page. This means our `<ul id="posts">` container was overrun by the top of the viewport, and we need to reset the the UI to page the first page.

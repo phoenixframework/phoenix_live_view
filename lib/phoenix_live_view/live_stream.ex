@@ -15,12 +15,18 @@ defmodule Phoenix.LiveView.LiveStream do
     dom_prefix = to_string(name)
     dom_id = Keyword.get_lazy(opts, :dom_id, fn -> &default_id(dom_prefix, &1) end)
 
-    unless is_function(dom_id, 1) do
+    if not is_function(dom_id, 1) do
       raise ArgumentError,
             "stream :dom_id must return a function which accepts each item, got: #{inspect(dom_id)}"
     end
 
-    items_list = for item <- items, do: {dom_id.(item), -1, item, opts[:limit]}
+    # We need to go through the items one time to map them into the proper insert tuple format.
+    # Conveniently, we reverse the list in this pass, which we need to in order to be consistent
+    # with manually calling stream_insert multiple times, as stream_insert prepends.
+    items_list =
+      for item <- items, reduce: [] do
+        items -> [{dom_id.(item), -1, item, opts[:limit]} | items]
+      end
 
     %LiveStream{
       ref: ref,
@@ -38,16 +44,16 @@ defmodule Phoenix.LiveView.LiveStream do
     raise ArgumentError, """
     expected stream :#{dom_prefix} to be a struct or map with :id key, got: #{inspect(other)}
 
-    If you would like to generate custom DOM id's based on other keys, use stream_configure/3 with the :dom_id option beforehand.
+    If you would like to generate custom DOM id's based on other keys, use `Phoenix.LiveView.stream_configure/3` with the :dom_id option beforehand.
     """
   end
 
   def reset(%LiveStream{} = stream) do
-    %LiveStream{stream | reset?: true}
+    %{stream | reset?: true}
   end
 
   def prune(%LiveStream{} = stream) do
-    %LiveStream{stream | inserts: [], deletes: [], reset?: false}
+    %{stream | inserts: [], deletes: [], reset?: false}
   end
 
   def delete_item(%LiveStream{} = stream, item) do
@@ -55,13 +61,13 @@ defmodule Phoenix.LiveView.LiveStream do
   end
 
   def delete_item_by_dom_id(%LiveStream{} = stream, dom_id) do
-    %LiveStream{stream | deletes: [dom_id | stream.deletes]}
+    %{stream | deletes: [dom_id | stream.deletes]}
   end
 
   def insert_item(%LiveStream{} = stream, item, at, limit) do
     item_id = stream.dom_id.(item)
 
-    %LiveStream{stream | inserts: stream.inserts ++ [{item_id, at, item, limit}]}
+    %{stream | inserts: [{item_id, at, item, limit} | stream.inserts]}
   end
 
   defimpl Enumerable, for: LiveStream do
@@ -69,8 +75,22 @@ defmodule Phoenix.LiveView.LiveStream do
 
     def member?(%LiveStream{}, _item), do: raise(RuntimeError, "not implemented")
 
-    def reduce(%LiveStream{inserts: inserts} = stream, acc, fun) do
+    def reduce(%LiveStream{} = stream, acc, fun) do
       if stream.consumable? do
+        # the inserts are stored in reverse insert order, so we need to reverse them
+        # before rendering; we also remove duplicates to only use the most recent
+        # inserts, which, as the items are reversed, are first
+        {inserts, _} =
+          for {id, _, _, _} = insert <- stream.inserts, reduce: {[], MapSet.new()} do
+            {inserts, ids} ->
+              if MapSet.member?(ids, id) do
+                # skip duplicates
+                {inserts, ids}
+              else
+                {[insert | inserts], MapSet.put(ids, id)}
+              end
+          end
+
         do_reduce(inserts, acc, fun)
       else
         raise ArgumentError, """

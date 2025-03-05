@@ -1,10 +1,10 @@
 defmodule Phoenix.LiveView.FlashIntegrationTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.{Endpoint, Router}
+  alias Phoenix.LiveViewTest.Support.{Endpoint, Router}
 
   @endpoint Endpoint
 
@@ -218,14 +218,14 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
 
       assert_raise ArgumentError,
-                   "expected Phoenix.LiveViewTest.FlashChildLive to redirect to \"/wrong\", but got a redirect to \"/flash-root\"",
+                   "expected Phoenix.LiveViewTest.Support.FlashChildLive to redirect to \"/wrong\", but got a redirect to \"/flash-root\"",
                    fn -> assert_redirect(flash_child, "/wrong") end
 
       {:ok, flash_live, _} = live(conn, "/flash-root")
       render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
 
       assert_raise ArgumentError,
-                   "expected Phoenix.LiveViewTest.FlashLive to redirect to \"/wrong\", but got a patch to \"/flash-root?foo\"",
+                   "expected Phoenix.LiveViewTest.Support.FlashLive to redirect to \"/wrong\", but got a patch to \"/flash-root?foo\"",
                    fn -> assert_redirect(flash_live, "/wrong") end
     end
 
@@ -234,14 +234,14 @@ defmodule Phoenix.LiveView.FlashIntegrationTest do
       render_click(flash_live, "push_patch", %{"to" => "/flash-root?foo", "info" => "ok!"})
 
       assert_raise ArgumentError,
-                   "expected Phoenix.LiveViewTest.FlashLive to patch to \"/wrong\", but got a patch to \"/flash-root?foo\"",
+                   "expected Phoenix.LiveViewTest.Support.FlashLive to patch to \"/wrong\", but got a patch to \"/flash-root?foo\"",
                    fn -> assert_patch(flash_live, "/wrong") end
 
       {:ok, flash_child, _} = live(conn, "/flash-child")
       render_click(flash_child, "redirect", %{"to" => "/flash-root", "info" => "ok!"})
 
       assert_raise ArgumentError,
-                   "expected Phoenix.LiveViewTest.FlashChildLive to patch to \"/wrong\", but got a redirect to \"/flash-root\"",
+                   "expected Phoenix.LiveViewTest.Support.FlashChildLive to patch to \"/wrong\", but got a redirect to \"/flash-root\"",
                    fn -> assert_patch(flash_child, "/wrong") end
     end
   end

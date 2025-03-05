@@ -1,25 +1,25 @@
-defmodule Phoenix.LiveViewTest.UploadLive do
+defmodule Phoenix.LiveViewTest.Support.UploadLive do
   use Phoenix.LiveView
 
   def render(%{uploads: _} = assigns) do
     ~H"""
     <%= for preflight <- @preflights do %>
-      preflight:<%= inspect(preflight) %>
+      preflight:{inspect(preflight)}
     <% end %>
     <%= for name <- @consumed do %>
-      consumed:<%= name %>
+      consumed:{name}
     <% end %>
     <form phx-change="validate" phx-submit="save">
       <%= for entry <- @uploads.avatar.entries do %>
-        lv:<%= entry.client_name %>:<%= entry.progress %>%
-        channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
+        lv:{entry.client_name}:{entry.progress}%
+        channel:{inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry))}
         <%= for msg <- upload_errors(@uploads.avatar) do %>
-          config_error:<%= inspect(msg) %>
+          config_error:{inspect(msg)}
         <% end %>
         <%= for msg <- upload_errors(@uploads.avatar, entry) do %>
-          entry_error:<%= inspect(msg) %>
+          entry_error:{inspect(msg)}
         <% end %>
-        relative path:<%= entry.client_relative_path %>
+        relative path:{entry.client_relative_path}
       <% end %>
       <.live_file_input upload={@uploads.avatar} />
       <button type="submit">save</button>
@@ -77,27 +77,27 @@ defmodule Phoenix.LiveViewTest.UploadLive do
   def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
 end
 
-defmodule Phoenix.LiveViewTest.UploadComponent do
+defmodule Phoenix.LiveViewTest.Support.UploadComponent do
   use Phoenix.LiveComponent
 
   def render(%{uploads: _} = assigns) do
     ~H"""
     <div>
       <%= for preflight <- @preflights do %>
-        preflight:<%= inspect(preflight) %>
+        preflight:{inspect(preflight)}
       <% end %>
       <%= for name <- @consumed do %>
-        consumed:<%= name %>
+        consumed:{name}
       <% end %>
       <%= for msg <- upload_errors(@uploads.avatar) do %>
-        config_error:<%= inspect(msg) %>
+        config_error:{inspect(msg)}
       <% end %>
       <form phx-change="validate" id={@id} phx-submit="save" phx-target={@myself}>
         <%= for entry <- @uploads.avatar.entries do %>
-          component:<%= entry.client_name %>:<%= entry.progress %>%
-          channel:<%= inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry)) %>
+          component:{entry.client_name}:{entry.progress}%
+          channel:{inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry))}
           <%= for msg <- upload_errors(@uploads.avatar, entry) do %>
-            entry_error:<%= inspect(msg) %>
+            entry_error:{inspect(msg)}
           <% end %>
         <% end %>
         <.live_file_input upload={@uploads.avatar} />
@@ -126,7 +126,8 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
         nil ->
           socket
 
-        other -> {:other, other}
+        other ->
+          {:other, other}
       end
 
     {:ok,
@@ -141,7 +142,7 @@ defmodule Phoenix.LiveViewTest.UploadComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
+defmodule Phoenix.LiveViewTest.Support.UploadLiveWithComponent do
   use Phoenix.LiveView
 
   def render(assigns) do
@@ -149,7 +150,7 @@ defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
     <div>
       <%= if @uploads_count > 0 do %>
         <%= for i <- 0..@uploads_count do %>
-          <.live_component module={Phoenix.LiveViewTest.UploadComponent} id={"upload#{i}"} />
+          <.live_component module={Phoenix.LiveViewTest.Support.UploadComponent} id={"upload#{i}"} />
         <% end %>
       <% end %>
     </div>
@@ -169,7 +170,7 @@ defmodule Phoenix.LiveViewTest.UploadLiveWithComponent do
   end
 
   def handle_call({:run, func}, from, socket) do
-    send_update(Phoenix.LiveViewTest.UploadComponent, id: "upload0", run: {func, from})
+    send_update(Phoenix.LiveViewTest.Support.UploadComponent, id: "upload0", run: {func, from})
     {:noreply, socket}
   end
 end

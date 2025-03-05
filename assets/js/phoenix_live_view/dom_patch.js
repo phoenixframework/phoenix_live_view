@@ -1,7 +1,5 @@
 import {
   PHX_COMPONENT,
-  PHX_DISABLE_WITH,
-  PHX_FEEDBACK_FOR,
   PHX_PRUNE,
   PHX_ROOT_ID,
   PHX_SESSION,
@@ -10,6 +8,8 @@ import {
   PHX_STATIC,
   PHX_TRIGGER_ACTION,
   PHX_UPDATE,
+  PHX_REF_SRC,
+  PHX_REF_LOCK,
   PHX_STREAM,
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
@@ -18,6 +18,7 @@ import {
 
 import {
   detectDuplicateIds,
+  detectInvalidStreamInserts,
   isCid
 } from "./utils"
 
@@ -26,19 +27,7 @@ import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
 
 export default class DOMPatch {
-  static patchEl(fromEl, toEl, activeElement){
-    morphdom(fromEl, toEl, {
-      childrenOnly: false,
-      onBeforeElUpdated: (fromEl, toEl) => {
-        if(activeElement && activeElement.isSameNode(fromEl) && DOM.isFormInput(fromEl)){
-          DOM.mergeFocusedInput(fromEl, toEl)
-          return false
-        }
-      }
-    })
-  }
-
-  constructor(view, container, id, html, streams, targetCID){
+  constructor(view, container, id, html, streams, targetCID, opts={}){
     this.view = view
     this.liveSocket = view.liveSocket
     this.container = container
@@ -47,15 +36,19 @@ export default class DOMPatch {
     this.html = html
     this.streams = streams
     this.streamInserts = {}
+    this.streamComponentRestore = {}
     this.targetCID = targetCID
     this.cidPatch = isCid(this.targetCID)
     this.pendingRemoves = []
     this.phxRemove = this.liveSocket.binding("remove")
+    this.targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
       afteradded: [], afterupdated: [], afterdiscarded: [], afterphxChildAdded: [],
       aftertransitionsDiscarded: []
     }
+    this.withChildren = opts.withChildren || opts.undoRef || false
+    this.undoRef = opts.undoRef
   }
 
   before(kind, callback){ this.callbacks[`before${kind}`].push(callback) }
@@ -71,55 +64,34 @@ export default class DOMPatch {
 
   markPrunableContentForRemoval(){
     let phxUpdate = this.liveSocket.binding(PHX_UPDATE)
-    DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => el.innerHTML = "")
     DOM.all(this.container, `[${phxUpdate}=append] > *, [${phxUpdate}=prepend] > *`, el => {
       el.setAttribute(PHX_PRUNE, "")
     })
   }
 
   perform(isJoinPatch){
-    let {view, liveSocket, container, html} = this
-    let targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
+    let {view, liveSocket, html, container, targetContainer} = this
     if(this.isCIDPatch() && !targetContainer){ return }
 
     let focused = liveSocket.getActiveElement()
     let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
     let phxUpdate = liveSocket.binding(PHX_UPDATE)
-    let phxFeedbackFor = liveSocket.binding(PHX_FEEDBACK_FOR)
-    let disableWith = liveSocket.binding(PHX_DISABLE_WITH)
     let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
     let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
     let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
     let added = []
-    let trackedInputs = []
     let updates = []
     let appendPrependUpdates = []
 
     let externalFormTriggered = null
 
-    this.trackBefore("added", container)
-    this.trackBefore("updated", container, container)
-
-    liveSocket.time("morphdom", () => {
-      this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-        Object.entries(inserts).forEach(([key, [streamAt, limit]]) => {
-          this.streamInserts[key] = {ref, streamAt, limit, reset}
-        })
-        if(reset !== undefined){
-          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
-            if(!inserts[child.id]){
-              this.removeStreamChildElement(child)
-            }
-          })
-        }
-        deleteIds.forEach(id => {
-          let child = container.querySelector(`[id="${id}"]`)
-          if(child){ this.removeStreamChildElement(child) }
-        })
-      })
-
-      morphdom(targetContainer, html, {
-        childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null,
+    function morph(targetContainer, source, withChildren=this.withChildren){
+      let morphCallbacks = {
+        // normally, we are running with childrenOnly, as the patch HTML for a LV
+        // does not include the LV attrs (data-phx-session, etc.)
+        // when we are patching a live component, we do want to patch the root element as well;
+        // another case is the recursive patch of a stream item that was kept on reset (-> onBeforeNodeAdded)
+        childrenOnly: targetContainer.getAttribute(PHX_COMPONENT) === null && !withChildren,
         getNodeKey: (node) => {
           if(DOM.isPhxDestroyed(node)){ return null }
           // If we have a join patch, then by definition there was no PHX_MAGIC_ID.
@@ -131,38 +103,40 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let {ref, streamAt, limit} = this.getStreamInsert(child)
-          if(ref === undefined) { return parent.appendChild(child) }
+          let {ref, streamAt} = this.getStreamInsert(child)
+          if(ref === undefined){ return parent.appendChild(child) }
 
-          DOM.putSticky(child, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
+          this.setStreamRef(child, ref)
 
           // streaming
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
           } else if(streamAt === -1){
-            parent.appendChild(child)
+            let lastChild = parent.lastElementChild
+            if(lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)){
+              let nonStreamChild = Array.from(parent.children).find(c => !c.hasAttribute(PHX_STREAM_REF))
+              parent.insertBefore(child, nonStreamChild)
+            } else {
+              parent.appendChild(child)
+            }
           } else if(streamAt > 0){
             let sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
           }
-          let children = limit !== null && Array.from(parent.children)
-          let childrenToRemove = []
-          if(limit && limit < 0 && children.length > limit * -1){
-            childrenToRemove = children.slice(0, children.length + limit)
-          } else if(limit && limit >= 0 && children.length > limit){
-            childrenToRemove = children.slice(limit)
-          }
-          childrenToRemove.forEach(removeChild => {
-            // do not remove child as part of limit if we are re-adding it
-            if(!this.streamInserts[removeChild.id]){
-              this.removeStreamChildElement(removeChild)
-            }
-          })
         },
         onBeforeNodeAdded: (el) => {
-          DOM.maybeAddPrivateHooks(el, phxViewportTop, phxViewportBottom)
+          DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom)
           this.trackBefore("added", el)
-          return el
+
+          let morphedEl = el
+          // this is a stream item that was kept on reset, recursively morph it
+          if(this.streamComponentRestore[el.id]){
+            morphedEl = this.streamComponentRestore[el.id]
+            delete this.streamComponentRestore[el.id]
+            morph.call(this, morphedEl, el, true)
+          }
+
+          return morphedEl
         },
         onNodeAdded: (el) => {
           if(el.getAttribute){ this.maybeReOrderStream(el, true) }
@@ -177,26 +151,11 @@ export default class DOMPatch {
             externalFormTriggered = el
           }
 
-          if(el.getAttribute && el.getAttribute("name") && DOM.isFormInput(el)){
-            trackedInputs.push(el)
-          }
           // nested view handling
           if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
             this.trackAfter("phxChildAdded", el)
           }
           added.push(el)
-        },
-        onBeforeElChildrenUpdated: (fromEl, toEl) => {
-          // when resetting a stream, we override the order of the streamInserts to
-          // the order of the elements in the diff (toEl)
-          if(fromEl.getAttribute(phxUpdate) === PHX_STREAM){
-            Array.from(toEl.children).forEach((child, idx) => {
-              // if this is not a reset, the streamAt must be preserved
-              if(this.streamInserts[child.id].reset){
-                this.streamInserts[child.id].streamAt = idx
-              }
-            })
-          }
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
@@ -218,29 +177,62 @@ export default class DOMPatch {
           this.maybeReOrderStream(el, false)
         },
         onBeforeElUpdated: (fromEl, toEl) => {
-          DOM.maybeAddPrivateHooks(toEl, phxViewportTop, phxViewportBottom)
+          // if we are patching the root target container and the id has changed, treat it as a new node
+          // by replacing the fromEl with the toEl, which ensures hooks are torn down and re-created
+          if(fromEl.id && fromEl.isSameNode(targetContainer) && fromEl.id !== toEl.id){
+            morphCallbacks.onNodeDiscarded(fromEl)
+            fromEl.replaceWith(toEl)
+            return morphCallbacks.onNodeAdded(toEl)
+          }
+          DOM.syncPendingAttrs(fromEl, toEl)
+          DOM.maintainPrivateHooks(fromEl, toEl, phxViewportTop, phxViewportBottom)
           DOM.cleanChildNodes(toEl, phxUpdate)
           if(this.skipCIDSibling(toEl)){
             // if this is a live component used in a stream, we may need to reorder it
             this.maybeReOrderStream(fromEl)
             return false
           }
-          if(DOM.isPhxSticky(fromEl)){ return false }
+          if(DOM.isPhxSticky(fromEl)){
+            [PHX_SESSION, PHX_STATIC, PHX_ROOT_ID]
+              .map(attr => [attr, fromEl.getAttribute(attr), toEl.getAttribute(attr)])
+              .forEach(([attr, fromVal, toVal]) => {
+                if(toVal && fromVal !== toVal){ fromEl.setAttribute(attr, toVal) }
+              })
+
+            return false
+          }
           if(DOM.isIgnored(fromEl, phxUpdate) || (fromEl.form && fromEl.form.isSameNode(externalFormTriggered))){
             this.trackBefore("updated", fromEl, toEl)
-            DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
+            DOM.mergeAttrs(fromEl, toEl, {isIgnored: DOM.isIgnored(fromEl, phxUpdate)})
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
             return false
           }
           if(fromEl.type === "number" && (fromEl.validity && fromEl.validity.badInput)){ return false }
-          if(!DOM.syncPendingRef(fromEl, toEl, disableWith)){
+          // If the element has PHX_REF_SRC, it is loading or locked and awaiting an ack.
+          // If it's locked, we clone the fromEl tree and instruct morphdom to use
+          // the cloned tree as the source of the morph for this branch from here on out.
+          // We keep a reference to the cloned tree in the element's private data, and
+          // on ack (view.undoRefs), we morph the cloned tree with the true fromEl in the DOM to
+          // apply any changes that happened while the element was locked.
+          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
+          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
+          // only perform the clone step if this is not a patch that unlocks
+          if(fromEl.hasAttribute(PHX_REF_SRC) && fromEl.getAttribute(PHX_REF_LOCK) != this.undoRef){
             if(DOM.isUploadInput(fromEl)){
+              DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
               this.trackBefore("updated", fromEl, toEl)
               updates.push(fromEl)
             }
             DOM.applyStickyOperations(fromEl)
-            return false
+            let isLocked = fromEl.hasAttribute(PHX_REF_LOCK)
+            let clone = isLocked ? DOM.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null
+            if(clone){
+              DOM.putPrivate(fromEl, PHX_REF_LOCK, clone)
+              if(!isFocusedFormEl){
+                fromEl = clone
+              }
+            }
           }
 
           // nested view handling
@@ -253,19 +245,20 @@ export default class DOMPatch {
             return false
           }
 
-          // input handling
+          // if we are undoing a lock, copy potentially nested clones over
+          if(this.undoRef && DOM.private(toEl, PHX_REF_LOCK)){
+            DOM.putPrivate(fromEl, PHX_REF_LOCK, DOM.private(toEl, PHX_REF_LOCK))
+          }
+          // now copy regular DOM.private data
           DOM.copyPrivates(toEl, fromEl)
 
-          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           // skip patching focused inputs unless focus is a select that has changed options
-          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
           if(isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged){
             this.trackBefore("updated", fromEl, toEl)
             DOM.mergeFocusedInput(fromEl, toEl)
             DOM.syncAttrsToProps(fromEl)
             updates.push(fromEl)
             DOM.applyStickyOperations(fromEl)
-            trackedInputs.push(fromEl)
             return false
           } else {
             // blur focused select if it changed so native UI is updated (ie safari won't update visible options)
@@ -276,25 +269,61 @@ export default class DOMPatch {
 
             DOM.syncAttrsToProps(toEl)
             DOM.applyStickyOperations(toEl)
-            if(toEl.getAttribute("name") && DOM.isFormInput(toEl)){
-              trackedInputs.push(toEl)
-            }
             this.trackBefore("updated", fromEl, toEl)
-            return true
+            return fromEl
           }
         }
+      }
+      morphdom(targetContainer, source, morphCallbacks)
+    }
+
+    this.trackBefore("added", container)
+    this.trackBefore("updated", container, container)
+
+    liveSocket.time("morphdom", () => {
+      this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
+        inserts.forEach(([key, streamAt, limit]) => {
+          this.streamInserts[key] = {ref, streamAt, limit, reset}
+        })
+        if(reset !== undefined){
+          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, child => {
+            this.removeStreamChildElement(child)
+          })
+        }
+        deleteIds.forEach(id => {
+          let child = container.querySelector(`[id="${id}"]`)
+          if(child){ this.removeStreamChildElement(child) }
+        })
       })
+
+      // clear stream items from the dead render if they are not inserted again
+      if(isJoinPatch){
+        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
+          Array.from(el.children).forEach(child => {
+            this.removeStreamChildElement(child)
+          })
+        })
+      }
+
+      morph.call(this, targetContainer, html)
     })
 
-    if(liveSocket.isDebugEnabled()){ detectDuplicateIds() }
+    if(liveSocket.isDebugEnabled()){
+      detectDuplicateIds()
+      detectInvalidStreamInserts(this.streamInserts)
+      // warn if there are any inputs named "id"
+      Array.from(document.querySelectorAll("input[name=id]")).forEach(node => {
+        if(node.form){
+          console.error("Detected an input with name=\"id\" inside a form! This will cause problems when patching the DOM.\n", node)
+        }
+      })
+    }
 
     if(appendPrependUpdates.length > 0){
       liveSocket.time("post-morph append/prepend restoration", () => {
         appendPrependUpdates.forEach(update => update.perform())
       })
     }
-
-    DOM.maybeHideFeedback(targetContainer, trackedInputs, phxFeedbackFor)
 
     liveSocket.silenceEvents(() => DOM.restoreFocus(focused, selectionStart, selectionEnd))
     DOM.dispatchEvent(document, "phx:update")
@@ -328,9 +357,22 @@ export default class DOMPatch {
   }
 
   removeStreamChildElement(child){
-    if(!this.maybePendingRemove(child)){
+    // make sure to only remove elements owned by the current view
+    // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
+    // and https://github.com/phoenixframework/phoenix_live_view/issues/3681
+    if(!this.view.ownsElement(child)){ return }
+
+    // we need to store the node if it is actually re-added in the same patch
+    // we do NOT want to execute phx-remove, we do NOT want to call onNodeDiscarded
+    if(this.streamInserts[child.id]){
+      this.streamComponentRestore[child.id] = child
       child.remove()
-      this.onNodeDiscarded(child)
+    } else {
+      // only remove the element now if it has no phx-remove binding
+      if(!this.maybePendingRemove(child)){
+        child.remove()
+        this.onNodeDiscarded(child)
+      }
     }
   }
 
@@ -339,12 +381,27 @@ export default class DOMPatch {
     return insert || {}
   }
 
-  maybeReOrderStream(el, isNew){
-    let {ref, streamAt, limit} = this.getStreamInsert(el)
-    if(streamAt === undefined || (streamAt === 0 && !isNew)){ return }
-
-    // we need to the PHX_STREAM_REF here as well as addChild is invoked only for parents
+  setStreamRef(el, ref){
     DOM.putSticky(el, PHX_STREAM_REF, el => el.setAttribute(PHX_STREAM_REF, ref))
+  }
+
+  maybeReOrderStream(el, isNew){
+    let {ref, streamAt, reset} = this.getStreamInsert(el)
+    if(streamAt === undefined){ return }
+
+    // we need to set the PHX_STREAM_REF here as well as addChild is invoked only for parents
+    this.setStreamRef(el, ref)
+
+    if(!reset && !isNew){
+      // we only reorder if the element is new or it's a stream reset
+      return
+    }
+
+    // check if the element has a parent element;
+    // it doesn't if we are currently recursively morphing (restoring a saved stream child)
+    // because the element is not yet added to the real dom;
+    // reordering does not make sense in that case anyway
+    if(!el.parentElement){ return }
 
     if(streamAt === 0){
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
@@ -362,13 +419,24 @@ export default class DOMPatch {
         }
       }
     }
+
+    this.maybeLimitStream(el)
+  }
+
+  maybeLimitStream(el){
+    let {limit} = this.getStreamInsert(el)
+    let children = limit !== null && Array.from(el.parentElement.children)
+    if(limit && limit < 0 && children.length > limit * -1){
+      children.slice(0, children.length + limit).forEach(child => this.removeStreamChildElement(child))
+    } else if(limit && limit >= 0 && children.length > limit){
+      children.slice(limit).forEach(child => this.removeStreamChildElement(child))
+    }
   }
 
   transitionPendingRemoves(){
     let {pendingRemoves, liveSocket} = this
     if(pendingRemoves.length > 0){
-      liveSocket.transitionRemoves(pendingRemoves)
-      liveSocket.requestDOMUpdate(() => {
+      liveSocket.transitionRemoves(pendingRemoves, () => {
         pendingRemoves.forEach(el => {
           let child = DOM.firstPhxChild(el)
           if(child){ liveSocket.destroyViewByEl(child) }
@@ -383,11 +451,8 @@ export default class DOMPatch {
     if(!(fromEl instanceof HTMLSelectElement) || fromEl.multiple){ return false }
     if(fromEl.options.length !== toEl.options.length){ return true }
 
-    let fromSelected = fromEl.selectedOptions[0]
-    let toSelected = toEl.selectedOptions[0]
-    if(fromSelected && fromSelected.hasAttribute("selected")){
-      toSelected.setAttribute("selected", fromSelected.getAttribute("selected"))
-    }
+    // keep the current value
+    toEl.value = fromEl.value
 
     // in general we have to be very careful with using isEqualNode as it does not a reliable
     // DOM tree equality check, but for selection attributes and options it works fine

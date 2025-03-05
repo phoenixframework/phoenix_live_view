@@ -70,7 +70,7 @@ export default class LiveUploader {
   static trackFiles(inputEl, files, dataTransfer){
     if(inputEl.getAttribute("multiple") !== null){
       let newFiles = files.filter(file => !this.activeFiles(inputEl).find(f => Object.is(f, file)))
-      DOM.putPrivate(inputEl, "files", this.activeFiles(inputEl).concat(newFiles))
+      DOM.updatePrivate(inputEl, "files", [], (existing) => existing.concat(newFiles))
       inputEl.value = null
     } else {
       // Reset inputEl files to align output with programmatic changes (i.e. drag and drop)
@@ -94,29 +94,44 @@ export default class LiveUploader {
   }
 
   static filesAwaitingPreflight(input){
-    return this.activeFiles(input).filter(f => !UploadEntry.isPreflighted(input, f))
+    return this.activeFiles(input).filter(f => !UploadEntry.isPreflighted(input, f) && !UploadEntry.isPreflightInProgress(f))
+  }
+
+  static markPreflightInProgress(entries){
+    entries.forEach(entry => UploadEntry.markPreflightInProgress(entry.file))
   }
 
   constructor(inputEl, view, onComplete){
+    this.autoUpload = DOM.isAutoUpload(inputEl)
     this.view = view
     this.onComplete = onComplete
     this._entries =
       Array.from(LiveUploader.filesAwaitingPreflight(inputEl) || [])
-        .map(file => new UploadEntry(inputEl, file, view))
+        .map(file => new UploadEntry(inputEl, file, view, this.autoUpload))
+
+    // prevent sending duplicate preflight requests
+    LiveUploader.markPreflightInProgress(this._entries)
 
     this.numEntriesInProgress = this._entries.length
   }
+
+  isAutoUpload(){ return this.autoUpload }
 
   entries(){ return this._entries }
 
   initAdapterUpload(resp, onError, liveSocket){
     this._entries =
       this._entries.map(entry => {
-        entry.zipPostFlight(resp)
-        entry.onDone(() => {
+        if(entry.isCancelled()){
           this.numEntriesInProgress--
           if(this.numEntriesInProgress === 0){ this.onComplete() }
-        })
+        } else {
+          entry.zipPostFlight(resp)
+          entry.onDone(() => {
+            this.numEntriesInProgress--
+            if(this.numEntriesInProgress === 0){ this.onComplete() }
+          })
+        }
         return entry
       })
 

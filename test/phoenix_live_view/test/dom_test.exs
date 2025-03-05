@@ -132,7 +132,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -161,7 +162,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -189,7 +191,8 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
@@ -216,13 +219,67 @@ defmodule Phoenix.LiveViewTest.DOMTest do
       </div>
       """
 
-      {new_html, _removed_cids} = DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
 
       new_html = DOM.to_html(new_html)
 
       assert new_html =~ ~S(<div id="1" class="foo">b</div>)
       assert new_html =~ ~S(<div id="2">b</div>)
       assert new_html =~ ~S(<div id="3">a</div>)
+    end
+
+    test "patches only container data attributes when phx-update=ignore" do
+      html = """
+      <div data-phx-session="SESSIONMAIN" data-phx-main="true" id="phx-458">
+      <div id="div" remove data-remove update="a" data-update="a" phx-update="ignore">
+        <div id="1">a</div>
+      </div>
+      </div>
+      """
+
+      inner_html = """
+      <div id="div" update="b" data-update="b" add data-add phx-update="ignore">
+        <div id="1" class="foo">b</div>
+      </div>
+      """
+
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+
+      new_html = DOM.to_html(new_html)
+
+      assert new_html =~ ~S( remove)
+      refute new_html =~ ~S( data-remove)
+      assert new_html =~ ~S( update="a")
+      assert new_html =~ ~S( data-update="b")
+      refute new_html =~ ~S( add)
+      assert new_html =~ ~S( data-add)
+      assert new_html =~ ~S(<div id="1">a</div>)
+    end
+
+    test "patches elements with special characters in id (issue #3144)" do
+      html = """
+      <div data-phx-session="SESSIONMAIN" data-phx-main="true" id="phx-458">
+      <div id="div?param=foo" phx-update="ignore" data-attr="1">
+        <div id="1">a</div>
+      </div>
+      </div>
+      """
+
+      inner_html = """
+      <div id="div?param=foo" phx-update="ignore" data-attr="b">
+        <div id="1" class="foo">b</div>
+      </div>
+      """
+
+      {new_html, _removed_cids} =
+        DOM.patch_id("phx-458", DOM.parse(html), DOM.parse(inner_html), [])
+
+      new_html = DOM.to_html(new_html)
+
+      assert new_html =~ ~S(data-attr="b")
+      assert new_html =~ ~S(<div id="1">a</div>)
     end
   end
 
@@ -233,6 +290,35 @@ defmodule Phoenix.LiveViewTest.DOMTest do
 
       assert DOM.merge_diff(%{s: "foo", d: []}, %{s: "bar"}) ==
                %{s: "bar", streams: []}
+    end
+  end
+
+  describe "parse" do
+    test "detects duplicate ids" do
+      assert DOM.parse(
+               """
+               <div id="foo">
+                 <div id="foo"></div>
+               </div>
+               """,
+               fn msg -> send(self(), {:error, msg}) end
+             )
+
+      assert_receive {:error, msg}
+      assert msg =~ "Duplicate id found while testing LiveView"
+    end
+
+    test "handles declarations (issue #3594)" do
+      assert DOM.parse(
+               """
+               <div id="foo">
+                 <?xml version="1.0" standalone="yes"?>
+               </div>
+               """,
+               fn msg -> send(self(), {:error, msg}) end
+             )
+
+      refute_receive {:error, _}
     end
   end
 end

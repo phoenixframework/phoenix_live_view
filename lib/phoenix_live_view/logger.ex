@@ -101,7 +101,7 @@ defmodule Phoenix.LiveView.Logger do
           "Replied in ",
           duration(duration)
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -122,7 +122,7 @@ defmodule Phoenix.LiveView.Logger do
           "  Parameters: ",
           inspect(filter_values(params))
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -140,7 +140,7 @@ defmodule Phoenix.LiveView.Logger do
           "Replied in ",
           duration(duration)
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -163,7 +163,7 @@ defmodule Phoenix.LiveView.Logger do
           "  Parameters: ",
           inspect(filter_values(params))
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -181,7 +181,7 @@ defmodule Phoenix.LiveView.Logger do
           "Replied in ",
           duration(duration)
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -205,7 +205,7 @@ defmodule Phoenix.LiveView.Logger do
           "\n  Parameters: ",
           inspect(filter_values(params))
         ]
-      end, metadata)
+      end)
     end
 
     :ok
@@ -223,7 +223,7 @@ defmodule Phoenix.LiveView.Logger do
           "Replied in ",
           duration(duration)
         ]
-      end, metadata)
+      end)
     end
 
     :ok

@@ -1,9 +1,9 @@
 defmodule Phoenix.LiveView.LayoutTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.{Endpoint, LayoutView}
+  alias Phoenix.LiveViewTest.Support.{Endpoint, LayoutView}
 
   @endpoint Endpoint
 
@@ -13,8 +13,8 @@ defmodule Phoenix.LiveView.LayoutTest do
   end
 
   test "uses dead layout from router", %{conn: conn} do
-    assert_raise Plug.Conn.WrapperError,
-                 ~r"\(UndefinedFunctionError\) function UnknownView.render/2",
+    assert_raise ArgumentError,
+                 ~r"no \"unknown_template\" html template defined for UnknownView",
                  fn -> live(conn, "/bad_layout") end
 
     {:ok, _, _} = live(conn, "/layout")
@@ -74,6 +74,10 @@ defmodule Phoenix.LiveView.LayoutTest do
 
   test "uses root page title on first render", %{conn: conn} do
     {:ok, view, _html} = live(conn, "/styled-elements")
+    assert page_title(view) == "Styled"
+
+    {:ok, view, _html} = live(conn, "/styled-elements")
+    render_click(view, "#live-push-patch-button")
     assert page_title(view) == "Styled"
 
     {:ok, no_title_tag_view, _html} = live(conn, "/parent_layout")

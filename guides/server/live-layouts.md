@@ -17,7 +17,7 @@ From Phoenix v1.7, your application is made of two layouts:
 Overall, those layouts are found in `components/layouts` and are
 embedded within `MyAppWeb.Layouts`.
 
-All layouts must call `<%= @inner_content %>` to inject the
+All layouts must call `{@inner_content}` to inject the
 content rendered by the layout.
 
 ## Root layout
@@ -26,7 +26,7 @@ The "root" layout is rendered only on the initial request and
 therefore it has access to the `@conn` assign. The root layout
 is typically defined in your router:
 
-    plug :put_root_layout, html: {MyAppWeb.LayoutView, :root}
+    plug :put_root_layout, html: {MyAppWeb.Layouts, :root}
 
 The root layout can also be set via the `:root_layout` option
 in your router via `Phoenix.LiveView.Router.live_session/2`.
@@ -71,7 +71,7 @@ mount:
 Then access `@page_title` in the root layout:
 
 ```heex
-<title><%= @page_title %></title>
+<title>{@page_title}</title>
 ```
 
 You can also use the `Phoenix.Component.live_title/1` component to support
@@ -79,8 +79,8 @@ adding automatic prefix and suffix to the page title when rendered and
 on subsequent updates:
 
 ```heex
-<Phoenix.Component.live_title prefix="MyApp – ">
-  <%= assigns[:page_title] || "Welcome" %>
+<Phoenix.Component.live_title default="Welcome" prefix="MyApp – ">
+  {assigns[:page_title]}
 </Phoenix.Component.live_title>
 ```
 

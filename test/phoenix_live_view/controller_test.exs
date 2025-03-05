@@ -2,7 +2,7 @@ defmodule Phoenix.LiveView.ControllerTest do
   use ExUnit.Case, async: true
   import Phoenix.ConnTest
 
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -32,9 +32,10 @@ defmodule Phoenix.LiveView.ControllerTest do
 
   test "renders function components from dead layout", %{conn: conn} do
     conn = get(conn, "/controller/render-layout-with-function-component")
+
     assert html_response(conn, 200) =~ """
-    LAYOUT:COMPONENT:from layout
-    Hello\
-    """
+           LAYOUT:COMPONENT:from layout
+           Hello\
+           """
   end
 end

@@ -1,8 +1,11 @@
-defmodule Phoenix.LiveViewTest.LayoutView do
+defmodule Phoenix.LiveViewTest.Support.LayoutView do
   use Phoenix.View, root: ""
   use Phoenix.Component
 
-  alias Phoenix.LiveViewTest.Router.Helpers, as: Routes
+  use Phoenix.VerifiedRoutes,
+    router: Phoenix.LiveViewTest.Support.Router,
+    endpoint: Phoenix.LiveViewTest.Support.Endpoint,
+    statics: ~w(css)
 
   def render("app.html", assigns) do
     # Assert those assigns are always available
@@ -14,32 +17,32 @@ defmodule Phoenix.LiveViewTest.LayoutView do
 
   def render("live.html", assigns) do
     ~H"""
-    LIVELAYOUTSTART-<%= @val %>-<%= @inner_content %>-LIVELAYOUTEND
+    LIVELAYOUTSTART-{@val}-{@inner_content}-LIVELAYOUTEND
     """
   end
 
   def render("live_override.html", assigns) do
     ~H"""
-    LIVEOVERRIDESTART-<%= @val %>-<%= @inner_content %>-LIVEOVERRIDEEND
+    LIVEOVERRIDESTART-{@val}-{@inner_content}-LIVEOVERRIDEEND
     """
   end
 
   def render("widget.html", assigns) do
     ~H"""
-    WIDGET:<%= live_render(@conn, Phoenix.LiveViewTest.ClockLive) %>
+    WIDGET:{live_render(@conn, Phoenix.LiveViewTest.Support.ClockLive)}
     """
   end
 
   def render("with-function-component.html", assigns) do
     ~H"""
-    RENDER:<Phoenix.LiveViewTest.FunctionComponent.render value="from component" />
+    RENDER:<Phoenix.LiveViewTest.Support.FunctionComponent.render value="from component" />
     """
   end
 
   def render("layout-with-function-component.html", assigns) do
     ~H"""
-    LAYOUT:<Phoenix.LiveViewTest.FunctionComponent.render value="from layout" />
-    <%= @inner_content %>
+    LAYOUT:<Phoenix.LiveViewTest.Support.FunctionComponent.render value="from layout" />
+    {@inner_content}
     """
   end
 
@@ -54,15 +57,19 @@ defmodule Phoenix.LiveViewTest.LayoutView do
     <html>
       <head>
         <title>Styled</title>
-        <link rel="stylesheet" href="/css/custom.css"/>
-        <link rel="stylesheet" href={Routes.static_path(@conn, "/css/app.css")}/>
-        <link rel="stylesheet" href="//example.com/a.css"/>
-        <link rel="stylesheet" href="https://example.com/b.css"/>
-        <style>body { background-color: #eee; }</style>
-        <script>console.log("script")</script>
+        <link rel="stylesheet" href="/css/custom.css" />
+        <link rel="stylesheet" href={~p"/css/app.css"} />
+        <link rel="stylesheet" href="//example.com/a.css" />
+        <link rel="stylesheet" href="https://example.com/b.css" />
+        <style>
+          body { background-color: #eee; }
+        </style>
+        <script>
+          console.log("script")
+        </script>
       </head>
       <body>
-        <%= @inner_content %>
+        {@inner_content}
       </body>
     </html>
     """
@@ -71,13 +78,13 @@ defmodule Phoenix.LiveViewTest.LayoutView do
   def on_mount_layout(assigns) do
     ~H"""
     <div id="on-mount">
-      <%= @inner_content %>
+      {@inner_content}
     </div>
     """
   end
 end
 
-defmodule Phoenix.LiveViewTest.AssignsLayoutView do
+defmodule Phoenix.LiveViewTest.Support.AssignsLayoutView do
   use Phoenix.View, root: ""
 
   def render("app.html", assigns) do

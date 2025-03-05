@@ -3,11 +3,12 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
   setup do
+    Process.flag(:trap_exit, true)
     {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
   end
 
@@ -50,9 +51,14 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "lv exit brings down asyncs", %{conn: conn} do
+      Process.register(self(), :assign_async_test_process)
       {:ok, lv, _html} = live(conn, "/assign_async?test=lv_exit")
-      Process.unlink(lv.pid)
       lv_ref = Process.monitor(lv.pid)
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:lv_exit))
       send(lv.pid, :boom)
 
@@ -61,8 +67,13 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "cancel_async", %{conn: conn} do
+      Process.register(self(), :assign_async_test_process)
       {:ok, lv, _html} = live(conn, "/assign_async?test=cancel")
-      Process.unlink(lv.pid)
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:cancel))
       send(lv.pid, :cancel)
 
@@ -91,7 +102,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_bad_return")
 
       assert render_async(lv) =~
-               "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:lc_data] or {:error, reason}, got: 123\\n&quot;}"
+               "exit: {%ArgumentError{message: &quot;expected assign_async to return {:ok, map} of\\nassigns for [:lc_data, :other_data] or {:error, reason}, got: 123\\n&quot;}"
 
       assert render(lv)
     end
@@ -100,7 +111,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_bad_ok")
 
       assert render_async(lv) =~
-               "expected assign_async to return map of assigns for all keys\\nin [:lc_data]"
+               "expected assign_async to return map of assigns for all keys\\nin [:lc_data, :other_data]"
 
       assert render(lv)
     end
@@ -108,6 +119,55 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     test "valid return", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
       assert render_async(lv) =~ "lc_data: 123"
+    end
+
+    test "keeps previous values when updating async assign", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
+      assert render_async(lv) =~ "lc_data: 123"
+
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
+        id: "lc",
+        action: :assign_async_reset,
+        reset: false
+      )
+
+      assert render(lv) =~ "lc_data: 123"
+      assert render_async(lv) =~ "lc_data: 456"
+    end
+
+    test "keeps previous values when using a list for async assign", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
+      rendered = render_async(lv)
+      assert rendered =~ "lc_data: 123"
+      assert rendered =~ "other_data: 555"
+
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
+        id: "lc",
+        action: :assign_async_reset,
+        reset: [:other_data]
+      )
+
+      rendered = render(lv)
+      assert rendered =~ "lc_data: 123"
+      assert rendered =~ "other_data loading"
+      rendered = render_async(lv)
+      assert rendered =~ "lc_data: 456"
+      assert rendered =~ "other_data: 999"
+    end
+
+    test "when using the reset flag", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=lc_ok")
+      assert render_async(lv) =~ "lc_data: 123"
+
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
+        id: "lc",
+        action: :assign_async_reset,
+        reset: true
+      )
+
+      assert render(lv) =~ "loading"
+      refute render(lv) =~ "lc_data: 123"
+      assert render_async(lv) =~ "lc_data: 456"
     end
 
     test "raise during execution", %{conn: conn} do
@@ -125,9 +185,14 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "lv exit brings down asyncs", %{conn: conn} do
+      Process.register(self(), :assign_async_test_process)
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_lv_exit")
-      Process.unlink(lv.pid)
       lv_ref = Process.monitor(lv.pid)
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:lc_exit))
       send(lv.pid, :boom)
 
@@ -136,11 +201,16 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
     end
 
     test "cancel_async", %{conn: conn} do
+      Process.register(self(), :assign_async_test_process)
       {:ok, lv, _html} = live(conn, "/assign_async?test=lc_cancel")
-      Process.unlink(lv.pid)
+
+      receive do
+        :async_ready -> :ok
+      end
+
       async_ref = Process.monitor(Process.whereis(:lc_cancel))
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
         id: "lc",
         action: :cancel
       )
@@ -149,7 +219,7 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
       assert render(lv) =~ "exit: {:shutdown, :cancel}"
 
-      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.AssignAsyncLive.LC,
+      Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.AssignAsyncLive.LC,
         id: "lc",
         action: :renew_canceled
       )

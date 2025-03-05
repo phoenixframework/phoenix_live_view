@@ -1,14 +1,14 @@
 defmodule Phoenix.LiveComponent do
   @moduledoc ~S'''
   LiveComponents are a mechanism to compartmentalize state, markup, and
-  events in LiveView.
+  events for sharing across LiveViews.
 
   LiveComponents are defined by using `Phoenix.LiveComponent` and are used
   by calling `Phoenix.Component.live_component/1` in a parent LiveView.
   They run inside the LiveView process but have their own state and
   life-cycle. For this reason, they are also often called "stateful components".
   This is a contrast to `Phoenix.Component`, also known as "function components",
-  which are stateless and can only compartmentalize markup.
+  which are stateless and do not have a life-cycle.
 
   The smallest LiveComponent only needs to define a `c:render/1` function:
 
@@ -18,14 +18,16 @@ defmodule Phoenix.LiveComponent do
 
         def render(assigns) do
           ~H"""
-          <div class="hero"><%= @content %></div>
+          <div class="hero">{@content}</div>
           """
         end
       end
 
   A LiveComponent is rendered as:
 
-      <.live_component module={HeroComponent} id="hero" content={@content} />
+  ```heex
+  <.live_component module={HeroComponent} id="hero" content={@content} />
+  ```
 
   You must always pass the `module` and `id` attributes. The `id` will be
   available as an assign and it must be used to uniquely identify the
@@ -34,29 +36,47 @@ defmodule Phoenix.LiveComponent do
 
   > #### Functional components or live components? {: .neutral}
   >
-  > Generally speaking, you should prefer functional components over live
+  > Generally speaking, you should prefer function components over live
   > components, as they are a simpler abstraction, with a smaller surface
   > area. The use case for live components only arises when there is a need
   > for encapsulating both event handling and additional state.
+  >
+  > Similarly, avoid using LiveComponents for code design purposes, where
+  > their main goal is to organize code, rather than sharing it across
+  > LiveViews. When it comes to code organization and design, Elixir developers
+  > prefer to use functions and data structures.
 
   ## Life-cycle
 
   ### Mount and update
 
   Live components are identified by the component module and their ID.
-  Therefore, two live components with the same module and ID are treated
-  as the same component. We often tie the component ID to some application based ID:
+  We often tie the component ID to some application based ID:
 
-      <.live_component module={UserComponent} id={@user.id} user={@user} />
+  ```heex
+  <.live_component module={UserComponent} id={@user.id} user={@user} />
+  ```
 
   When [`live_component/1`](`Phoenix.Component.live_component/1`) is called,
-  `c:mount/1` is called once, when the component is first added to the page. `c:mount/1`
-  receives the `socket` as argument. Then `c:update/2` is invoked with all of the
-  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`).
-  If `c:update/2` is not defined all assigns are simply merged into the socket.
-  The assigns received as the first argument of the [`update/2`](`c:Phoenix.LiveComponent.update/2`)
-  callback will only include the _new_ assigns passed from this function.
-  Pre-existing assigns may be found in `socket.assigns`.
+  `c:mount/1` is called once, when the component is first added to the page.
+  `c:mount/1` receives a `socket` as its argument. Note that this is *not* the
+  same `socket` struct from the parent LiveView. It doesn't contain the parent
+  LiveView's `assigns`, and updating it won't affect the parent LiveView's
+  `socket`.
+
+  Then `c:update/2` is invoked with all of the assigns passed to
+  [`live_component/1`](`Phoenix.Component.live_component/1`). The assigns
+  received as the first argument to `c:update/2` will only include those
+  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`),
+  and not any pre-existing assigns in `socket.assigns` such as those assigned
+  by `c:mount/1`.
+
+  If `c:update/2` is not defined then all assigns given to
+  [`live_component/1`](`Phoenix.Component.live_component/1`) will simply be
+  merged into `socket.assigns`.
+
+  Both `c:mount/1` and `c:update/2` must return a tuple whose first element is
+  `:ok` and whose second element is the updated `socket`.
 
   After the component is updated, `c:render/1` is called with all assigns.
   On first render, we get:
@@ -67,7 +87,14 @@ defmodule Phoenix.LiveComponent do
 
       update(assigns, socket) -> render(assigns)
 
-  The given `id` is not automatically used as the DOM ID. If you want to set
+  Two live components with the same module and ID are treated as the same component,
+  regardless of where they are in the page. Therefore, if you change the location
+  of where a component is rendered within its parent LiveView, it won't be remounted.
+  This means you can use live components to implement cards and other elements that
+  can be moved around without losing state. A component is only discarded when the
+  client observes it is removed from the page.
+
+  Finally, the given `id` is not automatically used as the DOM ID. If you want to set
   a DOM ID, it is your responsibility to do so when rendering:
 
       defmodule UserComponent do
@@ -76,8 +103,8 @@ defmodule Phoenix.LiveComponent do
 
         def render(assigns) do
           ~H"""
-          <div id={"user-\#{@id}"} class="user">
-            <%= @user.name %>
+          <div id={"user-#{@id}"} class="user">
+            {@user.name}
           </div>
           """
         end
@@ -92,9 +119,11 @@ defmodule Phoenix.LiveComponent do
   `@myself` assign, which is an *internal unique reference* to the
   component instance:
 
-      <a href="#" phx-click="say_hello" phx-target={@myself}>
-        Say hello!
-      </a>
+  ```heex
+  <a href="#" phx-click="say_hello" phx-target={@myself}>
+    Say hello!
+  </a>
+  ```
 
   Note that `@myself` is not set for stateless components, as they cannot
   receive events.
@@ -104,9 +133,11 @@ defmodule Phoenix.LiveComponent do
   For example, if there is a `UserComponent` with the DOM ID of `"user-13"`,
   using a query selector, we can send an event to it with:
 
-      <a href="#" phx-click="say_hello" phx-target="#user-13">
-        Say hello!
-      </a>
+  ```heex
+  <a href="#" phx-click="say_hello" phx-target="#user-13">
+    Say hello!
+  </a>
+  ```
 
   In both cases, `c:handle_event/3` will be called with the
   "say_hello" event. When `c:handle_event/3` is called for a component,
@@ -117,9 +148,11 @@ defmodule Phoenix.LiveComponent do
   matched nodes are children of a LiveView or LiveComponent, for example
   to send the `close` event to multiple components:
 
-      <a href="#" phx-click="close" phx-target="#modal, #sidebar">
-        Dismiss
-      </a>
+  ```heex
+  <a href="#" phx-click="close" phx-target="#modal, #sidebar">
+    Dismiss
+  </a>
+  ```
 
   ### Update many
 
@@ -135,7 +168,9 @@ defmodule Phoenix.LiveComponent do
   let's see an example. Imagine you are implementing a component and the component
   needs to load some state from the database. For example:
 
-      <.live_component module={UserComponent} id={user_id} />
+  ```heex
+  <.live_component module={UserComponent} id={user_id} />
+  ```
 
   A possible implementation would be to load the user on the `c:update/2`
   callback:
@@ -151,7 +186,7 @@ defmodule Phoenix.LiveComponent do
   of all assigns and sockets, allowing us to update many at once:
 
       def update_many(assigns_sockets) do
-        list_of_ids = Enum.map(assigns_sockets, fn {assigns, _sockets} -> assigns.id end)
+        list_of_ids = Enum.map(assigns_sockets, fn {assigns, _socket} -> assigns.id end)
 
         users =
           from(u in User, where: u.id in ^list_of_ids, select: {u.id, u})
@@ -236,7 +271,7 @@ defmodule Phoenix.LiveComponent do
         def render(assigns) do
           ~H"""
           <form phx-submit="..." phx-target={@myself}>
-            <input name="title"><%= @card.title %></input>
+            <input name="title">{@card.title}</input>
             ...
           </form>
           """
@@ -255,9 +290,15 @@ defmodule Phoenix.LiveComponent do
   [`live_component/1`](`Phoenix.Component.live_component/1`)
   for each card, passing the card struct as argument to `CardComponent`:
 
-      <%= for card <- @cards do %>
-        <.live_component module={CardComponent} card={card} id={card.id} board_id={@id} />
-      <% end %>
+  ```heex
+  <.live_component
+    :for={card <- @cards}
+    module={CardComponent}
+    card={card}
+    id={card.id}
+    board_id={@id}
+  />
+  ```
 
   Now, when the user submits the form, `CardComponent.handle_event/3`
   will be triggered. However, if the update succeeds, you must not
@@ -322,9 +363,14 @@ defmodule Phoenix.LiveComponent do
   LiveView must only fetch the card ids, then render each component only by
   passing an ID:
 
-      <%= for card_id <- @card_ids do %>
-        <.live_component module={CardComponent} id={card_id} board_id={@id} />
-      <% end %>
+  ```heex
+  <.live_component
+    :for={card_id <- @card_ids}
+    module={CardComponent}
+    id={card_id}
+    board_id={@id}
+  />
+  ```
 
   Now, each CardComponent will load its own card. Of course, doing so
   per card could be expensive and lead to N queries, where N is the
@@ -411,9 +457,11 @@ defmodule Phoenix.LiveComponent do
 
   LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
 
-      <.live_component module={MyComponent} id={@data.id} >
-        <div>Inner content here</div>
-      </.live_component>
+  ```heex
+  <.live_component module={MyComponent} id={@data.id} >
+    <div>Inner content here</div>
+  </.live_component>
+  ```
 
   If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
   includes the `:inner_block` assign it received.
@@ -423,7 +471,7 @@ defmodule Phoenix.LiveComponent do
   ## Live patches and live redirects
 
   A template rendered inside a component can use `<.link patch={...}>` and
-  `<.link navigate={...}>`. Patches are always handled by the parent `LiveView`,
+  `<.link navigate={...}>`. Patches are always handled by the parent LiveView,
   as components do not provide `handle_params`.
 
   ## Cost of live components
@@ -438,11 +486,15 @@ defmodule Phoenix.LiveComponent do
   in each component. For example, avoid passing all of LiveView's assigns
   when rendering a component:
 
-      <.live_component module={MyComponent} {assigns} />
+  ```heex
+  <.live_component module={MyComponent} {assigns} />
+  ```
 
   Instead pass only the keys that you need:
 
-      <.live_component module={MyComponent} user={@user} org={@org} />
+  ```heex
+  <.live_component module={MyComponent} user={@user} org={@org} />
+  ```
 
   Luckily, because LiveViews and LiveComponents are in the same process,
   they share the data structure representations in memory. For example,
@@ -464,7 +516,7 @@ defmodule Phoenix.LiveComponent do
         def render(assigns) do
           ~H"""
           <button class="css-framework-class" phx-click="click">
-            <%= @text %>
+            {@text}
           </button>
           """
         end
@@ -480,7 +532,7 @@ defmodule Phoenix.LiveComponent do
       def my_button(%{text: _, click: _} = assigns) do
         ~H"""
         <button class="css-framework-class" phx-click={@click}>
-          <%= @text %>
+          {@text}
         </button>
         """
       end
@@ -557,7 +609,7 @@ defmodule Phoenix.LiveComponent do
               {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @callback handle_async(
-              name :: atom,
+              name :: term,
               async_fun_result :: {:ok, term} | {:exit, term},
               socket :: Socket.t()
             ) ::

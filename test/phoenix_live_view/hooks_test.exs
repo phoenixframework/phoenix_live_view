@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.IntegrationHooksTest do
   alias Phoenix.LiveView
   alias Phoenix.LiveView.Lifecycle
 
-  defp build_socket(router \\ Phoenix.LiveViewTest.Router) do
+  defp build_socket(router \\ Phoenix.LiveViewTest.Support.Router) do
     %LiveView.Socket{
       private: %{lifecycle: %Lifecycle{}},
       router: router

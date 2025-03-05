@@ -4,18 +4,18 @@ defmodule Phoenix.LiveViewUnitTest do
   import Phoenix.LiveView
 
   alias Phoenix.LiveView.{Utils, Socket}
-  alias Phoenix.LiveViewTest.Endpoint
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @socket Utils.configure_socket(
             %Socket{
               endpoint: Endpoint,
-              router: Phoenix.LiveViewTest.Router,
-              view: Phoenix.LiveViewTest.ParamCounterLive
+              router: Phoenix.LiveViewTest.Support.Router,
+              view: Phoenix.LiveViewTest.Support.ParamCounterLive
             },
             %{
               connect_params: %{},
               connect_info: %{},
-              root_view: Phoenix.LiveViewTest.ParamCounterLive,
+              root_view: Phoenix.LiveViewTest.Support.ParamCounterLive,
               live_temp: %{}
             },
             nil,
@@ -239,15 +239,23 @@ defmodule Phoenix.LiveViewUnitTest do
         redirect(@socket, to: "//foo.com")
       end
 
-      assert redirect(@socket, to: "/foo").redirected == {:redirect, %{to: "/foo"}}
+      assert redirect(@socket, to: "/foo").redirected == {:redirect, %{to: "/foo", status: 302}}
+    end
+
+    test "accepts a custom redirect status for local / external paths" do
+      assert redirect(@socket, to: "/foo", status: 301).redirected ==
+               {:redirect, %{to: "/foo", status: 301}}
+
+      assert redirect(@socket, external: "http://foo.com/bar", status: 301).redirected ==
+               {:redirect, %{external: "http://foo.com/bar", status: 301}}
     end
 
     test "allows external paths" do
       assert redirect(@socket, external: "http://foo.com/bar").redirected ==
-               {:redirect, %{external: "http://foo.com/bar"}}
+               {:redirect, %{external: "http://foo.com/bar", status: 302}}
 
       assert redirect(@socket, external: {:javascript, "alert"}).redirected ==
-               {:redirect, %{external: "javascript:alert"}}
+               {:redirect, %{external: "javascript:alert", status: 302}}
     end
 
     test "disallows insecure external paths" do
@@ -282,7 +290,7 @@ defmodule Phoenix.LiveViewUnitTest do
         push_patch(@socket, to: "//foo.com")
       end
 
-      socket = %{@socket | view: Phoenix.LiveViewTest.ParamCounterLive}
+      socket = %{@socket | view: Phoenix.LiveViewTest.Support.ParamCounterLive}
 
       assert push_patch(socket, to: "/counter/123").redirected ==
                {:live, :patch, %{kind: :push, to: "/counter/123"}}

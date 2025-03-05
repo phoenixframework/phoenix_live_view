@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.ParamsTest do
-  # Telemetry events need to run asynchronously
+  # Telemetry events need to run synchronously
   use ExUnit.Case, async: false
 
   import Plug.Conn
@@ -9,7 +9,8 @@ defmodule Phoenix.LiveView.ParamsTest do
   import Phoenix.LiveView.TelemetryTestHelpers
 
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.{Endpoint, DOM}
+  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
 
@@ -66,7 +67,7 @@ defmodule Phoenix.LiveView.ParamsTest do
     test "telemetry events are emitted on exception", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :handle_params])
 
-      assert_raise Plug.Conn.WrapperError, ~r/boom/, fn ->
+      assert_raise RuntimeError, ~r/boom/, fn ->
         get(conn, "/errors", crash_on: "disconnected_handle_params")
       end
 
@@ -95,6 +96,16 @@ defmodule Phoenix.LiveView.ParamsTest do
              |> redirected_to() == "/"
     end
 
+    test "hard redirects with a custom status", %{conn: conn} do
+      assert conn
+             |> put_serialized_session(
+               :on_handle_params,
+               &{:noreply, LiveView.redirect(&1, to: "/", status: 301)}
+             )
+             |> get("/counter/123?from=handle_params")
+             |> redirected_to(301) == "/"
+    end
+
     test "hard redirect with flash message", %{conn: conn} do
       conn =
         put_serialized_session(conn, :on_handle_params, fn socket ->
@@ -104,8 +115,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         |> get("/counter/123?from=handle_params")
 
       assert redirected_to(conn) == "/"
-      # TODO use Phoenix.Flash.get when 1.7 is released
-      assert get_flash(conn, :info) == "msg"
+      assert Phoenix.Flash.get(conn.assigns.flash, :info) == "msg"
     end
 
     test "push_patch", %{conn: conn} do
@@ -262,7 +272,7 @@ defmodule Phoenix.LiveView.ParamsTest do
                  {"data-phx-session", _},
                  {"data-phx-static", _}
                ],
-               ["The value is: 1" <> _]
+               [{"p", [], ["The value is: 1"]} | _]
              } = container
     end
 

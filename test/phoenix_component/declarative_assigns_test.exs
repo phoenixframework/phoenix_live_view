@@ -52,50 +52,55 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     attr :age, :integer, default: 0
     def func2(assigns), do: ~H[]
 
+    def func3_line, do: __ENV__.line
+    attr :on_cancel, :fun, required: true
+    attr :on_complete, {:fun, 2}, required: true
+    def func3(assigns), do: ~H[]
+
     def with_global_line, do: __ENV__.line
     attr :id, :string, default: "container"
-    def with_global(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true"/>]
+    def with_global(assigns), do: ~H[<.button id={@id} class="btn" aria-hidden="true" />]
 
     attr :id, :string, required: true
     attr :rest, :global
-    def button(assigns), do: ~H[<button id={@id} {@rest}/>]
+    def button(assigns), do: ~H[<button id={@id} {@rest} />]
 
     def button_with_defaults_line, do: __ENV__.line
     attr :rest, :global, default: %{class: "primary"}
-    def button_with_defaults(assigns), do: ~H[<button {@rest}/>]
+    def button_with_defaults(assigns), do: ~H[<button {@rest} />]
 
     def button_with_values_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"]
-    def button_with_values(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_values_and_default_1_line, do: __ENV__.line
     attr :text, :string, values: ["Save", "Cancel"], default: "Save"
-    def button_with_values_and_default_1(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values_and_default_1(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_values_and_default_2_line, do: __ENV__.line
     attr :text, :string, default: "Save", values: ["Save", "Cancel"]
-    def button_with_values_and_default_2(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_values_and_default_2(assigns), do: ~H[<button>{@text}</button>]
 
     def button_with_examples_line, do: __ENV__.line
     attr :text, :string, examples: ["Save", "Cancel"]
-    def button_with_examples(assigns), do: ~H[<button><%= @text %></button>]
+    def button_with_examples(assigns), do: ~H[<button>{@text}</button>]
 
     def render_line, do: __ENV__.line
 
     def render(assigns) do
       ~H"""
       <!-- local -->
-      <.func1 id="1"/>
+      <.func1 id="1" />
       <!-- local with inner content -->
       <.func1 id="2" email="foo@bar">CONTENT</.func1>
       <!-- imported -->
-      <.remote id="3"/>
+      <.remote id="3" />
       <!-- remote -->
-      <RemoteFunctionComponentWithAttrs.remote id="4"/>
+      <RemoteFunctionComponentWithAttrs.remote id="4" />
       <!-- remote with inner content -->
       <RemoteFunctionComponentWithAttrs.remote id="5">CONTENT</RemoteFunctionComponentWithAttrs.remote>
       <!-- remote and aliased -->
-      <Remote.remote id="6" {[dynamic: :values]}/>
+      <Remote.remote id="6" {[dynamic: :values]} />
       """
     end
   end
@@ -122,6 +127,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   test "stores attributes definitions" do
     func1_line = FunctionComponentWithAttrs.func1_line()
     func2_line = FunctionComponentWithAttrs.func2_line()
+    func3_line = FunctionComponentWithAttrs.func3_line()
     with_global_line = FunctionComponentWithAttrs.with_global_line()
     button_with_defaults_line = FunctionComponentWithAttrs.button_with_defaults_line()
     button_with_values_line = FunctionComponentWithAttrs.button_with_values_line()
@@ -164,7 +170,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    line: func1_line + 3,
                    name: :inner_block,
                    opts: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: func1_line + 4
@@ -193,6 +200,31 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                ],
                slots: [],
                line: func2_line + 3
+             },
+             func3: %{
+               kind: :def,
+               attrs: [
+                 %{
+                   name: :on_cancel,
+                   type: :fun,
+                   opts: [],
+                   required: true,
+                   doc: nil,
+                   slot: nil,
+                   line: func3_line + 1
+                 },
+                 %{
+                   name: :on_complete,
+                   type: {:fun, 2},
+                   opts: [],
+                   required: true,
+                   doc: nil,
+                   slot: nil,
+                   line: func3_line + 2
+                 }
+               ],
+               slots: [],
+               line: func3_line + 3
              },
              with_global: %{
                kind: :def,
@@ -353,13 +385,13 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       <table>
         <tr>
           <%= for col <- @col do %>
-            <th><%= col.label %></th>
+            <th>{col.label}</th>
           <% end %>
         </tr>
         <%= for row <- @rows do %>
           <tr>
             <%= for col <- @col do %>
-              <td><%= render_slot(col, row) %></td>
+              <td>{render_slot(col, row)}</td>
             <% end %>
           </tr>
         <% end %>
@@ -379,9 +411,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         <:header>
           This is a header.
         </:header>
-
         Hello, World
-
         <:footer>
           This is a footer.
         </:footer>
@@ -393,11 +423,11 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       <.table rows={@users}>
         <:col :let={user} label={@name}>
-          <%= user.name %>
+          {user.name}
         </:col>
 
         <:col :let={user} label="Address">
-          <%= user.address %>
+          {user.address}
         </:col>
       </.table>
       """
@@ -416,7 +446,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :inner_block,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.fun_with_slot_line()
@@ -431,7 +462,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :footer,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  },
                  %{
                    doc: nil,
@@ -439,7 +471,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :header,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.fun_with_named_slots_line()
@@ -464,7 +497,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                        type: :any
                      }
                    ],
-                   required: true
+                   required: true,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.fun_with_slot_attrs_line()
@@ -499,7 +533,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                        type: :string
                      }
                    ],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: FunctionComponentWithSlots.table_line()
@@ -557,7 +592,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                    name: :slot,
                    opts: [],
                    attrs: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: Bodyless.example2_line() + 1
@@ -592,14 +628,14 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
       def add(assigns) do
         assigns = Phoenix.Component.assign(assigns, :foo, :bar)
-        ~H[<%= @one + @two %>]
+        ~H[{@one + @two}]
       end
 
       attr :nil_default, :string, default: nil
-      def example(assigns), do: ~H[<%= inspect @nil_default %>]
+      def example(assigns), do: ~H[{inspect(@nil_default)}]
 
       attr :value, :string
-      def no_default(assigns), do: ~H[<%= inspect @value %>]
+      def no_default(assigns), do: ~H[{inspect(@value)}]
 
       attr :id, :any
       attr :errors, :list, default: []
@@ -632,10 +668,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       use Phoenix.Component
 
       slot(:inner_block)
-      def func(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+      def func(assigns), do: ~H[{render_slot(@inner_block)}]
 
       slot(:inner_block, required: true)
-      def func_required(assigns), do: ~H[<%= render_slot(@inner_block) %>]
+      def func_required(assigns), do: ~H[{render_slot(@inner_block)}]
     end
 
     assigns = %{}
@@ -654,8 +690,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       def test(assigns) do
         ~H"""
         <div {@rest}>
-          <%= render_slot(@inner_block) %>
-          <%= for col <- @col do %><%= render_slot(col) %>,<% end %>
+          {render_slot(@inner_block)}
+          <%= for col <- @col do %>
+            {render_slot(col)},
+          <% end %>
         </div>
         """
       end
@@ -673,7 +711,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       """
 
     assert Phoenix.LiveViewTest.rendered_to_string(template) ==
-             ~s|<div class="my-class">\n  \n  block\n  \n  col1,col2,\n</div>|
+             ~s|<div class=\"my-class\">\n  \n  block\n  \n  \n    col1,\n  \n    col2,\n  \n</div>|
   end
 
   defp lookup(_key \\ :one)
@@ -813,7 +851,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
                      }
                    ],
                    opts: [],
-                   required: false
+                   required: false,
+                   validate_attrs: true
                  }
                ],
                line: line + 29
@@ -823,7 +862,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
   test "inserts attr & slot docs into function component @doc string" do
     {_, _, :elixir, "text/markdown", _, _, docs} =
-      Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+      Code.fetch_docs(Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs)
 
     components = %{
       fun_attr_any: """
@@ -895,7 +934,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       fun_attr_struct: """
       ## Attributes
 
-      * `attr` (`Phoenix.LiveViewTest.FunctionComponentWithAttrs.Struct`)
+      * `attr` (`Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.Struct`)
       """,
       fun_attr_required: """
       ## Attributes
@@ -1030,7 +1069,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
   end
 
   test "stores correct line number on AST" do
-    module = Phoenix.LiveViewTest.FunctionComponentWithAttrs
+    module = Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs
 
     {^module, binary, _file} = :code.get_object_code(module)
 
@@ -1038,19 +1077,19 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       :beam_lib.chunks(binary, [:abstract_code])
 
     assert Enum.find_value(abstract_code, fn
-             {:function, line, :identity, 1, _} -> line
+             {:function, anno, :identity, 1, _} -> :erl_anno.line(anno)
              _ -> nil
            end) == 24
 
     assert Enum.find_value(abstract_code, fn
-             {:function, line, :fun_doc_false, 1, _} -> line
+             {:function, anno, :fun_doc_false, 1, _} -> :erl_anno.line(anno)
              _ -> nil
            end) == 118
   end
 
   test "does not override signature of Elixir functions" do
     {:docs_v1, _, :elixir, "text/markdown", _, _, docs} =
-      Code.fetch_docs(Phoenix.LiveViewTest.FunctionComponentWithAttrs)
+      Code.fetch_docs(Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs)
 
     assert {{:function, :identity, 1}, _, ["identity(var)"], _, %{}} =
              List.keyfind(docs, {:function, :identity, 1}, 0)
@@ -1058,8 +1097,10 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert {{:function, :map_identity, 1}, _, ["map_identity(map)"], _, %{}} =
              List.keyfind(docs, {:function, :map_identity, 1}, 0)
 
-    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(:not_a_map) == :not_a_map
-    assert Phoenix.LiveViewTest.FunctionComponentWithAttrs.identity(%{}) == %{}
+    assert Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.identity(:not_a_map) ==
+             :not_a_map
+
+    assert Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.identity(%{}) == %{}
   end
 
   test "raise if attr :doc is not a string" do
@@ -1231,6 +1272,32 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     end
   end
 
+  test "raise if attr function type arity is not integer" do
+    msg = ~r"invalid type {:fun, \"a\"} for attr :foo"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        attr :foo, {:fun, "a"}
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if attr tuple first element is not :fun" do
+    msg = ~r"invalid type {:invalid, 1} for attr :foo"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.AttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        attr :foo, {:invalid, 1}
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
   test "raise if slot attr type is not supported" do
     msg = ~r"invalid type :not_a_type for attr :foo in slot :named"
 
@@ -1240,6 +1307,38 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
 
         slot :named do
           attr :foo, :not_a_type
+        end
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if slot attr type arity is not integer" do
+    msg = ~r"invalid type {:fun, \"a\"} for attr :foo in slot :named"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        slot :named do
+          attr :foo, {:fun, "a"}
+        end
+
+        def func(assigns), do: ~H[]
+      end
+    end
+  end
+
+  test "raise if slot attr tuple first element is not :fun" do
+    msg = ~r"invalid type {:invalid, 1} for attr :foo in slot :named"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.SlotAttrTypeNotSupported do
+        use Elixir.Phoenix.Component
+
+        slot :named do
+          attr :foo, {:invalid, 1}
         end
 
         def func(assigns), do: ~H[]
@@ -1600,7 +1699,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, required: true
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end
@@ -1613,7 +1712,7 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, values: ["placeholder", "rel"]
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
       end
     end
   end
@@ -1626,7 +1725,20 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
         use Elixir.Phoenix.Component
 
         attr :rest, :global, examples: ["placeholder", "rel"]
-        def func(assigns), do: ~H[<%= @rest %>]
+        def func(assigns), do: ~H[{@rest}]
+      end
+    end
+  end
+
+  test "raise if slot attribute is not supported" do
+    msg = ~r"invalid options .* for slot :foo. The supported options are"
+
+    assert_raise CompileError, msg, fn ->
+      defmodule Phoenix.ComponentTest.InvalidSlotAttr do
+        use Elixir.Phoenix.Component
+
+        slot :foo, require: true
+        def func(assigns), do: ~H[]
       end
     end
   end

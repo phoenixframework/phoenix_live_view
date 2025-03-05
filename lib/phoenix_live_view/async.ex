@@ -3,13 +3,137 @@ defmodule Phoenix.LiveView.Async do
 
   alias Phoenix.LiveView.{AsyncResult, Socket, Channel}
 
-  def start_async(%Socket{} = socket, key, func, opts \\ []) when is_function(func, 0) do
+  defp warn_socket_access(op, warn) do
+    warn.("""
+    you are accessing the LiveView Socket inside a function given to #{op}.
+
+    This is an expensive operation because the whole socket is copied to the new process.
+
+    Instead of:
+
+        #{op}(socket, :key, fn ->
+          do_something(socket.assigns.my_assign)
+        end)
+
+    You should do:
+
+        my_assign = socket.assigns.my_assign
+
+        #{op}(socket, :key, fn ->
+          do_something(my_assign)
+        end)
+
+    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    """)
+  end
+
+  # this is not private to prevent the unused function warning as we only
+  # call this function when enable_expensive_runtime_checks is set
+  def warn_assigns_access(op, warn) do
+    warn.("""
+    you are accessing an assigns map inside a function given to #{op}.
+
+    This is an expensive operation because the whole map is copied to the new process.
+
+    Instead of:
+
+        #{op}(socket, :key, fn ->
+          do_something(assigns.my_assign)
+        end)
+
+    You should do:
+
+        my_assign = assigns.my_assign
+
+        #{op}(socket, :key, fn ->
+          do_something(my_assign)
+        end)
+
+    For more information, see https://hexdocs.pm/elixir/1.16.1/process-anti-patterns.html#sending-unnecessary-data.
+    """)
+  end
+
+  defp validate_function_env(func, op, env) do
+    # prevent false positives, for example
+    # start_async(socket, :foo, function_that_returns_the_anonymous_function(socket))
+    if match?({:&, _, _}, func) or match?({:fn, _, _}, func) do
+      Macro.prewalk(func, fn
+        {:socket, meta, _} ->
+          warn_socket_access(op, fn msg ->
+            meta = Keyword.take(meta, [:line, :column]) ++ [line: env.line, file: env.file]
+            IO.warn(msg, meta)
+          end)
+
+        other ->
+          other
+      end)
+    end
+
+    :ok
+  end
+
+  if Application.compile_env(:phoenix_live_view, :enable_expensive_runtime_checks, false) do
+    defp validate_function_env(func, op) do
+      {:env, variables} = Function.info(func, :env)
+
+      cond do
+        Enum.any?(variables, &match?(%Phoenix.LiveView.Socket{}, &1)) ->
+          warn_socket_access(op, fn msg -> IO.warn(msg) end)
+
+        Enum.any?(variables, &match?(%{__changed__: _}, &1)) ->
+          warn_assigns_access(op, fn msg -> IO.warn(msg) end)
+
+        true ->
+          :ok
+      end
+    end
+  else
+    defp validate_function_env(_func, _op), do: :ok
+  end
+
+  def start_async(socket, key, func, opts, env) do
+    validate_function_env(func, :start_async, env)
+
+    quote do
+      Phoenix.LiveView.Async.start_async(
+        unquote(socket),
+        unquote(key),
+        unquote(func),
+        unquote(opts)
+      )
+    end
+  end
+
+  def start_async(%Socket{} = socket, key, func, opts) when is_function(func, 0) do
+    # runtime check
+    if Phoenix.LiveView.connected?(socket) do
+      validate_function_env(func, :start_async)
+    end
+
     run_async_task(socket, key, func, :start, opts)
   end
 
-  def assign_async(%Socket{} = socket, key_or_keys, func, opts \\ [])
+  def assign_async(socket, key_or_keys, func, opts, env) do
+    validate_function_env(func, :assign_async, env)
+
+    quote do
+      Phoenix.LiveView.Async.assign_async(
+        unquote(socket),
+        unquote(key_or_keys),
+        unquote(func),
+        unquote(opts)
+      )
+    end
+  end
+
+  def assign_async(%Socket{} = socket, key_or_keys, func, opts)
       when (is_atom(key_or_keys) or is_list(key_or_keys)) and
              is_function(func, 0) do
+    # runtime check
+    if Phoenix.LiveView.connected?(socket) do
+      validate_function_env(func, :assign_async)
+    end
+
     keys = List.wrap(key_or_keys)
 
     # verifies result inside task
@@ -36,13 +160,17 @@ defmodule Phoenix.LiveView.Async do
       end
     end
 
+    reset = Keyword.get(opts, :reset, false)
+
     new_assigns =
       Enum.map(keys, fn key ->
-        case socket.assigns do
-          %{^key => %AsyncResult{ok?: true} = existing} ->
+        reset = if is_list(reset), do: key in reset, else: reset
+
+        case {reset, socket.assigns} do
+          {false, %{^key => %AsyncResult{ok?: true} = existing}} ->
             {key, AsyncResult.loading(existing, keys)}
 
-          %{} ->
+          _ ->
             {key, AsyncResult.loading(keys)}
         end
       end)
@@ -52,18 +180,20 @@ defmodule Phoenix.LiveView.Async do
     |> run_async_task(keys, wrapped_func, :assign, opts)
   end
 
-  defp run_async_task(%Socket{} = socket, key, func, kind, opts) do
+  def run_async_task(%Socket{} = socket, key, func, kind, opts) when is_function(func, 0) do
     if Phoenix.LiveView.connected?(socket) do
       lv_pid = self()
       cid = cid(socket)
-      {:ok, pid} = if supervisor = Keyword.get(opts, :supervisor) do
-        Task.Supervisor.start_child(supervisor, fn ->
-          Process.link(lv_pid)
-          do_async(lv_pid, cid, key, func, kind)
-        end)
-      else
-        Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
-      end
+
+      {:ok, pid} =
+        if supervisor = Keyword.get(opts, :supervisor) do
+          Task.Supervisor.start_child(supervisor, fn ->
+            Process.link(lv_pid)
+            do_async(lv_pid, cid, key, func, kind)
+          end)
+        else
+          Task.start_link(fn -> do_async(lv_pid, cid, key, func, kind) end)
+        end
 
       ref =
         :erlang.monitor(:process, pid, alias: :reply_demonitor, tag: {__MODULE__, key, cid, kind})
@@ -111,7 +241,7 @@ defmodule Phoenix.LiveView.Async do
       {_ref, pid, _kind} when is_pid(pid) ->
         Process.unlink(pid)
         Process.exit(pid, reason)
-        update_private_async(socket, &Map.delete(&1, key))
+        socket
 
       nil ->
         socket

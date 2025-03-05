@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveViewTest.Router do
+defmodule Phoenix.LiveViewTest.Support.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
 
@@ -21,7 +21,7 @@ defmodule Phoenix.LiveViewTest.Router do
     plug :put_root_layout, {UnknownView, :unknown_template}
   end
 
-  scope "/", Phoenix.LiveViewTest do
+  scope "/", Phoenix.LiveViewTest.Support do
     pipe_through [:browser]
 
     live "/thermo", ThermostatLive
@@ -31,7 +31,6 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/clock", ClockLive
     live "/redir", RedirLive
     live "/elements", ElementsLive
-    live "/inner_block", InnerLive
 
     live "/render-with", RenderWithLive
     live "/same-child", SameChildLive
@@ -47,6 +46,11 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/live-reload", ReloadLive
     live "/assign_async", AssignAsyncLive
     live "/start_async", StartAsyncLive
+
+    live "/expensive-runtime-checks", ExpensiveRuntimeChecksLive
+
+    live "/duplicate-id", DuplicateIdLive
+    live "/dynamic-duplicate-component", DynamicDuplicateComponentLive
 
     # controller test
     get "/controller/:type", Controller, :incoming
@@ -65,15 +69,15 @@ defmodule Phoenix.LiveViewTest.Router do
     live "/router/foobarbaz/nested/index", FooBarLive.Nested.Index, :index
     live "/router/foobarbaz/nested/show", FooBarLive.Nested.Index, :show
     live "/router/foobarbaz/custom", FooBarLive, :index, as: :custom_foo_bar
-    live "/router/foobarbaz/with_live", Phoenix.LiveViewTest.Live.Nested.Module, :action
+    live "/router/foobarbaz/with_live", Live.Nested.Module, :action
     live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
 
     # integration layout
-    live_session :styled_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, :styled} do
+    live_session :styled_layout, root_layout: {Phoenix.LiveViewTest.Support.LayoutView, :styled} do
       live "/styled-elements", ElementsLive
     end
 
-    live_session :app_layout, root_layout: {Phoenix.LiveViewTest.LayoutView, :app} do
+    live_session :app_layout, root_layout: {Phoenix.LiveViewTest.Support.LayoutView, :app} do
       live "/layout", LayoutLive
     end
 
@@ -113,17 +117,26 @@ defmodule Phoenix.LiveViewTest.Router do
     # integration lifecycle
     live "/lifecycle", HooksLive
     live "/lifecycle/bad-mount", HooksLive.BadMount
-    live "/lifecycle/own-mount", HooksLive.OwnMount
     live "/lifecycle/halt-mount", HooksLive.HaltMount
     live "/lifecycle/redirect-cont-mount", HooksLive.RedirectMount, :cont
     live "/lifecycle/redirect-halt-mount", HooksLive.RedirectMount, :halt
-    live "/lifecycle/components", HooksLive.WithComponent
+    live "/lifecycle/components/:type", HooksLive.WithComponent
     live "/lifecycle/handle-params-not-defined", HooksLive.HandleParamsNotDefined
     live "/lifecycle/handle-info-not-defined", HooksLive.HandleInfoNotDefined
     live "/lifecycle/on-mount-options", HooksLive.OnMountOptions
 
     # integration stream
     live "/stream", StreamLive
+    live "/stream/reset", StreamResetLive
+    live "/stream/reset-lc", StreamResetLCLive
+    live "/stream/limit", StreamLimitLive
+    live "/stream/nested", StreamNestedLive
+
+    live "/stream/high-frequency-stream-and-non-stream-updates",
+         HighFrequencyStreamAndNoStreamUpdatesLive
+
+    live "/stream/nested-component-reset", StreamNestedComponentResetLive
+    live "/stream/inside-for", StreamInsideForLive
 
     # healthy
     live "/healthy/:category", HealthyLive
@@ -158,33 +171,33 @@ defmodule Phoenix.LiveViewTest.Router do
       live "/thermo-live-session-merged", ThermostatLive
     end
 
-    live_session :lifecycle, on_mount: Phoenix.LiveViewTest.HaltConnectedMount do
+    live_session :lifecycle, on_mount: Phoenix.LiveViewTest.Support.HaltConnectedMount do
       live "/lifecycle/halt-connected-mount", HooksLive.Noop
     end
 
-    live_session :mount_mod_arg, on_mount: {Phoenix.LiveViewTest.MountArgs, :inlined} do
+    live_session :mount_mod_arg, on_mount: {Phoenix.LiveViewTest.Support.MountArgs, :inlined} do
       live "/lifecycle/mount-mod-arg", HooksLive.Noop
     end
 
     live_session :mount_mods,
-      on_mount: [Phoenix.LiveViewTest.OnMount, Phoenix.LiveViewTest.OtherOnMount] do
+      on_mount: [Phoenix.LiveViewTest.Support.OnMount, Phoenix.LiveViewTest.Support.OtherOnMount] do
       live "/lifecycle/mount-mods", HooksLive.Noop
     end
 
     live_session :mount_mod_args,
       on_mount: [
-        {Phoenix.LiveViewTest.OnMount, :other},
-        {Phoenix.LiveViewTest.OtherOnMount, :other}
+        {Phoenix.LiveViewTest.Support.OnMount, :other},
+        {Phoenix.LiveViewTest.Support.OtherOnMount, :other}
       ] do
       live "/lifecycle/mount-mods-args", HooksLive.Noop
     end
 
-    live_session :layout, layout: {Phoenix.LiveViewTest.LayoutView, :live_override} do
+    live_session :layout, layout: {Phoenix.LiveViewTest.Support.LayoutView, :live_override} do
       live "/dashboard-live-session-layout", LayoutLive
     end
   end
 
-  scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest do
+  scope "/", as: :user_defined_metadata, alias: Phoenix.LiveViewTest.Support do
     live "/sessionless-thermo", ThermostatLive
     live "/thermo-with-metadata", ThermostatLive, metadata: %{route_name: "opts"}
   end

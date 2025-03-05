@@ -1,20 +1,20 @@
-defmodule Phoenix.LiveViewTest.FunctionComponent do
+defmodule Phoenix.LiveViewTest.Support.FunctionComponent do
   use Phoenix.Component
 
   def render(assigns) do
     ~H"""
-    COMPONENT:<%= @value %>
+    COMPONENT:{@value}
     """
   end
 
   def render_with_inner_content(assigns) do
     ~H"""
-    COMPONENT:<%= @value %>, Content: <%= render_slot(@inner_block) %>
+    COMPONENT:{@value}, Content: {render_slot(@inner_block)}
     """
   end
 end
 
-defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
+defmodule Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs do
   use Phoenix.Component
 
   defmodule Struct do
@@ -183,7 +183,7 @@ defmodule Phoenix.LiveViewTest.FunctionComponentWithAttrs do
   def fun_attr_values_examples(assigns), do: ~H[]
 end
 
-defmodule Phoenix.LiveViewTest.StatefulComponent do
+defmodule Phoenix.LiveViewTest.Support.StatefulComponent do
   use Phoenix.LiveComponent
 
   def mount(socket) do
@@ -210,7 +210,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   def render(%{socket: _} = assigns) do
     ~H"""
     <div phx-click="transform" id={@id} phx-target={"#" <> @id <> include_parent_id(@parent_id)}>
-      <%= @name %> says hi
+      {@name} says hi
       <.live_component :if={@dup_name} module={__MODULE__} id={@dup_name} name={@dup_name} />
     </div>
     """
@@ -245,7 +245,7 @@ defmodule Phoenix.LiveViewTest.StatefulComponent do
   end
 end
 
-defmodule Phoenix.LiveViewTest.WithComponentLive do
+defmodule Phoenix.LiveViewTest.Support.WithComponentLive do
   use Phoenix.LiveView
 
   def render(%{disabled: :all} = assigns) do
@@ -256,10 +256,16 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
 
   def render(assigns) do
     ~H"""
-    Redirect: <%= @redirect %>
+    Redirect: {@redirect}
     <%= for name <- @names do %>
-      <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
-          id={name} name={name} from={@from} disabled={name in @disabled} parent_id={nil} />
+      <.live_component
+        module={Phoenix.LiveViewTest.Support.StatefulComponent}
+        id={name}
+        name={name}
+        from={@from}
+        disabled={name in @disabled}
+        parent_id={nil}
+      />
     <% end %>
     """
   end
@@ -292,7 +298,7 @@ defmodule Phoenix.LiveViewTest.WithComponentLive do
   end
 end
 
-defmodule Phoenix.LiveViewTest.WithMultipleTargets do
+defmodule Phoenix.LiveViewTest.Support.WithMultipleTargets do
   use Phoenix.LiveView
 
   def mount(_params, %{"names" => names, "from" => from} = session, socket) do
@@ -311,10 +317,16 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   def render(assigns) do
     ~H"""
     <div id="parent_id" class="parent">
-      <%= @message %>
+      {@message}
       <%= for name <- @names do %>
-        <.live_component module={Phoenix.LiveViewTest.StatefulComponent}
-            id={name} name={name} from={@from} disabled={name in @disabled} parent_id={@parent_selector} />
+        <.live_component
+          module={Phoenix.LiveViewTest.Support.StatefulComponent}
+          id={name}
+          name={name}
+          from={@from}
+          disabled={name in @disabled}
+          parent_id={@parent_selector}
+        />
       <% end %>
     </div>
     """
@@ -329,7 +341,7 @@ defmodule Phoenix.LiveViewTest.WithMultipleTargets do
   end
 end
 
-defmodule Phoenix.LiveViewTest.WithLogOverride do
+defmodule Phoenix.LiveViewTest.Support.WithLogOverride do
   use Phoenix.LiveView, log: :warning
 
   def mount(_params, _session, socket) do
@@ -339,7 +351,7 @@ defmodule Phoenix.LiveViewTest.WithLogOverride do
   def render(assigns), do: ~H[]
 end
 
-defmodule Phoenix.LiveViewTest.WithLogDisabled do
+defmodule Phoenix.LiveViewTest.Support.WithLogDisabled do
   use Phoenix.LiveView, log: false
 
   def mount(_params, _session, socket) do
