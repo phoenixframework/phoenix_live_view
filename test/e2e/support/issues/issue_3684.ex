@@ -80,11 +80,11 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3684Live do
     """
   end
 
-  def handle_event("change", params, socket) do
+  def handle_event("change", _params, socket) do
     {:noreply, socket}
   end
 
-  def handle_event("submit", params, socket) do
+  def handle_event("submit", _params, socket) do
     {:noreply, socket}
   end
 end

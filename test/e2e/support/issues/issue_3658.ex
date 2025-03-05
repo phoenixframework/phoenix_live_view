@@ -3,8 +3,6 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3658Live do
 
   use Phoenix.LiveView
 
-  alias Phoenix.LiveView.JS
-
   def mount(_params, _session, socket) do
     {:ok, socket}
   end

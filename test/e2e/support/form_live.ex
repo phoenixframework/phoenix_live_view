@@ -3,6 +3,8 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
 
   alias Phoenix.LiveView.JS
 
+  @compile {:no_warn_undefined, Phoenix.LiveViewTest.E2E.Hooks}
+
   defmodule FormComponent do
     use Phoenix.LiveComponent
 
