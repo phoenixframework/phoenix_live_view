@@ -244,4 +244,199 @@ defmodule Phoenix.LiveView.HTMLEngine do
   defp current_otp_app do
     Application.get_env(:logger, :compile_time_application)
   end
+
+  @impl true
+  def token_preprocess(tokens, opts) do
+    file = Keyword.fetch!(opts, :file)
+    caller = Keyword.fetch!(opts, :caller)
+    module = caller.module
+
+    {hooks, tokens, _module} = process_hooks(tokens, {%{}, [], module})
+    hooks = write_hooks_and_manifest(hooks, file)
+
+    if hooks == %{} do
+      Enum.reverse(tokens)
+    else
+      # when a <script type="text/phx-hook" name="..." > is found, we generate the hook name
+      # based on its content. Then, we need to rewrite the phx-hook="..." attribute of all
+      # other tags to match the generated hook name.
+      # This is expensive, as we traverse all tags and attributes,
+      # but we only do it if a script hook is present.
+      rewrite_hook_names(hooks, tokens)
+    end
+  end
+
+  defp process_hooks(
+         [
+           {:tag, "script", attrs, meta} = start,
+           {:text, text, _} = content,
+           {:close, :tag, "script", _} = end_ | rest
+         ],
+         {hooks, tokens_acc, module}
+       ) do
+    str_attrs = for {name, {:string, value, _}, _} <- attrs, into: %{}, do: {name, value}
+
+    case str_attrs do
+      # keep runtime hooks
+      %{"type" => "text/phx-hook", "name" => _name, "bundle" => "runtime"} ->
+        # keep bundle="runtime" hooks in DOM
+        process_hooks(rest, {hooks, [end_, content, start | tokens_acc], module})
+
+      %{"type" => "text/phx-hook", "name" => name, "bundle" => "current_otp_app"} ->
+        # only consider bundle="current_otp_app" hooks if they are part of the current otp_app
+        # TODO: this does not work, as the module is still being compiled, I guess
+        if current_otp_app() == Application.get_application(module) do
+          hooks = Map.put(hooks, name, %{content: text, attrs: str_attrs, meta: meta})
+          process_hooks(rest, {hooks, [end_, content, start | tokens_acc], module})
+        else
+          process_hooks(rest, {hooks, tokens_acc, module})
+        end
+
+      %{"type" => "text/phx-hook", "name" => name} ->
+        # by default, hooks with no hook-type are extracted, no matter where they're from
+        hooks = Map.put(hooks, name, %{content: text, attrs: str_attrs, meta: meta})
+        process_hooks(rest, {hooks, tokens_acc, module})
+
+      %{"type" => "text/phx-hook"} ->
+        # TODO: nice error message
+        raise ArgumentError,
+              "scripts with type=\"text/phx-hook\" must have a compile-time string \"name\" attribute"
+
+      _ ->
+        process_hooks(rest, {hooks, [end_, content, start | tokens_acc], module})
+    end
+  end
+
+  defp process_hooks([{:tag, "script", attrs, _meta} = start | rest], {hooks, tokens_acc, module}) do
+    if Enum.find(attrs, match?({"type", {:string, "text/phx-hook", _}, _}, attrs)) do
+      # TODO: nice error message
+      raise ArgumentError,
+            "scripts with type=\"text/phx-hook\" must not contain any interpolation!"
+    else
+      process_hooks(rest, {hooks, [start | tokens_acc], module})
+    end
+  end
+
+  defp process_hooks([token | rest], {hooks, tokens_acc, module}),
+    do: process_hooks(rest, {hooks, [token | tokens_acc], module})
+
+  defp process_hooks([], acc), do: acc
+
+  defp rewrite_hook_names(hooks, tokens) do
+    for token <- tokens, reduce: [] do
+      acc ->
+        case token do
+          {:tag, name, attrs, meta} ->
+            [{:tag, name, rewrite_hook_attrs(hooks, attrs), meta} | acc]
+
+          {:local_component, name, attrs, meta} ->
+            [{:local_component, name, rewrite_hook_attrs(hooks, attrs), meta} | acc]
+
+          {:remote_component, name, attrs, meta} ->
+            [{:remote_component, name, rewrite_hook_attrs(hooks, attrs), meta} | acc]
+
+          other ->
+            [other | acc]
+        end
+    end
+  end
+
+  defp rewrite_hook_attrs(hooks, attrs) do
+    Enum.map(attrs, fn
+      {"phx-hook", {:string, name, meta1}, meta2} ->
+        if is_map_key(hooks, name) do
+          {"phx-hook", {:string, hooks[name].name, meta1}, meta2}
+        else
+          {"phx-hook", {:string, name, meta1}, meta2}
+        end
+
+      {attr, value, meta} ->
+        {attr, value, meta}
+    end)
+  end
+
+  defp write_hooks_and_manifest(hooks, file) do
+    for {name, %{content: raw_content, attrs: attrs, meta: meta} = hook} <- hooks,
+        attrs["hook-type"] == nil or attrs["hook-type"] == "default",
+        into: %{} do
+      line = meta[:line]
+      col = meta[:column]
+
+      script_content =
+        "// #{Path.relative_to_cwd(file)}:#{line}:#{col}\n" <> raw_content
+
+      dir = "assets/js/hooks"
+      manifest_path = Path.join(dir, "index.js")
+
+      js_filename = hashed_script_name(file) <> "_#{line}_#{col}"
+      js_path = Path.join(dir, js_filename <> ".js")
+
+      File.mkdir_p!(dir)
+      File.write!(js_path, script_content)
+
+      if !File.exists?(manifest_path) do
+        File.write!(manifest_path, """
+        let hooks = {}
+        export default hooks
+        """)
+      end
+
+      manifest = File.read!(manifest_path)
+
+      File.open(manifest_path, [:append], fn file ->
+        if !String.contains?(manifest, js_filename) do
+          IO.puts("Add hook to #{manifest_path}")
+
+          IO.binwrite(
+            file,
+            ~s|\nimport hook_#{js_filename} from "./#{js_filename}"; hooks["#{js_filename}"] = hook_#{js_filename};|
+          )
+        end
+      end)
+
+      IO.puts("Write hook to #{js_path}")
+
+      {name, Map.put(hook, :name, js_filename)}
+    end
+  end
+
+  defp hashed_script_name(file) do
+    :md5 |> :crypto.hash(file) |> Base.encode16()
+  end
+
+  @doc false
+  def prune_hooks(file) do
+    hashed_name = hashed_script_name(file)
+    hooks_dir = Path.expand("assets/js/hooks", File.cwd!())
+    manifest_path = Path.join(hooks_dir, "index.js")
+
+    case File.ls(hooks_dir) do
+      {:ok, hooks} ->
+        for hook_basename <- hooks do
+          case String.split(hook_basename, "_") do
+            [^hashed_name | _] ->
+              File.rm!(IO.inspect(Path.join(hooks_dir, hook_basename), label: "Pruning"))
+
+              if File.exists?(manifest_path) do
+                new_file =
+                  manifest_path
+                  |> File.stream!()
+                  |> Enum.filter(fn line -> !String.contains?(line, hashed_name) end)
+                  |> Enum.join("")
+                  |> String.trim()
+
+                File.write!(manifest_path, new_file)
+              end
+
+            _ ->
+              :noop
+          end
+        end
+
+      _ ->
+        :noop
+    end
+
+    nil
+  end
 end

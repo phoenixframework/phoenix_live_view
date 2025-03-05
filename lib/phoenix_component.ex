@@ -1787,7 +1787,7 @@ defmodule Phoenix.Component do
 
     imports =
       quote bind_quoted: [opts: opts] do
-        Phoenix.LiveView.Tokenizer.prune(__ENV__.file)
+        Phoenix.LiveView.HTMLEngine.prune_hooks(__ENV__.file)
         import Kernel, except: [def: 2, defp: 2]
         import Phoenix.Component
         import Phoenix.Component.Declarative

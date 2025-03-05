@@ -418,8 +418,7 @@ export default class View {
         this.maybeAddNewHook(hookEl)
       }
     })
-    let phxHook = this.binding(PHX_HOOK)
-    DOM.all(this.el, `[${phxHook}], [data-phx-${PHX_HOOK}], script[type="${phxHook}"]`, hookEl => {
+    DOM.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, hookEl => {
       if(this.ownsElement(hookEl)){
         this.maybeAddNewHook(hookEl)
       }
@@ -731,12 +730,7 @@ export default class View {
       return
     } else {
       // new hook found with phx-hook attribute
-      let hookName
-      if(el.type === "text/phx-hook"){
-        hookName = el.innerText
-      } else {
-        hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
-      }
+      let hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK))
       let callbacks = this.liveSocket.getHookCallbacks(hookName)
 
       if(callbacks){
@@ -745,7 +739,24 @@ export default class View {
         this.viewHooks[ViewHook.elementID(hook.el)] = hook
         return hook
       } else if(hookName !== null){
-        logError(`unknown hook found for "${hookName}"`, el)
+        // TODO: this is ugly and evaluating the script content is probably not what we want
+        // e.g. for LiveDashboard a regular <script> with type javascript and nonce would be better
+        // so maybe switch away from type="text/phx-hook" and use another attribute to identify hooks
+        const runtimeHook = document.querySelector(`script[type="text/phx-hook"][name="${CSS.escape(hookName)}"][bundle="runtime"]`)
+        if (runtimeHook) {
+          // if you really want runtime hooks, I
+          callbacks = new Function(runtimeHook.textContent)()
+          if (callbacks && typeof callbacks === "object") {
+            if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }
+            let hook = new ViewHook(this, el, callbacks)
+            this.viewHooks[ViewHook.elementID(hook.el)] = hook
+            return hook
+          } else {
+            logError("runtime hook must return an object with hook callbacks", runtimeHook)
+          }
+        } else {
+          logError(`unknown hook found for "${hookName}"`, el)
+        }
       }
     }
   }
