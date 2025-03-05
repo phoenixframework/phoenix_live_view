@@ -293,7 +293,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         end
 
       %{"type" => "text/phx-hook", "name" => name} ->
-        # by default, hooks with no hook-type are extracted, no matter where they're from
+        # by default, hooks with no special bundle value are extracted, no matter where they're from
         hooks = Map.put(hooks, name, %{content: text, attrs: str_attrs, meta: meta})
         process_hooks(rest, {hooks, tokens_acc, module})
 
@@ -357,7 +357,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp write_hooks_and_manifest(hooks, file) do
     for {name, %{content: raw_content, attrs: attrs, meta: meta} = hook} <- hooks,
-        attrs["hook-type"] == nil or attrs["hook-type"] == "default",
         into: %{} do
       line = meta[:line]
       col = meta[:column]
