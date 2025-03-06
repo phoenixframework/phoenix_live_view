@@ -268,7 +268,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     if hooks == %{} do
       Enum.reverse(tokens)
     else
-      write_hooks_and_manifest(hooks, file)
+      write_hooks_and_manifest(hooks)
       # when a <script type="text/phx-hook" name="..." > is found, we generate the hook name
       # based on its content. Then, we need to rewrite the phx-hook="..." attribute of all
       # other tags to match the generated hook name.
@@ -451,8 +451,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     end)
   end
 
-  defp write_hooks_and_manifest(hooks, file) do
-    for {name, %{bundled: true, name: js_filename, content: script_content} = hook} <- hooks do
+  defp write_hooks_and_manifest(hooks) do
+    for {_name, %{bundled: true, name: js_filename, content: script_content}} <- hooks do
       dir = "assets/js/hooks"
       manifest_path = colocated_hooks_manifest()
       js_path = Path.join(dir, js_filename <> ".js")
