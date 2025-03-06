@@ -291,17 +291,22 @@ defmodule Phoenix.LiveView.HTMLEngine do
     %{line: line, column: column} = start_meta
     hook_meta = Map.merge(meta, %{line: line, column: column})
 
-    case str_attrs do
+    case classify_hook(str_attrs) do
       # keep runtime hooks
-      %{"type" => "text/phx-hook", "name" => name, "bundle" => "runtime"} ->
+      {:runtime, name} ->
         # keep bundle="runtime" hooks in DOM
-        {hooks, start, content, end_} = process_runtime_hook(hooks, name, start, content, end_, hook_meta)
+        {hooks, start, content, end_} =
+          process_runtime_hook(hooks, name, start, content, end_, hook_meta)
+
         process_hooks(rest, meta, {hooks, [end_, content, start | tokens_acc]})
 
-      %{"type" => "text/phx-hook", "name" => name, "bundle" => "current_otp_app"} ->
+      {:bundle_current, name} ->
         # only consider bundle="current_otp_app" hooks if they are part of the current otp_app
         if current_otp_app() == colocated_hooks_app() do
-          IO.puts("Adding hook #{name} from colo #{colocated_hooks_app()} == current #{current_otp_app()}")
+          IO.puts(
+            "Adding hook #{name} from colo #{colocated_hooks_app()} == current #{current_otp_app()}"
+          )
+
           hooks = process_bundled_hook(hooks, name, text, hook_meta)
           process_hooks(rest, meta, {hooks, tokens_acc})
         else
@@ -309,21 +314,24 @@ defmodule Phoenix.LiveView.HTMLEngine do
           process_hooks(rest, meta, {hooks, tokens_acc})
         end
 
-      %{"type" => "text/phx-hook", "name" => name} ->
+      {:bundle, name} ->
         # by default, hooks with no special bundle value are extracted, no matter where they're from
         hooks = process_bundled_hook(hooks, name, text, hook_meta)
         process_hooks(rest, meta, {hooks, tokens_acc})
 
-      %{"type" => "text/phx-hook"} ->
+      :invalid ->
         # TODO: nice error message
         raise ArgumentError,
               "scripts with type=\"text/phx-hook\" must have a compile-time string \"name\" attribute"
 
-      _ ->
+      :no_hook ->
         process_hooks(rest, meta, {hooks, [end_, content, start | tokens_acc]})
     end
   end
 
+  # if the first clause did not match (tag open, text, close),
+  # this means that there is interpolation inside the script, which is not supported
+  # for colocated hooks
   defp process_hooks([{:tag, "script", attrs, _meta} = start | rest], meta, {hooks, tokens_acc}) do
     if Enum.find(attrs, &match?({"type", {:string, "text/phx-hook", _}, _}, &1)) do
       # TODO: nice error message
@@ -339,6 +347,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp process_hooks([], _meta, acc), do: acc
 
+  defp classify_hook(%{"type" => "text/phx-hook", "name" => name, "bundle" => "runtime"}),
+    do: {:runtime, name}
+
+  defp classify_hook(%{"type" => "text/phx-hook", "name" => name, "bundle" => "current_otp_app"}),
+    do: {:bundle_current, name}
+
+  defp classify_hook(%{"type" => "text/phx-hook", "name" => name}), do: {:bundle, name}
+  defp classify_hook(%{"type" => "text/phx-hook"}), do: :invalid
+  defp classify_hook(_), do: :no_hook
+
   defp hashed_hook_name(%{file: file, line: line, column: column}) do
     hashed_script_name(file) <> "_#{line}_#{column}"
   end
@@ -347,6 +365,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     :md5 |> :crypto.hash(file) |> Base.encode16()
   end
 
+  # A runtime hook is sent to the browser in a <script> tag
+  # and actually executed there.
+  #
+  # This is useful for environments where the JS bundle is not controlled
+  # by the user, for example with Phoenix LiveDashboard.
   defp process_runtime_hook(hooks, name, start, content, end_, meta) do
     {:tag, "script", attrs, start_meta} = start
     {:text, content, content_meta} = content
@@ -354,10 +377,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
     hashed_name = hashed_hook_name(meta)
 
     # remove type="text/phx-hook"
-    attrs = for {name, value, meta} <- attrs, name not in ["type", "name"], do: {name, value, meta}
+    attrs =
+      for {name, value, meta} <- attrs, name not in ["type", "name"], do: {name, value, meta}
 
     # add new special attrs
     attr_meta = %{delimiter: ?"}
+
     attrs = [
       {"data-phx-runtime-hook", {:string, hashed_name, attr_meta}, %{}}
       | attrs
@@ -377,6 +402,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     {hooks, {:tag, "script", attrs, start_meta}, {:text, content, content_meta}, end_}
   end
 
+  # A bundled hook is extracted at compile time and stripped from the DOM.
+  # It is the responsibility of the user to import the extracted hook manifest
+  # into their JS bundle.
+  # New apps (mix phx.new) automatically include an empty manifest
+  # (assets/js/hooks/index.js) therefore colocated hooks work out of the box.
   defp process_bundled_hook(hooks, name, raw_content, meta) do
     %{file: file, line: line, column: column} = meta
     hashed_name = hashed_hook_name(meta)
@@ -427,6 +457,21 @@ defmodule Phoenix.LiveView.HTMLEngine do
       manifest_path = colocated_hooks_manifest()
       js_path = Path.join(dir, js_filename <> ".js")
 
+      # colocated hooks are always written to the current otp_app's dir;
+      # so when a dependency is compiled, the hooks will be placed in the deps folder;
+      # but they are still included in the configured manifest, for example:
+      #
+      # /path/to/app/deps/my_dep/assets/js/hooks/HOOKHASH_X_Y.js
+      # /path/to/app/assets/js/hooks/HOOKHASH_Y_Z.js
+      #
+      # the full path is either
+      # ./HOOKHASH_Y_Z.js for a local hook
+      # ../../../deps/my_dep/assets/js/hooks/HOOKHASH_X_Y.js for a hook from a dependency
+      #
+      # the manifest is always ./assets/js/hooks/index.js;
+      # but it can be configured with:
+      #
+      #     config :phoenix_live_view, colocated_hooks_manifest: PATH
       js_full_path =
         case Path.relative_to(Path.expand(js_path), Path.dirname(manifest_path), force: true) do
           <<".", _rest::binary>> = p -> p
@@ -462,6 +507,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @doc false
   def prune_hooks(file) do
+    # This is executed whenever a file that uses Phoenix.Component is compiled
+    # and strips all hooks, because they will be re-injected anyway.
+    #
+    # This ensures that old hooks are properly removed when they are no longer part
+    # of the source.
+    #
+    # See `Phoenix.Component.__using__/1`
     hashed_name = hashed_script_name(file)
     hooks_dir = Path.expand("assets/js/hooks", File.cwd!())
     manifest_path = colocated_hooks_manifest()
