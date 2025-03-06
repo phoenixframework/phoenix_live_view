@@ -328,8 +328,8 @@ defmodule Phoenix.Component do
 
       def unordered_list(assigns) do
         ~H"""
-        <ul :for={entry <- @entries}>
-          <li>{render_slot(@inner_block, entry)}</li>
+        <ul>
+          <li :for={entry <- @entries}>{render_slot(@inner_block, entry)}</li>
         </ul>
         """
       end
