@@ -155,6 +155,18 @@ export default class DOMPatch {
           if((DOM.isPhxChild(el) && view.ownsElement(el)) || DOM.isPhxSticky(el) && view.ownsElement(el.parentNode)){
             this.trackAfter("phxChildAdded", el)
           }
+
+          // data-phx-runtime-hook
+          // usually, scripts are not executed when morphdom adds them to the DOM
+          // we special case runtime colocated hooks
+          if (el.nodeName === "SCRIPT" && el.hasAttribute("data-phx-runtime-hook")) {
+            const script = document.createElement("script")
+            script.textContent = el.textContent
+            DOM.mergeAttrs(script, el, {isIgnored: false})
+            el.replaceWith(script)
+            el = script
+          }
+
           added.push(el)
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),

@@ -263,12 +263,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
     caller = Keyword.fetch!(opts, :caller)
     module = caller.module
 
-    {hooks, tokens, _module} = process_hooks(tokens, {%{}, [], module})
+    {hooks, tokens} = process_hooks(tokens, %{module: module, file: file}, {%{}, []})
 
     if hooks == %{} do
       Enum.reverse(tokens)
     else
-      hooks = write_hooks_and_manifest(hooks, file)
+      write_hooks_and_manifest(hooks, file)
       # when a <script type="text/phx-hook" name="..." > is found, we generate the hook name
       # based on its content. Then, we need to rewrite the phx-hook="..." attribute of all
       # other tags to match the generated hook name.
@@ -280,35 +280,39 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp process_hooks(
          [
-           {:tag, "script", attrs, meta} = start,
+           {:tag, "script", attrs, start_meta} = start,
            {:text, text, _} = content,
            {:close, :tag, "script", _} = end_ | rest
          ],
-         {hooks, tokens_acc, module}
+         meta,
+         {hooks, tokens_acc}
        ) do
     str_attrs = for {name, {:string, value, _}, _} <- attrs, into: %{}, do: {name, value}
+    %{line: line, column: column} = start_meta
+    hook_meta = Map.merge(meta, %{line: line, column: column})
 
     case str_attrs do
       # keep runtime hooks
-      %{"type" => "text/phx-hook", "name" => _name, "bundle" => "runtime"} ->
+      %{"type" => "text/phx-hook", "name" => name, "bundle" => "runtime"} ->
         # keep bundle="runtime" hooks in DOM
-        process_hooks(rest, {hooks, [end_, content, start | tokens_acc], module})
+        {hooks, start, content, end_} = process_runtime_hook(hooks, name, start, content, end_, hook_meta)
+        process_hooks(rest, meta, {hooks, [end_, content, start | tokens_acc]})
 
       %{"type" => "text/phx-hook", "name" => name, "bundle" => "current_otp_app"} ->
         # only consider bundle="current_otp_app" hooks if they are part of the current otp_app
         if current_otp_app() == colocated_hooks_app() do
           IO.puts("Adding hook #{name} from colo #{colocated_hooks_app()} == current #{current_otp_app()}")
-          hooks = Map.put(hooks, name, %{content: text, attrs: str_attrs, meta: meta})
-          process_hooks(rest, {hooks, [end_, content, start | tokens_acc], module})
+          hooks = process_bundled_hook(hooks, name, text, hook_meta)
+          process_hooks(rest, meta, {hooks, tokens_acc})
         else
           IO.puts("Skipping hook #{name} from #{colocated_hooks_app()}")
-          process_hooks(rest, {hooks, tokens_acc, module})
+          process_hooks(rest, meta, {hooks, tokens_acc})
         end
 
       %{"type" => "text/phx-hook", "name" => name} ->
         # by default, hooks with no special bundle value are extracted, no matter where they're from
-        hooks = Map.put(hooks, name, %{content: text, attrs: str_attrs, meta: meta})
-        process_hooks(rest, {hooks, tokens_acc, module})
+        hooks = process_bundled_hook(hooks, name, text, hook_meta)
+        process_hooks(rest, meta, {hooks, tokens_acc})
 
       %{"type" => "text/phx-hook"} ->
         # TODO: nice error message
@@ -316,24 +320,73 @@ defmodule Phoenix.LiveView.HTMLEngine do
               "scripts with type=\"text/phx-hook\" must have a compile-time string \"name\" attribute"
 
       _ ->
-        process_hooks(rest, {hooks, [end_, content, start | tokens_acc], module})
+        process_hooks(rest, meta, {hooks, [end_, content, start | tokens_acc]})
     end
   end
 
-  defp process_hooks([{:tag, "script", attrs, _meta} = start | rest], {hooks, tokens_acc, module}) do
+  defp process_hooks([{:tag, "script", attrs, _meta} = start | rest], meta, {hooks, tokens_acc}) do
     if Enum.find(attrs, &match?({"type", {:string, "text/phx-hook", _}, _}, &1)) do
       # TODO: nice error message
       raise ArgumentError,
             "scripts with type=\"text/phx-hook\" must not contain any interpolation!"
     else
-      process_hooks(rest, {hooks, [start | tokens_acc], module})
+      process_hooks(rest, meta, {hooks, [start | tokens_acc]})
     end
   end
 
-  defp process_hooks([token | rest], {hooks, tokens_acc, module}),
-    do: process_hooks(rest, {hooks, [token | tokens_acc], module})
+  defp process_hooks([token | rest], meta, {hooks, tokens_acc}),
+    do: process_hooks(rest, meta, {hooks, [token | tokens_acc]})
 
-  defp process_hooks([], acc), do: acc
+  defp process_hooks([], _meta, acc), do: acc
+
+  defp hashed_hook_name(%{file: file, line: line, column: column}) do
+    hashed_script_name(file) <> "_#{line}_#{column}"
+  end
+
+  defp hashed_script_name(file) do
+    :md5 |> :crypto.hash(file) |> Base.encode16()
+  end
+
+  defp process_runtime_hook(hooks, name, start, content, end_, meta) do
+    {:tag, "script", attrs, start_meta} = start
+    {:text, content, content_meta} = content
+
+    hashed_name = hashed_hook_name(meta)
+
+    # remove type="text/phx-hook"
+    attrs = for {name, value, meta} <- attrs, name not in ["type", "name"], do: {name, value, meta}
+
+    # add new special attrs
+    attr_meta = %{delimiter: ?"}
+    attrs = [
+      {"data-phx-runtime-hook", {:string, hashed_name, attr_meta}, %{}}
+      | attrs
+    ]
+
+    # inject runtime hook into window
+    content = """
+    window["phx_hook_#{hashed_name}"] = function() {
+      #{content}
+    }
+    """
+
+    hooks = Map.put(hooks, name, %{runtime: true, name: hashed_name})
+
+    # the line and column metadata are not correct any more,
+    # but we don't need them for rendering
+    {hooks, {:tag, "script", attrs, start_meta}, {:text, content, content_meta}, end_}
+  end
+
+  defp process_bundled_hook(hooks, name, raw_content, meta) do
+    %{file: file, line: line, column: column} = meta
+    hashed_name = hashed_hook_name(meta)
+
+    content =
+      "// #{Path.relative_to_cwd(file)}:#{line}:#{column}\n" <> raw_content
+
+    hooks = Map.put(hooks, name, %{bundled: true, name: hashed_name, content: content})
+    hooks
+  end
 
   defp rewrite_hook_names(hooks, tokens) do
     for token <- tokens, reduce: [] do
@@ -369,18 +422,9 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp write_hooks_and_manifest(hooks, file) do
-    for {name, %{content: raw_content, attrs: attrs, meta: meta} = hook} <- hooks,
-        into: %{} do
-      line = meta[:line]
-      col = meta[:column]
-
-      script_content =
-        "// #{Path.relative_to_cwd(file)}:#{line}:#{col}\n" <> raw_content
-
+    for {name, %{bundled: true, name: js_filename, content: script_content} = hook} <- hooks do
       dir = "assets/js/hooks"
       manifest_path = colocated_hooks_manifest()
-
-      js_filename = hashed_script_name(file) <> "_#{line}_#{col}"
       js_path = Path.join(dir, js_filename <> ".js")
 
       js_full_path =
@@ -413,13 +457,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
       end)
 
       IO.puts("Write hook to #{js_path}")
-
-      {name, Map.put(hook, :name, js_filename)}
     end
-  end
-
-  defp hashed_script_name(file) do
-    :md5 |> :crypto.hash(file) |> Base.encode16()
   end
 
   @doc false
