@@ -245,6 +245,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
     Application.get_env(:logger, :compile_time_application)
   end
 
+  defp colocated_hooks_app do
+    Application.get_env(:phoenix_live_view, :colocated_hooks_app, current_otp_app())
+  end
+
+  defp colocated_hooks_manifest do
+    Application.get_env(
+      :phoenix_live_view,
+      :colocated_hooks_manifest,
+      Path.join(File.cwd!(), "assets/js/hooks/index.js")
+    )
+  end
+
   @impl true
   def token_preprocess(tokens, opts) do
     file = Keyword.fetch!(opts, :file)
@@ -252,11 +264,11 @@ defmodule Phoenix.LiveView.HTMLEngine do
     module = caller.module
 
     {hooks, tokens, _module} = process_hooks(tokens, {%{}, [], module})
-    hooks = write_hooks_and_manifest(hooks, file)
 
     if hooks == %{} do
       Enum.reverse(tokens)
     else
+      hooks = write_hooks_and_manifest(hooks, file)
       # when a <script type="text/phx-hook" name="..." > is found, we generate the hook name
       # based on its content. Then, we need to rewrite the phx-hook="..." attribute of all
       # other tags to match the generated hook name.
@@ -284,11 +296,12 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
       %{"type" => "text/phx-hook", "name" => name, "bundle" => "current_otp_app"} ->
         # only consider bundle="current_otp_app" hooks if they are part of the current otp_app
-        # TODO: this does not work, as the module is still being compiled, I guess
-        if current_otp_app() == Application.get_application(module) do
+        if current_otp_app() == colocated_hooks_app() do
+          IO.puts("Adding hook #{name} from colo #{colocated_hooks_app()} == current #{current_otp_app()}")
           hooks = Map.put(hooks, name, %{content: text, attrs: str_attrs, meta: meta})
           process_hooks(rest, {hooks, [end_, content, start | tokens_acc], module})
         else
+          IO.puts("Skipping hook #{name} from #{colocated_hooks_app()}")
           process_hooks(rest, {hooks, tokens_acc, module})
         end
 
@@ -308,7 +321,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   defp process_hooks([{:tag, "script", attrs, _meta} = start | rest], {hooks, tokens_acc, module}) do
-    if Enum.find(attrs, match?({"type", {:string, "text/phx-hook", _}, _}, attrs)) do
+    if Enum.find(attrs, &match?({"type", {:string, "text/phx-hook", _}, _}, &1)) do
       # TODO: nice error message
       raise ArgumentError,
             "scripts with type=\"text/phx-hook\" must not contain any interpolation!"
@@ -365,10 +378,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
         "// #{Path.relative_to_cwd(file)}:#{line}:#{col}\n" <> raw_content
 
       dir = "assets/js/hooks"
-      manifest_path = Path.join(dir, "index.js")
+      manifest_path = colocated_hooks_manifest()
 
       js_filename = hashed_script_name(file) <> "_#{line}_#{col}"
       js_path = Path.join(dir, js_filename <> ".js")
+
+      js_full_path =
+        case Path.relative_to(Path.expand(js_path), Path.dirname(manifest_path), force: true) do
+          <<".", _rest::binary>> = p -> p
+          p -> "./#{p}"
+        end
 
       File.mkdir_p!(dir)
       File.write!(js_path, script_content)
@@ -388,7 +407,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
           IO.binwrite(
             file,
-            ~s|\nimport hook_#{js_filename} from "./#{js_filename}"; hooks["#{js_filename}"] = hook_#{js_filename};|
+            ~s|\nimport hook_#{js_filename} from "#{js_full_path}"; hooks["#{js_filename}"] = hook_#{js_filename};|
           )
         end
       end)
@@ -407,7 +426,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def prune_hooks(file) do
     hashed_name = hashed_script_name(file)
     hooks_dir = Path.expand("assets/js/hooks", File.cwd!())
-    manifest_path = Path.join(hooks_dir, "index.js")
+    manifest_path = colocated_hooks_manifest()
 
     case File.ls(hooks_dir) do
       {:ok, hooks} ->
