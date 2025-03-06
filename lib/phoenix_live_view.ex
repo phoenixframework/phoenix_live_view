@@ -1793,8 +1793,8 @@ defmodule Phoenix.LiveView do
 
   When rendering a list of items, it is common to show a message for the empty case.
   But when using streams, we cannot rely on `Enum.empty?/1` or similar approaches to
-  check if the list is empty. Instead we can use the CSS `:only-child` selector
-  and show the message client side:
+  check if the list is empty. Instead we can add a unique id and use the CSS 
+  `:only-child` selector and show the message client side:
 
   ```heex
   <table>
