@@ -1813,6 +1813,9 @@ defmodule Phoenix.LiveView do
   </table>
   ```
 
+  It is important to set a unique ID on the empty row, otherwise it cannot be tracked
+  in the stream container and subsequent patches will duplicate the node.
+
   ## Non-stream items in stream containers
 
   In the section on handling the empty case, we showed how to render a message when
@@ -1821,15 +1824,17 @@ defmodule Phoenix.LiveView do
   Note that for non-stream items inside a `phx-update="stream"` container, the following
   needs to be considered:
 
-    1. Items can be added and updated, but not removed, even if the stream is reset.
+    1. Non-stream items must have a unique DOM id.
 
-  This means that if you try to conditionally render a non-stream item inside a stream container,
-  it won't be removed if it was rendered once.
+    2. Items can be added and updated, but not removed, even if the stream is reset.
 
-    2. Items are affected by the `:at` option.
+       This means that if you try to conditionally render a non-stream item inside a stream container,
+       it won't be removed if it was rendered once.
 
-  For example, when you render a non-stream item at the beginning of the stream container and then
-  prepend items (with `at: 0`) to the stream, the non-stream item will be pushed down.
+    3. Items are affected by the `:at` option.
+
+       For example, when you render a non-stream item at the beginning of the stream container and then
+       prepend items (with `at: 0`) to the stream, the non-stream item will be pushed down.
 
   """
   @spec stream(
