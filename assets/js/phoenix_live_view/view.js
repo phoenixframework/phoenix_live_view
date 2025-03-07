@@ -155,6 +155,7 @@ export default class View {
     this.lastAckRef = null
     this.childJoins = 0
     this.loaderTimer = null
+    this.disconnectedTimer = null
     this.pendingDiffs = []
     this.pendingForms = new Set()
     this.redirect = false
@@ -266,6 +267,7 @@ export default class View {
 
   hideLoader(){
     clearTimeout(this.loaderTimer)
+    clearTimeout(this.disconnectedTimer)
     this.setContainerClasses(PHX_CONNECTED_CLASS)
     this.execAll(this.binding("connected"))
   }
@@ -909,7 +911,13 @@ export default class View {
     if(this.isMain()){ DOM.dispatchEvent(window, "phx:page-loading-start", {detail: {to: this.href, kind: "error"}}) }
     this.showLoader()
     this.setContainerClasses(...classes)
-    this.execAll(this.binding("disconnected"))
+    this.delayedDisconnected()
+  }
+
+  delayedDisconnected(){
+    this.disconnectedTimer = setTimeout(() => {
+      this.execAll(this.binding("disconnected"))
+    }, this.liveSocket.disconnectedTimeout)
   }
 
   wrapPush(callerPush, receives){

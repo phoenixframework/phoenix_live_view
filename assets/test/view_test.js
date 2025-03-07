@@ -714,6 +714,7 @@ describe("View", function(){
 
   afterEach(() => {
     HTMLFormElement.prototype.submit = submitBefore
+    jest.useRealTimers()
   })
 
   afterAll(() => {
@@ -774,6 +775,7 @@ describe("View", function(){
   })
 
   test("displayError and hideLoader", done => {
+    jest.useFakeTimers()
     let liveSocket = new LiveSocket("/live", Socket)
     let loader = document.createElement("span")
     let phxView = document.querySelector("[data-phx-session]")
@@ -789,15 +791,13 @@ describe("View", function(){
     expect(el.classList.contains("phx-error")).toBeTruthy()
     expect(el.classList.contains("phx-connected")).toBeFalsy()
     expect(el.classList.contains("user-implemented-class")).toBeTruthy()
-    window.requestAnimationFrame(() => {
-      expect(status.style.display).toBe("block")
-      simulateVisibility(status)
-      view.hideLoader()
-      window.requestAnimationFrame(() => {
-        expect(status.style.display).toBe("none")
-        done()
-      })
-    })
+    jest.runAllTimers()
+    expect(status.style.display).toBe("block")
+    simulateVisibility(status)
+    view.hideLoader()
+    jest.runAllTimers()
+    expect(status.style.display).toBe("none")
+    done()
   })
 
   test("join", async () => {
