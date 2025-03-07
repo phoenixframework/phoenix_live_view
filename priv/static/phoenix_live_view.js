@@ -2135,6 +2135,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
               this.trackAfter("phxChildAdded", el);
             }
+            if (el.nodeName === "SCRIPT" && el.hasAttribute("data-phx-runtime-hook")) {
+              const script = document.createElement("script");
+              script.textContent = el.textContent;
+              dom_default.mergeAttrs(script, el, { isIgnored: false });
+              el.replaceWith(script);
+              el = script;
+            }
             added.push(el);
           },
           onNodeDiscarded: (el) => this.onNodeDiscarded(el),
@@ -3984,7 +3991,25 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           this.viewHooks[ViewHook.elementID(hook.el)] = hook;
           return hook;
         } else if (hookName !== null) {
-          logError(`unknown hook found for "${hookName}"`, el);
+          const runtimeHook = document.querySelector(`script[data-phx-runtime-hook="${CSS.escape(hookName)}"][bundle="runtime"]`);
+          if (runtimeHook) {
+            callbacks = window[`phx_hook_${hookName}`];
+            if (callbacks && typeof callbacks === "function") {
+              callbacks = callbacks();
+              if (callbacks && typeof callbacks === "object") {
+                if (!el.id) {
+                  logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el);
+                }
+                let hook = new ViewHook(this, el, callbacks);
+                this.viewHooks[ViewHook.elementID(hook.el)] = hook;
+                return hook;
+              } else {
+                logError("runtime hook must return an object with hook callbacks", runtimeHook);
+              }
+            }
+          } else {
+            logError(`unknown hook found for "${hookName}"`, el);
+          }
         }
       }
     }
