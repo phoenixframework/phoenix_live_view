@@ -28,6 +28,8 @@
  * @param {Object} [opts.uploaders] - The optional object for referencing LiveView uploader callbacks.
  * @param {integer} [opts.loaderTimeout] - The optional delay in milliseconds to wait before apply
  * loading states.
+ * @param {integer} [opts.disconnectedTimeout] - The delay in milliseconds to wait before
+ * executing phx-disconnected commands. Defaults to 500.
  * @param {integer} [opts.maxReloads] - The maximum reloads before entering failsafe mode.
  * @param {integer} [opts.reloadJitterMin] - The minimum time between normal reload attempts.
  * @param {integer} [opts.reloadJitterMax] - The maximum time between normal reload attempts.
@@ -78,6 +80,7 @@ import {
   DEFAULTS,
   FAILSAFE_JITTER,
   LOADER_TIMEOUT,
+  DISCONNECTED_TIMEOUT,
   MAX_RELOADS,
   PHX_DEBOUNCE,
   PHX_DROP_TARGET,
@@ -151,6 +154,7 @@ export default class LiveSocket {
     this.hooks = opts.hooks || {}
     this.uploaders = opts.uploaders || {}
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT
+    this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT
     this.reloadWithJitterTimer = null
     this.maxReloads = opts.maxReloads || MAX_RELOADS
     this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN
