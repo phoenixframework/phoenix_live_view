@@ -488,12 +488,13 @@ var DOM = {
       case null:
         return callback();
       case "blur":
+        this.incCycle(el, "debounce-blur-cycle", () => {
+          if (asyncFilter()) {
+            callback();
+          }
+        });
         if (this.once(el, "debounce-blur")) {
-          el.addEventListener("blur", () => {
-            if (asyncFilter()) {
-              callback();
-            }
-          });
+          el.addEventListener("blur", () => this.triggerCycle(el, "debounce-blur-cycle"));
         }
         return;
       default:
