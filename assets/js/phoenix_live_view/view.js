@@ -754,6 +754,12 @@ export default class View {
   }
 
   applyPendingUpdates(){
+    // prevent race conditions where we might still be pending a new
+    // navigation after applying the current one;
+    // if we call update and a pendingDiff is not applied, it would
+    // be silently dropped otherwise, as update would push it back to
+    // pendingDiffs, but we clear it immediately after
+    if(this.liveSocket.hasPendingLink() && this.root.isMain()){ return }
     this.pendingDiffs.forEach(({diff, events}) => this.update(diff, events))
     this.pendingDiffs = []
     this.eachChild(child => child.applyPendingUpdates())
