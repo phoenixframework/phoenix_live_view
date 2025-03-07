@@ -218,7 +218,7 @@ defmodule Phoenix.LiveView do
       `Phoenix.LiveView.Router.live_session/2` or on `use Phoenix.LiveView`
 
     * `:auto_connect` - if false, instructs the LiveView JavaScript client
-      to not automatically connect to the server on dead render.
+      to not automatically connect to the server on disconnected render.
       This is useful when you have a static page that does not require
       any connected functionality, but should render over the existing
       connection when navigating from an already connected LiveView.
