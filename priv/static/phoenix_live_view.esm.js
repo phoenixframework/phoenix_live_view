@@ -4070,9 +4070,6 @@ var View = class _View {
     }
     this.destroyAllChildren();
     this.liveSocket.dropActiveElement(this);
-    if (document.activeElement) {
-      document.activeElement.blur();
-    }
     if (this.liveSocket.isUnloaded()) {
       this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT);
     }
@@ -4722,7 +4719,6 @@ var LiveSocket = class {
     this.viewLogger = opts.viewLogger;
     this.metadataCallbacks = opts.metadata || {};
     this.defaults = Object.assign(clone(DEFAULTS), opts.defaults || {});
-    this.activeElement = null;
     this.prevActive = null;
     this.silenced = false;
     this.main = null;

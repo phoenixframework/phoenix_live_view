@@ -4127,9 +4127,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       this.destroyAllChildren();
       this.liveSocket.dropActiveElement(this);
-      if (document.activeElement) {
-        document.activeElement.blur();
-      }
       if (this.liveSocket.isUnloaded()) {
         this.showLoader(BEFORE_UNLOAD_LOADER_TIMEOUT);
       }
@@ -4778,7 +4775,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.viewLogger = opts.viewLogger;
       this.metadataCallbacks = opts.metadata || {};
       this.defaults = Object.assign(clone(DEFAULTS), opts.defaults || {});
-      this.activeElement = null;
       this.prevActive = null;
       this.silenced = false;
       this.main = null;
