@@ -35,7 +35,7 @@ let container = () => {
 }
 
 describe("debounce", function (){
-  test("triggers on input blur", async () => {
+  test("triggers once on input blur", async () => {
     let calls = 0
     let el = container().querySelector("input[name=blur]")
 
@@ -46,7 +46,7 @@ describe("debounce", function (){
     DOM.dispatchEvent(el, "blur")
     DOM.dispatchEvent(el, "blur")
     DOM.dispatchEvent(el, "blur")
-    expect(calls).toBe(4)
+    expect(calls).toBe(1)
   })
 
   test("triggers debounce on input blur", async () => {
@@ -59,6 +59,8 @@ describe("debounce", function (){
     simulateInput(el, "one")
     simulateInput(el, "two")
     simulateInput(el, "three")
+    DOM.dispatchEvent(el, "blur")
+    DOM.dispatchEvent(el, "blur")
     DOM.dispatchEvent(el, "blur")
     expect(calls).toBe(1)
     expect(el.value).toBe("three")
