@@ -3965,6 +3965,9 @@ var View = class _View {
     delete this.viewHooks[hookId];
   }
   applyPendingUpdates() {
+    if (this.liveSocket.hasPendingLink() && this.root.isMain()) {
+      return;
+    }
     this.pendingDiffs.forEach(({ diff, events }) => this.update(diff, events));
     this.pendingDiffs = [];
     this.eachChild((child) => child.applyPendingUpdates());
