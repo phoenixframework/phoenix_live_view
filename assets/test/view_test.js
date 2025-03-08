@@ -763,6 +763,44 @@ describe("View", function(){
   })
 })
 
+describe("Custom Event Hook", function(){
+  beforeEach(() => {
+    global.document.body.innerHTML = liveViewDOM().outerHTML
+  })
+
+  afterAll(() => {
+    global.document.body.innerHTML = ""
+  })
+
+  test("custom event hook gets added", async () => {
+    let liveSocket = new LiveSocket("/live", Socket, {})
+    let el = liveViewDOM()
+
+    let view = simulateJoinedView(el, liveSocket)
+    let channelStub = {
+      push(_evt, payload, _timeout){
+        expect(payload.event).toEqual("my_event")
+        expect(payload.value).toEqual({"value": "2"})
+        return {
+          receive(){ return this }
+        }
+      }
+    }
+
+    view.channel = channelStub
+
+    view.onJoin({
+      rendered: {
+        s: ["<div id=\"one\" phx-custom-events=\"my_event\"></div>"],
+        fingerprint: 123
+      },
+      liveview_version
+    })
+
+    expect(view.el.outerHTML).toContain("Phoenix.CustomEvent")
+  })
+
+})
 describe("View Hooks", function(){
   beforeEach(() => {
     global.document.body.innerHTML = liveViewDOM().outerHTML
