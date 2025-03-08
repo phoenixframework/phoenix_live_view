@@ -2169,7 +2169,7 @@ defmodule Phoenix.Component do
     default: nil,
     doc:
       "The default title to use if the inner block is empty on regular or connected mounts." <>
-        "*Note*: empty titles, such as `nil` or an empty string, fallsback to the default value."
+        " *Note*: empty titles, such as `nil` or an empty string, fall back to the default value."
   )
 
   attr.(:suffix, :string, default: nil, doc: "A suffix added after the content of `inner_block`.")
