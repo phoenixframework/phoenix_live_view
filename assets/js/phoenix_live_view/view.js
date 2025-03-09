@@ -67,8 +67,8 @@ export let prependFormDataKey = (key, prefix) => {
   return baseKey
 }
 
-let serializeForm = (form, metadata, onlyNames = []) => {
-  const {submitter, ...meta} = metadata
+let serializeForm = (form, opts, onlyNames = []) => {
+  const {submitter} = opts
 
   // We must inject the submitter in the order that it exists in the DOM
   // relative to other inputs. For example, for checkbox groups, the order must be maintained.
@@ -132,8 +132,6 @@ let serializeForm = (form, metadata, onlyNames = []) => {
   if(submitter && injectedElement){
     submitter.parentElement.removeChild(injectedElement)
   }
-
-  for(let metaKey in meta){ params.append(metaKey, meta[metaKey]) }
 
   return params.toString()
 }
@@ -1197,12 +1195,13 @@ export default class View {
       ], phxEvent, "change", opts)
     }
     let formData
-    let meta  = this.extractMeta(inputEl.form)
-    if(inputEl instanceof HTMLButtonElement){ meta.submitter = inputEl }
+    let meta = this.extractMeta(inputEl.form, {}, opts.value)
+    let serializeOpts = {}
+    if(inputEl instanceof HTMLButtonElement){ serializeOpts.submitter = inputEl }
     if(inputEl.getAttribute(this.binding("change"))){
-      formData = serializeForm(inputEl.form, {_target: opts._target, ...meta}, [inputEl.name])
+      formData = serializeForm(inputEl.form, serializeOpts, [inputEl.name])
     } else {
-      formData = serializeForm(inputEl.form, {_target: opts._target, ...meta})
+      formData = serializeForm(inputEl.form, serializeOpts)
     }
     if(DOM.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0){
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files))
@@ -1213,6 +1212,7 @@ export default class View {
       type: "form",
       event: phxEvent,
       value: formData,
+      meta: {_target: opts._target, ...meta},
       uploads: uploads,
       cid: cid
     }
@@ -1326,22 +1326,24 @@ export default class View {
         if(LiveUploader.inputsAwaitingPreflight(formEl).length > 0){
           return this.undoRefs(ref, phxEvent)
         }
-        let meta = this.extractMeta(formEl)
-        let formData = serializeForm(formEl, {submitter, ...meta})
+        let meta = this.extractMeta(formEl, {}, opts.value)
+        let formData = serializeForm(formEl, {submitter})
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
           value: formData,
+          meta: meta,
           cid: cid
         }).then(({resp}) => onReply(resp))
       })
     } else if(!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))){
-      let meta = this.extractMeta(formEl)
-      let formData = serializeForm(formEl, {submitter, ...meta})
+      let meta = this.extractMeta(formEl, {}, opts.value)
+      let formData = serializeForm(formEl, {submitter})
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
         value: formData,
+        meta: meta,
         cid: cid
       }).then(({resp}) => onReply(resp))
     }
