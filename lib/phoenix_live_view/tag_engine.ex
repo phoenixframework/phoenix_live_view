@@ -64,6 +64,11 @@ defmodule Phoenix.LiveView.TagEngine do
   @callback annotate_caller(file :: String.t(), line :: integer()) :: String.t() | nil
 
   @doc """
+  Callback invoked to preprocess raw tokens.
+  """
+  @callback token_preprocess(tokens :: list(), opts :: keyword()) :: list()
+
+  @doc """
   Renders a component defined by the given function.
 
   This function is rarely invoked directly by users. Instead, it is used by `~H`
@@ -202,6 +207,13 @@ defmodule Phoenix.LiveView.TagEngine do
   def handle_body(state) do
     %{tokens: tokens, file: file, cont: cont, source: source, caller: caller} = state
     tokens = Tokenizer.finalize(tokens, file, cont, source)
+
+    tokens =
+      if function_exported?(state.tag_handler, :token_preprocess, 2) do
+        state.tag_handler.token_preprocess(tokens, file: file, caller: caller)
+      else
+        tokens
+      end
 
     token_state =
       state
