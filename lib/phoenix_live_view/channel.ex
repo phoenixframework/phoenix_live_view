@@ -472,7 +472,8 @@ defmodule Phoenix.LiveView.Channel do
     %{view: view} = socket
 
     if exported?(view, :code_change, 3) do
-      view.code_change(old, socket, extra)
+      {:ok, socket} = view.code_change(old, socket, extra)
+      {:ok, %{state | socket: socket}}
     else
       {:ok, state}
     end
