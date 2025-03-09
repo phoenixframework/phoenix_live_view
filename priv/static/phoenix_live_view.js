@@ -20,18 +20,6 @@ var LiveView = (() => {
     return a;
   };
   var __spreadProps = (a, b) => __defProps(a, __getOwnPropDescs(b));
-  var __objRest = (source, exclude) => {
-    var target = {};
-    for (var prop in source)
-      if (__hasOwnProp.call(source, prop) && exclude.indexOf(prop) < 0)
-        target[prop] = source[prop];
-    if (source != null && __getOwnPropSymbols)
-      for (var prop of __getOwnPropSymbols(source)) {
-        if (exclude.indexOf(prop) < 0 && __propIsEnum.call(source, prop))
-          target[prop] = source[prop];
-      }
-    return target;
-  };
   var __export = (target, all) => {
     for (var name in all)
       __defProp(target, name, { get: all[name], enumerable: true });
@@ -3391,8 +3379,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     return baseKey;
   };
-  var serializeForm = (form, metadata, onlyNames = []) => {
-    const _a = metadata, { submitter } = _a, meta = __objRest(_a, ["submitter"]);
+  var serializeForm = (form, opts, onlyNames = []) => {
+    const { submitter } = opts;
     let injectedElement;
     if (submitter && submitter.name) {
       const input = document.createElement("input");
@@ -3445,9 +3433,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     if (submitter && injectedElement) {
       submitter.parentElement.removeChild(injectedElement);
-    }
-    for (let metaKey in meta) {
-      params.append(metaKey, meta[metaKey]);
     }
     return params.toString();
   };
@@ -4449,14 +4434,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         ], phxEvent, "change", opts);
       };
       let formData;
-      let meta = this.extractMeta(inputEl.form);
+      let meta = this.extractMeta(inputEl.form, {}, opts.value);
+      let serializeOpts = {};
       if (inputEl instanceof HTMLButtonElement) {
-        meta.submitter = inputEl;
+        serializeOpts.submitter = inputEl;
       }
       if (inputEl.getAttribute(this.binding("change"))) {
-        formData = serializeForm(inputEl.form, __spreadValues({ _target: opts._target }, meta), [inputEl.name]);
+        formData = serializeForm(inputEl.form, serializeOpts, [inputEl.name]);
       } else {
-        formData = serializeForm(inputEl.form, __spreadValues({ _target: opts._target }, meta));
+        formData = serializeForm(inputEl.form, serializeOpts);
       }
       if (dom_default.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0) {
         LiveUploader.trackFiles(inputEl, Array.from(inputEl.files));
@@ -4466,6 +4452,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         type: "form",
         event: phxEvent,
         value: formData,
+        meta: __spreadValues({ _target: opts._target }, meta),
         uploads,
         cid
       };
@@ -4563,22 +4550,24 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
             return this.undoRefs(ref, phxEvent);
           }
-          let meta = this.extractMeta(formEl);
-          let formData = serializeForm(formEl, __spreadValues({ submitter }, meta));
+          let meta = this.extractMeta(formEl, {}, opts.value);
+          let formData = serializeForm(formEl, { submitter });
           this.pushWithReply(proxyRefGen, "event", {
             type: "form",
             event: phxEvent,
             value: formData,
+            meta,
             cid
           }).then(({ resp }) => onReply(resp));
         });
       } else if (!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))) {
-        let meta = this.extractMeta(formEl);
-        let formData = serializeForm(formEl, __spreadValues({ submitter }, meta));
+        let meta = this.extractMeta(formEl, {}, opts.value);
+        let formData = serializeForm(formEl, { submitter });
         this.pushWithReply(refGenerator, "event", {
           type: "form",
           event: phxEvent,
           value: formData,
+          meta,
           cid
         }).then(({ resp }) => onReply(resp));
       }
