@@ -214,7 +214,7 @@ describe("View + DOM", function(){
   })
 
   test("pushInput", function(){
-    expect.assertions(3)
+    expect.assertions(4)
 
     let liveSocket = new LiveSocket("/live", Socket)
     let el = liveViewDOM()
@@ -225,7 +225,8 @@ describe("View + DOM", function(){
       push(_evt, payload, _timeout){
         expect(payload.type).toBe("form")
         expect(payload.event).toBeDefined()
-        expect(payload.value).toBe("increment=1&_unused_note=&note=2&_target=increment")
+        expect(payload.value).toBe("increment=1&_unused_note=&note=2")
+        expect(payload.meta).toEqual({"_target": "increment"})
         return {
           receive(){ return this }
         }
@@ -234,6 +235,45 @@ describe("View + DOM", function(){
     view.channel = channelStub
 
     view.pushInput(input, el, null, "validate", {_target: input.name})
+  })
+
+  test("pushInput with with phx-value and JS command value", function(){
+    expect.assertions(4)
+
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM(`
+      <form id="my-form" phx-value-attribute_value="attribute">
+        <label for="plus">Plus</label>
+        <input id="plus" value="1" name="increment" />
+        <textarea id="note" name="note">2</textarea>
+        <input type="checkbox" phx-click="toggle_me" />
+        <button phx-click="inc_temperature">Inc Temperature</button>
+      </form>
+    `)
+    let input = el.querySelector("input")
+    simulateUsedInput(input)
+    let view = simulateJoinedView(el, liveSocket)
+    let channelStub = {
+      push(_evt, payload, _timeout){
+        expect(payload.type).toBe("form")
+        expect(payload.event).toBeDefined()
+        expect(payload.value).toBe("increment=1&_unused_note=&note=2")
+        expect(payload.meta).toEqual({
+          "_target": "increment",
+          "attribute_value": "attribute",
+          "nested": {
+            "command_value": "command",
+            "array": [1, 2]
+          }
+        })
+        return {
+          receive(){ return this }
+        }
+      }
+    }
+    view.channel = channelStub
+    let optValue = {nested: {command_value: "command", array: [1, 2]}}
+    view.pushInput(input, el, null, "validate", {_target: input.name, value: optValue})
   })
 
   test("getFormsForRecovery", function(){
@@ -296,6 +336,44 @@ describe("View + DOM", function(){
       view.submitForm(form, form, {target: form})
     })
 
+    test("payload includes phx-value and JS command value", function(){
+      expect.assertions(4)
+
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM(`
+        <form id="my-form" phx-value-attribute_value="attribute">
+          <label for="plus">Plus</label>
+          <input id="plus" value="1" name="increment" />
+          <textarea id="note" name="note">2</textarea>
+          <input type="checkbox" phx-click="toggle_me" />
+          <button phx-click="inc_temperature">Inc Temperature</button>
+        </form>
+      `)
+      let form = el.querySelector("form")
+
+      let view = simulateJoinedView(el, liveSocket)
+      let channelStub = {
+        push(_evt, payload, _timeout){
+          expect(payload.type).toBe("form")
+          expect(payload.event).toBeDefined()
+          expect(payload.value).toBe("increment=1&note=2")
+          expect(payload.meta).toEqual({
+            "attribute_value": "attribute",
+            "nested": {
+              "command_value": "command",
+              "array": [1, 2]
+            }
+          })
+          return {
+            receive(){ return this }
+          }
+        }
+      }
+      view.channel = channelStub
+      let opts = {value: {nested: {command_value: "command", array: [1, 2]}}}
+      view.submitForm(form, form, {target: form}, undefined, opts)
+    })
+
     test("payload includes submitter when name is provided", function(){
       let btn = document.createElement("button")
       btn.setAttribute("type", "submit")
@@ -320,7 +398,7 @@ describe("View + DOM", function(){
       submitWithButton(btn, "increment=1&note=2")
     })
 
-    function submitWithButton(btn, queryString, appendTo){
+    function submitWithButton(btn, queryString, appendTo, opts={}){
       let liveSocket = new LiveSocket("/live", Socket)
       let el = liveViewDOM()
       let form = el.querySelector("form")
@@ -343,7 +421,7 @@ describe("View + DOM", function(){
       }
 
       view.channel = channelStub
-      view.submitForm(form, form, {target: form}, btn)
+      view.submitForm(form, form, {target: form}, btn, opts)
     }
 
     test("disables elements after submission", function(){
@@ -1097,13 +1175,15 @@ describe("View + Component", function(){
     Array.from(view.el.querySelectorAll("input")).forEach(input => simulateUsedInput(input))
     let channelStub = {
       validate: "",
-      nextValidate(payload){
+      nextValidate(payload, meta){
+        this.meta = meta
         this.validate = Object.entries(payload)
           .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value) : ""}`)
           .join("&")
       },
       push(_evt, payload, _timeout){
         expect(payload.value).toBe(this.validate)
+        expect(payload.meta).toEqual(this.meta)
         return {
           receive(status, cb){
             if(status === "ok"){
@@ -1134,12 +1214,12 @@ describe("View + Component", function(){
 
     let first_name = view.el.querySelector("#first_name")
     let last_name = view.el.querySelector("#last_name")
-    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[first_name]"})
+    view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null}, {"_target": "user[first_name]"})
     // we have to set this manually since it's set by a change event that would require more plumbing with the liveSocket in the test to hook up
     DOM.putPrivate(first_name, "phx-has-focused", true)
     view.pushInput(first_name, el, null, "validate", {_target: first_name.name})
     window.requestAnimationFrame(() => {
-      view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null, "_target": "user[last_name]"})
+      view.channel.nextValidate({"user[first_name]": null, "user[last_name]": null}, {"_target": "user[last_name]"})
       view.pushInput(last_name, el, null, "validate", {_target: last_name.name})
       window.requestAnimationFrame(() => {
         done()

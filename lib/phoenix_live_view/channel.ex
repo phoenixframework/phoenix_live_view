@@ -245,7 +245,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = payload = msg.payload
-    val = decode_event_type(type, raw_val)
+    val = decode_event_type(type, raw_val, msg.payload)
 
     if cid = msg.payload["cid"] do
       component_handle(state, cid, msg.ref, fn component_socket, component ->
@@ -778,13 +778,14 @@ defmodule Phoenix.LiveView.Channel do
     )
   end
 
-  defp decode_event_type("form", url_encoded) do
+  defp decode_event_type("form", url_encoded, raw_payload) do
     url_encoded
     |> Plug.Conn.Query.decode()
     |> decode_merge_target()
+    |> maybe_merge_meta(raw_payload)
   end
 
-  defp decode_event_type(_, value), do: value
+  defp decode_event_type(_, value, _raw_payload), do: value
 
   defp decode_merge_target(%{"_target" => target} = params) when is_list(target), do: params
 
@@ -794,6 +795,12 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp decode_merge_target(%{} = params), do: params
+
+  defp maybe_merge_meta(value, %{"meta" => meta}) when is_map(value) do
+    Map.merge(value, meta)
+  end
+
+  defp maybe_merge_meta(value, _raw_payload), do: value
 
   defp gather_keys(%{} = map, acc) do
     case Enum.at(map, 0) do
