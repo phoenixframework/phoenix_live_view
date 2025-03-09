@@ -533,9 +533,9 @@ describe("JS", () => {
       let view = setupView(`
       <div id="modal" class="modal">modal</div>
       <form id="my-form"
-            phx-change='[["push", {"event": "validate", "_target": "username", "value": {"command_value": "command","nested":{"array":[1,2]}}}]]'
-            phx-submit="submit"
-            phx-value-attribute_value="attribute"
+        phx-change='[["push", {"event": "validate", "_target": "username", "value": {"command_value": "command","nested":{"array":[1,2]}}}]]'
+        phx-submit="submit"
+        phx-value-attribute_value="attribute"
       >
         <input type="text" name="username" id="username" phx-click=''></div>
       </form>
@@ -555,6 +555,58 @@ describe("JS", () => {
               "array": [1, 2]
             },
             "attribute_value": "attribute"
+          },
+          "uploads": {}
+        })
+        return Promise.resolve({resp: done()})
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec(event, "change", form.getAttribute("phx-change"), view, input, args)
+    })
+
+    test("form change event prefers JS.push value over phx-value-* over input value", (done) => {
+      let view = setupView(`
+        <form id="my-form" phx-value-name="value from phx-value param" phx-change="[[&quot;push&quot;,{&quot;value&quot;:{&quot;name&quot;:&quot;value from push opts&quot;},&quot;event&quot;:&quot;change&quot;}]]">
+          <input id="textField" name="name" value="input value" />
+        </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#textField")
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          "cid": null,
+          "event": "change",
+          "type": "form",
+          "value": "_unused_name=&name=input+value",
+          "meta": {
+            "_target": "name",
+            "name": "value from push opts"
+          },
+          "uploads": {}
+        })
+        return Promise.resolve({resp: done()})
+      }
+      let args = ["push", {_target: input.name, dispatcher: input}]
+      JS.exec(event, "change", form.getAttribute("phx-change"), view, input, args)
+    })
+  
+    test("form change event prefers phx-value-* over input value", (done) => {
+      let view = setupView(`
+        <form id="my-form" phx-value-name="value from phx-value param" phx-change="change">
+          <input id="textField" name="name" value="input value" />
+        </form>
+      `)
+      let form = document.querySelector("#my-form")
+      let input = document.querySelector("#textField")
+      view.pushWithReply = (refGen, event, payload) => {
+        expect(payload).toEqual({
+          "cid": null,
+          "event": "change",
+          "type": "form",
+          "value": "_unused_name=&name=input+value",
+          "meta": {
+            "_target": "name",
+            "name": "value from phx-value param"
           },
           "uploads": {}
         })

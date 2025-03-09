@@ -203,7 +203,9 @@ defmodule Phoenix.LiveView.JS do
       phx:page-loading-stop events for this push. Defaults to `false`.
     * `:value` - A map of values to send to the server. These values will be
       merged over any `phx-value-*` attributes that are present on the element.
-      All keys will be treated as strings when merging.
+      All keys will be treated as strings when merging. When used on a form event
+      like `phx-change` or `phx-submit`, the precedence is
+      `JS.push value > phx-value-* > input value`.
 
   ## Examples
 
