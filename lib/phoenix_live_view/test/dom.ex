@@ -502,7 +502,8 @@ defmodule Phoenix.LiveViewTest.DOM do
 
     streamInserts =
       Enum.reduce(streams, %{}, fn %{ref: ref, inserts: inserts}, acc ->
-        Enum.reduce(inserts, acc, fn [id, stream_at, limit], acc ->
+        # TODO: support update_only in LiveViewTest
+        Enum.reduce(inserts, acc, fn [id, stream_at, limit, _update_only], acc ->
           Map.put(acc, id, %{ref: ref, stream_at: stream_at, limit: limit})
         end)
       end)
