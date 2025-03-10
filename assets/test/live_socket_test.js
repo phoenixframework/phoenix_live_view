@@ -260,7 +260,7 @@ describe("liveSocket.js()", () => {
     
     expect(el.getAttribute("open")).toBeNull()
     js.exec(el, el.getAttribute("data-test"))
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.getAttribute("open")).toEqual("true")
   })
   
@@ -272,11 +272,11 @@ describe("liveSocket.js()", () => {
     
     expect(el.style.display).toBe("")
     js.hide(el)
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.style.display).toBe("none")
     
     js.show(el)
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.style.display).toBe("block")
     done()
   })
@@ -289,11 +289,11 @@ describe("liveSocket.js()", () => {
     
     expect(el.style.display).toBe("")
     js.toggle(el)
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.style.display).toBe("none")
     
     js.toggle(el)
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.style.display).toBe("block")
     done()
   })
@@ -305,31 +305,31 @@ describe("liveSocket.js()", () => {
     view.el.appendChild(el)
     
     js.addClass(el, "test-class")
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.classList.contains("test-class")).toBe(true)
     expect(el.classList.contains("initial-class")).toBe(true)
     
     js.addClass(el, ["multiple", "classes"])
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.classList.contains("multiple")).toBe(true)
     expect(el.classList.contains("classes")).toBe(true)
     
     js.removeClass(el, "test-class")
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.classList.contains("test-class")).toBe(false)
     expect(el.classList.contains("initial-class")).toBe(true)
     
     js.removeClass(el, ["multiple", "classes"])
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.classList.contains("multiple")).toBe(false)
     expect(el.classList.contains("classes")).toBe(false)
     
     js.toggleClass(el, "toggle-class")
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.classList.contains("toggle-class")).toBe(true)
     
     js.toggleClass(el, "toggle-class")
-    jest.advanceTimersByTime(100)
+    jest.runAllTimers()
     expect(el.classList.contains("toggle-class")).toBe(false)
     done()
   })
