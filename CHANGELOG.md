@@ -112,6 +112,18 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.6
+
+### Bug fixes
+* Fix race condition where patches were discarded when a new navigation was already pending ([#3710](https://github.com/phoenixframework/phoenix_live_view/pull/3710))
+* Fix phx-debounce="blur" re-sending events for subsequent blurs ([#3689](https://github.com/phoenixframework/phoenix_live_view/issues/3689))
+* Fix `code_change` callback not returning the new channel state ([#3712](https://github.com/phoenixframework/phoenix_live_view/pull/3712))
+
+### Enhancements
+* Improve performance of large forms ([#3696](https://github.com/phoenixframework/phoenix_live_view/pull/3696))
+* Ensure `JS.push` values are sent on form events ([#3674](https://github.com/phoenixframework/phoenix_live_view/pull/3674))
+* Allow to skip persistent_id generation in `Phoenix.Component.inputs_for/1` ([#3677](https://github.com/phoenixframework/phoenix_live_view/pull/3677))
+
 ## 1.0.5 (2025-02-27)
 
 ### Bug fixes
