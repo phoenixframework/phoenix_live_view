@@ -222,7 +222,9 @@ defmodule Phoenix.LiveView do
       This is useful when you have a static page that does not require
       any connected functionality, but should render over the existing
       connection when navigating from an already connected LiveView.
-      Defaults to `true`.
+      Defaults to `true`. When navigating from a page that has `auto_connect: false`
+      and is not connected, all navigations perform a regular `window.location`
+      update, triggering a full page reload.
 
   """
   @callback mount(
