@@ -515,12 +515,13 @@ var DOM = {
       case null:
         return callback();
       case "blur":
+        this.incCycle(el, "debounce-blur-cycle", () => {
+          if (asyncFilter()) {
+            callback();
+          }
+        });
         if (this.once(el, "debounce-blur")) {
-          el.addEventListener("blur", () => {
-            if (asyncFilter()) {
-              callback();
-            }
-          });
+          el.addEventListener("blur", () => this.triggerCycle(el, "debounce-blur-cycle"));
         }
         return;
       default:
@@ -3358,8 +3359,8 @@ var prependFormDataKey = (key, prefix) => {
   }
   return baseKey;
 };
-var serializeForm = (form, metadata, onlyNames = []) => {
-  const { submitter, ...meta } = metadata;
+var serializeForm = (form, opts, onlyNames = []) => {
+  const { submitter } = opts;
   let injectedElement;
   if (submitter && submitter.name) {
     const input = document.createElement("input");
@@ -3382,12 +3383,28 @@ var serializeForm = (form, metadata, onlyNames = []) => {
   });
   toRemove.forEach((key) => formData.delete(key));
   const params = new URLSearchParams();
-  let elements = Array.from(form.elements);
+  const { inputsUnused, onlyHiddenInputs } = Array.from(form.elements).reduce((acc, input) => {
+    const { inputsUnused: inputsUnused2, onlyHiddenInputs: onlyHiddenInputs2 } = acc;
+    const key = input.name;
+    if (!key) {
+      return acc;
+    }
+    if (inputsUnused2[key] === void 0) {
+      inputsUnused2[key] = true;
+    }
+    if (onlyHiddenInputs2[key] === void 0) {
+      onlyHiddenInputs2[key] = true;
+    }
+    const isUsed = dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED);
+    const isHidden = input.type === "hidden";
+    inputsUnused2[key] = inputsUnused2[key] && !isUsed;
+    onlyHiddenInputs2[key] = onlyHiddenInputs2[key] && isHidden;
+    return acc;
+  }, { inputsUnused: {}, onlyHiddenInputs: {} });
   for (let [key, val] of formData.entries()) {
     if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
-      let inputs = elements.filter((input) => input.name === key);
-      let isUnused = !inputs.some((input) => dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED));
-      let hidden = inputs.every((input) => input.type === "hidden");
+      let isUnused = inputsUnused[key];
+      let hidden = onlyHiddenInputs[key];
       if (isUnused && !(submitter && submitter.name == key) && !hidden) {
         params.append(prependFormDataKey(key, "_unused_"), "");
       }
@@ -3396,9 +3413,6 @@ var serializeForm = (form, metadata, onlyNames = []) => {
   }
   if (submitter && injectedElement) {
     submitter.parentElement.removeChild(injectedElement);
-  }
-  for (let metaKey in meta) {
-    params.append(metaKey, meta[metaKey]);
   }
   return params.toString();
 };
@@ -3947,6 +3961,9 @@ var View = class _View {
     delete this.viewHooks[hookId];
   }
   applyPendingUpdates() {
+    if (this.liveSocket.hasPendingLink() && this.root.isMain()) {
+      return;
+    }
     this.pendingDiffs.forEach(({ diff, events }) => this.update(diff, events));
     this.pendingDiffs = [];
     this.eachChild((child) => child.applyPendingUpdates());
@@ -4392,14 +4409,15 @@ var View = class _View {
       ], phxEvent, "change", opts);
     };
     let formData;
-    let meta = this.extractMeta(inputEl.form);
+    let meta = this.extractMeta(inputEl.form, {}, opts.value);
+    let serializeOpts = {};
     if (inputEl instanceof HTMLButtonElement) {
-      meta.submitter = inputEl;
+      serializeOpts.submitter = inputEl;
     }
     if (inputEl.getAttribute(this.binding("change"))) {
-      formData = serializeForm(inputEl.form, { _target: opts._target, ...meta }, [inputEl.name]);
+      formData = serializeForm(inputEl.form, serializeOpts, [inputEl.name]);
     } else {
-      formData = serializeForm(inputEl.form, { _target: opts._target, ...meta });
+      formData = serializeForm(inputEl.form, serializeOpts);
     }
     if (dom_default.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0) {
       LiveUploader.trackFiles(inputEl, Array.from(inputEl.files));
@@ -4409,6 +4427,7 @@ var View = class _View {
       type: "form",
       event: phxEvent,
       value: formData,
+      meta: { _target: opts._target, ...meta },
       uploads,
       cid
     };
@@ -4507,22 +4526,24 @@ var View = class _View {
         if (LiveUploader.inputsAwaitingPreflight(formEl).length > 0) {
           return this.undoRefs(ref, phxEvent);
         }
-        let meta = this.extractMeta(formEl);
-        let formData = serializeForm(formEl, { submitter, ...meta });
+        let meta = this.extractMeta(formEl, {}, opts.value);
+        let formData = serializeForm(formEl, { submitter });
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
           value: formData,
+          meta,
           cid
         }).then(({ resp }) => onReply(resp));
       });
     } else if (!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))) {
-      let meta = this.extractMeta(formEl);
-      let formData = serializeForm(formEl, { submitter, ...meta });
+      let meta = this.extractMeta(formEl, {}, opts.value);
+      let formData = serializeForm(formEl, { submitter });
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
         value: formData,
+        meta,
         cid
       }).then(({ resp }) => onReply(resp));
     }
