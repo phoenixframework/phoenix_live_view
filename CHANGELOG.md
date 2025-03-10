@@ -123,6 +123,7 @@ generated user module:
 * Improve performance of large forms ([#3696](https://github.com/phoenixframework/phoenix_live_view/pull/3696))
 * Ensure `JS.push` values are sent on form events ([#3674](https://github.com/phoenixframework/phoenix_live_view/pull/3674))
 * Allow to skip persistent_id generation in `Phoenix.Component.inputs_for/1` ([#3677](https://github.com/phoenixframework/phoenix_live_view/pull/3677))
+* Delay `phx-disconnected` binding to prevent brief flash of "Attempting to reconnect" message for short disconnects ([#3680](https://github.com/phoenixframework/phoenix_live_view/pull/3680)). This can be configured by passing the `disconnectedTimeout` option to the LiveSocket constructor.
 
 ## 1.0.5 (2025-02-27)
 
