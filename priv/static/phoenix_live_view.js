@@ -117,6 +117,7 @@ var LiveView = (() => {
   var LOADER_TIMEOUT = 1;
   var MAX_CHILD_JOIN_ATTEMPTS = 3;
   var BEFORE_UNLOAD_LOADER_TIMEOUT = 200;
+  var DISCONNECTED_TIMEOUT = 500;
   var BINDING_PREFIX = "phx-";
   var PUSH_TIMEOUT = 3e4;
   var DEBOUNCE_TRIGGER = "debounce-trigger";
@@ -3451,6 +3452,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.lastAckRef = null;
       this.childJoins = 0;
       this.loaderTimer = null;
+      this.disconnectedTimer = null;
       this.pendingDiffs = [];
       this.pendingForms = /* @__PURE__ */ new Set();
       this.redirect = false;
@@ -3559,6 +3561,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     hideLoader() {
       clearTimeout(this.loaderTimer);
+      clearTimeout(this.disconnectedTimer);
       this.setContainerClasses(PHX_CONNECTED_CLASS);
       this.execAll(this.binding("connected"));
     }
@@ -4137,7 +4140,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       this.showLoader();
       this.setContainerClasses(...classes);
-      this.execAll(this.binding("disconnected"));
+      this.delayedDisconnected();
+    }
+    delayedDisconnected() {
+      this.disconnectedTimer = setTimeout(() => {
+        this.execAll(this.binding("disconnected"));
+      }, this.liveSocket.disconnectedTimeout);
     }
     wrapPush(callerPush, receives) {
       let latency = this.liveSocket.getLatencySim();
@@ -4780,6 +4788,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.hooks = opts.hooks || {};
       this.uploaders = opts.uploaders || {};
       this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
+      this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
       this.reloadWithJitterTimer = null;
       this.maxReloads = opts.maxReloads || MAX_RELOADS;
       this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN;
