@@ -301,6 +301,21 @@ defmodule Phoenix.LiveView.JS do
           args
       end
 
+    if opts[:blocking] do
+      case opts[:detail] do
+        map when is_map(map) and (is_map_key(map, "done") or is_map_key(map, :done)) ->
+          raise ArgumentError, """
+          the detail map passed to JS.dispatch must not contain a `done` key
+          when `blocking: true` is used!
+
+          Got: #{inspect(map)}
+          """
+
+        _ ->
+          :ok
+      end
+    end
+
     args =
       case {event, Keyword.fetch(opts, :detail)} do
         {"click", {:ok, _detail}} ->
