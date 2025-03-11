@@ -159,7 +159,7 @@ export default class DOMPatch {
           // data-phx-runtime-hook
           // usually, scripts are not executed when morphdom adds them to the DOM
           // we special case runtime colocated hooks
-          if (el.nodeName === "SCRIPT" && el.hasAttribute("data-phx-runtime-hook")) {
+          if(el.nodeName === "SCRIPT" && el.hasAttribute("data-phx-runtime-hook")){
             const script = document.createElement("script")
             script.textContent = el.textContent
             DOM.mergeAttrs(script, el, {isIgnored: false})

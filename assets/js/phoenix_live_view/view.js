@@ -746,7 +746,7 @@ export default class View {
           callbacks = window[`phx_hook_${hookName}`]
           if(callbacks && typeof callbacks === "function"){
             callbacks = callbacks()
-            if (callbacks && typeof callbacks === "object") {
+            if(callbacks && typeof callbacks === "object"){
               if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }
               let hook = new ViewHook(this, el, callbacks)
               this.viewHooks[ViewHook.elementID(hook.el)] = hook
