@@ -483,7 +483,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         end
 
       js_full_path =
-        case relative.(Path.expand(js_path), Path.dirname(manifest_path), force: true) do
+        case relative.(Path.expand(js_path), Path.dirname(manifest_path)) do
           <<".", _rest::binary>> = p -> p
           p -> "./#{p}"
         end
