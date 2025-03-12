@@ -477,7 +477,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
         if function_exported?(Path, :relative_to, 3) do
           # force option is only available since Elixir 1.16;
           # in earlier versions, the path will be absolute, but that should be fine
-          &apply(Path, :relative_to, [&1, &2, force: true])
+          &apply(Path, :relative_to, [&1, &2, [force: true]])
         else
           &Path.relative_to(&1, &2)
         end
