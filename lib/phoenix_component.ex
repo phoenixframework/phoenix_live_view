@@ -947,7 +947,7 @@ defmodule Phoenix.Component do
   * When rendering a LiveView inside a regular (non-live) controller/view.
 
   Most other cases for shared functionality, including state management and user interactions, can be
-  [achieved with LiveComponents](welcome.html#compartmentalize-state-markup-and-events-in-liveview)
+  [achieved with function components or LiveComponents](welcome.html#compartmentalize-state-markup-and-events-in-liveview)
 
     ## Options
 
@@ -1017,7 +1017,7 @@ defmodule Phoenix.Component do
 
   ## Testing
 
-  Note that `render_click/1` will send events to the root LiveView, and you will want to
+  Note that `render_click/1` and other testing functions will send events to the root LiveView, and you will want to
   `find_live_child/2` to interact with nested LiveViews in your live tests.
   """
   def live_render(conn_or_socket, view, opts \\ [])
