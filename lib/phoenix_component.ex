@@ -1011,6 +1011,11 @@ defmodule Phoenix.Component do
   Beware if you set this to `:body`, as any content injected inside the body
   (such as `Phoenix.LiveReload` features) will be discarded once the LiveView
   connects
+
+  ## Testing
+
+  Note that `render_click/1` will send events to the root LiveView, and you will want to
+  `find_live_child/2` to interact with nested LiveViews in your live tests.
   """
   def live_render(conn_or_socket, view, opts \\ [])
 
