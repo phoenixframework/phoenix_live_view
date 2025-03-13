@@ -185,6 +185,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     pipe_through(:browser)
 
     live "/form/feedback", FormFeedbackLive
+    live "/custom-events", CustomEventsLive
     live "/errors", ErrorLive
 
     scope "/issues" do
