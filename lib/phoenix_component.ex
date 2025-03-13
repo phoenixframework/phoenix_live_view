@@ -946,7 +946,10 @@ defmodule Phoenix.Component do
 
   * When rendering a LiveView inside a regular (non-live) controller/view.
 
-  ## Options
+  Most other cases for shared functionality, including state management and user interactions, can be
+  [achieved with LiveComponents](welcome.html#compartmentalize-state-markup-and-events-in-liveview)
+
+    ## Options
 
   * `:session` - a map of binary keys with extra session data to be serialized and sent
   to the client. All session data currently in the connection is automatically available
