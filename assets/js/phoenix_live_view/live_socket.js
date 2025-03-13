@@ -96,6 +96,7 @@ import {
   PHX_PARENT_ID,
   PHX_VIEW_SELECTOR,
   PHX_ROOT_ID,
+  PHX_AUTO_CONNECT,
   PHX_THROTTLE,
   PHX_TRACK_UPLOADS,
   PHX_SESSION,
@@ -375,7 +376,7 @@ export default class LiveSocket {
 
   joinRootViews(){
     let rootsFound = false
-    DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}])`, rootEl => {
+    DOM.all(document, `${PHX_VIEW_SELECTOR}:not([${PHX_PARENT_ID}]):not([${PHX_AUTO_CONNECT}="false"])`, rootEl => {
       if(!this.getRootById(rootEl.id)){
         let view = this.newRootView(rootEl)
         // stickies cannot be mounted at the router and therefore should not
