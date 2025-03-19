@@ -455,7 +455,8 @@ defmodule Phoenix.LiveView.Tokenizer do
         acc = put_attr(acc, name, attr_meta, value)
 
         state =
-          if name == "phx-no-curly-interpolation" and state.braces == :enabled do
+          if name == "phx-no-curly-interpolation" and state.braces == :enabled and
+               not script_or_style?(acc) do
             %{state | braces: 0}
           else
             state
@@ -468,6 +469,9 @@ defmodule Phoenix.LiveView.Tokenizer do
         raise_syntax_error!(message, meta, state)
     end
   end
+
+  defp script_or_style?([{:tag, name, _, _} | _]) when name in ~w(script style), do: true
+  defp script_or_style?(_), do: false
 
   ## handle_root_attribute
 
