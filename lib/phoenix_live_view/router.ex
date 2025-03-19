@@ -240,7 +240,6 @@ defmodule Phoenix.LiveView.Router do
   @doc false
   def __live_session__(module, opts, name) do
     Module.register_attribute(module, :phoenix_live_sessions, accumulate: true)
-    vsn = session_vsn(module)
 
     if not is_atom(name) do
       raise ArgumentError, """
@@ -264,7 +263,7 @@ defmodule Phoenix.LiveView.Router do
       """
     end
 
-    current = %{name: name, extra: extra, vsn: vsn}
+    current = %{name: name, extra: extra}
     Module.put_attribute(module, :phoenix_live_session_current, current)
 
     Module.put_attribute(module, :phoenix_live_sessions, name)
@@ -375,7 +374,7 @@ defmodule Phoenix.LiveView.Router do
       when is_atom(action) and is_list(opts) do
     live_session =
       Module.get_attribute(router, :phoenix_live_session_current) ||
-        %{name: :default, extra: %{}, vsn: session_vsn(router)}
+        %{name: :default, extra: %{}}
 
     helpers = Module.get_attribute(router, :phoenix_helpers)
 
@@ -488,14 +487,4 @@ defmodule Phoenix.LiveView.Router do
   end
 
   defp cookie_flash(%Plug.Conn{} = conn), do: {conn, nil}
-
-  defp session_vsn(module) do
-    if vsn = Module.get_attribute(module, :phoenix_session_vsn) do
-      vsn
-    else
-      vsn = System.system_time()
-      Module.put_attribute(module, :phoenix_session_vsn, vsn)
-      vsn
-    end
-  end
 end
