@@ -86,7 +86,6 @@ defmodule Phoenix.LiveView.RouterTest do
                )
 
       assert route.live_session.name == :test
-      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() == %{}
     end
@@ -102,7 +101,6 @@ defmodule Phoenix.LiveView.RouterTest do
                )
 
       assert route.live_session.name == :admin
-      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() ==
                %{"admin" => true}
@@ -119,7 +117,6 @@ defmodule Phoenix.LiveView.RouterTest do
                )
 
       assert route.live_session.name == :mfa
-      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() ==
                %{"inlined" => true, "called" => true}
@@ -323,7 +320,7 @@ defmodule Phoenix.LiveView.RouterTest do
     test "classifies route as external when same view, but different session" do
       # previously, a patch to the same LV, but a different path in a different live_session
       # would succeed when it should not
-      {_, %Route{live_session: %{vsn: vsn}}} =
+      {_, %Route{live_session: %{name: :test}}} =
         Route.live_link_info_without_checks(
           @endpoint,
           Phoenix.LiveViewTest.Support.Router,
@@ -333,7 +330,7 @@ defmodule Phoenix.LiveView.RouterTest do
       socket = %Phoenix.LiveView.Socket{
         router: Phoenix.LiveViewTest.Support.Router,
         endpoint: @endpoint,
-        private: %{live_session_name: :test, live_session_vsn: vsn}
+        private: %{live_session_name: :test}
       }
 
       assert {:external, _} =
