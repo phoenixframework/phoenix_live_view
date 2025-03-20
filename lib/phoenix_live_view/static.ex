@@ -9,7 +9,7 @@ defmodule Phoenix.LiveView.Static do
   alias Phoenix.LiveView.{Socket, Utils, Diff, Route, Lifecycle}
 
   # Token version. Should be changed whenever new data is stored.
-  @token_vsn 5
+  @token_vsn 6
   @phoenix_reload_status "__phoenix_reload_status__"
 
   def token_vsn, do: @token_vsn
@@ -39,7 +39,7 @@ defmodule Phoenix.LiveView.Static do
 
   defp live_session(%Plug.Conn{} = conn) do
     case conn.private[:phoenix_live_view] do
-      {_view, _opts, %{name: _name, extra: _extra, vsn: _vsn} = lv_session} -> lv_session
+      {_view, _opts, %{name: _name, extra: _extra} = lv_session} -> lv_session
       nil -> nil
     end
   end
@@ -351,9 +351,9 @@ defmodule Phoenix.LiveView.Static do
   end
 
   defp sign_root_session(%Socket{} = socket, router, view, session, live_session) do
-    live_session_pair =
+    live_session_name =
       case live_session do
-        %{name: name, vsn: vsn} -> {name, vsn}
+        %{name: name} -> name
         nil -> nil
       end
 
@@ -363,7 +363,7 @@ defmodule Phoenix.LiveView.Static do
       view: view,
       root_view: view,
       router: router,
-      live_session: live_session_pair,
+      live_session_name: live_session_name,
       parent_pid: nil,
       root_pid: nil,
       session: session

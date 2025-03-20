@@ -1284,8 +1284,7 @@ defmodule Phoenix.LiveView.Channel do
     %{
       root_view: root_view,
       assign_new: assign_new,
-      live_session_name: live_session_name,
-      live_session_vsn: live_session_vsn
+      live_session_name: live_session_name
     } = session
 
     {:ok,
@@ -1296,8 +1295,7 @@ defmodule Phoenix.LiveView.Channel do
        lifecycle: lifecycle,
        root_view: root_view,
        live_temp: %{},
-       live_session_name: live_session_name,
-       live_session_vsn: live_session_vsn
+       live_session_name: live_session_name
      }}
   end
 
@@ -1310,8 +1308,7 @@ defmodule Phoenix.LiveView.Channel do
     %{
       root_view: root_view,
       assign_new: assign_new,
-      live_session_name: live_session_name,
-      live_session_vsn: live_session_vsn
+      live_session_name: live_session_name
     } = session
 
     case sync_with_parent(parent, assign_new) do
@@ -1326,8 +1323,7 @@ defmodule Phoenix.LiveView.Channel do
            lifecycle: lifecycle,
            root_view: root_view,
            live_temp: %{},
-           live_session_name: live_session_name,
-           live_session_vsn: live_session_vsn
+           live_session_name: live_session_name
          }}
 
       {:error, :noproc} ->
