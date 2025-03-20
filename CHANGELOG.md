@@ -118,6 +118,7 @@ generated user module:
 * Fix race condition where patches were discarded when a new navigation was already pending ([#3710](https://github.com/phoenixframework/phoenix_live_view/pull/3710))
 * Fix phx-debounce="blur" re-sending events for subsequent blurs ([#3689](https://github.com/phoenixframework/phoenix_live_view/issues/3689))
 * Fix `code_change` callback not returning the new channel state ([#3712](https://github.com/phoenixframework/phoenix_live_view/pull/3712))
+* Fix LiveViews not being able to reconnect without a full page reload after a deployment that changed the router ([#3715](https://github.com/phoenixframework/phoenix_live_view/pull/3715))
 
 ### Enhancements
 * Improve performance of large forms ([#3696](https://github.com/phoenixframework/phoenix_live_view/pull/3696))
