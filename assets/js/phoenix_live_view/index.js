@@ -12,7 +12,7 @@ import DOM from "./dom"
 import ViewHook from "./view_hook"
 import View from "./view"
 
-if (window["__phxLiveViewLoaded"]) {
+if(window["__phxLiveViewLoaded"]){
   throw new Error("Attempting to initialize LiveView twice. This may happen if LiveView initialization or your app.js file is loaded twice in the same page.")
 }
 window["__phxLiveViewLoaded"] = true

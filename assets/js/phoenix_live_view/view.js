@@ -157,7 +157,7 @@ export default class View {
 
         This could happen if you're accidentally trying to render your root layout more than once.
         Ensure that the template set on the LiveView is different than the root layout.
-      `, { view: DOM.private(this.el, "view") })
+      `, {view: DOM.private(this.el, "view")})
       throw new Error("Cannot bind multiple views to the same DOM element.")
     }
     DOM.putPrivate(this.el, "view", this)

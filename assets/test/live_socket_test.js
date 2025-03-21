@@ -24,8 +24,15 @@ let prepareLiveViewDOM = (document) => {
 }
 
 describe("LiveSocket", () => {
+  let liveSocket
+  
   beforeEach(() => {
     prepareLiveViewDOM(global.document)
+  })
+
+  afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews()
+    liveSocket = null
   })
 
   afterAll(() => {
@@ -33,7 +40,7 @@ describe("LiveSocket", () => {
   })
 
   test("sets defaults", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
     expect(liveSocket.socket).toBeDefined()
     expect(liveSocket.socket.onOpen).toBeDefined()
     expect(liveSocket.viewLogger).toBeUndefined()
@@ -43,7 +50,7 @@ describe("LiveSocket", () => {
   })
 
   test("sets defaults with socket", async () => {
-    let liveSocket = new LiveSocket(new Socket("//example.org/chat"), Socket)
+    liveSocket = new LiveSocket(new Socket("//example.org/chat"), Socket)
     expect(liveSocket.socket).toBeDefined()
     expect(liveSocket.socket.onOpen).toBeDefined()
     expect(liveSocket.unloaded).toBe(false)
@@ -52,27 +59,23 @@ describe("LiveSocket", () => {
   })
 
   test("viewLogger", async () => {
-    let viewLogger = (view, kind, msg, obj) => {
-      expect(view.id).toBe("container1")
-      expect(kind).toBe("updated")
-      expect(msg).toBe("")
-      expect(obj).toBe("\"<div>\"")
-    }
-    let liveSocket = new LiveSocket("/live", Socket, {viewLogger})
+    let viewLogger = jest.fn()
+    liveSocket = new LiveSocket("/live", Socket, {viewLogger})
     expect(liveSocket.viewLogger).toBe(viewLogger)
     liveSocket.connect()
     let view = liveSocket.getViewByEl(container(1))
     liveSocket.log(view, "updated", () => ["", JSON.stringify("<div>")])
+    expect(viewLogger).toHaveBeenCalledWith(view, "updated", "", JSON.stringify("<div>"))
   })
 
   test("connect", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
     let _socket = liveSocket.connect()
     expect(liveSocket.getViewByEl(container(1))).toBeDefined()
   })
 
   test("disconnect", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
     liveSocket.disconnect()
@@ -81,7 +84,7 @@ describe("LiveSocket", () => {
   })
 
   test("channel", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
     let channel = liveSocket.channel("lv:def456", () => {
@@ -92,7 +95,7 @@ describe("LiveSocket", () => {
   })
 
   test("getViewByEl", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
 
@@ -111,7 +114,7 @@ describe("LiveSocket", () => {
     `
     document.body.appendChild(secondLiveView)
 
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
 
     let el = container(1)
@@ -127,25 +130,25 @@ describe("LiveSocket", () => {
   })
 
   test("binding", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     expect(liveSocket.binding("value")).toBe("phx-value")
   })
 
   test("getBindingPrefix", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     expect(liveSocket.getBindingPrefix()).toEqual("phx-")
   })
 
   test("getBindingPrefix custom", async () => {
-    let liveSocket = new LiveSocket("/live", Socket, {bindingPrefix: "company-"})
+    liveSocket = new LiveSocket("/live", Socket, {bindingPrefix: "company-"})
 
     expect(liveSocket.getBindingPrefix()).toEqual("company-")
   })
 
   test("owner", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
 
     let _view = liveSocket.getViewByEl(container(1))
@@ -157,7 +160,7 @@ describe("LiveSocket", () => {
   })
 
   test("getActiveElement default before LiveSocket activeElement is set", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     let input = document.querySelector("input")
     input.focus()
@@ -166,7 +169,7 @@ describe("LiveSocket", () => {
   })
 
   test("blurActiveElement", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     let input = document.querySelector("input")
     input.focus()
@@ -180,7 +183,7 @@ describe("LiveSocket", () => {
   })
 
   test("restorePreviouslyActiveFocus", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     let input = document.querySelector("input")
     input.focus()
@@ -197,7 +200,7 @@ describe("LiveSocket", () => {
   })
 
   test("dropActiveElement unsets prevActive", async () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
 
@@ -219,7 +222,7 @@ describe("LiveSocket", () => {
       getItem: function (_keyName){ getItemCalls = getItemCalls + 1 }
     }
 
-    let liveSocket = new LiveSocket("/live", Socket, {sessionStorage: override})
+    liveSocket = new LiveSocket("/live", Socket, {sessionStorage: override})
     liveSocket.getLatencySim()
 
     // liveSocket constructor reads nav history position from sessionStorage
