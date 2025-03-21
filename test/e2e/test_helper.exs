@@ -139,6 +139,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form/stream", E2E.FormStreamLive
       live "/js", E2E.JsLive
       live "/select", E2E.SelectLive
+      live "/lifecycle", E2E.LifecycleLive
     end
 
     scope "/issues", Phoenix.LiveViewTest.E2E do
