@@ -139,14 +139,14 @@ Hooks.InfiniteScroll = {
 
     let onTopOverrun = this.throttle(throttleInterval, (topEvent, firstChild) => {
       pendingOp = () => true
-      this.liveSocket.execJSHookPush(this.el, topEvent, {id: firstChild.id, _overran: true}, () => {
+      this.liveSocket.js().push(this.el, topEvent, {value: {id: firstChild.id, _overran: true}, callback: () => {
         pendingOp = null
-      })
+      }})
     })
 
     let onFirstChildAtTop = this.throttle(throttleInterval, (topEvent, firstChild) => {
       pendingOp = () => firstChild.scrollIntoView({block: "start"})
-      this.liveSocket.execJSHookPush(this.el, topEvent, {id: firstChild.id}, () => {
+      this.liveSocket.js().push(this.el, topEvent, {value: {id: firstChild.id}, callback: () => {
         pendingOp = null
         // make sure that the DOM is patched by waiting for the next tick
         window.requestAnimationFrame(() => {
@@ -154,12 +154,12 @@ Hooks.InfiniteScroll = {
             firstChild.scrollIntoView({block: "start"})
           }
         })
-      })
+      }})
     })
 
     let onLastChildAtBottom = this.throttle(throttleInterval, (bottomEvent, lastChild) => {
       pendingOp = () => lastChild.scrollIntoView({block: "end"})
-      this.liveSocket.execJSHookPush(this.el, bottomEvent, {id: lastChild.id}, () => {
+      this.liveSocket.js().push(this.el, bottomEvent, {value: {id: lastChild.id}, callback: () => {
         pendingOp = null
         // make sure that the DOM is patched by waiting for the next tick
         window.requestAnimationFrame(() => {
@@ -167,7 +167,7 @@ Hooks.InfiniteScroll = {
             lastChild.scrollIntoView({block: "end"})
           }
         })
-      })
+      }})
     })
 
     this.onScroll = (_e) => {
