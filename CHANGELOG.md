@@ -112,7 +112,12 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
-## 1.0.6 (2025-3-20)
+## 1.0.7 (2025-03-21)
+
+### Bug fixes
+* Fix `_target` parameter being sent incorrectly ([#3719](https://github.com/phoenixframework/phoenix_live_view/pull/3720)).
+
+## 1.0.6 (2025-03-20)
 
 ### Bug fixes
 * Fix race condition where patches were discarded when a new navigation was already pending ([#3710](https://github.com/phoenixframework/phoenix_live_view/pull/3710))
