@@ -781,8 +781,8 @@ defmodule Phoenix.LiveView.Channel do
   defp decode_event_type("form", url_encoded, raw_payload) do
     url_encoded
     |> Plug.Conn.Query.decode()
-    |> decode_merge_target()
     |> maybe_merge_meta(raw_payload)
+    |> decode_merge_target()
   end
 
   defp decode_event_type(_, value, _raw_payload), do: value
