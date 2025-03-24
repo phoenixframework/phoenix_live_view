@@ -740,7 +740,7 @@ export default class View {
         return hook
       } else if(hookName !== null){
         // TODO: probably refactor this whole function
-        const runtimeHook = document.querySelector(`script[data-phx-runtime-hook="${CSS.escape(hookName)}"][bundle="runtime"]`)
+        const runtimeHook = document.querySelector(`script[data-phx-runtime-hook="${CSS.escape(hookName)}"]`)
         if(runtimeHook){
           // if you really want runtime hooks, I
           callbacks = window[`phx_hook_${hookName}`]

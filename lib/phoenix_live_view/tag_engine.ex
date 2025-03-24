@@ -64,11 +64,6 @@ defmodule Phoenix.LiveView.TagEngine do
   @callback annotate_caller(file :: String.t(), line :: integer()) :: String.t() | nil
 
   @doc """
-  Callback invoked to preprocess raw tokens.
-  """
-  @callback token_preprocess(tokens :: list(), opts :: keyword()) :: list()
-
-  @doc """
   Renders a component defined by the given function.
 
   This function is rarely invoked directly by users. Instead, it is used by `~H`
@@ -209,11 +204,7 @@ defmodule Phoenix.LiveView.TagEngine do
     tokens = Tokenizer.finalize(tokens, file, cont, source)
 
     tokens =
-      if function_exported?(state.tag_handler, :token_preprocess, 2) do
-        state.tag_handler.token_preprocess(tokens, file: file, caller: caller)
-      else
-        tokens
-      end
+      Phoenix.LiveView.TagExtractorUtils.process_extracts(tokens, file: file, caller: caller)
 
     token_state =
       state
@@ -761,9 +752,9 @@ defmodule Phoenix.LiveView.TagEngine do
   # HTML element
 
   defp handle_token({:tag, name, attrs, tag_meta} = token, state) do
+    attrs = remove_phx_no_attrs(attrs)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
-    attrs = remove_phx_no_attrs(attrs)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
@@ -1257,7 +1248,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp remove_phx_no_attrs(attrs) do
     for {key, value, meta} <- attrs,
-        key != "phx-no-format" and key != "phx-no-curly-interpolation",
+        key != "phx-no-format" and key != "phx-no-curly-interpolation" and key != ":extract",
         do: {key, value, meta}
   end
 
