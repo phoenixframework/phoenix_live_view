@@ -439,51 +439,9 @@ defmodule Phoenix.LiveViewTest.DOM do
     end
   end
 
-  defp apply_phx_update(type, html_tree, {tag, attrs, appended_children} = node, _streams)
-       when type in ["append", "prepend"] do
-    container_id = attribute(node, "id")
-    verify_phx_update_id!(type, container_id, node)
-    children_before = apply_phx_update_children(html_tree, container_id)
-    existing_ids = apply_phx_update_children_id(type, children_before)
-    new_ids = apply_phx_update_children_id(type, appended_children)
-
-    content_changed? =
-      new_ids != existing_ids
-
-    dup_ids =
-      if content_changed? && new_ids do
-        Enum.filter(new_ids, fn id -> id in existing_ids end)
-      else
-        []
-      end
-
-    {updated_existing_children, updated_appended} =
-      Enum.reduce(dup_ids, {children_before, appended_children}, fn dup_id, {before, appended} ->
-        patched_before =
-          walk(before, fn {tag, _, _} = node ->
-            cond do
-              attribute(node, "id") == dup_id ->
-                new_node = by_id!(appended, dup_id)
-                {tag, attrs(new_node), child_nodes(new_node)}
-
-              true ->
-                node
-            end
-          end)
-
-        {patched_before, Floki.filter_out(appended, "##{dup_id}")}
-      end)
-
-    cond do
-      content_changed? && type == "append" ->
-        {tag, attrs, updated_existing_children ++ updated_appended}
-
-      content_changed? && type == "prepend" ->
-        {tag, attrs, updated_appended ++ updated_existing_children}
-
-      !content_changed? ->
-        {tag, attrs, updated_appended}
-    end
+  defp apply_phx_update(type, _html_tree, _node, _streams) when type in ["append", "prepend"] do
+    raise ArgumentError,
+          "phx-update=#{inspect(type)} has been deprecated before v1.0 and is no longer supported in tests"
   end
 
   defp apply_phx_update("stream", html_tree, {tag, attrs, appended_children} = node, streams) do
