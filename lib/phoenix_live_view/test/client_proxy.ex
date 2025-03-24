@@ -1182,7 +1182,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         {value_inputs, all_inputs} =
           case Enum.into(attrs, %{}) do
             %{"id" => id} ->
-              by_form_id = DOM.all(root, "[form=#{id}]")
+              by_form_id = DOM.filter(root, fn node -> DOM.attribute(node, "form") == id end)
               named_inputs = filtered_inputs(by_form_id)
               named_btns = DOM.filter(by_form_id, fn node -> DOM.tag(node) == "button" end)
 
