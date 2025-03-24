@@ -441,7 +441,7 @@ defmodule Phoenix.LiveViewTest.DOM do
 
   defp apply_phx_update(type, _html_tree, _node, _streams) when type in ["append", "prepend"] do
     raise ArgumentError,
-          "phx-update=#{inspect(type)} has been deprecated before v1.0 and no longer supported in tests"
+          "phx-update=#{inspect(type)} has been deprecated before v1.0 and is no longer supported in tests"
   end
 
   defp apply_phx_update("stream", html_tree, {tag, attrs, appended_children} = node, streams) do
