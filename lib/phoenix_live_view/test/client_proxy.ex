@@ -1179,23 +1179,23 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       tag == "form" ->
         form_inputs = filtered_inputs(node)
 
-        named_inputs =
+        {value_inputs, all_inputs} =
           case Enum.into(attrs, %{}) do
-            %{"id" => id} -> Floki.find(root, "[form=#{id}]")
-            _ -> []
+            %{"id" => id} ->
+              by_form_id = DOM.all(root, "[form=#{id}]")
+              named_inputs = filtered_inputs(by_form_id)
+              named_btns = DOM.filter(by_form_id, fn node -> DOM.tag(node) == "button" end)
+
+              # All inputs including buttons
+              # Remove the named inputs first to remove any possible
+              # duplicates if the child inputs also had a form attribite.
+              value_inputs = (form_inputs -- named_inputs) ++ named_inputs
+              all_inputs = (value_inputs -- named_btns) ++ named_btns
+              {value_inputs, all_inputs}
+
+            _ ->
+              {form_inputs, form_inputs}
           end
-
-        named_btns = DOM.filter(named_inputs, fn node -> DOM.tag(node) == "button" end)
-        named_inputs = filtered_inputs(named_inputs)
-
-        # All inputs including buttons
-        # Remove the named inputs first to remove any possible
-        # duplicates if the child inputs also had a form attribite.
-        all_inputs = (form_inputs -- named_inputs) ++ named_inputs
-        all_inputs = (all_inputs -- named_btns) ++ named_btns
-
-        # All inputs excluding buttons
-        value_inputs = (form_inputs -- named_inputs) ++ named_inputs
 
         defaults = Enum.reduce(value_inputs, Query.decode_init(), &form_defaults/2)
 
