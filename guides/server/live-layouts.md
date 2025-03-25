@@ -1,6 +1,6 @@
 # Live layouts
 
-From Phoenix v1.7, your application is made of two layouts:
+Your LvieView applications can be made of two layouts:
 
   * the root layout - this is a layout used by both LiveView and
     regular views. This layout typically contains the `<html>`
@@ -8,17 +8,18 @@ From Phoenix v1.7, your application is made of two layouts:
     in the root layout will remain the same, even as you live navigate
     across LiveViews. The root layout is typically declared on the
     router with `put_root_layout` and defined as "root.html.heex"
-    in your layouts folder
+    in your layouts folder. It calls `{@inner_content}` to inject the
+    content rendered by the layout
 
   * the app layout - this is the default application layout which
     is rendered on both regular HTTP requests and LiveViews.
-    It defaults to "app.html.heex"
+    It defaults to "app.html.heex". This layout is typically set
+    on `use Phoenix.LiveView, layout: ...` but it has been discouraged
+    in more recent Phoenix versions, in favor of using explicit function
+    components as layouts.
 
 Overall, those layouts are found in `components/layouts` and are
 embedded within `MyAppWeb.Layouts`.
-
-All layouts must call `{@inner_content}` to inject the
-content rendered by the layout.
 
 ## Root layout
 
@@ -30,27 +31,6 @@ is typically defined in your router:
 
 The root layout can also be set via the `:root_layout` option
 in your router via `Phoenix.LiveView.Router.live_session/2`.
-
-## Application layout
-
-The "app.html.heex" layout is rendered with either `@conn` or
-`@socket`. Both Controllers and LiveViews explicitly define
-the default layouts they will use. See the `def controller`
-and `def live_view` definitions in your `MyAppWeb` to learn how
-it is included.
-
-For LiveViews, the default layout can be overridden in two different
-ways for flexibility:
-
-  1. The `:layout` option in `Phoenix.LiveView.Router.live_session/2`,
-     when set, will override the `:layout` option given via
-     `use Phoenix.LiveView`
-
-  2. The `:layout` option returned on mount, via `{:ok, socket, layout: ...}`
-     will override any previously set layout option
-
-The LiveView itself will be rendered inside the layout wrapped by
-the `:container` tag.
 
 ## Updating document title
 
