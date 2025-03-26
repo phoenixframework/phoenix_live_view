@@ -112,7 +112,7 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
-## 1.0.9
+## 1.0.9 (2025-03-26)
 
 ### Bug fixes
 * Fix testing uploads inside nested LiveViews with LiveViewTest ([#3732](https://github.com/phoenixframework/phoenix_live_view/issues/3732))
