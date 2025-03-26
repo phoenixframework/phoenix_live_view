@@ -276,6 +276,31 @@ describe("View + DOM", function(){
     view.pushInput(input, el, null, "validate", {_target: input.name, value: optValue})
   })
 
+  test("pushInput with nameless input", function(){
+    expect.assertions(4)
+
+    let liveSocket = new LiveSocket("/live", Socket)
+    let el = liveViewDOM()
+    let input = el.querySelector("input")
+    input.removeAttribute("name")
+    simulateUsedInput(input)
+    let view = simulateJoinedView(el, liveSocket)
+    let channelStub = {
+      push(_evt, payload, _timeout){
+        expect(payload.type).toBe("form")
+        expect(payload.event).toBeDefined()
+        expect(payload.value).toBe("_unused_note=&note=2")
+        expect(payload.meta).toEqual({"_target": "undefined"})
+        return {
+          receive(){ return this }
+        }
+      }
+    }
+    view.channel = channelStub
+
+    view.pushInput(input, el, null, "validate", {_target: input.name})
+  })
+
   test("getFormsForRecovery", function(){
     let view, html, liveSocket = new LiveSocket("/live", Socket)
 
