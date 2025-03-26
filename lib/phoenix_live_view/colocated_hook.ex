@@ -121,7 +121,7 @@ defmodule Phoenix.LiveView.ColocatedHook do
       hook.opts[:bundle_mode] == :runtime ->
         throw(:noop)
 
-      hook.opts[:bundle_mode] == :current_otp_app and not ColocatedHook.should_bundle?(hook) ->
+      hook.opts[:bundle_mode] == :current_otp_app and not should_bundle?(hook) ->
         throw(:noop)
 
       true ->
@@ -162,10 +162,11 @@ end
 
 defimpl Phoenix.LiveView.TagExtractor, for: Phoenix.LiveView.ColocatedHook do
   alias Phoenix.LiveView.ColocatedHook
+  alias Phoenix.LiveView.TagExtractorUtils
 
   def extract(
         %Phoenix.LiveView.ColocatedHook{opts: opts} = hook,
-        attributes,
+        token,
         text_content,
         meta
       ) do
@@ -179,8 +180,8 @@ defimpl Phoenix.LiveView.TagExtractor, for: Phoenix.LiveView.ColocatedHook do
         }
         """
 
-        {:keep, Map.put(attributes, "data-phx-runtime-hook", {:string, hashed_name}), new_content,
-         %{hashed_name: hashed_name}}
+        token = TagExtractorUtils.set_attribute(token, "data-phx-runtime-hook", hashed_name)
+        {:keep, token, new_content, %{hashed_name: hashed_name}}
 
       :current_otp_app ->
         if ColocatedHook.should_bundle?(hook) do
@@ -199,32 +200,12 @@ defimpl Phoenix.LiveView.TagExtractor, for: Phoenix.LiveView.ColocatedHook do
         %{hashed_name: hashed_name},
         tokens
       ) do
-    Enum.map(tokens, fn
-      {:tag, name, attrs, meta} ->
-        {:tag, name, rewrite_hook_attrs(hook_name, hashed_name, attrs), meta}
-
-      {:local_component, name, attrs, meta} ->
-        {:local_component, name, rewrite_hook_attrs(hook_name, hashed_name, attrs), meta}
-
-      {:remote_component, name, attrs, meta} ->
-        {:remote_component, name, rewrite_hook_attrs(hook_name, hashed_name, attrs), meta}
-
-      other ->
-        other
+    TagExtractorUtils.map_tokens(tokens, fn token ->
+      TagExtractorUtils.replace_attribute(token, "phx-hook", hook_name, hashed_name)
     end)
   end
 
   def postprocess_tokens(_hook, _state, tokens), do: tokens
-
-  defp rewrite_hook_attrs(name, hashed_name, attrs) do
-    Enum.map(attrs, fn
-      {"phx-hook", {:string, ^name, meta1}, meta2} ->
-        {"phx-hook", {:string, hashed_name, meta1}, meta2}
-
-      {attr, value, meta} ->
-        {attr, value, meta}
-    end)
-  end
 
   def prune(hook, %{hashed_name: hashed_name}) do
     ColocatedHook.prune(hook, hashed_name)

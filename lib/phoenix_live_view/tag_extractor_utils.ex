@@ -1,104 +1,119 @@
 defmodule Phoenix.LiveView.TagExtractorUtils do
-  # TODO: make public for attribute helper?
-  @moduledoc false
+  @moduledoc """
+  Useful functions for implementors of `Phoenix.LiveView.TagExtractor`.
+  """
 
-  def attribute(key, value) when is_binary(value) do
-    {key, {:string, value, %{delimiter: ?", line: 0, column: 0}}, %{line: 0, column: 0}}
+  @opaque tokens :: list(token())
+  @opaque token ::
+            {any(), binary(), list(attribute()), map()}
+            | {:close, any(), binary(), map()}
+            | {:text, binary(), map()}
+  @opaque attribute :: {binary(), {atom(), any(), map()}, map()}
+
+  defguardp is_tag_or_component(node)
+            when is_tuple(node) and elem(node, 0) in [:tag, :local_component, :remote_component]
+
+  @doc """
+  Maps over the tokens and invokes the given function for each token.
+  """
+  @spec map_tokens(tokens(), (token() -> token())) :: tokens()
+  def map_tokens(tokens, fun) when is_function(fun, 1) do
+    Enum.flat_map(tokens, fn token ->
+      case fun.(token) do
+        :drop -> []
+        token -> [token]
+      end
+    end)
   end
 
-  def process_extracts(tokens, opts) do
-    file = Keyword.fetch!(opts, :file)
-    caller = Keyword.fetch!(opts, :caller)
-    module = caller.module
+  @doc """
+  Returns a map of attributes from a node.
 
-    {extracts, tokens} =
-      process_extracts(tokens, %{module: module, file: file, env: caller}, {[], []})
+  ## Examples
 
-    tokens = Enum.reverse(tokens)
+      iex> attributes(node)
+      %{"class" => {:string, "foo"}, "id" => {:expr, ...}}
 
-    if extracts == %{} do
-      tokens
-    else
-      maybe_apply_rewrites(extracts, tokens)
-    end
+  """
+  @spec attributes(token()) :: map()
+  def attributes(token) when is_tag_or_component(token) do
+    {_, _, attrs, _} = token
+
+    for {name, {type, value, _}, _} <- attrs,
+        into: %{},
+        do: {name, {type, value}}
   end
 
-  defp process_extracts(
-         [
-           {:tag, name, attrs, %{extract: extract} = start_meta} = _start,
-           {:text, text, text_meta} = _content,
-           {:close, :tag, name, _} = end_ | rest
-         ],
-         meta,
-         {extracts, tokens_acc}
-       )
-       when not is_nil(extract) do
-    {data, _} = Code.eval_string(extract, [], meta.env)
-    %{line: line, column: column} = start_meta
-    new_meta = Map.merge(meta, %{line: line, column: column})
+  def attributes(_token, _key), do: nil
 
-    case Phoenix.LiveView.TagExtractor.extract(data, attrs_to_map(attrs), text, new_meta) do
-      {:keep, attributes, new_content, state} ->
-        Module.put_attribute(meta.module, :__extracts__, {data, state})
-
-        process_extracts(
-          rest,
-          meta,
-          {[{data, state} | extracts],
-           [
-             end_,
-             {:text, new_content, text_meta},
-             {:tag, name, map_to_attrs(attributes), start_meta} | tokens_acc
-           ]}
-        )
-
-      {:drop, state} ->
-        Module.put_attribute(meta.module, :__extracts__, {data, state})
-        process_extracts(rest, meta, {[{data, state} | extracts], tokens_acc})
-
-      other ->
-        raise ArgumentError,
-              "extract must return either {:keep, attributes, new_content, any} or {:drop, any}, got:\n\n#{inspect(other)}"
-    end
+  @doc """
+  Removes an attribute from a node.
+  """
+  def drop_attribute(token, key) when is_tag_or_component(token) do
+    {type, name, attrs, meta} = token
+    {type, name, Enum.reject(attrs, fn {k, _, _} -> k == key end), meta}
   end
 
-  # if the first clause did not match (tag open, text, close),
-  # this means that there is interpolation inside the tag, which is not supported
-  defp process_extracts(
-         [{:tag, _name, attrs, %{extract: extract} = _meta} = start | rest],
-         meta,
-         {extracts, tokens_acc}
-       )
-       when not is_nil(extract) do
-    if Enum.find(attrs, &match?({"type", {:string, "text/phx-hook", _}, _}, &1)) do
-      # TODO: nice error message
-      raise ArgumentError,
-            "interpolation inside a tag with :extract attribute is not supported"
-    else
-      process_extracts(rest, meta, {extracts, [start | tokens_acc]})
-    end
+  def drop_attribute(_token, _key), do: nil
+
+  @doc """
+  Replaces an attribute with a new value, if it is set.
+  """
+  def replace_attribute(token, key, value) when is_binary(value) and is_tag_or_component(token) do
+    {type, name, attrs, meta} = token
+
+    {type, name,
+     Enum.map(attrs, fn
+       {^key, {_t, _v, m1}, m2} -> {key, {:string, value, m1}, m2}
+       attr -> attr
+     end), meta}
   end
 
-  defp process_extracts([token | rest], meta, {extracts, tokens_acc}),
-    do: process_extracts(rest, meta, {extracts, [token | tokens_acc]})
-
-  defp process_extracts([], _meta, acc), do: acc
-
-  # TODO: in postprocess_tokens we expose the attributes from the tokenizer directly
-  #       either we do this here as well, or we find a better way for postprocess_tokens
-  defp attrs_to_map(attrs) do
-    for {name, {type, value, _}, _} <- attrs, into: %{}, do: {name, {type, value}}
+  def replace_attribute(_token, _key, value) when not is_binary(value) do
+    raise ArgumentError, "value must be a binary, got: #{inspect(value)}"
   end
 
-  defp map_to_attrs(map) do
-    for {name, {type, value}} <- map,
-        into: [],
-        do: {name, {type, value, %{delimiter: ?", line: 0, column: 0}}, %{line: 0, column: 0}}
+  def replace_attribute(token, _key, _value), do: token
+
+  @doc """
+  Replaces an attribute with a new value, if it is set.
+  """
+  def replace_attribute(token, key, existing_string_value, new_string_value)
+      when is_binary(existing_string_value) and is_binary(new_string_value) and
+             is_tag_or_component(token) do
+    {type, name, attrs, meta} = token
+
+    {type, name,
+     Enum.map(attrs, fn
+       {^key, {:string, ^existing_string_value, m1}, m2} ->
+         {key, {:string, new_string_value, m1}, m2}
+
+       attr ->
+         attr
+     end), meta}
   end
 
-  defp maybe_apply_rewrites(extracts, tokens) do
-    for {data, state} <- extracts, reduce: tokens do
-      acc -> Phoenix.LiveView.TagExtractor.postprocess_tokens(data, state, acc)
-    end
+  def replace_attribute(token, _key, _existing_value, _new_value)
+      when is_tag_or_component(token) do
+    raise ArgumentError, "existing and new values must be a binaries"
   end
+
+  def replace_attribute(token, _key, _existing_value, _new_value), do: token
+
+  @doc """
+  Sets an attribute on a node. Only supports string values.
+
+  If an existing attribute is set, it will be removed first.
+  """
+  def set_attribute(token, key, value) when is_binary(value) and is_tag_or_component(token) do
+    {type, name, attrs, meta} = drop_attribute(token, key)
+
+    {type, name,
+     [
+       {key, {:string, value, %{delimiter: ?", line: 0, column: 0}}, %{line: 0, column: 0}}
+       | attrs
+     ], meta}
+  end
+
+  def set_attribute(token, _key, _value), do: token
 end

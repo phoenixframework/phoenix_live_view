@@ -133,6 +133,26 @@ defmodule Phoenix.LiveView.Tokenizer do
     end
   end
 
+  @doc """
+  Processes any extracts in the given tokens.
+  """
+  def process_extracts(tokens, opts) do
+    file = Keyword.fetch!(opts, :file)
+    caller = Keyword.fetch!(opts, :caller)
+    module = caller.module
+
+    {extracts, tokens} =
+      process_extracts(tokens, %{module: module, file: file, env: caller}, {[], []})
+
+    tokens = Enum.reverse(tokens)
+
+    if extracts == [] do
+      tokens
+    else
+      maybe_apply_rewrites(extracts, tokens)
+    end
+  end
+
   ## handle_text
 
   defp handle_text("\r\n" <> rest, line, _column, buffer, acc, state) do
@@ -895,5 +915,72 @@ defmodule Phoenix.LiveView.Tokenizer do
       line: meta.line,
       column: meta.column,
       description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
+  end
+
+  defp process_extracts(
+         [
+           {:tag, name, _attrs, %{extract: extract} = start_meta} = start_token,
+           {:text, text, text_meta} = _content,
+           {:close, :tag, name, _} = end_ | rest
+         ],
+         meta,
+         {extracts, tokens_acc}
+       )
+       when not is_nil(extract) do
+    {data, _} = Code.eval_string(extract, [], meta.env)
+    %{line: line, column: column} = start_meta
+    new_meta = Map.merge(meta, %{line: line, column: column})
+
+    case Phoenix.LiveView.TagExtractor.extract(data, start_token, text, new_meta) do
+      {:keep, new_token, new_content, state} ->
+        Module.put_attribute(meta.module, :__extracts__, {data, state})
+
+        process_extracts(
+          rest,
+          meta,
+          {[{data, state} | extracts],
+           [
+             end_,
+             {:text, new_content, text_meta},
+             new_token | tokens_acc
+           ]}
+        )
+
+      {:drop, state} ->
+        Module.put_attribute(meta.module, :__extracts__, {data, state})
+        process_extracts(rest, meta, {[{data, state} | extracts], tokens_acc})
+
+      other ->
+        raise ArgumentError,
+              "extract must return either {:keep, attributes, new_content, any} or {:drop, any}, got:\n\n#{inspect(other)}"
+    end
+  end
+
+  # if the first clause did not match (tag open, text, close),
+  # this means that there is interpolation inside the tag, which is not supported
+  defp process_extracts(
+         [{:tag, _name, attrs, %{extract: extract} = _meta} = start | rest],
+         meta,
+         {extracts, tokens_acc}
+       )
+       when not is_nil(extract) do
+    if Enum.find(attrs, &match?({"type", {:string, "text/phx-hook", _}, _}, &1)) do
+      # TODO: nice error message
+      raise ArgumentError,
+            "interpolation inside a tag with :extract attribute is not supported"
+    else
+      process_extracts(rest, meta, {extracts, [start | tokens_acc]})
+    end
+  end
+
+  defp process_extracts([token | rest], meta, {extracts, tokens_acc}),
+    do: process_extracts(rest, meta, {extracts, [token | tokens_acc]})
+
+  defp process_extracts([], _meta, acc), do: acc
+
+  defp maybe_apply_rewrites(extracts, tokens) do
+    for {data, state} <- extracts, reduce: tokens do
+      acc -> Phoenix.LiveView.TagExtractor.postprocess_tokens(data, state, acc)
+    end
   end
 end
