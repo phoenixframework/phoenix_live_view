@@ -298,11 +298,19 @@ export default class DOMPatch {
 
       // clear stream items from the dead render if they are not inserted again
       if(isJoinPatch){
-        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
-          Array.from(el.children).forEach(child => {
-            this.removeStreamChildElement(child)
+        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`)
+          // it is important to filter the element before removing them, as
+          // it may happen that streams are nested and the owner check fails if
+          // a parent is removed before a child
+          .filter(el => this.view.ownsElement(el))
+          .forEach(el => {
+            Array.from(el.children).forEach(child => {
+              // we already performed the owner check, each child is guaranteed to be owned
+              // by the view. To prevent the nested owner check from failing in case of nested
+              // streams where the parent is removed before the child, we force the removal
+              this.removeStreamChildElement(child, true)
+            })
           })
-        })
       }
 
       morph.call(this, targetContainer, html)
@@ -356,11 +364,11 @@ export default class DOMPatch {
     }
   }
 
-  removeStreamChildElement(child){
+  removeStreamChildElement(child, force=false){
     // make sure to only remove elements owned by the current view
     // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
     // and https://github.com/phoenixframework/phoenix_live_view/issues/3681
-    if(!this.view.ownsElement(child)){ return }
+    if(!force && !this.view.ownsElement(child)){ return }
 
     // we need to store the node if it is actually re-added in the same patch
     // we do NOT want to execute phx-remove, we do NOT want to call onNodeDiscarded
