@@ -250,6 +250,19 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> elem(1)
   end
 
+  @doc """
+  Removes stream children from the given HTML tree.
+  """
+  def remove_stream_children(html_tree) do
+    walk(html_tree, fn {tag, attrs, children} = node ->
+      if attribute(node, "phx-update") == "stream" do
+        {tag, attrs, []}
+      else
+        {tag, attrs, children}
+      end
+    end)
+  end
+
   # Diff merging
 
   def merge_diff(rendered, diff) do
