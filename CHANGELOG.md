@@ -112,6 +112,15 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.8 (2025-03-26)
+
+### Bug fixes 
+* Regression: ensure `_target` is sent as `["undefined"]` when an input has no name ([#3727](https://github.com/phoenixframework/phoenix_live_view/issues/3727))
+* Fix stream items from disconnected render not being removed when rendered inside a nested stream ([#3730](https://github.com/phoenixframework/phoenix_live_view/pull/3730))
+
+### Enhancements
+* Add `Phoenix.LiveViewTest.refute_redirected/1` to assert that no redirect took place ([#3729](https://github.com/phoenixframework/phoenix_live_view/pull/3729))
+
 ## 1.0.7 (2025-03-21)
 
 ### Bug fixes
