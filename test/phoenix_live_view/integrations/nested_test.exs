@@ -200,6 +200,22 @@ defmodule Phoenix.LiveView.NestedTest do
           assert %ArgumentError{message: message} = e
           assert message =~ "not to redirect to"
       end
+
+      send(
+        clock_view.pid,
+        {:run,
+         fn socket ->
+           {:noreply, LiveView.push_navigate(socket, to: "/any_url")}
+         end}
+      )
+
+      try do
+        refute_redirected(thermo_view)
+      rescue
+        e ->
+          assert %ArgumentError{message: message} = e
+          assert message =~ "not to redirect, but got a redirect to /any_url"
+      end
     end
 
     @tag session: %{nest: []}
