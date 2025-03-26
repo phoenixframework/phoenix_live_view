@@ -77,6 +77,7 @@ defmodule Phoenix.LiveView.Tokenizer do
       file: file,
       column_offset: indentation + 1,
       braces: :enabled,
+      extract: nil,
       context: [],
       source: source,
       indentation: indentation,
@@ -115,10 +116,40 @@ defmodule Phoenix.LiveView.Tokenizer do
     column = Keyword.get(meta, :column, 1)
 
     case cont do
-      {:text, braces} -> handle_text(text, line, column, [], tokens, %{state | braces: braces})
-      :style -> handle_style(text, line, column, [], tokens, state)
-      :script -> handle_script(text, line, column, [], tokens, state)
-      {:comment, _, _} -> handle_comment(text, line, column, [], tokens, state)
+      {:text, braces} ->
+        handle_text(text, line, column, [], tokens, %{state | braces: braces})
+
+      {:extract, extract} ->
+        handle_extract(text, line, column, [], tokens, %{state | extract: extract})
+
+      :style ->
+        handle_style(text, line, column, [], tokens, state)
+
+      :script ->
+        handle_script(text, line, column, [], tokens, state)
+
+      {:comment, _, _} ->
+        handle_comment(text, line, column, [], tokens, state)
+    end
+  end
+
+  @doc """
+  Processes any extracts in the given tokens.
+  """
+  def process_extracts(tokens, opts) do
+    file = Keyword.fetch!(opts, :file)
+    caller = Keyword.fetch!(opts, :caller)
+    module = caller.module
+
+    {extracts, tokens} =
+      process_extracts(tokens, %{module: module, file: file, env: caller}, {[], []})
+
+    tokens = Enum.reverse(tokens)
+
+    if extracts == [] do
+      tokens
+    else
+      maybe_apply_rewrites(extracts, tokens)
     end
   end
 
@@ -258,6 +289,85 @@ defmodule Phoenix.LiveView.Tokenizer do
     ok(text_to_acc(buffer, acc, line, column, []), :style)
   end
 
+  ## handle_extract
+
+  defp handle_extract("<!" <> rest, line, column, buffer, acc, state) do
+    handle_extract(rest, line, column + 2, ["<!" | buffer], acc, state)
+  end
+
+  defp handle_extract("</" <> rest, line, column, buffer, acc, state) do
+    case {handle_tag_name(rest, column, []), state.extract} do
+      {{:ok, name, new_column, ">" <> rest}, 1} ->
+        meta = %{
+          line: line,
+          column: column - 2,
+          inner_location: {line, column - 2},
+          tag_name: name
+        }
+
+        acc = [{:close, :tag, name, meta} | text_to_acc(buffer, acc, line, column, [])]
+        handle_text(rest, line, new_column + 1, [], acc, pop_extract(state))
+
+      {{:ok, name, new_column, ">" <> rest}, _} ->
+        handle_extract(
+          rest,
+          line,
+          new_column + 1,
+          ["</#{name}>" | buffer],
+          acc,
+          pop_extract(state)
+        )
+
+      {{:ok, _, new_column, _}, _} ->
+        message = "expected closing `>`"
+        meta = %{line: line, column: new_column}
+        raise_syntax_error!(message, meta, state)
+
+      {:error, _} ->
+        message = "expected tag name after </"
+        meta = %{line: line, column: column}
+        raise_syntax_error!(message, meta, state)
+    end
+  end
+
+  defp handle_extract("<" <> rest, line, column, buffer, acc, state) do
+    case handle_tag_name(rest, column, []) do
+      {:ok, name, new_column, rest} ->
+        handle_extract(
+          rest,
+          line,
+          new_column + 1,
+          ["<#{name}" | buffer],
+          acc,
+          push_extract(state)
+        )
+
+      :error ->
+        message =
+          "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
+
+        meta = %{line: line, column: column}
+
+        raise_syntax_error!(message, meta, state)
+    end
+  end
+
+  defp handle_extract("\r\n" <> rest, line, _column, buffer, acc, state) do
+    handle_extract(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
+  end
+
+  defp handle_extract("\n" <> rest, line, _column, buffer, acc, state) do
+    handle_extract(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
+  end
+
+  defp handle_extract(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
+    handle_extract(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
+  end
+
+  defp handle_extract(<<>>, line, column, buffer, acc, state) do
+    ok(text_to_acc(buffer, acc, line, column, []), {:extract, state.extract})
+  end
+
   ## handle_comment
 
   defp handle_comment(rest, line, column, buffer, acc, state) do
@@ -337,7 +447,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
           {type, name} ->
             acc = [{:close, type, name, meta} | acc]
-            handle_text(rest, line, new_column + 1, [], acc, pop_braces(state))
+            handle_text(rest, line, new_column + 1, [], acc, state |> pop_braces())
         end
 
       {:ok, _, new_column, _} ->
@@ -377,6 +487,11 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   ## handle_maybe_tag_open_end
 
+  defp handle_maybe_tag_open_end(text, line, column, acc, %{extract: extract} = state)
+       when extract != nil do
+    handle_extract(text, line, column, [], acc, state)
+  end
+
   defp handle_maybe_tag_open_end("\r\n" <> rest, line, _column, acc, state) do
     handle_maybe_tag_open_end(rest, line + 1, state.column_offset, acc, state)
   end
@@ -402,6 +517,9 @@ defmodule Phoenix.LiveView.Tokenizer do
 
       [{:tag, "style", _, _} | _] = acc ->
         handle_style(rest, line, column + 1, [], acc, state)
+
+      [{:tag, _name, _, %{extract: extract}} | _] = acc when not is_nil(extract) ->
+        handle_extract(rest, line, column + 1, [], acc, push_extract(state))
 
       acc ->
         handle_text(rest, line, column + 1, [], acc, push_braces(state))
@@ -629,6 +747,17 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   ## handle_interpolation
 
+  defp handle_interpolation(_rest, line, column, _buffer, _braces, %{extract: extract} = state)
+       when extract != nil do
+    # note that this does not catch EEx interpolation;
+    # we check it inside the TagExtractorUtils
+    raise_syntax_error!(
+      "cannot interpolate inside a tag with :extract attribute",
+      %{line: line, column: column},
+      state
+    )
+  end
+
   defp handle_interpolation("\r\n" <> rest, line, _column, buffer, braces, state) do
     handle_interpolation(rest, line + 1, state.column_offset, ["\r\n" | buffer], braces, state)
   end
@@ -712,20 +841,60 @@ defmodule Phoenix.LiveView.Tokenizer do
   defp pop_braces(%{braces: 1} = state), do: %{state | braces: :enabled}
   defp pop_braces(%{braces: braces} = state), do: %{state | braces: braces - 1}
 
+  defp push_extract(%{extract: nil} = state), do: %{state | extract: 1}
+  defp push_extract(%{extract: extract} = state), do: %{state | extract: extract + 1}
+
+  defp pop_extract(%{extract: nil} = state), do: state
+  defp pop_extract(%{extract: 1} = state), do: %{state | extract: nil}
+  defp pop_extract(%{extract: extract} = state), do: %{state | extract: extract - 1}
+
   defp put_attr([{type, name, attrs, meta} | acc], attr, attr_meta, value) do
     attrs = [{attr, value, attr_meta} | attrs]
     [{type, name, attrs, meta} | acc]
   end
 
   defp normalize_tag([{type, name, attrs, meta} | acc], line, column, self_close?, state) do
-    attrs = Enum.reverse(attrs)
+    {attrs, extract} =
+      for attr <- attrs, reduce: {[], nil} do
+        {acc, extract} ->
+          case attr do
+            {":extract", {:expr, code, _}, _meta} = attr ->
+              {[attr | acc], code}
+
+            {":extract", _, _} ->
+              raise_syntax_error!(
+                ":extract attribute must be an expression",
+                %{line: line, column: column},
+                state
+              )
+
+            _ ->
+              {[attr | acc], extract}
+          end
+      end
+
     meta = %{meta | inner_location: {line, column}}
 
     meta =
       cond do
-        type == :tag and state.tag_handler.void?(name) -> Map.put(meta, :closing, :void)
-        self_close? -> Map.put(meta, :closing, :self)
-        true -> meta
+        type == :tag and state.tag_handler.void?(name) ->
+          Map.put(meta, :closing, :void)
+
+        self_close? && extract != nil ->
+          raise_syntax_error!(
+            ":extract is not allowed on self-closing tags",
+            %{line: line, column: column},
+            state
+          )
+
+        self_close? ->
+          Map.put(meta, :closing, :self)
+
+        extract != nil ->
+          Map.put(meta, :extract, extract)
+
+        true ->
+          meta
       end
 
     [{type, name, attrs, meta} | acc]
@@ -746,5 +915,72 @@ defmodule Phoenix.LiveView.Tokenizer do
       line: meta.line,
       column: meta.column,
       description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
+  end
+
+  defp process_extracts(
+         [
+           {:tag, name, _attrs, %{extract: extract} = start_meta} = start_token,
+           {:text, text, text_meta} = _content,
+           {:close, :tag, name, _} = end_ | rest
+         ],
+         meta,
+         {extracts, tokens_acc}
+       )
+       when not is_nil(extract) do
+    {data, _} = Code.eval_string(extract, [], meta.env)
+    %{line: line, column: column} = start_meta
+    new_meta = Map.merge(meta, %{line: line, column: column})
+
+    case Phoenix.LiveView.TagExtractor.extract(data, start_token, text, new_meta) do
+      {:keep, new_token, new_content, state} ->
+        Module.put_attribute(meta.module, :__extracts__, {data, state})
+
+        process_extracts(
+          rest,
+          meta,
+          {[{data, state} | extracts],
+           [
+             end_,
+             {:text, new_content, text_meta},
+             new_token | tokens_acc
+           ]}
+        )
+
+      {:drop, state} ->
+        Module.put_attribute(meta.module, :__extracts__, {data, state})
+        process_extracts(rest, meta, {[{data, state} | extracts], tokens_acc})
+
+      other ->
+        raise ArgumentError,
+              "extract must return either {:keep, attributes, new_content, any} or {:drop, any}, got:\n\n#{inspect(other)}"
+    end
+  end
+
+  # if the first clause did not match (tag open, text, close),
+  # this means that there is interpolation inside the tag, which is not supported
+  defp process_extracts(
+         [{:tag, _name, attrs, %{extract: extract} = _meta} = start | rest],
+         meta,
+         {extracts, tokens_acc}
+       )
+       when not is_nil(extract) do
+    if Enum.find(attrs, &match?({"type", {:string, "text/phx-hook", _}, _}, &1)) do
+      # TODO: nice error message
+      raise ArgumentError,
+            "interpolation inside a tag with :extract attribute is not supported"
+    else
+      process_extracts(rest, meta, {extracts, [start | tokens_acc]})
+    end
+  end
+
+  defp process_extracts([token | rest], meta, {extracts, tokens_acc}),
+    do: process_extracts(rest, meta, {extracts, [token | tokens_acc]})
+
+  defp process_extracts([], _meta, acc), do: acc
+
+  defp maybe_apply_rewrites(extracts, tokens) do
+    for {data, state} <- extracts, reduce: tokens do
+      acc -> Phoenix.LiveView.TagExtractor.postprocess_tokens(data, state, acc)
+    end
   end
 end
