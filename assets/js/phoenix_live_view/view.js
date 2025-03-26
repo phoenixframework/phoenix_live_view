@@ -1214,7 +1214,14 @@ export default class View {
       type: "form",
       event: phxEvent,
       value: formData,
-      meta: {_target: opts._target, ...meta},
+      meta: {
+        // no target was implicitly sent as "undefined" in LV <= 1.0.5, therefore
+        // we have to keep it. In 1.0.6 we switched from passing meta as URL encoded data
+        // to passing it directly in the event, but the JSON encode would drop keys with
+        // undefined values.
+        _target: opts._target || "undefined",
+        ...meta
+      },
       uploads: uploads,
       cid: cid
     }
