@@ -11,7 +11,7 @@ defmodule Phoenix.LiveViewTest.Support.UploadLive do
     <% end %>
     <form phx-change="validate" phx-submit="save">
       <%= for entry <- @uploads.avatar.entries do %>
-        lv:{entry.client_name}:{entry.progress}%
+        {@prefix}:{entry.client_name}:{entry.progress}%
         channel:{inspect(Phoenix.LiveView.UploadConfig.entry_pid(@uploads.avatar, entry))}
         <%= for msg <- upload_errors(@uploads.avatar) do %>
           config_error:{inspect(msg)}
@@ -35,8 +35,14 @@ defmodule Phoenix.LiveViewTest.Support.UploadLive do
     """
   end
 
-  def mount(_params, _session, socket) do
-    {:ok, assign(socket, preflights: [], consumed: [])}
+  def mount(_params, session, socket) do
+    prefix =
+      case session do
+        %{"prefix" => prefix} -> prefix
+        _ -> "lv"
+      end
+
+    {:ok, assign(socket, preflights: [], consumed: [], prefix: prefix)}
   end
 
   def handle_call({:setup, setup_func}, _from, socket) do
@@ -75,6 +81,23 @@ defmodule Phoenix.LiveViewTest.Support.UploadLive do
   end
 
   def proxy_pid(%{proxy: {_ref, _topic, pid}}), do: pid
+end
+
+defmodule Phoenix.LiveViewTest.Support.NestedUploadLive do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~H"""
+    {live_render(@socket, Phoenix.LiveViewTest.Support.UploadLive,
+      id: "upload",
+      session: %{"prefix" => "nested_lv"}
+    )}
+    """
+  end
+
+  def mount(_params, _session, socket) do
+    {:ok, socket}
+  end
 end
 
 defmodule Phoenix.LiveViewTest.Support.UploadComponent do
