@@ -116,6 +116,7 @@ var LiveView = (() => {
   var PHX_UPDATE = "update";
   var PHX_STREAM = "stream";
   var PHX_STREAM_REF = "data-phx-stream";
+  var PHX_RUNTIME_HOOK = "data-phx-runtime-hook";
   var PHX_KEY = "key";
   var PHX_PRIVATE = "phxPrivate";
   var PHX_AUTO_RECOVER = "auto-recover";
@@ -2135,6 +2136,23 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
               this.trackAfter("phxChildAdded", el);
             }
+            if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
+              const name = el.getAttribute(PHX_RUNTIME_HOOK);
+              let nonce = el.hasAttribute("nonce") ? el.getAttribute("nonce") : null;
+              if (el.hasAttribute("nonce")) {
+                const template = document.createElement("template");
+                template.innerHTML = source;
+                nonce = template.content.querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`).getAttribute("nonce");
+              }
+              const script = document.createElement("script");
+              script.textContent = el.textContent;
+              dom_default.mergeAttrs(script, el, { isIgnored: false });
+              if (nonce) {
+                script.nonce = nonce;
+              }
+              el.replaceWith(script);
+              el = script;
+            }
             added.push(el);
           },
           onNodeDiscarded: (el) => this.onNodeDiscarded(el),
@@ -3984,7 +4002,25 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           this.viewHooks[ViewHook.elementID(hook.el)] = hook;
           return hook;
         } else if (hookName !== null) {
-          logError(`unknown hook found for "${hookName}"`, el);
+          const runtimeHook = document.querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(hookName)}"]`);
+          if (runtimeHook) {
+            callbacks = window[`phx_hook_${hookName}`];
+            if (callbacks && typeof callbacks === "function") {
+              callbacks = callbacks();
+              if (callbacks && typeof callbacks === "object") {
+                if (!el.id) {
+                  logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el);
+                }
+                let hook = new ViewHook(this, el, callbacks);
+                this.viewHooks[ViewHook.elementID(hook.el)] = hook;
+                return hook;
+              } else {
+                logError("runtime hook must return an object with hook callbacks", runtimeHook);
+              }
+            }
+          } else {
+            logError(`unknown hook found for "${hookName}"`, el);
+          }
         }
       }
     }
