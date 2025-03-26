@@ -91,6 +91,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     # because the live_module assign was set.
     root_html = DOM.parse(response_html, fn msg -> send(self(), {:test_error, msg}) end)
 
+    # clear stream elements from static render
+    root_html = DOM.remove_stream_children(root_html)
+
     {id, session_token, static_token, redirect_url} =
       case Map.fetch(opts, :live_redirect) do
         {:ok, {id, session_token, static_token}} ->
