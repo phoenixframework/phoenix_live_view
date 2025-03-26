@@ -2212,9 +2212,9 @@ var DOMPatch = class {
         });
       });
       if (isJoinPatch) {
-        dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, (el) => {
+        dom_default.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`).filter((el) => this.view.ownsElement(el)).forEach((el) => {
           Array.from(el.children).forEach((child) => {
-            this.removeStreamChildElement(child);
+            this.removeStreamChildElement(child, true);
           });
         });
       }
@@ -2259,8 +2259,8 @@ var DOMPatch = class {
       return false;
     }
   }
-  removeStreamChildElement(child) {
-    if (!this.view.ownsElement(child)) {
+  removeStreamChildElement(child, force = false) {
+    if (!force && !this.view.ownsElement(child)) {
       return;
     }
     if (this.streamInserts[child.id]) {
