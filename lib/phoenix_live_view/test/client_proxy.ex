@@ -609,7 +609,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     ping!(view.pid, state, fn ->
       # if we target a child view, we ping the root view as well
       if view.pid !== state.root_view.pid do
-        ping!(view.root_pid, state, fn ->
+        ping!(state.root_view.pid, state, fn ->
           {:reply, :ok, state}
         end)
       else
