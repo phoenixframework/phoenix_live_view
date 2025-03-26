@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
 
   alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.UploadClient
-  alias Phoenix.LiveViewTest.Support.{UploadLive, UploadLiveWithComponent}
+  alias Phoenix.LiveViewTest.Support.{UploadLive, NestedUploadLive, UploadLiveWithComponent}
 
   @endpoint Phoenix.LiveViewTest.Support.Endpoint
 
@@ -55,6 +55,14 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     {:ok, lv, _} = live_isolated(conn, UploadLive, session: %{})
     :ok = GenServer.call(lv.pid, {:setup, setup})
     {:ok, lv}
+  end
+
+  def mount_nested_lv(setup) when is_function(setup, 1) do
+    conn = Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})
+    {:ok, lv, _} = live_isolated(conn, NestedUploadLive, session: %{})
+    nested_lv = find_live_child(lv, "upload")
+    :ok = GenServer.call(nested_lv.pid, {:setup, setup})
+    {:ok, nested_lv}
   end
 
   def mount_lv_with_component(setup) when is_function(setup, 1) do
@@ -149,6 +157,15 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     {:ok, lv: lv}
   end
 
+  defp setup_nested_lv(%{allow: opts}) do
+    opts = opts_for_allow_upload(opts)
+
+    {:ok, lv} =
+      mount_nested_lv(fn socket -> Phoenix.LiveView.allow_upload(socket, :avatar, opts) end)
+
+    {:ok, lv: lv}
+  end
+
   defp setup_component(%{allow: opts}) do
     opts = opts_for_allow_upload(opts)
 
@@ -173,7 +190,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
     end
   end
 
-  for context <- [:lv, :component] do
+  for context <- [:lv, :nested_lv, :component] do
     @context context
 
     describe "#{@context} with valid token" do
