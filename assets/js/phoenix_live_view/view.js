@@ -739,7 +739,25 @@ export default class View {
         this.viewHooks[ViewHook.elementID(hook.el)] = hook
         return hook
       } else if(hookName !== null){
-        logError(`unknown hook found for "${hookName}"`, el)
+        // TODO: probably refactor this whole function
+        const runtimeHook = document.querySelector(`script[data-phx-runtime-hook="${CSS.escape(hookName)}"][bundle="runtime"]`)
+        if(runtimeHook){
+          // if you really want runtime hooks, I
+          callbacks = window[`phx_hook_${hookName}`]
+          if(callbacks && typeof callbacks === "function"){
+            callbacks = callbacks()
+            if(callbacks && typeof callbacks === "object"){
+              if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }
+              let hook = new ViewHook(this, el, callbacks)
+              this.viewHooks[ViewHook.elementID(hook.el)] = hook
+              return hook
+            } else {
+              logError("runtime hook must return an object with hook callbacks", runtimeHook)
+            }
+          }
+        } else {
+          logError(`unknown hook found for "${hookName}"`, el)
+        }
       }
     }
   }
