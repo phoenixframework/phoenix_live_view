@@ -8,10 +8,12 @@ defmodule Phoenix.LiveView.TagExtractorUtils do
             {any(), binary(), list(attribute()), map()}
             | {:close, any(), binary(), map()}
             | {:text, binary(), map()}
+            | {:body_expr, binary(), map()}
   @opaque attribute :: {binary(), {atom(), any(), map()}, map()}
 
-  defguardp is_tag_or_component(node)
-            when is_tuple(node) and elem(node, 0) in [:tag, :local_component, :remote_component]
+  defguardp is_tag_or_component(token)
+            when is_tuple(token) and tuple_size(token) == 4 and
+                   elem(token, 0) not in [:close, :text, :body_expr]
 
   @doc """
   Maps over the tokens and invokes the given function for each token.
