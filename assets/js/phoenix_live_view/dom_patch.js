@@ -300,7 +300,7 @@ export default class DOMPatch {
       if(isJoinPatch){
         DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
           Array.from(el.children).forEach(child => {
-            this.removeStreamChildElement(child)
+            this.removeStreamChildElement(child, true)
           })
         })
       }
@@ -356,11 +356,19 @@ export default class DOMPatch {
     }
   }
 
-  removeStreamChildElement(child){
+  removeStreamChildElement(child, force=false){
     // make sure to only remove elements owned by the current view
     // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
     // and https://github.com/phoenixframework/phoenix_live_view/issues/3681
-    if(!this.view.ownsElement(child)){ return }
+    //
+    // but: skip this check if we are inside the joinpatch, where we actually want to
+    // remove all child elements inside a phx-update="stream" element;
+    //
+    // Without force, with nested streams it could happen that we first remove a parent
+    // element and then don't find the owner of the child element inside, therefore
+    // adding an element from the dead render back on streamInsert that should actually
+    // be discarded for good.
+    if(!force && !this.view.ownsElement(child)){ return }
 
     // we need to store the node if it is actually re-added in the same patch
     // we do NOT want to execute phx-remove, we do NOT want to call onNodeDiscarded
