@@ -298,11 +298,19 @@ export default class DOMPatch {
 
       // clear stream items from the dead render if they are not inserted again
       if(isJoinPatch){
-        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`, el => {
-          Array.from(el.children).forEach(child => {
-            this.removeStreamChildElement(child, true)
+        DOM.all(this.container, `[${phxUpdate}=${PHX_STREAM}]`)
+          // it is important to filter the element before removing them, as
+          // it may happen that streams are nested and the owner check fails if
+          // a parent is removed before a child
+          .filter(el => this.view.ownsElement(el))
+          .forEach(el => {
+            Array.from(el.children).forEach(child => {
+              // we already performed the owner check, each child is guaranteed to be owned
+              // by the view. To prevent the nested owner check from failing in case of nested
+              // streams where the parent is removed before the child, we force the removal
+              this.removeStreamChildElement(child, true)
+            })
           })
-        })
       }
 
       morph.call(this, targetContainer, html)
@@ -360,14 +368,6 @@ export default class DOMPatch {
     // make sure to only remove elements owned by the current view
     // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
     // and https://github.com/phoenixframework/phoenix_live_view/issues/3681
-    //
-    // but: skip this check if we are inside the joinpatch, where we actually want to
-    // remove all child elements inside a phx-update="stream" element;
-    //
-    // Without force, with nested streams it could happen that we first remove a parent
-    // element and then don't find the owner of the child element inside, therefore
-    // adding an element from the dead render back on streamInsert that should actually
-    // be discarded for good.
     if(!force && !this.view.ownsElement(child)){ return }
 
     // we need to store the node if it is actually re-added in the same patch
