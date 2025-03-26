@@ -127,6 +127,74 @@ describe("JS", () => {
       expect(modal.getAttribute("works")).toBe("on")
       done()
     })
+
+    test("push", done => {
+      const originalWithinOwners = view.liveSocket.withinOwners
+      view.liveSocket.withinOwners = (el, callback) => {
+        callback(view)
+      }
+      
+      const originalExec = JS.exec
+      JS.exec = jest.fn()
+      
+      js.push(modal, "custom-event", {value: {key: "value"}})
+      
+      expect(JS.exec).toHaveBeenCalled()
+      
+      view.liveSocket.withinOwners = originalWithinOwners
+      JS.exec = originalExec
+      done()
+    })
+
+    test("navigate", done => {
+      const originalHistoryRedirect = view.liveSocket.historyRedirect
+      view.liveSocket.historyRedirect = jest.fn()
+      
+      js.navigate("/test-url")
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "/test-url",
+        "push",
+        null,
+        null
+      )
+      
+      js.navigate("/test-url", {replace: true})
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "/test-url",
+        "replace",
+        null,
+        null
+      )
+      
+      view.liveSocket.historyRedirect = originalHistoryRedirect
+      done()
+    })
+
+    test("patch", done => {
+      const originalPushHistoryPatch = view.liveSocket.pushHistoryPatch
+      view.liveSocket.pushHistoryPatch = jest.fn()
+      
+      js.patch("/test-url")
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "/test-url",
+        "push",
+        null
+      )
+      
+      js.patch("/test-url", {replace: true})
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "/test-url",
+        "replace",
+        null
+      )
+      
+      view.liveSocket.pushHistoryPatch = originalPushHistoryPatch
+      done()
+    })
   })
 
   describe("exec_toggle", () => {
