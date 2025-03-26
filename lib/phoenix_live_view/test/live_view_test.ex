@@ -205,6 +205,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Options
 
+    * `:owner` - Pid where all messages and events will be sent
     * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
        a warning. Defaults to `:raise`.
@@ -243,6 +244,7 @@ defmodule Phoenix.LiveViewTest do
 
   ## Options
 
+    * `:owner` - Pid where all messages and events will be sent
     * `:session` - the session to be given to the LiveView
     * `:on_error` - Can be either `:raise` or `:warn` to control whether
        detected errors like duplicate IDs or live components fail the test or just log
@@ -339,6 +341,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
     start_proxy(path, %{
+      owner: opts[:owner],
       response: Phoenix.ConnTest.response(conn, 200),
       connect_params: conn.private[:live_view_connect_params] || %{},
       connect_info: conn.private[:live_view_connect_info] || prune_conn(conn) || %{},
@@ -385,7 +388,7 @@ defmodule Phoenix.LiveViewTest do
 
     opts =
       Map.merge(opts, %{
-        caller: {self(), ref},
+        caller: {opts.owner || self(), ref},
         html: opts.response,
         connect_params: opts.connect_params,
         connect_info: opts.connect_info,
@@ -1815,6 +1818,7 @@ defmodule Phoenix.LiveViewTest do
     static_token = token_func.(root.static_token)
 
     start_proxy(url, %{
+      owner: opts[:owner],
       response: html,
       live_redirect: {root.id, root_token, static_token},
       connect_params: root.connect_params,
