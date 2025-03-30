@@ -211,7 +211,7 @@ key, with a value that depends on the triggering event:
   - `"element"` - the event was triggered by a `phx-` bound element, such as `phx-click`
   - `"error"` - the event was triggered by an error, such as a view crash or socket disconnection
 
-Additionally, any `phx-` event may dispatch page loading events by annotating the DOM element with the `phx-page-loading` attribute.
+Additionally, `Phoenix.LiveView.JS.push/3` may dispatch page loading events by passing `page_loading: true` option.
 
 For all kinds of page loading events, all but `"element"` will receive an additional `to` key in the info metadata pointing to the href associated with the page load. In the case of an `"element"` page loading event, the info will contain a `"target"` key containing the DOM element which triggered the page loading state.
 
