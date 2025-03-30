@@ -436,7 +436,6 @@ Our `paginate_posts` function fetches a page of posts, and determines if the use
   phx-update="stream"
   phx-viewport-top={@page > 1 && "prev-page"}
   phx-viewport-bottom={!@end_of_timeline? && "next-page"}
-  phx-page-loading
   class={[
     if(@end_of_timeline?, do: "pb-10", else: "pb-[calc(200vh)]"),
     if(@page == 1, do: "pt-10", else: "pt-[calc(200vh)]")
