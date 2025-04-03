@@ -43,14 +43,6 @@ defmodule Phoenix.LiveView.Router do
       live "/articles/new", ArticleLive.Index, :new
       live "/articles/:id/edit", ArticleLive.Index, :edit
 
-  When an action is given, the generated route helpers are named after
-  the LiveView itself (in the same way as for a controller). For the example
-  above, we will have:
-
-      article_index_path(@socket, :index)
-      article_index_path(@socket, :new)
-      article_index_path(@socket, :edit, 123)
-
   The current action will always be available inside the LiveView as
   the `@live_action` assign, that can be used to render a LiveComponent:
 
@@ -205,27 +197,22 @@ defmodule Phoenix.LiveView.Router do
 
   If you have both regular HTTP routes (via get, post, etc) and `live` routes, then
   you need to perform the same authentication and authorization rules in both.
-  For example, if you were to add a `get "/admin/health"` entry point inside the
-  `:admin` live session above, then you must create your own plug that performs the
-  same authentication and authorization rules as `MyAppWeb.AdminLiveAuth`, and then
-  pipe through it:
+  For example, if you were to add a `get "/admin/health"` route, then you must create
+  your own plug that performs the same authentication and authorization rules as
+  `MyAppWeb.AdminLiveAuth`, and then pipe through it:
 
-      live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
-        scope "/" do
-          # Regular routes
-          pipe_through [MyAppWeb.AdminPlugAuth]
-          get "/admin/health", AdminHealthController, :index
+      scope "/" do
+        # Regular routes
+        pipe_through [MyAppWeb.AdminPlugAuth]
+        get "/admin/health", AdminHealthController, :index
 
-          # Live routes
+        # Live routes
+        live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
           live "/admin", AdminDashboardLive, :index
           live "/admin/posts", AdminPostLive, :index
         end
       end
 
-  The opposite is also true, if you have regular http routes and you want to
-  add your own `live` routes, the same authentication and authorization checks
-  executed by the plugs listed in `pipe_through` must be ported to LiveViews
-  and be executed via `on_mount` hooks.
   """
   defmacro live_session(name, opts \\ [], do: block) do
     opts = Macro.expand_literals(opts, %{__CALLER__ | function: {:live_session, 3}})
