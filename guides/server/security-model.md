@@ -53,18 +53,20 @@ Your regular users login via email and password, and you have an admin
 dashboard that uses HTTP auth. You can specify different `live_session`s
 for each authentication flow:
 
-    live_session :default do
-      scope "/" do
-        pipe_through [:authenticate_user]
-        get ...
+    scope "/" do
+      pipe_through [:authenticate_user]
+      get ...
+
+      live_session :default do
         live ...
       end
     end
 
-    live_session :admin do
-      scope "/admin" do
-        pipe_through [:http_auth_admin]
-        get ...
+    scope "/admin" do
+      pipe_through [:http_auth_admin]
+      get ...
+
+      live_session :admin do
         live ...
       end
     end
@@ -83,16 +85,18 @@ as other options, such as the `:root_layout`. Instead of declaring `on_mount`
 on every LiveView, you can declare it at the router level and it will enforce
 it on all LiveViews under it:
 
-    live_session :default, on_mount: MyAppWeb.UserLiveAuth do
-      scope "/" do
-        pipe_through [:authenticate_user]
+    scope "/" do
+      pipe_through [:authenticate_user]
+
+      live_session :default, on_mount: MyAppWeb.UserLiveAuth do
         live ...
       end
     end
 
-    live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
-      scope "/admin" do
-        pipe_through [:authenticate_admin]
+    scope "/admin" do
+      pipe_through [:authenticate_admin]
+
+      live_session :admin, on_mount: MyAppWeb.AdminLiveAuth do
         live ...
       end
     end
