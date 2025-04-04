@@ -13,7 +13,7 @@ Mix.install(
     # please test your issue using the latest version of LV from GitHub!
     {:phoenix_live_view,
      github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
-    {:floki, ">= 0.30.0"}
+    {:lazy_html, ">= 0.1.0"}
   ]
 )
 
