@@ -4,14 +4,15 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView.{Route, Session}
-  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.{DOM, TreeDOM}
   alias Phoenix.LiveViewTest.Support.{Endpoint, DashboardLive}
   alias Phoenix.LiveViewTest.Support.Router.Helpers, as: Routes
 
   @endpoint Endpoint
 
   def verified_session(html) do
-    [{id, session_token, static_token} | _] = html |> DOM.parse() |> DOM.find_live_views()
+    [{id, session_token, static_token} | _] =
+      html |> DOM.parse_document() |> elem(1) |> TreeDOM.find_live_views()
 
     {:ok, live_session} =
       Session.verify_session(@endpoint, "lv:#{id}", session_token, static_token)

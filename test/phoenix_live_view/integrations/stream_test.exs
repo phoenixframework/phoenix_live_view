@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.StreamTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.{DOM, TreeDOM}
   alias Phoenix.LiveViewTest.Support.{StreamLive, Endpoint}
 
   @endpoint Endpoint
@@ -153,8 +153,9 @@ defmodule Phoenix.LiveView.StreamTest do
            ]
 
     html = render(lv)
-    assert Floki.find(html, "#users-1") |> Floki.attribute("data-count") == ["0"]
-    assert Floki.find(html, "#users-2") |> Floki.attribute("data-count") == ["0"]
+    tree = TreeDOM.normalize_to_tree(html)
+    assert TreeDOM.by_id!(tree, "users-1") |> TreeDOM.attribute("data-count") == "0"
+    assert TreeDOM.by_id!(tree, "users-2") |> TreeDOM.attribute("data-count") == "0"
 
     lv |> render_hook("reset-users-reorder", %{})
 
@@ -165,9 +166,10 @@ defmodule Phoenix.LiveView.StreamTest do
            ]
 
     html = render(lv)
-    assert Floki.find(html, "#users-1") |> Floki.attribute("data-count") == ["1"]
-    assert Floki.find(html, "#users-3") |> Floki.attribute("data-count") == ["1"]
-    assert Floki.find(html, "#users-4") |> Floki.attribute("data-count") == ["1"]
+    tree = TreeDOM.normalize_to_tree(html)
+    assert TreeDOM.by_id!(tree, "users-1") |> TreeDOM.attribute("data-count") == "1"
+    assert TreeDOM.by_id!(tree, "users-3") |> TreeDOM.attribute("data-count") == "1"
+    assert TreeDOM.by_id!(tree, "users-4") |> TreeDOM.attribute("data-count") == "1"
   end
 
   test "stream reset on patch", %{conn: conn} do
@@ -569,14 +571,18 @@ defmodule Phoenix.LiveView.StreamTest do
       Process.sleep(10)
     end
 
-    [{_tag, _attributes, children}] = render(lv) |> Floki.find("#mystream")
+    {_tag, _attributes, children} =
+      render(lv) |> TreeDOM.normalize_to_tree() |> TreeDOM.by_id!("mystream")
+
     assert length(children) == 50
 
     # wait for more updates
     Process.sleep(100)
 
     # we should still have 50 items
-    [{_tag, _attributes, children}] = render(lv) |> Floki.find("#mystream")
+    {_tag, _attributes, children} =
+      render(lv) |> TreeDOM.normalize_to_tree() |> TreeDOM.by_id!("mystream")
+
     assert length(children) == 50
   end
 
@@ -772,10 +778,16 @@ defmodule Phoenix.LiveView.StreamTest do
 
     childItems = fn html, id ->
       html
-      |> DOM.parse()
-      |> DOM.all("##{id} div[phx-update=stream] > *")
+      |> TreeDOM.normalize_to_tree()
+      |> TreeDOM.by_id!(id)
+      |> TreeDOM.all(fn node ->
+        TreeDOM.tag(node) == "div" && TreeDOM.attribute(node, "phx-update") == "stream"
+      end)
+      |> case do
+        [{_tag, _attrs, children}] -> children
+      end
       |> Enum.map(fn {_tag, _attrs, [text | _children]} = child ->
-        {DOM.attribute(child, "id"), String.trim(text)}
+        {TreeDOM.attribute(child, "id"), String.trim(text)}
       end)
     end
 
@@ -863,19 +875,23 @@ defmodule Phoenix.LiveView.StreamTest do
 
   defp users_in_dom(html, parent_id) do
     html
-    |> DOM.parse()
+    |> DOM.parse_document()
+    |> elem(0)
     |> DOM.all("##{parent_id} > *")
+    |> DOM.to_tree()
     |> Enum.map(fn {_tag, _attrs, [text | _children]} = child ->
-      {DOM.attribute(child, "id"), String.trim(text)}
+      {TreeDOM.attribute(child, "id"), String.trim(text)}
     end)
   end
 
   defp ul_list_children(html) do
     html
-    |> DOM.parse()
+    |> DOM.parse_document()
+    |> elem(0)
     |> DOM.all("ul > li")
+    |> DOM.to_tree()
     |> Enum.map(fn {_tag, _attrs, [text | _children]} = child ->
-      {DOM.attribute(child, "id"), String.trim(text)}
+      {TreeDOM.attribute(child, "id"), String.trim(text)}
     end)
   end
 end

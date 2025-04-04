@@ -427,7 +427,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "phx-change on individual input", %{live: view} do
       assert view
-             |> element("input[name='hello[individual]'")
+             |> element("input[name='hello[individual]']")
              |> render_change(hello: [individual: "123"], _target: "hello[individual]")
 
       assert last_event(view) ==

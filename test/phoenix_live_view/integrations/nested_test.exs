@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.NestedTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.LiveViewTest.Support.{Endpoint, ClockLive, ClockControlsLive, LiveInComponent}
 
   @endpoint Endpoint
@@ -77,7 +77,7 @@ defmodule Phoenix.LiveView.NestedTest do
     Process.flag(:trap_exit, true)
 
     html_without_nesting =
-      DOM.parse("""
+      TreeDOM.normalize_to_tree("""
       <p>Redirect: none</p>
       <p>The temp is: 1</p>
       <button phx-click="dec">-</button>
@@ -87,10 +87,15 @@ defmodule Phoenix.LiveView.NestedTest do
     {:ok, thermo_view, _} = live(conn, "/thermo")
 
     assert find_live_child(thermo_view, "clock")
-    refute DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
+
+    refute TreeDOM.child_nodes(hd(TreeDOM.normalize_to_tree(render(thermo_view)))) ==
+             html_without_nesting
 
     GenServer.call(thermo_view.pid, {:set, :nest, false})
-    assert DOM.child_nodes(hd(DOM.parse(render(thermo_view)))) == html_without_nesting
+
+    assert TreeDOM.child_nodes(hd(TreeDOM.normalize_to_tree(render(thermo_view)))) ==
+             html_without_nesting
+
     refute find_live_child(thermo_view, "clock")
   end
 
@@ -120,7 +125,9 @@ defmodule Phoenix.LiveView.NestedTest do
       %{name: "josé", email: "jose@test"}
     ]
 
-    expected_users = "<i>chris chris@test</i><i>josé jose@test</i>"
+    expected_users =
+      TreeDOM.normalize_to_tree("<i>chris chris@test</i><i>josé jose@test</i>")
+      |> TreeDOM.to_html()
 
     {:ok, thermo_view, html} =
       conn
@@ -128,7 +135,7 @@ defmodule Phoenix.LiveView.NestedTest do
       |> put_session(:users, users)
       |> live("/thermo")
 
-    assert html =~ expected_users
+    assert TreeDOM.normalize_to_tree(html) |> TreeDOM.to_html() =~ expected_users
     assert render(thermo_view) =~ expected_users
   end
 
@@ -147,7 +154,7 @@ defmodule Phoenix.LiveView.NestedTest do
     :ok = GenServer.call(view.pid, {:dynamic_child, :static})
 
     assert Exception.format(:exit, catch_exit(render(view))) =~
-             "expected selector \"#static\" to return a single element, but got 2"
+             "expected exactly one node with id static, but got 2"
   end
 
   describe "navigation helpers" do

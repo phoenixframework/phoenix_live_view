@@ -4,7 +4,7 @@ defmodule Phoenix.LiveView.NavigationTest do
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
 
-  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
@@ -152,7 +152,7 @@ defmodule Phoenix.LiveView.NavigationTest do
       assert {:ok, thermo_live, html} = live(conn, "/thermo-live-session")
       thermo_ref = Process.monitor(thermo_live.pid)
 
-      assert [{"article", root_attrs, _}] = DOM.parse(html)
+      assert [{"article", root_attrs, _}] = TreeDOM.normalize_to_tree(html)
 
       %{"data-phx-session" => thermo_session, "data-phx-static" => thermo_static} =
         Enum.into(root_attrs, %{})
@@ -160,7 +160,7 @@ defmodule Phoenix.LiveView.NavigationTest do
       assert {:ok, clock_live, html} = live_redirect(thermo_live, to: "/clock-live-session")
 
       for str <- [html, render(clock_live)] do
-        content = DOM.parse(str)
+        content = TreeDOM.normalize_to_tree(str)
         assert [{"section", attrs, _inner}] = content
         assert {"class", "clock"} in attrs
         assert {"data-phx-session", thermo_session} in attrs
@@ -173,7 +173,7 @@ defmodule Phoenix.LiveView.NavigationTest do
       assert {:ok, thermo_live2, html} = live_redirect(clock_live, to: "/thermo-live-session")
 
       for str <- [html, render(thermo_live2)] do
-        content = DOM.parse(str)
+        content = TreeDOM.normalize_to_tree(str)
         assert [{"article", attrs, _inner}] = content
         assert {"class", "thermo"} in attrs
         assert str =~ "The temp is"
