@@ -179,7 +179,9 @@ defmodule Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs do
   attr :attr2, :atom, examples: [:foo, :bar, :baz]
   attr :attr3, :list, values: [[60, 40]]
   attr :attr4, :list, examples: [[60, 40]]
-
+  attr :attr5, :atom, default: :foo, values: [:foo, :bar, :baz]
+  attr :attr6, :atom, doc: "Attr 6 doc", values: [:foo, :bar, :baz]
+  attr :attr7, :atom, doc: "Attr 7 doc", default: :foo, values: [:foo, :bar, :baz]
   def fun_attr_values_examples(assigns), do: ~H[]
 end
 
