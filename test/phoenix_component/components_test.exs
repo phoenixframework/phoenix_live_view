@@ -3,7 +3,9 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
   import ExUnit.CaptureIO
   import Phoenix.Component
-  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
+  import Phoenix.LiveViewTest.TreeDOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
+
+  alias Phoenix.LiveViewTest.TreeDOM
 
   describe "link patch" do
     test "basic usage" do
@@ -369,7 +371,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       csrf_token = Plug.CSRFProtection.get_csrf_token_for("/")
 
       assert t2h(template) ==
-               ~x{<form action="/" method="post"><input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf_token}"></input></form>}
+               ~x{<form action="/" method="post"><input name="_csrf_token" type="hidden" hidden="" value="#{csrf_token}"></input></form>}
     end
 
     test "generates a csrf_token if if an action is set" do
@@ -386,7 +388,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(template) ==
                ~x"""
                <form action="/" method="post">
-                 <input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf_token}"></input>
+                 <input name="_csrf_token" type="hidden" hidden="" value="#{csrf_token}"></input>
                  <input id="foo" name="foo" type="text"></input>
                </form>
                """
@@ -456,8 +458,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
                  class="pretty"
                  phx-change="valid"
                >
-                 <input name="_method" type="hidden" hidden="hidden" value="put">
-                 <input name="_csrf_token" type="hidden" hidden="hidden" value="123">
+                 <input name="_method" type="hidden" hidden="" value="put">
+                 <input name="_csrf_token" type="hidden" hidden="" value="123">
                  <input id="form_foo" name="user[foo]" type="text">
                  [name: "can't be blank"]
 
@@ -482,7 +484,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       csrf = Plug.CSRFProtection.get_csrf_token_for("/")
 
       assert t2h(template) ==
-               ~x{<form method="post" action="/"><input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}"></form>}
+               ~x{<form method="post" action="/"><input name="_csrf_token" type="hidden" hidden="" value="#{csrf}"></form>}
 
       # for anything != get or post we use post and set the hidden _method field
       template = ~H"""
@@ -492,8 +494,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(template) ==
                ~x"""
                <form action="/" method="post">
-                 <input name="_method" type="hidden" hidden="hidden" value="PuT">
-                 <input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}">
+                 <input name="_method" type="hidden" hidden="" value="PuT">
+                 <input name="_csrf_token" type="hidden" hidden="" value="#{csrf}">
                </form>
                """
     end
@@ -619,8 +621,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       """
 
       html = t2h(template)
-      assert [p] = Floki.find(html, "p")
-      assert Floki.text(p) =~ "bar"
+      assert [p] = TreeDOM.all(html, &(TreeDOM.tag(&1) == "p"))
+      assert TreeDOM.to_text(p) =~ "bar"
     end
 
     test "can disable persistent ids" do

@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
       test_coverage: [summary: [threshold: 85], ignore_modules: coverage_ignore_modules()],
-      xref: [exclude: [Floki]],
+      xref: [exclude: [LazyHTML]],
       package: package(),
       deps: deps(),
       aliases: aliases(),
@@ -52,7 +52,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:esbuild, "~> 0.2", only: :dev},
       {:phoenix_view, "~> 2.0", optional: true},
       {:jason, "~> 1.0", optional: true},
-      {:floki, "~> 0.36", optional: true},
+      # TODO: replace me with released version
+      {:lazy_html, github: "dashbitco/lazy_html", optional: true},
       {:ex_doc, "~> 0.29", only: :docs},
       {:makeup_elixir, "~> 1.0.1 or ~> 1.1", only: :docs},
       {:makeup_eex, "~> 2.0", only: :docs},

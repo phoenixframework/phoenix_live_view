@@ -8,8 +8,8 @@ defmodule Phoenix.LiveView.ParamsTest do
   import Phoenix.LiveViewTest
   import Phoenix.LiveView.TelemetryTestHelpers
 
+  alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.{Component, LiveView}
-  alias Phoenix.LiveViewTest.DOM
   alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
@@ -261,7 +261,7 @@ defmodule Phoenix.LiveView.ParamsTest do
         conn
         |> get("/counter/123", query1: "query1", query2: "query2")
         |> html_response(200)
-        |> DOM.parse()
+        |> TreeDOM.normalize_to_tree()
         |> hd()
 
       assert {

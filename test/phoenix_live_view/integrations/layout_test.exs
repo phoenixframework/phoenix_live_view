@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.LayoutTest do
 
   test "is picked from config on use", %{conn: conn} do
     {:ok, view, html} = live(conn, "/layout")
-    assert html =~ ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
+    assert html =~ ~r|LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
 
     assert render_click(view, :double) ==
              "LIVELAYOUTSTART-246-The value is: 246-LIVELAYOUTEND\n"
@@ -32,7 +32,7 @@ defmodule Phoenix.LiveView.LayoutTest do
     conn = get(conn, "/layout")
 
     assert html_response(conn, 200) =~
-             ~r|^LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
+             ~r|LAYOUT<div[^>]+>LIVELAYOUTSTART\-123\-The value is: 123\-LIVELAYOUTEND|
   end
 
   @tag session: %{live_layout: {LayoutView, :live_override}}
@@ -40,7 +40,7 @@ defmodule Phoenix.LiveView.LayoutTest do
     {:ok, view, html} = live(conn, "/layout")
 
     assert html =~
-             ~r|^LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
+             ~r|LAYOUT<div[^>]+>LIVEOVERRIDESTART\-123\-The value is: 123\-LIVEOVERRIDEEND|
 
     assert render_click(view, :double) ==
              "LIVEOVERRIDESTART-246-The value is: 246-LIVEOVERRIDEEND\n"

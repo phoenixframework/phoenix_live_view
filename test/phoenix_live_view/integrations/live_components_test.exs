@@ -3,7 +3,8 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.DOM
+
+  alias Phoenix.LiveViewTest.{DOM, TreeDOM}
   alias Phoenix.LiveViewTest.Support.{Endpoint, StatefulComponent}
 
   @endpoint Endpoint
@@ -35,13 +36,13 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
               [
                 _,
                 {"div",
-                 [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                 [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
                  ["\n  chris says hi\n  \n"]},
                 {"div",
-                 [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                 [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
                  ["\n  jose says hi\n  \n"]}
               ]}
-           ] = DOM.parse(render(view))
+           ] = TreeDOM.normalize_to_tree(render(view), sort_attributes: true)
   end
 
   test "tracks additions and updates", %{conn: conn} do
@@ -55,18 +56,18 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
              {"div",
               [
                 {"data-phx-component", "3"},
-                {"phx-click", "transform"},
                 {"id", "chris-new"},
+                {"phx-click", "transform"},
                 {"phx-target", "#chris-new"}
               ], ["\n  chris-new says hi\n  \n"]},
              {"div",
               [
                 {"data-phx-component", "4"},
-                {"phx-click", "transform"},
                 {"id", "jose-new"},
+                {"phx-click", "transform"},
                 {"phx-target", "#jose-new"}
               ], ["\n  jose-new says hi\n  \n"]}
-           ] = DOM.parse(html)
+           ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
   end
 
   test "tracks removals", %{conn: conn} do
@@ -74,20 +75,30 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
     assert [
              {"div",
-              [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+              [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
               ["\n  chris says" <> _]},
              {"div",
-              [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+              [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
               ["\n  jose says" <> _]}
-           ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
+           ] =
+             html
+             |> DOM.parse_fragment()
+             |> elem(0)
+             |> DOM.all("#chris, #jose")
+             |> TreeDOM.normalize_to_tree(sort_attributes: true)
 
     html = render_click(view, "delete-name", %{"name" => "chris"})
 
     assert [
              {"div",
-              [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+              [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
               ["\n  jose says" <> _]}
-           ] = html |> DOM.parse() |> DOM.all("#chris, #jose")
+           ] =
+             html
+             |> DOM.parse_fragment()
+             |> elem(0)
+             |> DOM.all("#chris, #jose")
+             |> TreeDOM.normalize_to_tree(sort_attributes: true)
 
     refute view |> element("#chris") |> has_element?()
   end
@@ -148,64 +159,64 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert [
                _,
                {"div",
-                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
                {"div",
-                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
                 ["\n  jose says hi\n" <> _]}
-             ] = DOM.parse(html)
+             ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
 
       html = view |> with_target("#jose") |> render_click("transform", %{"op" => "title-case"})
 
       assert [
                _,
                {"div",
-                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
                {"div",
-                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
                 ["\n  Jose says hi\n" <> _]}
-             ] = DOM.parse(html)
+             ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
 
       html = view |> element("#jose") |> render_click(%{"op" => "dup"})
 
       assert [
                _,
                {"div",
-                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
                {"div",
-                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
                 [
                   "\n  Jose says hi\n  ",
                   {"div",
                    [
                      {"data-phx-component", "3"},
-                     {"phx-click", "transform"},
-                     {"id", "Jose-dup"} | _
+                     {"id", "Jose-dup"},
+                     {"phx-click", "transform"} | _
                    ], ["\n  Jose-dup says hi\n" <> _]}
                 ]}
-             ] = DOM.parse(html)
+             ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
 
       html = view |> element("#jose #Jose-dup") |> render_click(%{"op" => "upcase"})
 
       assert [
                _,
                {"div",
-                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
                {"div",
-                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
                 [
                   "\n  Jose says hi\n  ",
                   {"div",
                    [
                      {"data-phx-component", "3"},
-                     {"phx-click", "transform"},
-                     {"id", "Jose-dup"} | _
+                     {"id", "Jose-dup"},
+                     {"phx-click", "transform"} | _
                    ], ["\n  JOSE-DUP says hi\n" <> _]}
                 ]}
-             ] = DOM.parse(html)
+             ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
 
       assert view |> element("#jose #Jose-dup") |> render() ==
                "<div data-phx-component=\"3\" phx-click=\"transform\" id=\"Jose-dup\" phx-target=\"#Jose-dup\">\n  JOSE-DUP says hi\n  \n</div>"
@@ -219,12 +230,12 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert [
                _,
                {"div",
-                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
                 ["\n  CHRIS says hi\n" <> _]},
                {"div",
-                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
                 ["\n  jose says hi\n" <> _]}
-             ] = DOM.parse(html)
+             ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
     end
 
     test "works with multiple phx-targets", %{conn: conn} do
@@ -237,24 +248,24 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert [
                {"div", _,
                 [
-                  {"div", [{"id", "parent_id"} | _],
+                  {"div", [{"class", "parent"}, {"id", "parent_id"}],
                    [
                      "\n  Parent was updated\n" <> _,
                      {"div",
                       [
                         {"data-phx-component", "1"},
-                        {"phx-click", "transform"},
-                        {"id", "chris"} | _
+                        {"id", "chris"},
+                        {"phx-click", "transform"} | _
                       ], ["\n  CHRIS says hi\n" <> _]},
                      {"div",
                       [
                         {"data-phx-component", "2"},
-                        {"phx-click", "transform"},
-                        {"id", "jose"} | _
+                        {"id", "jose"},
+                        {"phx-click", "transform"} | _
                       ], ["\n  jose says hi\n" <> _]}
                    ]}
                 ]}
-             ] = DOM.parse(html)
+             ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
     end
 
     test "phx-target works with non id selector", %{conn: conn} do
@@ -270,24 +281,24 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert [
                {"div", _,
                 [
-                  {"div", [{"id", "parent_id"} | _],
+                  {"div", [{"class", "parent"}, {"id", "parent_id"}],
                    [
                      "\n  Parent was updated\n" <> _,
                      {"div",
                       [
                         {"data-phx-component", "1"},
-                        {"phx-click", "transform"},
-                        {"id", "chris"} | _
+                        {"id", "chris"},
+                        {"phx-click", "transform"} | _
                       ], ["\n  CHRIS says hi\n" <> _]},
                      {"div",
                       [
                         {"data-phx-component", "2"},
-                        {"phx-click", "transform"},
-                        {"id", "jose"} | _
+                        {"id", "jose"},
+                        {"phx-click", "transform"} | _
                       ], ["\n  jose says hi\n" <> _]}
                    ]}
                 ]}
-             ] = DOM.parse(html)
+             ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
     end
   end
 
@@ -310,15 +321,23 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
       assert [
                {"div",
-                [{"data-phx-component", "1"}, {"phx-click", "transform"}, {"id", "chris"} | _],
+                [{"data-phx-component", "1"}, {"id", "chris"}, {"phx-click", "transform"} | _],
                 ["\n  NEW-chris says hi\n  \n"]}
-             ] = view |> element("#chris") |> render() |> DOM.parse()
+             ] =
+               view
+               |> element("#chris")
+               |> render()
+               |> TreeDOM.normalize_to_tree(sort_attributes: true)
 
       assert [
                {"div",
-                [{"data-phx-component", "2"}, {"phx-click", "transform"}, {"id", "jose"} | _],
+                [{"data-phx-component", "2"}, {"id", "jose"}, {"phx-click", "transform"} | _],
                 ["\n  NEW-jose says hi\n  \n"]}
-             ] = view |> element("#jose") |> render() |> DOM.parse()
+             ] =
+               view
+               |> element("#jose")
+               |> render()
+               |> TreeDOM.normalize_to_tree(sort_attributes: true)
     end
 
     test "updates child from independent pid", %{conn: conn} do

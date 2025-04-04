@@ -183,7 +183,7 @@ defmodule Phoenix.LiveViewTest do
   require Phoenix.ChannelTest
 
   alias Phoenix.LiveView.{Diff, Socket}
-  alias Phoenix.LiveViewTest.{ClientProxy, DOM, Element, View, Upload, UploadClient}
+  alias Phoenix.LiveViewTest.{ClientProxy, DOM, TreeDOM, Element, View, Upload, UploadClient}
 
   @doc """
   Puts connect params to be used on LiveView connections.
@@ -339,7 +339,7 @@ defmodule Phoenix.LiveViewTest do
       end
 
     start_proxy(path, %{
-      response: Phoenix.ConnTest.response(conn, 200),
+      response: {:document, Phoenix.ConnTest.response(conn, 200)},
       connect_params: conn.private[:live_view_connect_params] || %{},
       connect_info: conn.private[:live_view_connect_info] || prune_conn(conn) || %{},
       live_module: live_module,
@@ -1073,7 +1073,7 @@ defmodule Phoenix.LiveViewTest do
   def render(view_or_element) do
     case render_tree(view_or_element) do
       {:error, reason} -> {:error, reason}
-      html -> DOM.to_html(html)
+      html -> TreeDOM.to_html(html)
     end
   end
 
@@ -1252,10 +1252,12 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp find_cid!(view, selector) do
-    html_tree = view |> render() |> DOM.parse()
+    sync_with_root!(view)
+    lazy = call(view, {:get_lazy, view.id})
 
-    with {:ok, form} <- DOM.maybe_one(html_tree, selector) do
-      [cid | _] = DOM.targets_from_node(html_tree, form)
+    with {:ok, form} <- DOM.maybe_one(lazy, selector),
+         [form] <- DOM.to_tree(form) do
+      [cid | _] = DOM.targets_from_node(lazy, form)
       cid
     else
       {:error, _reason, msg} -> raise ArgumentError, msg
@@ -1534,12 +1536,12 @@ defmodule Phoenix.LiveViewTest do
     {html, static_path} = call(view_or_element, :html)
 
     head =
-      case DOM.maybe_one(html, "head") do
-        {:ok, head} -> head
+      case TreeDOM.filter(html, fn node -> TreeDOM.tag(node) == "head" end) do
+        [head] -> head
         _ -> {"head", [], []}
       end
 
-    case Floki.attribute(content, "data-phx-main") do
+    case TreeDOM.attribute(content, "data-phx-main") do
       ["true" | _] ->
         # If we are rendering the main LiveView,
         # we return the full page html.
@@ -1552,15 +1554,12 @@ defmodule Phoenix.LiveViewTest do
           {"html", [],
            [
              head,
-             {"body", [],
-              [
-                content
-              ]}
+             {"body", [], List.wrap(content)}
            ]}
         ]
     end
-    |> Floki.traverse_and_update(fn
-      {"script", _, _} -> nil
+    |> TreeDOM.walk(fn
+      {"script", _, _} -> []
       {"a", _, _} = link -> link
       {el, attrs, children} -> {el, maybe_prefix_static_path(attrs, static_path), children}
       el -> el
@@ -1585,7 +1584,7 @@ defmodule Phoenix.LiveViewTest do
   defp prefix_static_path(url, _), do: url
 
   defp write_tmp_html_file(html) do
-    html = Floki.raw_html(html)
+    html = TreeDOM.to_html(html)
     path = Path.join([System.tmp_dir!(), "#{Phoenix.LiveView.Utils.random_id()}.html"])
     File.write!(path, html)
     path
@@ -1815,7 +1814,7 @@ defmodule Phoenix.LiveViewTest do
     static_token = token_func.(root.static_token)
 
     start_proxy(url, %{
-      response: html,
+      response: {:fragment, html},
       live_redirect: {root.id, root_token, static_token},
       connect_params: root.connect_params,
       connect_info: root.connect_info,
