@@ -434,8 +434,8 @@ Our `paginate_posts` function fetches a page of posts, and determines if the use
 <ul
   id="posts"
   phx-update="stream"
-  phx-viewport-top={@page > 1 && "prev-page"}
-  phx-viewport-bottom={!@end_of_timeline? && "next-page"}
+  phx-viewport-top={@page > 1 && JS.push("prev-page", page_loading: true)}
+  phx-viewport-bottom={!@end_of_timeline? && JS.push("next-page", page_loading: true)}
   class={[
     if(@end_of_timeline?, do: "pb-10", else: "pb-[calc(200vh)]"),
     if(@page == 1, do: "pt-10", else: "pt-[calc(200vh)]")
