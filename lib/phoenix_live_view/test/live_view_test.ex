@@ -636,7 +636,7 @@ defmodule Phoenix.LiveViewTest do
              |> element("form")
              |> render_submit(%{deg: 123, avatar: upload}) =~ "123 exceeds limits"
 
-  To submit a form along with some with hidden input values:
+  To submit a form along with some hidden input values:
 
       assert view
              |> form("#term", user: %{name: "hello"})
