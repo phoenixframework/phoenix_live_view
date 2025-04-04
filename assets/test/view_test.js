@@ -1331,7 +1331,7 @@ describe("View + Component", function(){
     test("restores phx specific attributes awaiting a ref", () => {
       let content = `
         <span data-phx-ref-loading="1" data-phx-ref-src="root"></span>
-        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref-loading="38" data-phx-ref-src="root">
+        <form phx-change="suggest" phx-submit="search" class="phx-submit-loading" data-phx-ref-loading="38" data-phx-ref-src="root">
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref-loading="38" data-phx-ref-src="root">
           <datalist id="results">
           </datalist>
@@ -1345,7 +1345,7 @@ describe("View + Component", function(){
       view.undoRefs(1)
       expect(el.innerHTML).toBe(`
         <span></span>
-        <form phx-change="suggest" phx-submit="search" phx-page-loading="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref-loading="38">
+        <form phx-change="suggest" phx-submit="search" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref-loading="38">
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off" data-phx-readonly="false" readonly="" class="phx-submit-loading" data-phx-ref-src="root" data-phx-ref-loading="38">
           <datalist id="results">
           </datalist>
@@ -1356,7 +1356,7 @@ describe("View + Component", function(){
       view.undoRefs(38)
       expect(el.innerHTML).toBe(`
         <span></span>
-        <form phx-change="suggest" phx-submit="search" phx-page-loading="">
+        <form phx-change="suggest" phx-submit="search">
           <input type="text" name="q" value="ddsdsd" placeholder="Live dependency search" list="results" autocomplete="off">
           <datalist id="results">
           </datalist>
