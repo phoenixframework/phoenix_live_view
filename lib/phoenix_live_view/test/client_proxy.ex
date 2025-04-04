@@ -197,7 +197,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_put_container(state, %{container: container}) do
     [tag, attrs] = container
-    %{state | html_tree: TreeDOM.replace_root_container(state.html_tree, tag, attrs)}
+
+    %{
+      state
+      | html_tree: TreeDOM.replace_root_container(state.html_tree, tag, attrs),
+        lazy_cache: %{}
+    }
   end
 
   defp maybe_put_container(state, %{} = _resp), do: state
@@ -777,7 +782,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     case result do
       {new_html, [_ | _] = will_destroy_cids} ->
         topic = view.topic
-        state = %{state | html_tree: new_html, lazy_cache: Map.delete(state.lazy_cache, view.id)}
+        state = %{state | html_tree: new_html, lazy_cache: %{}}
         payload = %{"cids" => will_destroy_cids}
 
         push_with_callback(state, nil, view, "cids_will_destroy", payload, fn _, state ->
@@ -794,7 +799,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         end)
 
       {new_html, [] = _deleted_cids} ->
-        %{state | html_tree: new_html, lazy_cache: Map.delete(state.lazy_cache, view.id)}
+        %{state | html_tree: new_html, lazy_cache: %{}}
     end
   end
 
