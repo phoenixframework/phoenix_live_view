@@ -12,7 +12,7 @@ defmodule Phoenix.LiveView.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
       test_coverage: [summary: [threshold: 85], ignore_modules: coverage_ignore_modules()],
-      xref: [exclude: [LazyHTML]],
+      xref: [exclude: [LazyHTML, LazyHTML.Tree]],
       package: package(),
       deps: deps(),
       aliases: aliases(),

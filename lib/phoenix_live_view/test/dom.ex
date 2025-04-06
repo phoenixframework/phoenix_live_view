@@ -141,7 +141,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   @doc """
   Turns a lazy into a tree.
   """
-  def to_tree(%LazyHTML{} = lazy, opts \\ []), do: LazyHTML.to_tree(lazy, opts)
+  def to_tree(lazy, opts \\ []) when is_struct(lazy, LazyHTML), do: LazyHTML.to_tree(lazy, opts)
 
   @doc """
   Turns a tree into a lazy.
