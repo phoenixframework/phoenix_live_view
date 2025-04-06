@@ -565,8 +565,8 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
 
     tree =
       case html do
-        {%LazyHTML{}, tree} -> tree
-        %LazyHTML{} -> DOM.to_tree(html)
+        {%{} = struct, tree} when is_struct(struct, LazyHTML) -> tree
+        html when is_struct(html, LazyHTML) -> DOM.to_tree(html)
         _ -> html
       end
 
