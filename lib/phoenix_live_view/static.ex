@@ -210,6 +210,7 @@ defmodule Phoenix.LiveView.Static do
           endpoint: endpoint,
           root_pid: if(sticky?, do: nil, else: parent.root_pid),
           parent_pid: if(sticky?, do: nil, else: self()),
+          sticky?: sticky?,
           router: parent.router
         },
         %{
