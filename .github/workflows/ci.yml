@@ -75,6 +75,11 @@ jobs:
         env:
           MIX_ENV: test
 
+      - name: Compile without optional deps
+        run: mix compile --no-optional-deps
+        env:
+          MIX_ENV: test
+
       - name: Check if formatted
         run: mix format --check-formatted
         if: ${{ matrix.lint }}
