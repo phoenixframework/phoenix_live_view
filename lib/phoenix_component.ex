@@ -1268,8 +1268,8 @@ defmodule Phoenix.Component do
   ### When connected
 
   LiveView is also able to share assigns via `assign_new` with children LiveViews,
-  as long as the child LiveView is also mounted when the parent LiveView is mounted.
-  Let's see an example.
+  as long as the child LiveView is also mounted when the parent LiveView is mounted
+  and the child LiveView is not rendered with `sticky: true`. Let's see an example.
 
   If the parent LiveView defines a `:current_user` assign and the child LiveView also
   uses `assign_new/3` to fetch the `:current_user` in its `mount/3` callback, as in
