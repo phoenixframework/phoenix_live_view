@@ -129,12 +129,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
     <section phx-hook="Example" id="hook-section-2" class="idless-hook">Section</section>
 
-    <ul
-      id="posts"
-      phx-update="stream"
-      phx-viewport-top="prev-page"
-      phx-viewport-bottom="next-page"
-    />
+    <ul id="posts" phx-update="stream" phx-viewport-top="prev-page" phx-viewport-bottom="next-page" />
 
     <%!-- forms --%>
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>

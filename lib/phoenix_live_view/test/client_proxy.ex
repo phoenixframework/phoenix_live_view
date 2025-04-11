@@ -1112,7 +1112,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
            "element selected by #{inspect(element.selector)} for phx-hook does not have an ID"}
         end
 
-      TreeDOM.attribute(node, "phx-viewport-top") || TreeDOM.attribute(node, "phx-viewport-bottom") ->
+      TreeDOM.attribute(node, "phx-viewport-top") ||
+          TreeDOM.attribute(node, "phx-viewport-bottom") ->
         {:ok, event, []}
 
       true ->
