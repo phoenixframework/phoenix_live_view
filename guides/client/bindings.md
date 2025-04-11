@@ -473,3 +473,11 @@ end
 ```
 
 This code simply calls the `paginate_posts` function we defined as our first step, using the current or next page to drive the results. Notice that we match on a special `"_overran" => true` parameter in our `"prev-page"` event. The viewport events send this parameter when the user has "overran" the viewport top or bottom. Imagine the case where the user is scrolling back up through many pages of results, but grabs the scrollbar and returns immediately to the top of the page. This means our `<ul id="posts">` container was overrun by the top of the viewport, and we need to reset the the UI to page the first page.
+
+When testing, you can use `Phoenix.LiveViewTest.render_hook/3` to test the viewport events:
+
+```elixir
+view
+|> element("#posts")
+|> render_hook("next-page")
+```

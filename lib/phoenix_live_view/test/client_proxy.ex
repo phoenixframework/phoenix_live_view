@@ -1103,16 +1103,21 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_event(:hook, node, %Element{event: event} = element) do
     true = is_binary(event)
 
-    if TreeDOM.attribute(node, "phx-hook") do
-      if TreeDOM.attribute(node, "id") do
+    cond do
+      TreeDOM.attribute(node, "phx-hook") ->
+        if TreeDOM.attribute(node, "id") do
+          {:ok, event, []}
+        else
+          {:error, :invalid,
+           "element selected by #{inspect(element.selector)} for phx-hook does not have an ID"}
+        end
+
+      TreeDOM.attribute(node, "phx-viewport-top") || TreeDOM.attribute(node, "phx-viewport-bottom") ->
         {:ok, event, []}
-      else
+
+      true ->
         {:error, :invalid,
-         "element selected by #{inspect(element.selector)} for phx-hook does not have an ID"}
-      end
-    else
-      {:error, :invalid,
-       "element selected by #{inspect(element.selector)} does not have phx-hook attribute"}
+         "element selected by #{inspect(element.selector)} does not have phx-hook attribute"}
     end
   end
 
