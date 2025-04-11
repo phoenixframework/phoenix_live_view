@@ -254,7 +254,7 @@ and collections. For example:
 Or using the special `:for` attribute:
 
 ```heex
-<section :for={post <- @posts>}>
+<section :for={post <- @posts}>
   <h1>{expand_title(post.title)}</h1>
 </section>
 ```
@@ -271,7 +271,7 @@ The first one is to use `Phoenix.LiveComponent` for each item in the
 comprehension:
 
 ```heex
-<section :for={post <- @posts>}>
+<section :for={post <- @posts}>
   <.live_component module={PostComponent} id={"post-#{post.id}"} post={post} />
 </section>
 ```
