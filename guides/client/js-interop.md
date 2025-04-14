@@ -183,7 +183,7 @@ Then a hook callback object could be defined and passed to the socket:
 
 ```javascript
 /**
- * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+ * @type {import("phoenix_live_view").HooksOptions}
  */
 let Hooks = {}
 Hooks.PhoneNumber = {
@@ -251,7 +251,7 @@ And then in the client:
 
 ```javascript
 /**
- * @type {import("phoenix_live_view").ViewHook}
+ * @type {import("phoenix_live_view").Hook}
  */
 Hooks.InfiniteScroll = {
   page() { return this.el.dataset.page },
@@ -278,7 +278,7 @@ And then on the client:
 
 ```javascript
 /**
- * @type {import("phoenix_live_view").ViewHook}
+ * @type {import("phoenix_live_view").Hook}
  */
 Hooks.Chart = {
   mounted(){
