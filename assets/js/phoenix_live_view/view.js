@@ -1242,6 +1242,8 @@ export default class View {
       } else {
         callback && callback(resp)
       }
+    }).catch(err => {
+      console.error(err)
     })
   }
 
