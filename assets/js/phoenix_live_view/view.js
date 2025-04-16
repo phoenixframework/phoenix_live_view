@@ -1166,7 +1166,9 @@ export default class View {
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    }).then(({reply}) => onReply && onReply(reply))
+    })
+      .then(({reply}) => onReply && onReply(reply))
+      .catch((error) => logError("Failed to push event", error))
   }
 
   pushFileProgress(fileEl, entryRef, progress, onReply = function (){ }){
@@ -1177,7 +1179,9 @@ export default class View {
         entry_ref: entryRef,
         progress: progress,
         cid: view.targetComponentID(fileEl.form, targetCtx)
-      }).then(({resp}) => onReply(resp))
+      })
+        .then(({resp}) => onReply(resp))
+        .catch((error) => logError("Failed to push file progress", error))
     })
   }
 
@@ -1242,7 +1246,7 @@ export default class View {
       } else {
         callback && callback(resp)
       }
-    })
+    }).catch((error) => logError("Failed to push input event", error))
   }
 
   triggerAwaitingSubmit(formEl, phxEvent){
@@ -1341,7 +1345,9 @@ export default class View {
           value: formData,
           meta: meta,
           cid: cid
-        }).then(({resp}) => onReply(resp))
+        })
+          .then(({resp}) => onReply(resp))
+          .catch((error) => logError("Failed to push form submit", error))
       })
     } else if(!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))){
       let meta = this.extractMeta(formEl, {}, opts.value)
@@ -1352,7 +1358,9 @@ export default class View {
         value: formData,
         meta: meta,
         cid: cid
-      }).then(({resp}) => onReply(resp))
+      })
+        .then(({resp}) => onReply(resp))
+        .catch((error) => logError("Failed to push form submit", error))
     }
   }
 
@@ -1408,7 +1416,7 @@ export default class View {
           }
           uploader.initAdapterUpload(resp, onError, this.liveSocket)
         }
-      })
+      }).catch((error) => logError("Failed to push upload", error))
     })
   }
 
@@ -1544,10 +1552,10 @@ export default class View {
           if(completelyDestroyCIDs.length > 0){
             this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}).then(({resp}) => {
               this.rendered.pruneCIDs(resp.cids)
-            })
+            }).catch((error) => logError("Failed to push components destroyed", error))
           }
         })
-      })
+      }).catch((error) => logError("Failed to push components destroyed", error))
     }
   }
 
