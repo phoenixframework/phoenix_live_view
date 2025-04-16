@@ -830,7 +830,8 @@ defmodule Phoenix.LiveView.JS do
   @doc """
   Mark attributes as ignored, skipping them when patching the DOM.
 
-  Accepts a list of attribute names. An asterisk `*` can be used as a wildcard.
+  Accepts a single attribute name or a list of attribute names.
+  An asterisk `*` can be used as a wildcard.
 
   Once set, the given attributes will not be patched across LiveView updates.
   This includes attributes that are removed by the server.
@@ -841,7 +842,7 @@ defmodule Phoenix.LiveView.JS do
   This is mostly useful in combination with the `phx-mounted` binding, for example:
 
   ```heex
-  <dialog phx-mounted={JS.ignore_attributes(["open"])}>
+  <dialog phx-mounted={JS.ignore_attributes("open")}>
     ...
   </dialog>
   ```
@@ -858,12 +859,20 @@ defmodule Phoenix.LiveView.JS do
 
   """
 
-  def ignore_attributes(attrs) when is_list(attrs), do: ignore_attributes(%JS{}, attrs, [])
+  def ignore_attributes(attrs) when is_list(attrs) or is_binary(attrs),
+    do: ignore_attributes(%JS{}, attrs, [])
 
-  def ignore_attributes(attrs, opts) when is_list(attrs) and is_list(opts),
+  def ignore_attributes(attrs, opts) when is_list(attrs) or (is_binary(attrs) and is_list(opts)),
     do: ignore_attributes(%JS{}, attrs, opts)
 
-  def ignore_attributes(%JS{} = js, attrs, opts) when is_list(attrs) and is_list(opts) do
+  def ignore_attributes(%JS{} = js, attrs, opts)
+      when is_list(attrs) or (is_binary(attrs) and is_list(opts)) do
+    attrs =
+      case attrs do
+        attr when is_binary(attr) -> [attr]
+        attrs when is_list(attrs) -> attrs
+      end
+
     opts = validate_keys(opts, :ignore_attributes, [:attrs, :to])
     put_op(js, "ignore_attrs", to: opts[:to], attrs: attrs)
   end
