@@ -166,10 +166,17 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3684", Issue3684Live
       live "/3686/a", Issue3686.ALive
       live "/3686/b", Issue3686.BLive
-      live "/3686/c", Issue3686.CLive
       live "/3709", Issue3709Live
       live "/3709/:id", Issue3709Live
       live "/3719", Issue3719Live
+    end
+  end
+
+  live_session :other, layout: {Phoenix.LiveViewTest.E2E.Layout, :live} do
+    scope "/issues", Phoenix.LiveViewTest.E2E do
+      pipe_through(:browser)
+
+      live "/3686/c", Issue3686.CLive
     end
   end
 
