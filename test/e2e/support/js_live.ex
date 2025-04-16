@@ -5,7 +5,7 @@ defmodule Phoenix.LiveViewTest.E2E.JsLive do
 
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
-    {:ok, socket}
+    {:ok, assign(socket, count: 0)}
   end
 
   @impl Phoenix.LiveView
@@ -36,6 +36,16 @@ defmodule Phoenix.LiveViewTest.E2E.JsLive do
     }>
       toggle modal
     </button>
+
+    <details phx-mounted={JS.ignore_attributes(["open"])}>
+      <summary>Details</summary>
+      <button phx-click="increment">{@count}</button>
+    </details>
     """
+  end
+
+  @impl Phoenix.LiveView
+  def handle_event("increment", _params, socket) do
+    {:noreply, update(socket, :count, &(&1 + 1))}
   end
 end

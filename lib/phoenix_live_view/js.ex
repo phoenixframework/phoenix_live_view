@@ -23,6 +23,7 @@ defmodule Phoenix.LiveView.JS do
     * `set_attribute` - Set an attribute on elements
     * `remove_attribute` - Remove an attribute from elements
     * `toggle_attribute` - Sets or removes element attribute based on attribute presence.
+    * `ignore_attributes` - Marks attributes as ignored, skipping them when patching the DOM.
     * `show` - Show elements, with optional transitions
     * `hide` - Hide elements, with optional transitions
     * `toggle` - Shows or hides elements based on visibility, with optional transitions
@@ -824,6 +825,47 @@ defmodule Phoenix.LiveView.JS do
   def toggle_attribute(%JS{} = js, {attr, val1, val2}, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle_attribute, [:to])
     put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val1, val2])
+  end
+
+  @doc """
+  Mark attributes as ignored, skipping them when patching the DOM.
+
+  Accepts a list of attribute names. An asterisk `*` can be used as a wildcard.
+
+  Once set, the given attributes will not be patched across LiveView updates.
+  This includes attributes that are removed by the server.
+
+  If you need to "unmark" an attribute, you need to call `ignore_attributes/1` again
+  with an updated list of attributes.
+
+  This is mostly useful in combination with the `phx-mounted` binding, for example:
+
+  ```heex
+  <dialog phx-mounted={JS.ignore_attributes(["open"])}>
+    ...
+  </dialog>
+  ```
+
+  ## Options
+
+    * `:to` - An optional DOM selector to select the target element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
+
+  ## Examples
+
+      JS.ignore_attributes(["open", "data-*"], to: "#my-dialog")
+
+  """
+
+  def ignore_attributes(attrs) when is_list(attrs), do: ignore_attributes(%JS{}, attrs, [])
+
+  def ignore_attributes(attrs, opts) when is_list(attrs) and is_list(opts),
+    do: ignore_attributes(%JS{}, attrs, opts)
+
+  def ignore_attributes(%JS{} = js, attrs, opts) when is_list(attrs) and is_list(opts) do
+    opts = validate_keys(opts, :ignore_attributes, [:attrs, :to])
+    put_op(js, "ignore_attrs", to: opts[:to], attrs: attrs)
   end
 
   @doc """
