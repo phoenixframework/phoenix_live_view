@@ -158,7 +158,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
   * `el` - attribute referencing the bound DOM node
   * `liveSocket` - the reference to the underlying `LiveSocket` instance
   * `pushEvent(event, payload, (reply, ref) => ...)` - method to push an event from the client to the LiveView server.
-    If no callback function is passed, a promise that resolves to the reply is returned.
+    If no callback function is passed, a promise that resolves to the `reply` is returned.
   * `pushEventTo(selectorOrTarget, event, payload, (reply, ref) => ...)` - method to push targeted events from the client
     to LiveViews and LiveComponents. It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is
     defined in, where its value can be either a query selector or an actual DOM element. If the query selector returns
@@ -166,7 +166,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
     or LiveView. `pushEventTo` supports passing the node element e.g. `this.el` instead of selector e.g. `"#" + this.el.id`
     as the first parameter for target.
     As there can be multiple targets, if no callback is passed, a promise is returned that matches the return value of
-    [`Promise.allSettled()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled#return_value).
+    [`Promise.allSettled()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled#return_value). Individual fulfilled values are of the format `{ reply, ref }`.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server. Returns a value that can be passed to `removeHandleEvent` to remove the event handler.
   * `removeHandleEvent(ref)` - method to remove an event handler added via `handleEvent`
   * `upload(name, files)` - method to inject a list of file-like objects into an uploader.
