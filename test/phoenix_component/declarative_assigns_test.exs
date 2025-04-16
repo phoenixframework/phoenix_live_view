@@ -1060,6 +1060,9 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       * `attr2` (`:atom`) - Examples include `:foo`, `:bar`, and `:baz`.
       * `attr3` (`:list`) - Must be one of `[60, 40]`.
       * `attr4` (`:list`) - Examples include `[60, 40]`.
+      * `attr5` (`:atom`) - Defaults to `:foo`. Must be one of `:foo`, `:bar`, or `:baz`.
+      * `attr6` (`:atom`) - Attr 6 doc. Must be one of `:foo`, `:bar`, or `:baz`.
+      * `attr7` (`:atom`) - Attr 7 doc. Defaults to `:foo`. Must be one of `:foo`, `:bar`, or `:baz`.
       """
     }
 
