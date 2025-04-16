@@ -21,7 +21,7 @@ import {
   detectInvalidStreamInserts,
   isCid
 } from "./utils"
-
+import ElementRef from "./element_ref"
 import DOM from "./dom"
 import DOMPostMorphRestorer from "./dom_post_morph_restorer"
 import morphdom from "morphdom"
@@ -217,20 +217,23 @@ export default class DOMPatch {
           // apply any changes that happened while the element was locked.
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
           let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
-          // only perform the clone step if this is not a patch that unlocks
-          if(fromEl.hasAttribute(PHX_REF_SRC) && fromEl.getAttribute(PHX_REF_LOCK) != this.undoRef){
-            if(DOM.isUploadInput(fromEl)){
-              DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
-              this.trackBefore("updated", fromEl, toEl)
-              updates.push(fromEl)
-            }
-            DOM.applyStickyOperations(fromEl)
-            let isLocked = fromEl.hasAttribute(PHX_REF_LOCK)
-            let clone = isLocked ? DOM.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null
-            if(clone){
-              DOM.putPrivate(fromEl, PHX_REF_LOCK, clone)
-              if(!isFocusedFormEl){
-                fromEl = clone
+          if(fromEl.hasAttribute(PHX_REF_SRC)){
+            const ref = new ElementRef(fromEl)
+            // only perform the clone step if this is not a patch that unlocks
+            if(ref.lockRef && (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))){
+              if(DOM.isUploadInput(fromEl)){
+                DOM.mergeAttrs(fromEl, toEl, {isIgnored: true})
+                this.trackBefore("updated", fromEl, toEl)
+                updates.push(fromEl)
+              }
+              DOM.applyStickyOperations(fromEl)
+              let isLocked = fromEl.hasAttribute(PHX_REF_LOCK)
+              let clone = isLocked ? DOM.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null
+              if(clone){
+                DOM.putPrivate(fromEl, PHX_REF_LOCK, clone)
+                if(!isFocusedFormEl){
+                  fromEl = clone
+                }
               }
             }
           }
