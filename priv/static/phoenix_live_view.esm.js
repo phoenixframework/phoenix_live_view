@@ -4365,7 +4365,7 @@ var View = class _View {
       event: phxEvent,
       value: this.extractMeta(el, meta, opts.value),
       cid: this.targetComponentID(el, targetCtx, opts)
-    }).then(({ reply }) => onReply && onReply(reply));
+    }).then(({ reply }) => onReply && onReply(reply)).catch((error) => logError("Failed to push event", error));
   }
   pushFileProgress(fileEl, entryRef, progress, onReply = function() {
   }) {
@@ -4376,7 +4376,7 @@ var View = class _View {
         entry_ref: entryRef,
         progress,
         cid: view.targetComponentID(fileEl.form, targetCtx)
-      }).then(({ resp }) => onReply(resp));
+      }).then(({ resp }) => onReply(resp)).catch((error) => logError("Failed to push file progress", error));
     });
   }
   pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback) {
@@ -4437,7 +4437,7 @@ var View = class _View {
       } else {
         callback && callback(resp);
       }
-    });
+    }).catch((error) => logError("Failed to push input event", error));
   }
   triggerAwaitingSubmit(formEl, phxEvent) {
     let awaitingSubmit = this.getScheduledSubmit(formEl);
@@ -4524,7 +4524,7 @@ var View = class _View {
           value: formData,
           meta,
           cid
-        }).then(({ resp }) => onReply(resp));
+        }).then(({ resp }) => onReply(resp)).catch((error) => logError("Failed to push form submit", error));
       });
     } else if (!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))) {
       let meta = this.extractMeta(formEl, {}, opts.value);
@@ -4535,7 +4535,7 @@ var View = class _View {
         value: formData,
         meta,
         cid
-      }).then(({ resp }) => onReply(resp));
+      }).then(({ resp }) => onReply(resp)).catch((error) => logError("Failed to push form submit", error));
     }
   }
   uploadFiles(formEl, phxEvent, targetCtx, ref, cid, onComplete) {
@@ -4583,7 +4583,7 @@ var View = class _View {
           };
           uploader.initAdapterUpload(resp, onError, this.liveSocket);
         }
-      });
+      }).catch((error) => logError("Failed to push upload", error));
     });
   }
   handleFailedEntryPreflight(uploadRef, reason, uploader) {
@@ -4694,10 +4694,10 @@ var View = class _View {
           if (completelyDestroyCIDs.length > 0) {
             this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }).then(({ resp }) => {
               this.rendered.pruneCIDs(resp.cids);
-            });
+            }).catch((error) => logError("Failed to push components destroyed", error));
           }
         });
-      });
+      }).catch((error) => logError("Failed to push components destroyed", error));
     }
   }
   ownsElement(el) {
