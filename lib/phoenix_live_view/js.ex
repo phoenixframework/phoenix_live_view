@@ -862,11 +862,11 @@ defmodule Phoenix.LiveView.JS do
   def ignore_attributes(attrs) when is_list(attrs) or is_binary(attrs),
     do: ignore_attributes(%JS{}, attrs, [])
 
-  def ignore_attributes(attrs, opts) when is_list(attrs) or (is_binary(attrs) and is_list(opts)),
+  def ignore_attributes(attrs, opts) when (is_list(attrs) or is_binary(attrs)) and is_list(opts),
     do: ignore_attributes(%JS{}, attrs, opts)
 
   def ignore_attributes(%JS{} = js, attrs, opts)
-      when is_list(attrs) or (is_binary(attrs) and is_list(opts)) do
+      when (is_list(attrs) or is_binary(attrs)) and is_list(opts) do
     attrs =
       case attrs do
         attr when is_binary(attr) -> [attr]
