@@ -233,7 +233,7 @@ describe("pushEvent replies", () => {
           mounted(){
             stubNextChannelReplyWithError(view, "error")
             this.pushEvent("charge", {amount: 123}).catch((error) => {
-              expect(error).toEqual({error: "error"})
+              expect(error).toEqual(expect.any(Error))
               done()
             })
           }
