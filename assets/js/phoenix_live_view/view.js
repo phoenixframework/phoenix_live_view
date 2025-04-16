@@ -502,6 +502,8 @@ export default class View {
     patch.before("updated", (fromEl, toEl) => {
       let hook = this.triggerBeforeUpdateHook(fromEl, toEl)
       if(hook){ updatedHookIds.add(fromEl.id) }
+      // trigger JS specific update logic (for example for JS.ignore_attributes)
+      JS.onBeforeElUpdated(fromEl, toEl)
     })
 
     patch.after("updated", el => {

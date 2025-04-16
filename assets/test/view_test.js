@@ -727,6 +727,42 @@ describe("View + DOM", function(){
       expect(childIds()).toEqual([1])
     })
   })
+
+  describe("JS integration", () => {
+    test("ignore_attributes skips attributes on update", () => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let updateDiff = {
+        "0": " phx-mounted=\"[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;]}]]\"",
+        "1": "0",
+        "2": " phx-mounted=\"[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;]}]]\"",
+        "3": "2",
+        "s": [
+          "<details",
+          ">\n    <summary>A</summary>\n    <span>",
+          "</span>\n    <details",
+          ">\n      <summary>B</summary>\n      <span>",
+          "</span>\n    </details>\n  </details>"
+        ]
+      }
+
+      let view = simulateJoinedView(el, liveSocket)
+      view.applyDiff("update", updateDiff, ({diff, events}) => view.update(diff, events))
+
+      expect(view.el.firstChild.tagName).toBe("DETAILS")
+      expect(view.el.firstChild.open).toBe(false)
+      view.el.firstChild.open = true
+      view.el.firstChild.setAttribute("data-foo", "bar")
+
+      // now update, the HTML patch would normally reset the open attribute
+      view.applyDiff("update", {"1": "1", "3": "4"}, ({diff, events}) => view.update(diff, events))
+      // open is ignored, so it is kept as is
+      expect(view.el.firstChild.open).toBe(true)
+      // foo is not ignored, so it is reset
+      expect(view.el.firstChild.getAttribute("data-foo")).toBe(null)
+      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1B4")
+    })
+  })
 })
 
 let submitBefore
