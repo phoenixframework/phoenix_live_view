@@ -35,6 +35,22 @@ let stubNextChannelReply = (view, replyPayload) => {
   }
 }
 
+let stubNextChannelReplyWithError = (view, reason) => {
+  let oldPush = view.channel.push
+  view.channel.push = () => {
+    return {
+      receives: [],
+      receive(kind, cb){
+        if(kind === "error"){
+          cb(reason)
+          view.channel.push = oldPush
+        }
+        return this
+      }
+    }
+  }
+}
+
 describe("events", () => {
   let processedEvents
   beforeEach(() => {
@@ -153,13 +169,12 @@ describe("pushEvent replies", () => {
 
   test("reply", (done) => {
     let view
-    let pushedRef = null
     let liveSocket = new LiveSocket("/live", Socket, {
       hooks: {
         Gateway: {
           mounted(){
             stubNextChannelReply(view, {transactionID: "1001"})
-            pushedRef = this.pushEvent("charge", {amount: 123}, (resp, ref) => {
+            this.pushEvent("charge", {amount: 123}, (resp, ref) => {
               processedReplies.push({resp, ref})
               view.el.dispatchEvent(new CustomEvent("replied", {detail: {resp, ref}}))
             })
@@ -176,7 +191,6 @@ describe("pushEvent replies", () => {
     }, [])
 
     view.el.addEventListener("replied", () => {
-      expect(pushedRef).toEqual(0)
       expect(processedReplies).toEqual([{resp: {transactionID: "1001"}, ref: 0}])
       done()
     })
@@ -211,15 +225,74 @@ describe("pushEvent replies", () => {
     })
   })
 
-  test("pushEvent without connection noops", () => {
+  test("rejects with error", (done) => {
     let view
-    let pushedRef = "before"
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Gateway: {
+          mounted(){
+            stubNextChannelReplyWithError(view, "error")
+            this.pushEvent("charge", {amount: 123}).catch((error) => {
+              expect(error).toEqual({error: "error"})
+              done()
+            })
+          }
+        }
+      }
+    })
+    view = simulateView(liveSocket, [], "")
+    view.update({
+      s: [`
+      <div id="gateway" phx-hook="Gateway">
+      </div>
+    `]
+    }, [])
+  })
+
+  test("pushEventTo - promise with multiple targets", (done) => {
+    let view
     let liveSocket = new LiveSocket("/live", Socket, {
       hooks: {
         Gateway: {
           mounted(){
             stubNextChannelReply(view, {transactionID: "1001"})
-            pushedRef = this.pushEvent("charge", {amount: 123}, () => {})
+            this.pushEventTo("[data-foo]", "charge", {amount: 123}).then((result) => {
+              expect(result).toEqual([
+                {status: "fulfilled", value: {ref: 0, reply: {transactionID: "1001"}}},
+                // we only stubbed one reply
+                {status: "rejected", reason: expect.any(Error)}
+              ])
+              done()
+            })
+          }
+        }
+      }
+    })
+    view = simulateView(liveSocket, [], "")
+    liveSocket.main = view
+    view.update({
+      s: [`
+      <div id="${view.id}" data-phx-session="abc123" data-phx-root-id="${view.id}">
+        <div id="gateway" phx-hook="Gateway">
+          <div data-foo="bar"></div>
+          <div data-foo="baz"></div>
+        </div>
+      </div>
+    `]
+    }, [])
+  })
+
+  test("pushEvent without connection noops", (done) => {
+    let view
+    const spy = jest.fn()
+    let liveSocket = new LiveSocket("/live", Socket, {
+      hooks: {
+        Gateway: {
+          mounted(){
+            stubNextChannelReply(view, {transactionID: "1001"})
+            this.pushEvent("charge", {amount: 1233433}).then(spy).catch(() => {
+              view.el.dispatchEvent(new CustomEvent("pushed"))
+            })
           }
         }
       }
@@ -233,6 +306,9 @@ describe("pushEvent replies", () => {
     `]
     }, [])
 
-    expect(pushedRef).toEqual(false)
+    view.el.addEventListener("pushed", () => {
+      expect(spy).not.toHaveBeenCalled()
+      done()
+    })
   })
 })

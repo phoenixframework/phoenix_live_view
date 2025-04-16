@@ -1122,20 +1122,19 @@ export default class View {
     }
   }
 
-  pushHookEvent(el, targetCtx, event, payload, onReply){
+  pushHookEvent(el, targetCtx, event, payload){
     if(!this.isConnected()){
       this.log("hook", () => ["unable to push hook event. LiveView not connected", event, payload])
-      return false
+      return Promise.reject(new Error("unable to push hook event. LiveView not connected"))
     }
     let [ref, els, opts] = this.putRef([{el, loading: true, lock: true}], event, "hook")
-    this.pushWithReply(() => [ref, els, opts], "event", {
+    
+    return this.pushWithReply(() => [ref, els, opts], "event", {
       type: "hook",
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }).then(({resp: _resp, reply: hookReply}) => onReply(hookReply, ref))
-
-    return ref
+    }).then(({resp: _resp, reply}) => ({reply, ref}))
   }
 
   extractMeta(el, meta, value){

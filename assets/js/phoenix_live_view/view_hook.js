@@ -253,39 +253,33 @@ export default class ViewHook {
   }
 
   pushEvent(event, payload = {}, onReply){
+    const promise = this.__view().pushHookEvent(this.el, null, event, payload)
     if(onReply === undefined){
-      return new Promise((resolve, reject) => {
-        try {
-          const ref = this.__view().pushHookEvent(this.el, null, event, payload, (reply, _ref) => resolve(reply))
-          if(ref === false){
-            reject(new Error("unable to push hook event. LiveView not connected"))
-          }
-        } catch (error){
-          reject(error)
-        }
-      })
-    }
-    return this.__view().pushHookEvent(this.el, null, event, payload, onReply)
+      return promise.then(({reply}) => reply)
+    } 
+    promise.then(({reply, ref}) => onReply(reply, ref)).catch(() => {})
+    // return nothing (for now)
+    return
   }
 
   pushEventTo(phxTarget, event, payload = {}, onReply){
     if(onReply === undefined){
-      return new Promise((resolve, reject) => {
-        try {
-          this.__view().withinTargets(phxTarget, (view, targetCtx) => {
-            const ref = view.pushHookEvent(this.el, targetCtx, event, payload, (reply, _ref) => resolve(reply))
-            if(ref === false){
-              reject(new Error("unable to push hook event. LiveView not connected"))
-            }
-          })
-        } catch (error){
-          reject(error)
-        }
+      const targetPair = []
+      this.__view().withinTargets(phxTarget, (view, targetCtx) => {
+        targetPair.push({view, targetCtx})
       })
+      const promises = targetPair.map(({view, targetCtx}) => {
+        return view.pushHookEvent(this.el, targetCtx, event, payload)
+      })
+      return Promise.allSettled(promises)
     }
-    return this.__view().withinTargets(phxTarget, (view, targetCtx) => {
-      return view.pushHookEvent(this.el, targetCtx, event, payload, onReply)
+    this.__view().withinTargets(phxTarget, (view, targetCtx) => {
+      return view.pushHookEvent(this.el, targetCtx, event, payload)
+        .then(({reply, ref}) => onReply(reply, ref))
+        .catch(() => {})
     })
+    // return nothing (for now)
+    return
   }
 
   handleEvent(event, callback){
