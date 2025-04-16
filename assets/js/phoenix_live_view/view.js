@@ -1133,9 +1133,7 @@ export default class View {
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    })
-      .then(({resp: _resp, reply: hookReply}) => onReply(hookReply, ref))
-      .catch((error) => logError("Failed to push hook event", error))
+    }).then(({resp: _resp, reply: hookReply}) => onReply(hookReply, ref))
 
     return ref
   }
