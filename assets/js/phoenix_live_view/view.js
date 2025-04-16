@@ -933,7 +933,7 @@ export default class View {
   }
 
   pushWithReply(refGenerator, event, payload){
-    if(!this.isConnected()){ return Promise.reject({error: "noconnection"}) }
+    if(!this.isConnected()){ return Promise.reject(new Error("no connection")) }
 
     let [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}]
     let oldJoinCount = this.joinCount
@@ -970,9 +970,9 @@ export default class View {
             finish(null)
           }
         },
-        error: (reason) => reject({error: reason}),
+        error: (reason) => reject(new Error(`failed with reason: ${reason}`)),
         timeout: () => {
-          reject({timeout: true})
+          reject(new Error("timeout"))
           if(this.joinCount === oldJoinCount){
             this.liveSocket.reloadWithJitter(this, () => {
               this.log("timeout", () => ["received timeout while communicating with server. Falling back to hard refresh for recovery"])
