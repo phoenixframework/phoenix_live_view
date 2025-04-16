@@ -1608,7 +1608,7 @@ defmodule Phoenix.LiveView do
 
   ```javascript
   /**
-   * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+   * @type {import("phoenix_live_view").HooksOption}
    */
   let Hooks = {}
   Hooks.ClientHook = {
