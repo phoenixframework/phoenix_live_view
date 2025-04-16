@@ -850,7 +850,7 @@ export default class View {
       return
     } else if(resp.reason === "unauthorized" || resp.reason === "stale"){
       this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp])
-      this.onRedirect({to: this.root.href})
+      this.onRedirect({to: this.root.href, flash: this.flash})
       return
     }
     if(resp.redirect || resp.live_redirect){
