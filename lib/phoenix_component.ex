@@ -1696,10 +1696,17 @@ defmodule Phoenix.Component do
     unused_field_str = "_unused_#{field}"
 
     case params do
-      %{^field_str => _, ^unused_field_str => _} -> false
-      %{^field_str => %{} = nested} -> Enum.any?(Map.keys(nested), &used_param?(nested, &1))
-      %{^field_str => _val} -> true
-      %{} -> false
+      %{^field_str => _, ^unused_field_str => _} ->
+        false
+
+      %{^field_str => %{} = nested} when not is_struct(nested) ->
+        Enum.any?(Map.keys(nested), &used_param?(nested, &1))
+
+      %{^field_str => _val} ->
+        true
+
+      %{} ->
+        false
     end
   end
 
