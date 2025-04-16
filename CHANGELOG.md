@@ -112,6 +112,18 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.10
+
+### Bug fixes
+
+* Fix flash getting lost when falling back to a full page reload due to navigating across live sessions ([#3686](https://github.com/phoenixframework/phoenix_live_view/issues/3686))
+* Fix edge case where locked DOM nodes were not properly patched on unlock ([#3758](https://github.com/phoenixframework/phoenix_live_view/issues/3758))
+* Fix `used_input?` returning `false` when a form parameter value is a struct ([#3757](https://github.com/phoenixframework/phoenix_live_view/issues/3757))
+
+### Enhancements
+
+* Allow testing `phx-viewport-bottom` and `phx-viewport-top` with `Phoenix.LiveViewTest.render_hook/3` ([#3755](https://github.com/phoenixframework/phoenix_live_view/pull/3755))
+
 ## 1.0.9 (2025-03-26)
 
 ### Bug fixes
