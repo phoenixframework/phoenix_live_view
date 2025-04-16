@@ -735,14 +735,10 @@ describe("View + DOM", function(){
       let updateDiff = {
         "0": " phx-mounted=\"[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;]}]]\"",
         "1": "0",
-        "2": " phx-mounted=\"[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;]}]]\"",
-        "3": "2",
         "s": [
           "<details",
           ">\n    <summary>A</summary>\n    <span>",
-          "</span>\n    <details",
-          ">\n      <summary>B</summary>\n      <span>",
-          "</span>\n    </details>\n  </details>"
+          "</span></details>"
         ]
       }
 
@@ -755,12 +751,45 @@ describe("View + DOM", function(){
       view.el.firstChild.setAttribute("data-foo", "bar")
 
       // now update, the HTML patch would normally reset the open attribute
-      view.applyDiff("update", {"1": "1", "3": "4"}, ({diff, events}) => view.update(diff, events))
+      view.applyDiff("update", {"1": "1"}, ({diff, events}) => view.update(diff, events))
       // open is ignored, so it is kept as is
       expect(view.el.firstChild.open).toBe(true)
       // foo is not ignored, so it is reset
       expect(view.el.firstChild.getAttribute("data-foo")).toBe(null)
-      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1B4")
+      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1")
+    })
+
+    test("ignore_attributes wildcard", () => {
+      let liveSocket = new LiveSocket("/live", Socket)
+      let el = liveViewDOM()
+      let updateDiff = {
+        "0": " phx-mounted=\"[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;,&quot;data-*&quot;]}]]\"",
+        "1": " data-foo=\"foo\" data-bar=\"bar\"",
+        "2": "0",
+        "s": [
+          "<details",
+          "",
+          ">\n    <summary>A</summary>\n    <span>",
+          "</span></details>"
+        ]
+      }
+
+      let view = simulateJoinedView(el, liveSocket)
+      view.applyDiff("update", updateDiff, ({diff, events}) => view.update(diff, events))
+
+      expect(view.el.firstChild.tagName).toBe("DETAILS")
+      expect(view.el.firstChild.open).toBe(false)
+      view.el.firstChild.open = true
+      view.el.firstChild.setAttribute("data-foo", "bar")
+      view.el.firstChild.setAttribute("data-other", "also kept")
+      // apply diff
+      view.applyDiff("update", {"1": "data-foo=\"foo\" data-bar=\"bar\" data-new=\"new\"", "2": "1"}, ({diff, events}) => view.update(diff, events))
+      expect(view.el.firstChild.open).toBe(true)
+      expect(view.el.firstChild.getAttribute("data-foo")).toBe("bar")
+      expect(view.el.firstChild.getAttribute("data-bar")).toBe("bar")
+      expect(view.el.firstChild.getAttribute("data-other")).toBe("also kept")
+      expect(view.el.firstChild.getAttribute("data-new")).toBe("new")
+      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1")
     })
   })
 })
