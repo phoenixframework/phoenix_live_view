@@ -114,6 +114,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
+    plug :fetch_live_flash
     plug :protect_from_forgery
     plug :put_root_layout, html: {Phoenix.LiveViewTest.E2E.Layout, :root}
   end
@@ -163,6 +164,9 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3656", Issue3656Live
       live "/3658", Issue3658Live
       live "/3684", Issue3684Live
+      live "/3686/a", Issue3686.ALive
+      live "/3686/b", Issue3686.BLive
+      live "/3686/c", Issue3686.CLive
       live "/3709", Issue3709Live
       live "/3709/:id", Issue3709Live
       live "/3719", Issue3719Live
