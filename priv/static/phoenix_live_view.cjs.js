@@ -2164,19 +2164,22 @@ var DOMPatch = class {
           }
           let isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
           let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
-          if (fromEl.hasAttribute(PHX_REF_SRC) && fromEl.getAttribute(PHX_REF_LOCK) != this.undoRef) {
-            if (dom_default.isUploadInput(fromEl)) {
-              dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
-              this.trackBefore("updated", fromEl, toEl);
-              updates.push(fromEl);
-            }
-            dom_default.applyStickyOperations(fromEl);
-            let isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
-            let clone2 = isLocked ? dom_default.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null;
-            if (clone2) {
-              dom_default.putPrivate(fromEl, PHX_REF_LOCK, clone2);
-              if (!isFocusedFormEl) {
-                fromEl = clone2;
+          if (fromEl.hasAttribute(PHX_REF_SRC)) {
+            const ref = new ElementRef(fromEl);
+            if (ref.lockRef && (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))) {
+              if (dom_default.isUploadInput(fromEl)) {
+                dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
+                this.trackBefore("updated", fromEl, toEl);
+                updates.push(fromEl);
+              }
+              dom_default.applyStickyOperations(fromEl);
+              let isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
+              let clone2 = isLocked ? dom_default.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null;
+              if (clone2) {
+                dom_default.putPrivate(fromEl, PHX_REF_LOCK, clone2);
+                if (!isFocusedFormEl) {
+                  fromEl = clone2;
+                }
               }
             }
           }
@@ -4052,7 +4055,7 @@ var View = class _View {
       return;
     } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
       this.log("error", () => ["unauthorized live_redirect. Falling back to page request", resp]);
-      this.onRedirect({ to: this.root.href });
+      this.onRedirect({ to: this.root.href, flash: this.flash });
       return;
     }
     if (resp.redirect || resp.live_redirect) {
