@@ -121,6 +121,7 @@ generated user module:
 * Fix `used_input?` returning `false` when a form parameter value is a struct ([#3757](https://github.com/phoenixframework/phoenix_live_view/issues/3757))
 * Catch promise rejections from `pushWithReply` ([#3766](https://github.com/phoenixframework/phoenix_live_view/pull/3766))
 * Fix empty optgroups breaking DOM patching of other select options ([#3742](https://github.com/phoenixframework/phoenix_live_view/issues/3742))
+* Don't shutdown sticky LiveViews when they `push_navigate` ([#3612](https://github.com/phoenixframework/phoenix_live_view/issues/3612))
 
 ### Enhancements
 
