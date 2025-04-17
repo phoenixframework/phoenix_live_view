@@ -80,3 +80,15 @@ test("set and remove_attribute", async ({page}) => {
   await expect(page.locator("#my-modal")).not.toHaveAttribute("open")
   await expect(page.locator("#my-modal")).toBeHidden()
 })
+
+test("ignore_attributes", async ({page}) => {
+  await page.goto("/js")
+  await syncLV(page)
+  await expect(page.locator("details")).not.toHaveAttribute("open")
+  await page.locator("details").click()
+  await expect(page.locator("details")).toHaveAttribute("open")
+  // without ignore_attributes, the open attribute would be reset to false
+  await page.locator("details button").click()
+  await syncLV(page)
+  await expect(page.locator("details")).toHaveAttribute("open")
+})
