@@ -1121,9 +1121,30 @@ defmodule Phoenix.LiveView do
   @doc """
   Accesses the connect params sent by the client for use on connected mount.
 
-  Connect params are only sent when the client connects to the server and
-  only remain available during mount. `nil` is returned when called in a
-  disconnected state and a `RuntimeError` is raised if called after mount.
+  Connect params are sent from the client on every connection and reconnection.
+  The parameters in the client can be computed dynamically, allowing you to pass
+  client state to the server. For example, you could use it to compute and pass
+  the user time zone from a JavaScript client:
+
+  ```javascript
+  let liveSocket = new LiveSocket("/live", Socket, {
+    longPollFallbackMs: 2500,
+    params: (_liveViewName) => {
+      return {
+        _csrf_token: csrfToken,
+        time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+    }
+  })
+  ```
+
+  By computing the parameters with a function, reconnections will reevalute
+  the code, allowing you to fetch the latest data.
+
+  On the LiveView, you will use `get_connect_params/1` to read the data,
+  which only remains available during mount. `nil` is returned when called
+  in a disconnected state and a `RuntimeError` is raised if called after
+  mount.
 
   ## Reserved params
 
