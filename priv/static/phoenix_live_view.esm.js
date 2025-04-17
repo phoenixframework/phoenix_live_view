@@ -3490,7 +3490,8 @@ var View = class _View {
         params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash
+        flash: this.flash,
+        sticky: this.el.hasAttribute(PHX_STICKY)
       };
     });
   }
