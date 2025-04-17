@@ -3439,7 +3439,8 @@ var View = class _View {
         params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash
+        flash: this.flash,
+        sticky: this.el.hasAttribute(PHX_STICKY)
       };
     });
   }
@@ -4788,7 +4789,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.0.9";
+    return "1.0.10";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";

@@ -3483,7 +3483,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           params: this.connectParams(liveReferer),
           session: this.getSession(),
           static: this.getStatic(),
-          flash: this.flash
+          flash: this.flash,
+          sticky: this.el.hasAttribute(PHX_STICKY)
         };
       });
     }
@@ -4831,7 +4832,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     // public
     version() {
-      return "1.0.9";
+      return "1.0.10";
     }
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";

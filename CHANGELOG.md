@@ -112,7 +112,7 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
-## 1.0.10
+## 1.0.10 (2025-04-17)
 
 ### Bug fixes
 
