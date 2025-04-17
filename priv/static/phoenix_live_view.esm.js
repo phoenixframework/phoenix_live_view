@@ -2814,6 +2814,15 @@ var JS = {
   exec_toggle_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
     this.toggleAttr(el, attr, val1, val2);
   },
+  exec_ignore_attrs(e, eventType, phxEvent, view, sourceEl, el, { attrs }) {
+    dom_default.putPrivate(el, "JS:ignore_attrs", { apply: (fromEl, toEl) => {
+      Array.from(fromEl.attributes).forEach((attr) => {
+        if (attrs.some((toIgnore) => attr.name == toIgnore || toIgnore.includes("*") && attr.name.match(toIgnore) != null)) {
+          toEl.setAttribute(attr.name, attr.value);
+        }
+      });
+    } });
+  },
   exec_transition(e, eventType, phxEvent, view, sourceEl, el, { time, transition, blocking }) {
     this.addOrRemoveClasses(el, [], [], transition, time, view, blocking);
   },
@@ -2831,6 +2840,12 @@ var JS = {
   },
   exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, { attr }) {
     this.setOrRemoveAttrs(el, [], [attr]);
+  },
+  onBeforeElUpdated(fromEl, toEl) {
+    const ignoreAttrs = dom_default.private(fromEl, "JS:ignore_attrs");
+    if (ignoreAttrs) {
+      ignoreAttrs.apply(fromEl, toEl);
+    }
   },
   // utils for commands
   show(eventType, view, el, display, transition, time, blocking) {
@@ -3734,6 +3749,7 @@ var View = class _View {
       if (hook) {
         updatedHookIds.add(fromEl.id);
       }
+      js_default.onBeforeElUpdated(fromEl, toEl);
     });
     patch.after("updated", (el) => {
       if (updatedHookIds.has(el.id)) {
