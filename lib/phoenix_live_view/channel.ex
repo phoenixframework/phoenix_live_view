@@ -877,7 +877,13 @@ defmodule Phoenix.LiveView.Channel do
         new_state
         |> push_pending_events_on_redirect(new_socket)
         |> push_live_redirect(opts, ref)
-        |> stop_shutdown_redirect(:live_redirect, opts)
+        |> then(fn state ->
+          if new_socket.sticky? do
+            {:noreply, drop_redirect(state)}
+          else
+            stop_shutdown_redirect(state, :live_redirect, opts)
+          end
+        end)
 
       {:live, :patch, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
         {params, action} = patch_params_and_action!(new_socket, opts)
@@ -1175,7 +1181,8 @@ defmodule Phoenix.LiveView.Channel do
       parent_pid: parent,
       root_pid: root_pid || self(),
       id: id,
-      router: router
+      router: router,
+      sticky?: params["sticky"]
     }
 
     {params, host_uri, action} =

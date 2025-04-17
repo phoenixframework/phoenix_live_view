@@ -56,7 +56,8 @@ defmodule Phoenix.LiveView.Socket do
              :parent_pid,
              :root_pid,
              :assigns,
-             :transport_pid
+             :transport_pid,
+             :sticky?
            ]}
 
   defstruct id: nil,
@@ -70,7 +71,8 @@ defmodule Phoenix.LiveView.Socket do
             fingerprints: Phoenix.LiveView.Diff.new_fingerprints(),
             redirected: nil,
             host_uri: nil,
-            transport_pid: nil
+            transport_pid: nil,
+            sticky?: false
 
   @typedoc "Struct returned when `assigns` is not in the socket."
   @opaque assigns_not_in_socket :: Phoenix.LiveView.Socket.AssignsNotInSocket.t()

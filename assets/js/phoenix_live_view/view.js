@@ -24,6 +24,7 @@ import {
   PHX_ROOT_ID,
   PHX_SESSION,
   PHX_STATIC,
+  PHX_STICKY,
   PHX_TRACK_STATIC,
   PHX_TRACK_UPLOADS,
   PHX_UPDATE,
@@ -181,6 +182,7 @@ export default class View {
         session: this.getSession(),
         static: this.getStatic(),
         flash: this.flash,
+        sticky: this.el.hasAttribute(PHX_STICKY)
       }
     })
   }
