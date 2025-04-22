@@ -1,6 +1,6 @@
 # Live layouts
 
-Your LvieView applications can be made of two layouts:
+Your LiveView applications can be made of two layouts:
 
   * the root layout - this is a layout used by both LiveView and
     regular controller views. This layout typically contains the `<html>`
