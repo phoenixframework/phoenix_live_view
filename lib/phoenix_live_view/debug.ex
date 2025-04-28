@@ -54,14 +54,13 @@ defmodule Phoenix.LiveView.Debug do
       {:ok, %Phoenix.LiveView.Socket{...}}
 
       iex> socket(pid(0,123,0))
-      {:error, :not_a_liveview}
+      {:error, :not_alive_or_not_a_liveview}
 
   """
   def socket(liveview_pid) do
-    case :sys.get_state(liveview_pid, 5000) do
-      %{socket: %Phoenix.LiveView.Socket{} = socket} -> {:ok, socket}
-      _ -> {:error, :not_a_liveview}
-    end
+    GenServer.call(liveview_pid, {:phoenix, :debug_get_socket})
+  rescue
+    _ -> {:error, :not_alive_or_not_a_liveview}
   end
 
   @doc """
@@ -88,21 +87,8 @@ defmodule Phoenix.LiveView.Debug do
 
   """
   def live_components(liveview_pid) do
-    case :sys.get_state(liveview_pid, 5000) do
-      %{socket: %Phoenix.LiveView.Socket{}, components: components} ->
-        {:ok, extract_components(components)}
-
-      _ ->
-        {:error, :not_a_liveview}
-    end
-  end
-
-  defp extract_components({components, _, _}) when components == %{}, do: []
-
-  defp extract_components({components, _, _}) do
-    # components is a map of cid => {module, id, assigns, private, fingerprints}
-    Enum.map(components, fn {cid, {mod, id, assigns, _private, _prints}} ->
-      %{id: id, cid: cid, module: mod, assigns: assigns}
-    end)
+    GenServer.call(liveview_pid, {:phoenix, :debug_live_components})
+  rescue
+    _ -> {:error, :not_alive_or_not_a_liveview}
   end
 end

@@ -408,6 +408,25 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, register_entry_upload(state, from, info)}
   end
 
+  # Phoenix.LiveView.Debug.socket/1
+  def handle_call({@prefix, :debug_get_socket}, _from, state) do
+    {:reply, {:ok, state.socket}, state}
+  end
+
+  # Phoenix.LiveView.Debug.live_components/1
+  def handle_call(
+        {@prefix, :debug_live_components},
+        _from,
+        %{components: {components, _, _}} = state
+      ) do
+    component_info =
+      Enum.map(components, fn {cid, {mod, id, assigns, private, _prints}} ->
+        %{id: id, cid: cid, module: mod, assigns: assigns, children_cids: private.children_cids}
+      end)
+
+    {:reply, {:ok, component_info}, state}
+  end
+
   def handle_call(msg, from, %{socket: socket} = state) do
     case socket.view.handle_call(msg, from, socket) do
       {:reply, reply, %Socket{} = new_socket} ->
