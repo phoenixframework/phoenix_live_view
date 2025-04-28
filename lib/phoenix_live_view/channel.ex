@@ -1527,6 +1527,11 @@ defmodule Phoenix.LiveView.Channel do
     Enum.flat_map_reduce(cids, state, fn cid, acc ->
       {deleted_cids, new_components} = Diff.delete_component(cid, acc.components)
 
+      :telemetry.execute([:phoenix, :live_view, :component_destroyed], %{}, %{
+        socket: state.socket,
+        cid: cid
+      })
+
       canceled_confs =
         deleted_cids
         |> Enum.filter(fn deleted_cid -> deleted_cid in upload_cids end)

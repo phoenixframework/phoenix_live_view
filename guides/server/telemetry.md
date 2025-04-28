@@ -191,6 +191,16 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             changed?: boolean
           }
 
+  * `[:phoenix, :live_view, :component_destroyed]` - Dispatched by a `Phoenix.LiveView`
+     after a LiveComponent is destroyed. No measurement.
+
+     * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            cid: integer()
+          }
+
   * `[:phoenix, :live_component, :update, :start]` - Dispatched by a `Phoenix.LiveComponent`
     immediately before [`update/2`](`c:Phoenix.LiveComponent.update/2`) or a
     [`update_many/1`](`c:Phoenix.LiveComponent.update_many/1`) is invoked.
