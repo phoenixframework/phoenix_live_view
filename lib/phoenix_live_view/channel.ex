@@ -1089,6 +1089,9 @@ defmodule Phoenix.LiveView.Channel do
             with {:ok, %Session{view: view} = new_verified, route, url} <-
                    authorize_session(verified, endpoint, params),
                  {:ok, config} <- load_live_view(view) do
+              # TODO: replace with Process.put_label/2 when we require Elixir 1.17
+              Process.put(:"$process_label", {Phoenix.LiveView, view, phx_socket.topic})
+
               verified_mount(
                 new_verified,
                 config,
