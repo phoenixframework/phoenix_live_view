@@ -3449,6 +3449,18 @@ defmodule Phoenix.Component do
   @doc """
   Renders a portal.
 
+  A portal is a component that teleports its content to another place in the DOM.
+  It is useful in cases where you need to render some content in another place, for
+  example due to overflow or [stacking context](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Stacking_context).
+
+  A portal consists of two parts:
+
+  1. The portal source: the component that should be teleported.
+  2. The portal target: the DOM element that will render the content of the portal source.
+
+  Any element can be a portal target. In most cases, the target would be rendered inside
+  the layout of your application. Portal sources must be defined with the `.portal` component.
+
   ## Examples
 
   ```heex

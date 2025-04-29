@@ -138,7 +138,6 @@ describe("DOM", () => {
         <div id="foo" data-phx-main="true"
             data-phx-session="123"
             data-phx-static="456"
-            id="phx-123"
             class="phx-connected"
             data-phx-root-id="phx-FgFpFf-J8Gg-jEnh">
         </div>
@@ -170,12 +169,12 @@ describe("DOM", () => {
       `)
       document.body.appendChild(view)
 
-      view.appendChild(tag("div", {"data-phx-component": 1}, `
+      view.appendChild(tag("div", {"data-phx-component": 1, "data-phx-view": "phx-123"}, `
         <div data-phx-session="123" data-phx-static="456" data-phx-parent="phx-123" id="phx-child-view">
-          <div data-phx-component="1"></div>
+          <div data-phx-component="1" data-phx-view="phx-child-view"></div>
         </div>
       `))
-      expect(DOM.findExistingParentCIDs(view, [1])).toEqual(new Set([1]))
+      expect(DOM.findExistingParentCIDs("phx-123", [1])).toEqual(new Set([1]))
     })
   })
 

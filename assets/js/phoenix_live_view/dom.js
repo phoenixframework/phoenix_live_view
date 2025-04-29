@@ -366,10 +366,10 @@ let DOM = {
     // find the closest portal or view element, whichever comes first
     const portalOrViewEl = el.closest(`[${PHX_TELEPORTED_REF}],${PHX_VIEW_SELECTOR}`)
     if(!portalOrViewEl){ return null }
-    if(portalOrViewEl.getAttribute(PHX_TELEPORTED_REF)){
+    if(portalOrViewEl.hasAttribute(PHX_TELEPORTED_REF)){
       // PHX_TELEPORTED_REF is set to the id of the view that owns the portal element
       return this.byId(portalOrViewEl.getAttribute(PHX_TELEPORTED_REF))
-    } else if(portalOrViewEl.getAttribute(PHX_SESSION)){
+    } else if(portalOrViewEl.hasAttribute(PHX_SESSION)){
       return portalOrViewEl
     }
     return null
