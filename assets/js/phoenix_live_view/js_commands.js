@@ -230,6 +230,14 @@ export default (liveSocket, eventType) => {
     patch(href, opts = {}){
       let e = new CustomEvent("phx:exec")
       liveSocket.pushHistoryPatch(e, href, opts.replace ? "replace" : "push", null)
-    }
+    },
+
+    /**
+     * Mark attributes as ignored, skipping them when patching the DOM.
+     * 
+     * @param {HTMLElement} el - The element to toggle the attribute on.
+     * @param {Array<string>|string} attrs - The attribute name or names to ignore.
+     */
+    ignoreAttributes(el, attrs){ JS.ignoreAttrs(el, attrs) }
   }
 }

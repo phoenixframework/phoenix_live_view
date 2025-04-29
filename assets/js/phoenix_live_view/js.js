@@ -143,13 +143,7 @@ let JS = {
   },
 
   exec_ignore_attrs(e, eventType, phxEvent, view, sourceEl, el, {attrs}){
-    DOM.putPrivate(el, "JS:ignore_attrs", {apply: (fromEl, toEl) => {
-      Array.from(fromEl.attributes).forEach(attr => {
-        if(attrs.some(toIgnore => attr.name == toIgnore || toIgnore.includes("*") && attr.name.match(toIgnore) != null)){
-          toEl.setAttribute(attr.name, attr.value)
-        }
-      })
-    }})
+    this.ignoreAttrs(el, attrs)
   },
 
   exec_transition(e, eventType, phxEvent, view, sourceEl, el, {time, transition, blocking}){
@@ -174,6 +168,16 @@ let JS = {
 
   exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, {attr}){
     this.setOrRemoveAttrs(el, [], [attr])
+  },
+
+  ignoreAttrs(el, attrs){
+    DOM.putPrivate(el, "JS:ignore_attrs", {apply: (fromEl, toEl) => {
+      Array.from(fromEl.attributes).forEach(attr => {
+        if(attrs.some(toIgnore => attr.name == toIgnore || toIgnore.includes("*") && attr.name.match(toIgnore) != null)){
+          toEl.setAttribute(attr.name, attr.value)
+        }
+      })
+    }})
   },
 
   onBeforeElUpdated(fromEl, toEl){
