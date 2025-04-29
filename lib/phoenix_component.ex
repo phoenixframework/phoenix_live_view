@@ -3475,6 +3475,7 @@ defmodule Phoenix.Component do
   attr.(:id, :string, required: true)
   attr.(:target, :string, required: true)
   attr.(:class, :string, default: nil, doc: "The class to apply to the portal wrapper.")
+  attr.(:container, :string, default: "div", doc: "The HTML tag to use as the portal wrapper.")
   slot.(:inner_block, required: true)
 
   def portal(assigns) do
@@ -3485,9 +3486,14 @@ defmodule Phoenix.Component do
         which we enforce by wrapping the slot in a div. In the generated CSS for
         new projects, we include a display: contents rule for data-phx-portal-root.
       --%>
-      <div id={@id <> "-wrapper"} class={@class} data-phx-portal-wrapper>
+      <.dynamic_tag
+        tag_name={@container}
+        id={@id <> "-wrapper"}
+        class={@class}
+        data-phx-portal-wrapper
+      >
         {render_slot(@inner_block)}
-      </div>
+      </.dynamic_tag>
     </template>
     """
   end
