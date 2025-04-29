@@ -3445,4 +3445,38 @@ defmodule Phoenix.Component do
         ~H|{render_slot(@failed, @assign.failed)}|
     end
   end
+
+  @doc """
+  Renders a portal.
+
+  ## Examples
+
+  ```heex
+  <.portal id="modal" target="target-id">
+    ...
+  </.portal>
+  <!-- The content of the portal will be rendered in the div below -->
+  <div id="target-id"></div>
+  ```
+  """
+
+  attr.(:id, :string, required: true)
+  attr.(:target, :string, required: true)
+  attr.(:class, :string, default: nil, doc: "The class to apply to the portal wrapper.")
+  slot.(:inner_block, required: true)
+
+  def portal(assigns) do
+    ~H"""
+    <template id={@id} data-phx-portal={@target}>
+      <%!--
+        For correct DOM patching, each portal source (template) must have a single root element,
+        which we enforce by wrapping the slot in a div. In the generated CSS for
+        new projects, we include a display: contents rule for data-phx-portal-root.
+      --%>
+      <div id={@id <> "-wrapper"} class={@class} data-phx-portal-wrapper>
+        {render_slot(@inner_block)}
+      </div>
+    </template>
+    """
+  end
 end

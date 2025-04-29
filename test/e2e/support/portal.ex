@@ -92,23 +92,23 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
 
     <.button phx-click={JS.navigate("/form")}>Live navigate</.button>
 
-    <template :if={@render_modal} id="portal-source" phx-portal="root-portal">
+    <.portal :if={@render_modal} id="portal-source" target="root-portal">
       <.modal id="my-modal">
         This is a modal.
         <p>DOM patching works as expected: {@count}</p>
         <.button phx-click={JS.patch("/portal?param=#{@param_next}")}>Patch this LiveView</.button>
       </.modal>
-    </template>
+    </.portal>
 
-    <template id="portal-source-2" phx-portal="portal-target">
+    <.portal id="portal-source-2" target="portal-target">
       <.modal id="my-modal-2">
         This is a second modal.
       </.modal>
-    </template>
+    </.portal>
 
-    <template id="portal-with-live-component" phx-portal="root-portal">
+    <.portal id="portal-with-live-component" target="root-portal">
       <.live_component module={Phoenix.LiveViewTest.E2E.PortalLive.LC} id="lc" />
-    </template>
+    </.portal>
 
     {live_render(@socket, Phoenix.LiveViewTest.E2E.PortalLive.NestedLive, id: "nested")}
     """

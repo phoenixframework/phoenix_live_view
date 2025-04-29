@@ -59,6 +59,7 @@ var LiveView = (() => {
     "phx-hook-loading"
   ];
   var PHX_COMPONENT = "data-phx-component";
+  var PHX_VIEW_REF = "data-phx-view";
   var PHX_LIVE_LINK = "data-phx-link";
   var PHX_TRACK_STATIC = "track-static";
   var PHX_LINK_STATE = "data-phx-link-state";
@@ -104,6 +105,8 @@ var LiveView = (() => {
   var PHX_UPDATE = "update";
   var PHX_STREAM = "stream";
   var PHX_STREAM_REF = "data-phx-stream";
+  var PHX_PORTAL = "data-phx-portal";
+  var PHX_TELEPORTED_REF = "data-phx-teleported";
   var PHX_KEY = "key";
   var PHX_PRIVATE = "phxPrivate";
   var PHX_AUTO_RECOVER = "auto-recover";
@@ -212,8 +215,8 @@ var LiveView = (() => {
   }
   function detectInvalidStreamInserts(inserts) {
     const errors = /* @__PURE__ */ new Set();
-    Object.keys(inserts).forEach((id) => {
-      const streamEl = document.getElementById(id);
+    Object.keys(inserts).forEach((id2) => {
+      const streamEl = document.getElementById(id2);
       if (streamEl && streamEl.parentElement && streamEl.parentElement.getAttribute("phx-update") !== "stream") {
         errors.add(`The stream container with id "${streamEl.parentElement.id}" is missing the phx-update="stream" attribute. Ensure it is set for streams to work properly.`);
       }
@@ -336,8 +339,8 @@ var LiveView = (() => {
 
   // js/phoenix_live_view/dom.js
   var DOM = {
-    byId(id) {
-      return document.getElementById(id) || logError(`no id found for ${id}`);
+    byId(id2) {
+      return document.getElementById(id2) || logError(`no id found for ${id2}`);
     },
     removeClass(el, className) {
       el.classList.remove(className);
@@ -368,8 +371,8 @@ var LiveView = (() => {
       const inputsOutsideForm = this.all(document, `input[type="file"][${PHX_UPLOAD_REF}][form="${formId}"]`);
       return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`).concat(inputsOutsideForm);
     },
-    findComponentNodeList(node, cid) {
-      return this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node);
+    findComponentNodeList(viewId, cid, doc2 = document) {
+      return this.all(doc2, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`);
     },
     isPhxDestroyed(node) {
       return node.id && DOM.private(node, "destroyed") ? true : false;
@@ -440,34 +443,17 @@ var LiveView = (() => {
     findPhxChildren(el, parentId) {
       return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`);
     },
-    findExistingParentCIDs(node, cids) {
+    findExistingParentCIDs(viewId, cids) {
       let parentCids = /* @__PURE__ */ new Set();
       let childrenCids = /* @__PURE__ */ new Set();
       cids.forEach((cid) => {
-        this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach((parent) => {
+        this.all(document, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`).forEach((parent) => {
           parentCids.add(cid);
-          this.filterWithinSameLiveView(this.all(parent, `[${PHX_COMPONENT}]`), parent).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => childrenCids.add(childCID));
+          this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => childrenCids.add(childCID));
         });
       });
       childrenCids.forEach((childCid) => parentCids.delete(childCid));
       return parentCids;
-    },
-    filterWithinSameLiveView(nodes, parent) {
-      if (parent.querySelector(PHX_VIEW_SELECTOR)) {
-        return nodes.filter((el) => this.withinSameLiveView(el, parent));
-      } else {
-        return nodes;
-      }
-    },
-    withinSameLiveView(node, parent) {
-      while (node = node.parentNode) {
-        if (node.isSameNode(parent)) {
-          return true;
-        }
-        if (node.getAttribute(PHX_SESSION) !== null) {
-          return false;
-        }
-      }
     },
     private(el, key) {
       return el[PHX_PRIVATE] && el[PHX_PRIVATE][key];
@@ -661,6 +647,21 @@ var LiveView = (() => {
     },
     firstPhxChild(el) {
       return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
+    },
+    isPortalTemplate(el) {
+      return el.tagName === "TEMPLATE" && el.hasAttribute(PHX_PORTAL);
+    },
+    closestViewEl(el) {
+      const portalOrViewEl = el.closest(`[${PHX_TELEPORTED_REF}],${PHX_VIEW_SELECTOR}`);
+      if (!portalOrViewEl) {
+        return null;
+      }
+      if (portalOrViewEl.getAttribute(PHX_TELEPORTED_REF)) {
+        return this.byId(portalOrViewEl.getAttribute(PHX_TELEPORTED_REF));
+      } else if (portalOrViewEl.getAttribute(PHX_SESSION)) {
+        return portalOrViewEl;
+      }
+      return null;
     },
     dispatchEvent(target, name, opts = {}) {
       let defaultBubble = true;
@@ -1450,7 +1451,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.containerId = containerAfter.id;
       this.updateType = updateType;
       this.elementsToModify = elementsToModify;
-      this.elementIdsToAdd = [...idsAfter].filter((id) => !idsBefore.has(id));
+      this.elementIdsToAdd = [...idsAfter].filter((id2) => !idsBefore.has(id2));
     }
     // We do the following to optimize append/prepend operations:
     //   1) Track ids of modified elements & of new elements
@@ -1996,11 +1997,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
 
   // js/phoenix_live_view/dom_patch.js
   var DOMPatch = class {
-    constructor(view, container, id, html, streams, targetCID, opts = {}) {
+    constructor(view, container, id2, html, streams, targetCID, opts = {}) {
       this.view = view;
       this.liveSocket = view.liveSocket;
       this.container = container;
-      this.id = id;
+      this.id = id2;
       this.rootID = view.root.id;
       this.html = html;
       this.streams = streams;
@@ -2056,6 +2057,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let added = [];
       let updates = [];
       let appendPrependUpdates = [];
+      let portalCallbacks = [];
       let externalFormTriggered = null;
       function morph(targetContainer2, source, withChildren = this.withChildren) {
         let morphCallbacks = {
@@ -2114,6 +2116,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (el.getAttribute) {
               this.maybeReOrderStream(el, true);
             }
+            if (dom_default.isPortalTemplate(el)) {
+              portalCallbacks.push(() => this.teleport(el, morph));
+            }
             if (el instanceof HTMLImageElement && el.srcset) {
               el.srcset = el.srcset;
             } else if (el instanceof HTMLVideoElement && el.autoplay) {
@@ -2135,11 +2140,21 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (el.parentElement !== null && el.id && dom_default.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])) {
               return false;
             }
+            if (el.getAttribute && el.getAttribute(PHX_TELEPORTED_REF)) {
+              return false;
+            }
             if (this.maybePendingRemove(el)) {
               return false;
             }
             if (this.skipCIDSibling(el)) {
               return false;
+            }
+            if (dom_default.isPortalTemplate(el)) {
+              const teleportedEl = dom_default.byId(el.content.firstElementChild.id);
+              if (teleportedEl) {
+                teleportedEl.remove();
+                morphCallbacks.onNodeDiscarded(teleportedEl);
+              }
             }
             return true;
           },
@@ -2216,6 +2231,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               dom_default.putPrivate(fromEl, PHX_REF_LOCK, dom_default.private(toEl, PHX_REF_LOCK));
             }
             dom_default.copyPrivates(toEl, fromEl);
+            if (dom_default.isPortalTemplate(toEl)) {
+              portalCallbacks.push(() => this.teleport(toEl, morph));
+              return false;
+            }
             if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
               this.trackBefore("updated", fromEl, toEl);
               dom_default.mergeFocusedInput(fromEl, toEl);
@@ -2251,8 +2270,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               this.removeStreamChildElement(child);
             });
           }
-          deleteIds.forEach((id) => {
-            let child = container.querySelector(`[id="${id}"]`);
+          deleteIds.forEach((id2) => {
+            let child = container.querySelector(`[id="${id2}"]`);
             if (child) {
               this.removeStreamChildElement(child);
             }
@@ -2266,6 +2285,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           });
         }
         morph.call(this, targetContainer, html);
+        portalCallbacks.forEach((callback) => callback());
       });
       if (liveSocket.isDebugEnabled()) {
         detectDuplicateIds();
@@ -2401,7 +2421,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (!this.isCIDPatch()) {
         return;
       }
-      let [first, ...rest] = dom_default.findComponentNodeList(this.container, this.targetCID);
+      let [first, ...rest] = dom_default.findComponentNodeList(this.view.id, this.targetCID);
       if (rest.length === 0 && dom_default.childNodeLength(html) === 1) {
         return first;
       } else {
@@ -2410,6 +2430,32 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     indexOf(parent, child) {
       return Array.from(parent.children).indexOf(child);
+    }
+    teleport(el, morph) {
+      const targetId = el.getAttribute(PHX_PORTAL);
+      const portalContainer = dom_default.byId(targetId);
+      const toTeleport = el.content.firstElementChild;
+      if (this.skipCIDSibling(toTeleport)) {
+        return;
+      }
+      if (!(toTeleport == null ? void 0 : toTeleport.id)) {
+        throw new Error("phx-portal template must have a single root element with ID!");
+      }
+      const existing = document.getElementById(toTeleport.id);
+      let portalTarget;
+      if (existing) {
+        if (!portalContainer.contains(existing)) {
+          throw new Error(`expected ${id} to be a child of ${targetId}`);
+        }
+        portalTarget = existing;
+      } else {
+        portalTarget = document.createElement(toTeleport.tagName);
+        portalContainer.appendChild(portalTarget);
+      }
+      toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id);
+      morph.call(this, portalTarget, toTeleport, true);
+      toTeleport.removeAttribute(PHX_TELEPORTED_REF);
+      this.view.pushPortalElement(toTeleport.id);
     }
   };
 
@@ -2436,7 +2482,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   var modifyRoot = (html, attrs, clearInnerHTML) => {
     let i = 0;
     let insideComment = false;
-    let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML;
+    let beforeTag, afterTag, tag, tagNameEndsAt, id2, newHTML;
     let lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/);
     if (lookahead === null) {
       throw new Error(`malformed html ${html}`);
@@ -2462,7 +2508,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           }
           if (isId) {
-            id = html.slice(attrStartsAt + 1, i);
+            id2 = html.slice(attrStartsAt + 1, i);
             break;
           }
         }
@@ -2491,7 +2537,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     afterTag = html.slice(closeAt + 1, html.length);
     let attrsStr = Object.keys(attrs).map((attr) => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`).join(" ");
     if (clearInnerHTML) {
-      let idAttrStr = id ? ` id="${id}"` : "";
+      let idAttrStr = id2 ? ` id="${id2}"` : "";
       if (VOID_TAGS.has(tag)) {
         newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`;
       } else {
@@ -2737,7 +2783,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     recursiveCIDToString(components, cid, onlyCids) {
       let component = components[cid] || logError(`no component for CID ${cid}`, components);
-      let attrs = { [PHX_COMPONENT]: cid };
+      let attrs = { [PHX_COMPONENT]: cid, [PHX_VIEW_REF]: this.viewId };
       let skip = onlyCids && !onlyCids.has(cid);
       component.newRender = !skip;
       component.magicId = `c${cid}-${this.parentViewId()}`;
@@ -3537,6 +3583,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           sticky: this.el.hasAttribute(PHX_STICKY)
         };
       });
+      this.portalElementIds = [];
     }
     setHref(href) {
       this.href = href;
@@ -3573,6 +3620,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     destroy(callback = function() {
     }) {
       this.destroyAllChildren();
+      this.destroyPortalElements();
       this.destroyed = true;
       delete this.root.children[this.id];
       if (this.parent) {
@@ -3581,8 +3629,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       clearTimeout(this.loaderTimer);
       let onFinished = () => {
         callback();
-        for (let id in this.viewHooks) {
-          this.destroyHook(this.viewHooks[id]);
+        for (let id2 in this.viewHooks) {
+          this.destroyHook(this.viewHooks[id2]);
         }
       };
       dom_default.markPhxChildDestroyed(this.el);
@@ -3604,8 +3652,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (timeout) {
         this.loaderTimer = setTimeout(() => this.showLoader(), timeout);
       } else {
-        for (let id in this.viewHooks) {
-          this.viewHooks[id].__disconnected();
+        for (let id2 in this.viewHooks) {
+          this.viewHooks[id2].__disconnected();
         }
         this.setContainerClasses(PHX_LOADING_CLASS);
       }
@@ -3620,8 +3668,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.execAll(this.binding("connected"));
     }
     triggerReconnected() {
-      for (let id in this.viewHooks) {
-        this.viewHooks[id].__reconnected();
+      for (let id2 in this.viewHooks) {
+        this.viewHooks[id2].__reconnected();
       }
     }
     log(kind, msgCallback) {
@@ -3637,12 +3685,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     //  * a CID (Component ID), then we first search the component's element in the DOM
     //  * a selector, then we search the selector in the DOM and call the callback
     //    for each element found with the corresponding owner view
-    withinTargets(phxTarget, callback, dom = document, viewEl) {
+    withinTargets(phxTarget, callback, dom = document) {
       if (phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement) {
         return this.liveSocket.owner(phxTarget, (view) => callback(view, phxTarget));
       }
       if (isCid(phxTarget)) {
-        let targets = dom_default.findComponentNodeList(viewEl || this.el, phxTarget);
+        let targets = dom_default.findComponentNodeList(this.id, phxTarget, dom);
         if (targets.length === 0) {
           logError(`no component found matching phx-target of ${phxTarget}`);
         } else {
@@ -3740,23 +3788,24 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     // by owner to ensure we aren't duplicating hooks across disconnect
     // and connected states. This also handles cases where hooks exist
     // in a root layout with a LV in the body
-    execNewMounted(parent = this.el) {
+    execNewMounted(parent = document) {
       let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
       let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
-      dom_default.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
-        if (this.ownsElement(hookEl)) {
-          dom_default.maintainPrivateHooks(hookEl, hookEl, phxViewportTop, phxViewportBottom);
-          this.maybeAddNewHook(hookEl);
-        }
+      this.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
+        dom_default.maintainPrivateHooks(hookEl, hookEl, phxViewportTop, phxViewportBottom);
+        this.maybeAddNewHook(hookEl);
       });
-      dom_default.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
-        if (this.ownsElement(hookEl)) {
-          this.maybeAddNewHook(hookEl);
-        }
+      this.all(parent, `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`, (hookEl) => {
+        this.maybeAddNewHook(hookEl);
       });
-      dom_default.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+      this.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+        this.maybeMounted(el);
+      });
+    }
+    all(parent, selector, callback) {
+      dom_default.all(parent, selector, (el) => {
         if (this.ownsElement(el)) {
-          this.maybeMounted(el);
+          callback(el);
         }
       });
     }
@@ -3868,7 +3917,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     joinNewChildren() {
-      dom_default.findPhxChildren(this.el, this.id).forEach((el) => this.joinChild(el));
+      dom_default.findPhxChildren(document, this.id).forEach((el) => this.joinChild(el));
     }
     maybeRecoverForms(html, callback) {
       const phxChange = this.binding("change");
@@ -3901,8 +3950,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       });
     }
-    getChildById(id) {
-      return this.root.children[this.id][id];
+    getChildById(id2) {
+      return this.root.children[this.id][id2];
     }
     getDescendentByEl(el) {
       var _a;
@@ -3912,10 +3961,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return (_a = this.children[el.getAttribute(PHX_PARENT_ID)]) == null ? void 0 : _a[el.id];
       }
     }
-    destroyDescendent(id) {
+    destroyDescendent(id2) {
       for (let parentId in this.root.children) {
         for (let childId in this.root.children[parentId]) {
-          if (childId === id) {
+          if (childId === id2) {
             return this.root.children[parentId][childId].destroy();
           }
         }
@@ -3964,7 +4013,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let phxChildrenAdded = false;
       if (this.rendered.isComponentOnlyDiff(diff)) {
         this.liveSocket.time("component patch complete", () => {
-          let parentCids = dom_default.findExistingParentCIDs(this.el, this.rendered.componentCIDs(diff));
+          let parentCids = dom_default.findExistingParentCIDs(this.id, this.rendered.componentCIDs(diff));
           parentCids.forEach((parentCID) => {
             if (this.componentPatch(this.rendered.getComponent(diff, parentCID), parentCID)) {
               phxChildrenAdded = true;
@@ -4007,6 +4056,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (el.getAttribute && !this.ownsElement(el)) {
         return;
       }
+      console.log("we own it!", this.id, el.id, hookElId);
       if (hookElId && !this.viewHooks[hookElId]) {
         let hook = dom_default.getCustomElHook(el) || logError(`no hook found for custom element: ${el.id}`);
         this.viewHooks[hookElId] = hook;
@@ -4045,8 +4095,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     eachChild(callback) {
       let children = this.root.children[this.id] || {};
-      for (let id in children) {
-        callback(this.getChildById(id));
+      for (let id2 in children) {
+        callback(this.getChildById(id2));
       }
     }
     onChannel(event, cb) {
@@ -4702,7 +4752,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     targetCtxElement(targetCtx) {
       if (isCid(targetCtx)) {
-        let [target] = dom_default.findComponentNodeList(this.el, targetCtx);
+        let [target] = dom_default.findComponentNodeList(this.id, targetCtx);
         return target;
       } else if (targetCtx) {
         return targetCtx;
@@ -4737,7 +4787,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           }
         }]);
-      }, templateDom, templateDom);
+      }, templateDom);
     }
     pushLinkPatch(e, href, targetEl, callback) {
       let linkRef = this.liveSocket.setPendingLink(href);
@@ -4774,14 +4824,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     maybePushComponentsDestroyed(destroyedCIDs) {
       let willDestroyCIDs = destroyedCIDs.filter((cid) => {
-        return dom_default.findComponentNodeList(this.el, cid).length === 0;
+        return dom_default.findComponentNodeList(this.id, cid).length === 0;
       });
       if (willDestroyCIDs.length > 0) {
         willDestroyCIDs.forEach((cid) => this.rendered.resetRender(cid));
         this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }).then(() => {
           this.liveSocket.requestDOMUpdate(() => {
             let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
-              return dom_default.findComponentNodeList(this.el, cid).length === 0;
+              return dom_default.findComponentNodeList(this.id, cid).length === 0;
             });
             if (completelyDestroyCIDs.length > 0) {
               this.pushWithReply(null, "cids_destroyed", { cids: completelyDestroyCIDs }).then(({ resp }) => {
@@ -4793,7 +4843,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     ownsElement(el) {
-      let parentViewEl = el.closest(PHX_VIEW_SELECTOR);
+      let parentViewEl = dom_default.closestViewEl(el);
       return el.getAttribute(PHX_PARENT_ID) === this.id || parentViewEl && parentViewEl.id === this.id || !parentViewEl && this.isDead;
     }
     submitForm(form, targetCtx, phxEvent, submitter, opts = {}) {
@@ -4807,6 +4857,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     binding(kind) {
       return this.liveSocket.binding(kind);
+    }
+    // phx-portal
+    pushPortalElement(id2) {
+      this.portalElementIds.push(id2);
+    }
+    destroyPortalElements() {
+      this.portalElementIds.forEach((id2) => {
+        const el = document.getElementById(id2);
+        if (el) {
+          el.remove();
+        }
+      });
     }
   };
 
@@ -5146,7 +5208,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return view;
     }
     owner(childEl, callback) {
-      let view = maybe(childEl.closest(PHX_VIEW_SELECTOR), (el) => this.getViewByEl(el)) || this.main;
+      const viewEl = dom_default.closestViewEl(childEl);
+      const view = viewEl ? this.getViewByEl(viewEl) : this.main;
       return view && callback ? callback(view) : view;
     }
     withinOwners(childEl, callback) {
@@ -5156,13 +5219,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       let rootId = el.getAttribute(PHX_ROOT_ID);
       return maybe(this.getRootById(rootId), (root) => root.getDescendentByEl(el));
     }
-    getRootById(id) {
-      return this.roots[id];
+    getRootById(id2) {
+      return this.roots[id2];
     }
     destroyAllViews() {
-      for (let id in this.roots) {
-        this.roots[id].destroy();
-        delete this.roots[id];
+      for (let id2 in this.roots) {
+        this.roots[id2].destroy();
+        delete this.roots[id2];
       }
       this.main = null;
     }
@@ -5386,7 +5449,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (!this.registerNewLocation(window.location)) {
           return;
         }
-        let { type, backType, id, scroll, position } = event.state || {};
+        let { type, backType, id: id2, scroll, position } = event.state || {};
         let href = window.location.href;
         let isForward = position > this.currentHistoryPosition;
         type = isForward ? type : backType || type;
@@ -5397,7 +5460,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           const callback = () => {
             this.maybeScroll(scroll);
           };
-          if (this.main.isConnected() && (type === "patch" && id === this.main.id)) {
+          if (this.main.isConnected() && (type === "patch" && id2 === this.main.id)) {
             this.main.pushLinkPatch(event, href, null, callback);
           } else {
             this.replaceMain(href, null, callback);

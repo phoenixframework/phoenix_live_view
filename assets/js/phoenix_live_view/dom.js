@@ -22,6 +22,7 @@ import {
   PHX_STICKY,
   PHX_EVENT_CLASSES,
   THROTTLED,
+  PHX_PORTAL,
 } from "./constants"
 
 import {
@@ -151,7 +152,7 @@ let DOM = {
     cids.forEach(cid => {
       this.all(document, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`).forEach(parent => {
         parentCids.add(cid)
-        this.filterWithinSameLiveView(this.all(parent, `[${PHX_COMPONENT}]`), parent)
+        this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`)
           .map(el => parseInt(el.getAttribute(PHX_COMPONENT)))
           .forEach(childCID => childrenCids.add(childCID))
       })
@@ -357,8 +358,8 @@ let DOM = {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0]
   },
 
-  isPortalTemplate(el, phxPortal){
-    return el.tagName === "TEMPLATE" && el.hasAttribute(phxPortal)
+  isPortalTemplate(el){
+    return el.tagName === "TEMPLATE" && el.hasAttribute(PHX_PORTAL)
   },
 
   closestViewEl(el){

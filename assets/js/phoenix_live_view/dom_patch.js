@@ -43,7 +43,6 @@ export default class DOMPatch {
     this.cidPatch = isCid(this.targetCID)
     this.pendingRemoves = []
     this.phxRemove = this.liveSocket.binding("remove")
-    this.portal = this.liveSocket.binding(PHX_PORTAL)
     this.targetContainer = this.isCIDPatch() ? this.targetCIDContainer(html) : container
     this.callbacks = {
       beforeadded: [], beforeupdated: [], beforephxChildAdded: [],
@@ -149,7 +148,7 @@ export default class DOMPatch {
         onNodeAdded: (el) => {
           if(el.getAttribute){ this.maybeReOrderStream(el, true) }
           // phx-portal handling
-          if(DOM.isPortalTemplate(el, this.portal)){
+          if(DOM.isPortalTemplate(el)){
             portalCallbacks.push(() => this.teleport(el, morph))
           }
 
@@ -180,7 +179,7 @@ export default class DOMPatch {
           if(el.getAttribute && el.getAttribute(PHX_TELEPORTED_REF)){ return false }
           if(this.maybePendingRemove(el)){ return false }
           if(this.skipCIDSibling(el)){ return false }
-          if(DOM.isPortalTemplate(el, this.portal)){
+          if(DOM.isPortalTemplate(el)){
             // if the portal template itself is removed, remove the teleported element as well
             const teleportedEl = DOM.byId(el.content.firstElementChild.id)
             if(teleportedEl){
@@ -278,7 +277,7 @@ export default class DOMPatch {
           DOM.copyPrivates(toEl, fromEl)
 
           // phx-portal handling
-          if(DOM.isPortalTemplate(toEl, this.portal)){
+          if(DOM.isPortalTemplate(toEl)){
             portalCallbacks.push(() => this.teleport(toEl, morph))
             return false
           }
@@ -519,7 +518,7 @@ export default class DOMPatch {
   indexOf(parent, child){ return Array.from(parent.children).indexOf(child) }
 
   teleport(el, morph){
-    const targetId = el.getAttribute(this.portal)
+    const targetId = el.getAttribute(PHX_PORTAL)
     const portalContainer = DOM.byId(targetId)
     // phx-portal templates must have a single root element, so we assume this to be
     // the case here
@@ -538,9 +537,14 @@ export default class DOMPatch {
       portalTarget = document.createElement(toTeleport.tagName)
       portalContainer.appendChild(portalTarget)
     }
+    // mark the target as teleported;
+    // to prevent unnecessary attribute modifications, we set the attribute
+    // on the source and remove it after morphing (we could also just keep it)
+    // otherwise morphdom would remove it, as the ref is not present in the source
+    // and we'd need to set it back after each morph
+    toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id)
     morph.call(this, portalTarget, toTeleport, true)
-    // mark the target as teleported
-    portalTarget.setAttribute(PHX_TELEPORTED_REF, this.view.id)
+    toTeleport.removeAttribute(PHX_TELEPORTED_REF)
     // store a reference to the teleported element in the view
     // to cleanup when the view is destroyed, in case the portal target
     // is outside the view itself
