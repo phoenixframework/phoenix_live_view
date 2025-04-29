@@ -2,8 +2,7 @@
 
 Your LiveView applications can be made of two layouts:
 
-  * the root layout - this is a layout used by both LiveView and
-    regular controller views. This layout typically contains the `<html>`
+  * the root layout - this layout typically contains the `<html>`
     definition alongside the head and body tags. Any content defined
     in the root layout will remain the same, even as you live navigate
     across LiveViews. The root layout is typically declared on the
