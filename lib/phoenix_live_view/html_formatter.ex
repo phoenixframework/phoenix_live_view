@@ -248,6 +248,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
+  @doc false
   # Tokenize contents using EEx.tokenize and Phoenix.Live.Tokenizer respectively.
   #
   # The following content:
@@ -276,7 +277,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #
   @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
 
-  defp tokenize(source) do
+  def tokenize(source) do
     {:ok, eex_nodes} = EEx.tokenize(source)
     {tokens, cont} = Enum.reduce(eex_nodes, {[], {:text, :enabled}}, &do_tokenize(&1, &2, source))
     Tokenizer.finalize(tokens, "nofile", cont, source)
