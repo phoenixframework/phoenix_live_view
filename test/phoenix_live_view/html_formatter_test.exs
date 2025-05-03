@@ -2239,4 +2239,22 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       """)
     end
   end
+
+  test "supports attribute_formatters" do
+    defmodule UpcaseFormatter do
+      def render_attribute({"upcased", {:string, value, meta}, attr_meta}, _opts) do
+        {"upcased", {:string, String.upcase(value), meta}, attr_meta}
+      end
+    end
+
+    assert_formatter_output(
+      """
+      <div upcased='foo' untouched='bar' />
+      """,
+      """
+      <div upcased="FOO" untouched="bar" />
+      """,
+      attribute_formatters: %{upcased: UpcaseFormatter}
+    )
+  end
 end
