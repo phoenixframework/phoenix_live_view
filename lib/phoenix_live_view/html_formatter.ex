@@ -238,17 +238,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
       opts =
         Keyword.update(opts, :attribute_formatters, %{}, fn formatters ->
-          formatters =
-            Enum.reduce(formatters, %{}, fn {attr, formatter}, formatters ->
-              if Code.ensure_loaded?(formatter) do
-                Map.put(formatters, to_string(attr), formatter)
-              else
-                Logger.error("module #{inspect(formatter)} is not loaded and could not be found")
-                formatters
-              end
-            end)
-
-          formatters
+          Enum.reduce(formatters, %{}, fn {attr, formatter}, formatters ->
+            if Code.ensure_loaded?(formatter) do
+              Map.put(formatters, to_string(attr), formatter)
+            else
+              Logger.error("module #{inspect(formatter)} is not loaded and could not be found")
+              formatters
+            end
+          end)
         end)
 
       formatted =
