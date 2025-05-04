@@ -72,7 +72,7 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
   test "tracks removals", %{conn: conn} do
     ref =
-      :telemetry_test.attach_event_handlers(self(), [[:phoenix, :live_view, :component_destroyed]])
+      :telemetry_test.attach_event_handlers(self(), [[:phoenix, :live_component, :destroyed]])
 
     {:ok, view, html} = live(conn, "/components")
 
@@ -105,7 +105,13 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
 
     refute view |> element("#chris") |> has_element?()
 
-    assert_received {[:phoenix, :live_view, :component_destroyed], ^ref, _, %{socket: _, cid: 1}}
+    assert_received {[:phoenix, :live_component, :destroyed], ^ref, _,
+                     %{
+                       component: StatefulComponent,
+                       cid: 1,
+                       socket: %{assigns: %{name: "chris"}},
+                       live_view_socket: %{assigns: %{names: ["jose"]}}
+                     }}
   end
 
   test "tracks removals when whole root changes", %{conn: conn} do
