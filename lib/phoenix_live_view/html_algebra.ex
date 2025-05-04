@@ -12,10 +12,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   #
   def build(tree, opts) when is_list(tree) do
     {migrate, opts} = Keyword.pop(opts, :migrate_eex_to_curly_interpolation, true)
-    {attr_formatters, opts} = Keyword.pop(opts, :attribute_formatters, %{})
-
-    attr_formatters =
-      Map.new(attr_formatters, fn {attr, formatter} -> {to_string(attr), formatter} end)
+    {attr_formatters, opts} = Keyword.pop!(opts, :attribute_formatters)
 
     tree
     |> block_to_algebra(%{

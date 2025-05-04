@@ -2249,12 +2249,12 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
 
     assert_formatter_output(
       """
-      <div upcased='foo' untouched='bar' />
+      <div upcased='foo' untouched='bar' unloaded='baz' />
       """,
       """
-      <div upcased="FOO" untouched="bar" />
+      <div upcased="FOO" untouched="bar" unloaded="baz" />
       """,
-      attribute_formatters: %{upcased: UpcaseFormatter}
+      attribute_formatters: %{upcased: UpcaseFormatter, unloaded: Unloaded}
     )
   end
 end
