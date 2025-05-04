@@ -24,7 +24,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     |> group()
   end
 
-  defp block_to_algebra([], _opts), do: empty()
+  defp block_to_algebra([], _context), do: empty()
 
   defp block_to_algebra(block, %{mode: :preserve} = context) do
     concat =
