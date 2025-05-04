@@ -51,6 +51,15 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     * `:migrate_eex_to_curly_interpolation` - Automatically migrate single expression
       `<%= ... %>` EEx expression to the curly braces one. Defaults to true.
 
+    * `:attribute_formatters` - Specify formatters for certain attributes.
+
+      ```elixir
+      [
+        plugins: [Phoenix.LiveView.HTMLFormatter],
+        attribute_formatters: %{class: ClassFormatter},
+      ]
+      ```
+
   ## Formatting
 
   This formatter tries to be as consistent as possible with the Elixir formatter.
