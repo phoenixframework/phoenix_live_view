@@ -71,6 +71,9 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
   end
 
   test "tracks removals", %{conn: conn} do
+    ref =
+      :telemetry_test.attach_event_handlers(self(), [[:phoenix, :live_component, :destroyed]])
+
     {:ok, view, html} = live(conn, "/components")
 
     assert [
@@ -101,6 +104,14 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
              |> TreeDOM.normalize_to_tree(sort_attributes: true)
 
     refute view |> element("#chris") |> has_element?()
+
+    assert_received {[:phoenix, :live_component, :destroyed], ^ref, _,
+                     %{
+                       component: StatefulComponent,
+                       cid: 1,
+                       socket: %{assigns: %{name: "chris"}},
+                       live_view_socket: %{assigns: %{names: ["jose"]}}
+                     }}
   end
 
   test "tracks removals when whole root changes", %{conn: conn} do
