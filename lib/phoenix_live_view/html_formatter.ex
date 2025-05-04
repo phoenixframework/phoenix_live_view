@@ -51,6 +51,15 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     * `:migrate_eex_to_curly_interpolation` - Automatically migrate single expression
       `<%= ... %>` EEx expression to the curly braces one. Defaults to true.
 
+    * `:attribute_formatters` - Specify formatters for certain attributes.
+
+      ```elixir
+      [
+        plugins: [Phoenix.LiveView.HTMLFormatter],
+        attribute_formatters: %{class: ClassFormatter},
+      ]
+      ```
+
   ## Formatting
 
   This formatter tries to be as consistent as possible with the Elixir formatter.
@@ -187,6 +196,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   ```
   """
 
+  require Logger
+
   alias Phoenix.LiveView.HTMLAlgebra
   alias Phoenix.LiveView.Tokenizer
   alias Phoenix.LiveView.Tokenizer.ParseError
@@ -224,6 +235,21 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     else
       line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
       newlines = :binary.matches(source, ["\r\n", "\n"])
+
+      opts =
+        Keyword.update(opts, :attribute_formatters, %{}, fn formatters ->
+          formatters =
+            Enum.reduce(formatters, %{}, fn {attr, formatter}, formatters ->
+              if Code.ensure_loaded?(formatter) do
+                Map.put(formatters, to_string(attr), formatter)
+              else
+                Logger.error("module #{inspect(formatter)} is not loaded and could not be found")
+                formatters
+              end
+            end)
+
+          formatters
+        end)
 
       formatted =
         source
