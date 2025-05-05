@@ -112,6 +112,12 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.11 (2025-05-05)
+
+### Enhancements
+
+* Allow focusing non interactive elements with `tabindex="0"` using `JS` commands ([#3617](https://github.com/phoenixframework/phoenix_live_view/pull/3617))
+
 ## 1.0.10 (2025-04-17)
 
 ### Bug fixes
