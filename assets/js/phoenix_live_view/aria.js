@@ -7,7 +7,7 @@ let ARIA = {
       (el instanceof HTMLAreaElement && el.href !== undefined) ||
       (!el.disabled && (this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]))) ||
       (el instanceof HTMLIFrameElement) ||
-      (el.tabIndex > 0 || (!interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true"))
+      (el.tabIndex >= 0 || (!interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true"))
     )
   },
 
