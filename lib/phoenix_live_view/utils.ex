@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.Utils do
   alias Phoenix.LiveView.{Socket, Lifecycle}
 
   # All available mount options
-  @mount_opts [:temporary_assigns, :layout]
+  @mount_opts [:temporary_assigns, :layout, :auto_connect]
 
   @max_flash_age :timer.seconds(60)
 
@@ -435,6 +435,14 @@ defmodule Phoenix.LiveView.Utils do
             &Map.merge(&1, temp_assigns)
           )
     }
+  end
+
+  defp handle_mount_option(%Socket{} = socket, :auto_connect, value) do
+    if not is_boolean(value) do
+      raise "the :auto_connect mount option must be a boolean, got: #{inspect(value)}"
+    end
+
+    put_in(socket.private[:auto_connect], value)
   end
 
   @doc """
