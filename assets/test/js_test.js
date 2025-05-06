@@ -1002,6 +1002,20 @@ describe("JS", () => {
     })
   })
 
+  describe("set_prop", () => {
+    test("sets a property", () => {
+      let view = setupView(`
+      <input type="text" id="name" value="Name" />
+      <button phx-click={JS.set_property({"value", ""}, to: "#name")}>Clear</button>
+      `)
+      let button = document.querySelector("button")
+
+      expect(view.el.querySelector("#name").value).toEqual("Name")
+      JS.exec(event, "click", button.getAttribute("phx-click"), view, button)
+      expect(view.el.querySelector("#name").value).toEqual("")
+    })
+  })
+
   describe("exec", () => {
     test("executes command", done => {
       let view = setupView(`

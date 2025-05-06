@@ -741,6 +741,40 @@ defmodule Phoenix.LiveView.JS do
   end
 
   @doc """
+  Sets a property on elements.
+
+  Accepts a tuple `{property, value}` to set a DOM property.
+
+  ## Options
+
+    * `:to` - An optional DOM selector to add attributes to.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
+
+  ## Examples
+
+  ```heex
+  <input type="text" id="name" />
+  <button phx-click={JS.set_property({"value", ""}, to: "#name")}>
+    Clear
+  </button>
+  ```
+  """
+  def set_property({prop, val}), do: set_property(%JS{}, {prop, val}, [])
+
+  @doc "See `set_property/1`."
+  def set_property({prop, val}, opts) when is_list(opts),
+    do: set_property(%JS{}, {prop, val}, opts)
+
+  def set_property(%JS{} = js, {prop, val}), do: set_property(js, {prop, val}, [])
+
+  @doc "See `set_property/1`."
+  def set_property(%JS{} = js, {prop, val}, opts) when is_list(opts) do
+    opts = validate_keys(opts, :set_property, [:to])
+    put_op(js, "set_prop", to: opts[:to], prop: [prop, val])
+  end
+
+  @doc """
   Removes an attribute from elements.
 
     * `attr` - The string attribute name to remove.
