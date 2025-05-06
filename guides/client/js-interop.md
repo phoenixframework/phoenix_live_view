@@ -203,6 +203,34 @@ let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks, ...})
 
 *Note*: when using `phx-hook`, a unique DOM ID must always be set.
 
+> #### Warning {: .warning}
+>
+> Hooks cannot be added dynamically on an element. For example:
+> ```heex
+>  <div id="my-hook" phx-hook={if @hook_enabled, do: "MyHook"} />
+>  ```
+>
+> In this case, if `@hook_enabled` starts as `true`, then the hook will work as
+> intended. However, if the value starts as `false` and changes from `false` to `true`,
+> the hook will never be initialized, and therefore `mounted` will never be called.
+>
+> To achieve the desired effect, the hook should always be set, and an attribute on
+> the DOM element can be checked in the `updated` callback to toggle the state of
+> the hook.
+>
+>  ```heex
+> <div id="my-hook" phx-hook="MyHook" data-hook-enabled={to_string(@hook_enabled)} />
+> ```
+> ```javascript
+> hooks.MyHook = {
+>   updated: {
+>     if (this.el.getAttribute("data-hook-enabled") !== "false")) {
+>       this.el.innerHTML = "MyHook is enabled";
+>     }
+>   }
+> }
+> ```
+
 For integration with client-side libraries which require a broader access to full
 DOM management, the `LiveSocket` constructor accepts a `dom` option with an
 `onBeforeElUpdated` callback. The `fromEl` and `toEl` DOM nodes are passed to the
