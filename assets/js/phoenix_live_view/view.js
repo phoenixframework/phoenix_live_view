@@ -458,7 +458,7 @@ export default class View {
     let hook = this.getHook(fromEl)
     let isIgnored = hook && DOM.isIgnored(fromEl, this.binding(PHX_UPDATE))
     if(hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))){
-      hook.__beforeUpdate()
+      hook.__beforeUpdate(fromEl, toEl)
       return hook
     }
   }
