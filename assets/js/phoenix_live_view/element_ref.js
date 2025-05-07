@@ -51,10 +51,10 @@ export default class ElementRef {
     DOM.updatePrivate(this.el, PHX_PENDING_REFS, [], (pendingRefs) => {
       return pendingRefs.filter(pendingRef => {
         let opts = {detail: {ref: pendingRef, event: phxEvent}, bubbles: true, cancelable: false}
-        if (this.loadingRef && this.loadingRef > pendingRef) {
+        if(this.loadingRef && this.loadingRef > pendingRef){
           this.el.dispatchEvent(new CustomEvent(`phx:undo-loading:${pendingRef}`, opts))
         }
-        if (this.lockRef && this.lockRef > pendingRef) {
+        if(this.lockRef && this.lockRef > pendingRef){
           this.el.dispatchEvent(new CustomEvent(`phx:undo-lock:${pendingRef}`, opts))
         }
         return pendingRef > ref
