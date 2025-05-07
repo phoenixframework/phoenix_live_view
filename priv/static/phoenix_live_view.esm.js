@@ -21,6 +21,7 @@ var PHX_LINK_STATE = "data-phx-link-state";
 var PHX_REF_LOADING = "data-phx-ref-loading";
 var PHX_REF_SRC = "data-phx-ref-src";
 var PHX_REF_LOCK = "data-phx-ref-lock";
+var PHX_PENDING_REFS = "phx-pending-refs";
 var PHX_TRACK_UPLOADS = "track-uploads";
 var PHX_UPLOAD_REF = "data-phx-upload-ref";
 var PHX_PREFLIGHTED_REFS = "data-phx-preflighted-refs";
@@ -1309,10 +1310,26 @@ var ElementRef = class {
   // public
   maybeUndo(ref, phxEvent, eachCloneCallback) {
     if (!this.isWithin(ref)) {
+      dom_default.updatePrivate(this.el, PHX_PENDING_REFS, [], (pendingRefs) => {
+        pendingRefs.push(ref);
+        return pendingRefs;
+      });
       return;
     }
     this.undoLocks(ref, phxEvent, eachCloneCallback);
     this.undoLoading(ref, phxEvent);
+    dom_default.updatePrivate(this.el, PHX_PENDING_REFS, [], (pendingRefs) => {
+      return pendingRefs.filter((pendingRef) => {
+        let opts = { detail: { ref: pendingRef, event: phxEvent }, bubbles: true, cancelable: false };
+        if (this.loadingRef && this.loadingRef > pendingRef) {
+          this.el.dispatchEvent(new CustomEvent(`phx:undo-loading:${pendingRef}`, opts));
+        }
+        if (this.lockRef && this.lockRef > pendingRef) {
+          this.el.dispatchEvent(new CustomEvent(`phx:undo-lock:${pendingRef}`, opts));
+        }
+        return pendingRef > ref;
+      });
+    });
     if (this.isFullyResolvedBy(ref)) {
       this.el.removeAttribute(PHX_REF_SRC);
     }
