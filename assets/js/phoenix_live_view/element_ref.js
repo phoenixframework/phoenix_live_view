@@ -2,6 +2,7 @@ import {
   PHX_REF_LOADING,
   PHX_REF_LOCK,
   PHX_REF_SRC,
+  PHX_PENDING_REFS,
   PHX_EVENT_CLASSES,
   PHX_DISABLED,
   PHX_READONLY,
@@ -42,6 +43,12 @@ export default class ElementRef {
 
   maybeUndo(ref, phxEvent, eachCloneCallback) {
     if (!this.isWithin(ref)) {
+      // we cannot undo the lock / loading now, as there is a newer one already set;
+      // we need to store the original ref we tried to send the undo event later
+      DOM.updatePrivate(this.el, PHX_PENDING_REFS, [], (pendingRefs) => {
+        pendingRefs.push(ref);
+        return pendingRefs;
+      });
       return;
     }
 
@@ -50,6 +57,29 @@ export default class ElementRef {
 
     // undo loading states
     this.undoLoading(ref, phxEvent);
+
+    // ensure undo events are fired for pending refs that
+    // are resolved by the current ref, otherwise we'd leak event listeners
+    DOM.updatePrivate(this.el, PHX_PENDING_REFS, [], (pendingRefs) => {
+      return pendingRefs.filter((pendingRef) => {
+        let opts = {
+          detail: { ref: pendingRef, event: phxEvent },
+          bubbles: true,
+          cancelable: false,
+        };
+        if (this.loadingRef && this.loadingRef > pendingRef) {
+          this.el.dispatchEvent(
+            new CustomEvent(`phx:undo-loading:${pendingRef}`, opts),
+          );
+        }
+        if (this.lockRef && this.lockRef > pendingRef) {
+          this.el.dispatchEvent(
+            new CustomEvent(`phx:undo-lock:${pendingRef}`, opts),
+          );
+        }
+        return pendingRef > ref;
+      });
+    });
 
     // clean up if fully resolved
     if (this.isFullyResolvedBy(ref)) {
