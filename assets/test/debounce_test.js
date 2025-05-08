@@ -1,19 +1,19 @@
 import DOM from "phoenix_live_view/dom"
 
-let after = (time, func) => setTimeout(func, time)
+const after = (time, func) => setTimeout(func, time)
 
-let simulateInput = (input, val) => {
+const simulateInput = (input, val) => {
   input.value = val
   DOM.dispatchEvent(input, "input")
 }
 
-let simulateKeyDown = (input, val) => {
+const simulateKeyDown = (input, val) => {
   input.value = input.value + val
   DOM.dispatchEvent(input, "input")
 }
 
-let container = () => {
-  let div = document.createElement("div")
+const container = () => {
+  const div = document.createElement("div")
   div.innerHTML = `
   <form phx-change="validate" phx-submit="submit">
     <input type="text" name="blur" phx-debounce="blur" />
@@ -37,7 +37,7 @@ let container = () => {
 describe("debounce", function (){
   test("triggers once on input blur", async () => {
     let calls = 0
-    let el = container().querySelector("input[name=blur]")
+    const el = container().querySelector("input[name=blur]")
 
     DOM.debounce(el, {}, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
     DOM.dispatchEvent(el, "blur")
@@ -51,7 +51,7 @@ describe("debounce", function (){
 
   test("triggers debounce on input blur", async () => {
     let calls = 0
-    let el = container().querySelector("input[name=debounce-200]")
+    const el = container().querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
       DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => true, () => calls++)
@@ -68,7 +68,7 @@ describe("debounce", function (){
 
   test("triggers debounce on input blur caused by tab", async () => {
     let calls = 0
-    let el = container().querySelector("input[name=debounce-200]")
+    const el = container().querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
       DOM.debounce(el, e, "phx-debounce", 0, "phx-throttle", 0, () => true, () => calls++)
@@ -83,7 +83,7 @@ describe("debounce", function (){
 
   test("triggers on timeout", done => {
     let calls = 0
-    let el = container().querySelector("input[name=debounce-200]")
+    const el = container().querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
@@ -114,7 +114,7 @@ describe("debounce", function (){
 
   test("uses default when value is blank", done => {
     let calls = 0
-    let el = container().querySelector("input[name=debounce-200]")
+    const el = container().querySelector("input[name=debounce-200]")
     el.setAttribute("phx-debounce", "")
 
     el.addEventListener("input", e => {
@@ -139,8 +139,8 @@ describe("debounce", function (){
 
   test("cancels trigger on submit", done => {
     let calls = 0
-    let parent = container()
-    let el = parent.querySelector("input[name=debounce-200]")
+    const parent = container()
+    const el = parent.querySelector("input[name=debounce-200]")
 
     el.addEventListener("input", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
@@ -166,7 +166,7 @@ describe("debounce", function (){
 describe("throttle", function (){
   test("triggers immediately, then on timeout", done => {
     let calls = 0
-    let el = container().querySelector("#throttle-200")
+    const el = container().querySelector("#throttle-200")
 
     el.addEventListener("click", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
@@ -195,7 +195,7 @@ describe("throttle", function (){
 
   test("uses default when value is blank", done => {
     let calls = 0
-    let el = container().querySelector("#throttle-200")
+    const el = container().querySelector("#throttle-200")
     el.setAttribute("phx-throttle", "")
 
     el.addEventListener("click", e => {
@@ -225,7 +225,7 @@ describe("throttle", function (){
 
   test("cancels trigger on submit", done => {
     let calls = 0
-    let el = container().querySelector("input[name=throttle-200]")
+    const el = container().querySelector("input[name=throttle-200]")
 
     el.addEventListener("input", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => calls++)
@@ -248,7 +248,7 @@ describe("throttle", function (){
 
   test("triggers only once when there is only one event", done => {
     let calls = 0
-    let el = container().querySelector("#throttle-200")
+    const el = container().querySelector("#throttle-200")
 
     el.addEventListener("click", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
@@ -267,7 +267,7 @@ describe("throttle", function (){
 
   test("sends value on blur when phx-blur dispatches change", done => {
     let calls = 0
-    let el = container().querySelector("input[name=throttle-range-with-blur]")
+    const el = container().querySelector("input[name=throttle-range-with-blur]")
 
     el.addEventListener("input", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
@@ -303,8 +303,8 @@ describe("throttle", function (){
 
 describe("throttle keydown", function (){
   test("when the same key is pressed triggers immediately, then on timeout", done => {
-    let keyPresses = {}
-    let el = container().querySelector("#throttle-keydown")
+    const keyPresses = {}
+    const el = container().querySelector("#throttle-keydown")
 
     el.addEventListener("keydown", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
@@ -312,7 +312,7 @@ describe("throttle keydown", function (){
       })
     })
 
-    let pressA = new KeyboardEvent("keydown", {key: "a"})
+    const pressA = new KeyboardEvent("keydown", {key: "a"})
     el.dispatchEvent(pressA)
     el.dispatchEvent(pressA)
     el.dispatchEvent(pressA)
@@ -329,8 +329,8 @@ describe("throttle keydown", function (){
   })
 
   test("when different key is pressed triggers immediately", done => {
-    let keyPresses = {}
-    let el = container().querySelector("#throttle-keydown")
+    const keyPresses = {}
+    const el = container().querySelector("#throttle-keydown")
 
     el.addEventListener("keydown", e => {
       DOM.debounce(el, e, "phx-debounce", 100, "phx-throttle", 200, () => true, () => {
@@ -338,8 +338,8 @@ describe("throttle keydown", function (){
       })
     })
 
-    let pressA = new KeyboardEvent("keydown", {key: "a"})
-    let pressB = new KeyboardEvent("keydown", {key: "b"})
+    const pressA = new KeyboardEvent("keydown", {key: "a"})
+    const pressB = new KeyboardEvent("keydown", {key: "b"})
 
     el.dispatchEvent(pressA)
     el.dispatchEvent(pressB)

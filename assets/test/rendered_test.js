@@ -8,11 +8,11 @@ const TEMPLATES = "p"
 describe("Rendered", () => {
   describe("mergeDiff", () => {
     test("recursively merges two diffs", () => {
-      let simple = new Rendered("123", simpleDiff1)
+      const simple = new Rendered("123", simpleDiff1)
       simple.mergeDiff(simpleDiff2)
       expect(simple.get()).toEqual({...simpleDiffResult, [COMPONENTS]: {}, newRender: true})
 
-      let deep = new Rendered("123", deepDiff1)
+      const deep = new Rendered("123", deepDiff1)
       deep.mergeDiff(deepDiff2)
       expect(deep.get()).toEqual({...deepDiffResult, [COMPONENTS]: {}})
     })
@@ -20,7 +20,7 @@ describe("Rendered", () => {
     test("merges the latter diff if it contains a `static` key", () => {
       const diff1 = {0: ["a"], 1: ["b"]}
       const diff2 = {0: ["c"], [STATIC]: ["c"]}
-      let rendered = new Rendered("123", diff1)
+      const rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
@@ -28,7 +28,7 @@ describe("Rendered", () => {
     test("merges the latter diff if it contains a `static` key even when nested", () => {
       const diff1 = {0: {0: ["a"], 1: ["b"]}}
       const diff2 = {0: {0: ["c"], [STATIC]: ["c"]}}
-      let rendered = new Rendered("123", diff1)
+      const rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
@@ -36,7 +36,7 @@ describe("Rendered", () => {
     test("merges components considering links", () => {
       const diff1 = {}
       const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: 1}}}
-      let rendered = new Rendered("123", diff1)
+      const rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({[COMPONENTS]: {1: {[STATIC]: ["c"]}, 2: {[STATIC]: ["c"]}}})
     })
@@ -44,7 +44,7 @@ describe("Rendered", () => {
     test("merges components considering old and new links", () => {
       const diff1 = {[COMPONENTS]: {1: {[STATIC]: ["old"]}}}
       const diff2 = {[COMPONENTS]: {1: {[STATIC]: ["new"]}, 2: {newRender: true, [STATIC]: -1}, 3: {newRender: true, [STATIC]: 1}}}
-      let rendered = new Rendered("123", diff1)
+      const rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({
         [COMPONENTS]: {
@@ -68,7 +68,7 @@ describe("Rendered", () => {
         }
       }
 
-      let rendered1 = new Rendered("123", diff1)
+      const rendered1 = new Rendered("123", diff1)
       rendered1.mergeDiff(diff2)
       expect(rendered1.get()).toEqual({
         [COMPONENTS]: {
@@ -90,7 +90,7 @@ describe("Rendered", () => {
         }
       }
 
-      let rendered2 = new Rendered("123", diff1)
+      const rendered2 = new Rendered("123", diff1)
       rendered2.mergeDiff(diff3)
       expect(rendered2.get()).toEqual({
         [COMPONENTS]: {
@@ -106,7 +106,7 @@ describe("Rendered", () => {
     test("replaces a string when a map is returned", () => {
       const diff1 = {0: {0: "<button>Press Me</button>", [STATIC]: ""}}
       const diff2 = {0: {0: {0: "val", [STATIC]: ""}, [STATIC]: ""}}
-      let rendered = new Rendered("123", diff1)
+      const rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
@@ -114,7 +114,7 @@ describe("Rendered", () => {
     test("replaces a map when a string is returned", () => {
       const diff1 = {0: {0: {0: "val", [STATIC]: ""}, [STATIC]: ""}}
       const diff2 = {0: {0: "<button>Press Me</button>", [STATIC]: ""}}
-      let rendered = new Rendered("123", diff1)
+      const rendered = new Rendered("123", diff1)
       rendered.mergeDiff(diff2)
       expect(rendered.get()).toEqual({...diff2, [COMPONENTS]: {}})
     })
@@ -184,10 +184,10 @@ describe("Rendered", () => {
         }
       }
 
-      let rendered = new Rendered("123", mountDiff)
+      const rendered = new Rendered("123", mountDiff)
       expect(rendered.getComponent(rendered.get(), 1)[STATIC]).toEqual(rendered.getComponent(rendered.get(), 2)[STATIC])
       rendered.mergeDiff(updateDiff)
-      let sharedStatic = rendered.getComponent(rendered.get(), 1)[STATIC]
+      const sharedStatic = rendered.getComponent(rendered.get(), 1)[STATIC]
 
       expect(sharedStatic).toBeTruthy()
       expect(sharedStatic).toEqual(rendered.getComponent(rendered.get(), 2)[STATIC])
@@ -198,26 +198,26 @@ describe("Rendered", () => {
   describe("isNewFingerprint", () => {
     test("returns true if `diff.static` is truthy", () => {
       const diff = {[STATIC]: ["<h2>"]}
-      let rendered = new Rendered("123", {})
+      const rendered = new Rendered("123", {})
       expect(rendered.isNewFingerprint(diff)).toEqual(true)
     })
 
     test("returns false if `diff.static` is falsy", () => {
       const diff = {[STATIC]: undefined}
-      let rendered = new Rendered("123", {})
+      const rendered = new Rendered("123", {})
       expect(rendered.isNewFingerprint(diff)).toEqual(false)
     })
 
     test("returns false if `diff` is undefined", () => {
-      let rendered = new Rendered("123", {})
+      const rendered = new Rendered("123", {})
       expect(rendered.isNewFingerprint()).toEqual(false)
     })
   })
 
   describe("toString", () => {
     test("stringifies a diff", () => {
-      let rendered = new Rendered("123", simpleDiffResult)
-      let [str, _streams] = rendered.toString()
+      const rendered = new Rendered("123", simpleDiffResult)
+      const [str, _streams] = rendered.toString()
       expect(str.trim()).toEqual(
         `<div data-phx-id="m1-123" class="thermostat">
   <div class="bar cooling">
@@ -228,8 +228,8 @@ describe("Rendered", () => {
     })
 
     test("reuses static in components and comprehensions", () => {
-      let rendered = new Rendered("123", staticReuseDiff)
-      let [str, _streams] = rendered.toString()
+      const rendered = new Rendered("123", staticReuseDiff)
+      const [str, _streams] = rendered.toString()
       expect(str.trim()).toEqual(
         `<div data-phx-id="m1-123">
   <p>

@@ -1,12 +1,12 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV, attributeMutations} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV, attributeMutations} from "../../utils"
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/3656
 test("phx-click-loading is removed from links in sticky LiveViews", async ({page}) => {
   await page.goto("/issues/3656")
   await syncLV(page)
 
-  let changes = attributeMutations(page, "nav a")
+  const changes = attributeMutations(page, "nav a")
 
   const link = page.getByRole("link", {name: "Link 1"})
   await link.click()

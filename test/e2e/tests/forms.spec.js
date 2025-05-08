@@ -1,7 +1,7 @@
-const {test, expect} = require("../test-fixtures")
-const {syncLV, evalLV, evalPlug, attributeMutations} = require("../utils")
+import {test, expect} from "../test-fixtures"
+import {syncLV, evalLV, evalPlug, attributeMutations} from "../utils"
 
-for(let path of ["/form/nested", "/form"]){
+for(const path of ["/form/nested", "/form"]){
   // see also https://github.com/phoenixframework/phoenix_live_view/issues/1759
   // https://github.com/phoenixframework/phoenix_live_view/issues/2993
   test.describe("restores disabled and readonly states", () => {
@@ -9,8 +9,8 @@ for(let path of ["/form/nested", "/form"]){
       await page.goto(path)
       await syncLV(page)
       await expect(page.locator("input[name=a]")).toHaveAttribute("readonly")
-      let changesA = attributeMutations(page, "input[name=a]")
-      let changesB = attributeMutations(page, "input[name=b]")
+      const changesA = attributeMutations(page, "input[name=a]")
+      const changesB = attributeMutations(page, "input[name=b]")
       // can submit multiple times and readonly input stays readonly
       await page.locator("#submit").click()
       await syncLV(page)
@@ -37,7 +37,7 @@ for(let path of ["/form/nested", "/form"]){
     test(`${path} - button disabled state is restored after submits`, async ({page}) => {
       await page.goto(path)
       await syncLV(page)
-      let changes = attributeMutations(page, "#submit")
+      const changes = attributeMutations(page, "#submit")
       await page.locator("#submit").click()
       await syncLV(page)
       // submit button is disabled while submitting, but then restored
@@ -54,7 +54,7 @@ for(let path of ["/form/nested", "/form"]){
     test(`${path} - non-form button (phx-disable-with) disabled state is restored after click`, async ({page}) => {
       await page.goto(path)
       await syncLV(page)
-      let changes = attributeMutations(page, "button[type=button]")
+      const changes = attributeMutations(page, "button[type=button]")
       await page.locator("button[type=button]").click()
       await syncLV(page)
       // submit button is disabled while submitting, but then restored
@@ -69,8 +69,8 @@ for(let path of ["/form/nested", "/form"]){
     })
   })
 
-  for(let additionalParams of ["live-component", ""]){
-    let append = additionalParams.length ? ` ${additionalParams}` : ""
+  for(const additionalParams of ["live-component", ""]){
+    const append = additionalParams.length ? ` ${additionalParams}` : ""
     test.describe(`${path}${append} - form recovery`, () => {
       test("form state is recovered when socket reconnects", async ({page}) => {
         let webSocketEvents = []
@@ -185,7 +185,7 @@ for(let path of ["/form/nested", "/form"]){
         await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)))
         await expect(page.locator(".phx-loading")).toHaveCount(1)
 
-        let webSocketEvents = []
+        const webSocketEvents = []
         page.on("websocket", ws => {
           ws.on("framesent", event => webSocketEvents.push({type: "sent", payload: event.payload}))
           ws.on("framereceived", event => webSocketEvents.push({type: "received", payload: event.payload}))
@@ -246,8 +246,8 @@ for(let path of ["/form/nested", "/form"]){
       end)
     `, nested ? "#nested" : undefined)
     await expect(page.getByText("Form was submitted!")).toBeHidden()
-    let testForm = page.locator("#test-form")
-    let submitBtn = page.locator("#test-form #submit")
+    const testForm = page.locator("#test-form")
+    const submitBtn = page.locator("#test-form #submit")
     await page.locator("#test-form input[name=b]").fill("test")
     await expect(testForm).toHaveClass("myformclass phx-change-loading")
     await expect(testForm).toHaveAttribute("data-phx-ref-loading")
@@ -290,7 +290,7 @@ for(let path of ["/form/nested", "/form"]){
 
 test("loading and locked states with latent clone", async ({page, request}) => {
   await page.goto("/form/stream")
-  let formHook = page.locator("#form-stream-hook")
+  const formHook = page.locator("#form-stream-hook")
   await syncLV(page)
   const {lv_pid} = await evalLV(page, `
     <<"#PID"::binary, pid::binary>> = inspect(self())
@@ -316,9 +316,9 @@ test("loading and locked states with latent clone", async ({page, request}) => {
     end)
   `)
   await expect(formHook).toHaveText("pong")
-  let testForm = page.locator("#test-form")
-  let testInput = page.locator("#test-form input[name=myname]")
-  let submitBtn = page.locator("#test-form button")
+  const testForm = page.locator("#test-form")
+  const testInput = page.locator("#test-form input[name=myname]")
+  const submitBtn = page.locator("#test-form button")
   // initial 3 stream items
   await expect(page.locator("#form-stream li")).toHaveCount(3)
   await testInput.fill("1")

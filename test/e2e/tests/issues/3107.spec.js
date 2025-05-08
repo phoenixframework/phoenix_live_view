@@ -1,5 +1,5 @@
-const {test, expect} = require("@playwright/test")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 test("keeps value when updating select", async ({page}) => {
   await page.goto("/issues/3107")

@@ -14,7 +14,7 @@ let liveUploaderFileRef = 0
 
 export default class LiveUploader {
   static genFileRef(file){
-    let ref = file._phxRef
+    const ref = file._phxRef
     if(ref !== undefined){
       return ref
     } else {
@@ -24,7 +24,7 @@ export default class LiveUploader {
   }
 
   static getEntryDataURL(inputEl, ref, callback){
-    let file = this.activeFiles(inputEl).find(file => this.genFileRef(file) === ref)
+    const file = this.activeFiles(inputEl).find(file => this.genFileRef(file) === ref)
     callback(URL.createObjectURL(file))
   }
 
@@ -39,11 +39,11 @@ export default class LiveUploader {
   }
 
   static serializeUploads(inputEl){
-    let files = this.activeFiles(inputEl)
-    let fileData = {}
+    const files = this.activeFiles(inputEl)
+    const fileData = {}
     files.forEach(file => {
-      let entry = {path: inputEl.name}
-      let uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF)
+      const entry = {path: inputEl.name}
+      const uploadRef = inputEl.getAttribute(PHX_UPLOAD_REF)
       fileData[uploadRef] = fileData[uploadRef] || []
       entry.ref = this.genFileRef(file)
       entry.last_modified = file.lastModified
@@ -67,9 +67,14 @@ export default class LiveUploader {
     DOM.putPrivate(inputEl, "files", DOM.private(inputEl, "files").filter(f => !Object.is(f, file)))
   }
 
+  /**
+   * @param {HTMLInputElement} inputEl
+   * @param {Array<File|Blob>} files
+   * @param {DataTransfer} [dataTransfer]
+   */
   static trackFiles(inputEl, files, dataTransfer){
     if(inputEl.getAttribute("multiple") !== null){
-      let newFiles = files.filter(file => !this.activeFiles(inputEl).find(f => Object.is(f, file)))
+      const newFiles = files.filter(file => !this.activeFiles(inputEl).find(f => Object.is(f, file)))
       DOM.updatePrivate(inputEl, "files", [], (existing) => existing.concat(newFiles))
       inputEl.value = null
     } else {
@@ -80,7 +85,7 @@ export default class LiveUploader {
   }
 
   static activeFileInputs(formEl){
-    let fileInputs = DOM.findUploadInputs(formEl)
+    const fileInputs = DOM.findUploadInputs(formEl)
     return Array.from(fileInputs).filter(el => el.files && this.activeFiles(el).length > 0)
   }
 
@@ -89,7 +94,7 @@ export default class LiveUploader {
   }
 
   static inputsAwaitingPreflight(formEl){
-    let fileInputs = DOM.findUploadInputs(formEl)
+    const fileInputs = DOM.findUploadInputs(formEl)
     return Array.from(fileInputs).filter(input => this.filesAwaitingPreflight(input).length > 0)
   }
 
@@ -135,16 +140,16 @@ export default class LiveUploader {
         return entry
       })
 
-    let groupedEntries = this._entries.reduce((acc, entry) => {
+    const groupedEntries = this._entries.reduce((acc, entry) => {
       if(!entry.meta){ return acc }
-      let {name, callback} = entry.uploader(liveSocket.uploaders)
+      const {name, callback} = entry.uploader(liveSocket.uploaders)
       acc[name] = acc[name] || {callback: callback, entries: []}
       acc[name].entries.push(entry)
       return acc
     }, {})
 
-    for(let name in groupedEntries){
-      let {callback, entries} = groupedEntries[name]
+    for(const name in groupedEntries){
+      const {callback, entries} = groupedEntries[name]
       callback(entries, onError, resp, liveSocket)
     }
   }

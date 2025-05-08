@@ -1,9 +1,9 @@
 import DOM from "phoenix_live_view/dom"
 import {appendTitle, tag} from "./test_helpers"
 
-let e = (href) => {
-  let event = {}
-  let anchor = document.createElement("a")
+const e = (href) => {
+  const event = {}
+  const anchor = document.createElement("a")
   anchor.setAttribute("href", href)
   event.target = anchor
   event.defaultPrevented = false
@@ -12,13 +12,13 @@ let e = (href) => {
 
 describe("DOM", () => {
   beforeEach(() => {
-    let curTitle = document.querySelector("title")
+    const curTitle = document.querySelector("title")
     curTitle && curTitle.remove()
   })
 
   describe ("wantsNewTab", () => {
     test("case insensitive target", () => {
-      let event = e("https://test.local")
+      const event = e("https://test.local")
       expect(DOM.wantsNewTab(event)).toBe(false)
       // lowercase
       event.target.setAttribute("target", "_blank")
@@ -63,19 +63,19 @@ describe("DOM", () => {
     })
 
     test("empty hash href", () => {
-      let currentLoc = new URL("https://test.local/foo")
+      const currentLoc = new URL("https://test.local/foo")
       expect(DOM.isNewPageClick(e("#"), currentLoc)).toBe(false)
     })
 
     test("local hash", () => {
-      let currentLoc = new URL("https://test.local/foo")
+      const currentLoc = new URL("https://test.local/foo")
       expect(DOM.isNewPageClick(e("#foo"), currentLoc)).toBe(false)
     })
 
     test("with defaultPrevented return sfalse", () => {
       let currentLoc
       currentLoc = new URL("https://test.local/foo")
-      let event = e("/foo")
+      const event = e("/foo")
       event.defaultPrevented = true
       expect(DOM.isNewPageClick(event, currentLoc)).toBe(false)
     })
@@ -88,7 +88,7 @@ describe("DOM", () => {
     test("ignores contenteditable", () => {
       let currentLoc
       currentLoc = new URL("https://test.local/foo")
-      let event = e("/bar")
+      const event = e("/bar")
       event.target.isContentEditable = true
       expect(DOM.isNewPageClick(event, currentLoc)).toBe(false)
     })
@@ -134,7 +134,7 @@ describe("DOM", () => {
 
   describe("findExistingParentCIDs", () => {
     test("returns only parent cids", () => {
-      let view = tag("div", {}, `
+      const view = tag("div", {}, `
         <div data-phx-main="true"
             data-phx-session="123"
             data-phx-static="456"
@@ -159,7 +159,7 @@ describe("DOM", () => {
     })
 
     test("ignores elements in child LiveViews #3626", () => {
-      let view = tag("div", {}, `
+      const view = tag("div", {}, `
         <div data-phx-main="true"
             data-phx-session="123"
             data-phx-static="456"
@@ -181,9 +181,9 @@ describe("DOM", () => {
 
   describe("findComponentNodeList", () => {
     test("returns nodes with cid ID (except indirect children)", () => {
-      let component1 = tag("div", {"data-phx-component": 0}, "Hello")
-      let component2 = tag("div", {"data-phx-component": 0}, "World")
-      let component3 = tag("div", {"data-phx-session": "123"}, `
+      const component1 = tag("div", {"data-phx-component": 0}, "Hello")
+      const component2 = tag("div", {"data-phx-component": 0}, "World")
+      const component3 = tag("div", {"data-phx-session": "123"}, `
         <div data-phx-component="0"></div>
       `)
       document.body.appendChild(component1)
@@ -215,42 +215,42 @@ describe("DOM", () => {
 
   describe("cleanChildNodes", () => {
     test("only cleans when phx-update is append or prepend", () => {
-      let content = `
+      const content = `
       <div id="1">1</div>
       <div>no id</div>
 
       some test
       `.trim()
 
-      let div = tag("div", {}, content)
+      const div = tag("div", {}, content)
       DOM.cleanChildNodes(div, "phx-update")
 
       expect(div.innerHTML).toBe(content)
     })
 
     test("silently removes empty text nodes", () => {
-      let content = `
+      const content = `
       <div id="1">1</div>
 
 
       <div id="2">2</div>
       `.trim()
 
-      let div = tag("div", {"phx-update": "append"}, content)
+      const div = tag("div", {"phx-update": "append"}, content)
       DOM.cleanChildNodes(div, "phx-update")
 
       expect(div.innerHTML).toBe("<div id=\"1\">1</div><div id=\"2\">2</div>")
     })
 
     test("emits warning when removing elements without id", () => {
-      let content = `
+      const content = `
       <div id="1">1</div>
       <div>no id</div>
 
       some test
       `.trim()
 
-      let div = tag("div", {"phx-update": "append"}, content)
+      const div = tag("div", {"phx-update": "append"}, content)
 
       let errorCount = 0
       jest.spyOn(console, "error").mockImplementation(() => errorCount += 1)

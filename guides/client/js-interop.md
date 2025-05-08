@@ -227,7 +227,7 @@ let liveSocket = new LiveSocket("/live", Socket, {
       }
     }
   }
-}
+})
 ```
 
 In the example above, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView.

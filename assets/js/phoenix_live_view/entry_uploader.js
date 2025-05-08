@@ -4,7 +4,7 @@ import {
 
 export default class EntryUploader {
   constructor(entry, config, liveSocket){
-    let {chunk_size, chunk_timeout} = config
+    const {chunk_size, chunk_timeout} = config
     this.liveSocket = liveSocket
     this.entry = entry
     this.offset = 0
@@ -33,12 +33,12 @@ export default class EntryUploader {
   isDone(){ return this.offset >= this.entry.file.size }
 
   readNextChunk(){
-    let reader = new window.FileReader()
-    let blob = this.entry.file.slice(this.offset, this.chunkSize + this.offset)
+    const reader = new window.FileReader()
+    const blob = this.entry.file.slice(this.offset, this.chunkSize + this.offset)
     reader.onload = (e) => {
       if(e.target.error === null){
-        this.offset += e.target.result.byteLength
-        this.pushChunk(e.target.result)
+        this.offset += (/** @type {ArrayBuffer} */ (e.target.result)).byteLength
+        this.pushChunk(/** @type {ArrayBuffer} */ (e.target.result))
       } else {
         return logError("Read error: " + e.target.error)
       }

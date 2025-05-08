@@ -1,5 +1,5 @@
-const {test, expect} = require("../test-fixtures")
-const {syncLV, attributeMutations} = require("../utils")
+import {test, expect} from "../test-fixtures"
+import {syncLV, attributeMutations} from "../utils"
 
 test("toggle_attribute", async ({page}) => {
   await page.goto("/js")

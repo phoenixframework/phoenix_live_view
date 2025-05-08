@@ -1,4 +1,4 @@
-let Browser = {
+const Browser = {
   canPushState(){ return (typeof (history.pushState) !== "undefined") },
 
   dropLocal(localStorage, namespace, subkey){
@@ -6,9 +6,9 @@ let Browser = {
   },
 
   updateLocal(localStorage, namespace, subkey, initial, func){
-    let current = this.getLocal(localStorage, namespace, subkey)
-    let key = this.localKey(namespace, subkey)
-    let newVal = current === null ? initial : func(current)
+    const current = this.getLocal(localStorage, namespace, subkey)
+    const key = this.localKey(namespace, subkey)
+    const newVal = current === null ? initial : func(current)
     localStorage.setItem(key, JSON.stringify(newVal))
     return newVal
   },
@@ -27,7 +27,7 @@ let Browser = {
       if(to !== window.location.href){
         if(meta.type == "redirect" && meta.scroll){
           // If we're redirecting store the current scrollY for the current history state.
-          let currentState = history.state || {}
+          const currentState = history.state || {}
           currentState.scroll = meta.scroll
           history.replaceState(currentState, "", window.location.href)
         }
@@ -40,7 +40,7 @@ let Browser = {
         // therefore we wait for the next frame (after the DOM patch) and only then try
         // to scroll to the hashEl
         window.requestAnimationFrame(() => {
-          let hashEl = this.getHashTargetEl(window.location.hash)
+          const hashEl = this.getHashTargetEl(window.location.hash)
   
           if(hashEl){
             hashEl.scrollIntoView()
@@ -55,7 +55,7 @@ let Browser = {
   },
 
   setCookie(name, value, maxAgeSeconds){
-    let expires = typeof(maxAgeSeconds) === "number" ? ` max-age=${maxAgeSeconds};` : ""
+    const expires = typeof(maxAgeSeconds) === "number" ? ` max-age=${maxAgeSeconds};` : ""
     document.cookie = `${name}=${value};${expires} path=/`
   },
 
@@ -75,7 +75,7 @@ let Browser = {
   localKey(namespace, subkey){ return `${namespace}-${subkey}` },
 
   getHashTargetEl(maybeHash){
-    let hash = maybeHash.toString().substring(1)
+    const hash = maybeHash.toString().substring(1)
     if(hash === ""){ return }
     return document.getElementById(hash) || document.querySelector(`a[name="${hash}"]`)
   }
