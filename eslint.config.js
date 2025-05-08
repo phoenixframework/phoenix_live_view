@@ -2,39 +2,39 @@ import playwright from "eslint-plugin-playwright"
 import jest from "eslint-plugin-jest"
 import globals from "globals"
 import js from "@eslint/js"
-import stylisticJs from "@stylistic/eslint-plugin"
+import stylistic from "@stylistic/eslint-plugin"
 import tseslint from "typescript-eslint"
 
 const sharedRules = {
-  "@stylistic/js/indent": ["error", 2, {
+  "@stylistic/indent": ["error", 2, {
     SwitchCase: 1,
   }],
     
-  "@stylistic/js/linebreak-style": ["error", "unix"],
-  "@stylistic/js/quotes": ["error", "double"],
-  "@stylistic/js/semi": ["error", "never"],
+  "@stylistic/linebreak-style": ["error", "unix"],
+  "@stylistic/quotes": ["error", "double"],
+  "@stylistic/semi": ["error", "never"],
     
-  "@stylistic/js/object-curly-spacing": ["error", "never", {
+  "@stylistic/object-curly-spacing": ["error", "never", {
     objectsInObjects: false,
     arraysInObjects: false,
   }],
     
-  "@stylistic/js/array-bracket-spacing": ["error", "never"],
+  "@stylistic/array-bracket-spacing": ["error", "never"],
     
-  "@stylistic/js/comma-spacing": ["error", {
+  "@stylistic/comma-spacing": ["error", {
     before: false,
     after: true,
   }],
     
-  "@stylistic/js/computed-property-spacing": ["error", "never"],
+  "@stylistic/computed-property-spacing": ["error", "never"],
     
-  "@stylistic/js/space-before-blocks": ["error", {
+  "@stylistic/space-before-blocks": ["error", {
     functions: "never",
     keywords: "never",
     classes: "always",
   }],
     
-  "@stylistic/js/keyword-spacing": ["error", {
+  "@stylistic/keyword-spacing": ["error", {
     overrides: {
       if: {
         after: false,
@@ -54,7 +54,7 @@ const sharedRules = {
     },
   }],
     
-  "@stylistic/js/eol-last": ["error", "always"],
+  "@stylistic/eol-last": ["error", "always"],
 
   "@typescript-eslint/no-unused-vars": ["error", {
     argsIgnorePattern: "^_",
@@ -84,12 +84,12 @@ export default tseslint.config([
   },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["*.js", "*.mjs", "test/e2e/**"],
+    files: ["*.js", "*.ts", "test/e2e/**"],
     ignores: ["assets/**"],
     
     plugins: {
       ...playwright.configs["flat/recommended"].plugins,
-      "@stylistic/js": stylisticJs,
+      "@stylistic": stylistic,
     },
 
     rules: {
@@ -104,7 +104,7 @@ export default tseslint.config([
 
     plugins: {
       jest,
-      "@stylistic/js": stylisticJs,
+      "@stylistic": stylistic,
     },
 
     languageOptions: {

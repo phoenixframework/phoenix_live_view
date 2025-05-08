@@ -69,7 +69,7 @@ const Browser = {
 
   redirect(toURL, flash){
     if(flash){ this.setCookie("__phoenix_flash__", flash, 60) }
-    window.location = toURL
+    window.location.href = toURL
   },
 
   localKey(namespace, subkey){ return `${namespace}-${subkey}` },

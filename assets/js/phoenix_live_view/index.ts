@@ -275,7 +275,7 @@ const LiveSocket = OriginalLiveSocket as unknown as LiveSocketConstructor
  *
  * @returns Returns the Hook instance for the custom element.
  */
-function createHook(el: HTMLElement, callbacks: Hook): Hook{
+function createHook(el: HTMLElement, callbacks: Hook): ViewHook{
   let existingHook = DOM.getCustomElHook(el)
   if(existingHook){ return existingHook }
 

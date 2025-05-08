@@ -1,12 +1,13 @@
 import DOM from "phoenix_live_view/dom"
 import {appendTitle, tag} from "./test_helpers"
 
-const e = (href) => {
-  const event = {}
+const e = (href: string) => {
   const anchor = document.createElement("a")
   anchor.setAttribute("href", href)
-  event.target = anchor
-  event.defaultPrevented = false
+  const event = {
+    target: anchor,
+    defaultPrevented: false,
+  } as unknown as Event & {target: HTMLAnchorElement}
   return event
 }
 
@@ -75,8 +76,8 @@ describe("DOM", () => {
     test("with defaultPrevented return sfalse", () => {
       let currentLoc
       currentLoc = new URL("https://test.local/foo")
-      const event = e("/foo")
-      event.defaultPrevented = true
+      const event = e("/foo");
+      (event as any).defaultPrevented = true
       expect(DOM.isNewPageClick(event, currentLoc)).toBe(false)
     })
 
@@ -88,8 +89,8 @@ describe("DOM", () => {
     test("ignores contenteditable", () => {
       let currentLoc
       currentLoc = new URL("https://test.local/foo")
-      const event = e("/bar")
-      event.target.isContentEditable = true
+      const event = e("/bar");
+      (event.target as any).isContentEditable = true
       expect(DOM.isNewPageClick(event, currentLoc)).toBe(false)
     })
   })

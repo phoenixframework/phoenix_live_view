@@ -1,7 +1,7 @@
 import View from "phoenix_live_view/view"
 import {version as liveview_version} from "../../package.json"
 
-export const appendTitle = (opts, innerHTML) => {
+export const appendTitle = (opts, innerHTML?: string) => {
   Array.from(document.head.querySelectorAll("title")).forEach(el => el.remove())
   const title = document.createElement("title")
   const {prefix, suffix, default: defaultTitle} = opts
@@ -41,7 +41,7 @@ export const simulateJoinedView = (el, liveSocket) => {
 export const simulateVisibility = el => {
   el.getClientRects = () => {
     const style = window.getComputedStyle(el)
-    const visible = !(style.opacity === 0 || style.display === "none")
+    const visible = !(style.opacity === "0" || style.display === "none")
     return visible ? {length: 1} : {length: 0}
   }
   return el
@@ -58,7 +58,7 @@ export const stubChannel = view => {
   view.channel.push = () => fakePush
 }
 
-export function liveViewDOM(content){
+export function liveViewDOM(content?: string){
   const div = document.createElement("div")
   div.setAttribute("data-phx-view", "User.Form")
   div.setAttribute("data-phx-session", "abc123")
