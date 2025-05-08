@@ -24,7 +24,7 @@
     "priv/static/*",
     "assets/js/**"
   ],
-  "types": "./assets/js/dist/index.d.ts",
+  "types": "./assets/js/types/index.d.ts",
   "dependencies": {
     "morphdom": "git+https://github.com/SteffenDE/morphdom.git#sd-fix-ts"
   },
@@ -61,7 +61,7 @@
     "js:test.watch": "npm run build && jest --watch",
     "js:lint": "eslint --fix && cd assets && eslint --fix",
     "test": "npm run js:test && npm run e2e:test",
-    "cover:merge": "node test/e2e/merge-coverage.mjs",
+    "cover:merge": "node test/e2e/merge-coverage.js",
     "cover": "npm run test && npm run cover:merge",
     "cover:report": "npx monocart show-report cover/merged-js/index.html"
   }

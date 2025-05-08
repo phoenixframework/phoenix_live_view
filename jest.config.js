@@ -84,8 +84,8 @@ export default {
 
   // A map from regular expressions to module names or to arrays of module names that allow to stub out resources with a single module
   moduleNameMapper: {
-    "^phoenix_live_view$": "<rootDir>/assets/js/dist/index.js",
-    "^phoenix_live_view/(.*)$": "<rootDir>/assets/js/dist/$1.js"
+    "^phoenix_live_view$": "<rootDir>/assets/js/phoenix_live_view/index.ts",
+    "^phoenix_live_view/(.*)$": "<rootDir>/assets/js/phoenix_live_view/$1"
   },
 
   // An array of regexp pattern strings, matched against all module paths before considered 'visible' to the module loader

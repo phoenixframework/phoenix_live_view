@@ -148,6 +148,8 @@ export interface HookInterface {
   [key: string]: any;
 }
 
+// based on https://github.com/DefinitelyTyped/DefinitelyTyped/blob/fac1aa75acdddbf4f1a95e98ee2297b54ce4b4c9/types/phoenix_live_view/hooks.d.ts#L26
+// licensed under MIT
 export interface HookObject<T = object> {
   /**
    * The mounted callback.
