@@ -8,11 +8,11 @@ See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 
 import OriginalLiveSocket, {isUsedInput} from "./live_socket"
 import DOM from "./dom"
-import {ViewHook as Hook} from "./view_hook"
+import {ViewHook} from "./view_hook"
 import View from "./view"
 
 import type {LiveSocketJSCommands} from "./js_commands"
-import type {HookObject, HooksOptions} from "./view_hook"
+import type {Hook, HooksOptions} from "./view_hook"
 import type {Socket as PhoenixSocket} from "phoenix"
 
 /**
@@ -275,11 +275,11 @@ const LiveSocket = OriginalLiveSocket as unknown as LiveSocketConstructor
  *
  * @returns Returns the Hook instance for the custom element.
  */
-function createHook(el: HTMLElement, callbacks: HookObject): Hook{
+function createHook(el: HTMLElement, callbacks: Hook): Hook{
   let existingHook = DOM.getCustomElHook(el)
   if(existingHook){ return existingHook }
 
-  let hook = new Hook(View.closestView(el), el, callbacks)
+  let hook = new ViewHook(View.closestView(el), el, callbacks)
   DOM.putCustomElHook(el, hook)
   return hook
 }
@@ -288,7 +288,7 @@ export {
   LiveSocket,
   isUsedInput,
   createHook,
+  ViewHook,
   Hook,
-  HookObject,
   HooksOptions
 }

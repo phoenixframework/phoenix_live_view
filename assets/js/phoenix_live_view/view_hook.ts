@@ -150,7 +150,7 @@ export interface HookInterface {
 
 // based on https://github.com/DefinitelyTyped/DefinitelyTyped/blob/fac1aa75acdddbf4f1a95e98ee2297b54ce4b4c9/types/phoenix_live_view/hooks.d.ts#L26
 // licensed under MIT
-export interface HookObject<T = object> {
+export interface Hook<T = object> {
   /**
    * The mounted callback.
    * 
@@ -238,7 +238,7 @@ export class ViewHook implements HookInterface {
   static makeID(){ return viewHookID++ }
   static elementID(el: HTMLElement){ return DOM.private(el, HOOK_ID) }
 
-  constructor(view: View | null, el: HTMLElement, callbacks?: HookObject){
+  constructor(view: View | null, el: HTMLElement, callbacks?: Hook){
     this.el = el
     this.__attachView(view)
     this.__listeners = new Set()
@@ -272,7 +272,7 @@ export class ViewHook implements HookInterface {
         }
       }
 
-      const lifecycleMethods: (keyof HookObject)[] = ["mounted", "beforeUpdate", "updated", "destroyed", "disconnected", "reconnected"]
+      const lifecycleMethods: (keyof Hook)[] = ["mounted", "beforeUpdate", "updated", "destroyed", "disconnected", "reconnected"]
       lifecycleMethods.forEach(methodName => {
         if(callbacks[methodName] && typeof callbacks[methodName] === "function"){
           (this as any)[methodName] = callbacks[methodName]
@@ -396,6 +396,6 @@ export class ViewHook implements HookInterface {
   }
 }
 
-export type HooksOptions = Record<string, typeof ViewHook | HookObject>
+export type HooksOptions = Record<string, typeof ViewHook | Hook>
 
 export default ViewHook
