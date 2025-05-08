@@ -18,7 +18,8 @@
       ]
     },
     "declaration": true,
-    "outDir": "./assets/js/dist"
+    "emitDeclarationOnly": true,
+    "outDir": "./assets/js/types"
   },
   "include": [
     "./assets/js/phoenix_live_view/*.js",
