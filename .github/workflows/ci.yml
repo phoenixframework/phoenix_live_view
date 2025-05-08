@@ -142,11 +142,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: npm install and test
-        run: npm run setup && npm run js:test
+      - name: setup JS
+        run: npm run setup
+
+      - name: typecheck
+        run: npm run build && npm run typecheck:tests
 
       - name: eslint
         run: npx eslint
+
+      - name: test
+        run: npm run js:test
 
       - uses: actions/upload-artifact@v4
         if: always()

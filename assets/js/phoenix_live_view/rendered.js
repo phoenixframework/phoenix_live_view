@@ -135,15 +135,15 @@ export default class Rendered {
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    const [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, true, {})
-    return [str, streams]
+    const {buffer: str, streams: streams} = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, true, {})
+    return {buffer: str, streams: streams}
   }
 
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs){
     onlyCids = onlyCids ? new Set(onlyCids) : null
     const output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs)
-    return [output.buffer, output.streams]
+    return {buffer: output.buffer, streams: output.streams}
   }
 
   componentCIDs(diff){ return Object.keys(diff[COMPONENTS] || {}).map(i => parseInt(i)) }
@@ -264,9 +264,9 @@ export default class Rendered {
   }
 
   componentToString(cid){
-    const [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null)
+    const {buffer: str, streams} = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null)
     const [strippedHTML, _before, _after] = modifyRoot(str, {})
-    return [strippedHTML, streams]
+    return {buffer: strippedHTML, streams: streams}
   }
 
   pruneCIDs(cids){
@@ -370,7 +370,7 @@ export default class Rendered {
 
   dynamicToBuffer(rendered, templates, output, changeTracking){
     if(typeof (rendered) === "number"){
-      const [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      const {buffer: str, streams} = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
       output.buffer += str
       output.streams = new Set([...output.streams, ...streams])
     } else if(isObject(rendered)){
@@ -409,10 +409,10 @@ export default class Rendered {
     component.magicId = `c${cid}-${this.parentViewId()}`
     // enable change tracking as long as the component hasn't been reset
     const changeTracking = !component.reset
-    const [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
+    const {buffer: html, streams} = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
     // disable reset after we've rendered
     delete component.reset
 
-    return [html, streams]
+    return {buffer: html, streams: streams}
   }
 }

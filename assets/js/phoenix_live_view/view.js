@@ -703,14 +703,14 @@ export default class View {
       // Don't skip any component in the diff nor any marked as pruned
       // (as they may have been added back)
       const cids = diff ? this.rendered.componentCIDs(diff) : null
-      const [html, streams] = this.rendered.toString(cids)
+      const {buffer: html, streams} = this.rendered.toString(cids)
       return [`<${tag}>${html}</${tag}>`, streams]
     })
   }
 
   componentPatch(diff, cid){
     if(isEmpty(diff)) return false
-    const [html, streams] = this.rendered.componentToString(cid)
+    const {buffer: html, streams} = this.rendered.componentToString(cid)
     const patch = new DOMPatch(this, this.el, this.id, html, streams, cid)
     const childrenAdded = this.performPatch(patch, true)
     return childrenAdded

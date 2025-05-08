@@ -1,5 +1,6 @@
 import {Socket} from "phoenix"
-import {LiveSocket, createHook} from "phoenix_live_view/index"
+import {createHook} from "phoenix_live_view/index"
+import LiveSocket from "phoenix_live_view/live_socket"
 import DOM from "phoenix_live_view/dom"
 import View from "phoenix_live_view/view"
 import ViewHook from "phoenix_live_view/view_hook"
@@ -172,7 +173,7 @@ describe("View + DOM", function(){
 
     const liveSocket = new LiveSocket("/live", Socket)
     const el = liveViewDOM()
-    const input = el.querySelector("input[type=\"checkbox\"]")
+    const input: HTMLInputElement = el.querySelector("input[type=\"checkbox\"]")
     const view = simulateJoinedView(el, liveSocket)
 
     input.checked = true
@@ -195,7 +196,7 @@ describe("View + DOM", function(){
 
     const liveSocket = new LiveSocket("/live", Socket)
     const el = liveViewDOM()
-    const input = el.querySelector("input[type=\"checkbox\"]")
+    const input: HTMLInputElement = el.querySelector("input[type=\"checkbox\"]")
     const view = simulateJoinedView(el, liveSocket)
 
     input.value = "1"
@@ -424,7 +425,7 @@ describe("View + DOM", function(){
       submitWithButton(btn, "increment=1&note=2")
     })
 
-    function submitWithButton(btn, queryString, appendTo, opts={}){
+    function submitWithButton(btn, queryString, appendTo?: HTMLElement, opts={}){
       const liveSocket = new LiveSocket("/live", Socket)
       const el = liveViewDOM()
       const form = el.querySelector("form")
@@ -872,7 +873,7 @@ describe("View", function(){
     const phxView = document.querySelector("[data-phx-session]")
     phxView.parentNode.insertBefore(loader, phxView.nextSibling)
     const el = document.querySelector("[data-phx-session]")
-    const status = el.querySelector("#status")
+    const status: HTMLElement = el.querySelector("#status")
 
     const view = simulateJoinedView(el, liveSocket)
 
@@ -1078,6 +1079,7 @@ describe("View Hooks", function(){
     const liveSocket = new LiveSocket("/live", Socket, {})
     const el = liveViewDOM()
     customElements.define("custom-el", class extends HTMLElement {
+      hook: ViewHook
       connectedCallback(){
         this.hook = createHook(this, {mounted: () => {
           expect(this.hook.liveSocket).toBeTruthy()
@@ -1314,14 +1316,14 @@ describe("View + Component", function(){
     </form>`
     const liveSocket = new LiveSocket("/live", Socket)
     const el = liveViewDOM(html)
-    const view = simulateJoinedView(el, liveSocket, html)
+    const view = simulateJoinedView(el, liveSocket)
     Array.from(view.el.querySelectorAll("input")).forEach(input => simulateUsedInput(input))
     const channelStub = {
       validate: "",
       nextValidate(payload, meta){
         this.meta = meta
         this.validate = Object.entries(payload)
-          .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value) : ""}`)
+          .map(([key, value]) => `${encodeURIComponent(key)}=${value ? encodeURIComponent(value as string) : ""}`)
           .join("&")
       },
       push(_evt, payload, _timeout){
@@ -1533,12 +1535,12 @@ describe("View + Component", function(){
 
 describe("DOM", function(){
   it("mergeAttrs attributes", function(){
-    const target = document.createElement("target")
+    const target = document.createElement("input")
     target.type = "checkbox"
     target.id = "foo"
     target.setAttribute("checked", "true")
 
-    const source = document.createElement("source")
+    const source = document.createElement("input")
     source.type = "checkbox"
     source.id = "bar"
 
@@ -1552,12 +1554,12 @@ describe("DOM", function(){
   })
 
   it("mergeAttrs with properties", function(){
-    const target = document.createElement("target")
+    const target = document.createElement("input")
     target.type = "checkbox"
     target.id = "foo"
     target.checked = true
 
-    const source = document.createElement("source")
+    const source = document.createElement("input")
     source.type = "checkbox"
     source.id = "bar"
 

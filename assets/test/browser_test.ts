@@ -30,26 +30,59 @@ describe("Browser", () => {
   })
 
   describe("redirect", () => {
-    const originalWindowLocation = global.window.location
+    let originalLocation: Location
+    let mockHrefSetter: jest.Mock
+    let currentHref: string
+
+    beforeAll(() => {
+      originalLocation = window.location
+    })
 
     beforeEach(() => {
-      delete global.window.location
-      global.window.location = "https://example.com"
+      currentHref = "https://example.com" // Initial mocked URL
+      mockHrefSetter = jest.fn((newHref: string) => {
+        currentHref = newHref
+      })
+
+      Object.defineProperty(window, "location", {
+        writable: true,
+        configurable: true,
+        value: {
+          get href(){
+            return currentHref
+          },
+          set href(url: string){
+            mockHrefSetter(url)
+          }
+        },
+      })
     })
 
     afterAll(() => {
-      global.window.location = originalWindowLocation
+      // Restore the original window.location object
+      Object.defineProperty(window, "location", {
+        writable: true,
+        configurable: true,
+        value: originalLocation,
+      })
     })
 
     test("redirects to a new URL", () => {
-      Browser.redirect("https://phoenixframework.com")
-      expect(window.location).toEqual("https://phoenixframework.com")
+      const targetUrl = "https://phoenixframework.com"
+      Browser.redirect(targetUrl)
+      expect(mockHrefSetter).toHaveBeenCalledWith(targetUrl)
+      expect(window.location.href).toEqual(targetUrl)
     })
 
     test("sets a flash cookie before redirecting", () => {
-      Browser.redirect("https://phoenixframework.com", "mango")
+      const targetUrl = "https://phoenixframework.com"
+      const flashMessage = "mango"
+      Browser.redirect(targetUrl, flashMessage)
+
       expect(document.cookie).toContain("__phoenix_flash__")
-      expect(document.cookie).toContain("mango")
+      expect(document.cookie).toContain(flashMessage)
+      expect(mockHrefSetter).toHaveBeenCalledWith(targetUrl)
+      expect(window.location.href).toEqual(targetUrl)
     })
   })
 })

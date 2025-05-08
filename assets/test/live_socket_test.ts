@@ -86,7 +86,7 @@ describe("LiveSocket", () => {
     const liveSocket = new LiveSocket("/live", Socket)
 
     liveSocket.connect()
-    const channel = liveSocket.channel("lv:def456", () => {
+    const channel = liveSocket.channel("lv:def456", function(){
       return {session: this.getSession()}
     })
 
