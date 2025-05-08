@@ -56,14 +56,14 @@ export default class ElementRef {
   undoLocks(ref, phxEvent, eachCloneCallback){
     if(!this.isLockUndoneBy(ref)){ return }
 
-    let clonedTree = DOM.private(this.el, PHX_REF_LOCK)
+    const clonedTree = DOM.private(this.el, PHX_REF_LOCK)
     if(clonedTree){
       eachCloneCallback(clonedTree)
       DOM.deletePrivate(this.el, PHX_REF_LOCK)
     }
     this.el.removeAttribute(PHX_REF_LOCK)
 
-    let opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
+    const opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
     this.el.dispatchEvent(new CustomEvent(`phx:undo-lock:${this.lockRef}`, opts))
   }
 
@@ -77,8 +77,8 @@ export default class ElementRef {
 
     if(this.canUndoLoading(ref)){
       this.el.removeAttribute(PHX_REF_LOADING)
-      let disabledVal = this.el.getAttribute(PHX_DISABLED)
-      let readOnlyVal = this.el.getAttribute(PHX_READONLY)
+      const disabledVal = this.el.getAttribute(PHX_DISABLED)
+      const readOnlyVal = this.el.getAttribute(PHX_READONLY)
       // restore inputs
       if(readOnlyVal !== null){
         this.el.readOnly = readOnlyVal === "true" ? true : false
@@ -89,13 +89,13 @@ export default class ElementRef {
         this.el.removeAttribute(PHX_DISABLED)
       }
       // restore disables
-      let disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE)
+      const disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE)
       if(disableRestore !== null){
         this.el.innerText = disableRestore
         this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE)
       }
 
-      let opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
+      const opts = {detail: {ref: ref, event: phxEvent}, bubbles: true, cancelable: false}
       this.el.dispatchEvent(new CustomEvent(`phx:undo-loading:${this.loadingRef}`, opts))
     }
 

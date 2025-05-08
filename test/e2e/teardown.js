@@ -1,6 +1,6 @@
-const request = require("@playwright/test").request
+import {request} from "@playwright/test"
 
-module.exports = async () => {
+export default async () => {
   try {
     const context = await request.newContext({baseURL: "http://localhost:4004"})
     // gracefully stops the e2e script to export coverage

@@ -1,13 +1,13 @@
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 
-let stubViewPushInput = (view, callback) => {
+const stubViewPushInput = (view, callback) => {
   view.pushInput = (sourceEl, targetCtx, newCid, event, pushOpts, originalCallback) => {
     return callback(sourceEl, targetCtx, newCid, event, pushOpts, originalCallback)
   }
 }
 
-let prepareLiveViewDOM = (document, rootId) => {
+const prepareLiveViewDOM = (document, rootId) => {
   document.body.innerHTML = `
     <div data-phx-session="abc123"
          data-phx-root-id="${rootId}"
@@ -31,11 +31,11 @@ describe("events", () => {
   })
 
   test("send change event to correct target", () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    const liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
-    let view = liveSocket.getViewByEl(document.getElementById("root"))
+    const view = liveSocket.getViewByEl(document.getElementById("root"))
     view.isConnected = () => true
-    let input = view.el.querySelector("#first_name")
+    const input = view.el.querySelector("#first_name")
     let meta = {
       event: null,
       target: null,

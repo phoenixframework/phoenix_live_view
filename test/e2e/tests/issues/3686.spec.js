@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/3686
 test("flash is copied across fallback redirect", async ({page}) => {

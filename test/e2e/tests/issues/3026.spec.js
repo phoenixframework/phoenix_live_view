@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 test("LiveComponent is re-rendered when racing destory", async ({page}) => {
   const errors = []

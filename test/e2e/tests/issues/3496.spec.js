@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/3496
 test("hook is initialized properly when reusing id between sticky and non sticky LiveViews", async ({page}) => {

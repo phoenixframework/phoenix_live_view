@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 test("LiveComponent with static FC root is not reset", async ({page}) => {
   const errors = []

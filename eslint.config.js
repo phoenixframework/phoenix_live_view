@@ -2,7 +2,8 @@ import playwright from "eslint-plugin-playwright"
 import jest from "eslint-plugin-jest"
 import globals from "globals"
 import js from "@eslint/js"
-import stylisticJs from "@stylistic/eslint-plugin-js"
+import stylisticJs from "@stylistic/eslint-plugin"
+import tseslint from "typescript-eslint"
 
 const sharedRules = {
   "@stylistic/js/indent": ["error", 2, {
@@ -55,19 +56,24 @@ const sharedRules = {
     
   "@stylistic/js/eol-last": ["error", "always"],
 
-  "no-unused-vars": ["error", {
+  "@typescript-eslint/no-unused-vars": ["error", {
     argsIgnorePattern: "^_",
     varsIgnorePattern: "^_",
   }],
 
+  "@typescript-eslint/no-unused-expressions": "off",
+  "@typescript-eslint/no-explicit-any": "off",
+
   "no-useless-escape": "off",
   "no-cond-assign": "off",
   "no-case-declarations": "off",
+  "prefer-const": "off"
 }
 
-export default [
+export default tseslint.config([
   {
     ignores: [
+      "assets/js/dist/",
       "test/e2e/test-results/",
       "coverage/",
       "cover/",
@@ -77,7 +83,7 @@ export default [
     ]
   },
   {
-    ...js.configs.recommended,
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["*.js", "*.mjs", "test/e2e/**"],
     ignores: ["assets/**"],
     
@@ -92,9 +98,8 @@ export default [
     },
   },
   {
-    ...js.configs.recommended,
-
-    files: ["assets/**/*.js", "assets/**/*.mjs"],
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ["assets/**/*.{js,ts}"],
     ignores: ["test/e2e/**"],
 
     plugins: {
@@ -116,4 +121,4 @@ export default [
     rules: {
       ...sharedRules,
     },
-  }]
+  }])

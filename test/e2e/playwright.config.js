@@ -1,6 +1,10 @@
 // playwright.config.js
 // @ts-check
-const {devices} = require("@playwright/test")
+import {devices} from "@playwright/test"
+import {dirname, resolve} from "node:path"
+import {fileURLToPath} from "node:url"
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 /** @type {import("@playwright/test").ReporterDescription} */
 const monocartReporter = ["monocart-reporter", {
@@ -48,7 +52,7 @@ const config = {
     }
   ],
   outputDir: "test-results",
-  globalTeardown: require.resolve("./teardown")
+  globalTeardown: resolve(__dirname, "./teardown.js")
 }
 
-module.exports = config
+export default config

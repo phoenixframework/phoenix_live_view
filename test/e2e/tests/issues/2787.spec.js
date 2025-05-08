@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 const selectOptions = (locator) => locator.evaluateAll(list => list.map(option => option.value))
 

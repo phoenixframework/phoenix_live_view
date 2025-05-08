@@ -1,5 +1,5 @@
-const {test, expect} = require("../test-fixtures")
-const {syncLV} = require("../utils")
+import {test, expect} from "../test-fixtures"
+import {syncLV} from "../utils"
 
 /**
  * https://hexdocs.pm/phoenix_live_view/error-handling.html

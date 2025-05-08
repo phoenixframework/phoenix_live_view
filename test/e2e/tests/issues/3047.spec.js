@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 const listItems = async (page) => page.locator("[phx-update=\"stream\"] > span").evaluateAll(list => list.map(el => el.id))
 

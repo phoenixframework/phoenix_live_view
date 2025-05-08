@@ -6,16 +6,16 @@ import DOM from "./dom"
 
 export default class DOMPostMorphRestorer {
   constructor(containerBefore, containerAfter, updateType){
-    let idsBefore = new Set()
-    let idsAfter = new Set([...containerAfter.children].map(child => child.id))
+    const idsBefore = new Set()
+    const idsAfter = new Set([...containerAfter.children].map(child => child.id))
 
-    let elementsToModify = []
+    const elementsToModify = []
 
     Array.from(containerBefore.children).forEach(child => {
       if(child.id){ // all of our children should be elements with ids
         idsBefore.add(child.id)
         if(idsAfter.has(child.id)){
-          let previousElementId = child.previousElementSibling && child.previousElementSibling.id
+          const previousElementId = child.previousElementSibling && child.previousElementSibling.id
           elementsToModify.push({elementId: child.id, previousElementId: previousElementId})
         }
       }
@@ -34,12 +34,13 @@ export default class DOMPostMorphRestorer {
   //   3) New elements are going to be put in the right place by morphdom during append.
   //      For prepend, we move them to the first position in the container
   perform(){
-    let container = DOM.byId(this.containerId)
+    const container = DOM.byId(this.containerId)
+    if(!container){ return }
     this.elementsToModify.forEach(elementToModify => {
       if(elementToModify.previousElementId){
         maybe(document.getElementById(elementToModify.previousElementId), previousElem => {
           maybe(document.getElementById(elementToModify.elementId), elem => {
-            let isInRightPlace = elem.previousElementSibling && elem.previousElementSibling.id == previousElem.id
+            const isInRightPlace = elem.previousElementSibling && elem.previousElementSibling.id == previousElem.id
             if(!isInRightPlace){
               previousElem.insertAdjacentElement("afterend", elem)
             }
@@ -48,7 +49,7 @@ export default class DOMPostMorphRestorer {
       } else {
         // This is the first element in the container
         maybe(document.getElementById(elementToModify.elementId), elem => {
-          let isInRightPlace = elem.previousElementSibling == null
+          const isInRightPlace = elem.previousElementSibling == null
           if(!isInRightPlace){
             container.insertAdjacentElement("afterbegin", elem)
           }

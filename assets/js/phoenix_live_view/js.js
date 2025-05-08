@@ -1,14 +1,14 @@
 import DOM from "./dom"
 import ARIA from "./aria"
 
-let focusStack = []
-let default_transition_time = 200
+const focusStack = []
+const default_transition_time = 200
 
-let JS = {
+const JS = {
   // private
   exec(e, eventType, phxEvent, view, sourceEl, defaults){
-    let [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
-    let commands = phxEvent.charAt(0) === "[" ?
+    const [defaultKind, defaultArgs] = defaults || [null, {callback: defaults && defaults.callback}]
+    const commands = phxEvent.charAt(0) === "[" ?
       JSON.parse(phxEvent) : [[defaultKind, defaultArgs]]
 
     commands.forEach(([kind, args]) => {
@@ -46,7 +46,7 @@ let JS = {
   // commands
 
   exec_exec(e, eventType, phxEvent, view, sourceEl, el, {attr, to}){
-    let encodedJS = el.getAttribute(attr)
+    const encodedJS = el.getAttribute(attr)
     if(!encodedJS){ throw new Error(`expected ${attr} to contain JS command on "${to}"`) }
     view.liveSocket.execJS(el, encodedJS, eventType)
   },
@@ -58,10 +58,10 @@ let JS = {
   },
 
   exec_push(e, eventType, phxEvent, view, sourceEl, el, args){
-    let {event, data, target, page_loading, loading, value, dispatcher, callback} = args
-    let pushOpts = {loading, value, target, page_loading: !!page_loading}
-    let targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
-    let phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
+    const {event, data, target, page_loading, loading, value, dispatcher, callback} = args
+    const pushOpts = {loading, value, target, page_loading: !!page_loading}
+    const targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl
+    const phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc
     const handler = (targetView, targetCtx) => {
       if(!targetView.isConnected()){ return }
       if(eventType === "change"){
@@ -70,7 +70,7 @@ let JS = {
         if(_target){ pushOpts._target = _target }
         targetView.pushInput(sourceEl, targetCtx, newCid, event || phxEvent, pushOpts, callback)
       } else if(eventType === "submit"){
-        let {submitter} = args
+        const {submitter} = args
         targetView.submitForm(sourceEl, targetCtx, event || phxEvent, submitter, pushOpts, callback)
       } else {
         targetView.pushEvent(eventType, sourceEl, targetCtx, event || phxEvent, data, pushOpts, callback)
@@ -203,18 +203,18 @@ let JS = {
 
   toggle(eventType, view, el, display, ins, outs, time, blocking){
     time = time || default_transition_time
-    let [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []]
-    let [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []]
+    const [inClasses, inStartClasses, inEndClasses] = ins || [[], [], []]
+    const [outClasses, outStartClasses, outEndClasses] = outs || [[], [], []]
     if(inClasses.length > 0 || outClasses.length > 0){
       if(this.isVisible(el)){
-        let onStart = () => {
+        const onStart = () => {
           this.addOrRemoveClasses(el, outStartClasses, inClasses.concat(inStartClasses).concat(inEndClasses))
           window.requestAnimationFrame(() => {
             this.addOrRemoveClasses(el, outClasses, [])
             window.requestAnimationFrame(() => this.addOrRemoveClasses(el, outEndClasses, outStartClasses))
           })
         }
-        let onEnd = () => {
+        const onEnd = () => {
           this.addOrRemoveClasses(el, [], outClasses.concat(outEndClasses))
           DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = "none")
           el.dispatchEvent(new Event("phx:hide-end"))
@@ -228,7 +228,7 @@ let JS = {
         }
       } else {
         if(eventType === "remove"){ return }
-        let onStart = () => {
+        const onStart = () => {
           this.addOrRemoveClasses(el, inStartClasses, outClasses.concat(outStartClasses).concat(outEndClasses))
           const stickyDisplay = display || this.defaultDisplay(el)
           window.requestAnimationFrame(() => {
@@ -245,7 +245,7 @@ let JS = {
             })
           })
         }
-        let onEnd = () => {
+        const onEnd = () => {
           this.addOrRemoveClasses(el, [], inClasses.concat(inEndClasses))
           el.dispatchEvent(new Event("phx:show-end"))
         }
@@ -267,7 +267,7 @@ let JS = {
       } else {
         window.requestAnimationFrame(() => {
           el.dispatchEvent(new Event("phx:show-start"))
-          let stickyDisplay = display || this.defaultDisplay(el)
+          const stickyDisplay = display || this.defaultDisplay(el)
           DOM.putSticky(el, "toggle", currentEl => currentEl.style.display = stickyDisplay)
           el.dispatchEvent(new Event("phx:show-end"))
         })
@@ -277,9 +277,9 @@ let JS = {
 
   toggleClasses(el, classes, transition, time, view, blocking){
     window.requestAnimationFrame(() => {
-      let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
-      let newAdds = classes.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
-      let newRemoves = classes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
+      const [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
+      const newAdds = classes.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
+      const newRemoves = classes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
       this.addOrRemoveClasses(el, newAdds, newRemoves, transition, time, view, blocking)
     })
   },
@@ -304,16 +304,16 @@ let JS = {
 
   addOrRemoveClasses(el, adds, removes, transition, time, view, blocking){
     time = time || default_transition_time
-    let [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []]
+    const [transitionRun, transitionStart, transitionEnd] = transition || [[], [], []]
     if(transitionRun.length > 0){
-      let onStart = () => {
+      const onStart = () => {
         this.addOrRemoveClasses(el, transitionStart, [].concat(transitionRun).concat(transitionEnd))
         window.requestAnimationFrame(() => {
           this.addOrRemoveClasses(el, transitionRun, [])
           window.requestAnimationFrame(() => this.addOrRemoveClasses(el, transitionEnd, transitionStart))
         })
       }
-      let onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart))
+      const onDone = () => this.addOrRemoveClasses(el, adds.concat(transitionEnd), removes.concat(transitionRun).concat(transitionStart))
       if(blocking === false){
         onStart()
         setTimeout(onDone, time)
@@ -324,11 +324,11 @@ let JS = {
     }
 
     window.requestAnimationFrame(() => {
-      let [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
-      let keepAdds = adds.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
-      let keepRemoves = removes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
-      let newAdds = prevAdds.filter(name => removes.indexOf(name) < 0).concat(keepAdds)
-      let newRemoves = prevRemoves.filter(name => adds.indexOf(name) < 0).concat(keepRemoves)
+      const [prevAdds, prevRemoves] = DOM.getSticky(el, "classes", [[], []])
+      const keepAdds = adds.filter(name => prevAdds.indexOf(name) < 0 && !el.classList.contains(name))
+      const keepRemoves = removes.filter(name => prevRemoves.indexOf(name) < 0 && el.classList.contains(name))
+      const newAdds = prevAdds.filter(name => removes.indexOf(name) < 0).concat(keepAdds)
+      const newRemoves = prevRemoves.filter(name => adds.indexOf(name) < 0).concat(keepRemoves)
 
       DOM.putSticky(el, "classes", currentEl => {
         currentEl.classList.remove(...newRemoves)
@@ -339,11 +339,11 @@ let JS = {
   },
 
   setOrRemoveAttrs(el, sets, removes){
-    let [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
+    const [prevSets, prevRemoves] = DOM.getSticky(el, "attrs", [[], []])
 
-    let alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes)
-    let newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets)
-    let newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes)
+    const alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes)
+    const newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets)
+    const newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes)
 
     DOM.putSticky(el, "attrs", currentEl => {
       newRemoves.forEach(attr => currentEl.removeAttribute(attr))
@@ -359,11 +359,11 @@ let JS = {
   },
 
   filterToEls(liveSocket, sourceEl, {to}){
-    let defaultQuery = () => {
+    const defaultQuery = () => {
       if(typeof(to) === "string"){
         return document.querySelectorAll(to)
       } else if(to.closest){
-        let toEl = sourceEl.closest(to.closest)
+        const toEl = sourceEl.closest(to.closest)
         return toEl ? [toEl] : []
       } else if(to.inner){
         return sourceEl.querySelectorAll(to.inner)

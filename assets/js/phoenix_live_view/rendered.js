@@ -39,12 +39,12 @@ const VOID_TAGS = new Set([
 ])
 const quoteChars = new Set(["'", "\""])
 
-export let modifyRoot = (html, attrs, clearInnerHTML) => {
+export const modifyRoot = (html, attrs, clearInnerHTML) => {
   let i = 0
   let insideComment = false
   let beforeTag, afterTag, tag, tagNameEndsAt, id, newHTML
 
-  let lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
+  const lookahead = html.match(/^(\s*(?:<!--.*?-->\s*)*)<([^\s\/>]+)/)
   if(lookahead === null){ throw new Error(`malformed html ${html}`) }
 
   i = lookahead[0].length
@@ -56,11 +56,11 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   for(i; i < html.length; i++){
     if(html.charAt(i) === ">" ){ break }
     if(html.charAt(i) === "="){
-      let isId = html.slice(i - 3, i) === " id"
+      const isId = html.slice(i - 3, i) === " id"
       i++
-      let char = html.charAt(i)
+      const char = html.charAt(i)
       if(quoteChars.has(char)){
-        let attrStartsAt = i
+        const attrStartsAt = i
         i++
         for(i; i < html.length; i++){
           if(html.charAt(i) === char){ break }
@@ -76,7 +76,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   let closeAt = html.length - 1
   insideComment = false
   while(closeAt >= beforeTag.length + tag.length){
-    let char = html.charAt(closeAt)
+    const char = html.charAt(closeAt)
     if(insideComment){
       if(char === "-" && html.slice(closeAt - 3, closeAt) === "<!-"){
         insideComment = false
@@ -95,21 +95,21 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
   }
   afterTag = html.slice(closeAt + 1, html.length)
 
-  let attrsStr =
+  const attrsStr =
     Object.keys(attrs)
       .map(attr => attrs[attr] === true ? attr : `${attr}="${attrs[attr]}"`)
       .join(" ")
 
   if(clearInnerHTML){
     // Keep the id if any
-    let idAttrStr = id ? ` id="${id}"` : ""
+    const idAttrStr = id ? ` id="${id}"` : ""
     if(VOID_TAGS.has(tag)){
       newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}/>`
     } else {
       newHTML = `<${tag}${idAttrStr}${attrsStr === "" ? "" : " "}${attrsStr}></${tag}>`
     }
   } else {
-    let rest = html.slice(tagNameEndsAt, closeAt + 1)
+    const rest = html.slice(tagNameEndsAt, closeAt + 1)
     newHTML = `<${tag}${attrsStr === "" ? "" : " "}${attrsStr}${rest}`
   }
 
@@ -118,7 +118,7 @@ export let modifyRoot = (html, attrs, clearInnerHTML) => {
 
 export default class Rendered {
   static extract(diff){
-    let {[REPLY]: reply, [EVENTS]: events, [TITLE]: title} = diff
+    const {[REPLY]: reply, [EVENTS]: events, [TITLE]: title} = diff
     delete diff[REPLY]
     delete diff[EVENTS]
     delete diff[TITLE]
@@ -135,13 +135,13 @@ export default class Rendered {
   parentViewId(){ return this.viewId }
 
   toString(onlyCids){
-    let [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, true, {})
+    const [str, streams] = this.recursiveToString(this.rendered, this.rendered[COMPONENTS], onlyCids, true, {})
     return [str, streams]
   }
 
   recursiveToString(rendered, components = rendered[COMPONENTS], onlyCids, changeTracking, rootAttrs){
     onlyCids = onlyCids ? new Set(onlyCids) : null
-    let output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
+    const output = {buffer: "", components: components, onlyCids: onlyCids, streams: new Set()}
     this.toOutputBuffer(rendered, null, output, changeTracking, rootAttrs)
     return [output.buffer, output.streams]
   }
@@ -164,20 +164,20 @@ export default class Rendered {
   }
 
   mergeDiff(diff){
-    let newc = diff[COMPONENTS]
-    let cache = {}
+    const newc = diff[COMPONENTS]
+    const cache = {}
     delete diff[COMPONENTS]
     this.rendered = this.mutableMerge(this.rendered, diff)
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {}
 
     if(newc){
-      let oldc = this.rendered[COMPONENTS]
+      const oldc = this.rendered[COMPONENTS]
 
-      for(let cid in newc){
+      for(const cid in newc){
         newc[cid] = this.cachedFindComponent(cid, newc[cid], oldc, newc, cache)
       }
 
-      for(let cid in newc){ oldc[cid] = newc[cid] }
+      for(const cid in newc){ oldc[cid] = newc[cid] }
       diff[COMPONENTS] = newc
     }
   }
@@ -220,10 +220,10 @@ export default class Rendered {
   }
 
   doMutableMerge(target, source){
-    for(let key in source){
-      let val = source[key]
-      let targetVal = target[key]
-      let isObjVal = isObject(val)
+    for(const key in source){
+      const val = source[key]
+      const targetVal = target[key]
+      const isObjVal = isObject(val)
       if(isObjVal && val[STATIC] === undefined && isObject(targetVal)){
         this.doMutableMerge(targetVal, val)
       } else {
@@ -244,10 +244,10 @@ export default class Rendered {
   // (effectively forcing the new version to be rendered instead of skipped)
   //
   cloneMerge(target, source, pruneMagicId){
-    let merged = {...target, ...source}
-    for(let key in merged){
-      let val = source[key]
-      let targetVal = target[key]
+    const merged = {...target, ...source}
+    for(const key in merged){
+      const val = source[key]
+      const targetVal = target[key]
       if(isObject(val) && val[STATIC] === undefined && isObject(targetVal)){
         merged[key] = this.cloneMerge(targetVal, val, pruneMagicId)
       } else if(val === undefined && isObject(targetVal)){
@@ -264,8 +264,8 @@ export default class Rendered {
   }
 
   componentToString(cid){
-    let [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null)
-    let [strippedHTML, _before, _after] = modifyRoot(str, {})
+    const [str, streams] = this.recursiveCIDToString(this.rendered[COMPONENTS], cid, null)
+    const [strippedHTML, _before, _after] = modifyRoot(str, {})
     return [strippedHTML, streams]
   }
 
@@ -301,8 +301,8 @@ export default class Rendered {
     if(rendered[DYNAMICS]){ return this.comprehensionToBuffer(rendered, templates, output) }
     let {[STATIC]: statics} = rendered
     statics = this.templateStatic(statics, templates)
-    let isRoot = rendered[ROOT]
-    let prevBuffer = output.buffer
+    const isRoot = rendered[ROOT]
+    const prevBuffer = output.buffer
     if(isRoot){ output.buffer = "" }
 
     // this condition is called when first rendering an optimizable function component.
@@ -336,7 +336,7 @@ export default class Rendered {
         attrs = rootAttrs
       }
       if(skip){ attrs[PHX_SKIP] = true }
-      let [newRoot, commentBefore, commentAfter] = modifyRoot(output.buffer, attrs, skip)
+      const [newRoot, commentBefore, commentAfter] = modifyRoot(output.buffer, attrs, skip)
       rendered.newRender = false
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter
     }
@@ -344,18 +344,18 @@ export default class Rendered {
 
   comprehensionToBuffer(rendered, templates, output){
     let {[DYNAMICS]: dynamics, [STATIC]: statics, [STREAM]: stream} = rendered
-    let [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null]
+    const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null]
     statics = this.templateStatic(statics, templates)
-    let compTemplates = templates || rendered[TEMPLATES]
+    const compTemplates = templates || rendered[TEMPLATES]
     for(let d = 0; d < dynamics.length; d++){
-      let dynamic = dynamics[d]
+      const dynamic = dynamics[d]
       output.buffer += statics[0]
       for(let i = 1; i < statics.length; i++){
         // Inside a comprehension, we don't track how dynamics change
         // over time (and features like streams would make that impossible
         // unless we move the stream diffing away from morphdom),
         // so we can't perform root change tracking.
-        let changeTracking = false
+        const changeTracking = false
         this.dynamicToBuffer(dynamic[i - 1], compTemplates, output, changeTracking)
         output.buffer += statics[i]
       }
@@ -370,7 +370,7 @@ export default class Rendered {
 
   dynamicToBuffer(rendered, templates, output, changeTracking){
     if(typeof (rendered) === "number"){
-      let [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
+      const [str, streams] = this.recursiveCIDToString(output.components, rendered, output.onlyCids)
       output.buffer += str
       output.streams = new Set([...output.streams, ...streams])
     } else if(isObject(rendered)){
@@ -381,9 +381,9 @@ export default class Rendered {
   }
 
   recursiveCIDToString(components, cid, onlyCids){
-    let component = components[cid] || logError(`no component for CID ${cid}`, components)
-    let attrs = {[PHX_COMPONENT]: cid}
-    let skip = onlyCids && !onlyCids.has(cid)
+    const component = components[cid] || logError(`no component for CID ${cid}`, components)
+    const attrs = {[PHX_COMPONENT]: cid}
+    const skip = onlyCids && !onlyCids.has(cid)
     // Two optimization paths apply here:
     //
     //   1. The onlyCids optimization works by the server diff telling us only specific
@@ -408,8 +408,8 @@ export default class Rendered {
     component.newRender = !skip
     component.magicId = `c${cid}-${this.parentViewId()}`
     // enable change tracking as long as the component hasn't been reset
-    let changeTracking = !component.reset
-    let [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
+    const changeTracking = !component.reset
+    const [html, streams] = this.recursiveToString(component, components, onlyCids, changeTracking, attrs)
     // disable reset after we've rendered
     delete component.reset
 

@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/3647
 test("upload works when input event follows immediately afterwards", async ({page}) => {

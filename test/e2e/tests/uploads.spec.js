@@ -1,5 +1,5 @@
-const {test, expect} = require("../test-fixtures")
-const {syncLV, attributeMutations} = require("../utils")
+import {test, expect} from "../test-fixtures"
+import {syncLV, attributeMutations} from "../utils"
 
 // https://stackoverflow.com/questions/10623798/how-do-i-read-the-contents-of-a-node-js-stream-into-a-string-variable
 const readStream = (stream) => new Promise((resolve) => {
@@ -19,8 +19,8 @@ test("can upload a file", async ({page}) => {
   await page.goto("/upload")
   await syncLV(page)
 
-  let changesForm = attributeMutations(page, "#upload-form")
-  let changesInput = attributeMutations(page, "#upload-form input")
+  const changesForm = attributeMutations(page, "#upload-form")
+  const changesInput = attributeMutations(page, "#upload-form input")
 
   // wait for the change listeners to be ready
   await page.waitForTimeout(50)
@@ -157,7 +157,7 @@ test("auto upload", async ({page}) => {
   await page.goto("/upload?auto_upload=1")
   await syncLV(page)
 
-  let changes = attributeMutations(page, "#upload-form input")
+  const changes = attributeMutations(page, "#upload-form input")
   // wait for the change listeners to be ready
   await page.waitForTimeout(50)
   await page.locator("#upload-form input").setInputFiles([

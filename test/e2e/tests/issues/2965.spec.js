@@ -1,6 +1,6 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
-const {randomBytes} = require("crypto")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
+import {randomBytes} from "node:crypto"
 
 test("can upload files with custom chunk hook", async ({page}) => {
   await page.goto("/issues/2965")

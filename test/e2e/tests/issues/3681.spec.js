@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/3681
 test("streams in nested LiveViews are not reset when they share the same stream ref", async ({page, request}) => {

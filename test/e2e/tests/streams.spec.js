@@ -1,5 +1,5 @@
-const {test, expect} = require("../test-fixtures")
-const {syncLV, evalLV} = require("../utils")
+import {test, expect} from "../test-fixtures"
+import {syncLV, evalLV} from "../utils"
 
 const usersInDom = async (page, parent) => {
   return await page.locator(`#${parent} > *`)
@@ -695,7 +695,7 @@ test("stream nested in a LiveComponent is properly restored on reset", async ({p
     {id: "items-d", text: expect.stringMatching(/D/)}
   ])
 
-  for(let id of ["a", "b", "c", "d"]){
+  for(const id of ["a", "b", "c", "d"]){
     expect(await childItems(page, `items-${id}`)).toEqual([
       {id: `nested-items-${id}-a`, text: "N-A"},
       {id: `nested-items-${id}-b`, text: "N-B"},
@@ -715,7 +715,7 @@ test("stream nested in a LiveComponent is properly restored on reset", async ({p
     {id: "nested-items-a-g", text: "N-G"},
   ])
   // unchanged
-  for(let id of ["b", "c", "d"]){
+  for(const id of ["b", "c", "d"]){
     expect(await childItems(page, `items-${id}`)).toEqual([
       {id: `nested-items-${id}-a`, text: "N-A"},
       {id: `nested-items-${id}-b`, text: "N-B"},
@@ -735,7 +735,7 @@ test("stream nested in a LiveComponent is properly restored on reset", async ({p
   ])
 
   // the new children's stream items have the correct order
-  for(let id of ["e", "f", "g"]){
+  for(const id of ["e", "f", "g"]){
     expect(await childItems(page, `items-${id}`)).toEqual([
       {id: `nested-items-${id}-a`, text: "N-A"},
       {id: `nested-items-${id}-b`, text: "N-B"},

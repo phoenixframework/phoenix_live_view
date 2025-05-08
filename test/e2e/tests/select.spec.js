@@ -1,5 +1,5 @@
-const {test, expect} = require("../test-fixtures")
-const {syncLV} = require("../utils")
+import {test, expect} from "../test-fixtures"
+import {syncLV} from "../utils"
 
 // this tests issue #2659
 // https://github.com/phoenixframework/phoenix_live_view/pull/2659
