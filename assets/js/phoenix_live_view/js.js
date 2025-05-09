@@ -162,6 +162,10 @@ let JS = {
     this.setOrRemoveAttrs(el, [[attr, val]], [])
   },
 
+  exec_set_prop(e, eventType, phxEvent, view, sourceEl, el, {attr: [prop, val]}){
+    el[prop] = val
+  },
+
   exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, {attr}){
     this.setOrRemoveAttrs(el, [], [attr])
   },
