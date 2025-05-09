@@ -214,10 +214,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   mark meter noscript object output picture progress q ruby s samp select slot
   small span strong sub sup svg template textarea time u tt var video wbr)
 
-  @inline_components ~w(.link)
-
-  @inline_elements @inline_tags ++ @inline_components
-
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
@@ -491,7 +487,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         preceeded_by_non_white_space?(upper_buffer) ->
           {:preserve, Enum.reverse(reversed_buffer)}
 
-        tag_name in @inline_elements ->
+        tag_name in @inline_tags ->
           {:inline,
            reversed_buffer
            |> may_set_preserve_on_text(:last)
@@ -499,7 +495,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
            |> may_set_preserve_on_text(:first)}
 
         true ->
-          {:block, Enum.reverse(reversed_buffer)}
+          buffer = Enum.reverse(reversed_buffer)
+
+          if wrapped_by_spaces?(buffer, reversed_buffer) do
+            {:block, buffer}
+          else
+            {:inline, buffer}
+          end
       end
 
     tag_block = {:tag_block, tag_name, attrs, block, %{mode: mode}}
@@ -592,6 +594,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     trimmed_text = String.trim(text)
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
+
+  defp wrapped_by_spaces?([{:text, front, _} | _], [{:text, back, _} | _]),
+    do: :binary.first(front) in ~c"\s\t\r\n" and :binary.last(back) in ~c"\s\t\r\n"
+
+  defp wrapped_by_spaces?(_, _), do: false
 
   # In case the opening tag is immediately preceeded by non whitespace text,
   # or an interpolation, we will set it as preserve.
