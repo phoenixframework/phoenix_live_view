@@ -521,6 +521,17 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
 
       """,
       """
+      <button class="btn-primary" autofocus disabled> Submit </button>
+      """
+    )
+
+    assert_formatter_output(
+      """
+
+        <button class="btn-primary" autofocus disabled>Submit</button>
+
+      """,
+      """
       <button class="btn-primary" autofocus disabled>Submit</button>
       """
     )

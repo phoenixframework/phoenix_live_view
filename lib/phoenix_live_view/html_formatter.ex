@@ -486,15 +486,12 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       else
         mode =
           cond do
-            preserve_format?(tag_name, upper_buffer) -> :preserve
-            tag_name in @inline_elements -> :inline
-            true -> :block
+            tag_name not in @inline_elements -> :block
+            head_may_not_have_whitespace?(upper_buffer) -> :preserve
+            true -> :inline
           end
 
-        {mode,
-         buffer
-         |> Enum.reverse()
-         |> may_set_preserve_on_text(mode, tag_name)}
+        {mode, buffer |> Enum.reverse() |> may_set_preserve_on_text(mode)}
       end
 
     tag_block = {:tag_block, tag_name, attrs, block, %{mode: mode}}
@@ -579,14 +576,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
 
-  # We want to preserve the format:
-  #
-  # * In case the head is a text that doesn't end with whitespace.
-  # * In case the head is eex.
-  defp preserve_format?(name, upper_buffer) do
-    name in @inline_elements and head_may_not_have_whitespace?(upper_buffer)
-  end
-
   defp head_may_not_have_whitespace?([{:text, text, _meta} | _]),
     do: String.trim_leading(text) != "" and :binary.last(text) not in ~c"\s\t"
 
@@ -594,10 +583,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
   defp head_may_not_have_whitespace?(_), do: false
 
-  # In case the given tag is inline and there is no white spaces in the next
-  # text, we want to set mode as preserve. So this tag will not be formatted.
-  defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text)
-       when name in @inline_elements do
+  # In case the closing tag is immediatelly followed by non whitespace text,
+  # we want to set mode as preserve. So this tag is not formatted.
+  defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text) do
     mode =
       if String.trim_leading(text) != "" and :binary.first(text) not in ~c"\s\t\n\r" do
         :preserve
@@ -608,12 +596,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     [{:tag_block, name, attrs, block, %{mode: mode}} | list]
   end
 
-  @non_ws_preserving_elements ["button"]
-
   defp may_set_preserve_on_block(buffer, _text), do: buffer
 
-  defp may_set_preserve_on_text([{:text, text, meta}], :inline, tag_name)
-       when tag_name not in @non_ws_preserving_elements do
+  defp may_set_preserve_on_text([{:text, text, meta}], :inline) do
     {mode, text} =
       if meta.newlines == 0 and whitespace_around?(text) do
         text =
@@ -629,7 +614,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     [{:text, text, Map.put(meta, :mode, mode)}]
   end
 
-  defp may_set_preserve_on_text(buffer, _mode, _tag_name), do: buffer
+  defp may_set_preserve_on_text(buffer, _mode), do: buffer
 
   defp whitespace_around?(text),
     do: :binary.first(text) in ~c"\s\t" or :binary.last(text) in ~c"\s\t"
