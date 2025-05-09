@@ -460,6 +460,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:body_expr, value, meta} | tokens], buffer, stack, source) do
+    buffer = set_preserve_on_block(buffer)
     to_tree(tokens, [{:body_expr, value, meta} | buffer], stack, source)
   end
 
@@ -475,7 +476,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   defp to_tree(
          [{:close, _type, _name, close_meta} | tokens],
-         buffer,
+         reversed_buffer,
          [{tag_name, attrs, open_meta, upper_buffer} | stack],
          source
        ) do
@@ -484,14 +485,16 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         content = content_from_source(source, open_meta.inner_location, close_meta.inner_location)
         {:preserve, [{:text, content, %{newlines: 0}}]}
       else
+        buffer = Enum.reverse(reversed_buffer)
+
         mode =
           cond do
-            tag_name not in @inline_elements -> :block
-            head_may_not_have_whitespace?(upper_buffer) -> :preserve
-            true -> :inline
+            preceeded_by_non_white_space?(upper_buffer) -> :preserve
+            tag_name in @inline_elements -> :inline
+            true -> :block
           end
 
-        {mode, buffer |> Enum.reverse() |> may_set_preserve_on_text(mode)}
+        {mode, may_set_preserve_on_text(buffer, mode)}
       end
 
     tag_block = {:tag_block, tag_name, attrs, block, %{mode: mode}}
@@ -550,6 +553,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, source) do
+    buffer = set_preserve_on_block(buffer)
     to_tree(tokens, [{:eex, expr, meta} | buffer], stack, source)
   end
 
@@ -576,15 +580,17 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
 
-  defp head_may_not_have_whitespace?([{:text, text, _meta} | _]),
-    do: String.trim_leading(text) != "" and :binary.last(text) not in ~c"\s\t"
+  # In case the opening tag is immediately preceeded by non whitespace text,
+  # or an interpolation, we will set it as preserve.
+  defp preceeded_by_non_white_space?([{:text, text, _meta} | _]),
+    do: String.trim_leading(text) != "" and :binary.last(text) not in ~c"\s\t\n\r"
 
-  defp head_may_not_have_whitespace?([{:body_expr, _, _} | _]), do: true
-  defp head_may_not_have_whitespace?([{:eex, _, _} | _]), do: true
-  defp head_may_not_have_whitespace?(_), do: false
+  defp preceeded_by_non_white_space?([{:body_expr, _, _} | _]), do: true
+  defp preceeded_by_non_white_space?([{:eex, _, _} | _]), do: true
+  defp preceeded_by_non_white_space?(_), do: false
 
   # In case the closing tag is immediatelly followed by non whitespace text,
-  # we want to set mode as preserve. So this tag is not formatted.
+  # we want to set mode as preserve.
   defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text) do
     mode =
       if String.trim_leading(text) != "" and :binary.first(text) not in ~c"\s\t\n\r" do
@@ -593,10 +599,17 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         meta.mode
       end
 
-    [{:tag_block, name, attrs, block, %{mode: mode}} | list]
+    [{:tag_block, name, attrs, block, %{meta | mode: mode}} | list]
   end
 
   defp may_set_preserve_on_block(buffer, _text), do: buffer
+
+  # Set preserve on block when it is immediately followed by interpolation.
+  defp set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list]) do
+    [{:tag_block, name, attrs, block, %{meta | mode: :preserve}} | list]
+  end
+
+  defp set_preserve_on_block(buffer), do: buffer
 
   defp may_set_preserve_on_text([{:text, text, meta}], :inline) do
     {mode, text} =
