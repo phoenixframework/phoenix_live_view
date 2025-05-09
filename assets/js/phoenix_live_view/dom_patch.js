@@ -63,30 +63,30 @@ export default class DOMPatch {
   }
 
   markPrunableContentForRemoval(){
-    let phxUpdate = this.liveSocket.binding(PHX_UPDATE)
+    const phxUpdate = this.liveSocket.binding(PHX_UPDATE)
     DOM.all(this.container, `[${phxUpdate}=append] > *, [${phxUpdate}=prepend] > *`, el => {
       el.setAttribute(PHX_PRUNE, "")
     })
   }
 
   perform(isJoinPatch){
-    let {view, liveSocket, html, container, targetContainer} = this
+    const {view, liveSocket, html, container, targetContainer} = this
     if(this.isCIDPatch() && !targetContainer){ return }
 
-    let focused = liveSocket.getActiveElement()
-    let {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
-    let phxUpdate = liveSocket.binding(PHX_UPDATE)
-    let phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
-    let phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
-    let phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
-    let added = []
-    let updates = []
-    let appendPrependUpdates = []
+    const focused = liveSocket.getActiveElement()
+    const {selectionStart, selectionEnd} = focused && DOM.hasSelectionRange(focused) ? focused : {}
+    const phxUpdate = liveSocket.binding(PHX_UPDATE)
+    const phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP)
+    const phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM)
+    const phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION)
+    const added = []
+    const updates = []
+    const appendPrependUpdates = []
 
     let externalFormTriggered = null
 
     function morph(targetContainer, source, withChildren=this.withChildren){
-      let morphCallbacks = {
+      const morphCallbacks = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
         // when we are patching a live component, we do want to patch the root element as well;
@@ -103,7 +103,7 @@ export default class DOMPatch {
         skipFromChildren: (from) => { return from.getAttribute(phxUpdate) === PHX_STREAM },
         // tell morphdom how to add a child
         addChild: (parent, child) => {
-          let {ref, streamAt} = this.getStreamInsert(child)
+          const {ref, streamAt} = this.getStreamInsert(child)
           if(ref === undefined){ return parent.appendChild(child) }
 
           this.setStreamRef(child, ref)
@@ -112,15 +112,15 @@ export default class DOMPatch {
           if(streamAt === 0){
             parent.insertAdjacentElement("afterbegin", child)
           } else if(streamAt === -1){
-            let lastChild = parent.lastElementChild
+            const lastChild = parent.lastElementChild
             if(lastChild && !lastChild.hasAttribute(PHX_STREAM_REF)){
-              let nonStreamChild = Array.from(parent.children).find(c => !c.hasAttribute(PHX_STREAM_REF))
+              const nonStreamChild = Array.from(parent.children).find(c => !c.hasAttribute(PHX_STREAM_REF))
               parent.insertBefore(child, nonStreamChild)
             } else {
               parent.appendChild(child)
             }
           } else if(streamAt > 0){
-            let sibling = Array.from(parent.children)[streamAt]
+            const sibling = Array.from(parent.children)[streamAt]
             parent.insertBefore(child, sibling)
           }
         },
@@ -143,6 +143,7 @@ export default class DOMPatch {
 
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
+            // eslint-disable-next-line no-self-assign
             el.srcset = el.srcset
           } else if(el instanceof HTMLVideoElement && el.autoplay){
             el.play()
@@ -215,8 +216,8 @@ export default class DOMPatch {
           // We keep a reference to the cloned tree in the element's private data, and
           // on ack (view.undoRefs), we morph the cloned tree with the true fromEl in the DOM to
           // apply any changes that happened while the element was locked.
-          let isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
-          let focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
+          const isFocusedFormEl = focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl)
+          const focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl)
           if(fromEl.hasAttribute(PHX_REF_SRC)){
             const ref = new ElementRef(fromEl)
             // only perform the clone step if this is not a patch that unlocks
@@ -227,8 +228,8 @@ export default class DOMPatch {
                 updates.push(fromEl)
               }
               DOM.applyStickyOperations(fromEl)
-              let isLocked = fromEl.hasAttribute(PHX_REF_LOCK)
-              let clone = isLocked ? DOM.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null
+              const isLocked = fromEl.hasAttribute(PHX_REF_LOCK)
+              const clone = isLocked ? DOM.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null
               if(clone){
                 DOM.putPrivate(fromEl, PHX_REF_LOCK, clone)
                 if(!isFocusedFormEl){
@@ -240,7 +241,7 @@ export default class DOMPatch {
 
           // nested view handling
           if(DOM.isPhxChild(toEl)){
-            let prevSession = fromEl.getAttribute(PHX_SESSION)
+            const prevSession = fromEl.getAttribute(PHX_SESSION)
             DOM.mergeAttrs(fromEl, toEl, {exclude: [PHX_STATIC]})
             if(prevSession !== ""){ fromEl.setAttribute(PHX_SESSION, prevSession) }
             fromEl.setAttribute(PHX_ROOT_ID, this.rootID)
@@ -294,7 +295,7 @@ export default class DOMPatch {
           })
         }
         deleteIds.forEach(id => {
-          let child = container.querySelector(`[id="${id}"]`)
+          const child = container.querySelector(`[id="${id}"]`)
           if(child){ this.removeStreamChildElement(child) }
         })
       })
@@ -324,7 +325,7 @@ export default class DOMPatch {
       detectInvalidStreamInserts(this.streamInserts)
       // warn if there are any inputs named "id"
       Array.from(document.querySelectorAll("input[name=id]")).forEach(node => {
-        if(node.form){
+        if(node instanceof HTMLInputElement && node.form){
           console.error("Detected an input with name=\"id\" inside a form! This will cause problems when patching the DOM.\n", node)
         }
       })
@@ -388,7 +389,7 @@ export default class DOMPatch {
   }
 
   getStreamInsert(el){
-    let insert = el.id ? this.streamInserts[el.id] : {}
+    const insert = el.id ? this.streamInserts[el.id] : {}
     return insert || {}
   }
 
@@ -397,7 +398,7 @@ export default class DOMPatch {
   }
 
   maybeReOrderStream(el, isNew){
-    let {ref, streamAt, reset} = this.getStreamInsert(el)
+    const {ref, streamAt, reset} = this.getStreamInsert(el)
     if(streamAt === undefined){ return }
 
     // we need to set the PHX_STREAM_REF here as well as addChild is invoked only for parents
@@ -417,12 +418,12 @@ export default class DOMPatch {
     if(streamAt === 0){
       el.parentElement.insertBefore(el, el.parentElement.firstElementChild)
     } else if(streamAt > 0){
-      let children = Array.from(el.parentElement.children)
-      let oldIndex = children.indexOf(el)
+      const children = Array.from(el.parentElement.children)
+      const oldIndex = children.indexOf(el)
       if(streamAt >= children.length - 1){
         el.parentElement.appendChild(el)
       } else {
-        let sibling = children[streamAt]
+        const sibling = children[streamAt]
         if(oldIndex > streamAt){
           el.parentElement.insertBefore(el, sibling)
         } else {
@@ -435,8 +436,8 @@ export default class DOMPatch {
   }
 
   maybeLimitStream(el){
-    let {limit} = this.getStreamInsert(el)
-    let children = limit !== null && Array.from(el.parentElement.children)
+    const {limit} = this.getStreamInsert(el)
+    const children = limit !== null && Array.from(el.parentElement.children)
     if(limit && limit < 0 && children.length > limit * -1){
       children.slice(0, children.length + limit).forEach(child => this.removeStreamChildElement(child))
     } else if(limit && limit >= 0 && children.length > limit){
@@ -445,11 +446,11 @@ export default class DOMPatch {
   }
 
   transitionPendingRemoves(){
-    let {pendingRemoves, liveSocket} = this
+    const {pendingRemoves, liveSocket} = this
     if(pendingRemoves.length > 0){
       liveSocket.transitionRemoves(pendingRemoves, () => {
         pendingRemoves.forEach(el => {
-          let child = DOM.firstPhxChild(el)
+          const child = DOM.firstPhxChild(el)
           if(child){ liveSocket.destroyViewByEl(child) }
           el.remove()
         })
@@ -478,7 +479,7 @@ export default class DOMPatch {
 
   targetCIDContainer(html){
     if(!this.isCIDPatch()){ return }
-    let [first, ...rest] = DOM.findComponentNodeList(this.container, this.targetCID)
+    const [first, ...rest] = DOM.findComponentNodeList(this.container, this.targetCID)
     if(rest.length === 0 && DOM.childNodeLength(html) === 1){
       return first
     } else {

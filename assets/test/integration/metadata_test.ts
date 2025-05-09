@@ -1,13 +1,13 @@
 import {Socket} from "phoenix"
 import LiveSocket from "phoenix_live_view/live_socket"
 
-let stubViewPushEvent = (view, callback) => {
+const stubViewPushEvent = (view, callback) => {
   view.pushEvent = (type, el, targetCtx, phxEvent, meta, opts = {}) => {
     return callback(type, el, targetCtx, phxEvent, meta, opts)
   }
 }
 
-let prepareLiveViewDOM = (document, rootId) => {
+const prepareLiveViewDOM = (document, rootId) => {
   document.body.innerHTML = `
     <div data-phx-session="abc123"
          data-phx-root-id="${rootId}"
@@ -25,10 +25,10 @@ describe("metadata", () => {
   })
 
   test("is empty by default", () => {
-    let liveSocket = new LiveSocket("/live", Socket)
+    const liveSocket = new LiveSocket("/live", Socket)
     liveSocket.connect()
-    let view = liveSocket.getViewByEl(document.getElementById("root"))
-    let btn = view.el.querySelector("button")
+    const view = liveSocket.getViewByEl(document.getElementById("root"))
+    const btn = view.el.querySelector("button")
     let meta = {}
     stubViewPushEvent(view, (type, el, target, targetCtx, phxEvent, metadata) => {
       meta = metadata
@@ -39,7 +39,7 @@ describe("metadata", () => {
   })
 
   test("can be user defined", () => {
-    let liveSocket = new LiveSocket("/live", Socket, {
+    const liveSocket = new LiveSocket("/live", Socket, {
       metadata: {
         click: (e, el) => {
           return {
@@ -51,9 +51,9 @@ describe("metadata", () => {
     })
     liveSocket.connect()
     liveSocket.isConnected = () => true
-    let view = liveSocket.getViewByEl(document.getElementById("root"))
+    const view = liveSocket.getViewByEl(document.getElementById("root"))
     view.isConnected = () => true
-    let btn = view.el.querySelector("button")
+    const btn = view.el.querySelector("button")
     let meta = {}
     stubViewPushEvent(view, (type, el, target, phxEvent, metadata, _opts) => {
       meta = metadata

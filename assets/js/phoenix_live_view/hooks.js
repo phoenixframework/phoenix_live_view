@@ -8,7 +8,7 @@ import {
 import LiveUploader from "./live_uploader"
 import ARIA from "./aria"
 
-let Hooks = {
+const Hooks = {
   LiveFileUpload: {
     activeRefs(){ return this.el.getAttribute(PHX_ACTIVE_ENTRY_REFS) },
 
@@ -17,7 +17,7 @@ let Hooks = {
     mounted(){ this.preflightedWas = this.preflightedRefs() },
 
     updated(){
-      let newPreflights = this.preflightedRefs()
+      const newPreflights = this.preflightedRefs()
       if(this.preflightedWas !== newPreflights){
         this.preflightedWas = newPreflights
         if(newPreflights === ""){
@@ -78,7 +78,7 @@ let Hooks = {
   }
 }
 
-let findScrollContainer = (el) => {
+const findScrollContainer = (el) => {
   // the scroll event won't be fired on the html/body element even if overflow is set
   // therefore we return null to instead listen for scroll events on document
   if(["HTML", "BODY"].indexOf(el.nodeName.toUpperCase()) >= 0) return null
@@ -86,7 +86,7 @@ let findScrollContainer = (el) => {
   return findScrollContainer(el.parentElement)
 }
 
-let scrollTop = (scrollContainer) => {
+const scrollTop = (scrollContainer) => {
   if(scrollContainer){
     return scrollContainer.scrollTop
   } else {
@@ -94,7 +94,7 @@ let scrollTop = (scrollContainer) => {
   }
 }
 
-let bottom = (scrollContainer) => {
+const bottom = (scrollContainer) => {
   if(scrollContainer){
     return scrollContainer.getBoundingClientRect().bottom
   } else {
@@ -104,7 +104,7 @@ let bottom = (scrollContainer) => {
   }
 }
 
-let top = (scrollContainer) => {
+const top = (scrollContainer) => {
   if(scrollContainer){
     return scrollContainer.getBoundingClientRect().top
   } else {
@@ -114,18 +114,18 @@ let top = (scrollContainer) => {
   }
 }
 
-let isAtViewportTop = (el, scrollContainer) => {
-  let rect = el.getBoundingClientRect()
+const isAtViewportTop = (el, scrollContainer) => {
+  const rect = el.getBoundingClientRect()
   return Math.ceil(rect.top) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.top) <= bottom(scrollContainer)
 }
 
-let isAtViewportBottom = (el, scrollContainer) => {
-  let rect = el.getBoundingClientRect()
+const isAtViewportBottom = (el, scrollContainer) => {
+  const rect = el.getBoundingClientRect()
   return Math.ceil(rect.bottom) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.bottom) <= bottom(scrollContainer)
 }
 
-let isWithinViewport = (el, scrollContainer) => {
-  let rect = el.getBoundingClientRect()
+const isWithinViewport = (el, scrollContainer) => {
+  const rect = el.getBoundingClientRect()
   return Math.ceil(rect.top) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.top) <= bottom(scrollContainer)
 }
 
@@ -134,17 +134,17 @@ Hooks.InfiniteScroll = {
     this.scrollContainer = findScrollContainer(this.el)
     let scrollBefore = scrollTop(this.scrollContainer)
     let topOverran = false
-    let throttleInterval = 500
+    const throttleInterval = 500
     let pendingOp = null
 
-    let onTopOverrun = this.throttle(throttleInterval, (topEvent, firstChild) => {
+    const onTopOverrun = this.throttle(throttleInterval, (topEvent, firstChild) => {
       pendingOp = () => true
       this.liveSocket.js().push(this.el, topEvent, {value: {id: firstChild.id, _overran: true}, callback: () => {
         pendingOp = null
       }})
     })
 
-    let onFirstChildAtTop = this.throttle(throttleInterval, (topEvent, firstChild) => {
+    const onFirstChildAtTop = this.throttle(throttleInterval, (topEvent, firstChild) => {
       pendingOp = () => firstChild.scrollIntoView({block: "start"})
       this.liveSocket.js().push(this.el, topEvent, {value: {id: firstChild.id}, callback: () => {
         pendingOp = null
@@ -157,7 +157,7 @@ Hooks.InfiniteScroll = {
       }})
     })
 
-    let onLastChildAtBottom = this.throttle(throttleInterval, (bottomEvent, lastChild) => {
+    const onLastChildAtBottom = this.throttle(throttleInterval, (bottomEvent, lastChild) => {
       pendingOp = () => lastChild.scrollIntoView({block: "end"})
       this.liveSocket.js().push(this.el, bottomEvent, {value: {id: lastChild.id}, callback: () => {
         pendingOp = null
@@ -171,19 +171,19 @@ Hooks.InfiniteScroll = {
     })
 
     this.onScroll = (_e) => {
-      let scrollNow = scrollTop(this.scrollContainer)
+      const scrollNow = scrollTop(this.scrollContainer)
 
       if(pendingOp){
         scrollBefore = scrollNow
         return pendingOp()
       }
-      let rect = this.el.getBoundingClientRect()
-      let topEvent = this.el.getAttribute(this.liveSocket.binding("viewport-top"))
-      let bottomEvent = this.el.getAttribute(this.liveSocket.binding("viewport-bottom"))
-      let lastChild = this.el.lastElementChild
-      let firstChild = this.el.firstElementChild
-      let isScrollingUp = scrollNow < scrollBefore
-      let isScrollingDown = scrollNow > scrollBefore
+      const rect = this.el.getBoundingClientRect()
+      const topEvent = this.el.getAttribute(this.liveSocket.binding("viewport-top"))
+      const bottomEvent = this.el.getAttribute(this.liveSocket.binding("viewport-bottom"))
+      const lastChild = this.el.lastElementChild
+      const firstChild = this.el.firstElementChild
+      const isScrollingUp = scrollNow < scrollBefore
+      const isScrollingDown = scrollNow > scrollBefore
 
       // el overran while scrolling up
       if(isScrollingUp && topEvent && !topOverran && rect.top >= 0){
@@ -221,8 +221,8 @@ Hooks.InfiniteScroll = {
     let timer
 
     return (...args) => {
-      let now = Date.now()
-      let remainingTime = interval - (now - lastCallAt)
+      const now = Date.now()
+      const remainingTime = interval - (now - lastCallAt)
 
       if(remainingTime <= 0 || remainingTime > interval){
         if(timer){

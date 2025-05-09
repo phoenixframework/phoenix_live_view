@@ -13,15 +13,15 @@ import LiveUploader from "./live_uploader"
 
 export default class UploadEntry {
   static isActive(fileEl, file){
-    let isNew = file._phxRef === undefined
-    let activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
-    let isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
+    const isNew = file._phxRef === undefined
+    const activeRefs = fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
+    const isActive = activeRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
     return file.size > 0 && (isNew || isActive)
   }
 
   static isPreflighted(fileEl, file){
-    let preflightedRefs = fileEl.getAttribute(PHX_PREFLIGHTED_REFS).split(",")
-    let isPreflighted = preflightedRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
+    const preflightedRefs = fileEl.getAttribute(PHX_PREFLIGHTED_REFS).split(",")
+    const isPreflighted = preflightedRefs.indexOf(LiveUploader.genFileRef(file)) >= 0
     return isPreflighted && this.isActive(fileEl, file)
   }
 
@@ -98,7 +98,7 @@ export default class UploadEntry {
   }
 
   onElUpdated(){
-    let activeRefs = this.fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
+    const activeRefs = this.fileEl.getAttribute(PHX_ACTIVE_ENTRY_REFS).split(",")
     if(activeRefs.indexOf(this.ref) === -1){
       LiveUploader.untrackFile(this.fileEl, this.file)
       this.cancel()
@@ -119,7 +119,7 @@ export default class UploadEntry {
 
   uploader(uploaders){
     if(this.meta.uploader){
-      let callback = uploaders[this.meta.uploader] || logError(`no uploader configured for ${this.meta.uploader}`)
+      const callback = uploaders[this.meta.uploader] || logError(`no uploader configured for ${this.meta.uploader}`)
       return {name: this.meta.uploader, callback: callback}
     } else {
       return {name: "channel", callback: channelUploader}

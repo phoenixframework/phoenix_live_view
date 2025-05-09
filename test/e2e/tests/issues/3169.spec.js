@@ -1,5 +1,5 @@
-const {test, expect} = require("../../test-fixtures")
-const {syncLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV} from "../../utils"
 
 const inputVals = async (page) => {
   return page.locator("input[type=\"text\"]").evaluateAll(list => list.map(i => i.value))

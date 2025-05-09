@@ -4,7 +4,9 @@ import {addCoverageReport} from "monocart-reporter"
 
 import fs from "node:fs"
 import path from "node:path"
+import {fileURLToPath} from "node:url"
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
 const liveViewSourceMap = JSON.parse(fs.readFileSync(path.resolve(__dirname + "../../../priv/static/phoenix_live_view.esm.js.map")).toString("utf-8"))
 
 const test = testBase.extend({

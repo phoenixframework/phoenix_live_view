@@ -1,4 +1,4 @@
-let ARIA = {
+const ARIA = {
   anyOf(instance, classes){ return classes.find(name => instance instanceof name) },
 
   isFocusable(el, interactiveOnly){
@@ -12,14 +12,20 @@ let ARIA = {
   },
 
   attemptFocus(el, interactiveOnly){
-    if(this.isFocusable(el, interactiveOnly)){ try { el.focus() } catch {} }
+    if(this.isFocusable(el, interactiveOnly)){
+      try {
+        el.focus()
+      } catch {
+        // that's fine
+      }
+    }
     return !!document.activeElement && document.activeElement.isSameNode(el)
   },
 
   focusFirstInteractive(el){
     let child = el.firstElementChild
     while(child){
-      if(this.attemptFocus(child, true) || this.focusFirstInteractive(child, true)){
+      if(this.attemptFocus(child, true) || this.focusFirstInteractive(child)){
         return true
       }
       child = child.nextElementSibling

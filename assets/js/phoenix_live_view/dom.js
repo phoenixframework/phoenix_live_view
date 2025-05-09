@@ -26,7 +26,7 @@ import {
   logError
 } from "./utils"
 
-let DOM = {
+const DOM = {
   byId(id){ return document.getElementById(id) || logError(`no id found for ${id}`) },
 
   removeClass(el, className){
@@ -36,12 +36,15 @@ let DOM = {
 
   all(node, query, callback){
     if(!node){ return [] }
-    let array = Array.from(node.querySelectorAll(query))
-    return callback ? array.forEach(callback) : array
+    const array = Array.from(node.querySelectorAll(query))
+    if(callback){
+      array.forEach(callback)
+    }
+    return array
   },
 
   childNodeLength(html){
-    let template = document.createElement("template")
+    const template = document.createElement("template")
     template.innerHTML = html
     return template.content.childElementCount
   },
@@ -65,17 +68,17 @@ let DOM = {
   },
 
   wantsNewTab(e){
-    let wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
-    let isDownload = (e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download"))
-    let isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank"
-    let isTargetNamedTab = e.target.hasAttribute("target") && !e.target.getAttribute("target").startsWith("_")
+    const wantsNewTab = e.ctrlKey || e.shiftKey || e.metaKey || (e.button && e.button === 1)
+    const isDownload = (e.target instanceof HTMLAnchorElement && e.target.hasAttribute("download"))
+    const isTargetBlank = e.target.hasAttribute("target") && e.target.getAttribute("target").toLowerCase() === "_blank"
+    const isTargetNamedTab = e.target.hasAttribute("target") && !e.target.getAttribute("target").startsWith("_")
     return wantsNewTab || isTargetBlank || isDownload || isTargetNamedTab
   },
 
   isUnloadableFormSubmit(e){
     // Ignore form submissions intended to close a native <dialog> element
     // https://developer.mozilla.org/en-US/docs/Web/HTML/Element/dialog#usage_notes
-    let isDialogSubmit = (e.target && e.target.getAttribute("method") === "dialog") ||
+    const isDialogSubmit = (e.target && e.target.getAttribute("method") === "dialog") ||
       (e.submitter && e.submitter.getAttribute("formmethod") === "dialog")
 
     if(isDialogSubmit){
@@ -86,7 +89,7 @@ let DOM = {
   },
 
   isNewPageClick(e, currentLocation){
-    let href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
+    const href = e.target instanceof HTMLAnchorElement ? e.target.getAttribute("href") : null
     let url
 
     if(e.defaultPrevented || href === null || this.wantsNewTab(e)){ return false }
@@ -118,7 +121,7 @@ let DOM = {
   },
 
   findPhxChildrenInFragment(html, parentId){
-    let template = document.createElement("template")
+    const template = document.createElement("template")
     template.innerHTML = html
     return this.findPhxChildren(template.content, parentId)
   },
@@ -143,8 +146,8 @@ let DOM = {
     // is if a parent adds it back, therefore if a cid does not exist on the page,
     // we should not try to render it by itself (because it would be rendered twice,
     // one by the parent, and a second time by itself)
-    let parentCids = new Set()
-    let childrenCids = new Set()
+    const parentCids = new Set()
+    const childrenCids = new Set()
 
     cids.forEach(cid => {
       this.filterWithinSameLiveView(this.all(node, `[${PHX_COMPONENT}="${cid}"]`), node).forEach(parent => {
@@ -185,7 +188,7 @@ let DOM = {
   },
 
   updatePrivate(el, key, defaultVal, updateFunc){
-    let existing = this.private(el, key)
+    const existing = this.private(el, key)
     if(existing === undefined){
       this.putPrivate(el, key, updateFunc(defaultVal))
     } else {
@@ -210,13 +213,13 @@ let DOM = {
   },
 
   putTitle(str){
-    let titleEl = document.querySelector("title")
+    const titleEl = document.querySelector("title")
     if(titleEl){
-      let {prefix, suffix, default: defaultTitle} = titleEl.dataset
-      let isEmpty = typeof(str) !== "string" || str.trim() === ""
+      const {prefix, suffix, default: defaultTitle} = titleEl.dataset
+      const isEmpty = typeof(str) !== "string" || str.trim() === ""
       if(isEmpty && typeof(defaultTitle) !== "string"){ return }
 
-      let inner = isEmpty ? defaultTitle : str
+      const inner = isEmpty ? defaultTitle : str
       document.title = `${prefix || ""}${inner || ""}${suffix || ""}`
     } else {
       document.title = str
@@ -229,7 +232,7 @@ let DOM = {
 
     if(debounce === ""){ debounce = defaultDebounce }
     if(throttle === ""){ throttle = defaultThrottle }
-    let value = debounce || throttle
+    const value = debounce || throttle
     switch(value){
       case null: return callback()
 
@@ -243,14 +246,14 @@ let DOM = {
         return
 
       default:
-        let timeout = parseInt(value)
-        let trigger = () => throttle ? this.deletePrivate(el, THROTTLED) : callback()
-        let currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger)
+        const timeout = parseInt(value)
+        const trigger = () => throttle ? this.deletePrivate(el, THROTTLED) : callback()
+        const currentCycle = this.incCycle(el, DEBOUNCE_TRIGGER, trigger)
         if(isNaN(timeout)){ return logError(`invalid throttle/debounce value: ${value}`) }
         if(throttle){
           let newKeyDown = false
           if(event.type === "keydown"){
-            let prevKey = this.private(el, DEBOUNCE_PREV_KEY)
+            const prevKey = this.private(el, DEBOUNCE_PREV_KEY)
             this.putPrivate(el, DEBOUNCE_PREV_KEY, event.key)
             newKeyDown = prevKey !== event.key
           }
@@ -270,11 +273,11 @@ let DOM = {
           }, timeout)
         }
 
-        let form = el.form
+        const form = el.form
         if(form && this.once(form, "bind-debounce")){
           form.addEventListener("submit", () => {
             Array.from((new FormData(form)).entries(), ([name]) => {
-              let input = form.querySelector(`[name="${name}"]`)
+              const input = form.querySelector(`[name="${name}"]`)
               this.incCycle(input, DEBOUNCE_TRIGGER)
               this.deletePrivate(input, THROTTLED)
             })
@@ -293,7 +296,7 @@ let DOM = {
   },
 
   triggerCycle(el, key, currentCycle){
-    let [cycle, trigger] = this.private(el, key)
+    const [cycle, trigger] = this.private(el, key)
     if(!currentCycle){ currentCycle = cycle }
     if(currentCycle === cycle){
       this.incCycle(el, key)
@@ -372,13 +375,13 @@ let DOM = {
 
   dispatchEvent(target, name, opts = {}){
     let defaultBubble = true
-    let isUploadTarget = target.nodeName === "INPUT" && target.type === "file"
+    const isUploadTarget = target.nodeName === "INPUT" && target.type === "file"
     if(isUploadTarget && name === "click"){
       defaultBubble = false
     }
-    let bubbles = opts.bubbles === undefined ? defaultBubble : !!opts.bubbles
-    let eventOpts = {bubbles: bubbles, cancelable: true, detail: opts.detail || {}}
-    let event = name === "click" ? new MouseEvent("click", eventOpts) : new CustomEvent(name, eventOpts)
+    const bubbles = opts.bubbles === undefined ? defaultBubble : !!opts.bubbles
+    const eventOpts = {bubbles: bubbles, cancelable: true, detail: opts.detail || {}}
+    const event = name === "click" ? new MouseEvent("click", eventOpts) : new CustomEvent(name, eventOpts)
     target.dispatchEvent(event)
   },
 
@@ -386,7 +389,7 @@ let DOM = {
     if(typeof (html) === "undefined"){
       return node.cloneNode(true)
     } else {
-      let cloned = node.cloneNode(false)
+      const cloned = node.cloneNode(false)
       cloned.innerHTML = html
       return cloned
     }
@@ -396,11 +399,11 @@ let DOM = {
   // if an element is ignored, we only merge data attributes
   // including removing data attributes that are no longer in the source
   mergeAttrs(target, source, opts = {}){
-    let exclude = new Set(opts.exclude || [])
-    let isIgnored = opts.isIgnored
-    let sourceAttrs = source.attributes
+    const exclude = new Set(opts.exclude || [])
+    const isIgnored = opts.isIgnored
+    const sourceAttrs = source.attributes
     for(let i = sourceAttrs.length - 1; i >= 0; i--){
-      let name = sourceAttrs[i].name
+      const name = sourceAttrs[i].name
       if(!exclude.has(name)){
         const sourceValue = source.getAttribute(name)
         if(target.getAttribute(name) !== sourceValue && (!isIgnored || (isIgnored && name.startsWith("data-")))){
@@ -421,9 +424,9 @@ let DOM = {
       }
     }
 
-    let targetAttrs = target.attributes
+    const targetAttrs = target.attributes
     for(let i = targetAttrs.length - 1; i >= 0; i--){
-      let name = targetAttrs[i].name
+      const name = targetAttrs[i].name
       if(isIgnored){
         if(name.startsWith("data-") && !source.hasAttribute(name) && !PHX_PENDING_ATTRS.includes(name)){ target.removeAttribute(name) }
       } else {
@@ -451,7 +454,7 @@ let DOM = {
     if(focused instanceof HTMLSelectElement){ focused.focus() }
     if(!DOM.isTextualInput(focused)){ return }
 
-    let wasFocused = focused.matches(":focus")
+    const wasFocused = focused.matches(":focus")
     if(!wasFocused){ focused.focus() }
     if(this.hasSelectionRange(focused)){
       focused.setSelectionRange(selectionStart, selectionEnd)
@@ -474,11 +477,11 @@ let DOM = {
 
   cleanChildNodes(container, phxUpdate){
     if(DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])){
-      let toRemove = []
+      const toRemove = []
       container.childNodes.forEach(childNode => {
         if(!childNode.id){
           // Skip warning if it's an empty text node (e.g. a new-line)
-          let isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue.trim() === ""
+          const isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue.trim() === ""
           if(!isEmptyTextNode && childNode.nodeType !== Node.COMMENT_NODE){
             logError("only HTML element tags with an id are allowed inside containers with phx-update.\n\n" +
               `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`)
@@ -491,7 +494,7 @@ let DOM = {
   },
 
   replaceRootContainer(container, tagName, attrs){
-    let retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID])
+    const retainedAttrs = new Set(["id", PHX_SESSION, PHX_STATIC, PHX_MAIN, PHX_ROOT_ID])
     if(container.tagName.toLowerCase() === tagName.toLowerCase()){
       Array.from(container.attributes)
         .filter(attr => !retainedAttrs.has(attr.name.toLowerCase()))
@@ -504,7 +507,7 @@ let DOM = {
       return container
 
     } else {
-      let newContainer = document.createElement(tagName)
+      const newContainer = document.createElement(tagName)
       Object.keys(attrs).forEach(attr => newContainer.setAttribute(attr, attrs[attr]))
       retainedAttrs.forEach(attr => newContainer.setAttribute(attr, container.getAttribute(attr)))
       newContainer.innerHTML = container.innerHTML
@@ -514,9 +517,9 @@ let DOM = {
   },
 
   getSticky(el, name, defaultVal){
-    let op = (DOM.private(el, "sticky") || []).find(([existingName,]) => name === existingName)
+    const op = (DOM.private(el, "sticky") || []).find(([existingName,]) => name === existingName)
     if(op){
-      let [_name, _op, stashedResult] = op
+      const [_name, _op, stashedResult] = op
       return stashedResult
     } else {
       return typeof(defaultVal) === "function" ? defaultVal() : defaultVal
@@ -530,9 +533,9 @@ let DOM = {
   },
 
   putSticky(el, name, op){
-    let stashedResult = op(el)
+    const stashedResult = op(el)
     this.updatePrivate(el, "sticky", [], ops => {
-      let existingIndex = ops.findIndex(([existingName,]) => name === existingName)
+      const existingIndex = ops.findIndex(([existingName,]) => name === existingName)
       if(existingIndex >= 0){
         ops[existingIndex] = [name, op, stashedResult]
       } else {
@@ -543,7 +546,7 @@ let DOM = {
   },
 
   applyStickyOperations(el){
-    let ops = DOM.private(el, "sticky")
+    const ops = DOM.private(el, "sticky")
     if(!ops){ return }
 
     ops.forEach(([name, op, _stashed]) => this.putSticky(el, name, op))

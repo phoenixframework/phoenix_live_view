@@ -1,5 +1,5 @@
-const {test, expect} = require("@playwright/test")
-const {syncLV, evalLV} = require("../../utils")
+import {test, expect} from "../../test-fixtures"
+import {syncLV, evalLV} from "../../utils"
 
 test("select multiple handles option updates properly", async ({page}) => {
   await page.goto("/issues/3083?auto=false")

@@ -1,5 +1,5 @@
-const {test, expect} = require("../test-fixtures")
-const {syncLV} = require("../utils")
+import {test, expect} from "../test-fixtures"
+import {syncLV} from "../utils"
 
 let webSocketEvents = []
 let networkEvents = []
@@ -237,7 +237,7 @@ test("scrolls hash el into view after live navigation (issue #3452)", async ({pa
 
   await page.getByRole("link", {name: "Navigate to 42"}).click()
   await expect(page).toHaveURL("/navigation/b#items-item-42")
-  let scrollTop = await page.evaluate(() => document.documentElement.scrollTop)
+  const scrollTop = await page.evaluate(() => document.documentElement.scrollTop)
   const offset = (await page.locator("#items-item-42").evaluate((el) => el.offsetTop)) - 200
   expect(scrollTop).not.toBe(0)
   expect(scrollTop).toBeGreaterThanOrEqual(offset - 500)
