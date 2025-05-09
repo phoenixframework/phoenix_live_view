@@ -1439,6 +1439,14 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
 
     assert_formatter_doesnt_change("""
+    <b>{code}: </b>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <b> :{code}</b>
+    """)
+
+    assert_formatter_doesnt_change("""
     <p>
       <b>Foo: </b>bar
     </p>
