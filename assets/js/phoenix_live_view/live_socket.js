@@ -178,6 +178,9 @@ export default class LiveSocket {
     window.addEventListener("pagehide", _e => {
       this.unloaded = true
     })
+    window.addEventListener("phx:js-execute", ({ detail }) => {
+      this.execJS(document.body, detail.ops)
+    });
     this.socket.onOpen(() => {
       if(this.isUnloaded()){
         // reload page if being restored from back/forward cache and browser does not emit "pageshow"

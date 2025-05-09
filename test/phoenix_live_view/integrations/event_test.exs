@@ -6,6 +6,7 @@ defmodule Phoenix.LiveView.EventTest do
 
   alias Phoenix.{Component, LiveView}
   alias Phoenix.LiveViewTest.Support.Endpoint
+  alias Phoenix.LiveView.JS
 
   @endpoint Endpoint
 
@@ -97,6 +98,28 @@ defmodule Phoenix.LiveView.EventTest do
       render_click(view, "bump", %{})
       assert_push_event(view, "component", %{count: 2})
       refute_received _
+    end
+  end
+
+  describe "push_js" do
+    test "sends js", %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/events")
+
+      GenServer.call(
+        view.pid,
+        {:run,
+         fn socket ->
+           new_socket =
+             socket
+             |> LiveView.push_js(JS.add_class("warmer", to: ".thermo"))
+
+           {:reply, :ok, new_socket}
+         end}
+      )
+
+      assert_push_event(view, "js-execute", %{
+        ops: "[[\"add_class\",{\"names\":[\"warmer\"],\"to\":\".thermo\"}]]"
+      })
     end
   end
 

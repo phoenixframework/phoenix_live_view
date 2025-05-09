@@ -783,6 +783,40 @@ defmodule Phoenix.LiveView do
   defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
 
   @doc ~S"""
+  Pushes a JS command to the client for immediate execution.
+
+  This function takes a `Phoenix.LiveView.JS` command and sends it to the client
+  to be executed immediately, without requiring user interaction.
+
+  ## Examples
+
+  You can use this function to execute JavaScript commands in response to
+  server-side events:
+
+      def handle_info(:highlight_row, socket) do
+        js = JS.add_class("highlight", to: "#user-row-#{socket.assigns.user_id}")
+        {:noreply, push_js(socket, js)}
+      end
+
+  Multiple JS commands can be chained together:
+
+      def handle_event("animate_and_hide", _, socket) do
+        js = 
+          JS.transition("shake", to: "#element-id")
+          |> JS.hide(to: "#element-id", transition: "fade-out")
+        
+        {:noreply, push_js(socket, js)}
+      end
+
+  This is particularly useful for triggering animations, showing/hiding elements,
+  or other DOM manipulations from the server without requiring a full re-render
+  of the LiveView.
+
+  Returns an updated `socket`.
+  """
+  defdelegate push_js(socket, js), to: Phoenix.LiveView.Utils
+
+  @doc ~S"""
   Allows an upload for the provided name.
 
   ## Options

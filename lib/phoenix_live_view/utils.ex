@@ -276,6 +276,13 @@ defmodule Phoenix.LiveView.Utils do
   end
 
   @doc """
+  Pushes a JS command to the client for immediate execution.
+  """
+  def push_js(%Socket{} = socket, %Phoenix.LiveView.JS{} = js) do
+    push_event(socket, "js-execute", %{ops: Phoenix.json_library().encode!(js.ops)})
+  end
+
+  @doc """
   Annotates the reply in the socket changes.
   """
   def put_reply(%Socket{} = socket, %{} = payload) do
