@@ -14,6 +14,8 @@ import {
   PHX_STREAM_REF,
   PHX_VIEWPORT_TOP,
   PHX_VIEWPORT_BOTTOM,
+  PHX_PORTAL,
+  PHX_TELEPORTED_REF
 } from "./constants"
 
 import {
@@ -83,6 +85,11 @@ export default class DOMPatch {
     let updates = []
     let appendPrependUpdates = []
 
+    // as the portal target itself could be at the end of the DOM,
+    // it may not be present while morphing previous parts;
+    // therefore we apply all teleports after the morphing is done+
+    let portalCallbacks = []
+
     let externalFormTriggered = null
 
     function morph(targetContainer, source, withChildren=this.withChildren){
@@ -140,6 +147,10 @@ export default class DOMPatch {
         },
         onNodeAdded: (el) => {
           if(el.getAttribute){ this.maybeReOrderStream(el, true) }
+          // phx-portal handling
+          if(DOM.isPortalTemplate(el)){
+            portalCallbacks.push(() => this.teleport(el, morph))
+          }
 
           // hack to fix Safari handling of img srcset and video tags
           if(el instanceof HTMLImageElement && el.srcset){
@@ -164,8 +175,18 @@ export default class DOMPatch {
             DOM.isPhxUpdate(el.parentElement, phxUpdate, [PHX_STREAM, "append", "prepend"])){
             return false
           }
+          // don't remove teleported elements
+          if(el.getAttribute && el.getAttribute(PHX_TELEPORTED_REF)){ return false }
           if(this.maybePendingRemove(el)){ return false }
           if(this.skipCIDSibling(el)){ return false }
+          if(DOM.isPortalTemplate(el)){
+            // if the portal template itself is removed, remove the teleported element as well
+            const teleportedEl = DOM.byId(el.content.firstElementChild.id)
+            if(teleportedEl){
+              teleportedEl.remove()
+              morphCallbacks.onNodeDiscarded(teleportedEl)
+            }
+          }
 
           return true
         },
@@ -255,6 +276,12 @@ export default class DOMPatch {
           // now copy regular DOM.private data
           DOM.copyPrivates(toEl, fromEl)
 
+          // phx-portal handling
+          if(DOM.isPortalTemplate(toEl)){
+            portalCallbacks.push(() => this.teleport(toEl, morph))
+            return false
+          }
+
           // skip patching focused inputs unless focus is a select that has changed options
           if(isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged){
             this.trackBefore("updated", fromEl, toEl)
@@ -317,6 +344,8 @@ export default class DOMPatch {
       }
 
       morph.call(this, targetContainer, html)
+      // normal patch complete, teleport elements now
+      portalCallbacks.forEach(callback => callback())
     })
 
     if(liveSocket.isDebugEnabled()){
@@ -478,7 +507,7 @@ export default class DOMPatch {
 
   targetCIDContainer(html){
     if(!this.isCIDPatch()){ return }
-    let [first, ...rest] = DOM.findComponentNodeList(this.container, this.targetCID)
+    let [first, ...rest] = DOM.findComponentNodeList(this.view.id, this.targetCID)
     if(rest.length === 0 && DOM.childNodeLength(html) === 1){
       return first
     } else {
@@ -487,4 +516,38 @@ export default class DOMPatch {
   }
 
   indexOf(parent, child){ return Array.from(parent.children).indexOf(child) }
+
+  teleport(el, morph){
+    const targetId = el.getAttribute(PHX_PORTAL)
+    const portalContainer = DOM.byId(targetId)
+    // phx-portal templates must have a single root element, so we assume this to be
+    // the case here
+    const toTeleport = el.content.firstElementChild
+    // the PHX_SKIP optimization can also apply inside of the <template> elements
+    if(this.skipCIDSibling(toTeleport)){ return }
+    if(!toTeleport?.id){ throw new Error("phx-portal template must have a single root element with ID!") }
+    const existing = document.getElementById(toTeleport.id)
+    let portalTarget
+    if(existing){
+      // we already teleported in a previous patch
+      if(!portalContainer.contains(existing)){ throw new Error(`expected ${id} to be a child of ${targetId}`) }
+      portalTarget = existing
+    } else {
+      // create empty target and morph it recursively
+      portalTarget = document.createElement(toTeleport.tagName)
+      portalContainer.appendChild(portalTarget)
+    }
+    // mark the target as teleported;
+    // to prevent unnecessary attribute modifications, we set the attribute
+    // on the source and remove it after morphing (we could also just keep it)
+    // otherwise morphdom would remove it, as the ref is not present in the source
+    // and we'd need to set it back after each morph
+    toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id)
+    morph.call(this, portalTarget, toTeleport, true)
+    toTeleport.removeAttribute(PHX_TELEPORTED_REF)
+    // store a reference to the teleported element in the view
+    // to cleanup when the view is destroyed, in case the portal target
+    // is outside the view itself
+    this.view.pushPortalElement(toTeleport.id)
+  }
 }

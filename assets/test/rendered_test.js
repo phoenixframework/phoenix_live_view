@@ -234,12 +234,12 @@ describe("Rendered", () => {
         `<div data-phx-id="m1-123">
   <p>
     foo
-    <span>0: <b data-phx-id="c1-123" data-phx-component="1">FROM index_1 world</b></span><span>1: <b data-phx-id="c2-123" data-phx-component="2">FROM index_2 world</b></span>
+    <span>0: <b data-phx-id="c1-123" data-phx-component="1" data-phx-view="123">FROM index_1 world</b></span><span>1: <b data-phx-id="c2-123" data-phx-component="2" data-phx-view="123">FROM index_2 world</b></span>
   </p>
 
   <p>
     bar
-    <span>0: <b data-phx-id="c3-123" data-phx-component="3">FROM index_1 world</b></span><span>1: <b data-phx-id="c4-123" data-phx-component="4">FROM index_2 world</b></span>
+    <span>0: <b data-phx-id="c3-123" data-phx-component="3" data-phx-view="123">FROM index_1 world</b></span><span>1: <b data-phx-id="c4-123" data-phx-component="4" data-phx-view="123">FROM index_2 world</b></span>
   </p>
 </div>`.trim())
     })
