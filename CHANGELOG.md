@@ -205,6 +205,8 @@ generated user module:
 * Update documentation to mention `{:inner, selector}` and `{:closest, selector}` as [valid options for `to`](https://hexdocs.pm/phoenix_live_view/1.0.3/Phoenix.LiveView.JS.html#module-dom-selectors) in JS commands ([#3638](https://github.com/phoenixframework/phoenix_live_view/pull/3638))
 
 ## 1.0.2 (2025-01-09)
+### Breaking changes
+* Deduplicate items on `stream/4` / `steam_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
 
 ### Bug fixes
 * Fix inconsistency between `mix format` and `mix format --check-formatted` with new curly interpolation syntax ([#3590](https://github.com/phoenixframework/phoenix_live_view/issues/3590))
@@ -215,7 +217,6 @@ generated user module:
 * Fix form recovery sending wrong event name when using JS commands in `phx-change` ([#3607](https://github.com/phoenixframework/phoenix_live_view/issues/3607))
 
 ### Enhancements
-* Deduplicate items on `stream/4` / `steam_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
 * Restore scroll position on initial navigation ([#3572](https://github.com/phoenixframework/phoenix_live_view/pull/3572))
 * Change-track non existing keys in maps ([#3584](https://github.com/phoenixframework/phoenix_live_view/pull/3584))
 * Only warn instead of raising when detecting a duplicate ID in LiveViewTest ([#3603](https://github.com/phoenixframework/phoenix_live_view/pull/3603))
