@@ -13,6 +13,8 @@ defmodule Phoenix.LiveView.JS do
   rich `push` API, for extending the default `phx-` binding pushes with
   options to customize targets, loading states, and additional payload values.
 
+  If you need to trigger these commands via JavaScript, see [JavaScript interoperability](js-interop.md#js-commands).
+
   ## Client Utility Commands
 
   The following utilities are included:
