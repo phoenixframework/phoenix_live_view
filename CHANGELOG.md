@@ -207,6 +207,7 @@ generated user module:
 ## 1.0.2 (2025-01-09)
 
 ### Bug fixes
+* Deduplicate items with the same ID on `stream/4` / `stream_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
 * Fix inconsistency between `mix format` and `mix format --check-formatted` with new curly interpolation syntax ([#3590](https://github.com/phoenixframework/phoenix_live_view/issues/3590))
 * Fix unnecessary compile time dependencies when using `attr` / `on_mount` / `live` ([#3592](https://github.com/phoenixframework/phoenix_live_view/issues/3592))
 * Fix crash when testing LiveViews with embedded XML (e.g. SVGs) ([#3594](https://github.com/phoenixframework/phoenix_live_view/issues/3594))
@@ -215,7 +216,6 @@ generated user module:
 * Fix form recovery sending wrong event name when using JS commands in `phx-change` ([#3607](https://github.com/phoenixframework/phoenix_live_view/issues/3607))
 
 ### Enhancements
-* Deduplicate items on `stream/4` / `steam_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
 * Restore scroll position on initial navigation ([#3572](https://github.com/phoenixframework/phoenix_live_view/pull/3572))
 * Change-track non existing keys in maps ([#3584](https://github.com/phoenixframework/phoenix_live_view/pull/3584))
 * Only warn instead of raising when detecting a duplicate ID in LiveViewTest ([#3603](https://github.com/phoenixframework/phoenix_live_view/pull/3603))
