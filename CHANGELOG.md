@@ -207,7 +207,7 @@ generated user module:
 ## 1.0.2 (2025-01-09)
 
 ### Bug fixes
-* Deduplicate items with the same ID on `stream/4` / `steam_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
+* Deduplicate items with the same ID on `stream/4` / `stream_insert/4` ([#3599](https://github.com/phoenixframework/phoenix_live_view/pull/3599))
 * Fix inconsistency between `mix format` and `mix format --check-formatted` with new curly interpolation syntax ([#3590](https://github.com/phoenixframework/phoenix_live_view/issues/3590))
 * Fix unnecessary compile time dependencies when using `attr` / `on_mount` / `live` ([#3592](https://github.com/phoenixframework/phoenix_live_view/issues/3592))
 * Fix crash when testing LiveViews with embedded XML (e.g. SVGs) ([#3594](https://github.com/phoenixframework/phoenix_live_view/issues/3594))
