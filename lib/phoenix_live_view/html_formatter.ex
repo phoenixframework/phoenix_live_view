@@ -60,6 +60,18 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       ]
       ```
 
+    * `:inline_components` - a list of component names that should be treated as
+      inline elements.
+      Defaults to `[".link"]`.
+      This is an exact match, so by default, this rule would not match `<Phoenix.Component.link>`.
+      Also see the `:inline_matcher` option, which provides less strict matching.
+
+    * `:inline_matcher` - a list of regular expressions to determine if a component
+      should be treated as inline.
+      Defaults to `[~r/link/, ~r/button/]`, which treats any component with `link
+      or `button` in its name as inline.
+      Can be disabled by setting it to an empty list.
+
   ## Formatting
 
   This formatter tries to be as consistent as possible with the Elixir formatter.
@@ -214,10 +226,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   mark meter noscript object output picture progress q ruby s samp select slot
   small span strong sub sup svg template textarea time u tt var video wbr)
 
-  @inline_components ~w(.link)
-
-  @inline_elements @inline_tags ++ @inline_components
-
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
 
@@ -235,6 +243,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     else
       line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
       newlines = :binary.matches(source, ["\r\n", "\n"])
+      inline_elements = @inline_tags ++ (opts[:inline_components] || [".link"])
+      inline_matcher = opts[:inline_matcher] || [~r/link/, ~r/button/]
 
       opts =
         Keyword.update(opts, :attribute_formatters, %{}, fn formatters ->
@@ -251,7 +261,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       formatted =
         source
         |> tokenize()
-        |> to_tree([], [], {source, newlines})
+        |> to_tree([], [], %{
+          source: {source, newlines},
+          inline_elements: inline_elements,
+          inline_matcher: inline_matcher
+        })
         |> case do
           {:ok, nodes} ->
             nodes
@@ -413,88 +427,88 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   #    ]}
   # ]
   # ```
-  defp to_tree([], buffer, [], _source) do
+  defp to_tree([], buffer, [], _opts) do
     {:ok, Enum.reverse(buffer)}
   end
 
-  defp to_tree([], _buffer, [{name, _, %{line: line, column: column}, _} | _], _source) do
+  defp to_tree([], _buffer, [{name, _, %{line: line, column: column}, _} | _], _opts) do
     message = "end of template reached without closing tag for <#{name}>"
     {:error, line, column, message}
   end
 
-  defp to_tree([{:text, text, %{context: [:comment_start]}} | tokens], buffer, stack, source) do
-    to_tree(tokens, [], [{:comment, text, buffer} | stack], source)
+  defp to_tree([{:text, text, %{context: [:comment_start]}} | tokens], buffer, stack, opts) do
+    to_tree(tokens, [], [{:comment, text, buffer} | stack], opts)
   end
 
   defp to_tree(
          [{:text, text, %{context: [:comment_end | _rest]}} | tokens],
          buffer,
          [{:comment, start_text, upper_buffer} | stack],
-         source
+         opts
        ) do
     buffer = Enum.reverse([{:text, String.trim_trailing(text), %{}} | buffer])
     text = {:text, String.trim_leading(start_text), %{}}
-    to_tree(tokens, [{:html_comment, [text | buffer]} | upper_buffer], stack, source)
+    to_tree(tokens, [{:html_comment, [text | buffer]} | upper_buffer], stack, opts)
   end
 
   defp to_tree(
          [{:text, text, %{context: [:comment_start, :comment_end]}} | tokens],
          buffer,
          stack,
-         source
+         opts
        ) do
     meta = %{
       newlines_before_text: count_newlines_before_text(text),
       newlines_after_text: count_newlines_after_text(text)
     }
 
-    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), meta}]} | buffer], stack, source)
+    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), meta}]} | buffer], stack, opts)
   end
 
-  defp to_tree([{:text, text, _meta} | tokens], buffer, stack, source) do
+  defp to_tree([{:text, text, _meta} | tokens], buffer, stack, opts) do
     buffer = may_set_preserve_on_block(buffer, text)
 
     if line_html_comment?(text) do
-      to_tree(tokens, [{:comment, text} | buffer], stack, source)
+      to_tree(tokens, [{:comment, text} | buffer], stack, opts)
     else
       meta = %{newlines: count_newlines_before_text(text)}
-      to_tree(tokens, [{:text, text, meta} | buffer], stack, source)
+      to_tree(tokens, [{:text, text, meta} | buffer], stack, opts)
     end
   end
 
-  defp to_tree([{:body_expr, value, meta} | tokens], buffer, stack, source) do
+  defp to_tree([{:body_expr, value, meta} | tokens], buffer, stack, opts) do
     buffer = set_preserve_on_block(buffer)
-    to_tree(tokens, [{:body_expr, value, meta} | buffer], stack, source)
+    to_tree(tokens, [{:body_expr, value, meta} | buffer], stack, opts)
   end
 
-  defp to_tree([{type, _name, attrs, %{closing: _} = meta} | tokens], buffer, stack, source)
+  defp to_tree([{type, _name, attrs, %{closing: _} = meta} | tokens], buffer, stack, opts)
        when is_tag_open(type) do
-    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, source)
+    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, opts)
   end
 
-  defp to_tree([{type, _name, attrs, meta} | tokens], buffer, stack, source)
+  defp to_tree([{type, _name, attrs, meta} | tokens], buffer, stack, opts)
        when is_tag_open(type) do
-    to_tree(tokens, [], [{meta.tag_name, attrs, meta, buffer} | stack], source)
+    to_tree(tokens, [], [{meta.tag_name, attrs, meta, buffer} | stack], opts)
   end
 
   defp to_tree(
          [{:close, _type, _name, close_meta} | tokens],
          reversed_buffer,
          [{tag_name, attrs, open_meta, upper_buffer} | stack],
-         source
+         opts
        ) do
     {mode, block} =
       cond do
         tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs) ->
           content =
-            content_from_source(source, open_meta.inner_location, close_meta.inner_location)
+            content_from_source(opts.source, open_meta.inner_location, close_meta.inner_location)
 
           {:preserve, [{:text, content, %{newlines: 0}}]}
 
         preceeded_by_non_white_space?(upper_buffer) ->
           {:preserve, Enum.reverse(reversed_buffer)}
 
-        tag_name in @inline_elements ->
+        inline?(tag_name, opts.inline_elements, opts.inline_matcher) ->
           {:inline,
            reversed_buffer
            |> may_set_preserve_on_text(:last)
@@ -506,65 +520,70 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       end
 
     tag_block = {:tag_block, tag_name, attrs, block, %{mode: mode}}
-    to_tree(tokens, [tag_block | upper_buffer], stack, source)
+    to_tree(tokens, [tag_block | upper_buffer], stack, opts)
   end
 
   # handle eex
 
-  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack, source) do
-    to_tree(tokens, [{:eex_comment, text} | buffer], stack, source)
+  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack, opts) do
+    to_tree(tokens, [{:eex_comment, text} | buffer], stack, opts)
   end
 
-  defp to_tree([{:eex, :start_expr, expr, meta} | tokens], buffer, stack, source) do
-    to_tree(tokens, [], [{:eex_block, expr, meta, buffer} | stack], source)
+  defp to_tree([{:eex, :start_expr, expr, meta} | tokens], buffer, stack, opts) do
+    to_tree(tokens, [], [{:eex_block, expr, meta, buffer} | stack], opts)
   end
 
   defp to_tree(
          [{:eex, :middle_expr, middle_expr, _meta} | tokens],
          buffer,
          [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
-         source
+         opts
        ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
-    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], source)
+    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], opts)
   end
 
   defp to_tree(
          [{:eex, :middle_expr, middle_expr, _meta} | tokens],
          buffer,
          [{:eex_block, expr, meta, upper_buffer} | stack],
-         source
+         opts
        ) do
     middle_buffer = [{Enum.reverse(buffer), middle_expr}]
-    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], source)
+    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], opts)
   end
 
   defp to_tree(
          [{:eex, :end_expr, end_expr, _meta} | tokens],
          buffer,
          [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
-         source
+         opts
        ) do
     block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
-    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, source)
+    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, opts)
   end
 
   defp to_tree(
          [{:eex, :end_expr, end_expr, _meta} | tokens],
          buffer,
          [{:eex_block, expr, meta, upper_buffer} | stack],
-         source
+         opts
        ) do
     block = [{Enum.reverse(buffer), end_expr}]
-    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, source)
+    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, opts)
   end
 
-  defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, source) do
+  defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, opts) do
     buffer = set_preserve_on_block(buffer)
-    to_tree(tokens, [{:eex, expr, meta} | buffer], stack, source)
+    to_tree(tokens, [{:eex, expr, meta} | buffer], stack, opts)
   end
 
   # -- HELPERS
+
+  defp inline?(tag_name, inline_elements, inline_matcher) do
+    tag_name in inline_elements or
+      Enum.any?(inline_matcher, &Regex.match?(&1, tag_name))
+  end
 
   defp count_newlines_before_text(binary),
     do: count_newlines_until_text(binary, 0, 0, 1)
@@ -665,7 +684,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end)
   end
 
-  defp content_from_source({source, newlines}, {line_start, column_start}, {line_end, column_end}) do
+  defp content_from_source(
+         {source, newlines},
+         {line_start, column_start},
+         {line_end, column_end}
+       ) do
     lines = Enum.slice([{0, 0} | newlines], (line_start - 1)..(line_end - 1))
     [first_line | _] = lines
     [last_line | _] = Enum.reverse(lines)
