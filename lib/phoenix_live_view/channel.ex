@@ -408,6 +408,25 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, register_entry_upload(state, from, info)}
   end
 
+  # Phoenix.LiveView.Debug.socket/1
+  def handle_call({@prefix, :debug_get_socket}, _from, state) do
+    {:reply, {:ok, state.socket}, state}
+  end
+
+  # Phoenix.LiveView.Debug.live_components/1
+  def handle_call(
+        {@prefix, :debug_live_components},
+        _from,
+        %{components: {components, _, _}} = state
+      ) do
+    component_info =
+      Enum.map(components, fn {cid, {mod, id, assigns, private, _prints}} ->
+        %{id: id, cid: cid, module: mod, assigns: assigns, children_cids: private.children_cids}
+      end)
+
+    {:reply, {:ok, component_info}, state}
+  end
+
   def handle_call(msg, from, %{socket: socket} = state) do
     case socket.view.handle_call(msg, from, socket) do
       {:reply, reply, %Socket{} = new_socket} ->
@@ -1089,6 +1108,10 @@ defmodule Phoenix.LiveView.Channel do
             with {:ok, %Session{view: view} = new_verified, route, url} <-
                    authorize_session(verified, endpoint, params),
                  {:ok, config} <- load_live_view(view) do
+              # TODO: replace with Process.put_label/2 when we require Elixir 1.17
+              Process.put(:"$process_label", {Phoenix.LiveView, view, phx_socket.topic})
+              Process.put(:"$phx_transport_pid", phx_socket.transport_pid)
+
               verified_mount(
                 new_verified,
                 config,
