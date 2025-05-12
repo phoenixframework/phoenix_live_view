@@ -1110,6 +1110,7 @@ defmodule Phoenix.LiveView.Channel do
                  {:ok, config} <- load_live_view(view) do
               # TODO: replace with Process.put_label/2 when we require Elixir 1.17
               Process.put(:"$process_label", {Phoenix.LiveView, view, phx_socket.topic})
+              Process.put(:"$phx_transport_pid", phx_socket.transport_pid)
 
               verified_mount(
                 new_verified,
