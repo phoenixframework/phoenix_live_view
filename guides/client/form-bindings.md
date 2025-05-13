@@ -408,3 +408,40 @@ document.getElementById("my-form").dispatchEvent(
   new Event("submit", {bubbles: true, cancelable: true})
 )
 ```
+
+## Preventing form submission with JavaScript
+
+In some cases, you may want to conditionally prevent form submission based on client-side validation or other business logic before allowing a `phx-submit` to be processed by the server.
+
+JavaScript can be used to prevent the default form submission behavior, for example with a [hook](js-interop.md#client-hooks-via-phx-hook):
+
+```javascript
+/**
+ * @type {import("phoenix_live_view").HooksOptions}
+ */
+let Hooks = {}
+Hooks.CustomFormSubmission = {
+  mounted() {
+    this.el.addEventListener("submit", (event) => {
+      if (!this.shouldSubmit()) {
+        // prevent the event from bubbling to the default LiveView handler
+        event.stopPropagation()
+        // prevent the default browser behavior (submitting the form over HTTP)
+        event.preventDefault()
+      }
+    })
+  },
+  shouldSubmit() {
+    // Check if we should submit the form
+    ...
+  }
+}
+```
+
+This hook can be set on your form as such:
+
+```heex
+<form phx-hook="CustomFormSubmission">
+  <input type="text" name="text" value={@text}>
+</form>
+```
