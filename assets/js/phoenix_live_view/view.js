@@ -1538,6 +1538,12 @@ export default class View {
       return DOM.findComponentNodeList(this.el, cid).length === 0
     })
 
+    const onError = (error) => {
+      if(!this.isDestroyed()){
+        logError("Failed to push components destroyed", error)
+      }
+    }
+
     if(willDestroyCIDs.length > 0){
       // we must reset the render change tracking for cids that
       // could be added back from the server so we don't skip them
@@ -1556,10 +1562,10 @@ export default class View {
           if(completelyDestroyCIDs.length > 0){
             this.pushWithReply(null, "cids_destroyed", {cids: completelyDestroyCIDs}).then(({resp}) => {
               this.rendered.pruneCIDs(resp.cids)
-            }).catch((error) => logError("Failed to push components destroyed", error))
+            }).catch(onError)
           }
         })
-      }).catch((error) => logError("Failed to push components destroyed", error))
+      }).catch(onError)
     }
   }
 
