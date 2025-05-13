@@ -1,55 +1,66 @@
 const ARIA = {
-  anyOf(instance, classes){ return classes.find(name => instance instanceof name) },
+  anyOf(instance, classes) {
+    return classes.find((name) => instance instanceof name);
+  },
 
-  isFocusable(el, interactiveOnly){
+  isFocusable(el, interactiveOnly) {
     return (
       (el instanceof HTMLAnchorElement && el.rel !== "ignore") ||
       (el instanceof HTMLAreaElement && el.href !== undefined) ||
-      (!el.disabled && (this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]))) ||
-      (el instanceof HTMLIFrameElement) ||
-      (el.tabIndex >= 0 || (!interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true"))
-    )
+      (!el.disabled &&
+        this.anyOf(el, [
+          HTMLInputElement,
+          HTMLSelectElement,
+          HTMLTextAreaElement,
+          HTMLButtonElement,
+        ])) ||
+      el instanceof HTMLIFrameElement ||
+      el.tabIndex >= 0 ||
+      (!interactiveOnly &&
+        el.getAttribute("tabindex") !== null &&
+        el.getAttribute("aria-hidden") !== "true")
+    );
   },
 
-  attemptFocus(el, interactiveOnly){
-    if(this.isFocusable(el, interactiveOnly)){
+  attemptFocus(el, interactiveOnly) {
+    if (this.isFocusable(el, interactiveOnly)) {
       try {
-        el.focus()
+        el.focus();
       } catch {
         // that's fine
       }
     }
-    return !!document.activeElement && document.activeElement.isSameNode(el)
+    return !!document.activeElement && document.activeElement.isSameNode(el);
   },
 
-  focusFirstInteractive(el){
-    let child = el.firstElementChild
-    while(child){
-      if(this.attemptFocus(child, true) || this.focusFirstInteractive(child)){
-        return true
+  focusFirstInteractive(el) {
+    let child = el.firstElementChild;
+    while (child) {
+      if (this.attemptFocus(child, true) || this.focusFirstInteractive(child)) {
+        return true;
       }
-      child = child.nextElementSibling
+      child = child.nextElementSibling;
     }
   },
 
-  focusFirst(el){
-    let child = el.firstElementChild
-    while(child){
-      if(this.attemptFocus(child) || this.focusFirst(child)){
-        return true
+  focusFirst(el) {
+    let child = el.firstElementChild;
+    while (child) {
+      if (this.attemptFocus(child) || this.focusFirst(child)) {
+        return true;
       }
-      child = child.nextElementSibling
+      child = child.nextElementSibling;
     }
   },
 
-  focusLast(el){
-    let child = el.lastElementChild
-    while(child){
-      if(this.attemptFocus(child) || this.focusLast(child)){
-        return true
+  focusLast(el) {
+    let child = el.lastElementChild;
+    while (child) {
+      if (this.attemptFocus(child) || this.focusLast(child)) {
+        return true;
       }
-      child = child.previousElementSibling
+      child = child.previousElementSibling;
     }
-  }
-}
-export default ARIA
+  },
+};
+export default ARIA;

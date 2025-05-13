@@ -1,15 +1,15 @@
-import jsCommands, {HookJSCommands} from "./js_commands"
-import DOM from "./dom"
-import LiveSocket from "./live_socket"
-import View from "./view"
+import jsCommands, { HookJSCommands } from "./js_commands";
+import DOM from "./dom";
+import LiveSocket from "./live_socket";
+import View from "./view";
 
-const HOOK_ID = "hookId"
-let viewHookID = 1
+const HOOK_ID = "hookId";
+let viewHookID = 1;
 
-export type OnReply = (reply: any, ref: number) => any
-export type CallbackRef = {event: string, callback: (payload: any) => any}
+export type OnReply = (reply: any, ref: number) => any;
+export type CallbackRef = { event: string; callback: (payload: any) => any };
 
-export type PhxTarget = string | number | HTMLElement
+export type PhxTarget = string | number | HTMLElement;
 
 export interface HookInterface {
   /**
@@ -24,14 +24,14 @@ export interface HookInterface {
 
   /**
    * The mounted callback.
-   * 
+   *
    * Called when the element has been added to the DOM and its server LiveView has finished mounting.
    */
   mounted?: () => void;
 
   /**
    * The beforeUpdate callback.
-   * 
+   *
    * Called when the element is about to be updated in the DOM.
    * Note: any call here must be synchronous as the operation cannot be deferred or cancelled.
    */
@@ -39,28 +39,28 @@ export interface HookInterface {
 
   /**
    * The updated callback.
-   * 
+   *
    * Called when the element has been updated in the DOM by the server
    */
   updated?: () => void;
 
   /**
    * The destroyed callback.
-   * 
+   *
    * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely
    */
   destroyed?: () => void;
 
   /**
    * The disconnected callback.
-   * 
+   *
    * Called when the element's parent LiveView has disconnected from the server.
    */
   disconnected?: () => void;
 
   /**
    * The reconnected callback.
-   * 
+   *
    * Called when the element's parent LiveView has reconnected to the server.
    */
   reconnected?: () => void;
@@ -73,12 +73,12 @@ export interface HookInterface {
 
   /**
    * Pushes an event to the server.
-   * 
+   *
    * @param event - The event name.
    * @param [payload] - The payload to send to the server. Defaults to an empty object.
    * @param [onReply] - A callback to handle the server's reply.
-   * 
-   * When onReply is not provided, the method returns a Promise that 
+   *
+   * When onReply is not provided, the method returns a Promise that
    * When onReply is provided, the method returns void.
    */
   pushEvent(event: string, payload: any, onReply: OnReply): void;
@@ -86,50 +86,59 @@ export interface HookInterface {
 
   /**
    * Pushed a targeted event to the server.
-   * 
+   *
    * It sends the event to the LiveComponent or LiveView the `selectorOrTarget` is defined in,
    * where its value can be either a query selector, an actual DOM element, or a CID (component id)
    * returned by the `@myself` assign.
-   * 
+   *
    * If the query selector returns more than one element it will send the event to all of them,
    * even if all the elements are in the same LiveComponent or LiveView. Because of this,
    * if no callback is passed, a promise is returned that matches the return value of
    * [`Promise.allSettled()`](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise/allSettled#return_value).
    * Individual fulfilled values are of the format `{ reply, ref }`, where `reply` is the server's reply.
-   * 
+   *
    * @param selectorOrTarget - The selector, element, or CID to target.
    * @param event - The event name.
    * @param [payload] - The payload to send to the server. Defaults to an empty object.
    * @param [onReply] - A callback to handle the server's reply.
-   * 
+   *
    * When onReply is not provided, the method returns a Promise.
    * When onReply is provided, the method returns void.
    */
-  pushEventTo(selectorOrTarget: PhxTarget, event: string, payload: object, onReply: OnReply): void;
-  pushEventTo(selectorOrTarget: PhxTarget, event: string, payload?: object): Promise<PromiseSettledResult<{reply: any, ref: number}>[]>;
+  pushEventTo(
+    selectorOrTarget: PhxTarget,
+    event: string,
+    payload: object,
+    onReply: OnReply,
+  ): void;
+  pushEventTo(
+    selectorOrTarget: PhxTarget,
+    event: string,
+    payload?: object,
+  ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]>;
 
   /**
    * Allows to register a callback to be called when an event is received from the server.
-   * 
+   *
    * This is used to handle `pushEvent` calls from the server. The callback is called with the payload from the server.
-   * 
+   *
    * @param event - The event name.
    * @param callback - The callback to call when the event is received.
-   * 
+   *
    * @returns A reference to the callback, which can be used in `removeHandleEvent` to remove the callback.
    */
   handleEvent(event: string, callback: (payload: any) => any): CallbackRef;
 
   /**
    * Removes a callback registered with `handleEvent`.
-   * 
+   *
    * @param callbackRef - The reference to the callback to remove.
    */
   removeHandleEvent(ref: CallbackRef): void;
 
   /**
    * Allows to trigger a live file upload.
-   * 
+   *
    * @param name - The upload name corresponding to the `Phoenix.LiveView.allow_upload/3` call.
    * @param files - The files to upload.
    */
@@ -137,7 +146,7 @@ export interface HookInterface {
 
   /**
    * Allows to trigger a live file upload to a specific target.
-   * 
+   *
    * @param selectorOrTarget - The target to upload the files to.
    * @param name - The upload name corresponding to the `Phoenix.LiveView.allow_upload/3` call.
    * @param files - The files to upload.
@@ -153,14 +162,14 @@ export interface HookInterface {
 export interface Hook<T = object> {
   /**
    * The mounted callback.
-   * 
+   *
    * Called when the element has been added to the DOM and its server LiveView has finished mounting.
    */
   mounted?: (this: T & HookInterface) => void;
 
   /**
    * The beforeUpdate callback.
-   * 
+   *
    * Called when the element is about to be updated in the DOM.
    * Note: any call here must be synchronous as the operation cannot be deferred or cancelled.
    */
@@ -168,28 +177,28 @@ export interface Hook<T = object> {
 
   /**
    * The updated callback.
-   * 
+   *
    * Called when the element has been updated in the DOM by the server
    */
   updated?: (this: T & HookInterface) => void;
 
   /**
    * The destroyed callback.
-   * 
+   *
    * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely
    */
   destroyed?: (this: T & HookInterface) => void;
 
   /**
    * The disconnected callback.
-   * 
+   *
    * Called when the element's parent LiveView has disconnected from the server.
    */
   disconnected?: (this: T & HookInterface) => void;
 
   /**
    * The reconnected callback.
-   * 
+   *
    * Called when the element's parent LiveView has reconnected to the server.
    */
   reconnected?: (this: T & HookInterface) => void;
@@ -228,56 +237,99 @@ export interface Hook<T = object> {
  * `this.pushEvent()`, etc., as well as any properties or methods defined on the subclass.
  */
 export class ViewHook implements HookInterface {
-  el: HTMLElement
-  liveSocket: LiveSocket
+  el: HTMLElement;
+  liveSocket: LiveSocket;
 
-  private __listeners: Set<CallbackRef>
-  private __isDisconnected: boolean
-  private __view: () => View
+  private __listeners: Set<CallbackRef>;
+  private __isDisconnected: boolean;
+  private __view: () => View;
 
-  static makeID(){ return viewHookID++ }
-  static elementID(el: HTMLElement){ return DOM.private(el, HOOK_ID) }
+  static makeID() {
+    return viewHookID++;
+  }
+  static elementID(el: HTMLElement) {
+    return DOM.private(el, HOOK_ID);
+  }
 
-  constructor(view: View | null, el: HTMLElement, callbacks?: Hook){
-    this.el = el
-    this.__attachView(view)
-    this.__listeners = new Set()
-    this.__isDisconnected = false
-    DOM.putPrivate(this.el, HOOK_ID, ViewHook.makeID())
+  constructor(view: View | null, el: HTMLElement, callbacks?: Hook) {
+    this.el = el;
+    this.__attachView(view);
+    this.__listeners = new Set();
+    this.__isDisconnected = false;
+    DOM.putPrivate(this.el, HOOK_ID, ViewHook.makeID());
 
-    if(callbacks){
+    if (callbacks) {
       // This instance is for an object-literal hook. Copy methods/properties.
       // These are properties that should NOT be overridden by the callbacks object.
       const protectedProps = new Set([
-        "el", "liveSocket", "__view", "__listeners", "__isDisconnected",
+        "el",
+        "liveSocket",
+        "__view",
+        "__listeners",
+        "__isDisconnected",
         "constructor", // Standard object properties
         // Core ViewHook API methods
-        "js", "pushEvent", "pushEventTo", "handleEvent", "removeHandleEvent", "upload", "uploadTo",
+        "js",
+        "pushEvent",
+        "pushEventTo",
+        "handleEvent",
+        "removeHandleEvent",
+        "upload",
+        "uploadTo",
         // Internal lifecycle callers
-        "__mounted", "__updated", "__beforeUpdate", "__destroyed", "__reconnected", "__disconnected", "__cleanup__"
-      ])
+        "__mounted",
+        "__updated",
+        "__beforeUpdate",
+        "__destroyed",
+        "__reconnected",
+        "__disconnected",
+        "__cleanup__",
+      ]);
 
-      for(const key in callbacks){
-        if(Object.prototype.hasOwnProperty.call(callbacks, key)){
-          if(protectedProps.has(key)){
+      for (const key in callbacks) {
+        if (Object.prototype.hasOwnProperty.call(callbacks, key)) {
+          if (protectedProps.has(key)) {
             // Optionally log a warning if a user tries to overwrite a protected property/method
             // For now, we silently prioritize the ViewHook's own properties/methods.
-            if(typeof (this as any)[key] === "function" && typeof callbacks[key] !== "function" && !["mounted", "beforeUpdate", "updated", "destroyed", "disconnected", "reconnected"].includes(key) ){
+            if (
+              typeof (this as any)[key] === "function" &&
+              typeof callbacks[key] !== "function" &&
+              ![
+                "mounted",
+                "beforeUpdate",
+                "updated",
+                "destroyed",
+                "disconnected",
+                "reconnected",
+              ].includes(key)
+            ) {
               // If core method is a function and callback is not, likely an error from user.
-              console.warn(`Hook object for element #${el.id} attempted to overwrite core method '${key}' with a non-function value. This is not allowed.`)
+              console.warn(
+                `Hook object for element #${el.id} attempted to overwrite core method '${key}' with a non-function value. This is not allowed.`,
+              );
             }
           } else {
-            (this as any)[key] = callbacks[key]
+            (this as any)[key] = callbacks[key];
           }
         }
       }
 
-      const lifecycleMethods: (keyof Hook)[] = ["mounted", "beforeUpdate", "updated", "destroyed", "disconnected", "reconnected"]
-      lifecycleMethods.forEach(methodName => {
-        if(callbacks[methodName] && typeof callbacks[methodName] === "function"){
-          (this as any)[methodName] = callbacks[methodName]
+      const lifecycleMethods: (keyof Hook)[] = [
+        "mounted",
+        "beforeUpdate",
+        "updated",
+        "destroyed",
+        "disconnected",
+        "reconnected",
+      ];
+      lifecycleMethods.forEach((methodName) => {
+        if (
+          callbacks[methodName] &&
+          typeof callbacks[methodName] === "function"
+        ) {
+          (this as any)[methodName] = callbacks[methodName];
         }
-      })
+      });
     }
     // If 'callbacks' is not provided, this is an instance of a user-defined class (e.g., MyHook).
     // Its methods (mounted, updated, custom) are already part of its prototype or instance,
@@ -285,117 +337,147 @@ export class ViewHook implements HookInterface {
   }
 
   /** @internal */
-  __attachView(view: View | null){
-    if(view){
-      this.__view = () => view
-      this.liveSocket = view.liveSocket
+  __attachView(view: View | null) {
+    if (view) {
+      this.__view = () => view;
+      this.liveSocket = view.liveSocket;
     } else {
       this.__view = () => {
-        throw new Error(`hook not yet attached to a live view: ${this.el.outerHTML}`)
-      }
-      this.liveSocket = null
+        throw new Error(
+          `hook not yet attached to a live view: ${this.el.outerHTML}`,
+        );
+      };
+      this.liveSocket = null;
     }
   }
 
   // Default lifecycle methods
-  mounted(): void{ }
-  beforeUpdate(): void{ }
-  updated(): void{ }
-  destroyed(): void{ }
-  disconnected(): void{ }
-  reconnected(): void{ }
+  mounted(): void {}
+  beforeUpdate(): void {}
+  updated(): void {}
+  destroyed(): void {}
+  disconnected(): void {}
+  reconnected(): void {}
 
   // Internal lifecycle callers - called by the View
 
   /** @internal */
-  __mounted(){ this.mounted() }
-  /** @internal */
-  __updated(){ this.updated() }
-  /** @internal */
-  __beforeUpdate(){ this.beforeUpdate() }
-  /** @internal */
-  __destroyed(){
-    this.destroyed()
-    DOM.deletePrivate(this.el, HOOK_ID) // https://github.com/phoenixframework/phoenix_live_view/issues/3496
+  __mounted() {
+    this.mounted();
   }
   /** @internal */
-  __reconnected(){
-    if(this.__isDisconnected){
-      this.__isDisconnected = false
-      this.reconnected()
+  __updated() {
+    this.updated();
+  }
+  /** @internal */
+  __beforeUpdate() {
+    this.beforeUpdate();
+  }
+  /** @internal */
+  __destroyed() {
+    this.destroyed();
+    DOM.deletePrivate(this.el, HOOK_ID); // https://github.com/phoenixframework/phoenix_live_view/issues/3496
+  }
+  /** @internal */
+  __reconnected() {
+    if (this.__isDisconnected) {
+      this.__isDisconnected = false;
+      this.reconnected();
     }
   }
   /** @internal */
-  __disconnected(){
-    this.__isDisconnected = true
-    this.disconnected()
+  __disconnected() {
+    this.__isDisconnected = true;
+    this.disconnected();
   }
 
-  js(): HookJSCommands{
+  js(): HookJSCommands {
     return {
       ...jsCommands(this.__view().liveSocket, "hook"),
       exec: (encodedJS: string) => {
-        this.__view().liveSocket.execJS(this.el, encodedJS, "hook")
-      }
-    }
+        this.__view().liveSocket.execJS(this.el, encodedJS, "hook");
+      },
+    };
   }
 
-  pushEvent(event: string, payload?: any, onReply?: OnReply){
-    const promise = this.__view().pushHookEvent(this.el, null, event, payload || {})
-    if(onReply === undefined){
-      return promise.then(({reply}) => reply)
+  pushEvent(event: string, payload?: any, onReply?: OnReply) {
+    const promise = this.__view().pushHookEvent(
+      this.el,
+      null,
+      event,
+      payload || {},
+    );
+    if (onReply === undefined) {
+      return promise.then(({ reply }) => reply);
     }
-    promise.then(({reply, ref}) => onReply(reply, ref)).catch(() => {})
-    return
+    promise.then(({ reply, ref }) => onReply(reply, ref)).catch(() => {});
+    return;
   }
 
-  pushEventTo(selectorOrTarget: PhxTarget, event: string, payload?: object, onReply?: OnReply){
-    if(onReply === undefined){
-      const targetPair: {view: View, targetCtx: any}[] = []
+  pushEventTo(
+    selectorOrTarget: PhxTarget,
+    event: string,
+    payload?: object,
+    onReply?: OnReply,
+  ) {
+    if (onReply === undefined) {
+      const targetPair: { view: View; targetCtx: any }[] = [];
       this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-        targetPair.push({view, targetCtx})
-      })
-      const promises = targetPair.map(({view, targetCtx}) => {
-        return view.pushHookEvent(this.el, targetCtx, event, payload || {})
-      })
-      return Promise.allSettled(promises)
+        targetPair.push({ view, targetCtx });
+      });
+      const promises = targetPair.map(({ view, targetCtx }) => {
+        return view.pushHookEvent(this.el, targetCtx, event, payload || {});
+      });
+      return Promise.allSettled(promises);
     }
     this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-      view.pushHookEvent(this.el, targetCtx, event, payload || {})
-        .then(({reply, ref}) => onReply(reply, ref))
-        .catch(() => {})
-    })
-    return
+      view
+        .pushHookEvent(this.el, targetCtx, event, payload || {})
+        .then(({ reply, ref }) => onReply(reply, ref))
+        .catch(() => {});
+    });
+    return;
   }
 
-  handleEvent(event: string, callback: (payload: any) => any): CallbackRef{
-    const callbackRef: CallbackRef = {event, callback: (customEvent: CustomEvent) => callback(customEvent.detail)}
-    window.addEventListener(`phx:${event}`, callbackRef.callback as EventListener)
-    this.__listeners.add(callbackRef)
-    return callbackRef
+  handleEvent(event: string, callback: (payload: any) => any): CallbackRef {
+    const callbackRef: CallbackRef = {
+      event,
+      callback: (customEvent: CustomEvent) => callback(customEvent.detail),
+    };
+    window.addEventListener(
+      `phx:${event}`,
+      callbackRef.callback as EventListener,
+    );
+    this.__listeners.add(callbackRef);
+    return callbackRef;
   }
 
-  removeHandleEvent(ref: CallbackRef): void{
-    window.removeEventListener(`phx:${ref.event}`, ref.callback as EventListener)
-    this.__listeners.delete(ref)
+  removeHandleEvent(ref: CallbackRef): void {
+    window.removeEventListener(
+      `phx:${ref.event}`,
+      ref.callback as EventListener,
+    );
+    this.__listeners.delete(ref);
   }
 
-  upload(name: string, files: FileList): any{
-    return this.__view().dispatchUploads(null, name, files)
+  upload(name: string, files: FileList): any {
+    return this.__view().dispatchUploads(null, name, files);
   }
 
-  uploadTo(selectorOrTarget: PhxTarget, name: string, files: FileList): any{
+  uploadTo(selectorOrTarget: PhxTarget, name: string, files: FileList): any {
     return this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-      view.dispatchUploads(targetCtx, name, files)
-    })
+      view.dispatchUploads(targetCtx, name, files);
+    });
   }
 
   /** @internal */
-  __cleanup__(){
-    this.__listeners.forEach(callbackRef => this.removeHandleEvent(callbackRef))
+  __cleanup__() {
+    this.__listeners.forEach((callbackRef) =>
+      this.removeHandleEvent(callbackRef),
+    );
   }
 }
 
-export type HooksOptions = Record<string, typeof ViewHook | Hook>
+export type HooksOptions = Record<string, typeof ViewHook | Hook>;
 
-export default ViewHook
+export default ViewHook;

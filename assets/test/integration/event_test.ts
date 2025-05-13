@@ -1,11 +1,25 @@
-import {Socket} from "phoenix"
-import LiveSocket from "phoenix_live_view/live_socket"
+import { Socket } from "phoenix";
+import LiveSocket from "phoenix_live_view/live_socket";
 
 const stubViewPushInput = (view, callback) => {
-  view.pushInput = (sourceEl, targetCtx, newCid, event, pushOpts, originalCallback) => {
-    return callback(sourceEl, targetCtx, newCid, event, pushOpts, originalCallback)
-  }
-}
+  view.pushInput = (
+    sourceEl,
+    targetCtx,
+    newCid,
+    event,
+    pushOpts,
+    originalCallback,
+  ) => {
+    return callback(
+      sourceEl,
+      targetCtx,
+      newCid,
+      event,
+      pushOpts,
+      originalCallback,
+    );
+  };
+};
 
 const prepareLiveViewDOM = (document, rootId) => {
   document.body.innerHTML = `
@@ -22,41 +36,44 @@ const prepareLiveViewDOM = (document, rootId) => {
         </form>
       </div>
     </div>
-  `
-}
+  `;
+};
 
 describe("events", () => {
   beforeEach(() => {
-    prepareLiveViewDOM(global.document, "root")
-  })
+    prepareLiveViewDOM(global.document, "root");
+  });
 
   test("send change event to correct target", () => {
-    const liveSocket = new LiveSocket("/live", Socket)
-    liveSocket.connect()
-    const view = liveSocket.getViewByEl(document.getElementById("root"))
-    view.isConnected = () => true
-    const input = view.el.querySelector("#first_name")
+    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket.connect();
+    const view = liveSocket.getViewByEl(document.getElementById("root"));
+    view.isConnected = () => true;
+    const input = view.el.querySelector("#first_name");
     let meta = {
       event: null,
       target: null,
       changed: null,
-    }
+    };
 
-    stubViewPushInput(view, (sourceEl, targetCtx, newCid, event, pushOpts, _callback) => {
-      meta = {
-        event,
-        target: targetCtx,
-        changed: pushOpts["_target"]
-      }
-    })
+    stubViewPushInput(
+      view,
+      (sourceEl, targetCtx, newCid, event, pushOpts, _callback) => {
+        meta = {
+          event,
+          target: targetCtx,
+          changed: pushOpts["_target"],
+        };
+      },
+    );
 
-    input.value = "John Doe"
-    input.dispatchEvent(new Event("change", {bubbles: true}))
+    input.value = "John Doe";
+    input.dispatchEvent(new Event("change", { bubbles: true }));
 
     expect(meta).toEqual({
       event: "validate",
       target: 2,
-      changed: "user[first_name]"
-    })
-  })
-})
+      changed: "user[first_name]",
+    });
+  });
+});

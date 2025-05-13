@@ -1,1 +1,1 @@
-declare let LV_VSN: string
+declare let LV_VSN: string;

@@ -6,14 +6,14 @@ Phoenix LiveView JavaScript Client
 See the hexdocs at `https://hexdocs.pm/phoenix_live_view` for documentation.
 */
 
-import OriginalLiveSocket, {isUsedInput} from "./live_socket"
-import DOM from "./dom"
-import {ViewHook} from "./view_hook"
-import View from "./view"
+import OriginalLiveSocket, { isUsedInput } from "./live_socket";
+import DOM from "./dom";
+import { ViewHook } from "./view_hook";
+import View from "./view";
 
-import type {LiveSocketJSCommands} from "./js_commands"
-import type {Hook, HooksOptions} from "./view_hook"
-import type {Socket as PhoenixSocket} from "phoenix"
+import type { LiveSocketJSCommands } from "./js_commands";
+import type { Hook, HooksOptions } from "./view_hook";
+import type { Socket as PhoenixSocket } from "phoenix";
 
 /**
  * Options for configuring the LiveSocket instance.
@@ -35,21 +35,23 @@ export interface LiveSocketOptions {
    *     (el) => {view: el.getAttribute("data-my-view-name", token: window.myToken}
    *
    */
-  params?: ((el: HTMLElement) => {[key: string]: any}) | {[key: string]: any};
+  params?:
+    | ((el: HTMLElement) => { [key: string]: any })
+    | { [key: string]: any };
   /**
    * The optional prefix to use for all phx DOM annotations.
-   * 
+   *
    * Defaults to "phx-".
    */
   bindingPrefix?: string;
-  /** 
+  /**
    * Callbacks for LiveView hooks.
-   * 
+   *
    * See [Client hooks via `phx-hook`](https://hexdocs.pm/phoenix_live_view/js-interop.html#client-hooks-via-phx-hook) for more information.
    */
   hooks?: HooksOptions;
   /** Callbacks for LiveView uploaders. */
-  uploaders?: {[key: string]: any}; // TODO: define more specifically
+  uploaders?: { [key: string]: any }; // TODO: define more specifically
   /** Delay in milliseconds before applying loading states. */
   loaderTimeout?: number;
   /** Delay in milliseconds before executing phx-disconnected commands. */
@@ -64,13 +66,13 @@ export interface LiveSocketOptions {
   failsafeJitter?: number;
   /**
    * Function to log debug information. For example:
-   * 
+   *
    *     (view, kind, msg, obj) => console.log(`${view.id} ${kind}: ${msg} - `, obj)
    */
   viewLogger?: (view: View, kind: string, msg: string, obj: any) => void;
   /**
-   * Object mapping event names to functions for populating event metadata. 
-   * 
+   * Object mapping event names to functions for populating event metadata.
+   *
    *     metadata: {
    *       click: (e, el) => {
    *         return {
@@ -88,16 +90,16 @@ export interface LiveSocketOptions {
    *         }
    *       }
    *     }
-   * 
+   *
    */
-  metadata?: {[eventName: string]: (e: Event, el: HTMLElement) => object};
+  metadata?: { [eventName: string]: (e: Event, el: HTMLElement) => object };
   /**
    * An optional Storage compatible object
    * Useful when LiveView won't have access to `sessionStorage`. For example, This could
-   * happen if a site loads a cross-domain LiveView in an iframe. 
-   * 
+   * happen if a site loads a cross-domain LiveView in an iframe.
+   *
    * Example usage:
-   * 
+   *
    *     class InMemoryStorage {
    *       constructor() { this.storage = {} }
    *       getItem(keyName) { return this.storage[keyName] || null }
@@ -109,7 +111,7 @@ export interface LiveSocketOptions {
   /**
    * An optional Storage compatible object
    * Useful when LiveView won't have access to `localStorage`.
-   * 
+   *
    * See `sessionStorage` for an example.
    */
   localStorage?: Storage;
@@ -122,7 +124,11 @@ export interface LiveSocketOptions {
      * @param defaultQuery - A default query function that can be used if no custom query should be applied.
      * @returns A list of DOM elements.
      */
-    jsQuerySelectorAll?: (sourceEl: HTMLElement, query: string, defaultQuery: () => Element[]) => Element[];
+    jsQuerySelectorAll?: (
+      sourceEl: HTMLElement,
+      query: string,
+      defaultQuery: () => Element[],
+    ) => Element[];
     /**
      * Called immediately before a DOM patch is applied.
      */
@@ -166,14 +172,14 @@ export interface LiveSocketInstanceInterface {
   isDebugDisabled(): boolean;
   /**
    * Enables debugging.
-   * 
+   *
    * When debugging is enabled, the LiveView client will log debug information to the console.
    * See [Debugging client events](https://hexdocs.pm/phoenix_live_view/js-interop.html#debugging-client-events) for more information.
    */
   enableDebug(): void;
   /**
    * Enables profiling.
-   * 
+   *
    * When profiling is enabled, the LiveView client will log profiling information to the console.
    */
   enableProfiling(): void;
@@ -187,7 +193,7 @@ export interface LiveSocketInstanceInterface {
   disableProfiling(): void;
   /**
    * Enables latency simulation.
-   * 
+   *
    * When latency simulation is enabled, the LiveView client will add a delay to requests and responses from the server.
    * See [Simulating Latency](https://hexdocs.pm/phoenix_live_view/js-interop.html#simulating-latency) for more information.
    */
@@ -218,14 +224,14 @@ export interface LiveSocketInstanceInterface {
   replaceTransport(transport: any): void;
   /**
    * Executes an encoded JS command, targeting the given element.
-   * 
+   *
    * See [`Phoenix.LiveView.JS`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.JS.html) for more information.
    */
   execJS(el: HTMLElement, encodedJS: string, eventType?: string | null): void;
   /**
    * Returns an object with methods to manipluate the DOM and execute JavaScript.
    * The applied changes integrate with server DOM patching.
-   * 
+   *
    * See [JavaScript interoperability](https://hexdocs.pm/phoenix_live_view/js-interop.html) for more information.
    */
   js(): LiveSocketJSCommands;
@@ -237,7 +243,7 @@ export interface LiveSocketInstanceInterface {
 export interface LiveSocketConstructor {
   /**
    * Creates a new LiveSocket instance.
-   * 
+   *
    * @param endpoint - The string WebSocket endpoint, ie, `"wss://example.com/live"`,
    *                                               `"/live"` (inherited host & protocol)
    * @param socket - the required Phoenix Socket class imported from "phoenix". For example:
@@ -248,18 +254,22 @@ export interface LiveSocketConstructor {
    *
    * @param opts - Optional configuration.
    */
-  new (endpoint: string, socket: typeof PhoenixSocket, opts?: LiveSocketOptions): LiveSocketInstanceInterface;
+  new (
+    endpoint: string,
+    socket: typeof PhoenixSocket,
+    opts?: LiveSocketOptions,
+  ): LiveSocketInstanceInterface;
 }
 
 // because LiveSocket is in JS (for now), we cast it to our defined TypeScript constructor.
-const LiveSocket = OriginalLiveSocket as unknown as LiveSocketConstructor
+const LiveSocket = OriginalLiveSocket as unknown as LiveSocketConstructor;
 
 /** Creates a hook instance for the given element and callbacks.
  *
  * @param el - The element to associate with the hook.
  * @param callbacks - The list of hook callbacks, such as mounted,
  *   updated, destroyed, etc.
- * 
+ *
  * *Note*: `createHook` must be called from the `connectedCallback` lifecycle
  * which is triggered after the element has been added to the DOM. If you try
  * to call `createHook` from the constructor, an error will be logged.
@@ -275,20 +285,15 @@ const LiveSocket = OriginalLiveSocket as unknown as LiveSocketConstructor
  *
  * @returns Returns the Hook instance for the custom element.
  */
-function createHook(el: HTMLElement, callbacks: Hook): ViewHook{
-  let existingHook = DOM.getCustomElHook(el)
-  if(existingHook){ return existingHook }
+function createHook(el: HTMLElement, callbacks: Hook): ViewHook {
+  let existingHook = DOM.getCustomElHook(el);
+  if (existingHook) {
+    return existingHook;
+  }
 
-  let hook = new ViewHook(View.closestView(el), el, callbacks)
-  DOM.putCustomElHook(el, hook)
-  return hook
+  let hook = new ViewHook(View.closestView(el), el, callbacks);
+  DOM.putCustomElHook(el, hook);
+  return hook;
 }
 
-export {
-  LiveSocket,
-  isUsedInput,
-  createHook,
-  ViewHook,
-  Hook,
-  HooksOptions
-}
+export { LiveSocket, isUsedInput, createHook, ViewHook, Hook, HooksOptions };
