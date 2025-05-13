@@ -176,16 +176,25 @@ export default class DOMPatch {
             return false
           }
           // don't remove teleported elements
-          if(el.getAttribute && el.getAttribute(PHX_TELEPORTED_REF)){ return false }
+          if(el.getAttribute && el.getAttribute(PHX_TELEPORTED_REF)){
+            return false
+          }
           if(this.maybePendingRemove(el)){ return false }
           if(this.skipCIDSibling(el)){ return false }
-          if(DOM.isPortalTemplate(el)){
+  
+          const portalCleanup = (el) => {
             // if the portal template itself is removed, remove the teleported element as well
-            const teleportedEl = DOM.byId(el.content.firstElementChild.id)
+            const teleportedEl = document.getElementById(el.content.firstElementChild.id)
             if(teleportedEl){
               teleportedEl.remove()
               morphCallbacks.onNodeDiscarded(teleportedEl)
             }
+          }
+          if(DOM.isPortalTemplate(el)){
+            portalCleanup(el)
+          } else {
+            el.nodeType === Node.ELEMENT_NODE && Array.from(el.querySelectorAll(`[${PHX_PORTAL}]`))
+              .forEach(portal => portalCleanup(portal))
           }
 
           return true
@@ -530,7 +539,7 @@ export default class DOMPatch {
     let portalTarget
     if(existing){
       // we already teleported in a previous patch
-      if(!portalContainer.contains(existing)){ throw new Error(`expected ${id} to be a child of ${targetId}`) }
+      if(!portalContainer.contains(existing)){ throw new Error(`expected ${toTeleport.id} to be a child of ${targetId}`) }
       portalTarget = existing
     } else {
       // create empty target and morph it recursively

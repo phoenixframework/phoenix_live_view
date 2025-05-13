@@ -3488,7 +3488,7 @@ defmodule Phoenix.Component do
       --%>
       <.dynamic_tag
         tag_name={@container}
-        id={@id <> "-wrapper"}
+        id={"_lv_portal_wrap_" <> @id}
         class={@class}
         data-phx-portal-wrapper
       >

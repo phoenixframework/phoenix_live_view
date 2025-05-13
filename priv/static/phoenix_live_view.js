@@ -1085,7 +1085,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return classes.find((name) => instance instanceof name);
     },
     isFocusable(el, interactiveOnly) {
-      return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex > 0 || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
+      return el instanceof HTMLAnchorElement && el.rel !== "ignore" || el instanceof HTMLAreaElement && el.href !== void 0 || !el.disabled && this.anyOf(el, [HTMLInputElement, HTMLSelectElement, HTMLTextAreaElement, HTMLButtonElement]) || el instanceof HTMLIFrameElement || (el.tabIndex >= 0 || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true");
     },
     attemptFocus(el, interactiveOnly) {
       if (this.isFocusable(el, interactiveOnly)) {
@@ -2861,6 +2861,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     exec_toggle_attr(e, eventType, phxEvent, view, sourceEl, el, { attr: [attr, val1, val2] }) {
       this.toggleAttr(el, attr, val1, val2);
     },
+    exec_ignore_attrs(e, eventType, phxEvent, view, sourceEl, el, { attrs }) {
+      this.ignoreAttrs(el, attrs);
+    },
     exec_transition(e, eventType, phxEvent, view, sourceEl, el, { time, transition, blocking }) {
       this.addOrRemoveClasses(el, [], [], transition, time, view, blocking);
     },
@@ -2878,6 +2881,21 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     },
     exec_remove_attr(e, eventType, phxEvent, view, sourceEl, el, { attr }) {
       this.setOrRemoveAttrs(el, [], [attr]);
+    },
+    ignoreAttrs(el, attrs) {
+      dom_default.putPrivate(el, "JS:ignore_attrs", { apply: (fromEl, toEl) => {
+        Array.from(fromEl.attributes).forEach((attr) => {
+          if (attrs.some((toIgnore) => attr.name == toIgnore || toIgnore.includes("*") && attr.name.match(toIgnore) != null)) {
+            toEl.setAttribute(attr.name, attr.value);
+          }
+        });
+      } });
+    },
+    onBeforeElUpdated(fromEl, toEl) {
+      const ignoreAttrs = dom_default.private(fromEl, "JS:ignore_attrs");
+      if (ignoreAttrs) {
+        ignoreAttrs.apply(fromEl, toEl);
+      }
     },
     // utils for commands
     show(eventType, view, el, display, transition, time, blocking) {
@@ -3285,6 +3303,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       patch(href, opts = {}) {
         let e = new CustomEvent("phx:exec");
         liveSocket.pushHistoryPatch(e, href, opts.replace ? "replace" : "push", null);
+      },
+      /**
+       * Mark attributes as ignored, skipping them when patching the DOM.
+       * 
+       * @param {HTMLElement} el - The element to toggle the attribute on.
+       * @param {Array<string>|string} attrs - The attribute name or names to ignore.
+       */
+      ignoreAttributes(el, attrs) {
+        js_default.ignoreAttrs(el, attrs);
       }
     };
   };
@@ -3830,6 +3857,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (hook) {
           updatedHookIds.add(fromEl.id);
         }
+        js_default.onBeforeElUpdated(fromEl, toEl);
       });
       patch.after("updated", (el) => {
         if (updatedHookIds.has(el.id)) {
