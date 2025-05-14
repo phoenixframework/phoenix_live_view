@@ -477,6 +477,12 @@ defmodule Phoenix.LiveView.JSTest do
       assert js_to_string(JS.dispatch("click", to: ".foo")) ==
                "[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;click&quot;,&quot;to&quot;:&quot;.foo&quot;}]]"
     end
+
+    test "raises when done is a details key and blocking is true" do
+      assert_raise ArgumentError, ~r/must not contain a `done` key/, fn ->
+        JS.dispatch("foo", detail: %{done: true}, blocking: true)
+      end
+    end
   end
 
   describe "toggle" do
