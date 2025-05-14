@@ -1313,6 +1313,50 @@ defmodule Phoenix.Component do
     raise_bad_socket_or_assign!("assign_new/3", assigns)
   end
 
+  @doc """
+  Assigns the given `key` with value from `fun` into `socket` if one does not yet exist
+  or if any of the dependencies have changed.
+
+  This function is similar to `assign_new/3` but adds support for dependencies. When any
+  of the dependencies listed in `deps` have changed (as tracked by the socket's `__changed__`
+  map), the function will be called to compute a new value for `key`.
+
+  This is particularly useful for extracting common logic that depends on certain assigns
+  and needs to be recomputed only when those specific assigns change. It helps write
+  in a more declarative style by allowing the same function to be called in multiple
+  event handlers.
+
+  ## Examples
+
+  Imagine a LiveView that loads a user based on a user_id, and needs to recompute
+  user-related data whenever the user_id changes:
+
+      # In your LiveView module
+      def mount(_params, _session, socket) do
+        {:ok, assign(socket, user_id: nil) |> load_user_data()}
+      end
+
+      def handle_event("select_user", %{"id" => user_id}, socket) do
+        {:noreply, assign(socket, user_id: user_id) |> assign_dependencies()}
+      end
+
+      # This shared function keeps all dependent data in sync
+      # It will only recompute values when their dependencies change
+      defp assign_dependencies(socket) do
+        socket
+        |> assign_new(:user, [:user_id], &load_user(&1.user_id))
+      end
+
+  In this example, `:user` will be recomputed whenever `:user_id` changes.
+
+  The function can be either a zero-arity function or a one-arity function that receives
+  the current assigns.
+  """
+  def assign_new(%Socket{} = socket, key, deps, fun) when is_list(deps) do
+    validate_assign_key!(key)
+    Phoenix.LiveView.Utils.assign_new(socket, key, deps, fun)
+  end
+
   defp raise_bad_socket_or_assign!(name, assigns) do
     extra =
       case assigns do
