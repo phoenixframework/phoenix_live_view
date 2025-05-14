@@ -72,13 +72,14 @@
  * @param {Object} [opts.localStorage] - An optional Storage compatible object
  * Useful for when LiveView won't have access to `localStorage`.
  * See `opts.sessionStorage` for examples.
- * @param {boolean} [opts.firePhxChangeWhileComposing] - If set to `true`, ensures that 
- * `phx-change` events are triggered even while the user is composing input using IME 
+ * @param {boolean} [opts.blockPhxChangeWhileComposing] - If set to `true`, `phx-change`
+ * events will be blocked (will not fire) while the user is composing input using an IME
  * (Input Method Editor). This is determined by the `e.isComposing` property on keyboard events,
- * which is `true` when the user is in the process of entering composed characters (e.g., typing 
- * in languages like Japanese, Chinese, etc.). By default, `phx-change` will not fire during a 
- * composition session to prevent potential issues, especially on Safari, where input updates 
- * during composition can cause unexpected behavior. For more information, see:
+ * which is `true` when the user is in the process of entering composed characters (for example,
+ * when typing Japanese or Chinese using romaji or pinyin input methods).
+ * By default, `phx-change` will be blocked during a composition session to prevent potential issues,
+ * especially in older versions of Safari, where input updates during composition can cause unexpected behavior.
+ * For more information, see:
  * 
  * - https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
  * - https://github.com/phoenixframework/phoenix_live_view/issues/3322
@@ -175,7 +176,7 @@ export default class LiveSocket {
     this.failsafeJitter = opts.failsafeJitter || FAILSAFE_JITTER
     this.localStorage = opts.localStorage || window.localStorage
     this.sessionStorage = opts.sessionStorage || window.sessionStorage
-    this.firePhxChangeWhileComposing = opts.firePhxChangeWhileComposing || false
+    this.blockPhxChangeWhileComposing = opts.blockPhxChangeWhileComposing || false
     this.boundTopLevelEvents = false
     this.boundEventNames = new Set()
     this.serverCloseRef = null
@@ -909,7 +910,7 @@ export default class LiveSocket {
         let phxChange = this.binding("change")
         let input = e.target
         
-        if(!this.firePhxChangeWhileComposing && e.isComposing){
+        if(this.blockPhxChangeDuringComposition && e.isComposing){
           const key = `composition-listener-${type}`
           if(!DOM.private(input, key)){
             DOM.putPrivate(input, key, true)
