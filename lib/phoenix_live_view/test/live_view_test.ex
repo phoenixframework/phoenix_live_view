@@ -356,7 +356,7 @@ defmodule Phoenix.LiveViewTest do
   end
 
   defp connect_from_static_token(%Plug.Conn{status: redir} = conn, _path, _opts)
-       when redir in [301, 302] do
+       when redir in [301, 302, 303] do
     error_redirect_conn(conn)
   end
 
