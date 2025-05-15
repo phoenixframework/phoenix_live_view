@@ -77,8 +77,8 @@
  * (Input Method Editor). This is determined by the `e.isComposing` property on keyboard events,
  * which is `true` when the user is in the process of entering composed characters (for example,
  * when typing Japanese or Chinese using romaji or pinyin input methods).
- * By default, `phx-change` will be blocked during a composition session to prevent potential issues,
- * especially in older versions of Safari, where input updates during composition can cause unexpected behavior.
+ * By default, `phx-change` will not be blocked during a composition session, but note that there were issues
+ * reported in older versions of Safari, where a LiveView patch to the input caused unexpected behavior.
  * For more information, see:
  * 
  * - https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
