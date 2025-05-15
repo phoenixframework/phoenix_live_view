@@ -12,7 +12,7 @@ let prepareLiveViewDOM = (document, rootId) => {
     <div data-phx-session="abc123"
          data-phx-root-id="${rootId}"
          id="${rootId}">
-      <div class="form-wrapper" data-phx-component="2">
+      <div class="form-wrapper" data-phx-component="2" data-phx-view="root">
         <form id="form" phx-change="validate" phx-target="2">
           <label for="first_name">First Name</label>
           <input id="first_name" value="" name="user[first_name]" />
