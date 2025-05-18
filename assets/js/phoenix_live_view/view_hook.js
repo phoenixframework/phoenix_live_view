@@ -32,7 +32,7 @@ export default class ViewHook {
 
   __mounted(){ this.mounted && this.mounted() }
   __updated(){ this.updated && this.updated() }
-  __beforeUpdate(){ this.beforeUpdate && this.beforeUpdate() }
+  __beforeUpdate(fromEl, toEl){ this.beforeUpdate && this.beforeUpdate(fromEl, toEl) }
   __destroyed(){
     this.destroyed && this.destroyed()
     DOM.deletePrivate(this.el, HOOK_ID) // https://github.com/phoenixframework/phoenix_live_view/issues/3496
