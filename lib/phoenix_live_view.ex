@@ -2138,7 +2138,7 @@ defmodule Phoenix.LiveView do
 
   Wraps your function in a task linked to the caller, errors are wrapped.
   Each key passed to `assign_async/3` will be assigned to
-  an `%AsyncResult{}` struct holding the status of the operation
+  an `Phoenix.LiveView.AsyncResult` struct holding the status of the operation
   and the result when the function completes.
 
   The task is only started when the socket is connected.
@@ -2159,7 +2159,7 @@ defmodule Phoenix.LiveView do
          |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
       end
 
-  See the moduledoc for more information.
+  See [Async Operations](#module-async-operations) for more information.
 
   ## `assign_async/3` and `send_update/3`
 
