@@ -512,16 +512,19 @@ defmodule Phoenix.Component.Declarative do
     """)
   end
 
-  defp valid_value?(_type, nil), do: true
-  defp valid_value?(:any, _value), do: true
-  defp valid_value?(:string, value), do: is_binary(value)
-  defp valid_value?(:atom, value), do: is_atom(value)
-  defp valid_value?(:boolean, value), do: is_boolean(value)
-  defp valid_value?(:integer, value), do: is_integer(value)
-  defp valid_value?(:float, value), do: is_float(value)
-  defp valid_value?(:list, value), do: is_list(value)
-  defp valid_value?({:struct, mod}, value), do: is_struct(value, mod)
-  defp valid_value?(_type, _value), do: true
+  def valid_value?(_type, nil), do: true
+  def valid_value?({:struct, _mod}, nil), do: true
+  def valid_value?(:any, _value), do: true
+  def valid_value?(:string, value), do: is_binary(value)
+  def valid_value?(:atom, value), do: is_atom(value)
+  def valid_value?(:boolean, value), do: is_boolean(value)
+  def valid_value?(:integer, value), do: is_integer(value)
+  def valid_value?(:float, value), do: is_float(value)
+  def valid_value?(:list, value), do: is_list(value)
+  def valid_value?(:map, value), do: is_map(value)
+  def valid_value?(:fun, value), do: is_function(value)
+  def valid_value?({:fun, arity}, value), do: is_function(value, arity)
+  def valid_value?({:struct, mod}, value), do: is_struct(value, mod)
 
   defp validate_attr_opts!(slot, name, opts, line, file) do
     for {key, _} <- opts, message = invalid_attr_message(key, slot) do
