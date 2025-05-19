@@ -185,8 +185,14 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp aliases do
     [
-      "assets.build": ["esbuild module", "esbuild cdn", "esbuild cdn_min", "esbuild main"],
-      "assets.watch": ["esbuild module --watch"]
+      "assets.build": [
+        "cmd npm run build",
+        "esbuild module",
+        "esbuild cdn",
+        "esbuild cdn_min",
+        "esbuild main"
+      ],
+      "assets.watch": ["cmd npm run build -- --watch", "esbuild module --watch"]
     ]
   end
 

@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": false,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "phoenix_live_view": ["../js/phoenix_live_view/index.ts"],
+      "phoenix_live_view*": ["../js/phoenix_live_view/*"]
+    }
+  },
+  "include": ["./**/*"],
+  "exclude": []
+}

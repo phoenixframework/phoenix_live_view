@@ -237,10 +237,28 @@ let liveSocket = new LiveSocket("/live", Socket, {
       }
     }
   }
-}
+})
 ```
 
 In the example above, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView.
+
+A hook can also be defined as a subclass of `ViewHook`:
+
+```javascript
+import { ViewHook } from "phoenix_live_view"
+
+class MyHook extends ViewHook {
+  mounted() {
+    ...
+  }
+}
+
+let liveSocket = new LiveSocket(..., {
+  hooks: {
+    MyHook
+  }
+})
+```
 
 ### Client-server communication
 
