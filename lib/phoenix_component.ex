@@ -3387,15 +3387,26 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Renders an async assign with slots for the different loading states.
+  Renders a `Phoenix.LiveView.AsyncResult` struct (e.g. from `Phoenix.LiveView.assign_async/4`) 
+  with slots for the different loading states.
   The result state takes precedence over subsequent loading and failed
   states.
 
-  *Note*: The inner block receives the result of the async assign as a :let.
-  The let is only accessible to the inner block and is not in scope to the
-  other slots.
+  > #### Note {: .info}
+  >
+  > The inner block receives the result of the async assign as a `:let`.
+  > The let is only accessible to the inner block and is not in scope to the
+  > other slots.
 
   ## Examples
+
+  ```elixir
+  def mount(%{"slug" => slug}, _, socket) do
+    {:ok,
+      socket
+      |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)}
+  end
+  ```
 
   ```heex
   <.async_result :let={org} assign={@org}>
@@ -3408,6 +3419,8 @@ defmodule Phoenix.Component do
     <% end %>
   </.async_result>
   ```
+
+  See [Async Operations](`m:Phoenix.LiveView#module-async-operations`) for more information.
 
   To display loading and failed states again on subsequent `assign_async` calls,
   reset the assign to a result-free `%AsyncResult{}`:
