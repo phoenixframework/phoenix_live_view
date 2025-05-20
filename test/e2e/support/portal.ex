@@ -13,15 +13,60 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       <script src="/assets/phoenix/phoenix.min.js">
       </script>
       <script type="module">
-        import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
+        import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+        import { computePosition, autoUpdate, offset } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.0/+esm';
         let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-        let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}})
+        let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
+          params: {_csrf_token: csrfToken},
+          hooks: {
+            PortalTooltip: {
+              mounted() {
+                this.tooltipEl = document.getElementById(this.el.dataset.id);
+                this.activatorEl = this.el.querySelector(`#${this.el.dataset.id}-activator`);
+                this.activatorEl.addEventListener("focusin", () => this.queueShow());
+                this.activatorEl.addEventListener("mouseover", () => this.queueShow());
+                this.activatorEl.addEventListener("focusout", () => this.queueHide());
+                this.activatorEl.addEventListener("mouseout", () => this.queueHide());
+                this.el.addEventListener("phx:hide-tooltip", () => this.hide());
+              },
+              destroyed() {
+                this.cleanup && this.cleanup();
+              },
+              queueShow() {
+                clearTimeout(this.hideTimeout);
+                this.showTimeout = setTimeout(() => this.show(), 200);
+              },
+              queueHide() {
+                clearTimeout(this.showTimeout);
+                this.hideTimeout = setTimeout(() => this.hide(), 50);
+              },
+              show() {
+                this.cleanup && this.cleanup();
+                this.cleanup = autoUpdate(this.activatorEl, this.tooltipEl, () => {
+                  computePosition(this.activatorEl, this.tooltipEl, {
+                    placement: this.el.dataset.position,
+                    middleware: [offset(10)]
+                  }).then(({ x, y }) => {
+                    this.tooltipEl.style.left = `${x}px`;
+                    this.tooltipEl.style.top = `${y}px`;
+                  });
+                });
+                this.liveSocket.execJS(this.el, this.el.dataset.show);
+              },
+              hide() {
+                this.liveSocket.execJS(this.el, this.el.dataset.hide);
+                this.cleanup && this.cleanup();
+              },
+            }
+          }
+        })
         liveSocket.connect()
         window.liveSocket = liveSocket
       </script>
     </head>
 
     <body>
+      <div id="tooltips"></div>
       <main style="flex: 1; padding: 2rem;">
         {@inner_content}
       </main>
@@ -111,6 +156,22 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
     </.portal>
 
     {live_render(@socket, Phoenix.LiveViewTest.E2E.PortalLive.NestedLive, id: "nested")}
+
+    <div class="border border-sky-600 overflow-hidden mt-8 p-4 flex gap-4">
+      <Phoenix.LiveViewTest.E2E.PortalTooltip.tooltip id="tooltip-example-portal">
+        <:activator>
+          <.button>Hover me</.button>
+        </:activator>
+        Hey there! {@count}
+      </Phoenix.LiveViewTest.E2E.PortalTooltip.tooltip>
+
+      <Phoenix.LiveViewTest.E2E.PortalTooltip.tooltip id="tooltip-example-no-portal" portal={false}>
+        <:activator>
+          <.button>Hover me (no portal)</.button>
+        </:activator>
+        Hey there! {@count}
+      </Phoenix.LiveViewTest.E2E.PortalTooltip.tooltip>
+    </div>
     """
   end
 
@@ -313,5 +374,76 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive.LC do
       <button phx-click="prepend" phx-target={@myself}>Prepend item</button>
     </div>
     """
+  end
+end
+
+defmodule Phoenix.LiveViewTest.E2E.PortalTooltip do
+  use Phoenix.Component
+
+  alias Phoenix.LiveView.JS
+
+  attr :id, :string, required: true
+  attr :portal, :boolean, default: true
+  slot :activator, required: true
+  slot :inner_block, required: true
+
+  def tooltip(assigns) do
+    ~H"""
+    <div
+      id={"#{@id}-wrapper"}
+      class="relative inline-block w-fit"
+      phx-hook="PortalTooltip"
+      data-id={@id}
+      data-show={show_tooltip(@id)}
+      data-hide={hide_tooltip(@id)}
+      data-position="top"
+      phx-window-keydown={JS.dispatch("phx:hide-tooltip")}
+      phx-key="escape"
+    >
+      <div id={"#{@id}-activator"} aria-describedby={@id} data-activator>
+        {render_slot(@activator)}
+      </div>
+      <.portal :if={@portal} id={"#{@id}-portal"} target="tooltips">
+        <div
+          id={@id}
+          phx-mounted={JS.ignore_attributes(["style"])}
+          role="tooltip"
+          class="hidden absolute top-0 left-0 z-50 bg-sky-800 text-white text-xs p-1"
+        >
+          {render_slot(@inner_block)}
+        </div>
+      </.portal>
+      <div
+        :if={!@portal}
+        id={@id}
+        phx-mounted={JS.ignore_attributes(["style"])}
+        role="tooltip"
+        class="hidden absolute top-0 left-0 z-50 bg-sky-800 text-white text-xs p-1"
+      >
+        {render_slot(@inner_block)}
+      </div>
+    </div>
+    """
+  end
+
+  defp show_tooltip(id) do
+    JS.show(
+      to: "##{id}",
+      transition:
+        {"transform ease-out duration-200 transition origin-bottom",
+         "scale-95 translate-y-0.5 opacity-0", "scale-100 translate-y-0 opacity-100"},
+      display: "block",
+      time: 200,
+      blocking: false
+    )
+  end
+
+  def hide_tooltip(id) do
+    JS.hide(
+      to: "##{id}",
+      transition: {"transition ease-in duration-100", "opacity-100", "opacity-0"},
+      time: 100,
+      blocking: false
+    )
   end
 end

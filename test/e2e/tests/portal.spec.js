@@ -21,3 +21,19 @@ test("renders modal inside portal location", async ({ page }) => {
     "DOM patching works as expected: 1",
   );
 });
+
+test("tooltip example", async ({ page }) => {
+  await page.goto("/portal?tick=false");
+  await syncLV(page);
+
+  await expect(page.locator("#tooltip-example-portal")).toBeHidden();
+  await expect(page.locator("#tooltip-example-no-portal")).toBeHidden();
+
+  await page.getByRole("button", { name: "Hover me", exact: true }).hover();
+  await expect(page.locator("#tooltip-example-portal")).toBeVisible();
+  await expect(page.locator("#tooltip-example-no-portal")).toBeHidden();
+
+  await page.getByRole("button", { name: "Hover me (no portal)" }).hover();
+  await expect(page.locator("#tooltip-example-portal")).toBeHidden();
+  await expect(page.locator("#tooltip-example-no-portal")).toBeVisible();
+});
