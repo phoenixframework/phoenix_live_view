@@ -472,7 +472,7 @@ export default class LiveSocket {
 
   owner(childEl, callback) {
     const viewEl = DOM.closestViewEl(childEl);
-    const view = viewEl && this.getViewByEl(viewEl) || this.main;
+    const view = (viewEl && this.getViewByEl(viewEl)) || this.main;
     return view && callback ? callback(view) : view;
   }
 

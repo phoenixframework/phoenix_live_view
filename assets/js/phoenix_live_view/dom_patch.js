@@ -16,6 +16,7 @@ import {
   PHX_VIEWPORT_BOTTOM,
   PHX_PORTAL,
   PHX_TELEPORTED_REF,
+  PHX_TELEPORTED_SRC,
 } from "./constants";
 
 import { detectDuplicateIds, detectInvalidStreamInserts, isCid } from "./utils";
@@ -106,7 +107,11 @@ export default class DOMPatch {
 
     let externalFormTriggered = null;
 
-    function morph(targetContainer, source, withChildren = this.withChildren) {
+    const morph = (
+      targetContainer,
+      source,
+      withChildren = this.withChildren,
+    ) => {
       const morphCallbacks = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
@@ -167,7 +172,7 @@ export default class DOMPatch {
           if (this.streamComponentRestore[el.id]) {
             morphedEl = this.streamComponentRestore[el.id];
             delete this.streamComponentRestore[el.id];
-            morph.call(this, morphedEl, el, true);
+            morph(morphedEl, el, true);
           }
 
           return morphedEl;
@@ -228,8 +233,9 @@ export default class DOMPatch {
             return false;
           }
 
-          const portalCleanup = (el) => {
-            // if the portal template itself is removed, remove the teleported element as well
+          if (DOM.isPortalTemplate(el)) {
+            // if the portal template itself is removed, remove the teleported element as well;
+            // we also perform a check after morphdom is finished to catch parent removals
             const teleportedEl = document.getElementById(
               el.content.firstElementChild.id,
             );
@@ -237,14 +243,6 @@ export default class DOMPatch {
               teleportedEl.remove();
               morphCallbacks.onNodeDiscarded(teleportedEl);
             }
-          };
-          if (DOM.isPortalTemplate(el)) {
-            portalCleanup(el);
-          } else {
-            el.nodeType === Node.ELEMENT_NODE &&
-              Array.from(el.querySelectorAll(`[${PHX_PORTAL}]`)).forEach(
-                (portal) => portalCleanup(portal),
-              );
           }
 
           return true;
@@ -414,8 +412,9 @@ export default class DOMPatch {
           }
         },
       };
+
       morphdom(targetContainer, source, morphCallbacks);
-    }
+    };
 
     this.trackBefore("added", container);
     this.trackBefore("updated", container, container);
@@ -455,9 +454,23 @@ export default class DOMPatch {
           });
       }
 
-      morph.call(this, targetContainer, html);
+      morph(targetContainer, html);
       // normal patch complete, teleport elements now
       portalCallbacks.forEach((callback) => callback());
+      // check for any teleported elements that are not in the view any more
+      // and remove them
+      this.view.portalElementIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          const source = document.getElementById(
+            el.getAttribute(PHX_TELEPORTED_SRC),
+          );
+          if (!source) {
+            el.remove();
+            this.onNodeDiscarded(el);
+          }
+        }
+      });
     });
 
     if (liveSocket.isDebugEnabled()) {
@@ -706,8 +719,10 @@ export default class DOMPatch {
     // otherwise morphdom would remove it, as the ref is not present in the source
     // and we'd need to set it back after each morph
     toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id);
-    morph.call(this, portalTarget, toTeleport, true);
+    toTeleport.setAttribute(PHX_TELEPORTED_SRC, el.id);
+    morph(portalTarget, toTeleport, true);
     toTeleport.removeAttribute(PHX_TELEPORTED_REF);
+    toTeleport.removeAttribute(PHX_TELEPORTED_SRC);
     // store a reference to the teleported element in the view
     // to cleanup when the view is destroyed, in case the portal target
     // is outside the view itself

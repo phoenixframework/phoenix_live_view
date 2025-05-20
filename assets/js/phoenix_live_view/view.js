@@ -204,7 +204,7 @@ export default class View {
         sticky: this.el.hasAttribute(PHX_STICKY),
       };
     });
-    this.portalElementIds = [];
+    this.portalElementIds = new Set();
   }
 
   setHref(href) {
@@ -2071,7 +2071,7 @@ export default class View {
 
   // phx-portal
   pushPortalElement(id) {
-    this.portalElementIds.push(id);
+    this.portalElementIds.add(id);
   }
 
   destroyPortalElements() {

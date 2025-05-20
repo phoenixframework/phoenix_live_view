@@ -76,6 +76,7 @@ export const PHX_STREAM = "stream";
 export const PHX_STREAM_REF = "data-phx-stream";
 export const PHX_PORTAL = "data-phx-portal";
 export const PHX_TELEPORTED_REF = "data-phx-teleported";
+export const PHX_TELEPORTED_SRC = "data-phx-teleported-src";
 export const PHX_KEY = "key";
 export const PHX_PRIVATE = "phxPrivate";
 export const PHX_AUTO_RECOVER = "auto-recover";
