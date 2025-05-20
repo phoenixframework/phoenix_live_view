@@ -5529,6 +5529,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.sessionStorage = opts.sessionStorage || window.sessionStorage;
       this.boundTopLevelEvents = false;
       this.boundEventNames = /* @__PURE__ */ new Set();
+      this.blockPhxChangeWhileComposing = opts.blockPhxChangeWhileComposing || false;
       this.serverCloseRef = null;
       this.domCallbacks = Object.assign(
         {
@@ -6345,7 +6346,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           }
           const phxChange = this.binding("change");
           const input = e.target;
-          if (e.isComposing) {
+          if (this.blockPhxChangeWhileComposing && e.isComposing) {
             const key = `composition-listener-${type}`;
             if (!dom_default.private(input, key)) {
               dom_default.putPrivate(input, key, true);

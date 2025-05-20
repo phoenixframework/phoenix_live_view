@@ -5514,6 +5514,7 @@ var LiveSocket = class {
     this.sessionStorage = opts.sessionStorage || window.sessionStorage;
     this.boundTopLevelEvents = false;
     this.boundEventNames = /* @__PURE__ */ new Set();
+    this.blockPhxChangeWhileComposing = opts.blockPhxChangeWhileComposing || false;
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign(
       {
@@ -6330,7 +6331,7 @@ var LiveSocket = class {
         }
         const phxChange = this.binding("change");
         const input = e.target;
-        if (e.isComposing) {
+        if (this.blockPhxChangeWhileComposing && e.isComposing) {
           const key = `composition-listener-${type}`;
           if (!dom_default.private(input, key)) {
             dom_default.putPrivate(input, key, true);
