@@ -3058,9 +3058,15 @@ var JS = {
     }
     view.liveSocket.execJS(el, encodedJS, eventType);
   },
-  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { event, detail, bubbles }) {
+  exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { event, detail, bubbles, blocking }) {
     detail = detail || {};
     detail.dispatcher = sourceEl;
+    if (blocking) {
+      const promise = new Promise((resolve, _reject) => {
+        detail.done = resolve;
+      });
+      view.liveSocket.asyncTransition(promise);
+    }
     dom_default.dispatchEvent(el, event, { detail, bubbles });
   },
   exec_push(e, eventType, phxEvent, view, sourceEl, el, args) {
@@ -5663,6 +5669,9 @@ var LiveSocket = class {
   requestDOMUpdate(callback) {
     this.transitions.after(callback);
   }
+  asyncTransition(promise) {
+    this.transitions.addAsyncTransition(promise);
+  }
   transition(time, onStart, onDone = function() {
   }) {
     this.transitions.addTransition(time, onStart, onDone);
@@ -6435,6 +6444,7 @@ var LiveSocket = class {
 var TransitionSet = class {
   constructor() {
     this.transitions = /* @__PURE__ */ new Set();
+    this.promises = /* @__PURE__ */ new Set();
     this.pendingOps = [];
   }
   reset() {
@@ -6442,6 +6452,7 @@ var TransitionSet = class {
       clearTimeout(timer);
       this.transitions.delete(timer);
     });
+    this.promises.clear();
     this.flushPendingOps();
   }
   after(callback) {
@@ -6460,11 +6471,18 @@ var TransitionSet = class {
     }, time);
     this.transitions.add(timer);
   }
+  addAsyncTransition(promise) {
+    this.promises.add(promise);
+    promise.then(() => {
+      this.promises.delete(promise);
+      this.flushPendingOps();
+    });
+  }
   pushPendingOp(op) {
     this.pendingOps.push(op);
   }
   size() {
-    return this.transitions.size;
+    return this.transitions.size + this.promises.size;
   }
   flushPendingOps() {
     if (this.size() > 0) {

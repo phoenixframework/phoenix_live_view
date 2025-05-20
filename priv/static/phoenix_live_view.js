@@ -3075,9 +3075,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       view.liveSocket.execJS(el, encodedJS, eventType);
     },
-    exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { event, detail, bubbles }) {
+    exec_dispatch(e, eventType, phxEvent, view, sourceEl, el, { event, detail, bubbles, blocking }) {
       detail = detail || {};
       detail.dispatcher = sourceEl;
+      if (blocking) {
+        const promise = new Promise((resolve, _reject) => {
+          detail.done = resolve;
+        });
+        view.liveSocket.asyncTransition(promise);
+      }
       dom_default.dispatchEvent(el, event, { detail, bubbles });
     },
     exec_push(e, eventType, phxEvent, view, sourceEl, el, args) {
@@ -5678,6 +5684,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     requestDOMUpdate(callback) {
       this.transitions.after(callback);
     }
+    asyncTransition(promise) {
+      this.transitions.addAsyncTransition(promise);
+    }
     transition(time, onStart, onDone = function() {
     }) {
       this.transitions.addTransition(time, onStart, onDone);
@@ -6450,6 +6459,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   var TransitionSet = class {
     constructor() {
       this.transitions = /* @__PURE__ */ new Set();
+      this.promises = /* @__PURE__ */ new Set();
       this.pendingOps = [];
     }
     reset() {
@@ -6457,6 +6467,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         clearTimeout(timer);
         this.transitions.delete(timer);
       });
+      this.promises.clear();
       this.flushPendingOps();
     }
     after(callback) {
@@ -6475,11 +6486,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }, time);
       this.transitions.add(timer);
     }
+    addAsyncTransition(promise) {
+      this.promises.add(promise);
+      promise.then(() => {
+        this.promises.delete(promise);
+        this.flushPendingOps();
+      });
+    }
     pushPendingOp(op) {
       this.pendingOps.push(op);
     }
     size() {
-      return this.transitions.size;
+      return this.transitions.size + this.promises.size;
     }
     flushPendingOps() {
       if (this.size() > 0) {
