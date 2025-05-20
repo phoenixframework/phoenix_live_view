@@ -242,6 +242,7 @@ export default class DOMPatch {
             if (teleportedEl) {
               teleportedEl.remove();
               morphCallbacks.onNodeDiscarded(teleportedEl);
+              this.view.dropPortalElementId(teleportedEl.id);
             }
           }
 
@@ -468,6 +469,7 @@ export default class DOMPatch {
           if (!source) {
             el.remove();
             this.onNodeDiscarded(el);
+            this.view.dropPortalElementId(id);
           }
         }
       });
@@ -682,7 +684,7 @@ export default class DOMPatch {
 
   teleport(el, morph) {
     const targetId = el.getAttribute(PHX_PORTAL);
-    const portalContainer = DOM.byId(targetId);
+    const portalContainer = document.getElementById(targetId);
     if (!portalContainer) {
       throw new Error("portal target with id " + targetId + " not found");
     }
@@ -701,12 +703,11 @@ export default class DOMPatch {
     const existing = document.getElementById(toTeleport.id);
     let portalTarget;
     if (existing) {
-      // we already teleported in a previous patch
+      // check if the element needs to be moved to another target
       if (!portalContainer.contains(existing)) {
-        throw new Error(
-          `expected ${toTeleport.id} to be a child of ${targetId}`,
-        );
+        portalContainer.appendChild(existing);
       }
+      // we already teleported in a previous patch
       portalTarget = existing;
     } else {
       // create empty target and morph it recursively
@@ -726,6 +727,6 @@ export default class DOMPatch {
     // store a reference to the teleported element in the view
     // to cleanup when the view is destroyed, in case the portal target
     // is outside the view itself
-    this.view.pushPortalElement(toTeleport.id);
+    this.view.pushPortalElementId(toTeleport.id);
   }
 }

@@ -2070,8 +2070,12 @@ export default class View {
   }
 
   // phx-portal
-  pushPortalElement(id) {
+  pushPortalElementId(id) {
     this.portalElementIds.add(id);
+  }
+
+  dropPortalElementId(id) {
+    this.portalElementIds.delete(id);
   }
 
   destroyPortalElements() {
