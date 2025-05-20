@@ -2138,7 +2138,7 @@ defmodule Phoenix.LiveView do
 
   Wraps your function in a task linked to the caller, errors are wrapped.
   Each key passed to `assign_async/3` will be assigned to
-  an `%AsyncResult{}` struct holding the status of the operation
+  an `Phoenix.LiveView.AsyncResult` struct holding the status of the operation
   and the result when the function completes.
 
   The task is only started when the socket is connected.
@@ -2151,15 +2151,17 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      def mount(%{"slug" => slug}, _, socket) do
-        {:ok,
-         socket
-         |> assign(:foo, "bar")
-         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)
-         |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
-      end
+  ```elixir
+  def mount(%{"slug" => slug}, _, socket) do
+    {:ok,
+      socket
+      |> assign(:foo, "bar")
+      |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)
+      |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
+  end
+  ```
 
-  See the moduledoc for more information.
+  See [Async Operations](#module-async-operations) for more information.
 
   ## `assign_async/3` and `send_update/3`
 
@@ -2168,11 +2170,13 @@ defmodule Phoenix.LiveView do
   since `send_update/2` assumes it is running inside the LiveView process.
   The solution is to explicitly send the update to the LiveView:
 
-      parent = self()
-      assign_async(socket, :org, fn ->
-        # ...
-        send_update(parent, Component, data)
-      end)
+  ```elixir
+  parent = self()
+  assign_async(socket, :org, fn ->
+    # ...
+    send_update(parent, Component, data)
+  end)
+  ```
 
   ## Testing async operations
 
@@ -2180,14 +2184,19 @@ defmodule Phoenix.LiveView do
   `Phoenix.LiveViewTest.render_async/2` to ensure the test waits until the async operations
   are complete before proceeding with assertions or before ending the test. For example:
 
-      {:ok, view, _html} = live(conn, "/my_live_view")
-      html = render_async(view)
-      assert html =~ "My assertion"
+  ```elixir
+  {:ok, view, _html} = live(conn, "/my_live_view")
+  html = render_async(view)
+  assert html =~ "My assertion"
+  ```
 
   Not calling `render_async/2` to ensure all async assigns have finished might result in errors in
   cases where your process has side effects:
 
-      [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
+  ```
+  [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
+  ```
+
   """
   defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
     Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)
