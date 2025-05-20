@@ -66,6 +66,14 @@ export const stubChannel = (view) => {
     },
   };
   view.channel.push = () => fakePush;
+  view.channel.leave = () => ({
+    receive(kind, cb) {
+      if (kind === "ok") {
+        cb();
+      }
+      return this;
+    },
+  });
 };
 
 export function liveViewDOM(content?: string) {

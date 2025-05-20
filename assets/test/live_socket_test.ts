@@ -26,8 +26,15 @@ const prepareLiveViewDOM = (document) => {
 };
 
 describe("LiveSocket", () => {
+  let liveSocket;
+
   beforeEach(() => {
     prepareLiveViewDOM(global.document);
+  });
+
+  afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+    liveSocket = null;
   });
 
   afterAll(() => {
@@ -35,7 +42,7 @@ describe("LiveSocket", () => {
   });
 
   test("sets defaults", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     expect(liveSocket.socket).toBeDefined();
     expect(liveSocket.socket.onOpen).toBeDefined();
     expect(liveSocket.viewLogger).toBeUndefined();
@@ -45,7 +52,7 @@ describe("LiveSocket", () => {
   });
 
   test("sets defaults with socket", async () => {
-    const liveSocket = new LiveSocket(new Socket("//example.org/chat"), Socket);
+    liveSocket = new LiveSocket(new Socket("//example.org/chat"), Socket);
     expect(liveSocket.socket).toBeDefined();
     expect(liveSocket.socket.onOpen).toBeDefined();
     expect(liveSocket.unloaded).toBe(false);
@@ -54,27 +61,28 @@ describe("LiveSocket", () => {
   });
 
   test("viewLogger", async () => {
-    const viewLogger = (view, kind, msg, obj) => {
-      expect(view.id).toBe("container1");
-      expect(kind).toBe("updated");
-      expect(msg).toBe("");
-      expect(obj).toBe('"<div>"');
-    };
-    const liveSocket = new LiveSocket("/live", Socket, { viewLogger });
+    const viewLogger = jest.fn();
+    liveSocket = new LiveSocket("/live", Socket, { viewLogger });
     expect(liveSocket.viewLogger).toBe(viewLogger);
     liveSocket.connect();
     const view = liveSocket.getViewByEl(container(1));
     liveSocket.log(view, "updated", () => ["", JSON.stringify("<div>")]);
+    expect(viewLogger).toHaveBeenCalledWith(
+      view,
+      "updated",
+      "",
+      JSON.stringify("<div>"),
+    );
   });
 
   test("connect", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const _socket = liveSocket.connect();
     expect(liveSocket.getViewByEl(container(1))).toBeDefined();
   });
 
   test("disconnect", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     liveSocket.connect();
     liveSocket.disconnect();
@@ -83,7 +91,7 @@ describe("LiveSocket", () => {
   });
 
   test("channel", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     liveSocket.connect();
     const channel = liveSocket.channel("lv:def456", function () {
@@ -94,7 +102,7 @@ describe("LiveSocket", () => {
   });
 
   test("getViewByEl", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     liveSocket.connect();
 
@@ -113,7 +121,7 @@ describe("LiveSocket", () => {
     `;
     document.body.appendChild(secondLiveView);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     liveSocket.connect();
 
     const el = container(1);
@@ -129,19 +137,19 @@ describe("LiveSocket", () => {
   });
 
   test("binding", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     expect(liveSocket.binding("value")).toBe("phx-value");
   });
 
   test("getBindingPrefix", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     expect(liveSocket.getBindingPrefix()).toEqual("phx-");
   });
 
   test("getBindingPrefix custom", async () => {
-    const liveSocket = new LiveSocket("/live", Socket, {
+    liveSocket = new LiveSocket("/live", Socket, {
       bindingPrefix: "company-",
     });
 
@@ -149,7 +157,7 @@ describe("LiveSocket", () => {
   });
 
   test("owner", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     liveSocket.connect();
 
     const _view = liveSocket.getViewByEl(container(1));
@@ -161,7 +169,7 @@ describe("LiveSocket", () => {
   });
 
   test("getActiveElement default before LiveSocket activeElement is set", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     const input = document.querySelector("input");
     input.focus();
@@ -170,7 +178,7 @@ describe("LiveSocket", () => {
   });
 
   test("blurActiveElement", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     const input = document.querySelector("input");
     input.focus();
@@ -184,7 +192,7 @@ describe("LiveSocket", () => {
   });
 
   test("restorePreviouslyActiveFocus", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     const input = document.querySelector("input");
     input.focus();
@@ -201,7 +209,7 @@ describe("LiveSocket", () => {
   });
 
   test("dropActiveElement unsets prevActive", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
 
     liveSocket.connect();
 
@@ -225,7 +233,7 @@ describe("LiveSocket", () => {
       },
     };
 
-    const liveSocket = new LiveSocket("/live", Socket, {
+    liveSocket = new LiveSocket("/live", Socket, {
       sessionStorage: override,
     });
     liveSocket.getLatencySim();
@@ -252,6 +260,8 @@ describe("liveSocket.js()", () => {
   });
 
   afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+    liveSocket = null;
     jest.useRealTimers();
   });
 
