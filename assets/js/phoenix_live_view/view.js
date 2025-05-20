@@ -167,6 +167,23 @@ export default class View {
     this.parent = parentView;
     this.root = parentView ? parentView.root : this;
     this.el = el;
+    // see https://github.com/phoenixframework/phoenix_live_view/pull/3721
+    // check if the element is already bound to a view
+    const boundView = DOM.private(this.el, "view");
+    if (boundView !== undefined && boundView.isDead !== true) {
+      logError(
+        `The DOM element for this view has already been bound to a view.
+        
+        An element can only ever be associated with a single view!
+        Please ensure that you are not trying to initialize multiple LiveSockets on the same page.
+        This could happen if you're accidentally trying to render your root layout more than once.
+        Ensure that the template set on the LiveView is different than the root layout.
+      `,
+        { view: boundView },
+      );
+      throw new Error("Cannot bind multiple views to the same DOM element.");
+    }
+    // bind the view to the element
     DOM.putPrivate(this.el, "view", this);
     this.id = this.el.id;
     this.ref = 0;
@@ -252,6 +269,7 @@ export default class View {
   destroy(callback = function () {}) {
     this.destroyAllChildren();
     this.destroyed = true;
+    DOM.deletePrivate(this.el, "view");
     delete this.root.children[this.id];
     if (this.parent) {
       delete this.root.children[this.parent.id][this.id];
