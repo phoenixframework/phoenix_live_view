@@ -112,6 +112,16 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.12 (2025-05-20)
+
+### Enhancements
+
+* Allow Phoenix 1.8 rc.
+
+### Bug fixes
+
+* Ensure event listeners for refs are properly cleaned up ([#3887](https://github.com/phoenixframework/phoenix_live_view/pull/3787))
+
 ## 1.0.11 (2025-05-05)
 
 ### Enhancements
