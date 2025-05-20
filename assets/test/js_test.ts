@@ -447,6 +447,7 @@ describe("JS", () => {
       modal.addEventListener("click", () => done());
       JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
     });
+
     test("with details", (done) => {
       const view = setupView(`
       <div id="modal">modal</div>
@@ -491,6 +492,32 @@ describe("JS", () => {
       });
 
       JS.exec(event, "close", close.getAttribute("phx-click"), view, close);
+    });
+
+    test("blocking blocks DOM updates until done", (done) => {
+      let view = setupView(`
+      <div id="modal">modal</div>
+      <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "custom", "blocking": true}]]'></div>
+      `);
+      let modal = simulateVisibility(document.querySelector("#modal"));
+      let click = document.querySelector("#click");
+      let doneCalled = false;
+
+      modal.addEventListener("custom", (e) => {
+        expect(e.detail).toEqual({
+          done: expect.any(Function),
+          dispatcher: click,
+        });
+        expect(view.liveSocket.transitions.size()).toBe(1);
+        view.liveSocket.requestDOMUpdate(() => {
+          expect(doneCalled).toBe(true);
+          done();
+        });
+        // now we unblock the transition
+        e.detail.done();
+        doneCalled = true;
+      });
+      JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
     });
   });
 
