@@ -29,6 +29,8 @@ callback, for example:
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [Static tracking](`Phoenix.LiveView.static_changed?/1`) | `phx-track-static` |
 
+If you need to trigger commands actions via JavaScript, see [JavaScript interoperability](js-interop.md#js-commands).
+
 ## Click Events
 
 The `phx-click` binding is used to send click events to the server.

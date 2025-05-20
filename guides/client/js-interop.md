@@ -28,6 +28,15 @@ except for the following LiveView specific options:
     See the [Key events](bindings.html#key-events) section in the bindings guide
     for an example.
 
+The `liveSocket` instance exposes the following methods:
+- `connect()` - call this once after creation to connect to the server
+- `enableDebug()` -  turns on debug logging, see [Debugging client events](#debugging-client-events)
+- `disableDebug()` -  turns off debug logging
+- `enableLatencySim(milliseconds)` - turns on latency simulation, see [Simulating latency](#simulating-latency)
+- `disableLatencySim()` - turns off latency simulation
+- `execJS(el, encodedJS)` - executes encoded JavaScript in the context of the element
+- `js()` - returns an object with methods to manipluate the DOM and execute JavaScript. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
+
 ## Debugging client events
 
 To aid debugging on the client when troubleshooting issues, the `enableDebug()`
@@ -165,12 +174,13 @@ The above life-cycle callbacks have in-scope access to the following attributes:
     or LiveView. `pushEventTo` supports passing the node element e.g. `this.el` instead of selector e.g. `"#" + this.el.id`
     as the first parameter for target.
   * `handleEvent(event, (payload) => ...)` - method to handle an event pushed from the server
-  * `upload(name, files)` - method to inject a list of file-like objects into an uploader.
+  * `upload(name, files)` - method to inject a list of file-like objects into an uploader
   * `uploadTo(selectorOrTarget, name, files)` - method to inject a list of file-like objects into an uploader.
     The hook will send the files to the uploader with `name` defined by [`allow_upload/3`](`Phoenix.LiveView.allow_upload/3`)
     on the server-side. Dispatching new uploads triggers an input change event which will be sent to the
     LiveComponent or LiveView the `selectorOrTarget` is defined in, where its value can be either a query selector or an
     actual DOM element. If the query selector returns more than one live file input, an error will be logged.
+  * `js()` - returns an object with methods to manipluate the DOM and execute JavaScript. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
 
 For example, the markup for a controlled input for phone-number formatting could be written
 like this:
@@ -227,10 +237,28 @@ let liveSocket = new LiveSocket("/live", Socket, {
       }
     }
   }
-}
+})
 ```
 
 In the example above, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView.
+
+A hook can also be defined as a subclass of `ViewHook`:
+
+```javascript
+import { ViewHook } from "phoenix_live_view"
+
+class MyHook extends ViewHook {
+  mounted() {
+    ...
+  }
+}
+
+let liveSocket = new LiveSocket(..., {
+  hooks: {
+    MyHook
+  }
+})
+```
 
 ### Client-server communication
 
@@ -316,3 +344,29 @@ Hooks.Chart = {
 ```
 
 *Note*: In case a LiveView pushes events and renders content, `handleEvent` callbacks are invoked after the page is updated. Therefore, if the LiveView redirects at the same time it pushes events, callbacks won't be invoked on the old page's elements. Callbacks would be invoked on the redirected page's newly mounted hook elements.
+
+## JS commands
+
+*Note*: If possible, construct commands via Elixir using `Phoenix.LiveView.JS` and trigger them via Phoenix DOM [Bindings](bindings.md).
+
+While `Phoenix.LiveView.JS` allows you to construct a declarative representation of a command, it may not cover all use cases.
+In addition, you can execute commands that integrate with server DOM patching via JavaScript using:
+- Client hooks: `this.js()` or the
+- LiveSocket instance: `liveSocket.js()`.
+
+The command interface returned by `js()` above offers the following functions:
+- `show(el, opts = {})` - shows an element. Options: `display`, `transition`, `time`, `blocking`. For more details, see `Phoenix.LiveView.JS.show/1`.
+- `hide(el, opts = {})` - hides an element. Options: `transition`, `time`, `blocking`. For more details, see `Phoenix.LiveView.JS.hide/1`.
+- `toggle(el, opts = {})` - toggles the visibility of an element. Options: `display`, `in`, `out`, `time`, `blocking`. For more details, see `Phoenix.LiveView.JS.toggle/1`.
+- `addClass(el, names, opts = {})` - adds CSS class(es) to an element. Options: `transition`, `time`, `blocking`. For more details, see `Phoenix.LiveView.JS.add_class/1`.
+- `removeClass(el, names, opts = {})` - removes CSS class(es) to an element. Options: `transition`, `time`, `blocking`. For more details, see `Phoenix.LiveView.JS.remove_class/1`.
+- `toggleClass(el, names, opts = {})` - toggles CSS class(es) to an element. Options: `transition`, `time`, `blocking`. For more details, see `Phoenix.LiveView.JS.toggle_class/1`.
+- `transition(el, transition, opts = {})` - applies a CSS transition to an element. Options: `time`, `blocking`. For more details, see `Phoenix.LiveView.JS.transition/1`.
+- `setAttribute(el, attr, val)` - sets an attribute on an element
+- `removeAttribute(el, attr)` - removes an attribute from an element
+- `toggleAttribute(el, attr, val1, val2)` - toggles an attribute on an element between two values
+- `push(el, type, opts = {})` - pushes an event to the server. To target a LiveComponent by its ID, pass a separate `target` in the options. Options: `target`, `loading`, `page_loading`, `value`. For more details, see `Phoenix.LiveView.JS.push/1`.
+- `navigate(href, opts = {})` - sends a navigation event to the server and updates the browser's pushState history. Options: `replace`. For more details, see `Phoenix.LiveView.JS.navigate/1`.
+- `patch(href, opts = {})` - sends a patch event to the server and updates the browser's pushState history. Options: `replace`. For more details, see `Phoenix.LiveView.JS.patch/1`.
+- `exec(encodedJS)` - *only via Client hook `this.js()`*: executes encoded JavaScript in the context of the hook's root node. The encoded JS command should be constructed via `Phoenix.LiveView.JS` and is usually stored as an HTML attribute. Example: `this.js().exec(this.el.getAttribute('phx-remove'))`.
+- `exec(el, encodedJS)` - *only via `liveSocket.js()`*: executes encoded JavaScript in the context of any element.
