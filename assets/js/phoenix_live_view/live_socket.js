@@ -83,6 +83,8 @@ export default class LiveSocket {
     this.sessionStorage = opts.sessionStorage || window.sessionStorage;
     this.boundTopLevelEvents = false;
     this.boundEventNames = new Set();
+    this.blockPhxChangeWhileComposing =
+      opts.blockPhxChangeWhileComposing || false;
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign(
       {
@@ -1075,11 +1077,7 @@ export default class LiveSocket {
         }
         const phxChange = this.binding("change");
         const input = e.target;
-        // do not fire phx-change if we are in the middle of a composition session
-        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
-        // Safari has issues if the input is updated while composing
-        // see https://github.com/phoenixframework/phoenix_live_view/issues/3322
-        if (e.isComposing) {
+        if (this.blockPhxChangeWhileComposing && e.isComposing) {
           const key = `composition-listener-${type}`;
           if (!DOM.private(input, key)) {
             DOM.putPrivate(input, key, true);
