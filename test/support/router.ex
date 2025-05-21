@@ -73,7 +73,8 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/router/foobarbaz/nosuffix", NoSuffix, :index, as: :custom_route
 
     # integration layout
-    live_session :styled_layout, root_layout: {Phoenix.LiveViewTest.Support.LayoutView, :styled} do
+    live_session :styled_layout,
+      root_layout: {Phoenix.LiveViewTest.Support.LayoutView, :styled} do
       live "/styled-elements", ElementsLive
     end
 

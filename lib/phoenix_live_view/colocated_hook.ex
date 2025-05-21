@@ -1,65 +1,126 @@
 defmodule Phoenix.LiveView.ColocatedHook do
-  @moduledoc """
-  Functions for defining colocated hooks.
-  """
-  alias Phoenix.LiveView.ColocatedHook
+  use Phoenix.LiveView.MacroComponent
 
-  defstruct [:name, :opts]
+  @impl true
+  def call({"script", attributes, [text_content]} = ast, meta) do
+    opts = Map.new(attributes)
 
-  def new(name, opts \\ []) do
-    opts = Keyword.validate!(opts, [:manifest_path, :colocated_hooks_app, :bundle_mode])
+    case Map.get(opts, "bundle_mode", :bundle) do
+      :runtime ->
+        hashed_name = hashed_name(meta)
 
-    %__MODULE__{name: name, opts: opts}
+        new_content = """
+        window["phx_hook_#{hashed_name}"] = function() {
+          #{text_content}
+        }
+        """
+
+        {:ok, [{"script", [{"data-phx-runtime-hook", hashed_name}], [new_content]}],
+         %{hashed_name: hashed_name}}
+
+      :current_otp_app ->
+        if should_bundle?(opts["colocated-hooks-app"]) do
+          process_bundled_hook(opts, text_content, meta)
+        else
+          {:ok, [], nil}
+        end
+
+      :bundle ->
+        process_bundled_hook(opts, text_content, meta)
+    end
+
+    {:ok, [], nil}
   end
 
-  @doc false
-  def should_bundle?(hook) do
-    current_otp_app() == colocated_hooks_app(hook)
+  def call(ast, _meta) do
+    raise ArgumentError, "a ColocatedHook can only be used on script tags"
   end
 
-  defp empty_manifest do
-    """
-    let hooks = {}
-    export default hooks
-    """
+  @impl true
+  def prune do
+    target_path = Path.join(Mix.Project.app_path(), inspect(__MODULE__))
+    extract_regex = ~r/extract_(.*):(.*)/
+    manifest_regex = ~r/manifest_.*/
+
+    if File.exists?(target_path) do
+      files = File.ls!(target_path)
+
+      result =
+        Enum.reduce(files, %{extracts: [], manifests: []}, fn file, acc ->
+          extract_match = Regex.run(extract_regex, file)
+          manifest_match = Regex.run(manifest_regex, file)
+
+          case {extract_match, manifest_match} do
+            {[file, module_name, hash], _} ->
+              Map.update!(acc, :extracts, fn extracts ->
+                [{module_name, hash, file} | extracts]
+              end)
+
+            {_, [manifest_name, _]} ->
+              Map.update!(acc, :manifests, fn manifests ->
+                [manifest_name | manifests]
+              end)
+
+            _ ->
+              acc
+          end
+        end)
+
+      new_extracts =
+        for {module_name, _hash, _file} <- result.extracts, reduce: [] do
+          acc ->
+            module = Module.concat([module_name])
+
+            if Code.ensure_loaded?(module) and
+                 function_exported?(module, :__phoenix_component_extracts__, 0) do
+              extracts = module.__phoenix_component_extracts__()
+              acc ++ extracts
+            else
+              acc
+            end
+        end
+
+      dbg(new_extracts)
+      dbg(result.extracts)
+
+      :ok
+    else
+      :ok
+    end
   end
 
-  defp manifest_path(hook) do
-    hook.opts[:manifest_path] ||
-      Application.get_env(
-        :phoenix_live_view,
-        :colocated_hooks_manifest,
-        Path.join(File.cwd!(), "assets/js/hooks/index.js")
-      )
-  end
-
-  defp colocated_hooks_app(hook) do
-    hook.opts[:colocated_hooks_app] ||
-      Application.get_env(:phoenix_live_view, :colocated_hooks_app, current_otp_app())
-  end
-
-  defp current_otp_app do
-    Application.get_env(:logger, :compile_time_application)
-  end
-
-  @doc false
-  def hashed_name(%{file: file, line: line, column: column}) do
-    hashed_script_name(file) <> "_#{line}_#{column}"
+  defp hashed_name(meta) do
+    hashed_script_name(meta.file) <> "_#{meta.line}_#{meta.column}"
   end
 
   defp hashed_script_name(file) do
     :md5 |> :crypto.hash(file) |> Base.encode16()
   end
 
-  @doc false
-  def process_bundled_hook(hook, text_content, meta) do
+  defp should_bundle?(app) do
+    current_otp_app() == colocated_hooks_app(app)
+  end
+
+  defp colocated_hooks_app(nil) do
+    Application.get_env(:phoenix_live_view, :colocated_hooks_app, current_otp_app())
+  end
+
+  defp colocated_hooks_app(app) do
+    app
+  end
+
+  defp current_otp_app do
+    Application.get_env(:logger, :compile_time_application)
+  end
+
+  defp process_bundled_hook(opts, text_content, meta) do
     %{file: file, line: line, column: column} = meta
     js_filename = hashed_name(meta)
 
     script_content =
       "// #{Path.relative_to_cwd(file)}:#{line}:#{column}\n" <> text_content
 
-    manifest_path = manifest_path(hook)
+    manifest_path = manifest_path(opts)
     dir = Path.dirname(manifest_path)
     js_path = Path.join(dir, js_filename <> ".js")
 
@@ -115,99 +176,19 @@ defmodule Phoenix.LiveView.ColocatedHook do
     %{hashed_name: js_filename}
   end
 
-  @doc false
-  def prune(hook, hashed_name) do
-    cond do
-      hook.opts[:bundle_mode] == :runtime ->
-        throw(:noop)
-
-      hook.opts[:bundle_mode] == :current_otp_app and not should_bundle?(hook) ->
-        throw(:noop)
-
-      true ->
-        :ok
-    end
-
-    manifest_path = manifest_path(hook)
-    dir = Path.dirname(manifest_path)
-
-    case File.ls(dir) do
-      {:ok, hooks} ->
-        for hook_basename <- hooks do
-          if String.starts_with?(hook_basename, hashed_name) do
-            File.rm!(Path.join(dir, hook_basename))
-
-            if File.exists?(manifest_path) do
-              new_file =
-                manifest_path
-                |> File.stream!()
-                |> Enum.filter(fn line -> !String.contains?(line, hashed_name) end)
-                |> Enum.join("")
-                |> String.trim()
-
-              File.write!(manifest_path, new_file)
-            end
-          else
-            :noop
-          end
-        end
-
-      _ ->
-        :noop
-    end
-  catch
-    :noop -> :noop
-  end
-end
-
-defimpl Phoenix.LiveView.TagExtractor, for: Phoenix.LiveView.ColocatedHook do
-  alias Phoenix.LiveView.ColocatedHook
-  alias Phoenix.LiveView.TagExtractorUtils
-
-  def extract(
-        %Phoenix.LiveView.ColocatedHook{opts: opts} = hook,
-        token,
-        text_content,
-        meta
-      ) do
-    case opts[:bundle_mode] do
-      :runtime ->
-        hashed_name = ColocatedHook.hashed_name(meta)
-
-        new_content = """
-        window["phx_hook_#{hashed_name}"] = function() {
-          #{text_content}
-        }
-        """
-
-        token = TagExtractorUtils.set_attribute(token, "data-phx-runtime-hook", hashed_name)
-        {:keep, token, new_content, %{hashed_name: hashed_name}}
-
-      :current_otp_app ->
-        if ColocatedHook.should_bundle?(hook) do
-          {:drop, ColocatedHook.process_bundled_hook(hook, text_content, meta)}
-        else
-          {:drop, nil}
-        end
-
-      _ ->
-        {:drop, ColocatedHook.process_bundled_hook(hook, text_content, meta)}
-    end
+  defp empty_manifest do
+    """
+    let hooks = {}
+    export default hooks
+    """
   end
 
-  def postprocess_tokens(
-        %Phoenix.LiveView.ColocatedHook{name: hook_name},
-        %{hashed_name: hashed_name},
-        tokens
-      ) do
-    TagExtractorUtils.map_tokens(tokens, fn token ->
-      TagExtractorUtils.replace_attribute(token, "phx-hook", hook_name, hashed_name)
-    end)
-  end
+  defp manifest_path(opts) do
+    target_path = Path.join(Mix.Project.app_path(), inspect(__MODULE__))
 
-  def postprocess_tokens(_hook, _state, tokens), do: tokens
-
-  def prune(hook, %{hashed_name: hashed_name}) do
-    ColocatedHook.prune(hook, hashed_name)
+    Path.join(
+      target_path,
+      "manifest_#{opts["manifest-name"] || "default"}.#{opts["manifest-extension"] || "js"}"
+    )
   end
 end

@@ -1,6 +1,6 @@
 defmodule Mix.Tasks.Compile.PhoenixLiveView do
   @moduledoc """
-  A LiveView compiler for HEEx `:extract` cleanup.
+  A LiveView compiler for HEEx macro component cleanup.
 
   You must add it to your `mix.exs` as:
 
@@ -21,41 +21,26 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   def run(args) do
     {compile_opts, _argv, _errors} = OptionParser.parse(args, switches: @switches)
 
-    {version, current_extracts} = read_manifest()
+    # TODO: we don't really need a manifest, we could just always prune?
+    {version, manifest_content} = read_manifest()
     manifest_outdated? = version != @manifest_version or manifest_older?()
 
     cond do
       manifest_outdated? || compile_opts[:force] ->
-        remove_outdated_extracts(current_extracts || [])
+        remove_outdated(manifest_content)
 
       true ->
         {:noop, []}
     end
   end
 
-  defp remove_outdated_extracts(manifest_extracts) do
-    extracts = get_extracts(project_modules())
+  defp remove_outdated(_manifest_content) do
+    Application.get_env(:phoenix_live_view, :colocated_cleanup, [Phoenix.LiveView.ColocatedHook])
+    |> Enum.each(fn module ->
+      module.prune()
+    end)
 
-    case manifest_extracts -- extracts do
-      [] ->
-        write_manifest!(extracts)
-        {:noop, []}
-
-      removed ->
-        handle_removed(removed)
-        write_manifest!(extracts)
-    end
-  end
-
-  defp handle_removed(extracts) do
-    for {data, state} <- extracts do
-      try do
-        Phoenix.LiveView.TagExtractor.prune(data, state)
-      rescue
-        e ->
-          Mix.shell().error("Error pruning extract #{inspect(data)}: #{inspect(e)}")
-      end
-    end
+    write_manifest!(:ok)
   end
 
   @doc false

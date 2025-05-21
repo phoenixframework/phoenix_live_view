@@ -202,7 +202,7 @@ defmodule Phoenix.LiveView.TagEngine do
   def handle_body(state) do
     %{tokens: tokens, file: file, cont: cont, source: source, caller: caller} = state
     tokens = Tokenizer.finalize(tokens, file, cont, source)
-    tokens = Tokenizer.process_extracts(tokens, file: file, caller: caller)
+    tokens = Tokenizer.process_macro_components(tokens, file: file, caller: caller)
 
     token_state =
       state
