@@ -398,6 +398,13 @@ export default class View {
     this.flash = null;
     if (this.root === this) {
       this.formsForRecovery = this.getFormsForRecovery();
+      const keys = Object.keys(this.formsForRecovery);
+      keys.map((id) => {
+        const oldForm = this.el.querySelector(`form#${id}`);
+        if (oldForm) {
+          DOM.deepCopyPrivates(this.formsForRecovery[id], oldForm);
+        }
+      }, this);
     }
     if (this.isMain() && window.history.state === null) {
       // set initial history entry if this is the first page load (no history)
