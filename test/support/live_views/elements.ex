@@ -5,7 +5,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
 
   def render(assigns) do
     ~H"""
-    {# lookups}
+    <%!-- lookups --%>
     <div id="last-event">{@event}</div>
     <div id="scoped-render"><span>This</span> is a div</div>
     <div>This</div>
@@ -17,7 +17,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       <span> whitespace</span>
     </span>
 
-    {# basic render_*}
+    <%!-- basic render_* --%>
     <span id="span-no-attr">This is a span</span>
 
     <span id="span-blur-no-value" phx-blur="span-blur">This is a span</span>
@@ -86,13 +86,13 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       This is a span
     </span>
 
-    {# link handling}
+    <%!-- link handling --%>
     <a id="a-no-attr">No href link</a>
     <a href="/" id="click-a" phx-click="link">Regular Link</a>
     <a href="/" id="redirect-a">Regular Link</a>
     <.link navigate="/example" id="live-redirect-a">Live redirect</.link>
     <.link navigate="/example" id="live-redirect-replace-a" replace>Live redirect</.link>
-    {# unrelated phx-click does not disable patching}
+    <%!-- unrelated phx-click does not disable patching --%>
     <.link patch="/elements?from=uri" id="live-patch-a" phx-click={JS.dispatch("noop")}>
       Live patch
     </.link>
@@ -125,11 +125,13 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       Last one wins
     </button>
 
-    {# hooks}
+    <%!-- hooks --%>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
     <section phx-hook="Example" id="hook-section-2" class="idless-hook">Section</section>
 
-    {# forms}
+    <ul id="posts" phx-update="stream" phx-viewport-top="prev-page" phx-viewport-bottom="next-page" />
+
+    <%!-- forms --%>
     <a id="a-no-form" phx-change="hello" phx-submit="world">Change</a>
     <form id="empty-form" phx-change="form-change" phx-submit="form-submit"></form>
     <form
@@ -259,7 +261,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
     </select>
     <button form="named" name="btn" type="submit" value="x">Submit</button>
 
-    {# @page_title assign is unique}
+    <%!-- @page_title assign is unique --%>
     <svg>
       <title>SVG with title</title>
     </svg>

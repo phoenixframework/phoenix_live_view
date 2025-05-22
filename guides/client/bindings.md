@@ -29,6 +29,8 @@ callback, for example:
 | [Rate Limiting](#rate-limiting-events-with-debounce-and-throttle) | `phx-debounce`, `phx-throttle` |
 | [Static tracking](`Phoenix.LiveView.static_changed?/1`) | `phx-track-static` |
 
+If you need to trigger commands actions via JavaScript, see [JavaScript interoperability](js-interop.md#js-commands).
+
 ## Click Events
 
 The `phx-click` binding is used to send click events to the server.
@@ -434,9 +436,8 @@ Our `paginate_posts` function fetches a page of posts, and determines if the use
 <ul
   id="posts"
   phx-update="stream"
-  phx-viewport-top={@page > 1 && "prev-page"}
-  phx-viewport-bottom={!@end_of_timeline? && "next-page"}
-  phx-page-loading
+  phx-viewport-top={@page > 1 && JS.push("prev-page", page_loading: true)}
+  phx-viewport-bottom={!@end_of_timeline? && JS.push("next-page", page_loading: true)}
   class={[
     if(@end_of_timeline?, do: "pb-10", else: "pb-[calc(200vh)]"),
     if(@page == 1, do: "pt-10", else: "pt-[calc(200vh)]")
@@ -474,3 +475,11 @@ end
 ```
 
 This code simply calls the `paginate_posts` function we defined as our first step, using the current or next page to drive the results. Notice that we match on a special `"_overran" => true` parameter in our `"prev-page"` event. The viewport events send this parameter when the user has "overran" the viewport top or bottom. Imagine the case where the user is scrolling back up through many pages of results, but grabs the scrollbar and returns immediately to the top of the page. This means our `<ul id="posts">` container was overrun by the top of the viewport, and we need to reset the the UI to page the first page.
+
+When testing, you can use `Phoenix.LiveViewTest.render_hook/3` to test the viewport events:
+
+```elixir
+view
+|> element("#posts")
+|> render_hook("next-page")
+```

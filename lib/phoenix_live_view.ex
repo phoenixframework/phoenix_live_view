@@ -1121,9 +1121,30 @@ defmodule Phoenix.LiveView do
   @doc """
   Accesses the connect params sent by the client for use on connected mount.
 
-  Connect params are only sent when the client connects to the server and
-  only remain available during mount. `nil` is returned when called in a
-  disconnected state and a `RuntimeError` is raised if called after mount.
+  Connect params are sent from the client on every connection and reconnection.
+  The parameters in the client can be computed dynamically, allowing you to pass
+  client state to the server. For example, you could use it to compute and pass
+  the user time zone from a JavaScript client:
+
+  ```javascript
+  let liveSocket = new LiveSocket("/live", Socket, {
+    longPollFallbackMs: 2500,
+    params: (_liveViewName) => {
+      return {
+        _csrf_token: csrfToken,
+        time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+    }
+  })
+  ```
+
+  By computing the parameters with a function, reconnections will reevalute
+  the code, allowing you to fetch the latest data.
+
+  On the LiveView, you will use `get_connect_params/1` to read the data,
+  which only remains available during mount. `nil` is returned when called
+  in a disconnected state and a `RuntimeError` is raised if called after
+  mount.
 
   ## Reserved params
 
@@ -1608,7 +1629,7 @@ defmodule Phoenix.LiveView do
 
   ```javascript
   /**
-   * @type {Object.<string, import("phoenix_live_view").ViewHook>}
+   * @type {import("phoenix_live_view").HooksOption}
    */
   let Hooks = {}
   Hooks.ClientHook = {
@@ -1731,7 +1752,7 @@ defmodule Phoenix.LiveView do
   the server from overwhelming the client with new results while also opening up
   powerful features like virtualized infinite scrolling. See a complete
   bidirectional infinite scrolling example with stream limits in the
-  [scroll events guide](bindings.md#scroll-events-and-infinite-stream-pagination)
+  [scroll events guide](bindings.md#scroll-events-and-infinite-pagination)
 
   When a stream exceeds the limit on the client, the existing items will be pruned
   based on the number of items in the stream container and the limit direction. A
@@ -1813,6 +1834,9 @@ defmodule Phoenix.LiveView do
   </table>
   ```
 
+  It is important to set a unique ID on the empty row, otherwise it cannot be tracked
+  in the stream container and subsequent patches will duplicate the node.
+
   ## Non-stream items in stream containers
 
   In the section on handling the empty case, we showed how to render a message when
@@ -1821,15 +1845,17 @@ defmodule Phoenix.LiveView do
   Note that for non-stream items inside a `phx-update="stream"` container, the following
   needs to be considered:
 
-    1. Items can be added and updated, but not removed, even if the stream is reset.
+    1. Non-stream items must have a unique DOM id.
 
-  This means that if you try to conditionally render a non-stream item inside a stream container,
-  it won't be removed if it was rendered once.
+    2. Items can be added and updated, but not removed, even if the stream is reset.
 
-    2. Items are affected by the `:at` option.
+       This means that if you try to conditionally render a non-stream item inside a stream container,
+       it won't be removed if it was rendered once.
 
-  For example, when you render a non-stream item at the beginning of the stream container and then
-  prepend items (with `at: 0`) to the stream, the non-stream item will be pushed down.
+    3. Items are affected by the `:at` option.
+
+       For example, when you render a non-stream item at the beginning of the stream container and then
+       prepend items (with `at: 0`) to the stream, the non-stream item will be pushed down.
 
   """
   @spec stream(
@@ -2112,7 +2138,7 @@ defmodule Phoenix.LiveView do
 
   Wraps your function in a task linked to the caller, errors are wrapped.
   Each key passed to `assign_async/3` will be assigned to
-  an `%AsyncResult{}` struct holding the status of the operation
+  an `Phoenix.LiveView.AsyncResult` struct holding the status of the operation
   and the result when the function completes.
 
   The task is only started when the socket is connected.
@@ -2125,15 +2151,17 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-      def mount(%{"slug" => slug}, _, socket) do
-        {:ok,
-         socket
-         |> assign(:foo, "bar")
-         |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)
-         |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
-      end
+  ```elixir
+  def mount(%{"slug" => slug}, _, socket) do
+    {:ok,
+      socket
+      |> assign(:foo, "bar")
+      |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)
+      |> assign_async([:profile, :rank], fn -> {:ok, %{profile: ..., rank: ...}} end)}
+  end
+  ```
 
-  See the moduledoc for more information.
+  See [Async Operations](#module-async-operations) for more information.
 
   ## `assign_async/3` and `send_update/3`
 
@@ -2142,11 +2170,13 @@ defmodule Phoenix.LiveView do
   since `send_update/2` assumes it is running inside the LiveView process.
   The solution is to explicitly send the update to the LiveView:
 
-      parent = self()
-      assign_async(socket, :org, fn ->
-        # ...
-        send_update(parent, Component, data)
-      end)
+  ```elixir
+  parent = self()
+  assign_async(socket, :org, fn ->
+    # ...
+    send_update(parent, Component, data)
+  end)
+  ```
 
   ## Testing async operations
 
@@ -2154,14 +2184,19 @@ defmodule Phoenix.LiveView do
   `Phoenix.LiveViewTest.render_async/2` to ensure the test waits until the async operations
   are complete before proceeding with assertions or before ending the test. For example:
 
-      {:ok, view, _html} = live(conn, "/my_live_view")
-      html = render_async(view)
-      assert html =~ "My assertion"
+  ```elixir
+  {:ok, view, _html} = live(conn, "/my_live_view")
+  html = render_async(view)
+  assert html =~ "My assertion"
+  ```
 
   Not calling `render_async/2` to ensure all async assigns have finished might result in errors in
   cases where your process has side effects:
 
-      [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
+  ```
+  [error] MyXQL.Connection (#PID<0.308.0>) disconnected: ** (DBConnection.ConnectionError) client #PID<0.794.0>
+  ```
+
   """
   defmacro assign_async(socket, key_or_keys, func, opts \\ []) do
     Async.assign_async(socket, key_or_keys, func, opts, __CALLER__)

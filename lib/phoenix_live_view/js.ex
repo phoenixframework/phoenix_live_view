@@ -13,6 +13,8 @@ defmodule Phoenix.LiveView.JS do
   rich `push` API, for extending the default `phx-` binding pushes with
   options to customize targets, loading states, and additional payload values.
 
+  If you need to trigger these commands via JavaScript, see [JavaScript interoperability](js-interop.md#js-commands).
+
   ## Client Utility Commands
 
   The following utilities are included:
@@ -23,6 +25,7 @@ defmodule Phoenix.LiveView.JS do
     * `set_attribute` - Set an attribute on elements
     * `remove_attribute` - Remove an attribute from elements
     * `toggle_attribute` - Sets or removes element attribute based on attribute presence.
+    * `ignore_attributes` - Marks attributes as ignored, skipping them when patching the DOM.
     * `show` - Show elements, with optional transitions
     * `hide` - Hide elements, with optional transitions
     * `toggle` - Shows or hides elements based on visibility, with optional transitions
@@ -203,7 +206,9 @@ defmodule Phoenix.LiveView.JS do
       phx:page-loading-stop events for this push. Defaults to `false`.
     * `:value` - A map of values to send to the server. These values will be
       merged over any `phx-value-*` attributes that are present on the element.
-      All keys will be treated as strings when merging.
+      All keys will be treated as strings when merging. When used on a form event
+      like `phx-change` or `phx-submit`, the precedence is
+      `JS.push value > phx-value-* > input value`.
 
   ## Examples
 
@@ -261,6 +266,9 @@ defmodule Phoenix.LiveView.JS do
       with the client event. The details will be available in the
       `event.detail` attribute for event listeners.
     * `:bubbles` – A boolean flag to bubble the event or not. Defaults to `true`.
+    * `:blocking` - A boolean flag to block the UI until the event handler calls `event.detail.done()`.
+      The done function is injected by LiveView and *must* be called eventually to unblock the UI.
+      This is useful to integrate with third party JavaScript based animation libraries.
 
   ## Examples
 
@@ -278,7 +286,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `dispatch/2`."
   def dispatch(%JS{} = js, event, opts) do
-    opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles])
+    opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles, :blocking])
     args = [event: event, to: opts[:to]]
 
     args =
@@ -292,6 +300,21 @@ defmodule Phoenix.LiveView.JS do
         :error ->
           args
       end
+
+    if opts[:blocking] do
+      case opts[:detail] do
+        map when is_map(map) and (is_map_key(map, "done") or is_map_key(map, :done)) ->
+          raise ArgumentError, """
+          the detail map passed to JS.dispatch must not contain a `done` key
+          when `blocking: true` is used!
+
+          Got: #{inspect(map)}
+          """
+
+        _ ->
+          :ok
+      end
+    end
 
     args =
       case {event, Keyword.fetch(opts, :detail)} do
@@ -314,6 +337,15 @@ defmodule Phoenix.LiveView.JS do
           Keyword.put(args, :detail, detail)
 
         {_, :error} ->
+          args
+      end
+
+    args =
+      case Keyword.get(opts, :blocking) do
+        true ->
+          Keyword.put(args, :blocking, opts[:blocking])
+
+        _ ->
           args
       end
 
@@ -822,6 +854,56 @@ defmodule Phoenix.LiveView.JS do
   def toggle_attribute(%JS{} = js, {attr, val1, val2}, opts) when is_list(opts) do
     opts = validate_keys(opts, :toggle_attribute, [:to])
     put_op(js, "toggle_attr", to: opts[:to], attr: [attr, val1, val2])
+  end
+
+  @doc """
+  Mark attributes as ignored, skipping them when patching the DOM.
+
+  Accepts a single attribute name or a list of attribute names.
+  An asterisk `*` can be used as a wildcard.
+
+  Once set, the given attributes will not be patched across LiveView updates.
+  This includes attributes that are removed by the server.
+
+  If you need to "unmark" an attribute, you need to call `ignore_attributes/1` again
+  with an updated list of attributes.
+
+  This is mostly useful in combination with the `phx-mounted` binding, for example:
+
+  ```heex
+  <dialog phx-mounted={JS.ignore_attributes("open")}>
+    ...
+  </dialog>
+  ```
+
+  ## Options
+
+    * `:to` - An optional DOM selector to select the target element.
+      Defaults to the interacted element. See the `DOM selectors`
+      section for details.
+
+  ## Examples
+
+      JS.ignore_attributes(["open", "data-*"], to: "#my-dialog")
+
+  """
+
+  def ignore_attributes(attrs) when is_list(attrs) or is_binary(attrs),
+    do: ignore_attributes(%JS{}, attrs, [])
+
+  def ignore_attributes(attrs, opts) when (is_list(attrs) or is_binary(attrs)) and is_list(opts),
+    do: ignore_attributes(%JS{}, attrs, opts)
+
+  def ignore_attributes(%JS{} = js, attrs, opts)
+      when (is_list(attrs) or is_binary(attrs)) and is_list(opts) do
+    attrs =
+      case attrs do
+        attr when is_binary(attr) -> [attr]
+        attrs when is_list(attrs) -> attrs
+      end
+
+    opts = validate_keys(opts, :ignore_attributes, [:attrs, :to])
+    put_op(js, "ignore_attrs", to: opts[:to], attrs: attrs)
   end
 
   @doc """

@@ -328,8 +328,8 @@ defmodule Phoenix.Component do
 
       def unordered_list(assigns) do
         ~H"""
-        <ul :for={entry <- @entries}>
-          <li>{render_slot(@inner_block, entry)}</li>
+        <ul>
+          <li :for={entry <- @entries}>{render_slot(@inner_block, entry)}</li>
         </ul>
         """
       end
@@ -946,6 +946,9 @@ defmodule Phoenix.Component do
 
   * When rendering a LiveView inside a regular (non-live) controller/view.
 
+  Most other cases for shared functionality, including state management and user interactions, can be
+  [achieved with function components or LiveComponents](welcome.html#compartmentalize-state-markup-and-events-in-liveview)
+
   ## Options
 
   * `:session` - a map of binary keys with extra session data to be serialized and sent
@@ -966,8 +969,9 @@ defmodule Phoenix.Component do
   * `:sticky` - an optional flag to maintain the LiveView across live redirects, even if it is
   nested within another LiveView. Note that this only works for LiveViews that are in the same
   [live_session](`Phoenix.LiveView.Router.live_session/3`).
-  If you are rendering the sticky view within make sure that the sticky view itself does not use
-  the same layout. You can do so by returning `{:ok, socket, layout: false}` from mount.
+  If you are rendering the sticky view within another LiveView, make sure that the sticky view
+  itself does not use the same layout. You can do so by returning `{:ok, socket, layout: false}`
+  from mount.
 
   ## Examples
 
@@ -1011,6 +1015,11 @@ defmodule Phoenix.Component do
   Beware if you set this to `:body`, as any content injected inside the body
   (such as `Phoenix.LiveReload` features) will be discarded once the LiveView
   connects
+
+  ## Testing
+
+  Note that `render_click/1` and other testing functions will send events to the root LiveView, and you will want to
+  `find_live_child/2` to interact with nested LiveViews in your live tests.
   """
   def live_render(conn_or_socket, view, opts \\ [])
 
@@ -1259,8 +1268,8 @@ defmodule Phoenix.Component do
   ### When connected
 
   LiveView is also able to share assigns via `assign_new` with children LiveViews,
-  as long as the child LiveView is also mounted when the parent LiveView is mounted.
-  Let's see an example.
+  as long as the child LiveView is also mounted when the parent LiveView is mounted
+  and the child LiveView is not rendered with `sticky: true`. Let's see an example.
 
   If the parent LiveView defines a `:current_user` assign and the child LiveView also
   uses `assign_new/3` to fetch the `:current_user` in its `mount/3` callback, as in
@@ -1688,10 +1697,17 @@ defmodule Phoenix.Component do
     unused_field_str = "_unused_#{field}"
 
     case params do
-      %{^field_str => _, ^unused_field_str => _} -> false
-      %{^field_str => %{} = nested} -> Enum.any?(Map.keys(nested), &used_param?(nested, &1))
-      %{^field_str => _val} -> true
-      %{} -> false
+      %{^field_str => _, ^unused_field_str => _} ->
+        false
+
+      %{^field_str => %{} = nested} when not is_struct(nested) ->
+        Enum.any?(Map.keys(nested), &used_param?(nested, &1))
+
+      %{^field_str => _val} ->
+        true
+
+      %{} ->
+        false
     end
   end
 
@@ -2169,7 +2185,7 @@ defmodule Phoenix.Component do
     default: nil,
     doc:
       "The default title to use if the inner block is empty on regular or connected mounts." <>
-        "*Note*: empty titles, such as `nil` or an empty string, fallsback to the default value."
+        " *Note*: empty titles, such as `nil` or an empty string, fall back to the default value."
   )
 
   attr.(:suffix, :string, default: nil, doc: "A suffix added after the content of `inner_block`.")
@@ -2711,6 +2727,14 @@ defmodule Phoenix.Component do
     """
   )
 
+  attr.(:skip_persistent_id, :boolean,
+    default: false,
+    doc: """
+    Skip the automatic rendering of hidden _persistent_id fields used for reordering
+    inputs.
+    """
+  )
+
   attr.(:options, :list,
     default: [],
     doc: """
@@ -2733,11 +2757,42 @@ defmodule Phoenix.Component do
       |> Keyword.merge(assigns.options)
 
     forms = parent_form.impl.to_form(parent_form.source, parent_form, field_name, options)
+
+    forms =
+      case assigns do
+        %{skip_persistent_id: true} ->
+          forms
+
+        _ ->
+          apply_persistent_id(
+            parent_form,
+            forms,
+            field_name,
+            options
+          )
+      end
+
+    assigns = assign(assigns, :forms, forms)
+
+    ~H"""
+    <%= for finner <- @forms do %>
+      <%= if !@skip_hidden do %>
+        <%= for {name, value_or_values} <- finner.hidden,
+                name = name_for_value_or_values(finner, name, value_or_values),
+                value <- List.wrap(value_or_values) do %>
+          <input type="hidden" name={name} value={value} />
+        <% end %>
+      <% end %>
+      {render_slot(@inner_block, finner)}
+    <% end %>
+    """
+  end
+
+  defp apply_persistent_id(parent_form, forms, field_name, options) do
     seen_ids = for f <- forms, vid = f.params[@persistent_id], into: %{}, do: {vid, true}
-    acc = {seen_ids, 0}
 
     {forms, _} =
-      Enum.map_reduce(forms, acc, fn
+      Enum.map_reduce(forms, {seen_ids, 0}, fn
         %Phoenix.HTML.Form{params: params} = form, {seen_ids, index} ->
           id =
             case params do
@@ -2766,20 +2821,7 @@ defmodule Phoenix.Component do
           {new_form, {Map.put(seen_ids, id, true), index + 1}}
       end)
 
-    assigns = assign(assigns, :forms, forms)
-
-    ~H"""
-    <%= for finner <- @forms do %>
-      <%= if !@skip_hidden do %>
-        <%= for {name, value_or_values} <- finner.hidden,
-                name = name_for_value_or_values(finner, name, value_or_values),
-                value <- List.wrap(value_or_values) do %>
-          <input type="hidden" name={name} value={value} />
-        <% end %>
-      <% end %>
-      {render_slot(@inner_block, finner)}
-    <% end %>
-    """
+    forms
   end
 
   defp next_id(idx, %{} = seen_ids) do
@@ -3178,8 +3220,16 @@ defmodule Phoenix.Component do
 
   [INSERT LVATTRDOCS]
 
-  Note the `id` attribute cannot be overwritten, but you can create a label with a `for` attribute
-  pointing to the UploadConfig `ref`.
+  ## Customizing the Label
+
+  The `id` attribute cannot be overwritten, but you can create a label with a `for` attribute
+  pointing to the UploadConfig `ref`:
+
+  ```heex
+  <label for={@uploads.avatar.ref}>
+    <.live_file_input upload={@uploads.avatar} />
+  </label>
+  ```
 
   ## Drag and Drop
 
@@ -3188,10 +3238,9 @@ defmodule Phoenix.Component do
   for drag and drop support:
 
   ```heex
-  <div class="container" phx-drop-target={@uploads.avatar.ref}>
-    <!-- ... -->
+  <label for={@uploads.avatar.ref} phx-drop-target={@uploads.avatar.ref}>
     <.live_file_input upload={@uploads.avatar} />
-  </div>
+  </label>
   ```
 
   ## Examples
@@ -3338,15 +3387,26 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Renders an async assign with slots for the different loading states.
+  Renders a `Phoenix.LiveView.AsyncResult` struct (e.g. from `Phoenix.LiveView.assign_async/4`) 
+  with slots for the different loading states.
   The result state takes precedence over subsequent loading and failed
   states.
 
-  *Note*: The inner block receives the result of the async assign as a :let.
-  The let is only accessible to the inner block and is not in scope to the
-  other slots.
+  > #### Note {: .info}
+  >
+  > The inner block receives the result of the async assign as a `:let`.
+  > The let is only accessible to the inner block and is not in scope to the
+  > other slots.
 
   ## Examples
+
+  ```elixir
+  def mount(%{"slug" => slug}, _, socket) do
+    {:ok,
+      socket
+      |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)}
+  end
+  ```
 
   ```heex
   <.async_result :let={org} assign={@org}>
@@ -3359,6 +3419,8 @@ defmodule Phoenix.Component do
     <% end %>
   </.async_result>
   ```
+
+  See [Async Operations](`m:Phoenix.LiveView#module-async-operations`) for more information.
 
   To display loading and failed states again on subsequent `assign_async` calls,
   reset the assign to a result-free `%AsyncResult{}`:

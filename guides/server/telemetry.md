@@ -300,3 +300,15 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             event: String.t(),
             params: unsigned_params
           }
+
+  * `[:phoenix, :live_component, :destroyed]` - Dispatched by a `Phoenix.LiveComponent`
+    after it is destroyed. No measurement.
+
+    * Metadata:
+
+        %{
+          socket: Phoenix.LiveView.Socket.t,
+          component: atom,
+          cid: integer(),
+          live_view_socket: Phoenix.LiveView.Socket.t
+        }

@@ -994,12 +994,19 @@ defmodule Phoenix.Component.Declarative do
     end
   end
 
-  defp build_attr_values_or_examples(%{opts: [values: values]}) do
-    ["Must be one of ", build_literals_list(values, "or"), ?.]
-  end
+  defp build_attr_values_or_examples(%{opts: opts} = attr) do
+    space_before = if attr[:doc] || opts[:default], do: ?\s, else: []
 
-  defp build_attr_values_or_examples(%{opts: [examples: examples]}) do
-    ["Examples include ", build_literals_list(examples, "and"), ?.]
+    cond do
+      Keyword.get(opts, :values) ->
+        [space_before, "Must be one of ", build_literals_list(opts[:values], "or"), ?.]
+
+      Keyword.get(opts, :examples) ->
+        [space_before, "Examples include ", build_literals_list(opts[:examples], "and"), ?.]
+
+      true ->
+        []
+    end
   end
 
   defp build_attr_values_or_examples(_attr) do

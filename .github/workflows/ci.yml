@@ -58,7 +58,7 @@ jobs:
             deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
 
       - name: Install dependencies
-        run: mix deps.get --only test
+        run: mix deps.get
 
       - name: Remove compiled application files
         run: mix clean
@@ -74,6 +74,11 @@ jobs:
         if: ${{ matrix.lint }} or ${{ matrix.elixir == 'main' }}
         env:
           MIX_ENV: test
+
+      - name: Compile without optional deps
+        run: mix compile --no-optional-deps
+        env:
+          MIX_ENV: dev
 
       - name: Check if formatted
         run: mix format --check-formatted
@@ -137,11 +142,17 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: npm install and test
-        run: npm run setup && npm run js:test
+      - name: setup JS
+        run: npm run setup
 
-      - name: eslint
-        run: npx eslint
+      - name: typecheck
+        run: npm run build && npm run typecheck:tests
+
+      - name: check lint and format
+        run: npm run js:lint && npm run js:format.check
+
+      - name: test
+        run: npm run js:test
 
       - uses: actions/upload-artifact@v4
         if: always()
@@ -161,7 +172,7 @@ jobs:
 
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.49.1-jammy
+      image: mcr.microsoft.com/playwright:v1.51.1-jammy
     env:
       ImageOS: ubuntu22
       HOME: /root

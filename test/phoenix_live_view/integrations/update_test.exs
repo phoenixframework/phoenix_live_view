@@ -3,7 +3,7 @@ defmodule Phoenix.LiveView.UpdateTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
-  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
@@ -39,6 +39,10 @@ defmodule Phoenix.LiveView.UpdateTest do
   end
 
   defp find_time_zones(html, zones) do
-    html |> DOM.parse() |> DOM.all(Enum.join(for(tz <- zones, do: "#tz-#{tz}"), ","))
+    ids = Enum.map(zones, fn zone -> "tz-" <> zone end)
+
+    html
+    |> TreeDOM.normalize_to_tree(sort_attributes: true)
+    |> TreeDOM.all(fn node -> TreeDOM.attribute(node, "id") in ids end)
   end
 end

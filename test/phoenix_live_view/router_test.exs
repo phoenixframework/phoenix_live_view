@@ -4,14 +4,15 @@ defmodule Phoenix.LiveView.RouterTest do
   import Phoenix.LiveViewTest
 
   alias Phoenix.LiveView.{Route, Session}
-  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.{DOM, TreeDOM}
   alias Phoenix.LiveViewTest.Support.{Endpoint, DashboardLive}
   alias Phoenix.LiveViewTest.Support.Router.Helpers, as: Routes
 
   @endpoint Endpoint
 
   def verified_session(html) do
-    [{id, session_token, static_token} | _] = html |> DOM.parse() |> DOM.find_live_views()
+    [{id, session_token, static_token} | _] =
+      html |> DOM.parse_document() |> elem(1) |> TreeDOM.find_live_views()
 
     {:ok, live_session} =
       Session.verify_session(@endpoint, "lv:#{id}", session_token, static_token)
@@ -86,7 +87,6 @@ defmodule Phoenix.LiveView.RouterTest do
                )
 
       assert route.live_session.name == :test
-      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() == %{}
     end
@@ -102,7 +102,6 @@ defmodule Phoenix.LiveView.RouterTest do
                )
 
       assert route.live_session.name == :admin
-      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() ==
                %{"admin" => true}
@@ -119,7 +118,6 @@ defmodule Phoenix.LiveView.RouterTest do
                )
 
       assert route.live_session.name == :mfa
-      assert route.live_session.vsn
 
       assert conn |> get(path) |> html_response(200) |> verified_session() ==
                %{"inlined" => true, "called" => true}
@@ -323,7 +321,7 @@ defmodule Phoenix.LiveView.RouterTest do
     test "classifies route as external when same view, but different session" do
       # previously, a patch to the same LV, but a different path in a different live_session
       # would succeed when it should not
-      {_, %Route{live_session: %{vsn: vsn}}} =
+      {_, %Route{live_session: %{name: :test}}} =
         Route.live_link_info_without_checks(
           @endpoint,
           Phoenix.LiveViewTest.Support.Router,
@@ -333,7 +331,7 @@ defmodule Phoenix.LiveView.RouterTest do
       socket = %Phoenix.LiveView.Socket{
         router: Phoenix.LiveViewTest.Support.Router,
         endpoint: @endpoint,
-        private: %{live_session_name: :test, live_session_vsn: vsn}
+        private: %{live_session_name: :test}
       }
 
       assert {:external, _} =

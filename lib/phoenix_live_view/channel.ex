@@ -245,7 +245,7 @@ defmodule Phoenix.LiveView.Channel do
 
   def handle_info(%Message{topic: topic, event: "event"} = msg, %{topic: topic} = state) do
     %{"value" => raw_val, "event" => event, "type" => type} = payload = msg.payload
-    val = decode_event_type(type, raw_val)
+    val = decode_event_type(type, raw_val, msg.payload)
 
     if cid = msg.payload["cid"] do
       component_handle(state, cid, msg.ref, fn component_socket, component ->
@@ -408,6 +408,25 @@ defmodule Phoenix.LiveView.Channel do
     {:noreply, register_entry_upload(state, from, info)}
   end
 
+  # Phoenix.LiveView.Debug.socket/1
+  def handle_call({@prefix, :debug_get_socket}, _from, state) do
+    {:reply, {:ok, state.socket}, state}
+  end
+
+  # Phoenix.LiveView.Debug.live_components/1
+  def handle_call(
+        {@prefix, :debug_live_components},
+        _from,
+        %{components: {components, _, _}} = state
+      ) do
+    component_info =
+      Enum.map(components, fn {cid, {mod, id, assigns, private, _prints}} ->
+        %{id: id, cid: cid, module: mod, assigns: assigns, children_cids: private.children_cids}
+      end)
+
+    {:reply, {:ok, component_info}, state}
+  end
+
   def handle_call(msg, from, %{socket: socket} = state) do
     case socket.view.handle_call(msg, from, socket) do
       {:reply, reply, %Socket{} = new_socket} ->
@@ -472,7 +491,8 @@ defmodule Phoenix.LiveView.Channel do
     %{view: view} = socket
 
     if exported?(view, :code_change, 3) do
-      view.code_change(old, socket, extra)
+      {:ok, socket} = view.code_change(old, socket, extra)
+      {:ok, %{state | socket: socket}}
     else
       {:ok, state}
     end
@@ -777,13 +797,14 @@ defmodule Phoenix.LiveView.Channel do
     )
   end
 
-  defp decode_event_type("form", url_encoded) do
+  defp decode_event_type("form", url_encoded, raw_payload) do
     url_encoded
     |> Plug.Conn.Query.decode()
+    |> maybe_merge_meta(raw_payload)
     |> decode_merge_target()
   end
 
-  defp decode_event_type(_, value), do: value
+  defp decode_event_type(_, value, _raw_payload), do: value
 
   defp decode_merge_target(%{"_target" => target} = params) when is_list(target), do: params
 
@@ -793,6 +814,12 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp decode_merge_target(%{} = params), do: params
+
+  defp maybe_merge_meta(value, %{"meta" => meta}) when is_map(value) do
+    Map.merge(value, meta)
+  end
+
+  defp maybe_merge_meta(value, _raw_payload), do: value
 
   defp gather_keys(%{} = map, acc) do
     case Enum.at(map, 0) do
@@ -869,7 +896,13 @@ defmodule Phoenix.LiveView.Channel do
         new_state
         |> push_pending_events_on_redirect(new_socket)
         |> push_live_redirect(opts, ref)
-        |> stop_shutdown_redirect(:live_redirect, opts)
+        |> then(fn state ->
+          if new_socket.sticky? do
+            {:noreply, drop_redirect(state)}
+          else
+            stop_shutdown_redirect(state, :live_redirect, opts)
+          end
+        end)
 
       {:live, :patch, %{to: _to, kind: _kind} = opts} when root_pid == self() ->
         {params, action} = patch_params_and_action!(new_socket, opts)
@@ -1075,6 +1108,10 @@ defmodule Phoenix.LiveView.Channel do
             with {:ok, %Session{view: view} = new_verified, route, url} <-
                    authorize_session(verified, endpoint, params),
                  {:ok, config} <- load_live_view(view) do
+              # TODO: replace with Process.put_label/2 when we require Elixir 1.17
+              Process.put(:"$process_label", {Phoenix.LiveView, view, phx_socket.topic})
+              Process.put(:"$phx_transport_pid", phx_socket.transport_pid)
+
               verified_mount(
                 new_verified,
                 config,
@@ -1170,7 +1207,8 @@ defmodule Phoenix.LiveView.Channel do
       parent_pid: parent,
       root_pid: root_pid || self(),
       id: id,
-      router: router
+      router: router,
+      sticky?: params["sticky"]
     }
 
     {params, host_uri, action} =
@@ -1279,8 +1317,7 @@ defmodule Phoenix.LiveView.Channel do
     %{
       root_view: root_view,
       assign_new: assign_new,
-      live_session_name: live_session_name,
-      live_session_vsn: live_session_vsn
+      live_session_name: live_session_name
     } = session
 
     {:ok,
@@ -1291,8 +1328,7 @@ defmodule Phoenix.LiveView.Channel do
        lifecycle: lifecycle,
        root_view: root_view,
        live_temp: %{},
-       live_session_name: live_session_name,
-       live_session_vsn: live_session_vsn
+       live_session_name: live_session_name
      }}
   end
 
@@ -1305,8 +1341,7 @@ defmodule Phoenix.LiveView.Channel do
     %{
       root_view: root_view,
       assign_new: assign_new,
-      live_session_name: live_session_name,
-      live_session_vsn: live_session_vsn
+      live_session_name: live_session_name
     } = session
 
     case sync_with_parent(parent, assign_new) do
@@ -1321,8 +1356,7 @@ defmodule Phoenix.LiveView.Channel do
            lifecycle: lifecycle,
            root_view: root_view,
            live_temp: %{},
-           live_session_name: live_session_name,
-           live_session_vsn: live_session_vsn
+           live_session_name: live_session_name
          }}
 
       {:error, :noproc} ->
@@ -1517,12 +1551,21 @@ defmodule Phoenix.LiveView.Channel do
       {deleted_cids, new_components} = Diff.delete_component(cid, acc.components)
 
       canceled_confs =
-        deleted_cids
-        |> Enum.filter(fn deleted_cid -> deleted_cid in upload_cids end)
-        |> Enum.flat_map(fn deleted_cid ->
-          read_socket(acc, deleted_cid, fn c_socket, _ ->
-            {_new_c_socket, canceled_confs} = Upload.maybe_cancel_uploads(c_socket)
-            canceled_confs
+        Enum.flat_map(deleted_cids, fn deleted_cid ->
+          read_socket(acc, deleted_cid, fn c_socket, component ->
+            :telemetry.execute([:phoenix, :live_component, :destroyed], %{}, %{
+              socket: c_socket,
+              component: component,
+              cid: deleted_cid,
+              live_view_socket: acc.socket
+            })
+
+            if deleted_cid in upload_cids do
+              {_new_c_socket, canceled_confs} = Upload.maybe_cancel_uploads(c_socket)
+              canceled_confs
+            else
+              []
+            end
           end)
         end)
 

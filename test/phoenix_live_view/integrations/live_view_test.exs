@@ -3,10 +3,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest.TreeDOM, only: [sigil_X: 2]
 
   alias Phoenix.HTML
   alias Phoenix.LiveView
-  alias Phoenix.LiveViewTest.DOM
+  alias Phoenix.LiveViewTest.{DOM, TreeDOM}
   alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
@@ -17,13 +18,19 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_bad_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
+
+    [{_id, session_token, _static} | _] =
+      html |> DOM.parse_document() |> elem(1) |> TreeDOM.find_live_views()
+
     %{conn | resp_body: String.replace(html, session_token, "badsession")}
   end
 
   defp simulate_outdated_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
+
+    [{_id, session_token, _static} | _] =
+      html |> DOM.parse_document() |> elem(1) |> TreeDOM.find_live_views()
+
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
     outdated_token = Phoenix.Token.sign(@endpoint, salt, {0, %{}})
     %{conn | resp_body: String.replace(html, session_token, outdated_token)}
@@ -31,7 +38,10 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
   defp simulate_expired_token_on_page(%Plug.Conn{} = conn) do
     html = html_response(conn, 200)
-    [{_id, session_token, _static} | _] = html |> DOM.parse() |> DOM.find_live_views()
+
+    [{_id, session_token, _static} | _] =
+      html |> DOM.parse_document() |> elem(1) |> TreeDOM.find_live_views()
+
     salt = Phoenix.LiveView.Utils.salt!(@endpoint)
 
     expired_token =
@@ -102,7 +112,9 @@ defmodule Phoenix.LiveView.LiveViewTest do
 
       {:ok, view, html} = live(conn)
       assert is_pid(view.pid)
-      {_tag, _attrs, children} = html |> DOM.parse() |> DOM.by_id!(view.id)
+
+      {_tag, _attrs, children} =
+        html |> TreeDOM.normalize_to_tree() |> TreeDOM.by_id!(view.id)
 
       assert children == [
                {"p", [], ["Redirect: none"]},
@@ -279,11 +291,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
         assert [
                  {"article",
                   [
-                    {"id", id},
+                    {"class", "thermo"},
                     {"data-phx-main", _},
                     {"data-phx-session", _},
                     {"data-phx-static", _},
-                    {"class", "thermo"}
+                    {"id", id}
                   ],
                   [
                     _p1,
@@ -292,14 +304,14 @@ defmodule Phoenix.LiveView.LiveViewTest do
                     _btn_up,
                     {"section",
                      [
-                       {"id", "clock"},
+                       {"class", "clock"},
+                       {"data-phx-parent-id", id},
                        {"data-phx-session", _},
                        {"data-phx-static", _},
-                       {"data-phx-parent-id", id},
-                       {"class", "clock"}
+                       {"id", "clock"}
                      ], _}
                   ]}
-               ] = DOM.parse(html)
+               ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
       end
 
       dom_matcher.(static_html)
@@ -310,7 +322,7 @@ defmodule Phoenix.LiveView.LiveViewTest do
     test "custom DOM container and attributes", %{conn: conn} do
       conn =
         conn
-        |> Plug.Test.init_test_session(%{nest: [container: {:p, class: "clock-flex"}]})
+        |> Plug.Test.init_test_session(%{nest: [container: {:section, class: "clock-flex"}]})
         |> get("/thermo-container")
 
       static_html = html_response(conn, 200)
@@ -320,11 +332,11 @@ defmodule Phoenix.LiveView.LiveViewTest do
         assert [
                  {"span",
                   [
-                    {"id", id},
+                    {"class", "thermo"},
                     {"data-phx-main", _},
                     {"data-phx-session", _},
                     {"data-phx-static", _},
-                    {"class", "thermo"},
+                    {"id", id},
                     {"style", "thermo-flex<script>"}
                   ],
                   [
@@ -332,16 +344,16 @@ defmodule Phoenix.LiveView.LiveViewTest do
                     _p2,
                     _btn_down,
                     _btn_up,
-                    {"p",
+                    {"section",
                      [
-                       {"id", "clock"},
+                       {"class", "clock-flex"},
+                       {"data-phx-parent-id", id},
                        {"data-phx-session", _},
                        {"data-phx-static", _},
-                       {"data-phx-parent-id", id},
-                       {"class", "clock-flex"}
+                       {"id", "clock"}
                      ], _}
                   ]}
-               ] = DOM.parse(html)
+               ] = TreeDOM.normalize_to_tree(html, sort_attributes: true)
       end
 
       dom_matcher.(static_html)
@@ -366,31 +378,31 @@ defmodule Phoenix.LiveView.LiveViewTest do
       GenServer.call(view.pid, {:set, :val, 2})
       GenServer.call(view.pid, {:set, :val, 3})
 
-      assert DOM.parse(render_click(view, :inc)) ==
-               DOM.parse("""
+      assert TreeDOM.normalize_to_tree(render_click(view, :inc)) ==
+               ~X"""
                <p>Redirect: none</p>
                <p>The temp is: 4</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
-               """)
+               """
 
-      assert DOM.parse(render_click(view, :dec)) ==
-               DOM.parse("""
+      assert TreeDOM.normalize_to_tree(render_click(view, :dec)) ==
+               ~X"""
                <p>Redirect: none</p>
                <p>The temp is: 3</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
-               """)
+               """
 
-      [{_, _, child_nodes} | _] = DOM.parse(render(view))
+      [{_, _, child_nodes} | _] = TreeDOM.normalize_to_tree(render(view))
 
       assert child_nodes ==
-               DOM.parse("""
+               ~X"""
                <p>Redirect: none</p>
                <p>The temp is: 3</p>
                <button phx-click="dec">-</button>
                <button phx-click="inc">+</button>
-               """)
+               """
     end
   end
 

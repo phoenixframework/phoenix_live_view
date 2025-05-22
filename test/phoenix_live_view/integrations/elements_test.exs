@@ -229,6 +229,13 @@ defmodule Phoenix.LiveView.ElementsTest do
                    "element selected by \"span#span-no-attr\" does not have phx-hook attribute",
                    fn -> view |> element("span#span-no-attr") |> render_hook("custom-event") end
     end
+
+    test "works with phx-viewport bindings", %{live: view} do
+      assert view |> element("#posts") |> render_hook("prev-page") |> is_binary()
+      assert last_event(view) =~ ~s|prev-page: %{}|
+      assert view |> element("#posts") |> render_hook("next-page") |> is_binary()
+      assert last_event(view) =~ ~s|next-page: %{}|
+    end
   end
 
   describe "render_blur" do
@@ -427,7 +434,7 @@ defmodule Phoenix.LiveView.ElementsTest do
 
     test "phx-change on individual input", %{live: view} do
       assert view
-             |> element("input[name='hello[individual]'")
+             |> element("input[name='hello[individual]']")
              |> render_change(hello: [individual: "123"], _target: "hello[individual]")
 
       assert last_event(view) ==

@@ -335,7 +335,8 @@ defmodule Phoenix.ComponentUnitTest do
       "bday" => %{"day" => "", "month" => "", "year" => ""},
       "published_at" => %{"date" => "", "time" => "", "_unused_date" => "", "_unused_time" => ""},
       "deleted_at" => %{},
-      "inserted_at" => %{"date" => "", "time" => "", "_unused_time" => ""}
+      "inserted_at" => %{"date" => "", "time" => "", "_unused_time" => ""},
+      "date" => DateTime.utc_now()
     }
 
     form = to_form(params, as: "profile", action: :validate)
@@ -343,5 +344,6 @@ defmodule Phoenix.ComponentUnitTest do
     refute used_input?(form[:published_at])
     refute used_input?(form[:deleted_at])
     assert used_input?(form[:inserted_at])
+    assert used_input?(form[:date])
   end
 end

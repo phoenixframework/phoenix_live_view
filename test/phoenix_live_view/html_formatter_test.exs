@@ -521,6 +521,17 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
 
       """,
       """
+      <button class="btn-primary" autofocus disabled> Submit </button>
+      """
+    )
+
+    assert_formatter_output(
+      """
+
+        <button class="btn-primary" autofocus disabled>Submit</button>
+
+      """,
+      """
       <button class="btn-primary" autofocus disabled>Submit</button>
       """
     )
@@ -1428,6 +1439,14 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     """)
 
     assert_formatter_doesnt_change("""
+    <b>{code}: </b>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <b> :{code}</b>
+    """)
+
+    assert_formatter_doesnt_change("""
     <p>
       <b>Foo: </b>bar
     </p>
@@ -1587,12 +1606,12 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_output(
       """
       <p>
-        first first <a class="text-blue-500" href="" target="_blank" attr1="">link</a>second.
+        first <a class="text-blue-500" href="" target="_blank" attr1="">link</a>second.
       </p>
       """,
       """
       <p>
-        first first <a
+        first <a
           class="text-blue-500"
           href=""
           target="_blank"
@@ -1617,6 +1636,25 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
           target="_blank"
           attr1=""
         >link</a>text text text text.
+      </p>
+      """,
+      line_length: 50
+    )
+
+    assert_formatter_output(
+      """
+      <p>
+        <a class="text-blue-500" href="" target="_blank" attr1="">link</a>{code}.
+      </p>
+      """,
+      """
+      <p>
+        <a
+          class="text-blue-500"
+          href=""
+          target="_blank"
+          attr1=""
+        >link</a>{code}.
       </p>
       """,
       line_length: 50
@@ -2238,5 +2276,23 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       </div>
       """)
     end
+  end
+
+  test "supports attribute_formatters" do
+    defmodule UpcaseFormatter do
+      def render_attribute({"upcased", {:string, value, meta}, attr_meta}, _opts) do
+        {"upcased", {:string, String.upcase(value), meta}, attr_meta}
+      end
+    end
+
+    assert_formatter_output(
+      """
+      <div upcased='foo' untouched='bar' unloaded='baz' />
+      """,
+      """
+      <div upcased="FOO" untouched="bar" unloaded="baz" />
+      """,
+      attribute_formatters: %{upcased: UpcaseFormatter, unloaded: Unloaded}
+    )
   end
 end

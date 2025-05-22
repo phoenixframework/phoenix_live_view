@@ -3,7 +3,9 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
   import ExUnit.CaptureIO
   import Phoenix.Component
-  import Phoenix.LiveViewTest.DOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
+  import Phoenix.LiveViewTest.TreeDOM, only: [t2h: 1, sigil_X: 2, sigil_x: 2]
+
+  alias Phoenix.LiveViewTest.TreeDOM
 
   describe "link patch" do
     test "basic usage" do
@@ -369,7 +371,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       csrf_token = Plug.CSRFProtection.get_csrf_token_for("/")
 
       assert t2h(template) ==
-               ~x{<form action="/" method="post"><input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf_token}"></input></form>}
+               ~x{<form action="/" method="post"><input name="_csrf_token" type="hidden" hidden="" value="#{csrf_token}"></input></form>}
     end
 
     test "generates a csrf_token if if an action is set" do
@@ -386,7 +388,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(template) ==
                ~x"""
                <form action="/" method="post">
-                 <input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf_token}"></input>
+                 <input name="_csrf_token" type="hidden" hidden="" value="#{csrf_token}"></input>
                  <input id="foo" name="foo" type="text"></input>
                </form>
                """
@@ -456,8 +458,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
                  class="pretty"
                  phx-change="valid"
                >
-                 <input name="_method" type="hidden" hidden="hidden" value="put">
-                 <input name="_csrf_token" type="hidden" hidden="hidden" value="123">
+                 <input name="_method" type="hidden" hidden="" value="put">
+                 <input name="_csrf_token" type="hidden" hidden="" value="123">
                  <input id="form_foo" name="user[foo]" type="text">
                  [name: "can't be blank"]
 
@@ -482,7 +484,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       csrf = Plug.CSRFProtection.get_csrf_token_for("/")
 
       assert t2h(template) ==
-               ~x{<form method="post" action="/"><input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}"></form>}
+               ~x{<form method="post" action="/"><input name="_csrf_token" type="hidden" hidden="" value="#{csrf}"></form>}
 
       # for anything != get or post we use post and set the hidden _method field
       template = ~H"""
@@ -492,8 +494,8 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(template) ==
                ~x"""
                <form action="/" method="post">
-                 <input name="_method" type="hidden" hidden="hidden" value="PuT">
-                 <input name="_csrf_token" type="hidden" hidden="hidden" value="#{csrf}">
+                 <input name="_method" type="hidden" hidden="" value="PuT">
+                 <input name="_csrf_token" type="hidden" hidden="" value="#{csrf}">
                </form>
                """
     end
@@ -505,7 +507,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} }>
+        <.inputs_for :let={finner} field={f[:inner]}>
           <% 0 = finner.index %>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
         </.inputs_for>
@@ -526,7 +528,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } id="test" as={:name}>
+        <.inputs_for :let={finner} field={f[:inner]} id="test" as={:name}>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
         </.inputs_for>
       </.form>
@@ -542,7 +544,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } as={:name}>
+        <.inputs_for :let={finner} field={f[:inner]} as={:name}>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" />
         </.inputs_for>
       </.form>
@@ -562,7 +564,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } default={%{foo: "123"}}>
+        <.inputs_for :let={finner} field={f[:inner]} default={%{foo: "123"}}>
           <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
         </.inputs_for>
       </.form>
@@ -585,7 +587,6 @@ defmodule Phoenix.LiveView.ComponentsTest do
         <.inputs_for
           :let={finner}
           field={f[:inner]}
-          }
           default={[%{foo: "456"}]}
           prepend={[%{foo: "123"}]}
           append={[%{foo: "789"}]}
@@ -613,15 +614,44 @@ defmodule Phoenix.LiveView.ComponentsTest do
 
       template = ~H"""
       <.form :let={f} as={:myform}>
-        <.inputs_for :let={finner} field={f[:inner]} } options={[foo: "bar"]}>
+        <.inputs_for :let={finner} field={f[:inner]} options={[foo: "bar"]}>
           <p>{finner.options[:foo]}</p>
         </.inputs_for>
       </.form>
       """
 
       html = t2h(template)
-      assert [p] = Floki.find(html, "p")
-      assert Floki.text(p) =~ "bar"
+      assert [p] = TreeDOM.all(html, &(TreeDOM.tag(&1) == "p"))
+      assert TreeDOM.to_text(p) =~ "bar"
+    end
+
+    test "can disable persistent ids" do
+      assigns = %{}
+
+      template = ~H"""
+      <.form :let={f} as={:myform}>
+        <.inputs_for
+          :let={finner}
+          field={f[:inner]}
+          default={[%{foo: "456"}, %{foo: "789"}]}
+          prepend={[%{foo: "123"}]}
+          append={[%{foo: "101112"}]}
+          skip_persistent_id
+        >
+          <input id={finner[:foo].id} name={finner[:foo].name} type="text" value={finner[:foo].value} />
+        </.inputs_for>
+      </.form>
+      """
+
+      assert t2h(template) ==
+               ~X"""
+               <form>
+                 <input id="myform_inner_0_foo" name="myform[inner][0][foo]" type="text" value="123"></input>
+                 <input id="myform_inner_1_foo" name="myform[inner][1][foo]" type="text" value="456"></input>
+                 <input id="myform_inner_2_foo" name="myform[inner][2][foo]" type="text" value="789"></input>
+                 <input id="myform_inner_3_foo" name="myform[inner][3][foo]" type="text" value="101112"></input>
+               </form>
+               """
     end
   end
 
