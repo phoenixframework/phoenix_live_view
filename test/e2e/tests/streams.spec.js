@@ -921,3 +921,35 @@ test("JS commands are applied when re-joining", async ({ page }) => {
   // should still be hidden
   await expect(page.locator("#users-1")).toBeHidden();
 });
+
+test("update_only", async ({ page }) => {
+  await page.goto("/stream/reset");
+  await syncLV(page);
+
+  expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" },
+  ]);
+
+  await page.getByRole("button", { name: "Add E (update only)" }).click();
+  await syncLV(page);
+
+  expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: "C" },
+    { id: "items-d", text: "D" },
+  ]);
+
+  await page.getByRole("button", { name: "Update C (update only)" }).click();
+  await syncLV(page);
+
+  expect(await listItems(page)).toEqual([
+    { id: "items-a", text: "A" },
+    { id: "items-b", text: "B" },
+    { id: "items-c", text: expect.stringMatching(/C .*/) },
+    { id: "items-d", text: "D" },
+  ]);
+});

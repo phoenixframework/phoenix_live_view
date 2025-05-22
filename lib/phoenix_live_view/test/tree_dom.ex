@@ -425,8 +425,13 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
 
     streamInserts =
       Enum.reduce(streams, %{}, fn %{ref: ref, inserts: inserts}, acc ->
-        Enum.reduce(inserts, acc, fn [id, stream_at, limit], acc ->
-          Map.put(acc, id, %{ref: ref, stream_at: stream_at, limit: limit})
+        Enum.reduce(inserts, acc, fn [id, stream_at, limit, update_only], acc ->
+          Map.put(acc, id, %{
+            ref: ref,
+            stream_at: stream_at,
+            limit: limit,
+            update_only: update_only
+          })
         end)
       end)
 
@@ -456,6 +461,10 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
             current_index ->
               # update stream item in place
               List.replace_at(acc, current_index, set_attr(node, "data-phx-stream", insert.ref))
+
+            insert[:update_only] ->
+              # skip item if it is not already in the DOM
+              acc
 
             true ->
               # stream item to be inserted at specific position
