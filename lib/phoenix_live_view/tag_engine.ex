@@ -202,12 +202,11 @@ defmodule Phoenix.LiveView.TagEngine do
   def handle_body(state) do
     %{tokens: tokens, file: file, cont: cont, source: source, caller: caller} = state
     tokens = Tokenizer.finalize(tokens, file, cont, source)
-    tokens = Tokenizer.process_macro_components(tokens, file: file, caller: caller)
 
     token_state =
       state
       |> token_state(nil)
-      |> handle_tokens(tokens)
+      |> continue(tokens)
       |> validate_unclosed_tags!("template")
 
     opts = [root: token_state.root || false]
@@ -250,7 +249,7 @@ defmodule Phoenix.LiveView.TagEngine do
   def handle_end(state) do
     state
     |> token_state(false)
-    |> handle_tokens(Enum.reverse(state.tokens))
+    |> continue(Enum.reverse(state.tokens))
     |> validate_unclosed_tags!("do-block")
     |> invoke_subengine(:handle_end, [])
   end
@@ -283,8 +282,8 @@ defmodule Phoenix.LiveView.TagEngine do
     }
   end
 
-  defp handle_tokens(token_state, tokens) do
-    Enum.reduce(tokens, token_state, &handle_token/2)
+  defp continue(token_state, tokens) do
+    handle_token(tokens, token_state)
   end
 
   ## These callbacks update the state
@@ -437,43 +436,54 @@ defmodule Phoenix.LiveView.TagEngine do
 
   ## handle_token
 
+  # raise for unsupported macro components
+
+  defp handle_token([{:local_component, _name, attrs, %{macro_component: _}} | _tokens], state) do
+    {":type", _value, meta} = Enum.find(attrs, fn {key, _value, _meta} -> key == ":type" end)
+    message = "macro components are not currently supported on function components"
+    raise_syntax_error!(message, meta, state)
+  end
+
   # Expr
 
-  defp handle_token({:expr, marker, expr}, state) do
+  defp handle_token([{:expr, marker, expr} | tokens], state) do
     state
     |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, [marker, expr])
+    |> continue(tokens)
   end
 
-  defp handle_token({:body_expr, value, %{line: line, column: column}}, state) do
+  defp handle_token([{:body_expr, value, %{line: line, column: column}} | tokens], state) do
     quoted = Code.string_to_quoted!(value, line: line, column: column, file: state.file)
 
     state
     |> set_root_on_not_tag()
     |> update_subengine(:handle_expr, ["=", quoted])
+    |> continue(tokens)
   end
 
   # Text
 
-  defp handle_token({:text, text, %{line_end: line, column_end: column}}, state) do
+  defp handle_token([{:text, text, %{line_end: line, column_end: column}} | tokens], state) do
     text = if state.previous_token_slot?, do: String.trim_leading(text), else: text
 
     if text == "" do
-      state
+      continue(state, tokens)
     else
       state
       |> set_root_on_not_tag()
       |> update_subengine(:handle_text, [[line: line, column: column], text])
+      |> continue(tokens)
     end
   end
 
   # Remote function component (self close)
 
   defp handle_token(
-         {:remote_component, name, attrs, %{closing: :self} = tag_meta},
+         [{:remote_component, name, attrs, %{closing: :self} = tag_meta} | tokens],
          state
        ) do
-    attrs = remove_phx_no_attrs(attrs)
+    attrs = postprocess_attrs(attrs, state)
     {mod_ast, mod_size, fun} = decompose_remote_component_tag!(name, tag_meta, state)
     %{line: line, column: column} = tag_meta
 
@@ -500,6 +510,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
+        |> continue(tokens)
 
       {true, new_meta, _new_attrs} ->
         state
@@ -509,12 +520,13 @@ defmodule Phoenix.LiveView.TagEngine do
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
         |> handle_special_expr(new_meta)
+        |> continue(tokens)
     end
   end
 
   # Remote function component (with inner content)
 
-  defp handle_token({:remote_component, name, attrs, tag_meta}, state) do
+  defp handle_token([{:remote_component, name, attrs, tag_meta} | tokens], state) do
     mod_fun = decompose_remote_component_tag!(name, tag_meta, state)
     tag_meta = Map.put(tag_meta, :mod_fun, mod_fun)
 
@@ -526,6 +538,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> init_slots()
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
+        |> continue(tokens)
 
       {true, new_meta, new_attrs} ->
         state
@@ -536,15 +549,16 @@ defmodule Phoenix.LiveView.TagEngine do
         |> update_subengine(:handle_begin, [])
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
+        |> continue(tokens)
     end
   end
 
-  defp handle_token({:close, :remote_component, _name, _tag_close_meta} = token, state) do
+  defp handle_token([{:close, :remote_component, _name, _tag_close_meta} = token | tokens], state) do
     {{:remote_component, name, attrs, tag_meta}, state} = pop_tag!(state, token)
     %{mod_fun: {mod_ast, mod_size, fun}, line: line, column: column} = tag_meta
 
     mod = expand_with_line(mod_ast, line, state.caller)
-    attrs = remove_phx_no_attrs(attrs)
+    attrs = postprocess_attrs(attrs, state)
 
     {assigns, attr_info, slot_info, state} =
       build_component_assigns({"remote component", name}, attrs, line, tag_meta, state)
@@ -568,17 +582,18 @@ defmodule Phoenix.LiveView.TagEngine do
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
     |> handle_special_expr(tag_meta)
+    |> continue(tokens)
   end
 
   # Slot (self close)
 
   defp handle_token(
-         {:slot, slot_name, attrs, %{closing: :self} = tag_meta},
+         [{:slot, slot_name, attrs, %{closing: :self} = tag_meta} | tokens],
          state
        ) do
     slot_name = String.to_atom(slot_name)
     validate_slot!(state, slot_name, tag_meta)
-    attrs = remove_phx_no_attrs(attrs)
+    attrs = postprocess_attrs(attrs, state)
     %{line: line} = tag_meta
     {special, roots, attrs, attr_info} = split_component_attrs({"slot", slot_name}, attrs, state)
     let = special[":let"]
@@ -590,25 +605,28 @@ defmodule Phoenix.LiveView.TagEngine do
 
     attrs = [__slot__: slot_name, inner_block: nil] ++ attrs
     assigns = wrap_special_slot(special, merge_component_attrs(roots, attrs, line))
+
     add_slot(state, slot_name, assigns, attr_info, tag_meta, special)
+    |> continue(tokens)
   end
 
   # Slot (with inner content)
 
-  defp handle_token({:slot, slot_name, _attrs, tag_meta} = token, state) do
+  defp handle_token([{:slot, slot_name, _attrs, tag_meta} = token | tokens], state) do
     validate_slot!(state, slot_name, tag_meta)
 
     state
     |> push_tag(token)
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
+    |> continue(tokens)
   end
 
-  defp handle_token({:close, :slot, slot_name, _tag_close_meta} = token, state) do
+  defp handle_token([{:close, :slot, slot_name, _tag_close_meta} = token | tokens], state) do
     slot_name = String.to_atom(slot_name)
     {{:slot, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
 
-    attrs = remove_phx_no_attrs(attrs)
+    attrs = postprocess_attrs(attrs, state)
     {special, roots, attrs, attr_info} = split_component_attrs({"slot", slot_name}, attrs, state)
     clauses = build_component_clauses(special[":let"], state)
 
@@ -624,14 +642,18 @@ defmodule Phoenix.LiveView.TagEngine do
     state
     |> add_slot(slot_name, assigns, inner, tag_meta, special)
     |> pop_substate_from_stack()
+    |> continue(tokens)
   end
 
   # Local function component (self close)
 
-  defp handle_token({:local_component, name, attrs, %{closing: :self} = tag_meta}, state) do
+  defp handle_token(
+         [{:local_component, name, attrs, %{closing: :self} = tag_meta} | tokens],
+         state
+       ) do
     fun = String.to_atom(name)
     %{line: line, column: column} = tag_meta
-    attrs = remove_phx_no_attrs(attrs)
+    attrs = postprocess_attrs(attrs, state)
 
     {assigns, attr_info} =
       build_self_close_component_assigns({"local component", fun}, attrs, line, state)
@@ -656,6 +678,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
+        |> continue(tokens)
 
       {true, new_meta, _new_attrs} ->
         state
@@ -665,12 +688,13 @@ defmodule Phoenix.LiveView.TagEngine do
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
         |> handle_special_expr(new_meta)
+        |> continue(tokens)
     end
   end
 
   # Local function component (with inner content)
 
-  defp handle_token({:local_component, name, attrs, tag_meta} = token, state) do
+  defp handle_token([{:local_component, name, attrs, tag_meta} = token | tokens], state) do
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, _tag_meta, _attrs} ->
         state
@@ -679,6 +703,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> init_slots()
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
+        |> continue(tokens)
 
       {true, new_meta, new_attrs} ->
         state
@@ -689,14 +714,15 @@ defmodule Phoenix.LiveView.TagEngine do
         |> update_subengine(:handle_begin, [])
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
+        |> continue(tokens)
     end
   end
 
-  defp handle_token({:close, :local_component, _name, _tag_close_meta} = token, state) do
+  defp handle_token([{:close, :local_component, _name, _tag_close_meta} = token | tokens], state) do
     {{:local_component, name, attrs, tag_meta}, state} = pop_tag!(state, token)
     fun = String.to_atom(name)
     %{line: line, column: column} = tag_meta
-    attrs = remove_phx_no_attrs(attrs)
+    attrs = postprocess_attrs(attrs, state)
     mod = actual_component_module(state.caller, fun)
 
     {assigns, attr_info, slot_info, state} =
@@ -721,13 +747,14 @@ defmodule Phoenix.LiveView.TagEngine do
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
     |> handle_special_expr(tag_meta)
+    |> continue(tokens)
   end
 
   # HTML element (self close)
 
-  defp handle_token({:tag, name, attrs, %{closing: closing} = tag_meta}, state) do
+  defp handle_token([{:tag, name, attrs, %{closing: closing} = tag_meta} | tokens], state) do
     suffix = if closing == :void, do: ">", else: "></#{name}>"
-    attrs = remove_phx_no_attrs(attrs)
+    attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
 
@@ -736,6 +763,7 @@ defmodule Phoenix.LiveView.TagEngine do
         state
         |> set_root_on_tag()
         |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+        |> continue(tokens)
 
       {true, new_meta, new_attrs} ->
         state
@@ -744,13 +772,18 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta))
         |> handle_special_expr(new_meta)
+        |> continue(tokens)
     end
   end
 
   # HTML element
 
-  defp handle_token({:tag, name, attrs, tag_meta} = token, state) do
-    attrs = remove_phx_no_attrs(attrs)
+  defp handle_token([{:tag, _name, _attrs, %{macro_component: _}} | _] = tokens, state) do
+    handle_macro_component(tokens, state)
+  end
+
+  defp handle_token([{:tag, name, attrs, tag_meta} = token | tokens], state) do
+    attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
 
@@ -760,6 +793,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_tag()
         |> push_tag(token)
         |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+        |> continue(tokens)
 
       {true, new_meta, new_attrs} ->
         state
@@ -768,15 +802,73 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> push_tag({:tag, name, new_attrs, new_meta})
         |> handle_tag_and_attrs(name, new_attrs, ">", to_location(new_meta))
+        |> continue(tokens)
     end
   end
 
-  defp handle_token({:close, :tag, name, tag_meta} = token, state) do
+  defp handle_token([{:close, :tag, name, tag_meta} = token | tokens], state) do
     {{:tag, _name, _attrs, tag_open_meta}, state} = pop_tag!(state, token)
 
     state
     |> update_subengine(:handle_text, [to_location(tag_meta), "</#{name}>"])
     |> handle_special_expr(tag_open_meta)
+    |> continue(tokens)
+  end
+
+  defp handle_token([], state), do: state
+
+  defp handle_macro_component(
+         [{:tag, _name, _attrs, %{macro_component: module_string} = tag_meta} | _] = tokens,
+         state
+       ) do
+    module = validate_module!(module_string, tag_meta, state)
+
+    {ast, rest} =
+      case Phoenix.LiveView.MacroComponent.AST.build_ast(tokens) do
+        {:ok, ast, rest} -> {ast, rest}
+        {:error, message, meta} -> raise_syntax_error!(message, meta, state)
+      end
+
+    try do
+      module.transform(ast, %{file: state.file, line: tag_meta.line, env: state.caller})
+    rescue
+      e in ArgumentError ->
+        raise_syntax_error!(
+          Exception.message(e),
+          tag_meta,
+          state
+        )
+    else
+      new_ast ->
+        new_tokens = Phoenix.LiveView.MacroComponent.AST.to_tokens(new_ast)
+
+        continue(state, new_tokens ++ rest)
+    end
+  end
+
+  defp validate_module!(module_string, tag_meta, state) do
+    module =
+      case Code.eval_string(module_string, [], state.caller) do
+        {mod, _} when is_atom(mod) ->
+          mod
+
+        _ ->
+          raise_syntax_error!(
+            "the given macro component #{inspect(module_string)} is not a valid module",
+            tag_meta,
+            state
+          )
+      end
+
+    if not (Code.ensure_loaded?(module) and function_exported?(module, :transform, 2)) do
+      raise_syntax_error!(
+        "the given macro component #{inspect(module)} is not loaded or does not implement the `Phoenix.LiveView.MacroComponent` behaviour",
+        tag_meta,
+        state
+      )
+    end
+
+    module
   end
 
   # Pop the given attr from attrs. Raises if the given attr is duplicated within
@@ -1244,10 +1336,20 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp remove_phx_no_attrs(attrs) do
+  # removes phx-no-format, etc. and maps phx-hook=".name" to the fully qualified name
+  defp postprocess_attrs(attrs, state) do
+    attrs_to_remove = ~w(phx-no-format phx-no-curly-interpolation :type)
+
     for {key, value, meta} <- attrs,
-        key != "phx-no-format" and key != "phx-no-curly-interpolation" and key != ":extract",
-        do: {key, value, meta}
+        key not in attrs_to_remove do
+      case {key, value, meta} do
+        {"phx-hook", {:string, "." <> name, str_meta}, meta} ->
+          {key, {:string, "#{inspect(state.caller.module)}.#{name}", str_meta}, meta}
+
+        _ ->
+          {key, value, meta}
+      end
+    end
   end
 
   defp validate_tag_attrs!(attrs, %{tag_name: "input"}, state) do

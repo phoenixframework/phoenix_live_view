@@ -77,7 +77,6 @@ defmodule Phoenix.LiveView.Tokenizer do
       file: file,
       column_offset: indentation + 1,
       braces: :enabled,
-      macro_component: nil,
       context: [],
       source: source,
       indentation: indentation,
@@ -116,35 +115,11 @@ defmodule Phoenix.LiveView.Tokenizer do
     column = Keyword.get(meta, :column, 1)
 
     case cont do
-      {:text, braces} ->
-        handle_text(text, line, column, [], tokens, %{state | braces: braces})
-
-      {:macro_component, depth} ->
-        handle_macro_component(text, line, column, [], tokens, %{state | macro_component: depth})
-
-      :style ->
-        handle_style(text, line, column, [], tokens, state)
-
-      :script ->
-        handle_script(text, line, column, [], tokens, state)
-
-      {:comment, _, _} ->
-        handle_comment(text, line, column, [], tokens, state)
+      {:text, braces} -> handle_text(text, line, column, [], tokens, %{state | braces: braces})
+      :style -> handle_style(text, line, column, [], tokens, state)
+      :script -> handle_script(text, line, column, [], tokens, state)
+      {:comment, _, _} -> handle_comment(text, line, column, [], tokens, state)
     end
-  end
-
-  @doc """
-  Processes any extracts in the given tokens.
-  """
-  def process_macro_components(tokens, opts) do
-    file = Keyword.fetch!(opts, :file)
-    caller = Keyword.fetch!(opts, :caller)
-    module = caller.module
-
-    tokens =
-      process_macro_components(tokens, %{module: module, file: file, env: caller}, [])
-
-    Enum.reverse(tokens)
   end
 
   ## handle_text
@@ -283,85 +258,6 @@ defmodule Phoenix.LiveView.Tokenizer do
     ok(text_to_acc(buffer, acc, line, column, []), :style)
   end
 
-  ## handle_macro_component
-
-  defp handle_macro_component("<!" <> rest, line, column, buffer, acc, state) do
-    handle_macro_component(rest, line, column + 2, ["<!" | buffer], acc, state)
-  end
-
-  defp handle_macro_component("</" <> rest, line, column, buffer, acc, state) do
-    case {handle_tag_name(rest, column, []), state.extract} do
-      {{:ok, name, new_column, ">" <> rest}, 1} ->
-        meta = %{
-          line: line,
-          column: column - 2,
-          inner_location: {line, column - 2},
-          tag_name: name
-        }
-
-        acc = [{:close, :tag, name, meta} | text_to_acc(buffer, acc, line, column, [])]
-        handle_text(rest, line, new_column + 1, [], acc, pop_macro_component(state))
-
-      {{:ok, name, new_column, ">" <> rest}, _} ->
-        handle_macro_component(
-          rest,
-          line,
-          new_column + 1,
-          ["</#{name}>" | buffer],
-          acc,
-          pop_macro_component(state)
-        )
-
-      {{:ok, _, new_column, _}, _} ->
-        message = "expected closing `>`"
-        meta = %{line: line, column: new_column}
-        raise_syntax_error!(message, meta, state)
-
-      {:error, _} ->
-        message = "expected tag name after </"
-        meta = %{line: line, column: column}
-        raise_syntax_error!(message, meta, state)
-    end
-  end
-
-  defp handle_macro_component("<" <> rest, line, column, buffer, acc, state) do
-    case handle_tag_name(rest, column, []) do
-      {:ok, name, new_column, rest} ->
-        handle_macro_component(
-          rest,
-          line,
-          new_column + 1,
-          ["<#{name}" | buffer],
-          acc,
-          push_macro_component(state)
-        )
-
-      :error ->
-        message =
-          "expected tag name after <. If you meant to use < as part of a text, use &lt; instead"
-
-        meta = %{line: line, column: column}
-
-        raise_syntax_error!(message, meta, state)
-    end
-  end
-
-  defp handle_macro_component("\r\n" <> rest, line, _column, buffer, acc, state) do
-    handle_macro_component(rest, line + 1, state.column_offset, ["\r\n" | buffer], acc, state)
-  end
-
-  defp handle_macro_component("\n" <> rest, line, _column, buffer, acc, state) do
-    handle_macro_component(rest, line + 1, state.column_offset, ["\n" | buffer], acc, state)
-  end
-
-  defp handle_macro_component(<<c::utf8, rest::binary>>, line, column, buffer, acc, state) do
-    handle_macro_component(rest, line, column + 1, [char_or_bin(c) | buffer], acc, state)
-  end
-
-  defp handle_macro_component(<<>>, line, column, buffer, acc, state) do
-    ok(text_to_acc(buffer, acc, line, column, []), {:extract, state.extract})
-  end
-
   ## handle_comment
 
   defp handle_comment(rest, line, column, buffer, acc, state) do
@@ -441,7 +337,7 @@ defmodule Phoenix.LiveView.Tokenizer do
 
           {type, name} ->
             acc = [{:close, type, name, meta} | acc]
-            handle_text(rest, line, new_column + 1, [], acc, state |> pop_braces())
+            handle_text(rest, line, new_column + 1, [], acc, pop_braces(state))
         end
 
       {:ok, _, new_column, _} ->
@@ -481,11 +377,6 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   ## handle_maybe_tag_open_end
 
-  defp handle_maybe_tag_open_end(text, line, column, acc, %{extract: extract} = state)
-       when extract != nil do
-    handle_macro_component(text, line, column, [], acc, state)
-  end
-
   defp handle_maybe_tag_open_end("\r\n" <> rest, line, _column, acc, state) do
     handle_maybe_tag_open_end(rest, line + 1, state.column_offset, acc, state)
   end
@@ -511,9 +402,6 @@ defmodule Phoenix.LiveView.Tokenizer do
 
       [{:tag, "style", _, _} | _] = acc ->
         handle_style(rest, line, column + 1, [], acc, state)
-
-      [{:tag, _name, _, %{macro_component: module}} | _] = acc when not is_nil(module) ->
-        handle_macro_component(rest, line, column + 1, [], acc, push_macro_component(state))
 
       acc ->
         handle_text(rest, line, column + 1, [], acc, push_braces(state))
@@ -567,7 +455,8 @@ defmodule Phoenix.LiveView.Tokenizer do
         acc = put_attr(acc, name, attr_meta, value)
 
         state =
-          if name == "phx-no-curly-interpolation" and state.braces == :enabled do
+          if name == "phx-no-curly-interpolation" and state.braces == :enabled and
+               not script_or_style?(acc) do
             %{state | braces: 0}
           else
             state
@@ -580,6 +469,9 @@ defmodule Phoenix.LiveView.Tokenizer do
         raise_syntax_error!(message, meta, state)
     end
   end
+
+  defp script_or_style?([{:tag, name, _, _} | _]) when name in ~w(script style), do: true
+  defp script_or_style?(_), do: false
 
   ## handle_root_attribute
 
@@ -741,17 +633,6 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   ## handle_interpolation
 
-  defp handle_interpolation(_rest, line, column, _buffer, _braces, %{extract: extract} = state)
-       when extract != nil do
-    # note that this does not catch EEx interpolation;
-    # we check it inside the TagExtractorUtils
-    raise_syntax_error!(
-      "cannot interpolate inside a tag with :extract attribute",
-      %{line: line, column: column},
-      state
-    )
-  end
-
   defp handle_interpolation("\r\n" <> rest, line, _column, buffer, braces, state) do
     handle_interpolation(rest, line + 1, state.column_offset, ["\r\n" | buffer], braces, state)
   end
@@ -835,17 +716,6 @@ defmodule Phoenix.LiveView.Tokenizer do
   defp pop_braces(%{braces: 1} = state), do: %{state | braces: :enabled}
   defp pop_braces(%{braces: braces} = state), do: %{state | braces: braces - 1}
 
-  defp push_macro_component(%{macro_component: nil} = state), do: %{state | macro_component: 1}
-
-  defp push_macro_component(%{macro_component: depth} = state),
-    do: %{state | macro_component: depth + 1}
-
-  defp pop_macro_component(%{macro_component: nil} = state), do: state
-  defp pop_macro_component(%{macro_component: 1} = state), do: %{state | macro_component: nil}
-
-  defp pop_macro_component(%{macro_component: depth} = state),
-    do: %{state | macro_component: depth - 1}
-
   defp put_attr([{type, name, attrs, meta} | acc], attr, attr_meta, value) do
     attrs = [{attr, value, attr_meta} | attrs]
     [{type, name, attrs, meta} | acc]
@@ -913,105 +783,5 @@ defmodule Phoenix.LiveView.Tokenizer do
       line: meta.line,
       column: meta.column,
       description: message <> ParseError.code_snippet(state.source, meta, state.indentation)
-  end
-
-  defp process_macro_components(
-         [
-           {:tag, name, attrs, %{macro_component: expr} = start_meta} = start_token,
-           {:text, text, _text_meta} = _content,
-           {:close, :tag, name, _} = end_ | rest
-         ],
-         meta,
-         tokens_acc
-       ) do
-    {module, _} = Code.eval_string(expr, [], meta.env)
-
-    if not is_atom(module) do
-      raise ArgumentError,
-            "macro component :type must be a module name, got: #{inspect(module)}"
-    end
-
-    %{line: line, column: column} = start_meta
-    new_meta = Map.merge(meta, %{line: line, column: column})
-
-    ast = {name, token_attrs_to_ast_attrs(attrs, meta.env), [text]}
-
-    case module.call(ast, new_meta) do
-      {:ok, [], data} ->
-        Module.put_attribute(meta.module, :__extracts__, data)
-        process_macro_components(rest, meta, tokens_acc)
-
-      {:ok, new_ast, data} ->
-        Module.put_attribute(meta.module, :__extracts__, data)
-
-        process_macro_components(
-          rest,
-          meta,
-          ast_to_tokens(new_ast, tokens_acc)
-        )
-
-      other ->
-        raise ArgumentError,
-              "macro components must return {:ok, new_ast, data}, got:\n\n#{inspect(other)}"
-    end
-  end
-
-  # if the first clause did not match (tag open, text, close),
-  # this means that there is interpolation inside the tag, which is not supported
-  defp process_macro_components(
-         [{:tag, _name, attrs, %{macro_component: module} = _meta} = start | rest],
-         meta,
-         tokens_acc
-       )
-       when not is_nil(module) do
-    raise ArgumentError,
-          "interpolation inside a tag with :type attribute is not supported"
-  end
-
-  defp process_macro_components([token | rest], meta, tokens_acc),
-    do: process_macro_components(rest, meta, [token | tokens_acc])
-
-  defp process_macro_components([], _meta, acc), do: acc
-
-  defp ast_to_tokens(ast, tokens_acc) do
-    Enum.flat_map(ast, fn ast_node -> ast_node_to_tokens(ast_node) end)
-    |> Enum.reverse()
-    |> Enum.concat(tokens_acc)
-  end
-
-  defp ast_node_to_tokens({tag, attrs, children}) do
-    List.flatten([
-      {:tag, tag, ast_attrs_to_token_attrs(attrs), %{line: 0, column: 0}},
-      ast_to_tokens(children, []),
-      {:close, :tag, tag, %{line: 0, column: 0}}
-    ])
-  end
-
-  defp ast_node_to_tokens(bin) when is_binary(bin) do
-    [{:text, bin, %{line_end: 0, column_end: 0}}]
-  end
-
-  defp ast_attrs_to_token_attrs(attrs) do
-    Enum.map(attrs, fn {key, value} ->
-      if is_binary(value) do
-        {key, {:string, value, %{delimiter: ?", line: 0, column: 0}}, %{line: 0, column: 0}}
-      else
-        {key, {:expr, Macro.to_string(value), %{}}, %{line: 0, column: 0}}
-      end
-    end)
-  end
-
-  defp token_attrs_to_ast_attrs(attrs, env) do
-    Enum.map(attrs, fn {name, value, _meta} ->
-      case value do
-        {:string, string, _meta} ->
-          {name, string}
-
-        {:expr, expr, meta} ->
-          # TODO: keep as string?
-          ast = Code.string_to_quoted!(expr, line: meta.line, column: meta.column, file: env.file)
-          {name, ast}
-      end
-    end)
   end
 end

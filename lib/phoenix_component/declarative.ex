@@ -224,7 +224,7 @@ defmodule Phoenix.Component.Declarative do
     Module.register_attribute(module, :__slots__, accumulate: true)
     Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
-    Module.register_attribute(module, :__extracts__, accumulate: true)
+    Module.register_attribute(module, :__macro_components__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
@@ -630,7 +630,6 @@ defmodule Phoenix.Component.Declarative do
 
     components = Module.get_attribute(env.module, :__components__)
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
-    extracts = Module.get_attribute(env.module, :__extracts__, [])
 
     names_and_defs =
       for {name, %{kind: kind, attrs: attrs, slots: slots, line: line}} <- components do
@@ -723,17 +722,18 @@ defmodule Phoenix.Component.Declarative do
         end
       end
 
-    extracts =
-      if extracts != [] do
+    module_hash =
+      if File.exists?(env.file) do
         quote do
           @doc false
-          def __phoenix_component_extracts__ do
-            unquote(Macro.escape(extracts))
+          def __phoenix_component_hash__ do
+            unquote(Base.encode16(:crypto.hash(:md5, env.file), case: :lower))
           end
         end
       end
 
-    {:__block__, [], [def_components_ast, def_components_calls_ast, extracts, overridable | defs]}
+    {:__block__, [],
+     [def_components_ast, def_components_calls_ast, module_hash, overridable | defs]}
   end
 
   defp register_component!(kind, env, name, check_if_defined?) do
