@@ -933,19 +933,29 @@ export default class View {
         return hookInstance;
       } else if (hookName !== null) {
         // TODO: probably refactor this whole function
-        const runtimeHook = document.querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(hookName)}"]`)
-        if(runtimeHook){
+        const runtimeHook = document.querySelector(
+          `script[${PHX_RUNTIME_HOOK}="${CSS.escape(hookName)}"]`,
+        );
+        if (runtimeHook) {
           // if you really want runtime hooks, I
-          let callbacks = window[`phx_hook_${hookName}`]
-          if(callbacks && typeof callbacks === "function"){
-            callbacks = callbacks()
-            if(callbacks && typeof callbacks === "object"){
-              if(!el.id){ logError(`no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`, el) }
-              let hook = new ViewHook(this, el, callbacks)
-              this.viewHooks[ViewHook.elementID(hook.el)] = hook
-              return hook
+          let callbacks = window[`phx_hook_${hookName}`];
+          if (callbacks && typeof callbacks === "function") {
+            callbacks = callbacks();
+            if (callbacks && typeof callbacks === "object") {
+              if (!el.id) {
+                logError(
+                  `no DOM ID for hook "${hookName}". Hooks require a unique ID on each element.`,
+                  el,
+                );
+              }
+              let hook = new ViewHook(this, el, callbacks);
+              this.viewHooks[ViewHook.elementID(hook.el)] = hook;
+              return hook;
             } else {
-              logError("runtime hook must return an object with hook callbacks", runtimeHook)
+              logError(
+                "runtime hook must return an object with hook callbacks",
+                runtimeHook,
+              );
             }
           }
         } else {
