@@ -256,11 +256,17 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp get_data(module) do
-    Map.take(Phoenix.Component.MacroComponent.get_data(module), [
-      Phoenix.LiveView.ColocatedHook,
-      Phoenix.LiveView.ColocatedJS
-    ])
-    |> Enum.flat_map(fn {_mod, entries} -> entries end)
+    case Phoenix.Component.MacroComponent.get_data(module) do
+      :error ->
+        []
+
+      data ->
+        Map.take(data, [
+          Phoenix.LiveView.ColocatedHook,
+          Phoenix.LiveView.ColocatedJS
+        ])
+        |> Enum.flat_map(fn {_mod, entries} -> entries end)
+    end
   end
 
   defp write_new_manifests!(target_dir, files) do
