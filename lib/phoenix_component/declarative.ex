@@ -224,7 +224,6 @@ defmodule Phoenix.Component.Declarative do
     Module.register_attribute(module, :__slots__, accumulate: true)
     Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
-    Module.register_attribute(module, :__macro_components__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
@@ -727,7 +726,12 @@ defmodule Phoenix.Component.Declarative do
         quote do
           @doc false
           def __phoenix_component_hash__ do
-            unquote(Base.encode16(:crypto.hash(:md5, env.file), case: :lower))
+            unquote(
+              Base.encode32(:crypto.hash(:md5, File.read!(env.file)),
+                case: :lower,
+                padding: false
+              )
+            )
           end
         end
       end

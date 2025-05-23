@@ -824,7 +824,7 @@ defmodule Phoenix.LiveView.TagEngine do
     module = validate_module!(module_string, tag_meta, state)
 
     {ast, rest} =
-      case Phoenix.LiveView.MacroComponent.AST.build_ast(tokens) do
+      case Phoenix.Component.MacroComponent.AST.build_ast(tokens) do
         {:ok, ast, rest} -> {ast, rest}
         {:error, message, meta} -> raise_syntax_error!(message, meta, state)
       end
@@ -840,7 +840,7 @@ defmodule Phoenix.LiveView.TagEngine do
         )
     else
       new_ast ->
-        new_tokens = Phoenix.LiveView.MacroComponent.AST.to_tokens(new_ast)
+        new_tokens = Phoenix.Component.MacroComponent.AST.to_tokens(new_ast)
 
         continue(state, new_tokens ++ rest)
     end
