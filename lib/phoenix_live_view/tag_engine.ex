@@ -438,7 +438,8 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # raise for unsupported macro components
 
-  defp handle_token([{:local_component, _name, attrs, %{macro_component: _}} | _tokens], state) do
+  defp handle_token([{type, _name, attrs, %{macro_component: _}} | _tokens], state)
+       when type in [:local_component, :remote_component, :slot] do
     {":type", _value, meta} = Enum.find(attrs, fn {key, _value, _meta} -> key == ":type" end)
     message = "macro components are not currently supported on function components"
     raise_syntax_error!(message, meta, state)
