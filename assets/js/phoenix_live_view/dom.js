@@ -280,6 +280,13 @@ const DOM = {
     }
   },
 
+  deepCopyPrivates(target, source) {
+    this.copyPrivates(target, source);
+    for (let key of Object.keys(target.children)) {
+      this.deepCopyPrivates(target.children[key], source.children[key]);
+    }
+  },
+
   putTitle(str) {
     const titleEl = document.querySelector("title");
     if (titleEl) {
