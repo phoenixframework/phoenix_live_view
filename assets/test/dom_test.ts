@@ -173,10 +173,9 @@ describe("DOM", () => {
         "div",
         {},
         `
-        <div data-phx-main="true"
+        <div id="foo" data-phx-main="true"
             data-phx-session="123"
             data-phx-static="456"
-            id="phx-123"
             class="phx-connected"
             data-phx-root-id="phx-FgFpFf-J8Gg-jEnh">
         </div>
@@ -187,26 +186,28 @@ describe("DOM", () => {
       view.appendChild(
         tag(
           "div",
-          { "data-phx-component": 1 },
+          { "data-phx-component": 1, "data-phx-view": "foo" },
           `
-        <div data-phx-component="2"></div>
+        <div data-phx-component="2" data-phx-view="foo"></div>
       `,
         ),
       );
-      expect(DOM.findExistingParentCIDs(view, [1, 2])).toEqual(new Set([1]));
+      expect(DOM.findExistingParentCIDs("foo", [1, 2])).toEqual(new Set([1]));
 
       view.appendChild(
         tag(
           "div",
-          { "data-phx-component": 1 },
+          { "data-phx-component": 1, "data-phx-view": "foo" },
           `
-        <div data-phx-component="2">
-          <div data-phx-component="3"></div>
+        <div data-phx-component="2" data-phx-view="foo">
+          <div data-phx-component="3" data-phx-view="foo"></div>
         </div>
       `,
         ),
       );
-      expect(DOM.findExistingParentCIDs(view, [1, 2, 3])).toEqual(new Set([1]));
+      expect(DOM.findExistingParentCIDs("foo", [1, 2, 3])).toEqual(
+        new Set([1]),
+      );
     });
 
     test("ignores elements in child LiveViews #3626", () => {
@@ -228,40 +229,58 @@ describe("DOM", () => {
       view.appendChild(
         tag(
           "div",
-          { "data-phx-component": 1 },
+          { "data-phx-component": 1, "data-phx-view": "phx-123" },
           `
         <div data-phx-session="123" data-phx-static="456" data-phx-parent="phx-123" id="phx-child-view">
-          <div data-phx-component="1"></div>
+          <div data-phx-component="1" data-phx-view="phx-child-view"></div>
         </div>
       `,
         ),
       );
-      expect(DOM.findExistingParentCIDs(view, [1])).toEqual(new Set([1]));
+      expect(DOM.findExistingParentCIDs("phx-123", [1])).toEqual(new Set([1]));
     });
   });
 
   describe("findComponentNodeList", () => {
     test("returns nodes with cid ID (except indirect children)", () => {
-      const component1 = tag("div", { "data-phx-component": 0 }, "Hello");
-      const component2 = tag("div", { "data-phx-component": 0 }, "World");
-      const component3 = tag(
+      const view = tag("div", { id: "foo" }, "");
+      let component1 = tag(
+        "div",
+        { "data-phx-component": 0, "data-phx-view": "foo" },
+        "Hello",
+      );
+      let component2 = tag(
+        "div",
+        { "data-phx-component": 0, "data-phx-view": "foo" },
+        "World",
+      );
+      let component3 = tag(
         "div",
         { "data-phx-session": "123" },
         `
-        <div data-phx-component="0"></div>
+        <div data-phx-component="0" data-phx-view="123"></div>
       `,
       );
-      document.body.appendChild(component1);
-      document.body.appendChild(component2);
-      document.body.appendChild(component3);
+      document.body.appendChild(view);
+      view.appendChild(component1);
+      view.appendChild(component2);
+      view.appendChild(component3);
 
-      expect(DOM.findComponentNodeList(document, 0)).toEqual([
+      expect(DOM.findComponentNodeList("foo", 0, document)).toEqual([
         component1,
         component2,
       ]);
     });
 
     test("returns empty list with no matching cid", () => {
+      const view = tag("div", { id: "foo" }, "");
+      let component1 = tag(
+        "div",
+        { "data-phx-component": 0, "data-phx-view": "foo" },
+        "Hello",
+      );
+      document.body.appendChild(view);
+      view.appendChild(component1);
       expect(DOM.findComponentNodeList(document, 123)).toEqual([]);
     });
   });
