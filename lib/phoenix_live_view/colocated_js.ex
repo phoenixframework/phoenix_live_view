@@ -163,13 +163,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   @doc false
   def extract(opts, text_content, meta) do
-    if not File.exists?(meta.env.file) do
-      raise "ColocatedHook / ColocatedJS only works in stored files"
-    end
-
-    # _build/dev/phoenix-colocated/otp_app/MyApp.MyComponent/hooks/name.ext
-    # _build/dev/phoenix-colocated/otp_app/MyApp.MyComponent/MyWebComponent.js
-    # _build/dev/
+    # _build/dev/phoenix-colocated/otp_app/MyApp.MyComponent/line_no.js
     target_path =
       target_dir()
       |> Path.join(to_string(current_otp_app()))
