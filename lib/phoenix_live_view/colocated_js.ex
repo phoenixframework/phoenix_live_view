@@ -330,8 +330,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   defp empty_manifest do
     """
-    const js = {}
-    export default js
+    const js = {};
+    export default js;
     """
   end
 
@@ -341,6 +341,6 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp current_otp_app do
-    Application.get_env(:logger, :compile_time_application)
+    Application.get_env(:logger, :compile_time_application) || Mix.Project.config()[:app]
   end
 end
