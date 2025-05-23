@@ -158,7 +158,7 @@ defmodule Phoenix.LiveView.ColocatedHook do
         """
 
         attrs = Enum.to_list(Map.drop(opts, ["name", "runtime"]))
-        {"script", [{"data-phx-runtime-hook", name} | attrs], [new_content]}
+        {:ok, {"script", [{"data-phx-runtime-hook", name} | attrs], [new_content]}}
 
       _ ->
         # a colocated hook is just a special type of colocated JS,
@@ -168,8 +168,8 @@ defmodule Phoenix.LiveView.ColocatedHook do
           |> Map.put("key", "hooks")
           |> Map.put("name", name)
 
-        Phoenix.LiveView.ColocatedJS.extract(opts, text_content, meta)
-        ""
+        data = Phoenix.LiveView.ColocatedJS.extract(opts, text_content, meta)
+        {:ok, "", data}
     end
   end
 

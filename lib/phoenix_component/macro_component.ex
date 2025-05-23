@@ -123,6 +123,19 @@ defmodule Phoenix.Component.MacroComponent do
   @type heex_ast :: {tag(), attributes(), children()} | binary()
 
   @callback transform(heex_ast :: heex_ast(), meta :: map()) :: heex_ast()
+
+  @doc """
+  Returns the stored data from macro components that returned `{:ok, ast, data}` in
+  the format `%{module => [data]}`.
+  """
+  def get_data(module) do
+    if Code.ensure_loaded?(module) and
+         function_exported?(module, :__phoenix_macro_components__, 0) do
+      module.__phoenix_macro_components__()
+    else
+      :error
+    end
+  end
 end
 
 defmodule Phoenix.Component.MacroComponent.AST do
@@ -190,6 +203,9 @@ defmodule Phoenix.Component.MacroComponent.AST do
         {:expr, code, _meta} ->
           ast = Code.string_to_quoted!(code)
           {name, ast}
+
+        nil ->
+          {name, nil}
       end
     end)
   end
@@ -252,6 +268,7 @@ defmodule Phoenix.Component.MacroComponent.AST do
     Enum.map(attrs, fn {key, value} ->
       {key,
        case value do
+         nil -> nil
          bin when is_binary(bin) -> {:string, value, %{delimiter: ?"}}
          ast -> {:expr, Macro.to_string(ast), %{line: 0, column: 0}}
        end, %{line: 0, column: 0}}

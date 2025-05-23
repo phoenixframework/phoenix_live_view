@@ -821,6 +821,10 @@ defmodule Phoenix.LiveView.TagEngine do
          [{:tag, _name, _attrs, %{macro_component: module_string} = tag_meta} | _] = tokens,
          state
        ) do
+    Macro.Env.required?(state.caller, Phoenix.Component) ||
+      raise ArgumentError,
+            "macro components are only supported in modules that `use Phoenix.Component`"
+
     module = validate_module!(module_string, tag_meta, state)
 
     {ast, rest} =
@@ -839,10 +843,18 @@ defmodule Phoenix.LiveView.TagEngine do
           state
         )
     else
-      new_ast ->
+      {:ok, new_ast} ->
         new_tokens = Phoenix.Component.MacroComponent.AST.to_tokens(new_ast)
-
         continue(state, new_tokens ++ rest)
+
+      {:ok, new_ast, data} ->
+        Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
+        new_tokens = Phoenix.Component.MacroComponent.AST.to_tokens(new_ast)
+        continue(state, new_tokens ++ rest)
+
+      other ->
+        raise ArgumentError,
+              "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}"
     end
   end
 

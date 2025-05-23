@@ -11,7 +11,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     @impl true
     def transform(ast, meta) do
       send(self(), {:ast, ast, meta})
-      Process.get(:new_ast, ast)
+      {:ok, Process.get(:new_ast, ast)}
     end
   end
 
