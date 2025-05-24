@@ -4,7 +4,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
 
   You must add it to your `mix.exs` as:
 
-      compilers: Mix.compilers() ++ [:phoenix_live_view]
+      compilers: [:phoenix_live_view] ++ Mix.compilers()
 
   """
   use Mix.Task

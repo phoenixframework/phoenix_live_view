@@ -4,11 +4,10 @@ defmodule Phoenix.Component.MacroComponent do
   at compile time.
 
   Instead of introducing a special tag syntax like `<#macro-component>`, LiveView
-  decided to "hide" macro components behind a special `:type` attribute. The reason
-  for this is that most of the time, the job of the macro component is to take its
-  content and extract it so somewhere else, for example to a file in the local
-  file system. A good example for this is `Phoenix.LiveView.ColocatedHook` and
-  `Phoenix.LiveView.ColocatedJS`.
+  implements them using a special `:type` attribute as the most useful macro
+  components take their content and extract it so somewhere else, for example
+  to a file in the local file system. A good example for this is `Phoenix.LiveView.ColocatedHook`
+  and `Phoenix.LiveView.ColocatedJS`.
 
   ## AST
 
