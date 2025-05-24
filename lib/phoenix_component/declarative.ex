@@ -224,6 +224,7 @@ defmodule Phoenix.Component.Declarative do
     Module.register_attribute(module, :__slots__, accumulate: true)
     Module.register_attribute(module, :__slot__, accumulate: false)
     Module.register_attribute(module, :__components_calls__, accumulate: true)
+    Module.register_attribute(module, :__macro_components__, accumulate: true)
     Module.put_attribute(module, :__components__, %{})
     Module.put_attribute(module, :on_definition, __MODULE__)
     Module.put_attribute(module, :before_compile, __MODULE__)
@@ -629,6 +630,7 @@ defmodule Phoenix.Component.Declarative do
 
     components = Module.get_attribute(env.module, :__components__)
     components_calls = Module.get_attribute(env.module, :__components_calls__) |> Enum.reverse()
+    macro_components = Module.get_attribute(env.module, :__macro_components__)
 
     names_and_defs =
       for {name, %{kind: kind, attrs: attrs, slots: slots, line: line}} <- components do
@@ -721,7 +723,23 @@ defmodule Phoenix.Component.Declarative do
         end
       end
 
-    {:__block__, [], [def_components_ast, def_components_calls_ast, overridable | defs]}
+    macro_components_ast =
+      if macro_components != [] do
+        grouped =
+          Enum.group_by(macro_components, fn {module, _data} -> module end, fn {_module, data} ->
+            data
+          end)
+
+        quote do
+          @doc false
+          def __phoenix_macro_components__ do
+            unquote(Macro.escape(grouped))
+          end
+        end
+      end
+
+    {:__block__, [],
+     [def_components_ast, def_components_calls_ast, macro_components_ast, overridable | defs]}
   end
 
   defp register_component!(kind, env, name, check_if_defined?) do

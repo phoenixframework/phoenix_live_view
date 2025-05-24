@@ -74,6 +74,7 @@ export const PHX_THROTTLE = "throttle";
 export const PHX_UPDATE = "update";
 export const PHX_STREAM = "stream";
 export const PHX_STREAM_REF = "data-phx-stream";
+export const PHX_RUNTIME_HOOK = "data-phx-runtime-hook";
 export const PHX_KEY = "key";
 export const PHX_PRIVATE = "phxPrivate";
 export const PHX_AUTO_RECOVER = "auto-recover";
