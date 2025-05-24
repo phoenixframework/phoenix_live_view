@@ -207,6 +207,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   defp clear_manifests! do
     target_dir = target_dir()
+
     manifests =
       Path.wildcard(Path.join(target_dir, "*"))
       |> Enum.filter(&File.regular?(&1))

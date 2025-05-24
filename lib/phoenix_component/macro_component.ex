@@ -121,7 +121,8 @@ defmodule Phoenix.Component.MacroComponent do
   @type children :: [heex_ast()]
   @type heex_ast :: {tag(), attributes(), children()} | binary()
 
-  @callback transform(heex_ast :: heex_ast(), meta :: map()) :: heex_ast()
+  @callback transform(heex_ast :: heex_ast(), meta :: map()) ::
+              {:ok, heex_ast()} | {:ok, heex_ast(), data :: term()}
 
   @doc """
   Returns the stored data from macro components that returned `{:ok, ast, data}` in
