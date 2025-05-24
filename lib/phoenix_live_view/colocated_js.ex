@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   Then, in your `app.js` file, you could import it like this:
 
   ```javascript
-  import colocated from "phoenix-colocated/my_app";
+  import {MyWebComponent} from "phoenix-colocated/my_app";
   customElements.define("my-web-component", colocated.MyWebComponent);
   ```
 
@@ -280,7 +280,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
     content =
       entries
       |> Enum.group_by(fn {_file, config} -> config[:key] || :default end)
-      |> Enum.reduce([empty_manifest()], fn group, acc ->
+      |> Enum.reduce([], fn group, acc ->
         case group do
           {:default, entries} ->
             [
@@ -289,34 +289,28 @@ defmodule Phoenix.LiveView.ColocatedJS do
                 import_name = "js_" <> Base.encode32(name, case: :lower, padding: false)
                 escaped_name = Phoenix.HTML.javascript_escape(name)
 
-                ~s<\nimport #{import_name} from "./#{Path.relative_to(file, target_dir)}"; js["#{escaped_name}"] = #{import_name};>
+                ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; export { #{import_name} as "#{escaped_name}" };\n>
               end)
             ]
 
           {key, entries} ->
             escaped_key = Phoenix.HTML.javascript_escape(key)
+            tmp_name = "imp_#{Base.encode32(key, case: :lower, padding: false)}"
 
             [
               acc,
-              ~s<js["#{escaped_key}"] = {};>,
+              ~s<const #{tmp_name} = {}; export { #{tmp_name} as "#{escaped_key}" };\n>,
               Enum.map(entries, fn {file, %{name: name}} ->
                 import_name = "js_" <> Base.encode32(name, case: :lower, padding: false)
                 escaped_name = Phoenix.HTML.javascript_escape(name)
 
-                ~s<\nimport #{import_name} from "./#{Path.relative_to(file, target_dir)}"; js["#{escaped_key}"]["#{escaped_name}"] = #{import_name};>
+                ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; #{tmp_name}["#{escaped_name}"] = #{import_name};\n>
               end)
             ]
         end
       end)
 
     File.write!(Path.join(target_dir, manifest), content)
-  end
-
-  defp empty_manifest do
-    """
-    const js = {};
-    export default js;
-    """
   end
 
   defp target_dir do

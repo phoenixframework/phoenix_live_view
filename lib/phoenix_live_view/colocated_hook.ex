@@ -35,21 +35,18 @@ defmodule Phoenix.LiveView.ColocatedHook do
 
   You can read more about the internals of colocated hooks in the [documentation for colocated JS](`Phoenix.LiveView.ColocatedJS#internals`).
   A brief summary: at compile time, the hook's code is extracted into a special folder, typically in your `_build` directory.
-  Each hook is also `import`ed into a special *manifest* file. The manifest file provides a
-  [default export](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export)
-  which allows it to be imported by any JavaScript bundler. This default export is a JavaScript object
-  with a top-level `hooks` key which includes all the hooks for the application:
+  Each hook is also `import`ed into a special *manifest* file. The manifest file provides
+  [a named export](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/export)
+  which allows it to be imported by any JavaScript bundler that supports [ES modules](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Modules):
 
   ```javascript
-  import colocated from "phoenix-colocated/my_app"
+  import {hooks} from "phoenix-colocated/my_app"
 
-  console.log(colocated);
+  console.log(hooks);
   /*
   {
-    hooks: {
-      "MyAppWeb.DemoLive.PhoneNumber": {...},
-      ...
-    }
+    "MyAppWeb.DemoLive.PhoneNumber": {...},
+    ...
   }
   */
   ```
