@@ -268,7 +268,7 @@ let liveSocket = new LiveSocket(..., {
 
 When writing components that require some more control over the DOM, it often feels inconvenient to
 have to write a hook in a separate file. Instead, one wants to have the hook logic right next to the component
-code. For such cases, HEEx supports [macro components](Phoenix.Component.MacroComponent), and LiveView comes
+code. For such cases, HEEx supports [macro components](`Phoenix.Component.MacroComponent`), and LiveView comes
 with two implementations of macro components by default: `Phoenix.LiveView.ColocatedHook` and `Phoenix.LiveView.ColocatedJS`.
 
 Let's see an example:
