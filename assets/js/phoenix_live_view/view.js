@@ -937,7 +937,6 @@ export default class View {
           `script[${PHX_RUNTIME_HOOK}="${CSS.escape(hookName)}"]`,
         );
         if (runtimeHook) {
-          // if you really want runtime hooks, I
           let callbacks = window[`phx_hook_${hookName}`];
           if (callbacks && typeof callbacks === "function") {
             callbacks = callbacks();

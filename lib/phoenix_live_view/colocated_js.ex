@@ -166,7 +166,6 @@ defmodule Phoenix.LiveView.ColocatedJS do
     # _build/dev/phoenix-colocated/otp_app/MyApp.MyComponent/line_no.js
     target_path =
       target_dir()
-      |> Path.join(to_string(current_otp_app()))
       |> Path.join(inspect(meta.env.module))
 
     filename_opts =
@@ -196,13 +195,13 @@ defmodule Phoenix.LiveView.ColocatedJS do
   def compile do
     # this step runs after all modules have been compiled
     # so we can write the final manifests and remove outdated hooks
-    target_dir = target_dir()
-    clear_manifests!(target_dir)
-    files = clear_outdated_and_get_files!(target_dir)
-    write_new_manifests!(target_dir, files)
+    clear_manifests!()
+    files = clear_outdated_and_get_files!()
+    write_new_manifests!(files)
   end
 
-  defp clear_manifests!(target_dir) do
+  defp clear_manifests! do
+    target_dir = target_dir()
     manifests =
       Path.wildcard(Path.join(target_dir, "*/*.*"))
       |> Enum.filter(&File.regular?(&1))
@@ -210,20 +209,17 @@ defmodule Phoenix.LiveView.ColocatedJS do
     for manifest <- manifests, do: File.rm!(manifest)
   end
 
-  defp clear_outdated_and_get_files!(target_dir) do
-    apps = subdirectories(target_dir)
+  defp clear_outdated_and_get_files! do
+    target_dir = target_dir()
+    modules = subdirectories(target_dir)
 
-    Enum.flat_map(apps, fn app_dir ->
-      modules = subdirectories(app_dir)
-
-      Enum.flat_map(modules, fn module_folder ->
-        module = Module.concat([Path.basename(module_folder)])
-        process_module(app_dir, module_folder, module)
-      end)
+    Enum.flat_map(modules, fn module_folder ->
+      module = Module.concat([Path.basename(module_folder)])
+      process_module(module_folder, module)
     end)
   end
 
-  defp process_module(app_dir, module_folder, module) do
+  defp process_module(module_folder, module) do
     with true <- Code.ensure_loaded?(module),
          data when data != [] <- get_data(module) do
       expected_files = Enum.map(data, fn {filename, _opts} -> filename end)
@@ -237,7 +233,6 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
       Enum.map(data, fn {filename, config} ->
         absolute_file_path = Path.join(module_folder, filename)
-        config = Map.put(config, :app, Path.basename(app_dir))
         {absolute_file_path, config}
       end)
     else
@@ -263,23 +258,19 @@ defmodule Phoenix.LiveView.ColocatedJS do
     end
   end
 
-  defp write_new_manifests!(target_dir, files) do
+  defp write_new_manifests!(files) do
     files
-    |> Enum.group_by(fn {_filename, config} -> config.app end)
-    |> Enum.each(fn {application, entries} ->
-      target_dir = Path.join(target_dir, application)
-
-      entries
-      |> Enum.group_by(fn {_file, config} ->
-        config[:manifest] || "index.js"
-      end)
-      |> Enum.each(fn {manifest, entries} ->
-        write_manifest(manifest, entries, target_dir)
-      end)
+    |> Enum.group_by(fn {_file, config} ->
+      config[:manifest] || "index.js"
+    end)
+    |> Enum.each(fn {manifest, entries} ->
+      write_manifest(manifest, entries)
     end)
   end
 
-  defp write_manifest(manifest, entries, target_dir) do
+  defp write_manifest(manifest, entries) do
+    target_dir = target_dir()
+
     content =
       entries
       |> Enum.group_by(fn {_file, config} -> config[:key] || :default end)
@@ -323,12 +314,12 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp target_dir do
-    Application.get_env(:phoenix_live_view, Phoenix.LiveView.ColocatedJS, [])
-    |> Keyword.get(:target_directory, Path.join(Mix.Project.build_path(), "phoenix-colocated"))
-  end
+    default = Path.join(Mix.Project.build_path(), "phoenix-colocated")
+    app = to_string(Mix.Project.config()[:app])
 
-  defp current_otp_app do
-    Application.get_env(:logger, :compile_time_application) || Mix.Project.config()[:app]
+    Application.get_env(:phoenix_live_view, Phoenix.LiveView.ColocatedJS, [])
+    |> Keyword.get(:target_directory, default)
+    |> Path.join(app)
   end
 
   defp subdirectories(path) do

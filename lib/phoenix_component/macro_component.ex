@@ -5,7 +5,7 @@ defmodule Phoenix.Component.MacroComponent do
 
   Instead of introducing a special tag syntax like `<#macro-component>`, LiveView
   implements them using a special `:type` attribute as the most useful macro
-  components take their content and extract it so somewhere else, for example
+  components take their content and extract it to somewhere else, for example
   to a file in the local file system. A good example for this is `Phoenix.LiveView.ColocatedHook`
   and `Phoenix.LiveView.ColocatedJS`.
 
@@ -40,8 +40,8 @@ defmodule Phoenix.Component.MacroComponent do
     ]}
   ```
 
-  The `Phoenix.Component.MacroComponent.AST` module provides some utilities to work with the AST,
-  but in general it is quite simple:
+  This module provides some utilities to work with the AST, which uses
+  standard Elixir data structures:
 
   1. A HTML tag is represented as `{tag, attributes, children}`
   2. Text is represented as a plain binary
@@ -69,7 +69,7 @@ defmodule Phoenix.Component.MacroComponent do
 
     @impl true
     def transform({"pre", attrs, children}, _meta) do
-      markdown = Phoenix.Component.MacroComponent.AST.to_string(children)
+      markdown = Phoenix.Component.MacroComponent.to_string(children)
       {:ok, html_doc, _} = Earmark.as_html(markdown)
 
       {"div", attrs, [html_doc]}
@@ -79,7 +79,7 @@ defmodule Phoenix.Component.MacroComponent do
 
   That's it. Since the div could contain nested elements, for example when using
   an HTML code block, we need to convert the children to a string first, using the
-  `Phoenix.Component.MacroComponent.AST.to_string/1` function.
+  `Phoenix.Component.MacroComponent.to_string/1` function.
 
   Then, we can simply replace the element's contents with the returned HTML string from
   Earmark.
@@ -135,12 +135,6 @@ defmodule Phoenix.Component.MacroComponent do
       :error
     end
   end
-end
-
-defmodule Phoenix.Component.MacroComponent.AST do
-  @moduledoc """
-  An HTML AST for macro components.
-  """
 
   @doc false
   def build_ast([{:tag, name, attrs, _tag_meta} | rest]) do
@@ -212,32 +206,32 @@ defmodule Phoenix.Component.MacroComponent.AST do
   @doc """
   Turns an AST into a string.
   """
-  def to_string(ast) do
-    IO.iodata_to_binary(ast_to_string(ast))
+  def ast_to_string(ast) do
+    IO.iodata_to_binary(ast_to_iodata(ast))
   end
 
-  defp ast_to_string(list) when is_list(list) do
-    Enum.map(list, &ast_to_string/1)
+  defp ast_to_iodata(list) when is_list(list) do
+    Enum.map(list, &ast_to_iodata/1)
   end
 
-  defp ast_to_string({name, attrs, children}) do
+  defp ast_to_iodata({name, attrs, children}) do
     [
       "<",
       name,
-      attrs_to_string(attrs),
+      attrs_to_iodata(attrs),
       ">",
-      Enum.map(children, &ast_to_string/1),
+      Enum.map(children, &ast_to_iodata/1),
       "</",
       name,
       ">"
     ]
   end
 
-  defp ast_to_string(bin) when is_binary(bin), do: bin
+  defp ast_to_iodata(bin) when is_binary(bin), do: bin
 
-  defp attrs_to_string([]), do: []
+  defp attrs_to_iodata([]), do: []
 
-  defp attrs_to_string(attrs) do
+  defp attrs_to_iodata(attrs) do
     [
       " ",
       Enum.map_join(attrs, " ", fn {key, value} when is_binary(value) ->
@@ -248,18 +242,14 @@ defmodule Phoenix.Component.MacroComponent.AST do
   end
 
   @doc false
-  def to_tokens(ast) do
-    ast_to_tokens(ast)
-  end
-
-  defp ast_to_tokens({name, attrs, children}) do
+  def ast_to_tokens({name, attrs, children}) do
     [
       {:tag, name, ast_attrs_to_token_attrs(attrs), %{line: 0, column: 0}}
       | Enum.flat_map(children, &ast_to_tokens/1)
     ] ++ [{:close, :tag, name, %{line: 0, column: 0, tag_name: name}}]
   end
 
-  defp ast_to_tokens(bin) when is_binary(bin) do
+  def ast_to_tokens(bin) when is_binary(bin) do
     [{:text, bin, %{line_end: 0, column_end: 0}}]
   end
 
