@@ -173,7 +173,12 @@ defmodule Phoenix.LiveView.ColocatedJS do
       |> maybe_put_opt(opts, "key", :key)
       |> maybe_put_opt(opts, "manifest", :manifest)
 
-    filename = "#{meta.line}.#{opts["extension"] || "js"}"
+    hashed_name =
+      filename_opts.name
+      |> then(&:crypto.hash(:md5, &1))
+      |> Base.encode32(case: :lower, padding: false)
+
+    filename = "#{meta.line}_#{hashed_name}.#{opts["extension"] || "js"}"
 
     File.mkdir_p!(target_path)
     File.write!(Path.join(target_path, filename), text_content)
@@ -203,7 +208,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   defp clear_manifests! do
     target_dir = target_dir()
     manifests =
-      Path.wildcard(Path.join(target_dir, "*/*.*"))
+      Path.wildcard(Path.join(target_dir, "*"))
       |> Enum.filter(&File.regular?(&1))
 
     for manifest <- manifests, do: File.rm!(manifest)
