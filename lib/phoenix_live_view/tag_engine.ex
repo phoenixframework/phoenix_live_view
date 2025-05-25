@@ -27,13 +27,13 @@ defmodule Phoenix.LiveView.TagEngine do
   For instance, for LiveView which uses HTML as default tag handler this would
   return `{:tag, 'div'}` in case the given binary is identified as HTML tag.
 
-  You can also return {:error, "reason"} so that the compiler will display this
+  You can also return `{:error, "reason"}` so that the compiler will display this
   error.
   """
   @callback classify_type(name :: binary()) :: {type :: atom(), name :: binary()}
 
   @doc """
-  Returns if the given binary is either void or not.
+  Returns if the given tag name is void or not.
 
   That's mainly useful for HTML tags and used internally by the compiler. You
   can just implement as `def void?(_), do: false` if you want to ignore this.
@@ -45,7 +45,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   It returns a quoted expression or attributes. If attributes are returned,
   the second element is a list where each element in the list represents
-  one attribute.If the list element is a two-element tuple, it is assumed
+  one attribute. If the list element is a two-element tuple, it is assumed
   the key is the name to be statically written in the template. The second
   element is the value which is also statically written to the template whenever
   possible (such as binaries or binaries inside a list).
@@ -57,6 +57,19 @@ defmodule Phoenix.LiveView.TagEngine do
   Callback invoked to add annotations around the whole body of a template.
   """
   @callback annotate_body(caller :: Macro.Env.t()) :: {String.t(), String.t()} | nil
+
+  @doc """
+  Callback invoked to add annotations around each slot of a template.
+
+  In case the slot is an implicit inner block, the tag meta points to
+  the component.
+  """
+  @callback annotate_slot(
+              name :: atom(),
+              tag_meta :: %{line: non_neg_integer(), column: non_neg_integer()},
+              close_tag_meta :: %{line: non_neg_integer(), column: non_neg_integer()},
+              caller :: Macro.Env.t()
+            ) :: {String.t(), String.t()} | nil
 
   @doc """
   Callback invoked to add caller annotations before a function component is invoked.
@@ -190,7 +203,6 @@ defmodule Phoenix.LiveView.TagEngine do
       file: Keyword.get(opts, :file, "nofile"),
       indentation: Keyword.get(opts, :indentation, 0),
       caller: Keyword.fetch!(opts, :caller),
-      previous_token_slot?: false,
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler
     }
@@ -212,8 +224,8 @@ defmodule Phoenix.LiveView.TagEngine do
     opts = [root: token_state.root || false]
 
     opts =
-      if body_annotation = caller && has_tags?(tokens) && state.tag_handler.annotate_body(caller) do
-        [body_annotation: body_annotation] ++ opts
+      if annotation = caller && has_tags?(tokens) && state.tag_handler.annotate_body(caller) do
+        [meta: [template_annotation: annotation]] ++ opts
       else
         opts
       end
@@ -226,14 +238,22 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp has_tags?(tokens) do
-    Enum.any?(tokens, fn
-      {:text, _, _} -> false
-      {:expr, _, _} -> false
-      {:body_expr, _, _} -> false
-      _ -> true
-    end)
-  end
+  defp has_tags?([{:text, _, _} | tokens]), do: has_tags?(tokens)
+  defp has_tags?([{:expr, _, _} | tokens]), do: has_tags?(tokens)
+  defp has_tags?([{:body_expr, _, _} | tokens]), do: has_tags?(tokens)
+
+  # If we find a slot, discard everything in the slot and continue looking
+  defp has_tags?([{:slot, _, _, _} | tokens]),
+    do:
+      tokens
+      |> Enum.drop_while(&(not match?({:close, :slot, _, _}, &1)))
+      |> Enum.drop(1)
+      |> has_tags?()
+
+  # If we find a closing tag, we missed the opening one, so we are at the end
+  defp has_tags?([{:close, _, _, _} | _]), do: false
+  defp has_tags?([_ | _]), do: true
+  defp has_tags?([]), do: false
 
   defp validate_unclosed_tags!(%{tags: []} = state, _context) do
     state
@@ -276,7 +296,6 @@ defmodule Phoenix.LiveView.TagEngine do
       slots: [],
       caller: caller,
       root: root,
-      previous_token_slot?: false,
       indentation: indentation,
       tag_handler: tag_handler
     }
@@ -327,7 +346,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp update_subengine(state, fun, args) do
-    %{state | substate: invoke_subengine(state, fun, args), previous_token_slot?: false}
+    %{state | substate: invoke_subengine(state, fun, args)}
   end
 
   defp init_slots(state) do
@@ -341,8 +360,14 @@ defmodule Phoenix.LiveView.TagEngine do
   defp add_slot(state, slot_name, slot_assigns, slot_info, tag_meta, special_attrs) do
     %{slots: [slots | other_slots]} = state
     slot = {slot_name, slot_assigns, special_attrs, {tag_meta, slot_info}}
-    %{state | slots: [[slot | slots] | other_slots], previous_token_slot?: true}
+    %{state | slots: [[slot | slots] | other_slots]}
   end
+
+  defp prune_text_after_slot([{:text, text, meta} | tokens]),
+    do: [{:text, String.trim_leading(text), meta} | tokens]
+
+  defp prune_text_after_slot(tokens),
+    do: tokens
 
   defp validate_slot!(%{tags: [{type, _, _, _} | _]}, _name, _tag_meta)
        when type in [:remote_component, :local_component],
@@ -465,8 +490,6 @@ defmodule Phoenix.LiveView.TagEngine do
   # Text
 
   defp handle_token([{:text, text, %{line_end: line, column_end: column}} | tokens], state) do
-    text = if state.previous_token_slot?, do: String.trim_leading(text), else: text
-
     if text == "" do
       continue(state, tokens)
     else
@@ -528,7 +551,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_token([{:remote_component, name, attrs, tag_meta} | tokens], state) do
     mod_fun = decompose_remote_component_tag!(name, tag_meta, state)
-    tag_meta = Map.put(tag_meta, :mod_fun, mod_fun)
+    tag_meta = tag_meta |> Map.put(:mod_fun, mod_fun) |> Map.put(:has_tags?, has_tags?(tokens))
 
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
@@ -553,15 +576,16 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp handle_token([{:close, :remote_component, _name, _tag_close_meta} = token | tokens], state) do
+  defp handle_token([{:close, :remote_component, _name, tag_close_meta} = token | tokens], state) do
     {{:remote_component, name, attrs, tag_meta}, state} = pop_tag!(state, token)
     %{mod_fun: {mod_ast, mod_size, fun}, line: line, column: column} = tag_meta
 
     mod = expand_with_line(mod_ast, line, state.caller)
     attrs = postprocess_attrs(attrs, state)
+    ref = {"remote component", name}
 
     {assigns, attr_info, slot_info, state} =
-      build_component_assigns({"remote component", name}, attrs, line, tag_meta, state)
+      build_component_assigns(ref, attrs, line, tag_meta, tag_close_meta, state)
 
     store_component_call({mod, fun}, attr_info, slot_info, line, state)
     meta = [line: line, column: column + mod_size]
@@ -607,28 +631,29 @@ defmodule Phoenix.LiveView.TagEngine do
     assigns = wrap_special_slot(special, merge_component_attrs(roots, attrs, line))
 
     add_slot(state, slot_name, assigns, attr_info, tag_meta, special)
-    |> continue(tokens)
+    |> continue(prune_text_after_slot(tokens))
   end
 
   # Slot (with inner content)
 
-  defp handle_token([{:slot, slot_name, _attrs, tag_meta} = token | tokens], state) do
+  defp handle_token([{:slot, slot_name, attrs, tag_meta} | tokens], state) do
     validate_slot!(state, slot_name, tag_meta)
+    tag_meta = Map.put(tag_meta, :has_tags?, has_tags?(tokens))
 
     state
-    |> push_tag(token)
+    |> push_tag({:slot, slot_name, attrs, tag_meta})
     |> push_substate_to_stack()
     |> update_subengine(:handle_begin, [])
     |> continue(tokens)
   end
 
-  defp handle_token([{:close, :slot, slot_name, _tag_close_meta} = token | tokens], state) do
+  defp handle_token([{:close, :slot, slot_name, tag_close_meta} = token | tokens], state) do
     slot_name = String.to_atom(slot_name)
     {{:slot, _name, attrs, %{line: line} = tag_meta}, state} = pop_tag!(state, token)
 
     attrs = postprocess_attrs(attrs, state)
     {special, roots, attrs, attr_info} = split_component_attrs({"slot", slot_name}, attrs, state)
-    clauses = build_component_clauses(special[":let"], state)
+    clauses = build_component_clauses(special[":let"], slot_name, tag_meta, tag_close_meta, state)
 
     ast =
       quote line: line do
@@ -642,7 +667,7 @@ defmodule Phoenix.LiveView.TagEngine do
     state
     |> add_slot(slot_name, assigns, inner, tag_meta, special)
     |> pop_substate_from_stack()
-    |> continue(tokens)
+    |> continue(prune_text_after_slot(tokens))
   end
 
   # Local function component (self close)
@@ -694,12 +719,14 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # Local function component (with inner content)
 
-  defp handle_token([{:local_component, name, attrs, tag_meta} = token | tokens], state) do
+  defp handle_token([{:local_component, name, attrs, tag_meta} | tokens], state) do
+    tag_meta = Map.put(tag_meta, :has_tags?, has_tags?(tokens))
+
     case pop_special_attrs!(attrs, tag_meta, state) do
-      {false, _tag_meta, _attrs} ->
+      {false, tag_meta, attrs} ->
         state
         |> set_root_on_not_tag()
-        |> push_tag(token)
+        |> push_tag({:local_component, name, attrs, tag_meta})
         |> init_slots()
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
@@ -718,15 +745,16 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp handle_token([{:close, :local_component, _name, _tag_close_meta} = token | tokens], state) do
+  defp handle_token([{:close, :local_component, _name, tag_close_meta} = token | tokens], state) do
     {{:local_component, name, attrs, tag_meta}, state} = pop_tag!(state, token)
     fun = String.to_atom(name)
     %{line: line, column: column} = tag_meta
     attrs = postprocess_attrs(attrs, state)
     mod = actual_component_module(state.caller, fun)
+    ref = {"local component", fun}
 
     {assigns, attr_info, slot_info, state} =
-      build_component_assigns({"local component", fun}, attrs, line, tag_meta, state)
+      build_component_assigns(ref, attrs, line, tag_meta, tag_close_meta, state)
 
     store_component_call({mod, fun}, attr_info, slot_info, line, state)
     meta = [line: line, column: column]
@@ -940,8 +968,15 @@ defmodule Phoenix.LiveView.TagEngine do
   ## handle_tag_and_attrs
 
   defp handle_tag_and_attrs(state, name, attrs, suffix, meta) do
+    text =
+      if Application.get_env(:phoenix_live_view, :debug_tags_location, false) do
+        "<#{name} data-phx-loc=\"#{meta[:line]}\""
+      else
+        "<#{name}"
+      end
+
     state
-    |> update_subengine(:handle_text, [meta, "<#{name}"])
+    |> update_subengine(:handle_text, [meta, text])
     |> handle_tag_attrs(meta, attrs)
     |> update_subengine(:handle_text, [meta, suffix])
   end
@@ -1059,9 +1094,11 @@ defmodule Phoenix.LiveView.TagEngine do
     {merge_component_attrs(roots, attrs, line), attr_info}
   end
 
-  defp build_component_assigns(type_component, attrs, line, tag_meta, state) do
+  defp build_component_assigns(type_component, attrs, line, tag_meta, tag_close_meta, state) do
     {special, roots, attrs, attr_info} = split_component_attrs(type_component, attrs, state)
-    clauses = build_component_clauses(special[":let"], state)
+
+    clauses =
+      build_component_clauses(special[":let"], :inner_block, tag_meta, tag_close_meta, state)
 
     inner_block =
       quote line: line do
@@ -1227,17 +1264,28 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp build_component_clauses(let, state) do
+  defp build_component_clauses(let, name, tag_meta, tag_close_meta, %{caller: caller} = state) do
+    opts =
+      if annotation =
+           caller && Map.get(tag_meta, :has_tags?, false) &&
+             state.tag_handler.annotate_slot(name, tag_meta, tag_close_meta, caller) do
+        [meta: [template_annotation: annotation]]
+      else
+        []
+      end
+
+    ast = invoke_subengine(state, :handle_end, [opts])
+
     case let do
       # If we have a var, we can skip the catch-all clause
       {{var, _, ctx} = pattern, %{line: line}} when is_atom(var) and is_atom(ctx) ->
         quote line: line do
-          unquote(pattern) -> unquote(invoke_subengine(state, :handle_end, []))
+          unquote(pattern) -> unquote(ast)
         end
 
       {pattern, %{line: line}} ->
         quote line: line do
-          unquote(pattern) -> unquote(invoke_subengine(state, :handle_end, []))
+          unquote(pattern) -> unquote(ast)
         end ++
           quote line: line, generated: true do
             other ->
@@ -1249,7 +1297,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
       _ ->
         quote do
-          _ -> unquote(invoke_subengine(state, :handle_end, []))
+          _ -> unquote(ast)
         end
     end
   end

@@ -505,11 +505,12 @@ defmodule Phoenix.Component do
   See `embed_templates/1` for more information, including declarative
   assigns support for embedded templates.
 
-  ## Debug Annotations
+  ## Debug information
 
-  HEEx templates support debug annotations, which are special HTML comments
-  that wrap around rendered components to help you identify where markup
-  in your HTML document is rendered within your function component tree.
+  HEEx templates support adding annotations and locations to the rendered
+  page, which are special HTML comments and attributes that help you identify
+  where markup in your HTML document is rendered within your function component
+  tree.
 
   For example, imagine the following HEEx template:
 
@@ -519,8 +520,8 @@ defmodule Phoenix.Component do
   </.header>
   ```
 
-  The HTML document would receive the following comments when debug annotations
-  are enabled:
+  By turning on `debug_heex_annotations`, the HTML document would receive the
+  following comments when debug annotations are enabled:
 
   ```html
   <!-- @caller lib/app_web/home_live.ex:20 -->
@@ -534,11 +535,21 @@ defmodule Phoenix.Component do
   <!-- </AppWeb.CoreComponents.header> -->
   ```
 
-  Debug annotations work across any `~H` or `.html.heex` template.
-  They can be enabled globally with the following configuration in your
-  `config/dev.exs` file:
+  Similarly, you can also turn on `:debug_tags_location`, which adds a
+  `data-phx-loc` attribute with the line of where each HTML tag is defined:
 
-      config :phoenix_live_view, debug_heex_annotations: true
+  ```html
+  <header data-phx-loc="125" class="p-5">
+    <button data-phx-loc="458" class="px-2 bg-indigo-500 text-white">Click</button>
+  </header>
+  ```
+
+  These features work on any `~H` or `.html.heex` template. They can be enabled
+  globally with the following configuration in your `config/dev.exs` file:
+
+      config :phoenix_live_view,
+        debug_heex_annotations: true,
+        debug_tags_location: true
 
   Changing this configuration will require `mix clean` and a full recompile.
 
@@ -3387,7 +3398,7 @@ defmodule Phoenix.Component do
   end
 
   @doc """
-  Renders a `Phoenix.LiveView.AsyncResult` struct (e.g. from `Phoenix.LiveView.assign_async/4`) 
+  Renders a `Phoenix.LiveView.AsyncResult` struct (e.g. from `Phoenix.LiveView.assign_async/4`)
   with slots for the different loading states.
   The result state takes precedence over subsequent loading and failed
   states.

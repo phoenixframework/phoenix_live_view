@@ -1,10 +1,31 @@
 # Changelog for v1.1
 
-## v1.1.0
+## Quick update guide
 
-### Types for public interfaces
+Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
+
+1. In your `mix.exs`, update `phoenix_live_view` to latest and add `lazy_html` as a dependency:
+
+    ```elixir
+    {:phoenix_live_view, "~> 1.1"},
+    {:lazy_html, ">= 0.0.0", only: :test},
+    ```
+
+   Note you may remove `floki` as a dependency if you don't use it anywhere.
+
+2. In your `config/dev.exs`, find `debug_heex_annotations`, and also add `debug_tags_location`:
+
+    ```elixir
+    config :phoenix_live_view,
+      debug_heex_annotations: true,
+      debug_tags_location: true,
+      enable_expensive_runtime_checks: true
+    ```
+
+## Types for public interfaces
 
 LiveView 1.1 adds official types to the JavaScript client. This allows IntelliSense to work in editors that support it and is a massive improvement to the user experience when writing JavaScript hooks.
+
 If you're not using TypeScript, you can also add the necessary JSDoc hints to your hook definitions, assuming your editor supports them.
 
 Example when defining a hook object that is meant to be passed to the `LiveSocket` constructor:
@@ -70,25 +91,9 @@ let liveSocket = new LiveSocket(..., {
 
 Using [`@types/phoenix_live_view`](https://www.npmjs.com/package/@types/phoenix_live_view) (not maintained by the Phoenix team) is not necessary any more.
 
-### JS.ignore_attributes
+## JS.ignore_attributes
 
-Sometimes it is useful to prevent some attributes from being patches by LiveView. One example where this frequently came up is when using a native `<dialog>` or `<details>` element that is controlled by the `open` attribute, which is special in that it is actually set (and removed) by the browser. Previously, to keep the `open` attribute in place, it was necessary to rely on the `onBeforeElUpdated` dom callback (or a custom hook):
-
-```javascript
-let liveSocket = new LiveSocket("...", {
-  dom: {
-    onBeforeElUpdated: (fromEl, toEl) => {
-      if(["dialog", "details"].indexOf(fromEl.tagName) >= 0){
-        Array.from(fromEl.attributes).forEach(attr => {
-          toEl.setAttribute(attr.name, attr.value)
-        })
-      }
-    }
-  }
-})
-```
-
-Now, you can simply call `JS.ignore_attributes` in a `phx-mounted` binding:
+Sometimes it is useful to prevent some attributes from being patched by LiveView. One example where this frequently came up is when using a native `<dialog>` or `<details>` element that is controlled by the `open` attribute, which is special in that it is actually set (and removed) by the browser. Previously, LiveView would remove those attributes on update and required additional patching, now you can simply call `JS.ignore_attributes` in a `phx-mounted` binding:
 
 ```heex
 <details phx-mounted={JS.ignore_attributes(["open"])}>
@@ -97,12 +102,13 @@ Now, you can simply call `JS.ignore_attributes` in a `phx-mounted` binding:
 </details>
 ```
 
-### Moving from Floki to LazyHTML
+## Moving from Floki to LazyHTML
 
 LiveView 1.1 moves to [LazyHTML](https://hexdocs.pm/lazy_html/) as the HTML engine used by `LiveViewTest`. LazyHTML is based on [lexbor](https://github.com/lexbor/lexbor) and allows the use of modern CSS selector features, like `:is()`, `:has()`, etc. to target elements. Lexbor's stated goal is to create output that "should match that of modern browsers, meeting industry specifications".
 
-This is a mostly backwards compatible change. The only way in which this affects LiveView projects is when using Floki specific selectors (`fl-contains`, `fl-icontains`), which will not work any more in selectors passed to LiveViewTest's [`element/3`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html#element/3) function. In most cases, the `text_filter` option of [`element/3`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html#element/3) should be a sufficient replacement, which has been a feature since LiveView 
-v0.12.0. Note that in Phoenix versions prior to v1.8, the `phx.gen.auth` generator used the Floki specific `fl-contains` selector in its generated tests in two instances, so if you used the `phx.gen.auth` generator to scaffold your authentication solution, those tests will need to be adjusted when updating to LiveView v1.1. In both cases, changing to use the `text_filter` option is enough to get you going again:
+This is a mostly backwards compatible change. The only way in which this affects LiveView projects is when using Floki specific selectors (`fl-contains`, `fl-icontains`), which will not work any more in selectors passed to LiveViewTest's [`element/3`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html#element/3) function. In most cases, the `text_filter` option of [`element/3`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html#element/3) should be a sufficient replacement, which has been a feature since LiveView v0.12.0.
+
+Note that in Phoenix versions prior to v1.8, the `phx.gen.auth` generator used the Floki specific `fl-contains` selector in its generated tests in two instances, so if you used the `phx.gen.auth` generator to scaffold your authentication solution, those tests will need to be adjusted when updating to LiveView v1.1. In both cases, changing to use the `text_filter` option is enough to get you going again:
 
 ```diff
  {:ok, _login_live, login_html} =
@@ -113,7 +119,15 @@ v0.12.0. Note that in Phoenix versions prior to v1.8, the `phx.gen.auth` generat
    |> follow_redirect(conn, ~p"<%= schema.route_prefix %>/register")
 ```
 
-If you're using Floki itself in your tests through its API (`Floki.parse_document`, `Floki.find`, etc.), you can continue to do so.
+If you're using Floki itself in your tests through its API (`Floki.parse_document`, `Floki.find`, etc.), you are not required to rewrite them when you update to LiveView v1.1.
+
+## Slot and line annotations
+
+When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginning and end of each slot. A new `:debug_tags_location` has also been added, which adds the starting line of each tag. The goal is to provide more precise information to tools.
+
+To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
+
+## v1.1.0
 
 ### Enhancements
 
