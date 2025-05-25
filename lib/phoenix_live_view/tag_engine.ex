@@ -865,8 +865,9 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp validate_module!(module_string, tag_meta, state) do
     module =
-      case Code.eval_string(module_string, [], state.caller) do
-        {mod, _} when is_atom(mod) ->
+      case Code.string_to_quoted!(module_string, file: state.file, line: tag_meta.line)
+           |> Macro.expand(state.caller) do
+        mod when is_atom(mod) ->
           mod
 
         _ ->
