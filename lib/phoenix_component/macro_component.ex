@@ -59,7 +59,7 @@ defmodule Phoenix.Component.MacroComponent do
 
   Let's say we want to create a macro component that renders markdown as HTML at
   compile time. First, we need some library that actually converts the markdown to
-  HTML. For this example, we use [`earmark`](https://hex.pm/packages/earmark).
+  HTML. For this example, we use [`mdex`](https://hex.pm/packages/mdex).
 
   We start by defining the module for the macro component:
 
@@ -70,7 +70,7 @@ defmodule Phoenix.Component.MacroComponent do
     @impl true
     def transform({"pre", attrs, children}, _meta) do
       markdown = Phoenix.Component.MacroComponent.to_string(children)
-      {:ok, html_doc, _} = Earmark.as_html(markdown)
+      html_doc = MDEx.to_html!(markdown)
 
       {"div", attrs, [html_doc]}
     end
@@ -82,7 +82,7 @@ defmodule Phoenix.Component.MacroComponent do
   `Phoenix.Component.MacroComponent.to_string/1` function.
 
   Then, we can simply replace the element's contents with the returned HTML string from
-  Earmark.
+  MDEx.
 
   We can now use the macro component inside our HEEx templates:
 
