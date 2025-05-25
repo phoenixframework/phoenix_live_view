@@ -22,7 +22,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   Then, in your `app.js` file, you could import it like this:
 
   ```javascript
-  import {MyWebComponent} from "phoenix-colocated/my_app";
+  import colocated from "phoenix-colocated/my_app";
   customElements.define("my-web-component", colocated.MyWebComponent);
   ```
 
@@ -84,15 +84,29 @@ defmodule Phoenix.LiveView.ColocatedJS do
   for packages inside the `deps` folder, as well as the `Mix.Project.build_path()`, which resolves to
   `_build/$MIX_ENV`. If you use a different bundler, you'll need to configure it accordingly. If it is not
   possible to configure the `NODE_PATH`, you can also change the folder to which LiveView writes colocated
-  JavaScript by setting the `:target_directory` option in your project's `config.exs`:
+  JavaScript by setting the `:target_directory` option in your project's `mix.exs`:
 
   ```elixir
-  config :phoenix_live_view, Phoenix.LiveView.ColocatedJS,
-    target_directory: Path.expand("../assets/node_modules/phoenix-colocated", __DIR__)
+  def project do
+    [
+      ...,
+      phoenix_live_view: [
+        colocated_js: [
+          target_directory: Path.expand("assets/node_modules/my-colocated", __DIR__)
+        ]
+      ]
+    ]
+  end
   ```
 
   In this example, all colocated JavaScript would be written into the `assets/node_modules/phoenix-colocated`
-  folder.
+  folder. Note that this only affects colocated JS from your own application, not from dependencies.
+  If necessary, you can configure the global `:target_directory` in your `config.exs`:
+
+  ```elixir
+  config :phoenix_live_view, :colocated_js,
+    target_directory: Path.expand("../assets/node_modules/phoenix-colocated", __DIR__)
+  ```
 
   ### Imports in colocated JS
 
@@ -119,10 +133,12 @@ defmodule Phoenix.LiveView.ColocatedJS do
       the manifest. This is required, even if you don't plan to access the exported values or the
       script does not actually export anything.
 
-    * `key` - A key under which to namespace the export. This is used by `Phoenix.LiveView.ColocatedHook` to
-      nest all hooks under the `hooks` key. For example, you could set this to `web_components` for each colocated
-      script that defines a web component and then access all of them as `colocated.web_components` when importing
-      the manifest.
+    * `key` - A custom key to use for the export. This is used by `Phoenix.LiveView.ColocatedHook` to
+      export all hooks under the named `hooks` export (`export { ... as hooks }`).
+      For example, you could set this to `web_components` for each colocated script that defines
+      a web component and then import all of them as `import { web_components } from "phoenix-colocated/my_app"`.
+      Defaults to `:default`, which means the export will be available under the manifest's `default` export.
+      Note that this needs to be a valid JavaScript identifier.
 
     * `extension` - a custom extension to use when writing the extracted file. The default is `js`.
 
@@ -280,7 +296,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
     content =
       entries
       |> Enum.group_by(fn {_file, config} -> config[:key] || :default end)
-      |> Enum.reduce([], fn group, acc ->
+      |> Enum.reduce(["const js = {}; export default js;\n"], fn group, acc ->
         case group do
           {:default, entries} ->
             [
@@ -289,17 +305,16 @@ defmodule Phoenix.LiveView.ColocatedJS do
                 import_name = "js_" <> Base.encode32(name, case: :lower, padding: false)
                 escaped_name = Phoenix.HTML.javascript_escape(name)
 
-                ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; export { #{import_name} as "#{escaped_name}" };\n>
+                ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; js["#{escaped_name}"] = #{import_name};\n>
               end)
             ]
 
           {key, entries} ->
-            escaped_key = Phoenix.HTML.javascript_escape(key)
             tmp_name = "imp_#{Base.encode32(key, case: :lower, padding: false)}"
 
             [
               acc,
-              ~s<const #{tmp_name} = {}; export { #{tmp_name} as "#{escaped_key}" };\n>,
+              ~s<const #{tmp_name} = {}; export { #{tmp_name} as #{key} };\n>,
               Enum.map(entries, fn {file, %{name: name}} ->
                 import_name = "js_" <> Base.encode32(name, case: :lower, padding: false)
                 escaped_name = Phoenix.HTML.javascript_escape(name)
@@ -313,11 +328,19 @@ defmodule Phoenix.LiveView.ColocatedJS do
     File.write!(Path.join(target_dir, manifest), content)
   end
 
+  defp settings do
+    config = Mix.Project.config()[:phoenix_live_view] || []
+    project_settings = Keyword.get(config, :colocated_js, [])
+    global_settings = Application.get_env(:phoenix_live_view, :colocated_js, [])
+
+    Keyword.merge(project_settings, global_settings)
+  end
+
   defp target_dir do
     default = Path.join(Mix.Project.build_path(), "phoenix-colocated")
     app = to_string(Mix.Project.config()[:app])
 
-    Application.get_env(:phoenix_live_view, Phoenix.LiveView.ColocatedJS, [])
+    settings()
     |> Keyword.get(:target_directory, default)
     |> Path.join(app)
   end

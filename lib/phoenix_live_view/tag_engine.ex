@@ -873,9 +873,11 @@ defmodule Phoenix.LiveView.TagEngine do
           )
       end
 
-    if not (Code.ensure_loaded?(module) and function_exported?(module, :transform, 2)) do
+    _ = Code.ensure_compiled!(module)
+
+    if not function_exported?(module, :transform, 2) do
       raise_syntax_error!(
-        "the given macro component #{inspect(module)} is not loaded or does not implement the `Phoenix.LiveView.MacroComponent` behaviour",
+        "the given macro component #{inspect(module)} does not implement the `Phoenix.LiveView.MacroComponent` behaviour",
         tag_meta,
         state
       )

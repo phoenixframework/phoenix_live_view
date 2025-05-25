@@ -126,12 +126,12 @@ defmodule Phoenix.Component.MacroComponent do
 
   @doc """
   Returns the stored data from macro components that returned `{:ok, ast, data}` in
-  the format `%{module => [data]}`.
+  the format `%{module => [data]}` where module is the macro component from `:type`.
   """
-  def get_data(module) do
-    if Code.ensure_loaded?(module) and
-         function_exported?(module, :__phoenix_macro_components__, 0) do
-      module.__phoenix_macro_components__()
+  def get_data(component_module) do
+    if Code.ensure_loaded?(component_module) and
+         function_exported?(component_module, :__phoenix_macro_components__, 0) do
+      component_module.__phoenix_macro_components__()
     else
       :error
     end
