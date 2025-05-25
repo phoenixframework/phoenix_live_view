@@ -354,6 +354,10 @@ the "Save" button to "Saving...", and restore it to "Save" on acknowledgment:
 > an acknowledgement from the server. This means that although a regular button
 > without `phx-disable-with` is not semantically disabled while waiting for a
 > server response, it will not trigger duplicate events.
+>
+> Finally, `phx-disable-with` works with an element‘s `innerText`,
+> therefore nested DOM elements, like `svg` or icons, won't be preserved.
+> See "CSS loading states" for alternative approaches to this.
 
 You may also take advantage of LiveView's CSS loading state classes to
 swap out your form content while the form is submitting. For example,
