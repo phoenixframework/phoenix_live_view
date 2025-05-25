@@ -34,7 +34,6 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     assert ast ==
              {"div",
               [
-                {":type", {:__aliases__, [line: 1], [:MyComponent]}},
                 {"id", "1"},
                 {"other", {:@, [line: 1], [{:foo, [line: 1], nil}]}}
               ],

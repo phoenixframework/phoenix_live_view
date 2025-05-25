@@ -722,47 +722,15 @@ defmodule Phoenix.LiveView.Tokenizer do
   end
 
   defp normalize_tag([{type, name, attrs, meta} | acc], line, column, self_close?, state) do
-    {attrs, macro_component} =
-      for attr <- attrs, reduce: {[], nil} do
-        {acc, macro_component} ->
-          case attr do
-            {":type", {:expr, code, _}, _meta} = attr ->
-              {[attr | acc], code}
-
-            {":type", _, _} ->
-              raise_syntax_error!(
-                ":type attribute must be an expression",
-                %{line: line, column: column},
-                state
-              )
-
-            _ ->
-              {[attr | acc], macro_component}
-          end
-      end
+    attrs = Enum.reverse(attrs)
 
     meta = %{meta | inner_location: {line, column}}
 
     meta =
       cond do
-        type == :tag and state.tag_handler.void?(name) ->
-          Map.put(meta, :closing, :void)
-
-        self_close? && macro_component != nil ->
-          raise_syntax_error!(
-            ":type is not allowed on self-closing tags",
-            %{line: line, column: column},
-            state
-          )
-
-        self_close? ->
-          Map.put(meta, :closing, :self)
-
-        macro_component != nil ->
-          Map.put(meta, :macro_component, macro_component)
-
-        true ->
-          meta
+        type == :tag and state.tag_handler.void?(name) -> Map.put(meta, :closing, :void)
+        self_close? -> Map.put(meta, :closing, :self)
+        true -> meta
       end
 
     [{type, name, attrs, meta} | acc]

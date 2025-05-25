@@ -779,31 +779,34 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # HTML element
 
-  defp handle_token([{:tag, _name, _attrs, %{macro_component: _}} | _] = tokens, state) do
-    handle_macro_component(tokens, state)
-  end
-
   defp handle_token([{:tag, name, attrs, tag_meta} = token | tokens], state) do
     attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
 
-    case pop_special_attrs!(attrs, tag_meta, state) do
-      {false, tag_meta, attrs} ->
-        state
-        |> set_root_on_tag()
-        |> push_tag(token)
-        |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
-        |> continue(tokens)
+    case List.keytake(attrs, ":type", 0) do
+      {{":type", {:expr, code, _}, _meta}, attrs} ->
+        # validate_phx_attrs! already ensured that if :type is present, it is an expression
+        handle_macro_component([{:tag, name, attrs, tag_meta} | tokens], code, state)
 
-      {true, new_meta, new_attrs} ->
-        state
-        |> push_substate_to_stack()
-        |> update_subengine(:handle_begin, [])
-        |> set_root_on_not_tag()
-        |> push_tag({:tag, name, new_attrs, new_meta})
-        |> handle_tag_and_attrs(name, new_attrs, ">", to_location(new_meta))
-        |> continue(tokens)
+      nil ->
+        case pop_special_attrs!(attrs, tag_meta, state) do
+          {false, tag_meta, attrs} ->
+            state
+            |> set_root_on_tag()
+            |> push_tag(token)
+            |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+            |> continue(tokens)
+
+          {true, new_meta, new_attrs} ->
+            state
+            |> push_substate_to_stack()
+            |> update_subengine(:handle_begin, [])
+            |> set_root_on_not_tag()
+            |> push_tag({:tag, name, new_attrs, new_meta})
+            |> handle_tag_and_attrs(name, new_attrs, ">", to_location(new_meta))
+            |> continue(tokens)
+        end
     end
   end
 
@@ -819,7 +822,8 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_token([], state), do: state
 
   defp handle_macro_component(
-         [{:tag, _name, _attrs, %{macro_component: module_string} = tag_meta} | _] = tokens,
+         [{:tag, _name, _attrs, tag_meta} | _] = tokens,
+         module_string,
          state
        ) do
     Macro.Env.required?(state.caller, Phoenix.Component) ||
@@ -899,6 +903,18 @@ defmodule Phoenix.LiveView.TagEngine do
   #   pop_special_attrs!(state, ":for", attrs, %{}, state)
   #   => {%{}, []}
   defp pop_special_attrs!(attrs, tag_meta, state) do
+    case List.keyfind(attrs, ":type", 0) do
+      {":type", _value, _meta} ->
+        raise_syntax_error!(
+          "the :type attribute can only be used on regular HTML tags",
+          tag_meta,
+          state
+        )
+
+      nil ->
+        :ok
+    end
+
     Enum.reduce([for: ":for", if: ":if"], {false, tag_meta, attrs}, fn
       {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
         attrs_acc
@@ -1353,7 +1369,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # removes phx-no-format, etc. and maps phx-hook=".name" to the fully qualified name
   defp postprocess_attrs(attrs, state) do
-    attrs_to_remove = ~w(phx-no-format phx-no-curly-interpolation :type)
+    attrs_to_remove = ~w(phx-no-format phx-no-curly-interpolation)
 
     for {key, value, meta} <- attrs,
         key not in attrs_to_remove do
@@ -1457,7 +1473,7 @@ defmodule Phoenix.LiveView.TagEngine do
     do: validate_phx_attrs!(t, meta, state, "phx-hook", id?)
 
   defp validate_phx_attrs!([{special, value, attr_meta} | t], meta, state, attr, id?)
-       when special in ~w(:if :for) do
+       when special in ~w(:if :for :type) do
     case value do
       {:expr, _, _} ->
         validate_phx_attrs!(t, meta, state, attr, id?)
