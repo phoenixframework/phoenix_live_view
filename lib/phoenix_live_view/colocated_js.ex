@@ -154,7 +154,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
       %{"name" => name} ->
         raise ArgumentError,
-              "the name attribute of a colocated JS / hook must be a compile-time string. Got: #{inspect(name)}"
+              "the name attribute of a colocated script must be a compile-time string. Got: #{Macro.to_string(name)}"
 
       _ ->
         raise ArgumentError, "missing required name attribute for ColocatedJS"

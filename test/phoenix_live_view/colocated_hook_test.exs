@@ -62,4 +62,29 @@ defmodule Phoenix.LiveView.ColocatedHookTest do
                Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/")
              )
   end
+
+  test "raises for invalid name" do
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/the name attribute of a colocated hook must be a compile-time string\. Got: @foo/,
+                 fn ->
+                   defmodule TestComponentInvalidName do
+                     use Phoenix.Component
+                     alias Phoenix.LiveView.ColocatedHook, as: Hook
+
+                     def fun(assigns) do
+                       ~H"""
+                       <script :type={Hook} name={@foo}>
+                         export default {
+                           mounted() {
+                             this.el.textContent = "Hello, world!";
+                           }
+                         }
+                       </script>
+
+                       <div id="hook" phx-hook=".fun"></div>
+                       """
+                     end
+                   end
+                 end
+  end
 end

@@ -133,13 +133,17 @@ defmodule Phoenix.LiveView.ColocatedHook do
         %{"name" => "." <> name} ->
           "#{inspect(meta.env.module)}.#{name}"
 
-        %{"name" => name} ->
+        %{"name" => name} when is_binary(name) ->
           raise ArgumentError,
                 """
                 colocated hook names must start with a dot, invalid hook name: #{name}
 
                 Hint: name your hook <script :type={ColocatedHook} name=".#{name}" ...>
                 """
+
+        %{"name" => name} ->
+          raise ArgumentError,
+                "the name attribute of a colocated hook must be a compile-time string. Got: #{Macro.to_string(name)}"
 
         %{} ->
           raise ArgumentError, "missing required name attribute for ColocatedHook"
