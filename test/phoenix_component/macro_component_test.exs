@@ -18,8 +18,17 @@ defmodule Phoenix.Component.MacroComponentTest do
     assert MacroComponent.ast_to_string({"circle", [{"id", "1"}], [], %{closing: :self}}) ==
              "<circle id=\"1\"/>"
 
-    assert_raise Protocol.UndefinedError, fn ->
-      MacroComponent.ast_to_string({"div", [{"id", quote(do: @bar)}], ["Hello"], %{}})
-    end
+    assert MacroComponent.ast_to_string(
+             {"div", [{"foo", nil}, {"bar", "baz"}], [], %{closing: :self}}
+           ) ==
+             "<div foo bar=\"baz\"/>"
+
+    assert_raise ArgumentError,
+                 ~r/cannot convert AST with non-string attribute "id" to string. Got: @bar/,
+                 fn ->
+                   MacroComponent.ast_to_string(
+                     {"div", [{"id", quote(do: @bar)}], ["Hello"], %{}}
+                   )
+                 end
   end
 end

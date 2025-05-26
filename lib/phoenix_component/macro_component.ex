@@ -250,7 +250,7 @@ defmodule Phoenix.Component.MacroComponent do
     [
       "<",
       name,
-      Enum.map(attrs, fn {key, value} -> ~s( #{key}="#{value}") end),
+      ast_attributes_to_iodata(attrs),
       suffix
     ]
   end
@@ -259,7 +259,7 @@ defmodule Phoenix.Component.MacroComponent do
     [
       "<",
       name,
-      Enum.map(attrs, fn {key, value} -> ~s( #{key}="#{value}") end),
+      ast_attributes_to_iodata(attrs),
       ">",
       Enum.map(children, &ast_to_iodata/1),
       "</",
@@ -270,5 +270,19 @@ defmodule Phoenix.Component.MacroComponent do
 
   defp ast_to_iodata(binary) when is_binary(binary) do
     binary
+  end
+
+  defp ast_attributes_to_iodata(attrs) do
+    Enum.map(attrs, fn
+      {key, value} when is_binary(value) ->
+        ~s( #{key}="#{value}")
+
+      {key, nil} ->
+        ~s( #{key})
+
+      {key, value} ->
+        raise ArgumentError,
+              "cannot convert AST with non-string attribute \"#{key}\" to string. Got: #{Macro.to_string(value)}"
+    end)
   end
 end
