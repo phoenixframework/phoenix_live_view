@@ -34,7 +34,7 @@ defmodule Phoenix.Component.MacroComponent do
 
   ```elixir
   {"script",
-    [{":type", {:__aliases__, [line: 1], [:ColocatedHook]}}, {"name", ".foo"}],
+    [{"name", ".foo"}],
     [
       "\\n  export default {\\n    mounted() {\\n      this.el.firstElementChild.textContent = \\"Hello from JS!\\"\\n    }\\n  }\\n"
     ]}
@@ -188,8 +188,18 @@ defmodule Phoenix.Component.MacroComponent do
 
   defp token_attrs_to_ast(attrs) do
     Enum.map(attrs, fn {name, value, _meta} ->
-      # TODO: decide how we want to treat expressions
-      #       for now we just do binary / Elixir AST
+      # for now, we don't support root expressions (<div {@foo}>)
+      if name == :root do
+        format_attr = fn
+          {:string, binary, _meta} -> binary
+          {:expr, code, _meta} -> code
+          nil -> "nil"
+        end
+
+        raise ArgumentError,
+              "dynamic attributes are not supported in macro components, got: `{#{format_attr.(value)}}`"
+      end
+
       case value do
         {:string, binary, _meta} ->
           {name, binary}
@@ -206,40 +216,44 @@ defmodule Phoenix.Component.MacroComponent do
 
   @doc """
   Turns an AST into a string.
+
+  ## Options
+
+    * `:attributes_escape` - a function that receives a list of attribute tuples and returns an iodata
+      list. Defaults to a function that HTML-escapes the attribute values.
+
   """
-  def ast_to_string(ast) do
-    IO.iodata_to_binary(ast_to_iodata(ast))
+  def ast_to_string(ast, opts \\ []) do
+    ast
+    |> ast_to_iodata(opts)
+    |> IO.iodata_to_binary()
   end
 
-  defp ast_to_iodata(list) when is_list(list) do
-    Enum.map(list, &ast_to_iodata/1)
+  defp ast_to_iodata(list, opts) when is_list(list) do
+    Enum.map(list, &ast_to_iodata(&1, opts))
   end
 
-  defp ast_to_iodata({name, attrs, children}) do
+  defp ast_to_iodata({name, attrs, children}, opts) do
+    attrs_to_iodata =
+      Keyword.get(opts, :attributes_escape, fn attrs ->
+        {:safe, iodata} = Phoenix.HTML.attributes_escape(attrs)
+        iodata
+      end)
+
     [
       "<",
       name,
-      attrs_to_iodata(attrs),
+      attrs_to_iodata.(attrs),
       ">",
-      Enum.map(children, &ast_to_iodata/1),
+      Enum.map(children, &ast_to_iodata(&1, opts)),
       "</",
       name,
       ">"
     ]
   end
 
-  defp ast_to_iodata(bin) when is_binary(bin), do: bin
-
-  defp attrs_to_iodata([]), do: []
-
-  defp attrs_to_iodata(attrs) do
-    [
-      " ",
-      Enum.map_join(attrs, " ", fn {key, value} when is_binary(value) ->
-        {:safe, escaped} = Phoenix.HTML.html_escape(value)
-        <<key::binary, "=", "\"", escaped::binary, "\"">>
-      end)
-    ]
+  defp ast_to_iodata(binary, _opts) when is_binary(binary) do
+    binary
   end
 
   @doc false

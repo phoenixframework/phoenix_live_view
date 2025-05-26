@@ -148,4 +148,36 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                    end
                  end
   end
+
+  test "raises for dynamic attributes" do
+    assert_raise ArgumentError,
+                 ~r/dynamic attributes are not supported in macro components, got: #{Regex.escape("`{@bar}`")}/,
+                 fn ->
+                   defmodule TestComponentUnsupportedDynamicAttributes1 do
+                     use Phoenix.Component
+
+                     def render(assigns) do
+                       ~H"""
+                       <div :type={MyComponent} id="1" other={@foo} {@bar}></div>
+                       """
+                     end
+                   end
+                 end
+
+    assert_raise ArgumentError,
+                 ~r/dynamic attributes are not supported in macro components, got: #{Regex.escape("`{@bar}`")}/,
+                 fn ->
+                   defmodule TestComponentUnsupportedDynamicAttributes2 do
+                     use Phoenix.Component
+
+                     def render(assigns) do
+                       ~H"""
+                       <div :type={MyComponent} id="1" other={@foo}>
+                         <span {@bar}>Hey!</span>
+                       </div>
+                       """
+                     end
+                   end
+                 end
+  end
 end
