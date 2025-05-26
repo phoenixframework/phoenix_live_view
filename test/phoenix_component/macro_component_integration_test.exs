@@ -24,6 +24,10 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
         <div :type={MyComponent} id="1" other={@foo}>
           <p>This is some inner content</p>
           <h1>Cool</h1>
+          <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="50" cy="50" r="50" />
+          </svg>
+          <hr />
         </div>
         """
       end
@@ -31,19 +35,27 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     assert_received {:ast, ast, meta}
 
-    assert ast ==
-             {"div",
-              [
-                {"id", "1"},
-                {"other", {:@, [line: 1], [{:foo, [line: 1], nil}]}}
-              ],
-              [
-                "\n  ",
-                {"p", [], ["This is some inner content"]},
-                "\n  ",
-                {"h1", [], ["Cool"]},
-                "\n"
-              ]}
+    assert {"div",
+            [
+              {"id", "1"},
+              {"other", {:@, [line: _], [{:foo, [line: _], nil}]}}
+            ],
+            [
+              "\n  ",
+              {"p", [], ["This is some inner content"], %{}},
+              "\n  ",
+              {"h1", [], ["Cool"], %{}},
+              "\n  ",
+              {"svg", [{"viewBox", "0 0 100 100"}, {"xmlns", "http://www.w3.org/2000/svg"}],
+               [
+                 "\n    ",
+                 {"circle", [{"cx", "50"}, {"cy", "50"}, {"r", "50"}], [], %{closing: :self}},
+                 "\n  "
+               ], %{}},
+              "\n  ",
+              {"hr", [], [], %{closing: :void}},
+              "\n"
+            ], %{}} = ast
 
     assert %{env: env, file: file, line: _line} = meta
     assert env.module == TestComponentAst
@@ -54,6 +66,10 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
              <div id="1" other="bar">
                <p>This is some inner content</p>
                <h1>Cool</h1>
+               <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                 <circle cx="50" cy="50" r="50" />
+               </svg>
+               <hr>
              </div>
              """
   end
@@ -63,9 +79,10 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
       :new_ast,
       {:div, [{"data-foo", "bar"}],
        [
-         {"h1", [], ["Where is this coming from?"]},
-         {"div", [{"id", quote(do: @foo)}], ["I have text content"]}
-       ]}
+         {"h1", [], ["Where is this coming from?"], %{}},
+         {"div", [{"id", quote(do: @foo)}], ["I have text content"], %{}},
+         {"hr", [], [], %{closing: :void}}
+       ], %{}}
     )
 
     defmodule TestComponentReplacedAst do
@@ -89,6 +106,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
              <div data-foo="bar">
                <h1>Where is this coming from?</h1>
                <div id="bar">I have text content</div>
+               <hr>
              </div>
              """
   end
@@ -175,6 +193,22 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                        <div :type={MyComponent} id="1" other={@foo}>
                          <span {@bar}>Hey!</span>
                        </div>
+                       """
+                     end
+                   end
+                 end
+  end
+
+  test "raises for single quote attributes" do
+    assert_raise ArgumentError,
+                 ~r/single quote attributes are not supported in macro components/,
+                 fn ->
+                   defmodule TestComponentUnsupportedSingleQuoteAttributes do
+                     use Phoenix.Component
+
+                     def render(assigns) do
+                       ~H"""
+                       <div :type={MyComponent} id='"hello"'></div>
                        """
                      end
                    end

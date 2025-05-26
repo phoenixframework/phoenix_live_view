@@ -849,18 +849,69 @@ defmodule Phoenix.LiveView.TagEngine do
         )
     else
       {:ok, new_ast} ->
-        new_tokens = Phoenix.Component.MacroComponent.ast_to_tokens(new_ast)
-        continue(state, new_tokens ++ rest)
+        state
+        |> handle_ast(new_ast, tag_meta)
+        |> continue(rest)
 
       {:ok, new_ast, data} ->
         Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
-        new_tokens = Phoenix.Component.MacroComponent.ast_to_tokens(new_ast)
-        continue(state, new_tokens ++ rest)
+
+        state
+        |> handle_ast(new_ast, tag_meta)
+        |> continue(rest)
 
       other ->
         raise ArgumentError,
               "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}"
     end
+  end
+
+  # self closing / void tags cannot have children
+  defp handle_ast(state, {tag, attrs, [], %{closing: closing}}, tag_open_meta) do
+    suffix =
+      case closing do
+        :void -> ">"
+        :self -> "/>"
+      end
+
+    state
+    |> set_root_on_tag()
+    |> update_subengine(:handle_text, [[], "<#{tag}"])
+    |> handle_ast_attrs(attrs, tag_open_meta)
+    |> update_subengine(:handle_text, [[], suffix])
+  end
+
+  defp handle_ast(state, {tag, attrs, children, _meta}, tag_open_meta) do
+    state
+    |> set_root_on_tag()
+    |> update_subengine(:handle_text, [[], "<#{tag}"])
+    |> handle_ast_attrs(attrs, tag_open_meta)
+    |> update_subengine(:handle_text, [[], ">"])
+    |> handle_ast(children, tag_open_meta)
+    |> update_subengine(:handle_text, [[], "</#{tag}>"])
+  end
+
+  defp handle_ast(state, text, _tag_open_meta) when is_binary(text) do
+    state
+    |> set_root_on_not_tag()
+    |> update_subengine(:handle_text, [[], text])
+  end
+
+  defp handle_ast(state, children, tag_open_meta) when is_list(children) do
+    Enum.reduce(children, state, &handle_ast(&2, &1, tag_open_meta))
+  end
+
+  defp handle_ast_attrs(state, attrs, tag_open_meta) do
+    Enum.reduce(attrs, state, fn
+      {name, value}, state when is_binary(value) ->
+        update_subengine(state, :handle_text, [[], ~s( #{name}="#{value}")])
+
+      {name, nil}, state ->
+        update_subengine(state, :handle_text, [[], " #{name}"])
+
+      {name, ast}, state ->
+        handle_tag_expr_attrs(state, tag_open_meta, [{name, ast}])
+    end)
   end
 
   defp validate_module!(module_string, tag_meta, state) do

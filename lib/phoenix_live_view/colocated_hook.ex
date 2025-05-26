@@ -73,6 +73,7 @@ defmodule Phoenix.LiveView.ColocatedHook do
   Runtime hooks are a special kind of colocated hook that are not removed from the DOM
   when rendering the component. Instead, the hook's code is executed directly in the
   browser with no bundler involved.
+
   One example where this can be useful is when you are creating a custom page for a library
   like `Phoenix.LiveDashboard`. The live dashboard already bundles its hooks, therefore there
   is no way to add new hooks to the bundle when the live dashboard is used inside your application.
@@ -126,7 +127,7 @@ defmodule Phoenix.LiveView.ColocatedHook do
   @behaviour Phoenix.Component.MacroComponent
 
   @impl true
-  def transform({"script", attributes, [text_content]} = _ast, meta) do
+  def transform({"script", attributes, [text_content], _tag_meta} = _ast, meta) do
     opts = Map.new(attributes)
 
     name =
@@ -155,7 +156,7 @@ defmodule Phoenix.LiveView.ColocatedHook do
         """
 
         attrs = Enum.to_list(Map.drop(opts, ["name", "runtime"]))
-        {:ok, {"script", [{"data-phx-runtime-hook", name} | attrs], [new_content]}}
+        {:ok, {"script", [{"data-phx-runtime-hook", name} | attrs], [new_content], %{}}}
 
       _ ->
         # a colocated hook is just a special type of colocated JS,

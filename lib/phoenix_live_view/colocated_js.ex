@@ -134,7 +134,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   @behaviour Phoenix.Component.MacroComponent
 
   @impl true
-  def transform({"script", attributes, [text_content]} = _ast, meta) do
+  def transform({"script", attributes, [text_content], _tag_meta} = _ast, meta) do
     opts = Map.new(attributes)
     validate_name!(opts)
     data = extract(opts, text_content, meta)

@@ -119,7 +119,8 @@ defmodule Phoenix.Component.MacroComponent do
   @type tag :: binary()
   @type attributes :: %{atom() => term()}
   @type children :: [heex_ast()]
-  @type heex_ast :: {tag(), attributes(), children()} | binary()
+  @type tag_meta :: %{closing: :self | :void}
+  @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
 
   @callback transform(heex_ast :: heex_ast(), meta :: map()) ::
               {:ok, heex_ast()} | {:ok, heex_ast(), data :: term()}
@@ -138,33 +139,39 @@ defmodule Phoenix.Component.MacroComponent do
   end
 
   @doc false
-  def build_ast([{:tag, name, attrs, _tag_meta} | rest]) do
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs)}])
+  def build_ast([{:tag, name, attrs, tag_meta} | rest]) do
+    if closing = tag_meta[:closing] do
+      # we assert here because we don't expect any other values
+      true = closing in [:self, :void]
+    end
+
+    meta = Map.take(tag_meta, [:closing])
+    build_ast(rest, [], [{name, token_attrs_to_ast(attrs), meta}])
   end
 
   # recursive case: build_ast(tokens, acc, stack)
 
   # closing for final stack element -> done!
-  defp build_ast([{:close, :tag, _, _} | rest], acc, [{tag_name, attrs}]) do
-    {:ok, {tag_name, attrs, Enum.reverse(acc)}, rest}
+  defp build_ast([{:close, :tag, _, _} | rest], acc, [{tag_name, attrs, meta}]) do
+    {:ok, {tag_name, attrs, Enum.reverse(acc), meta}, rest}
   end
 
   # tag open (self closing or void)
   defp build_ast([{:tag, name, attrs, %{closing: type}} | rest], acc, stack)
        when type in [:self, :void] do
-    build_ast(rest, [{name, token_attrs_to_ast(attrs), []} | acc], stack)
+    build_ast(rest, [{name, token_attrs_to_ast(attrs), [], %{closing: type}} | acc], stack)
   end
 
   # tag open
   defp build_ast([{:tag, name, attrs, _tag_meta} | rest], acc, stack) do
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs), acc} | stack])
+    build_ast(rest, [], [{name, token_attrs_to_ast(attrs), %{}, acc} | stack])
   end
 
   # tag close
   defp build_ast([{:close, :tag, name, _tag_meta} | tokens], acc, [
-         {name, attrs, prev_acc} | stack
+         {name, attrs, meta, prev_acc} | stack
        ]) do
-    build_ast(tokens, [{name, attrs, Enum.reverse(acc)} | prev_acc], stack)
+    build_ast(tokens, [{name, attrs, Enum.reverse(acc), meta} | prev_acc], stack)
   end
 
   # text
@@ -187,7 +194,7 @@ defmodule Phoenix.Component.MacroComponent do
   end
 
   defp token_attrs_to_ast(attrs) do
-    Enum.map(attrs, fn {name, value, _meta} ->
+    Enum.map(attrs, fn {name, value, meta} ->
       # for now, we don't support root expressions (<div {@foo}>)
       if name == :root do
         format_attr = fn
@@ -201,11 +208,15 @@ defmodule Phoenix.Component.MacroComponent do
       end
 
       case value do
-        {:string, binary, _meta} ->
+        {:string, binary, meta} ->
+          if meta.delimiter == ?' do
+            raise ArgumentError, "single quote attributes are not supported in macro components"
+          end
+
           {name, binary}
 
         {:expr, code, _meta} ->
-          ast = Code.string_to_quoted!(code)
+          ast = Code.string_to_quoted!(code, line: meta.line, column: meta.column)
           {name, ast}
 
         nil ->
@@ -216,66 +227,47 @@ defmodule Phoenix.Component.MacroComponent do
 
   @doc """
   Turns an AST into a string.
-
-  ## Options
-
-    * `:attributes_escape` - a function that receives a list of attribute tuples and returns an iodata
-      list. Defaults to a function that HTML-escapes the attribute values.
-
   """
-  def ast_to_string(ast, opts \\ []) do
+  def ast_to_string(ast) do
     ast
-    |> ast_to_iodata(opts)
+    |> ast_to_iodata()
     |> IO.iodata_to_binary()
   end
 
-  defp ast_to_iodata(list, opts) when is_list(list) do
-    Enum.map(list, &ast_to_iodata(&1, opts))
+  defp ast_to_iodata(list) when is_list(list) do
+    Enum.map(list, &ast_to_iodata/1)
   end
 
-  defp ast_to_iodata({name, attrs, children}, opts) do
-    attrs_to_iodata =
-      Keyword.get(opts, :attributes_escape, fn attrs ->
-        {:safe, iodata} = Phoenix.HTML.attributes_escape(attrs)
-        iodata
-      end)
+  # self closing / void tags cannot have children
+  defp ast_to_iodata({name, attrs, [], %{closing: closing}}) do
+    suffix =
+      case closing do
+        :void -> ">"
+        :self -> "/>"
+      end
 
     [
       "<",
       name,
-      attrs_to_iodata.(attrs),
+      Enum.map(attrs, fn {key, value} -> ~s( #{key}="#{value}") end),
+      suffix
+    ]
+  end
+
+  defp ast_to_iodata({name, attrs, children, _meta}) do
+    [
+      "<",
+      name,
+      Enum.map(attrs, fn {key, value} -> ~s( #{key}="#{value}") end),
       ">",
-      Enum.map(children, &ast_to_iodata(&1, opts)),
+      Enum.map(children, &ast_to_iodata/1),
       "</",
       name,
       ">"
     ]
   end
 
-  defp ast_to_iodata(binary, _opts) when is_binary(binary) do
+  defp ast_to_iodata(binary) when is_binary(binary) do
     binary
-  end
-
-  @doc false
-  def ast_to_tokens({name, attrs, children}) do
-    [
-      {:tag, name, ast_attrs_to_token_attrs(attrs), %{line: 0, column: 0}}
-      | Enum.flat_map(children, &ast_to_tokens/1)
-    ] ++ [{:close, :tag, name, %{line: 0, column: 0, tag_name: name}}]
-  end
-
-  def ast_to_tokens(bin) when is_binary(bin) do
-    [{:text, bin, %{line_end: 0, column_end: 0}}]
-  end
-
-  defp ast_attrs_to_token_attrs(attrs) do
-    Enum.map(attrs, fn {key, value} ->
-      {key,
-       case value do
-         nil -> nil
-         bin when is_binary(bin) -> {:string, value, %{delimiter: ?"}}
-         ast -> {:expr, Macro.to_string(ast), %{line: 0, column: 0}}
-       end, %{line: 0, column: 0}}
-    end)
   end
 end
