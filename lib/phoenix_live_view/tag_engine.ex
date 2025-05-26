@@ -826,6 +826,14 @@ defmodule Phoenix.LiveView.TagEngine do
          module_string,
          state
        ) do
+    # Macro components work by converting the HEEx tokens into an AST
+    # (see Phoenix.Component.MacroComponent) and then calling the transform
+    # function on the macro component module, which can return a transformed
+    # AST.
+    #
+    # The AST is limited in functionality and we handle it separately in
+    # the handle_ast function.
+
     Macro.Env.required?(state.caller, Phoenix.Component) ||
       raise ArgumentError,
             "macro components are only supported in modules that `use Phoenix.Component`"
@@ -839,7 +847,7 @@ defmodule Phoenix.LiveView.TagEngine do
       end
 
     try do
-      module.transform(ast, %{file: state.file, line: tag_meta.line, env: state.caller})
+      module.transform(ast, %{env: state.caller})
     rescue
       e in ArgumentError ->
         raise_syntax_error!(

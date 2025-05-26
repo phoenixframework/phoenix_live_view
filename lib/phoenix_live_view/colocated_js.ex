@@ -178,7 +178,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
       |> then(&:crypto.hash(:md5, &1))
       |> Base.encode32(case: :lower, padding: false)
 
-    filename = "#{meta.line}_#{hashed_name}.#{opts["extension"] || "js"}"
+    filename = "#{meta.env.line}_#{hashed_name}.#{opts["extension"] || "js"}"
 
     File.mkdir_p!(target_path)
     File.write!(Path.join(target_path, filename), text_content)

@@ -57,9 +57,9 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
               "\n"
             ], %{}} = ast
 
-    assert %{env: env, file: file, line: _line} = meta
+    assert %{env: env} = meta
     assert env.module == TestComponentAst
-    assert file == __ENV__.file
+    assert env.file == __ENV__.file
 
     assert render_component(&TestComponentAst.render/1, foo: "bar") |> TreeDOM.normalize_to_tree() ==
              ~X"""
