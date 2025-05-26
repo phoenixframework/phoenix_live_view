@@ -723,7 +723,6 @@ defmodule Phoenix.LiveView.Tokenizer do
 
   defp normalize_tag([{type, name, attrs, meta} | acc], line, column, self_close?, state) do
     attrs = Enum.reverse(attrs)
-
     meta = %{meta | inner_location: {line, column}}
 
     meta =

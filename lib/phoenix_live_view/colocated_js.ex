@@ -84,24 +84,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   for packages inside the `deps` folder, as well as the `Mix.Project.build_path()`, which resolves to
   `_build/$MIX_ENV`. If you use a different bundler, you'll need to configure it accordingly. If it is not
   possible to configure the `NODE_PATH`, you can also change the folder to which LiveView writes colocated
-  JavaScript by setting the `:target_directory` option in your project's `mix.exs`:
-
-  ```elixir
-  def project do
-    [
-      ...,
-      phoenix_live_view: [
-        colocated_js: [
-          target_directory: Path.expand("assets/node_modules/my-colocated", __DIR__)
-        ]
-      ]
-    ]
-  end
-  ```
-
-  In this example, all colocated JavaScript would be written into the `assets/node_modules/phoenix-colocated`
-  folder. Note that this only affects colocated JS from your own application, not from dependencies.
-  If necessary, you can configure the global `:target_directory` in your `config.exs`:
+  JavaScript by setting the `:target_directory` option in your `config.exs`:
 
   ```elixir
   config :phoenix_live_view, :colocated_js,
@@ -138,12 +121,13 @@ defmodule Phoenix.LiveView.ColocatedJS do
       For example, you could set this to `web_components` for each colocated script that defines
       a web component and then import all of them as `import { web_components } from "phoenix-colocated/my_app"`.
       Defaults to `:default`, which means the export will be available under the manifest's `default` export.
-      Note that this needs to be a valid JavaScript identifier.
+      This needs to be a valid JavaScript identifier.
 
     * `extension` - a custom extension to use when writing the extracted file. The default is `js`.
 
     * `manifest` - a custom manifest file to use instead of the default `index.js`. For example,
-      `web_components.ts`.
+      `web_components.ts`. If you change the manifest, you will need to change the
+      path of your JavaScript imports accordingly.
 
   """
 
@@ -329,11 +313,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp settings do
-    config = Mix.Project.config()[:phoenix_live_view] || []
-    project_settings = Keyword.get(config, :colocated_js, [])
-    global_settings = Application.get_env(:phoenix_live_view, :colocated_js, [])
-
-    Keyword.merge(project_settings, global_settings)
+    Application.get_env(:phoenix_live_view, :colocated_js, [])
   end
 
   defp target_dir do
