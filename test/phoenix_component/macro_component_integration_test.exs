@@ -100,12 +100,16 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     assert_received {:ast, _ast, _meta}
 
-    assert render_component(&TestComponentReplacedAst.render/1, foo: "bar")
+    rendered = render_component(&TestComponentReplacedAst.render/1, foo: "bar\"baz")
+
+    assert rendered =~ "bar&quot;baz"
+
+    assert render_component(&TestComponentReplacedAst.render/1, foo: "bar\"baz")
            |> TreeDOM.normalize_to_tree() ==
              ~X"""
              <div data-foo="bar">
                <h1>Where is this coming from?</h1>
-               <div id="bar">I have text content</div>
+               <div id="bar&quot;baz">I have text content</div>
                <hr>
              </div>
              """
