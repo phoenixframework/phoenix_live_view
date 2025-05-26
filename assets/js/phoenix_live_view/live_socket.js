@@ -326,7 +326,7 @@ export default class LiveSocket {
 
   getHookCallbacks(name) {
     return name && name.startsWith("Phoenix.")
-      ? Hooks[name.split(".")[1]]
+      ? Hooks[name.split(".")[1]] || this.hooks[name]
       : this.hooks[name];
   }
 

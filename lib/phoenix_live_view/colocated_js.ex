@@ -286,7 +286,9 @@ defmodule Phoenix.LiveView.ColocatedJS do
             [
               acc,
               Enum.map(entries, fn {file, %{name: name}} ->
-                import_name = "js_" <> Base.encode32(name, case: :lower, padding: false)
+                import_name =
+                  "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
+
                 escaped_name = Phoenix.HTML.javascript_escape(name)
 
                 ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; js["#{escaped_name}"] = #{import_name};\n>
@@ -300,7 +302,9 @@ defmodule Phoenix.LiveView.ColocatedJS do
               acc,
               ~s<const #{tmp_name} = {}; export { #{tmp_name} as #{key} };\n>,
               Enum.map(entries, fn {file, %{name: name}} ->
-                import_name = "js_" <> Base.encode32(name, case: :lower, padding: false)
+                import_name =
+                  "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
+
                 escaped_name = Phoenix.HTML.javascript_escape(name)
 
                 ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; #{tmp_name}["#{escaped_name}"] = #{import_name};\n>
