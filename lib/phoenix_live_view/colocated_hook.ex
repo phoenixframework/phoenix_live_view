@@ -79,18 +79,16 @@ defmodule Phoenix.LiveView.ColocatedHook do
   is no way to add new hooks to the bundle when the live dashboard is used inside your application.
 
   Because of this, runtime hooks must also use a slightly different syntax. While in normal
-  colocated hooks you'd write an `export default` statement, runtime hooks must return a function
-  that returns the hook:
+  colocated hooks you'd write an `export default` statement, runtime hooks must evaluate to the
+  hook itself:
 
   ```heex
   <script :type={Phoenix.LiveView.ColocatedHook} name=".MyHook" runtime>
-  function() {
-    return {
+    {
       mounted() {
         ...
       }
     }
-  }
   </script>
   ```
 
@@ -151,9 +149,11 @@ defmodule Phoenix.LiveView.ColocatedHook do
       %{"runtime" => _} ->
         new_content = """
         window["phx_hook_#{Phoenix.HTML.javascript_escape(name)}"] = function() {
-          #{text_content}
+          return #{String.trim_leading(text_content)}
         }
         """
+
+        dbg(new_content)
 
         attrs = Enum.to_list(Map.drop(opts, ["name", "runtime"]))
         {:ok, {"script", [{"data-phx-runtime-hook", name} | attrs], [new_content], %{}}}
