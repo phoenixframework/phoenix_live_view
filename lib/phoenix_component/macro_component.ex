@@ -127,15 +127,21 @@ defmodule Phoenix.Component.MacroComponent do
               {:ok, heex_ast()} | {:ok, heex_ast(), data :: term()}
 
   @doc """
-  Returns the stored data from macro components that returned `{:ok, ast, data}` in
-  the format `%{module => [data]}` where module is the macro component from `:type`.
+  Returns the stored data from macro components that returned `{:ok, ast, data}`.
+
+  As one macro component can be used multiple times in one module, the result is a list of all data values.
+
+  If the component module does not have any macro components defined, this function
+  returns `nil`.
   """
-  def get_data(component_module) do
+  @spec get_data(module(), module()) :: [term()] | nil
+  def get_data(component_module, macro_component) do
     if Code.ensure_loaded?(component_module) and
          function_exported?(component_module, :__phoenix_macro_components__, 0) do
       component_module.__phoenix_macro_components__()
+      |> Map.get(macro_component, [])
     else
-      :error
+      nil
     end
   end
 
@@ -241,6 +247,7 @@ defmodule Phoenix.Component.MacroComponent do
        Defaults to an HTML-safe encoder.
 
   """
+  @spec ast_to_string(heex_ast()) :: binary()
   def ast_to_string(ast, opts \\ []) do
     opts = Keyword.put_new(opts, :attributes_encoder, &ast_attributes_to_iodata/1)
 

@@ -133,6 +133,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   @behaviour Phoenix.Component.MacroComponent
 
+  alias Phoenix.Component.MacroComponent
+
   @impl true
   def transform({"script", attributes, [text_content], _tag_meta} = _ast, meta) do
     opts = Map.new(attributes)
@@ -251,17 +253,10 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp get_data(module) do
-    case Phoenix.Component.MacroComponent.get_data(module) do
-      :error ->
-        []
+    hooks_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedHook) || []
+    js_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedJS) || []
 
-      data ->
-        Map.take(data, [
-          Phoenix.LiveView.ColocatedHook,
-          Phoenix.LiveView.ColocatedJS
-        ])
-        |> Enum.flat_map(fn {_mod, entries} -> entries end)
-    end
+    hooks_data ++ js_data
   end
 
   defp write_new_manifests!(files) do

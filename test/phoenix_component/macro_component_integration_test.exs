@@ -3,7 +3,9 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
   import Phoenix.LiveViewTest
   import Phoenix.LiveViewTest.TreeDOM, only: [sigil_X: 2]
+
   alias Phoenix.LiveViewTest.TreeDOM
+  alias Phoenix.Component.MacroComponent
 
   defmodule MyComponent do
     @behaviour Phoenix.Component.MacroComponent
@@ -230,7 +232,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
            """
 
     # mixed quotes are invalid
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ArgumentError,
                  ~r/invalid attribute value for "class"/,
                  fn ->
                    Process.put(:new_ast, {:div, [{"class", ~s["'"]}], [], %{}})
@@ -245,5 +247,35 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                      end
                    end
                  end
+  end
+
+  test "get_data/2 provides a list of all data entries" do
+    defmodule MyMacroComponent do
+      @behaviour Phoenix.Component.MacroComponent
+
+      @impl true
+      def transform({_tag, attrs, _children, _meta} = ast, meta) do
+        {:ok, ast, %{file: meta.env.file, line: meta.env.line, opts: Map.new(attrs)}}
+      end
+    end
+
+    defmodule TestComponentWithData1 do
+      use Phoenix.Component
+
+      def render(assigns) do
+        ~H"""
+        <div :type={MyMacroComponent} foo="bar" baz></div>
+        <div>
+          <h1 :type={MyMacroComponent} id="2">Content</h1>
+        </div>
+        """
+      end
+    end
+
+    assert data = MacroComponent.get_data(TestComponentWithData1, MyMacroComponent)
+    assert length(data) == 2
+
+    assert Enum.find(data, fn %{opts: opts} -> opts == %{"baz" => nil, "foo" => "bar"} end)
+    assert Enum.find(data, fn %{opts: opts} -> opts == %{"id" => "2"} end)
   end
 end
