@@ -57,8 +57,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
   _build/$MIX_ENV/phoenix-colocated/
   _build/$MIX_ENV/phoenix-colocated/my_app/
   _build/$MIX_ENV/phoenix-colocated/my_app/index.js
-  _build/$MIX_ENV/phoenix-colocated/my_app/HASH_MyAppWeb.DemoLive/file.js
-  _build/$MIX_ENV/phoenix-colocated/my_dependency/HASH_MyDependency.Module/file.js
+  _build/$MIX_ENV/phoenix-colocated/my_app/MyAppWeb.DemoLive/line_HASH.js
+  _build/$MIX_ENV/phoenix-colocated/my_dependency/MyDependency.Module/line_HASH.js
   ...
   ```
 
