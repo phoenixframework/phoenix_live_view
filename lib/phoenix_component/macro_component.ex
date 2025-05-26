@@ -131,8 +131,7 @@ defmodule Phoenix.Component.MacroComponent do
 
   As one macro component can be used multiple times in one module, the result is a list of all data values.
 
-  If the component module does not have any macro components defined, this function
-  returns `nil`.
+  If the component module does not have any macro components defined, an empty list is returned.
   """
   @spec get_data(module(), module()) :: [term()] | nil
   def get_data(component_module, macro_component) do
@@ -141,7 +140,7 @@ defmodule Phoenix.Component.MacroComponent do
       component_module.__phoenix_macro_components__()
       |> Map.get(macro_component, [])
     else
-      nil
+      []
     end
   end
 

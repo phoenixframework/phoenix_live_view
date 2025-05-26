@@ -253,8 +253,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp get_data(module) do
-    hooks_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedHook) || []
-    js_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedJS) || []
+    hooks_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedHook)
+    js_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedJS)
 
     hooks_data ++ js_data
   end

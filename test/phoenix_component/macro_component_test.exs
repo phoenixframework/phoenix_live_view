@@ -3,6 +3,17 @@ defmodule Phoenix.Component.MacroComponentTest do
 
   alias Phoenix.Component.MacroComponent
 
+  setup_all do
+    defmodule MyMacroComponent do
+      @behaviour Phoenix.Component.MacroComponent
+
+      @impl true
+      def transform(ast, _meta), do: {:ok, ast, %{}}
+    end
+
+    :ok
+  end
+
   describe "ast_to_string/1" do
     test "simple cases" do
       assert MacroComponent.ast_to_string({"div", [{"id", "1"}], ["Hello"], %{}}) ==
@@ -40,15 +51,31 @@ defmodule Phoenix.Component.MacroComponentTest do
         MacroComponent.ast_to_string({"div", [{"foo", ~s["'bar'"]}], [], %{}})
       end
     end
+
+    test "invalid attribute" do
+      assert_raise ArgumentError,
+                   ~r/cannot convert AST with non-string attribute "id" to string. Got: @bar/,
+                   fn ->
+                     MacroComponent.ast_to_string(
+                       {"div", [{"id", quote(do: @bar)}], ["Hello"], %{}}
+                     )
+                   end
+    end
   end
 
-  test "invalid attribute" do
-    assert_raise ArgumentError,
-                 ~r/cannot convert AST with non-string attribute "id" to string. Got: @bar/,
-                 fn ->
-                   MacroComponent.ast_to_string(
-                     {"div", [{"id", quote(do: @bar)}], ["Hello"], %{}}
-                   )
-                 end
+  describe "get_data/2" do
+    test "returns an empty list if the component module does not exist" do
+      assert MacroComponent.get_data(IDoNotExist, MyMacroComponent) == []
+    end
+
+    test "returns an empty list if the component does not define any macro components" do
+      defmodule MyComponent do
+        use Phoenix.Component
+
+        def render(assigns), do: ~H""
+      end
+
+      assert MacroComponent.get_data(MyComponent, MyMacroComponent) == []
+    end
   end
 end
