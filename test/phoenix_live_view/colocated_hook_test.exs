@@ -1,11 +1,7 @@
 defmodule Phoenix.LiveView.ColocatedHookTest do
-  use ExUnit.Case, async: true
-
-  setup_all do
-    on_exit(fn ->
-      File.rm_rf!(Path.join(Mix.Project.build_path(), "phoenix-colocated"))
-    end)
-  end
+  # we set async: false because we call the colocated JS compiler
+  # and it reads / writes to a shared folder
+  use ExUnit.Case, async: false
 
   test "can use a hook" do
     defmodule TestComponent do
@@ -53,7 +49,7 @@ defmodule Phoenix.LiveView.ColocatedHookTest do
                Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/index.js")
              )
 
-    assert manifest =~ "export default js;"
+    assert manifest =~ ~r/export \{ imp_.* as hooks \}/
 
     # script is in manifest
     assert manifest =~

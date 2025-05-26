@@ -140,62 +140,72 @@ defmodule Phoenix.Component.MacroComponent do
   end
 
   @doc false
-  def build_ast([{:tag, name, attrs, tag_meta} | rest]) do
+  def build_ast([{:tag, name, attrs, tag_meta} | rest], env) do
     if closing = tag_meta[:closing] do
       # we assert here because we don't expect any other values
       true = closing in [:self, :void]
     end
 
     meta = Map.take(tag_meta, [:closing])
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs), meta}])
+    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), meta}], env)
   end
 
   # recursive case: build_ast(tokens, acc, stack)
 
   # closing for final stack element -> done!
-  defp build_ast([{:close, :tag, _, _} | rest], acc, [{tag_name, attrs, meta}]) do
+  defp build_ast([{:close, :tag, _, _} | rest], acc, [{tag_name, attrs, meta}], _env) do
     {:ok, {tag_name, attrs, Enum.reverse(acc), meta}, rest}
   end
 
   # tag open (self closing or void)
-  defp build_ast([{:tag, name, attrs, %{closing: type}} | rest], acc, stack)
+  defp build_ast([{:tag, name, attrs, %{closing: type}} | rest], acc, stack, env)
        when type in [:self, :void] do
-    build_ast(rest, [{name, token_attrs_to_ast(attrs), [], %{closing: type}} | acc], stack)
+    build_ast(
+      rest,
+      [{name, token_attrs_to_ast(attrs, env), [], %{closing: type}} | acc],
+      stack,
+      env
+    )
   end
 
   # tag open
-  defp build_ast([{:tag, name, attrs, _tag_meta} | rest], acc, stack) do
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs), %{}, acc} | stack])
+  defp build_ast([{:tag, name, attrs, _tag_meta} | rest], acc, stack, env) do
+    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), %{}, acc} | stack], env)
   end
 
   # tag close
-  defp build_ast([{:close, :tag, name, _tag_meta} | tokens], acc, [
-         {name, attrs, meta, prev_acc} | stack
-       ]) do
-    build_ast(tokens, [{name, attrs, Enum.reverse(acc), meta} | prev_acc], stack)
+  defp build_ast(
+         [{:close, :tag, name, _tag_meta} | tokens],
+         acc,
+         [
+           {name, attrs, meta, prev_acc} | stack
+         ],
+         env
+       ) do
+    build_ast(tokens, [{name, attrs, Enum.reverse(acc), meta} | prev_acc], stack, env)
   end
 
   # text
-  defp build_ast([{:text, text, _meta} | rest], acc, stack) do
-    build_ast(rest, [text | acc], stack)
+  defp build_ast([{:text, text, _meta} | rest], acc, stack, env) do
+    build_ast(rest, [text | acc], stack, env)
   end
 
   # unsupported token
-  defp build_ast([{type, _name, _attrs, meta} | _tokens], _acc, _stack)
+  defp build_ast([{type, _name, _attrs, meta} | _tokens], _acc, _stack, _env)
        when type in [:local_component, :remote_component] do
     {:error, "function components cannot be nested inside a macro component", meta}
   end
 
-  defp build_ast([{:expr, _, _} | _], _acc, _stack) do
+  defp build_ast([{:expr, _, _} | _], _acc, _stack, _env) do
     raise ArgumentError, "EEx is not currently supported in macro components"
   end
 
-  defp build_ast([{:body_expr, _, meta} | _], _acc, _stack) do
+  defp build_ast([{:body_expr, _, meta} | _], _acc, _stack, _env) do
     {:error, "interpolation is not currently supported in macro components", meta}
   end
 
-  defp token_attrs_to_ast(attrs) do
-    Enum.map(attrs, fn {name, value, meta} ->
+  defp token_attrs_to_ast(attrs, env) do
+    Enum.map(attrs, fn {name, value, _meta} ->
       # for now, we don't support root expressions (<div {@foo}>)
       if name == :root do
         format_attr = fn
@@ -209,15 +219,11 @@ defmodule Phoenix.Component.MacroComponent do
       end
 
       case value do
-        {:string, binary, meta} ->
-          if meta.delimiter == ?' do
-            raise ArgumentError, "single quote attributes are not supported in macro components"
-          end
-
+        {:string, binary, _meta} ->
           {name, binary}
 
-        {:expr, code, _meta} ->
-          ast = Code.string_to_quoted!(code, line: meta.line, column: meta.column)
+        {:expr, code, meta} ->
+          ast = Code.string_to_quoted!(code, line: meta.line, column: meta.column, file: env.file)
           {name, ast}
 
         nil ->
@@ -228,19 +234,27 @@ defmodule Phoenix.Component.MacroComponent do
 
   @doc """
   Turns an AST into a string.
+
+  ## Options
+
+    * `attributes_encoder` - a custom function to encode attributes to iodata.
+       Defaults to an HTML-safe encoder.
+
   """
-  def ast_to_string(ast) do
+  def ast_to_string(ast, opts \\ []) do
+    opts = Keyword.put_new(opts, :attributes_encoder, &ast_attributes_to_iodata/1)
+
     ast
-    |> ast_to_iodata()
+    |> ast_to_iodata(opts)
     |> IO.iodata_to_binary()
   end
 
-  defp ast_to_iodata(list) when is_list(list) do
-    Enum.map(list, &ast_to_iodata/1)
+  defp ast_to_iodata(list, opts) when is_list(list) do
+    Enum.map(list, &ast_to_iodata(&1, opts))
   end
 
   # self closing / void tags cannot have children
-  defp ast_to_iodata({name, attrs, [], %{closing: closing}}) do
+  defp ast_to_iodata({name, attrs, [], %{closing: closing}}, opts) do
     suffix =
       case closing do
         :void -> ">"
@@ -250,32 +264,32 @@ defmodule Phoenix.Component.MacroComponent do
     [
       "<",
       name,
-      ast_attributes_to_iodata(attrs),
+      opts[:attributes_encoder].(attrs),
       suffix
     ]
   end
 
-  defp ast_to_iodata({name, attrs, children, _meta}) do
+  defp ast_to_iodata({name, attrs, children, _meta}, opts) do
     [
       "<",
       name,
-      ast_attributes_to_iodata(attrs),
+      opts[:attributes_encoder].(attrs),
       ">",
-      Enum.map(children, &ast_to_iodata/1),
+      Enum.map(children, &ast_to_iodata(&1, opts)),
       "</",
       name,
       ">"
     ]
   end
 
-  defp ast_to_iodata(binary) when is_binary(binary) do
+  defp ast_to_iodata(binary, _opts) when is_binary(binary) do
     binary
   end
 
   defp ast_attributes_to_iodata(attrs) do
     Enum.map(attrs, fn
       {key, value} when is_binary(value) ->
-        ~s( #{key}="#{value}")
+        encode_binary_attribute(key, value)
 
       {key, nil} ->
         ~s( #{key})
@@ -284,5 +298,24 @@ defmodule Phoenix.Component.MacroComponent do
         raise ArgumentError,
               "cannot convert AST with non-string attribute \"#{key}\" to string. Got: #{Macro.to_string(value)}"
     end)
+  end
+
+  @doc false
+  def encode_binary_attribute(key, value) when is_binary(key) and is_binary(value) do
+    case {:binary.match(value, ~s["]), :binary.match(value, "'")} do
+      {:nomatch, _} ->
+        ~s( #{key}="#{value}")
+
+      {_, :nomatch} ->
+        ~s( #{key}='#{value}')
+
+      _ ->
+        raise ArgumentError, """
+        invalid attribute value for \"#{key}\".
+        Attribute values must not contain single and double quotes at the same time.
+
+        You need to escape your attribute before using it in the MacroComponent AST. You can use `Phoenix.HTML.attributes_escape/1` to do so.
+        """
+    end
   end
 end

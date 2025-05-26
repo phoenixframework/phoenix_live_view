@@ -203,16 +203,44 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                  end
   end
 
-  test "raises for single quote attributes" do
-    assert_raise ArgumentError,
-                 ~r/single quote attributes are not supported in macro components/,
+  test "handles quotes" do
+    Process.put(
+      :new_ast,
+      {:div, [{"id", "1"}],
+       [
+         {"span", [{"class", "\"foo\""}], ["Test"], %{}},
+         {"span", [{"class", "'foo'"}], ["Test"], %{}}
+       ], %{}}
+    )
+
+    defmodule TestComponentQuotes do
+      use Phoenix.Component
+
+      def render(assigns) do
+        ~H"""
+        <div :type={MyComponent}></div>
+        """
+      end
+    end
+
+    assert_received {:ast, _ast, _meta}
+
+    assert render_component(&TestComponentQuotes.render/1) == """
+           <div id="1"><span class='"foo"'>Test</span><span class="'foo'">Test</span></div>\
+           """
+
+    # mixed quotes are invalid
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/invalid attribute value for "class"/,
                  fn ->
-                   defmodule TestComponentUnsupportedSingleQuoteAttributes do
+                   Process.put(:new_ast, {:div, [{"class", ~s["'"]}], [], %{}})
+
+                   defmodule TestComponentQuotesInvalid do
                      use Phoenix.Component
 
                      def render(assigns) do
                        ~H"""
-                       <div :type={MyComponent} id='"hello"'></div>
+                       <div :type={MyComponent}></div>
                        """
                      end
                    end

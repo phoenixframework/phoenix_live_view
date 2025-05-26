@@ -841,7 +841,7 @@ defmodule Phoenix.LiveView.TagEngine do
     module = validate_module!(module_string, tag_meta, state)
 
     {ast, rest} =
-      case Phoenix.Component.MacroComponent.build_ast(tokens) do
+      case Phoenix.Component.MacroComponent.build_ast(tokens, state.caller) do
         {:ok, ast, rest} -> {ast, rest}
         {:error, message, meta} -> raise_syntax_error!(message, meta, state)
       end
@@ -912,7 +912,15 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_ast_attrs(state, attrs, tag_open_meta) do
     Enum.reduce(attrs, state, fn
       {name, value}, state when is_binary(value) ->
-        update_subengine(state, :handle_text, [[], ~s( #{name}="#{value}")])
+        try do
+          Phoenix.Component.MacroComponent.encode_binary_attribute(name, value)
+        rescue
+          e in ArgumentError ->
+            raise_syntax_error!(Exception.message(e), tag_open_meta, state)
+        else
+          attr ->
+            update_subengine(state, :handle_text, [[], attr])
+        end
 
       {name, nil}, state ->
         update_subengine(state, :handle_text, [[], " #{name}"])
