@@ -122,7 +122,8 @@ defmodule Phoenix.Component.MacroComponent do
   """
 
   @type tag :: binary()
-  @type attributes :: %{atom() => term()}
+  @type attribute :: {binary(), Macro.t()}
+  @type attributes :: [attribute()]
   @type children :: [heex_ast()]
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
