@@ -49,7 +49,7 @@ defmodule Phoenix.Component.MacroComponent do
      the value is an Elixir AST (which can be a plain binary for simple attributes)
 
   > #### Limitations {: .warning}
-  > The AST is not whitespace preserving, so in cases where you return a modified AST,
+  > The AST is not whitespace preserving. When using macro components,
   > the original whitespace between attributes is lost.
   >
   > Also, macro components can currently only contain simple HTML. Any interpolation
