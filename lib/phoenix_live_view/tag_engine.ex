@@ -925,22 +925,20 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp validate_module!(module_string, tag_meta, state) do
     module =
-      case Code.string_to_quoted!(module_string,
-             file: state.file,
-             line: tag_meta.line,
-             column: tag_meta.column
-           )
-           |> Macro.expand(state.caller) do
-        mod when is_atom(mod) ->
-          mod
+      Code.string_to_quoted!(module_string,
+        file: state.file,
+        line: tag_meta.line,
+        column: tag_meta.column
+      )
+      |> Macro.expand(state.caller)
 
-        _ ->
-          raise_syntax_error!(
-            "the given macro component #{inspect(module_string)} is not a valid module",
-            tag_meta,
-            state
-          )
-      end
+    if not is_atom(module) do
+      raise_syntax_error!(
+        "the given macro component #{inspect(module_string)} is not a valid module",
+        tag_meta,
+        state
+      )
+    end
 
     _ = Code.ensure_compiled!(module)
 
