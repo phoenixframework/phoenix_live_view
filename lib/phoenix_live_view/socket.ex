@@ -120,6 +120,34 @@ defmodule Phoenix.LiveView.Socket do
     end
   end
 
+  if Version.match?(to_string(Application.spec(:phoenix, :vsn)), "~> 1.8.0-rc") do
+    @impl Phoenix.Socket
+    def message_inspect(msg, opts) do
+      processed_msg = process_message(msg)
+      Inspect.Any.inspect(processed_msg, opts)
+    end
+
+    defp process_message(
+           %{
+             topic: "lv:" <> _,
+             event: "event",
+             payload: %{"event" => _, "type" => "form", "value" => value}
+           } =
+             msg
+         )
+         when is_binary(value) do
+      processed_value =
+        value
+        |> Plug.Conn.Query.decode()
+        |> Phoenix.Logger.filter_values()
+        |> Plug.Conn.Query.encode()
+
+      put_in(msg.payload["value"], processed_value)
+    end
+
+    defp process_message(msg), do: msg
+  end
+
   defmacro __before_compile__(_env) do
     quote do
       defoverridable connect: 3, id: 1
