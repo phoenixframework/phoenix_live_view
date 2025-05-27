@@ -165,12 +165,8 @@ defmodule Phoenix.Component.MacroComponent do
   # tag open (self closing or void)
   defp build_ast([{:tag, name, attrs, %{closing: type}} | rest], acc, stack, env)
        when type in [:self, :void] do
-    build_ast(
-      rest,
-      [{name, token_attrs_to_ast(attrs, env), [], %{closing: type}} | acc],
-      stack,
-      env
-    )
+    acc = [{name, token_attrs_to_ast(attrs, env), [], %{closing: type}} | acc]
+    build_ast(rest, acc, stack, env)
   end
 
   # tag open
@@ -182,9 +178,7 @@ defmodule Phoenix.Component.MacroComponent do
   defp build_ast(
          [{:close, :tag, name, _tag_meta} | tokens],
          acc,
-         [
-           {name, attrs, meta, prev_acc} | stack
-         ],
+         [{name, attrs, meta, prev_acc} | stack],
          env
        ) do
     build_ast(tokens, [{name, attrs, Enum.reverse(acc), meta} | prev_acc], stack, env)
