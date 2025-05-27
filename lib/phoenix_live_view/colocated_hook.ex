@@ -174,6 +174,6 @@ defmodule Phoenix.LiveView.ColocatedHook do
   end
 
   def transform(_ast, _meta) do
-    raise ArgumentError, "a ColocatedHook can only be used on script tags"
+    raise ArgumentError, "a ColocatedHook can only be defined on script tags"
   end
 end

@@ -6,7 +6,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   Colocated JavaScript is a more generalized version of `Phoenix.LiveView.ColocatedHook`.
   In fact, colocated hooks are built on top of `ColocatedJS`.
 
-  You can use `ColocatedJS` to define things like Web Components or global event listeners
+  You can use `ColocatedJS` to define any JavaScript code (Web Components, global event listeners, etc.)
   that do not necessarily need the functionalities of hooks, for example:
 
   ```heex
@@ -98,6 +98,12 @@ defmodule Phoenix.LiveView.ColocatedJS do
   >
   > If you remove or modify the contents of the `:target_directory` folder, you can use
   > `mix clean --all` and `mix compile` to regenerate all colocated JavaScript.
+  
+  > #### Warning! {: .warning}
+  >
+  > LiveView assumes full ownership over the configured `:target_directory`. When
+  > compiling, it will **delete** any files and folders inside the `:target_directory`, 
+  > that it does not associate with a colocated JavaScript module or manifest.
 
   ### Imports in colocated JS
 
