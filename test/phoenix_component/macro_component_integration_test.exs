@@ -278,4 +278,36 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     assert Enum.find(data, fn %{opts: opts} -> opts == %{"baz" => nil, "foo" => "bar"} end)
     assert Enum.find(data, fn %{opts: opts} -> opts == %{"id" => "2"} end)
   end
+
+  describe "root tracking" do
+    @endpoint Phoenix.LiveViewTest.Support.Endpoint
+
+    test "does not count as root" do
+      defmodule TestLVDoesNotCountAsRoot do
+        use Phoenix.LiveView
+
+        defmodule LC do
+          use Phoenix.LiveComponent
+
+          def render(assigns) do
+            ~H"""
+            <div :type={MyComponent}></div>
+            """
+          end
+        end
+
+        def render(assigns) do
+          ~H"""
+          <.live_component module={LC} id="my-lc" />
+          """
+        end
+      end
+
+      assert_raise ArgumentError,
+                   ~r/Stateful components must have a single static HTML tag at the root/,
+                   fn ->
+                     live_isolated(Phoenix.ConnTest.build_conn(), TestLVDoesNotCountAsRoot)
+                   end
+    end
+  end
 end

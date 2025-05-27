@@ -846,6 +846,11 @@ defmodule Phoenix.LiveView.TagEngine do
         {:error, message, meta} -> raise_syntax_error!(message, meta, state)
       end
 
+    # we do not perform root tracking on macro components
+    # but we call set_root_on_not_tag since a macro component could be
+    # just some text without any tags
+    state = set_root_on_not_tag(state)
+
     try do
       module.transform(ast, %{env: state.caller})
     rescue
@@ -883,7 +888,6 @@ defmodule Phoenix.LiveView.TagEngine do
       end
 
     state
-    |> set_root_on_tag()
     |> update_subengine(:handle_text, [[], "<#{tag}"])
     |> handle_ast_attrs(attrs, tag_open_meta)
     |> update_subengine(:handle_text, [[], suffix])
@@ -891,7 +895,6 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_ast(state, {tag, attrs, children, _meta}, tag_open_meta) do
     state
-    |> set_root_on_tag()
     |> update_subengine(:handle_text, [[], "<#{tag}"])
     |> handle_ast_attrs(attrs, tag_open_meta)
     |> update_subengine(:handle_text, [[], ">"])
@@ -900,9 +903,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp handle_ast(state, text, _tag_open_meta) when is_binary(text) do
-    state
-    |> set_root_on_not_tag()
-    |> update_subengine(:handle_text, [[], text])
+    update_subengine(state, :handle_text, [[], text])
   end
 
   defp handle_ast(state, children, tag_open_meta) when is_list(children) do
