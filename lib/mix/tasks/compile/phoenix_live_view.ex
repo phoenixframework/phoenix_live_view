@@ -1,6 +1,9 @@
 defmodule Mix.Tasks.Compile.PhoenixLiveView do
   @moduledoc """
-  A LiveView compiler for HEEx macro components (at the moment, only Colocated Hooks).
+  A LiveView compiler for HEEx macro components.
+  
+  Right now, only `Phoenix.LiveView.ColocatedHook` and `Phoenix.LiveView.ColocatedJS`
+  are handled.
 
   You must add it to your `mix.exs` as:
 
