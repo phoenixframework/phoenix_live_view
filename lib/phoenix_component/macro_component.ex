@@ -79,7 +79,7 @@ defmodule Phoenix.Component.MacroComponent do
 
   That's it. Since the div could contain nested elements, for example when using
   an HTML code block, we need to convert the children to a string first, using the
-  `Phoenix.Component.MacroComponent.to_string/1` function.
+  `Phoenix.Component.MacroComponent.ast_to_string/1` function.
 
   Then, we can simply replace the element's contents with the returned HTML string from
   MDEx.
