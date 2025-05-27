@@ -157,8 +157,6 @@ defmodule Phoenix.LiveView.ColocatedHook do
         }
         """
 
-        dbg(new_content)
-
         attrs = Enum.to_list(Map.drop(opts, ["name", "runtime"]))
         {:ok, {"script", [{"data-phx-runtime-hook", name} | attrs], [new_content], %{}}}
 
