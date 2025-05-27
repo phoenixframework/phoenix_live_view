@@ -199,30 +199,8 @@ export default class DOMPatch {
           }
 
           // data-phx-runtime-hook
-          // usually, scripts are not executed when morphdom adds them to the DOM
-          // we special case runtime colocated hooks
           if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
-            const name = el.getAttribute(PHX_RUNTIME_HOOK);
-            let nonce = el.hasAttribute("nonce")
-              ? el.getAttribute("nonce")
-              : null;
-            if (el.hasAttribute("nonce")) {
-              const template = document.createElement("template");
-              template.innerHTML = source;
-              nonce = template.content
-                .querySelector(
-                  `script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`,
-                )
-                .getAttribute("nonce");
-            }
-            const script = document.createElement("script");
-            script.textContent = el.textContent;
-            DOM.mergeAttrs(script, el, { isIgnored: false });
-            if (nonce) {
-              script.nonce = nonce;
-            }
-            el.replaceWith(script);
-            el = script;
+            this.handleRuntimeHook(el, source);
           }
 
           added.push(el);
@@ -660,5 +638,27 @@ export default class DOMPatch {
 
   indexOf(parent, child) {
     return Array.from(parent.children).indexOf(child);
+  }
+
+  handleRuntimeHook(el, source) {
+    // usually, scripts are not executed when morphdom adds them to the DOM
+    // we special case runtime colocated hooks
+    const name = el.getAttribute(PHX_RUNTIME_HOOK);
+    let nonce = el.hasAttribute("nonce") ? el.getAttribute("nonce") : null;
+    if (el.hasAttribute("nonce")) {
+      const template = document.createElement("template");
+      template.innerHTML = source;
+      nonce = template.content
+        .querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`)
+        .getAttribute("nonce");
+    }
+    const script = document.createElement("script");
+    script.textContent = el.textContent;
+    DOM.mergeAttrs(script, el, { isIgnored: false });
+    if (nonce) {
+      script.nonce = nonce;
+    }
+    el.replaceWith(script);
+    el = script;
   }
 }
