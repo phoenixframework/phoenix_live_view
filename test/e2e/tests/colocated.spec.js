@@ -10,6 +10,9 @@ test("colocated hooks works", async ({ page }) => {
   // the hook formats the phone number with dashes, so if the dashes
   // are there, the hook works!
   await expect(page.locator("#phone")).toHaveText("123-456-7890");
+
+  // test runtime hook
+  await expect(page.locator("#runtime")).toBeVisible();
 });
 
 test("colocated JS works", async ({ page }) => {

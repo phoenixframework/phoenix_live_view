@@ -100,6 +100,15 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
       }
     </script>
 
+    <div id="runtime" phx-hook=".Runtime" style="display: none;">Runtime hook works!</div>
+    <script :type={Hook} name=".Runtime" runtime>
+      {
+        mounted() {
+          this.js().show(this.el);
+        }
+      }
+    </script>
+
     <hr />
 
     <button phx-click="push-js">Push JS from server</button>
