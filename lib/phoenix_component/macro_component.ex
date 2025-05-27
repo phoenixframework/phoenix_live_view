@@ -202,6 +202,7 @@ defmodule Phoenix.Component.MacroComponent do
   end
 
   defp build_ast([{:expr, _, _} | _], _acc, _stack, _env) do
+    # we raise here because we don't have a meta map (line + column) available
     raise ArgumentError, "EEx is not currently supported in macro components"
   end
 
