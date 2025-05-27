@@ -43,7 +43,7 @@ defmodule Phoenix.Component.MacroComponent do
   This module provides some utilities to work with the AST, which uses
   standard Elixir data structures:
 
-  1. A HTML tag is represented as `{tag, attributes, children}`
+  1. A HTML tag is represented as `{tag, attributes, children, meta}`
   2. Text is represented as a plain binary
   3. Attributes are represented as a list of `{key, value}` tuples where
      the value is an Elixir AST (which can be a plain binary for simple attributes)
