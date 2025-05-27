@@ -94,6 +94,11 @@ defmodule Phoenix.LiveView.ColocatedJS do
   An alternative approach could be to symlink the `phoenix-colocated` folder into your `node_modules`
   folder.
 
+  > #### Tip {: .info}
+  >
+  > If you remove or modify the contents of the `:target_directory` folder, you can use
+  > `mix clean --all` and `mix compile` to regenerate all colocated JavaScript.
+
   ### Imports in colocated JS
 
   The colocated JS files are fully handled by your bundler. For Phoenix apps, this is typically
