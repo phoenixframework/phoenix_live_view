@@ -76,7 +76,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
             ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
           cd: Path.expand("../assets", __DIR__),
           env: %{
-            "NODE_PATH" => Enum.join([Path.expand("../deps", __DIR__), Mix.Project.build_path()], ":")
+            "NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]
           }
         ]
 
@@ -90,6 +90,9 @@ defmodule Phoenix.LiveView.ColocatedJS do
   config :phoenix_live_view, :colocated_js,
     target_directory: Path.expand("../assets/node_modules/phoenix-colocated", __DIR__)
   ```
+
+  An alternative approach could be to symlink the `phoenix-colocated` folder into your `node_modules`
+  folder.
 
   ### Imports in colocated JS
 
