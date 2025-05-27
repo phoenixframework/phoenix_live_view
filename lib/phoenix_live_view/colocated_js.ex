@@ -114,7 +114,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   `assets/vendor` folder using a relative path. Instead, your bundler needs to be configured to handle
   an alias like `@` to resolve to your local `assets` folder. This is configured by default in the
   esbuild configuration for new Phoenix 1.8 applications using `esbuild`'s [alias option](https://esbuild.github.io/api/#alias),
-  as can be seen in the config snippet above.
+  as can be seen in the config snippet above (`--alias=@=.`).
 
   ## Options
 
