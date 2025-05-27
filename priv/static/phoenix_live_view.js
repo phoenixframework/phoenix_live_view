@@ -2308,6 +2308,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
           },
           onBeforeNodeAdded: (el) => {
+            var _a;
+            if (((_a = this.getStreamInsert(el)) == null ? void 0 : _a.updateOnly) && !this.streamComponentRestore[el.id]) {
+              return false;
+            }
             dom_default.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom);
             this.trackBefore("added", el);
             let morphedEl = el;
@@ -2476,8 +2480,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.trackBefore("updated", container, container);
       liveSocket.time("morphdom", () => {
         this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-          inserts.forEach(([key, streamAt, limit]) => {
-            this.streamInserts[key] = { ref, streamAt, limit, reset };
+          inserts.forEach(([key, streamAt, limit, updateOnly]) => {
+            this.streamInserts[key] = { ref, streamAt, limit, reset, updateOnly };
           });
           if (reset !== void 0) {
             dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {

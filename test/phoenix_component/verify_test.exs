@@ -42,6 +42,24 @@ defmodule Phoenix.ComponentVerifyTest do
     assert warnings =~ "test/phoenix_component/verify_test.exs:#{line}: (file)"
   end
 
+  test "loads modules" do
+    warnings =
+      capture_io(:stderr, fn ->
+        defmodule UnloadedAttrs do
+          use Phoenix.Component
+
+          def render(assigns) do
+            ~H"""
+            <Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs.fun_attr_any unknown="foo" />
+            """
+          end
+        end
+      end)
+
+    assert warnings =~
+             "undefined attribute \"unknown\" for component Phoenix.LiveViewTest.Support.FunctionComponentWithAttrs"
+  end
+
   test "validate undefined attributes" do
     warnings =
       capture_io(:stderr, fn ->

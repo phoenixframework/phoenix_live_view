@@ -867,6 +867,35 @@ defmodule Phoenix.LiveView.StreamTest do
            ]
   end
 
+  test "update_only", %{conn: conn} do
+    {:ok, lv, html} = live(conn, "/stream/reset")
+
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
+
+    html = assert lv |> element("button", "Add E (update only)") |> render_click()
+
+    assert ul_list_children(html) == [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C"},
+             {"items-d", "D"}
+           ]
+
+    html = assert lv |> element("button", "Update C (update only)") |> render_click()
+
+    assert [
+             {"items-a", "A"},
+             {"items-b", "B"},
+             {"items-c", "C " <> _},
+             {"items-d", "D"}
+           ] = ul_list_children(html)
+  end
+
   defp assert_pruned_stream(lv) do
     stream = StreamLive.run(lv, fn socket -> {:reply, socket.assigns.streams.users, socket} end)
     assert stream.inserts == []

@@ -1098,7 +1098,7 @@ defmodule Phoenix.Component.Declarative do
   @doc false
   def __verify__(module, component_calls) do
     for %{component: {submod, fun}} = call <- component_calls,
-        function_exported?(submod, :__components__, 0),
+        Code.ensure_loaded?(submod) and function_exported?(submod, :__components__, 0),
         component = submod.__components__()[fun],
         do: verify(module, call, component)
 
