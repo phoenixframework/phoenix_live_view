@@ -118,7 +118,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when there is EEx inside" do
-    assert_raise ArgumentError,
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                  ~r/EEx is not currently supported in macro components/,
                  fn ->
                    defmodule TestComponentUnsupportedEEx do
@@ -173,8 +173,40 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                  end
   end
 
+  test "raises when trying to use :type on a component" do
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/unsupported attribute \":type\"/,
+                 fn ->
+                   defmodule TestUnsupportedComponent do
+                     use Phoenix.Component
+
+                     def render(assigns) do
+                       ~H"""
+                       <.my_other_component :type={MyComponent} />
+                       """
+                     end
+                   end
+                 end
+
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 ~r/unsupported attribute \":type\"/,
+                 fn ->
+                   defmodule TestUnsupportedComponent do
+                     use Phoenix.Component
+
+                     def render(assigns) do
+                       ~H"""
+                       <.my_other_component>
+                         <:my_slot :type={MyComponent} />
+                       </.my_other_component>
+                       """
+                     end
+                   end
+                 end
+  end
+
   test "raises for dynamic attributes" do
-    assert_raise ArgumentError,
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                  ~r/dynamic attributes are not supported in macro components, got: #{Regex.escape("`{@bar}`")}/,
                  fn ->
                    defmodule TestComponentUnsupportedDynamicAttributes1 do
@@ -188,7 +220,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                    end
                  end
 
-    assert_raise ArgumentError,
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                  ~r/dynamic attributes are not supported in macro components, got: #{Regex.escape("`{@bar}`")}/,
                  fn ->
                    defmodule TestComponentUnsupportedDynamicAttributes2 do

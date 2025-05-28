@@ -958,18 +958,6 @@ defmodule Phoenix.LiveView.TagEngine do
   #   pop_special_attrs!(state, ":for", attrs, %{}, state)
   #   => {%{}, []}
   defp pop_special_attrs!(attrs, tag_meta, state) do
-    case List.keyfind(attrs, ":type", 0) do
-      {":type", _value, _meta} ->
-        raise_syntax_error!(
-          "the :type attribute can only be used on regular HTML tags",
-          tag_meta,
-          state
-        )
-
-      nil ->
-        :ok
-    end
-
     Enum.reduce([for: ":for", if: ":if"], {false, tag_meta, attrs}, fn
       {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
         attrs_acc
