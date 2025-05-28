@@ -29,7 +29,7 @@ export interface LiveSocketOptions {
     throttle?: number;
   };
   /**
-   * The optional function for passing connect params.
+   * An object or function for passing connect params.
    * The function receives the element associated with a given LiveView. For example:
    *
    *     (el) => {view: el.getAttribute("data-my-view-name", token: window.myToken}
