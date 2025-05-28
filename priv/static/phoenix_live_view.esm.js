@@ -2267,6 +2267,18 @@ var DOMPatch = class {
     this.transitionPendingRemoves();
     if (externalFormTriggered) {
       liveSocket.unload();
+      const submitter = dom_default.private(externalFormTriggered, "submitter");
+      if (submitter && submitter.name && targetContainer.contains(submitter)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        const formId = submitter.getAttribute("form");
+        if (formId) {
+          input.setAttribute("form", formId);
+        }
+        input.name = submitter.name;
+        input.value = submitter.value;
+        submitter.parentElement.insertBefore(input, submitter);
+      }
       Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered);
     }
     return true;
@@ -4531,6 +4543,7 @@ var View = class _View {
       form: formEl,
       submitter
     });
+    dom_default.putPrivate(formEl, "submitter", submitter);
     let cid = this.targetComponentID(formEl, targetCtx);
     if (LiveUploader.hasUploadsInProgress(formEl)) {
       let [ref, _els] = refGenerator();
