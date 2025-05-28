@@ -173,7 +173,7 @@ export default class View {
     if (boundView !== undefined && boundView.isDead !== true) {
       logError(
         `The DOM element for this view has already been bound to a view.
-        
+
         An element can only ever be associated with a single view!
         Please ensure that you are not trying to initialize multiple LiveSockets on the same page.
         This could happen if you're accidentally trying to render your root layout more than once.
@@ -2013,7 +2013,19 @@ export default class View {
         (form) =>
           form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore",
       )
-      .map((form) => form.cloneNode(true))
+      .map((form) => {
+        // we perform a shallow clone and manually copy all elements
+        const clonedForm = form.cloneNode(false);
+        // we need to copy the private data as it contains
+        // the information about touched fields
+        DOM.copyPrivates(clonedForm, form);
+        Array.from(form.elements).forEach((el) => {
+          const clonedEl = el.cloneNode(false);
+          DOM.copyPrivates(clonedEl, el);
+          clonedForm.appendChild(clonedEl);
+        });
+        return clonedForm;
+      })
       .reduce((acc, form) => {
         acc[form.id] = form;
         return acc;

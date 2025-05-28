@@ -139,9 +139,7 @@ for (const path of ["/form/nested", "/form"]) {
             { type: "received", payload: expect.stringContaining("phx_reply") },
             {
               type: "sent",
-              payload: expect.stringMatching(
-                /event.*_unused_a=&a=foo&_unused_b=&b=test/,
-              ),
+              payload: expect.stringMatching(/event.*_unused_a=&a=foo&b=test/),
             },
           ]),
         );
@@ -258,9 +256,7 @@ for (const path of ["/form/nested", "/form"]) {
             { type: "received", payload: expect.stringContaining("phx_reply") },
             {
               type: "sent",
-              payload: expect.stringMatching(
-                /event.*_unused_a=&a=foo&_unused_b=&b=test/,
-              ),
+              payload: expect.stringMatching(/event.*_unused_a=&a=foo&b=test/),
             },
           ]),
         );
@@ -293,13 +289,13 @@ for (const path of ["/form/nested", "/form"]) {
       page,
       `
       <<"#PID"::binary, pid::binary>> = inspect(self())
-  
+
       pid_parts =
         pid
         |> String.trim_leading("<")
         |> String.trim_trailing(">")
         |> String.split(".")
-  
+
       %{lv_pid: pid_parts}
     `,
       nested ? "#nested" : undefined,
