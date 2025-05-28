@@ -831,19 +831,19 @@ defmodule Phoenix.LiveView.TagEngine do
 
     module = validate_module!(module_string, tag_meta, state)
 
-    {ast, rest} =
-      case Phoenix.Component.MacroComponent.build_ast(tokens, state.caller) do
-        {:ok, ast, rest} -> {ast, rest}
-        {:error, message, meta} -> raise_syntax_error!(message, meta, state)
-      end
-
     # we do not perform root tracking on macro components
     # but we call set_root_on_not_tag since a macro component could be
     # just some text without any tags
     state = set_root_on_not_tag(state)
 
     try do
-      module.transform(ast, %{env: state.caller})
+      {ast, rest} =
+        case Phoenix.Component.MacroComponent.build_ast(tokens, state.caller) do
+          {:ok, ast, rest} -> {ast, rest}
+          {:error, message, meta} -> raise_syntax_error!(message, meta, state)
+        end
+
+      {module.transform(ast, %{env: state.caller}), rest}
     rescue
       e in ArgumentError ->
         raise_syntax_error!(
@@ -852,19 +852,19 @@ defmodule Phoenix.LiveView.TagEngine do
           state
         )
     else
-      {:ok, new_ast} ->
+      {{:ok, new_ast}, rest} ->
         state
         |> handle_ast(new_ast, tag_meta)
         |> continue(rest)
 
-      {:ok, new_ast, data} ->
+      {{:ok, new_ast, data}, rest} ->
         Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
 
         state
         |> handle_ast(new_ast, tag_meta)
         |> continue(rest)
 
-      other ->
+      {other, _rest} ->
         raise ArgumentError,
               "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}"
     end
