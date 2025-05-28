@@ -2532,6 +2532,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.transitionPendingRemoves();
       if (externalFormTriggered) {
         liveSocket.unload();
+        const submitter = dom_default.private(externalFormTriggered, "submitter");
+        if (submitter && submitter.name && targetContainer.contains(submitter)) {
+          const input = document.createElement("input");
+          input.type = "hidden";
+          const formId = submitter.getAttribute("form");
+          if (formId) {
+            input.setAttribute("form", formId);
+          }
+          input.name = submitter.name;
+          input.value = submitter.value;
+          submitter.parentElement.insertBefore(input, submitter);
+        }
         Object.getPrototypeOf(externalFormTriggered).submit.call(
           externalFormTriggered
         );
@@ -5239,6 +5251,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         form: formEl,
         submitter
       }));
+      dom_default.putPrivate(formEl, "submitter", submitter);
       const cid = this.targetComponentID(formEl, targetCtx);
       if (LiveUploader.hasUploadsInProgress(formEl)) {
         const [ref, _els] = refGenerator();
