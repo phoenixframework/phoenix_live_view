@@ -477,9 +477,8 @@ export default class LiveSocket {
   }
 
   owner(childEl, callback) {
-    const view =
-      maybe(childEl.closest(PHX_VIEW_SELECTOR), (el) => this.getViewByEl(el)) ||
-      this.main;
+    const viewEl = DOM.closestViewEl(childEl);
+    const view = (viewEl && this.getViewByEl(viewEl)) || this.main;
     return view && callback ? callback(view) : view;
   }
 
