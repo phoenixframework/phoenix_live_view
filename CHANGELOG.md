@@ -112,6 +112,12 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.13 (2025-05-28)
+
+### Bug fixes
+
+* Ensure submitter value is sent when submitting a form with `phx-trigger-action` ([#3815](https://github.com/phoenixframework/phoenix_live_view/pull/3815))
+
 ## 1.0.12 (2025-05-20)
 
 ### Enhancements
