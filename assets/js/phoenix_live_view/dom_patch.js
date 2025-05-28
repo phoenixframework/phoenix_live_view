@@ -345,6 +345,21 @@ export default class DOMPatch {
 
     if(externalFormTriggered){
       liveSocket.unload()
+      // check for submitter and inject it as hidden input for external submit;
+      // In theory, it could happen that the stored submitter is outdated and doesn't
+      // exist in the DOM any more, but this is unlikely, so we just accept it for now.
+      const submitter = DOM.private(externalFormTriggered, "submitter")
+      if(submitter && submitter.name && targetContainer.contains(submitter)){
+        const input = document.createElement("input")
+        input.type = "hidden"
+        const formId = submitter.getAttribute("form")
+        if(formId){
+          input.setAttribute("form", formId)
+        }
+        input.name = submitter.name
+        input.value = submitter.value
+        submitter.parentElement.insertBefore(input, submitter)
+      }
       // use prototype's submit in case there's a form control with name or id of "submit"
       // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
       Object.getPrototypeOf(externalFormTriggered).submit.call(externalFormTriggered)

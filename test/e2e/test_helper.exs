@@ -107,6 +107,14 @@ defmodule Phoenix.LiveViewTest.E2E.EvalController do
   end
 end
 
+defmodule Phoenix.LiveViewTest.E2E.SubmitController do
+  use Phoenix.Controller
+
+  def submit(conn, params) do
+    send_resp(conn, 200, Phoenix.json_library().encode!(params))
+  end
+end
+
 defmodule Phoenix.LiveViewTest.E2E.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
@@ -171,6 +179,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3709", Issue3709Live
       live "/3709/:id", Issue3709Live
       live "/3719", Issue3719Live
+      live "/3814", Issue3814Live
     end
   end
 
@@ -211,6 +220,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3681", Issue3681Live
       live "/3681/away", Issue3681.AwayLive
     end
+
+    post "/submit", SubmitController, :submit
   end
 
   post "/eval", Phoenix.LiveViewTest.E2E.EvalController, :eval
