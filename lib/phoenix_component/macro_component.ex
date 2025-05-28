@@ -221,7 +221,7 @@ defmodule Phoenix.Component.MacroComponent do
         end
 
         raise ArgumentError,
-              "dynamic attributes are not supported in macro components, got: `{#{format_attr.(value)}}`"
+              "dynamic attributes are not supported in macro components, got: #{format_attr.(value)}"
       end
 
       case value do
