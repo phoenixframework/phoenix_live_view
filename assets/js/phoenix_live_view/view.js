@@ -1739,6 +1739,9 @@ export default class View {
         form: formEl,
         submitter: submitter,
       });
+    // store the submitter in the form element in order to trigger it
+    // for phx-trigger-action
+    DOM.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
     if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
