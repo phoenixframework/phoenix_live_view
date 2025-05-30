@@ -1918,7 +1918,7 @@ export default class View {
       (el) => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange),
     );
     if (inputs.length === 0) {
-      callback(); 
+      callback();
       return;
     }
 
