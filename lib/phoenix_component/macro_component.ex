@@ -247,7 +247,7 @@ defmodule Phoenix.Component.MacroComponent do
        Defaults to an HTML-safe encoder.
 
   """
-  @spec ast_to_string(heex_ast()) :: binary()
+  @spec ast_to_string(heex_ast(), keyword()) :: binary()
   def ast_to_string(ast, opts \\ []) do
     opts = Keyword.put_new(opts, :attributes_encoder, &ast_attributes_to_iodata/1)
 
