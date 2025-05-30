@@ -1464,7 +1464,10 @@ export default class View {
     const phxTarget = newForm.getAttribute(this.binding("target")) || newForm
     const phxEvent = newForm.getAttribute(this.binding(PHX_AUTO_RECOVER)) || newForm.getAttribute(this.binding("change"))
     const inputs = Array.from(oldForm.elements).filter(el => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange))
-    if(inputs.length === 0){ return }
+    if(inputs.length === 0){
+      callback()
+      return
+    }
 
     // we must clear tracked uploads before recovery as they no longer have valid refs
     inputs.forEach(input => input.hasAttribute(PHX_UPLOAD_REF) && LiveUploader.clearFiles(input))
