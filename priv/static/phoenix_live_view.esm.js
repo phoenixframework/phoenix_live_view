@@ -75,6 +75,7 @@ var PHX_THROTTLE = "throttle";
 var PHX_UPDATE = "update";
 var PHX_STREAM = "stream";
 var PHX_STREAM_REF = "data-phx-stream";
+var PHX_RUNTIME_HOOK = "data-phx-runtime-hook";
 var PHX_KEY = "key";
 var PHX_PRIVATE = "phxPrivate";
 var PHX_AUTO_RECOVER = "auto-recover";
@@ -2291,6 +2292,9 @@ var DOMPatch = class {
           if (dom_default.isPhxChild(el) && view.ownsElement(el) || dom_default.isPhxSticky(el) && view.ownsElement(el.parentNode)) {
             this.trackAfter("phxChildAdded", el);
           }
+          if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
+            this.handleRuntimeHook(el, source);
+          }
           added.push(el);
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
@@ -2629,6 +2633,23 @@ var DOMPatch = class {
   }
   indexOf(parent, child) {
     return Array.from(parent.children).indexOf(child);
+  }
+  handleRuntimeHook(el, source) {
+    const name = el.getAttribute(PHX_RUNTIME_HOOK);
+    let nonce = el.hasAttribute("nonce") ? el.getAttribute("nonce") : null;
+    if (el.hasAttribute("nonce")) {
+      const template = document.createElement("template");
+      template.innerHTML = source;
+      nonce = template.content.querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`).getAttribute("nonce");
+    }
+    const script = document.createElement("script");
+    script.textContent = el.textContent;
+    dom_default.mergeAttrs(script, el, { isIgnored: false });
+    if (nonce) {
+      script.nonce = nonce;
+    }
+    el.replaceWith(script);
+    el = script;
   }
 };
 
@@ -4481,7 +4502,7 @@ var View = class _View {
       return;
     } else {
       const hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK));
-      const hookDefinition = this.liveSocket.getHookCallbacks(hookName);
+      const hookDefinition = this.liveSocket.getHookDefinition(hookName);
       if (hookDefinition) {
         if (!el.id) {
           logError(
@@ -5719,8 +5740,32 @@ var LiveSocket = class {
       }
     }, afterMs);
   }
-  getHookCallbacks(name) {
-    return name && name.startsWith("Phoenix.") ? hooks_default[name.split(".")[1]] : this.hooks[name];
+  getHookDefinition(name) {
+    return this.maybeInternalHook(name) || this.hooks[name] || this.maybeRuntimeHook(name);
+  }
+  maybeInternalHook(name) {
+    return name && name.startsWith("Phoenix.") && hooks_default[name.split(".")[1]];
+  }
+  maybeRuntimeHook(name) {
+    const runtimeHook = document.querySelector(
+      `script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`
+    );
+    if (!runtimeHook) {
+      return;
+    }
+    let callbacks = window[`phx_hook_${name}`];
+    if (!callbacks || typeof callbacks !== "function") {
+      logError("a runtime hook must be a function", runtimeHook);
+      return;
+    }
+    const hookDefiniton = callbacks();
+    if (hookDefiniton && (typeof hookDefiniton === "object" || typeof hookDefiniton === "function")) {
+      return hookDefiniton;
+    }
+    logError(
+      "runtime hook must return an object with hook callbacks or an instance of ViewHook",
+      runtimeHook
+    );
   }
   isUnloaded() {
     return this.unloaded;
