@@ -27,9 +27,17 @@ import {
   RELOAD_JITTER_MAX,
   PHX_REF_SRC,
   PHX_RELOAD_STATUS,
+  PHX_RUNTIME_HOOK,
 } from "./constants";
 
-import { clone, closestPhxBinding, closure, debug, maybe } from "./utils";
+import {
+  clone,
+  closestPhxBinding,
+  closure,
+  debug,
+  maybe,
+  logError,
+} from "./utils";
 
 import Browser from "./browser";
 import DOM from "./dom";
@@ -324,10 +332,41 @@ export default class LiveSocket {
     }, afterMs);
   }
 
-  getHookCallbacks(name) {
-    return name && name.startsWith("Phoenix.")
-      ? Hooks[name.split(".")[1]]
-      : this.hooks[name];
+  getHookDefinition(name) {
+    return (
+      this.maybeInternalHook(name) ||
+      this.hooks[name] ||
+      this.maybeRuntimeHook(name)
+    );
+  }
+
+  maybeInternalHook(name) {
+    return name && name.startsWith("Phoenix.") && Hooks[name.split(".")[1]];
+  }
+
+  maybeRuntimeHook(name) {
+    const runtimeHook = document.querySelector(
+      `script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`,
+    );
+    if (!runtimeHook) {
+      return;
+    }
+    let callbacks = window[`phx_hook_${name}`];
+    if (!callbacks || typeof callbacks !== "function") {
+      logError("a runtime hook must be a function", runtimeHook);
+      return;
+    }
+    const hookDefiniton = callbacks();
+    if (
+      hookDefiniton &&
+      (typeof hookDefiniton === "object" || typeof hookDefiniton === "function")
+    ) {
+      return hookDefiniton;
+    }
+    logError(
+      "runtime hook must return an object with hook callbacks or an instance of ViewHook",
+      runtimeHook,
+    );
   }
 
   isUnloaded() {
