@@ -91,7 +91,7 @@ defmodule Phoenix.Component.MacroComponent do
 
         def render(assigns) do
           ~H\"\"\"
-          <pre :type={ColocatedDemoWeb.Markdown} class="prose mt-8">
+          <pre :type={MyAppWeb.MarkdownComponent} class="prose mt-8">
           ## Hello World
 
           This is some markdown!
