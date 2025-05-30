@@ -5366,6 +5366,7 @@ var View = class _View {
       (el) => dom_default.isFormInput(el) && el.name && !el.hasAttribute(phxChange)
     );
     if (inputs.length === 0) {
+      callback();
       return;
     }
     inputs.forEach(
