@@ -112,6 +112,13 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.14 (2025-05-30)
+
+### Bug fixes
+
+* Ensure `_unused` parameters are sent correctly during form recovery ([#3809](https://github.com/phoenixframework/phoenix_live_view/pull/3809))
+* Fix form recovery failing and blocking updates when a form does not have any inputs ([#3818](https://github.com/phoenixframework/phoenix_live_view/issues/3818))
+
 ## 1.0.13 (2025-05-28)
 
 ### Bug fixes
@@ -156,7 +163,7 @@ generated user module:
 
 ## 1.0.8 (2025-03-26)
 
-### Bug fixes 
+### Bug fixes
 * Regression: ensure `_target` is sent as `["undefined"]` when an input has no name ([#3727](https://github.com/phoenixframework/phoenix_live_view/issues/3727))
 * Fix stream items from disconnected render not being removed when rendered inside a nested stream ([#3730](https://github.com/phoenixframework/phoenix_live_view/pull/3730))
 
