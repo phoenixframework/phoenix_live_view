@@ -532,6 +532,9 @@ defmodule Phoenix.LiveView.Channel do
               {:reply, reply, %Socket{} = socket} ->
                 {{:reply, reply, socket}, %{socket: socket, event: event, params: val}}
 
+              %Socket{} = socket ->
+                {{:noreply, socket}, %{socket: socket, event: event, params: val}}
+
               other ->
                 raise_bad_callback_response!(other, socket.view, :handle_event, 3)
             end

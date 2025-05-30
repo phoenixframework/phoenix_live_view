@@ -282,7 +282,7 @@ defmodule Phoenix.LiveView do
   and sent as a reply to the client.
   """
   @callback handle_event(event :: binary, unsigned_params(), socket :: Socket.t()) ::
-              {:noreply, Socket.t()} | {:reply, map, Socket.t()}
+              Socket.t() | {:noreply, Socket.t()} | {:reply, map, Socket.t()}
 
   @doc """
   Invoked to handle calls from other Elixir processes.
