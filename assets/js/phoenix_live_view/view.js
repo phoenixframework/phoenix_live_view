@@ -1208,7 +1208,9 @@ export default class View {
       return Promise.reject(new Error("no connection"));
     }
 
-    const [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}];
+    const [ref, [el], opts] = refGenerator
+      ? refGenerator({ payload })
+      : [null, [], {}];
     const oldJoinCount = this.joinCount;
     let onLoadingDone = function () {};
     if (opts.page_loading) {
@@ -1239,7 +1241,7 @@ export default class View {
               this.onLiveRedirect(resp.live_redirect);
             }
             onLoadingDone();
-            resolve({ resp: resp, reply: hookReply });
+            resolve({ resp: resp, reply: hookReply, ref });
           };
           if (resp.diff) {
             this.liveSocket.requestDOMUpdate(() => {
@@ -1410,6 +1412,15 @@ export default class View {
           });
         },
       };
+      if (opts.payload) {
+        detail["payload"] = opts.payload;
+      }
+      if (opts.target) {
+        detail["target"] = opts.target;
+      }
+      if (opts.originalEvent) {
+        detail["originalEvent"] = opts.originalEvent;
+      }
       el.dispatchEvent(
         new CustomEvent("phx:push", {
           detail: detail,
@@ -1479,18 +1490,19 @@ export default class View {
         new Error("unable to push hook event. LiveView not connected"),
       );
     }
-    let [ref, els, opts] = this.putRef(
-      [{ el, loading: true, lock: true }],
-      event,
-      "hook",
-    );
 
-    return this.pushWithReply(() => [ref, els, opts], "event", {
+    const refGenerator = () =>
+      this.putRef([{ el, loading: true, lock: true }], event, "hook", {
+        payload,
+        target: targetCtx,
+      });
+
+    return this.pushWithReply(refGenerator, "event", {
       type: "hook",
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx),
-    }).then(({ resp: _resp, reply }) => ({ reply, ref }));
+    }).then(({ resp: _resp, reply, ref }) => ({ reply, ref }));
   }
 
   extractMeta(el, meta, value) {
@@ -1531,8 +1543,11 @@ export default class View {
 
   pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
     this.pushWithReply(
-      () =>
-        this.putRef([{ el, loading: true, lock: true }], phxEvent, type, opts),
+      (maybePayload) =>
+        this.putRef([{ el, loading: true, lock: true }], phxEvent, type, {
+          ...opts,
+          payload: maybePayload?.payload,
+        }),
       "event",
       {
         type: type,
@@ -1569,7 +1584,7 @@ export default class View {
     const cid = isCid(forceCid)
       ? forceCid
       : this.targetComponentID(inputEl.form, targetCtx, opts);
-    const refGenerator = () => {
+    const refGenerator = (maybePayload) => {
       return this.putRef(
         [
           { el: inputEl, loading: true, lock: true },
@@ -1577,7 +1592,7 @@ export default class View {
         ],
         phxEvent,
         "change",
-        opts,
+        { ...opts, payload: maybePayload?.payload },
       );
     };
     let formData;
@@ -1733,10 +1748,11 @@ export default class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-    const refGenerator = () =>
+    const refGenerator = (maybePayload) =>
       this.disableForm(formEl, phxEvent, {
         ...opts,
         form: formEl,
+        payload: maybePayload?.payload,
         submitter: submitter,
       });
     // store the submitter in the form element in order to trigger it
