@@ -95,7 +95,13 @@ const JS = {
       dispatcher,
       callback,
     } = args;
-    const pushOpts = { loading, value, target, page_loading: !!page_loading };
+    const pushOpts = {
+      loading,
+      value,
+      target,
+      page_loading: !!page_loading,
+      originalEvent: e,
+    };
     const targetSrc =
       eventType === "change" && dispatcher ? dispatcher : sourceEl;
     const phxTarget =
