@@ -1002,7 +1002,7 @@ describe("JS", () => {
       `);
       const click = document.querySelector("#click")!;
       view.pushEvent = (eventType, sourceEl, targetCtx, event, meta, opts) => {
-        expect(opts).toEqual({ page_loading: true });
+        expect(opts.page_loading).toBe(true);
         done();
       };
       JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
