@@ -611,9 +611,8 @@ const DOM = {
       // which identifies this class as allowed to associate to a form.
       // See https://html.spec.whatwg.org/dev/custom-elements.html#custom-elements-face-example
       // for details.
-      return customElements.get(el.localName)[`formAssociated`]
+      return customElements.get(el.localName)[`formAssociated`];
     }
-
 
     return (
       /^(?:input|select|textarea)$/i.test(el.tagName) && el.type !== "button"
