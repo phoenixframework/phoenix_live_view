@@ -794,6 +794,9 @@ var DOM = {
     }
   },
   isFormInput(el) {
+    if (el.localName && customElements.get(el.localName)) {
+      return customElements.get(el.localName)[`formAssociated`];
+    }
     return /^(?:input|select|textarea)$/i.test(el.tagName) && el.type !== "button";
   },
   syncAttrsToProps(el) {
@@ -808,7 +811,7 @@ var DOM = {
     return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null && document.body.contains(el);
   },
   cleanChildNodes(container, phxUpdate) {
-    if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
+    if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])) {
       const toRemove = [];
       container.childNodes.forEach((childNode) => {
         if (!childNode.id) {
@@ -4530,6 +4533,9 @@ var View = class _View {
       return;
     } else {
       const hookName = el.getAttribute(`data-phx-${PHX_HOOK}`) || el.getAttribute(this.binding(PHX_HOOK));
+      if (!hookName) {
+        return;
+      }
       const hookDefinition = this.liveSocket.getHookDefinition(hookName);
       if (hookDefinition) {
         if (!el.id) {
@@ -5770,6 +5776,9 @@ var LiveSocket = class {
     }, afterMs);
   }
   getHookDefinition(name) {
+    if (!name) {
+      return;
+    }
     return this.maybeInternalHook(name) || this.hooks[name] || this.maybeRuntimeHook(name);
   }
   maybeInternalHook(name) {
