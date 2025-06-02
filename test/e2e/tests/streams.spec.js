@@ -953,3 +953,27 @@ test("update_only", async ({ page }) => {
     { id: "items-d", text: "D" },
   ]);
 });
+
+// https://github.com/phoenixframework/phoenix_live_view/issues/3784
+// empty text nodes would accumulate inside streams, leading to linear
+// growth. When locked trees were involved, the growth could become
+// exponential though, because text nodes from the clone would accumulate,
+// doubling the text nodes on unlock
+test("empty text nodes are pruned", async ({ page }) => {
+  await page.goto("/stream/limit");
+  await syncLV(page);
+
+  const initialCount = await page.evaluate(
+    () => document.getElementById("items").innerHTML.match(/\n/g).length,
+  );
+  for (let i = 0; i < 10; i++) {
+    await page.getByRole("button", { name: "add 10" }).click();
+  }
+
+  await syncLV(page);
+  const newCount = await page.evaluate(
+    () => document.getElementById("items").innerHTML.match(/\n/g).length,
+  );
+
+  await expect(newCount).toEqual(initialCount);
+});

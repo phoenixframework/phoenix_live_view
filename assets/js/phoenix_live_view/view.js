@@ -890,6 +890,11 @@ export default class View {
       const hookName =
         el.getAttribute(`data-phx-${PHX_HOOK}`) ||
         el.getAttribute(this.binding(PHX_HOOK));
+
+      if (!hookName) {
+        return;
+      }
+
       const hookDefinition = this.liveSocket.getHookDefinition(hookName);
 
       if (hookDefinition) {
