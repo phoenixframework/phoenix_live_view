@@ -334,4 +334,71 @@ describe("DOM", () => {
       expect(errorCount).toBe(2);
     });
   });
+
+  describe("isFormInput", () => {
+    test("identifies all inputs except for buttons as form inputs", () => {
+      [
+        "checkbox",
+        "color",
+        "date",
+        "datetime-local",
+        "email",
+        "file",
+        "hidden",
+        "image",
+        "month",
+        "number",
+        "password",
+        "radio",
+        "range",
+        "reset",
+        "search",
+        "submit",
+        "tel",
+        "text",
+        "time",
+        "url",
+        "week",
+      ].forEach((inputType) => {
+        const input = tag("input", { type: inputType }, "");
+        expect(DOM.isFormInput(input)).toBeTruthy();
+      });
+
+      const input = tag("input", { type: "button" }, "");
+      expect(DOM.isFormInput(input)).toBeFalsy();
+    });
+
+    test("identifies selects as form inputs", () => {
+      const select = tag("select", {}, "");
+      expect(DOM.isFormInput(select)).toBeTruthy();
+    });
+
+    test("identifies textareas as form inputs", () => {
+      const textarea = tag("textarea", {}, "");
+      expect(DOM.isFormInput(textarea)).toBeTruthy();
+    });
+
+    test("identifies form associated custom elements as form inputs", () => {
+      class CustomFormInput extends HTMLElement {
+        static formAssociated = true;
+
+        constructor() {
+          super();
+        }
+      }
+      customElements.define("custom-form-input", CustomFormInput);
+      const customFormInput = tag("custom-form-input", {}, "");
+      expect(DOM.isFormInput(customFormInput)).toBeTruthy();
+
+      class CustomNotFormInput extends HTMLElement {
+        constructor() {
+          super();
+        }
+      }
+
+      customElements.define("custom-not-form-input", CustomNotFormInput);
+      const customNotFormInput = tag("custom-not-form-input", {}, "");
+      expect(DOM.isFormInput(customNotFormInput)).toBeFalsy();
+    });
+  });
 });
