@@ -112,6 +112,14 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.15 (2025-06-02)
+
+### Bug fixes
+
+* Fix accumulation of empty text nodes inside `phx-update="stream"` containers ([#3784](https://github.com/phoenixframework/phoenix_live_view/issues/3784)).
+  This could lead to exponential memory growth when the stream container was part of a
+  form with concurrent updates.
+
 ## 1.0.14 (2025-05-30)
 
 ### Bug fixes
