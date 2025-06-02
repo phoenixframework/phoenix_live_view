@@ -760,7 +760,7 @@ var LiveView = (() => {
       return el.getAttribute && el.getAttribute(phxTriggerExternal) !== null && document.body.contains(el);
     },
     cleanChildNodes(container, phxUpdate) {
-      if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
+      if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])) {
         let toRemove = [];
         container.childNodes.forEach((childNode) => {
           if (!childNode.id) {
