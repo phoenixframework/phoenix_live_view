@@ -20,6 +20,7 @@ import {
   PHX_STICKY,
   PHX_EVENT_CLASSES,
   THROTTLED,
+  PHX_STREAM,
 } from "./constants";
 
 import { logError } from "./utils";
@@ -629,7 +630,9 @@ const DOM = {
   },
 
   cleanChildNodes(container, phxUpdate) {
-    if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
+    if (
+      DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])
+    ) {
       const toRemove = [];
       container.childNodes.forEach((childNode) => {
         if (!childNode.id) {

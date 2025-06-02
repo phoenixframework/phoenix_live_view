@@ -333,6 +333,9 @@ export default class LiveSocket {
   }
 
   getHookDefinition(name) {
+    if (!name) {
+      return;
+    }
     return (
       this.maybeInternalHook(name) ||
       this.hooks[name] ||
