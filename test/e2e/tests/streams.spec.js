@@ -839,3 +839,27 @@ test("JS commands are applied when re-joining", async ({page}) => {
   // should still be hidden
   await expect(page.locator("#users-1")).toBeHidden()
 })
+
+// https://github.com/phoenixframework/phoenix_live_view/issues/3784
+// empty text nodes would accumulate inside streams, leading to linear
+// growth. When locked trees were involved, the growth could become
+// exponential though, because text nodes from the clone would accumulate,
+// doubling the text nodes on unlock
+test("empty text nodes are pruned", async ({page}) => {
+  await page.goto("/stream/limit")
+  await syncLV(page)
+
+  const initialCount = await page.evaluate(
+    () => document.getElementById("items").innerHTML.match(/\n/g).length,
+  )
+  for(let i = 0; i < 10; i++){
+    await page.getByRole("button", {name: "add 10"}).click()
+  }
+
+  await syncLV(page)
+  const newCount = await page.evaluate(
+    () => document.getElementById("items").innerHTML.match(/\n/g).length,
+  )
+
+  expect(newCount).toEqual(initialCount)
+})
