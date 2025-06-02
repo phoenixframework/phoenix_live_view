@@ -147,13 +147,17 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 ### Enhancements
 
 * Add type annotations to all public JavaScript APIs ([#3789](https://github.com/phoenixframework/phoenix_live_view/pull/3789))
+* Add `Phoenix.LiveView.JS.ignore_attributes/1` to allow marking specific attributes to be ignored when LiveView patches an element ([#3765](https://github.com/phoenixframework/phoenix_live_view/pull/3765))
+* Add `Phoenix.LiveView.Debug` module with functions for inspecting LiveViews at runtime ([#3776](https://github.com/phoenixframework/phoenix_live_view/pull/3776))
+* Add `Phoenix.Component.MacroComponent` ([#3810](https://github.com/phoenixframework/phoenix_live_view/pull/3810))
+* Add `Phoenix.LiveView.ColocatedHook` and `Phoenix.LiveView.ColocatedJS` ([#3810](https://github.com/phoenixframework/phoenix_live_view/pull/3810))
+* Add `:update_only` option to `Phoenix.LiveView.stream_insert/4` ([#3573](https://github.com/phoenixframework/phoenix_live_view/pull/3573))
+* Use [`LazyHTML`](https://hexdocs.pm/lazy_html/) instead of [Floki](https://hexdocs.pm/floki) internally for LiveViewTest
 * Normalize whitespace in LiveViewTest's text filters ([#3621](https://github.com/phoenixframework/phoenix_live_view/pull/3621))
 * Raise by default when LiveViewTest detects duplicate DOM or LiveComponent IDs. This can be changed by passing `on_error` to `Phoenix.LiveViewTest.live/3` / `Phoenix.LiveViewTest.live_isolated/3`
-* Use [`LazyHTML`](https://hexdocs.pm/lazy_html/) instead of [Floki](https://hexdocs.pm/floki) internally for LiveViewTest
-* Add `Phoenix.LiveView.JS.ignore_attributes/1` to allow marking specific attributes to be ignored when LiveView patches an element ([#3765](https://github.com/phoenixframework/phoenix_live_view/pull/3765))
 * Raise an exception when trying to bind a single DOM element to multiple views (this could happen when accidentally loading your app.js twice) ([#3805](https://github.com/phoenixframework/phoenix_live_view/pull/3805))
-* Add `Phoenix.LiveView.Debug` module with functions for inspecting LiveViews at runtime ([#3776](https://github.com/phoenixframework/phoenix_live_view/pull/3776))
 * Ensure promise rejections include stack traces ([#3738](https://github.com/phoenixframework/phoenix_live_view/pull/3738))
+* Treat form associated custom elements as form inputs ([3823](https://github.com/phoenixframework/phoenix_live_view/pull/3823))
 
 ## v1.0
 
