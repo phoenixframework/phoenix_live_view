@@ -986,7 +986,7 @@ defmodule Phoenix.LiveView.TagEngine do
   #   pop_special_attrs!(state, ":for", attrs, %{}, state)
   #   => {%{}, []}
   defp pop_special_attrs!(attrs, tag_meta, state) do
-    Enum.reduce([for: ":for", if: ":if"], {false, tag_meta, attrs}, fn
+    Enum.reduce([for: ":for", if: ":if", key: ":key"], {false, tag_meta, attrs}, fn
       {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
         attrs_acc
         |> List.keytake(string_attr, 0)
@@ -1131,6 +1131,9 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_special_expr(state, tag_meta) do
     ast =
       case tag_meta do
+        %{key: key_expr} ->
+          handle_keyed_comprehension(key_expr, state, tag_meta)
+
         %{for: for_expr, if: if_expr} ->
           quote do
             for unquote(for_expr), unquote(if_expr),
@@ -1158,6 +1161,160 @@ defmodule Phoenix.LiveView.TagEngine do
     else
       state
     end
+  end
+
+  defp handle_keyed_comprehension(key_expr, state, tag_meta) do
+    # for now, we only support plain tags because we don't know if a function component
+    # renders to a single tag which is required by live components
+    case state.tag_handler.classify_type(tag_meta.tag_name) do
+      {:tag, _} ->
+        :ok
+
+      other ->
+        type =
+          case other do
+            {:local_component, _} -> "function components"
+            {:remote_component, _} -> "function components"
+            # special attrs for slots are handled separately, see wrap_special_slot
+            other -> inspect(other)
+          end
+
+        raise_syntax_error!(
+          "keyed :for comprehensions are not supported on #{type}",
+          tag_meta,
+          state
+        )
+    end
+
+    for_expr =
+      tag_meta[:for] || raise_syntax_error!("cannot use :key without :for", tag_meta, state)
+
+    if_expr = tag_meta[:if]
+    ast = invoke_subengine(state, :handle_body, [[skip_require: true, root: true]])
+
+    try do
+      map_assigns(for_expr, key_expr, ast)
+    rescue
+      e in ArgumentError ->
+        raise_syntax_error!(Exception.message(e), tag_meta, state)
+    else
+      {for_expr, for_assigns, key_expr, assigns_to_pick} ->
+        new_ast =
+          quote do
+            Phoenix.LiveView.TagEngine.component(
+              &Phoenix.Component.live_component/1,
+              %{
+                id: unquote(key_expr),
+                module: Phoenix.LiveView.KeyedComprehension,
+                render: fn var!(assigns) -> unquote(ast) end,
+                assigns:
+                  Map.merge(Map.take(var!(assigns), unquote(assigns_to_pick)), %{
+                    unquote_splicing(for_assigns)
+                  })
+              },
+              {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
+            )
+          end
+
+        state = pop_substate_from_stack(state)
+
+        for_ast =
+          state
+          |> push_substate_to_stack()
+          |> update_subengine(:handle_begin, [])
+          |> update_subengine(:handle_expr, ["=", new_ast])
+          |> invoke_subengine(:handle_end, [])
+
+        if if_expr do
+          quote do
+            for unquote(for_expr), unquote(if_expr), do: unquote(for_ast)
+          end
+        else
+          quote do
+            for unquote(for_expr), do: unquote(for_ast)
+          end
+        end
+    end
+  end
+
+  defp map_assigns(for_expr, key_expr, ast) do
+    {for_expr, for_assigns} = map_for_expr(for_expr)
+    key_expr = map_key_expr(key_expr)
+
+    # we only pick the assigns that are used inside;
+    # and because it is already AST from the engine, we know that
+    # all assigns are of the form assign.key
+    {_ast, assigns_to_pick} =
+      Macro.prewalk(ast, [], fn
+        {:., dot_meta, [{:assigns, assigns_meta, context}, assign]} = node, acc
+        when is_atom(assign) and is_list(dot_meta) and is_list(assigns_meta) and is_atom(context) ->
+          {node, [assign | acc]}
+
+        other, acc ->
+          {other, acc}
+      end)
+
+    {for_expr, for_assigns, key_expr, assigns_to_pick}
+  end
+
+  # transform a for expression of the form `@item <- ...`
+  # into `item <- ...` and returns the name of all assigns,
+  # in this example `[item: item]`
+  defp map_for_expr(for_expr) do
+    # we already validated that the for expression has the correct shape in
+    # validate_quoted_special_attr
+    {:<-, for_meta, [lhs, rhs]} = for_expr
+
+    # validate that there are no variables that are not assigns in the lhs
+    Macro.prewalk(lhs, fn
+      {:@, _, [{name, meta, context}]}
+      when is_atom(name) and is_list(meta) and is_atom(context) ->
+        # replace with empty list to avoid walking the content
+        []
+
+      {name, meta, context} = var when is_atom(name) and is_list(meta) and is_atom(context) ->
+        raise ArgumentError,
+              "cannot use non-assign variable in left-hand side of keyed :for comprehension. Got: #{Macro.to_string(var)}"
+
+      other ->
+        other
+    end)
+
+    # extract all @assigns from the left-hand side of the for expression
+    # to use as change-tracked assigns in the body
+    {lhs, for_assigns} =
+      Macro.prewalk(lhs, [], fn
+        {:@, _, [{name, meta, context} = var]}, acc
+        when is_atom(name) and is_list(meta) and is_atom(context) ->
+          {var, [{name, var} | acc]}
+
+        other, acc ->
+          {other, acc}
+      end)
+
+    for_expr = {:<-, for_meta, [lhs, rhs]}
+
+    {for_expr, for_assigns}
+  end
+
+  # replaces @item with item
+  defp map_key_expr(key_expr) do
+    mapped_key_expr =
+      Macro.prewalk(key_expr, fn
+        {:@, _, [{name, meta, context} = var]}
+        when is_atom(name) and is_list(meta) and is_atom(context) ->
+          var
+
+        other ->
+          other
+      end)
+
+    if mapped_key_expr == key_expr do
+      raise ArgumentError,
+            ":key expression must contain an assign from the left-hand side of the :for expression. Got: #{Macro.to_string(key_expr)}"
+    end
+
+    mapped_key_expr
   end
 
   ## build_self_close_component_assigns/build_component_assigns
@@ -1576,7 +1733,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp validate_phx_attrs!([{":" <> name, _, attr_meta} | _], _meta, state, _attr, _id?)
-       when name not in ~w(if for) do
+       when name not in ~w(if for key) do
     message = "unsupported attribute :#{name} in tags"
     raise_syntax_error!(message, attr_meta, state)
   end
