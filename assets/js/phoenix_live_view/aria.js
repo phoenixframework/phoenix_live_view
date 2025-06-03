@@ -15,7 +15,7 @@ const ARIA = {
           HTMLButtonElement,
         ])) ||
       el instanceof HTMLIFrameElement ||
-      el.tabIndex >= 0 ||
+      (el.tabIndex >= 0 && el.getAttribute("aria-hidden") !== "true") ||
       (!interactiveOnly &&
         el.getAttribute("tabindex") !== null &&
         el.getAttribute("aria-hidden") !== "true")
