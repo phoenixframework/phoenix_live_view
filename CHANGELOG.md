@@ -132,9 +132,9 @@ def input(%{type: "phone-number"} = assigns) do
 end
 ```
 
-Important: hooks now handle the `phx-hook` attribute in a special way if it starts with a dot (`.PhoneNumber` above). Any hook name starting with a dot is prefixed at compile time with the module name of the component. This means that if you named your hooks with a leading dot in the past, you'll need to adjust this for your hooks to work properly on LiveView 1.1.
+Important: LiveView now supports the `phx-hook` attribute to start with a dot (`.PhoneNumber` above) for namespacing. Any hook name starting with a dot is prefixed at compile time with the module name of the component. If you named your hooks with a leading dot in the past, you'll need to adjust this for your hooks to work properly on LiveView 1.1.
 
-Colocated hooks are extracted to a special `phoenix-colocated` folder inside your `_build` directory (`Mix.Project.build_path()`). See the quick update section at the top of the changelog on how to adjust your `esbuild` configuration to handle this. With everything configured, you can import your colocated hooks inside of your `app.js` like this:
+Colocated hooks are extracted to a `phoenix-colocated` folder inside your `_build/$MIX_ENV` directory (`Mix.Project.build_path()`). See the quick update section at the top of the changelog on how to adjust your `esbuild` configuration to handle this. With everything configured, you can import your colocated hooks inside of your `app.js` like this:
 
 ```diff
 ...
