@@ -118,6 +118,21 @@ defmodule Phoenix.LiveView.Comprehension do
   end
 end
 
+defmodule Phoenix.LiveView.KeyedComprehension do
+  @moduledoc false
+
+  def update(%{assigns: assigns, render: render}, socket) do
+    socket =
+      Enum.reduce(assigns, socket, fn {key, value}, socket ->
+        Phoenix.LiveView.Utils.assign(socket, key, value)
+      end)
+
+    {:ok, Phoenix.LiveView.render_with(socket, render)}
+  end
+
+  def __live__, do: %{kind: :component, layout: false}
+end
+
 defmodule Phoenix.LiveView.Rendered do
   @moduledoc """
   The struct returned by .heex templates.
@@ -359,9 +374,13 @@ defmodule Phoenix.LiveView.Engine do
       |> handle_end(opts)
       |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
 
-    quote do
-      require Phoenix.LiveView.Engine
-      unquote(rendered)
+    if opts[:skip_require] do
+      rendered
+    else
+      quote do
+        require Phoenix.LiveView.Engine
+        unquote(rendered)
+      end
     end
   end
 
