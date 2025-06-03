@@ -267,8 +267,15 @@ in `@posts` changes, all posts are sent again.
 
 There are two common solutions to this problem.
 
-The first one is to use `Phoenix.LiveComponent` for each item in the
-comprehension:
+The first one is to also provide a `:key` expression:
+
+```heex
+<section :for={@post <- @posts} :key={@post.id}>
+  <h1>{expand_title(@post.title)}</h1>
+</section>
+```
+
+This is functionally equivalent to doing:
 
 ```heex
 <section :for={post <- @posts}>
@@ -280,8 +287,9 @@ Since LiveComponents have their own assigns, LiveComponents would allow
 you to perform change tracking for each item. If the `@posts` variable
 changes, the client will simply send a list of component IDs (which are
 integers) and only the data for the posts that actually changed.
+You can read more about `:key` in the [documentation for sigil_H/2](Phoenix.Component.html#sigil_H/2-special-attributes).
 
-Another solution is to use `Phoenix.LiveView.stream/4`, which gives you
+The second solution is to use `Phoenix.LiveView.stream/4`, which gives you
 precise control over how elements are added, removed, and updated. Streams
 are particularly useful when you don't need to keep the collection in memory,
 allowing you to reduce the data sent over the wire and the server memory
