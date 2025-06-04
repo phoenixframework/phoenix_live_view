@@ -1206,7 +1206,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         HTMLSelectElement,
         HTMLTextAreaElement,
         HTMLButtonElement
-      ]) || el instanceof HTMLIFrameElement || el.tabIndex >= 0 || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true";
+      ]) || el instanceof HTMLIFrameElement || el.tabIndex >= 0 && el.getAttribute("aria-hidden") !== "true" || !interactiveOnly && el.getAttribute("tabindex") !== null && el.getAttribute("aria-hidden") !== "true";
     },
     attemptFocus(el, interactiveOnly) {
       if (this.isFocusable(el, interactiveOnly)) {
