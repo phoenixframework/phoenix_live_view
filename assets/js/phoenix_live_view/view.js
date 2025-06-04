@@ -57,6 +57,8 @@ import Rendered from "./rendered"
 import ViewHook from "./view_hook"
 import JS from "./js"
 
+import morphdom from "morphdom"
+
 export let prependFormDataKey = (key, prefix) => {
   let isArray = key.endsWith("[]")
   // Remove the "[]" if it's an array
@@ -1533,13 +1535,20 @@ export default class View {
       .filter(form => form.elements.length > 0)
       .filter(form => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore")
       .map(form => {
-        // we perform a shallow clone and manually copy all elementsAdd commentMore actions
+        // we perform a shallow clone and manually copy all elements
         const clonedForm = form.cloneNode(false)
         // we need to copy the private data as it contains
         // the information about touched fields
         DOM.copyPrivates(clonedForm, form)
         Array.from(form.elements).forEach((el) => {
-          const clonedEl = el.cloneNode(false)
+          // we need to clone all child nodes as well,
+          // because those could also be selects
+          const clonedEl = el.cloneNode(true)
+          // we call morphdom to copy any special state
+          // like the selected option of a <select> element;
+          // this should be plenty fast as we call it on a small subset of the DOM,
+          // single inputs or a select with children
+          morphdom(clonedEl, el)
           DOM.copyPrivates(clonedEl, el)
           clonedForm.appendChild(clonedEl)
         })

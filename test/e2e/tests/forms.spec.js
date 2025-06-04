@@ -84,6 +84,7 @@ for(let path of ["/form/nested", "/form"]){
         await syncLV(page)
 
         await page.locator("input[name=b]").fill("test")
+        await page.locator("select[name=d]").selectOption("bar")
         await syncLV(page)
 
         await page.evaluate(() => new Promise((resolve) => window.liveSocket.disconnect(resolve)))
@@ -102,6 +103,7 @@ for(let path of ["/form/nested", "/form"]){
         await expect(page.locator(".phx-loading")).toHaveCount(0)
 
         await expect(page.locator("input[name=b]")).toHaveValue("test")
+        await expect(page.locator("select[name=d]")).toHaveValue("bar")
 
         expect(webSocketEvents).toEqual(expect.arrayContaining([
           {type: "sent", payload: expect.stringContaining("phx_join")},
