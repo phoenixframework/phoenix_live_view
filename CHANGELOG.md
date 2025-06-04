@@ -112,6 +112,12 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.16 (2025-06-04)
+
+### Bug fixes
+
+* Fix `Phoenix.Component.focus_wrap/1` running into an infinite JavaScript recursion ([#3828](https://github.com/phoenixframework/phoenix_live_view/issues/3828))
+
 ## 1.0.15 (2025-06-02)
 
 ### Bug fixes
