@@ -5474,7 +5474,8 @@ var View = class _View {
       const clonedForm = form.cloneNode(false);
       dom_default.copyPrivates(clonedForm, form);
       Array.from(form.elements).forEach((el) => {
-        const clonedEl = el.cloneNode(false);
+        const clonedEl = el.cloneNode(true);
+        morphdom_esm_default(clonedEl, el);
         dom_default.copyPrivates(clonedEl, el);
         clonedForm.appendChild(clonedEl);
       });
@@ -5920,7 +5921,13 @@ var LiveSocket = class {
     return view;
   }
   owner(childEl, callback) {
-    const view = maybe(childEl.closest(PHX_VIEW_SELECTOR), (el) => this.getViewByEl(el)) || this.main;
+    let view;
+    const closestViewEl = childEl.closest(PHX_VIEW_SELECTOR);
+    if (closestViewEl) {
+      view = this.getViewByEl(closestViewEl);
+    } else {
+      view = this.main;
+    }
     return view && callback ? callback(view) : view;
   }
   withinOwners(childEl, callback) {
