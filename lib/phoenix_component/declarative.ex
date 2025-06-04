@@ -1154,7 +1154,16 @@ defmodule Phoenix.Component.Declarative do
 
       with [%{line: first_slot_line} | _] <- slots do
         compile_error!(first_slot_line, env.file, """
-        slots must be defined before the first function clause at line #{meta[:line]}
+        slots must be defined before the first function clause at line #{meta[:line]}.
+
+        This error commonly occurs when using `embed_templates` alongside function components
+        that define slots. If you have both an embedded template file (e.g., app.html.heex)
+        and a function component with the same name (e.g., def app), you should choose one approach:
+
+          * Use only the embedded template file, or
+          * Use only the function component with slots
+
+        Having both will cause conflicts as the embedded template is loaded first.
         """)
       end
     end
