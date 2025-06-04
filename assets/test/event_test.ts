@@ -328,6 +328,7 @@ describe("pushEvent replies", () => {
     });
     view = simulateView(liveSocket, [], "");
     liveSocket.main = view;
+    liveSocket.roots[view.id] = view;
     view.update(
       {
         s: [
