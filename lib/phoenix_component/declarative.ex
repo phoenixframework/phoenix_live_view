@@ -1,3 +1,61 @@
+==> mime
+Compiling 1 file (.ex)
+Generated mime app
+==> fine
+Compiling 1 file (.ex)
+Generated fine app
+==> phoenix_live_view
+===> Analyzing applications...
+===> Compiling telemetry
+==> jason
+Compiling 10 files (.ex)
+Generated jason app
+==> phoenix_html
+Compiling 6 files (.ex)
+Generated phoenix_html app
+==> phoenix_template
+Compiling 4 files (.ex)
+Generated phoenix_template app
+==> phoenix_pubsub
+Compiling 11 files (.ex)
+Generated phoenix_pubsub app
+==> plug_crypto
+Compiling 5 files (.ex)
+Generated plug_crypto app
+==> phoenix_view
+Compiling 1 file (.ex)
+Generated phoenix_view app
+==> plug
+Compiling 1 file (.erl)
+Compiling 40 files (.ex)
+Generated plug app
+==> elixir_make
+Compiling 8 files (.ex)
+Generated elixir_make app
+==> cc_precompiler
+Compiling 3 files (.ex)
+Generated cc_precompiler app
+==> lazy_html
+Compiling 3 files (.ex)
+Generated lazy_html app
+==> castore
+Compiling 1 file (.ex)
+Generated castore app
+==> esbuild
+Compiling 4 files (.ex)
+Generated esbuild app
+==> websock
+Compiling 1 file (.ex)
+Generated websock app
+==> websock_adapter
+Compiling 4 files (.ex)
+Generated websock_adapter app
+==> phoenix
+Compiling 71 files (.ex)
+Generated phoenix app
+==> phoenix_live_view
+Compiling 46 files (.ex)
+Generated phoenix_live_view app
 defmodule Phoenix.Component.Declarative do
   @moduledoc false
 
@@ -1081,7 +1139,16 @@ defmodule Phoenix.Component.Declarative do
 
       with [%{line: first_attr_line} | _] <- attrs do
         compile_error!(first_attr_line, env.file, """
-        attributes must be defined before the first function clause at line #{meta[:line]}
+        attributes must be defined before the first function clause at line #{meta[:line]}.
+
+        This error commonly occurs when using `embed_templates` alongside function components
+        that define attributes. If you have both an embedded template file (e.g., app.html.heex)
+        and a function component with the same name (e.g., def app), you should choose one approach:
+
+          * Use only the embedded template file, or
+          * Use only the function component with attributes
+
+        Having both will cause conflicts as the embedded template is loaded first.
         """)
       end
 
