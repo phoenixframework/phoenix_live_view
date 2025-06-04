@@ -112,6 +112,13 @@ generated user module:
          if valid_password?(changeset.data, password) do
     ```
 
+## 1.0.17 (2025-06-04)
+
+### Bug fixes
+
+* Fix `<select>` elements not being included in form recovery (regression in 1.0.14; [#3831](https://github.com/phoenixframework/phoenix_live_view/issues/3831))
+* Fix events from destroyed child LiveViews being accidentally sent to the parent LiveView instead
+
 ## 1.0.16 (2025-06-04)
 
 ### Bug fixes
