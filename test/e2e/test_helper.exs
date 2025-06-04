@@ -37,6 +37,8 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     </script>
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
+    <script :if={assigns[:tailwind]} src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4">
+    </script>
     {assigns[:pre_script]}
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
@@ -61,7 +63,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
       window.liveSocket = liveSocket
     </script>
     <style>
-      * { font-size: 1.1em; }
+      * { font-size: 1.1rem; }
     </style>
     {@inner_content}
     """
@@ -148,6 +150,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form/stream", E2E.FormStreamLive
       live "/js", E2E.JsLive
       live "/select", E2E.SelectLive
+      live "/components", E2E.ComponentsLive
     end
 
     scope "/issues", Phoenix.LiveViewTest.E2E do
