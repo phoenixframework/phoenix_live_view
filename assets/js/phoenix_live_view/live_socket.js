@@ -519,9 +519,15 @@ export default class LiveSocket {
   }
 
   owner(childEl, callback) {
-    const view =
-      maybe(childEl.closest(PHX_VIEW_SELECTOR), (el) => this.getViewByEl(el)) ||
-      this.main;
+    let view;
+    const closestViewEl = childEl.closest(PHX_VIEW_SELECTOR);
+    if (closestViewEl) {
+      // it can happen that we find a view that is already destroyed;
+      // in that case we DO NOT want to fallback to the main element
+      view = this.getViewByEl(closestViewEl);
+    } else {
+      view = this.main;
+    }
     return view && callback ? callback(view) : view;
   }
 

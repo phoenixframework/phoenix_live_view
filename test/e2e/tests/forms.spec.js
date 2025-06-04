@@ -105,6 +105,7 @@ for (const path of ["/form/nested", "/form"]) {
 
         await page.locator("input[name=b]").fill("test");
         await page.locator("input[name=c]").fill("hello world");
+        await page.locator("select[name=d]").selectOption("bar");
         await expect(page.locator("input[name=c]")).toBeFocused();
         await syncLV(page);
 
@@ -132,6 +133,7 @@ for (const path of ["/form/nested", "/form"]) {
         if (path === "/form") {
           await expect(page.locator("input[name=c]")).toBeFocused();
         }
+        await expect(page.locator("select[name=d]")).toHaveValue("bar");
 
         expect(webSocketEvents).toEqual(
           expect.arrayContaining([
