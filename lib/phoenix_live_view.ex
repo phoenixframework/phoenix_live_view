@@ -1820,7 +1820,7 @@ defmodule Phoenix.LiveView do
   ```heex
   <table>
     <tbody id="songs" phx-update="stream">
-      <tr id="songs-empty" class="only:block hidden">
+      <tr id="songs-empty" class="only:table-row hidden">
         <td colspan="2">No songs found</td>
       </tr>
       <tr
