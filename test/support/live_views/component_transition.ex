@@ -1,5 +1,6 @@
 defmodule Phoenix.LiveViewTest.Support.ComponentTransitionLive do
   use Phoenix.LiveView
+  alias Phoenix.LiveView.JS
 
   def mount(_params, _session, socket) do
     {:ok, assign(socket, :step, 1)}
