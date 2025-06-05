@@ -1,12 +1,17 @@
 defmodule Phoenix.LiveView.ComponentTransitionTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  alias Phoenix.LiveViewTest.Support.Endpoint
 
-  @endpoint Phoenix.LiveViewTest.Endpoint
+  @endpoint Endpoint
 
-  test "single root components should not vanish during phx-remove transitions" do
-    {:ok, view, html} = live(build_conn(), "/component-transition")
+  setup do
+    {:ok, conn: Plug.Test.init_test_session(Phoenix.ConnTest.build_conn(), %{})}
+  end
+
+  test "single root components should not vanish during phx-remove transitions", %{conn: conn} do
+    {:ok, view, html} = live(conn, "/component-transition")
 
     # Initially, both containers should be present
     assert html =~ "single-root-container"
