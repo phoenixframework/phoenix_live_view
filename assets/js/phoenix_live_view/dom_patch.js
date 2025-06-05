@@ -645,7 +645,11 @@ export default class DOMPatch {
       this.targetCID,
     );
     if (rest.length === 0 && DOM.childNodeLength(html) === 1) {
-      return first;
+      // Fix: For single-root components, return the parent to ensure
+      // consistent transition behavior with multi-root components.
+      // This prevents single-root components from vanishing immediately
+      // during phx-remove transitions (issue #3716).
+      return first && first.parentNode;
     } else {
       return first && first.parentNode;
     }
