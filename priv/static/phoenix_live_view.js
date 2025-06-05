@@ -2675,7 +2675,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.targetCID
       );
       if (rest.length === 0 && dom_default.childNodeLength(html) === 1) {
-        return first;
+        return first && first.parentNode;
       } else {
         return first && first.parentNode;
       }
