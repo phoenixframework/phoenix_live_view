@@ -622,7 +622,8 @@ defmodule Phoenix.Component.Declarative do
       """
       cannot define attributes without a related function component. 
       This error commonly occurs when using `embed_templates` alongside function components that define attributes. 
-      If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
+      If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name
+      (e.g., def app), you should choose one approach:
 
           * Use only the embedded template file, or
           * Use only the function component with attributes
