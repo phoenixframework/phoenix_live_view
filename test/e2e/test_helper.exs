@@ -142,6 +142,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/stream/nested-component-reset", Support.StreamNestedComponentResetLive
       live "/stream/inside-for", Support.StreamInsideForLive
       live "/healthy/:category", Support.HealthyLive
+      live "/component-transition", Support.ComponentTransitionLive
 
       live "/upload", E2E.UploadLive
       live "/form", E2E.FormLive
