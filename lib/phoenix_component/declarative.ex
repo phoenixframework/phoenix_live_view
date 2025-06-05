@@ -620,7 +620,9 @@ defmodule Phoenix.Component.Declarative do
 
     validate_misplaced_attrs!(attrs, env.file, fn ->
       """
-      cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
+      cannot define attributes without a related function component. 
+      This error commonly occurs when using `embed_templates` alongside function components that define attributes. 
+      If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
 
           * Use only the embedded template file, or
           * Use only the function component with attributes
