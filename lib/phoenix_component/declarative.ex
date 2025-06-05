@@ -619,54 +619,14 @@ defmodule Phoenix.Component.Declarative do
     attrs = pop_attrs(env)
 
     validate_misplaced_attrs!(attrs, env.file, fn ->
-          <<~ERROR
-            cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-              * Use only the embedded template file, or
-  a              * Use only the function component with attributes
-  a\
-            Having both will cause conflicts as the embedded template is loaded first.
-  a            ERROR
-          <<~ERROR
-            cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-              * Use only the embedded template file, or
-  a              * Use only the function component with attributes
-  a\
-            Having both will cause conflicts as the embedded template is loaded first.
-  a            ERROR
-          <<~ERROR
-            cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-              * Use only the embedded template file, or
-  a              * Use only the function component with attributes
-  a\
-            Having both will cause conflicts as the embedded template is loaded first.
-  a            ERROR
-          <<~ERROR
-            cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-              * Use only the embedded template file, or
-  a              * Use only the function component with attributes
-  a\
-            Having both will cause conflicts as the embedded template is loaded first.
-  a            ERROR
-          <<~ERROR
-            cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-              * Use only the embedded template file, or
-  a              * Use only the function component with attributes
-  a\
-            Having both will cause conflicts as the embedded template is loaded first.
-  a            ERROR
-          <<~ERROR
-            cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-              * Use only the embedded template file, or
-  a              * Use only the function component with attributes
-  a\
-            Having both will cause conflicts as the embedded template is loaded first.
-  a            ERROR
+      """
+      cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
+
+          * Use only the embedded template file, or
+          * Use only the function component with attributes
+
+      Having both will cause conflicts as the embedded template is loaded first.
+      """
     end)
 
     slots = pop_slots(env)
