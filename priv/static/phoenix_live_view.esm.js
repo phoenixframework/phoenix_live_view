@@ -2629,10 +2629,18 @@ var DOMPatch = class {
       this.targetCID
     );
     if (rest.length === 0 && dom_default.childNodeLength(html) === 1) {
-      return first && first.parentNode;
+      if (this.pendingRemoves.length > 0 || this.hasPhxRemoveElements(first)) {
+        return first && first.parentNode;
+      }
+      return first;
     } else {
       return first && first.parentNode;
     }
+  }
+  hasPhxRemoveElements(element) {
+    if (!element)
+      return false;
+    return element.hasAttribute && element.hasAttribute(this.phxRemove) || element.querySelector && element.querySelector(`[${this.phxRemove}]`) !== null;
   }
   indexOf(parent, child) {
     return Array.from(parent.children).indexOf(child);
