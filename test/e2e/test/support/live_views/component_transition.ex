@@ -10,8 +10,8 @@ defmodule Phoenix.LiveViewTest.Support.ComponentTransitionLive do
     ~H"""
     <div class="container">
       <button phx-click="remove_components">Remove Components</button>
-      
-    <!-- Single-root component that should transition properly -->
+
+      <!-- Single-root component that should transition properly -->
       <div
         :if={@show_components}
         id="single-root-component"
@@ -19,8 +19,8 @@ defmodule Phoenix.LiveViewTest.Support.ComponentTransitionLive do
       >
         <.single_root_component />
       </div>
-      
-    <!-- Multi-root component that should transition properly -->
+
+      <!-- Multi-root component that should transition properly -->
       <div
         :if={@show_components}
         id="multi-root-component"
@@ -28,8 +28,8 @@ defmodule Phoenix.LiveViewTest.Support.ComponentTransitionLive do
       >
         <.multi_root_component />
       </div>
-      
-    <!-- Content that appears after removal -->
+
+      <!-- Content that appears after removal -->
       <div :if={not @show_components} id="components-removed">
         Components have been removed
       </div>
@@ -60,3 +60,4 @@ defmodule Phoenix.LiveViewTest.Support.ComponentTransitionLive do
     {:noreply, assign(socket, show_components: false)}
   end
 end
+|}
