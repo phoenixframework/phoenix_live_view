@@ -645,12 +645,25 @@ export default class DOMPatch {
       this.targetCID,
     );
     if (rest.length === 0 && DOM.childNodeLength(html) === 1) {
-      // For single-root components during transitions, we need to return the parent
-      // to ensure consistent behavior with multi-root components for phx-remove transitions
-      return first && first.parentNode;
+      // For single-root components, check if we're dealing with a transition
+      // If there are pending removes, we need to return the parent for consistent transition behavior
+      if (this.pendingRemoves.length > 0 || this.hasPhxRemoveElements(first)) {
+        return first && first.parentNode;
+      }
+      return first;
     } else {
       return first && first.parentNode;
     }
+  }
+
+  hasPhxRemoveElements(element) {
+    if (!element) return false;
+    // Check if the element itself or any descendant has phx-remove
+    return (
+      (element.hasAttribute && element.hasAttribute(this.phxRemove)) ||
+      (element.querySelector &&
+        element.querySelector(`[${this.phxRemove}]`) !== null)
+    );
   }
 
   indexOf(parent, child) {
