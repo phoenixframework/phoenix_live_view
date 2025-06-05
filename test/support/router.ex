@@ -116,7 +116,7 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/component_and_nested_in_live", ComponentAndNestedInLive
 
     # integration component transitions
-    live "/component-transition", ComponentTransitionLive
+    live "/component-transition", Phoenix.LiveViewTest.Support.ComponentTransitionLive
 
     # integration lifecycle
     live "/lifecycle", HooksLive
