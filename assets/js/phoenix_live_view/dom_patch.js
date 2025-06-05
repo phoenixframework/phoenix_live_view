@@ -645,6 +645,15 @@ export default class DOMPatch {
       this.targetCID,
     );
     if (rest.length === 0 && DOM.childNodeLength(html) === 1) {
+      return first;
+    } else {
+      return first && first.parentNode;
+    }
+    const [first, ...rest] = DOM.findComponentNodeList(
+      this.container,
+      this.targetCID,
+    );
+    if (rest.length === 0 && DOM.childNodeLength(html) === 1) {
       // Fix: For single-root components, return the parent to ensure
       // consistent transition behavior with multi-root components.
       // This prevents single-root components from vanishing immediately
