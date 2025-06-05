@@ -115,6 +115,9 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/cids_destroyed", CidsDestroyedLive
     live "/component_and_nested_in_live", ComponentAndNestedInLive
 
+    # integration component transitions
+    live "/component-transition", Phoenix.LiveViewTest.Support.ComponentTransitionLive
+
     # integration lifecycle
     live "/lifecycle", HooksLive
     live "/lifecycle/bad-mount", HooksLive.BadMount
