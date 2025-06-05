@@ -645,9 +645,9 @@ export default class DOMPatch {
       this.targetCID,
     );
     if (rest.length === 0 && DOM.childNodeLength(html) === 1) {
-      // For single-root components, check if we're dealing with a transition
-      // If there are pending removes, we need to return the parent for consistent transition behavior
-      if (this.pendingRemoves.length > 0 || this.hasPhxRemoveElements(first)) {
+      // For single-root components, check if the source HTML contains phx-remove elements
+      // If so, we need to return the parent for consistent transition behavior
+      if (this.hasPhxRemoveElementsInHTML(html)) {
         return first && first.parentNode;
       }
       return first;
@@ -664,6 +664,15 @@ export default class DOMPatch {
       (element.querySelector &&
         element.querySelector(`[${this.phxRemove}]`) !== null)
     );
+  }
+
+  hasPhxRemoveElementsInHTML(html) {
+    // Parse the HTML string to check for phx-remove elements
+    if (typeof html === "string") {
+      return html.includes(`${this.phxRemove}=`);
+    }
+    // If html is already a DOM element, use the existing method
+    return this.hasPhxRemoveElements(html);
   }
 
   indexOf(parent, child) {
