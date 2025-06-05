@@ -632,54 +632,10 @@ defmodule Phoenix.Component.Declarative do
     slots = pop_slots(env)
 
     validate_misplaced_slots!(slots, env.file, fn ->
-        <<~ERROR
-          cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-            * Use only the embedded template file, or
-  a            * Use only the function component with slots
-  a\
-          Having both will cause conflicts as the embedded template is loaded first.
-  a          ERROR
-        <<~ERROR
-          cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-            * Use only the embedded template file, or
-  a            * Use only the function component with slots
-  a\
-          Having both will cause conflicts as the embedded template is loaded first.
-  a          ERROR
-        <<~ERROR
-          cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-            * Use only the embedded template file, or
-  a            * Use only the function component with slots
-  a\
-          Having both will cause conflicts as the embedded template is loaded first.
-  a          ERROR
-        <<~ERROR
-          cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-            * Use only the embedded template file, or
-  a            * Use only the function component with slots
-  a\
-          Having both will cause conflicts as the embedded template is loaded first.
-  a          ERROR
-        <<~ERROR
-          cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-            * Use only the embedded template file, or
-  a            * Use only the function component with slots
-  a\
-          Having both will cause conflicts as the embedded template is loaded first.
-  a          ERROR
-        <<~ERROR
-          cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
-  a\
-            * Use only the embedded template file, or
-  a            * Use only the function component with slots
-  a\
-          Having both will cause conflicts as the embedded template is loaded first.
-  a          ERROR
+      "cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:\n\n" <>
+        "  * Use only the embedded template file, or\n" <>
+        "  * Use only the function component with slots\n\n" <>
+        "Having both will cause conflicts as the embedded template is loaded first.\n"
     end)
 
     components = Module.get_attribute(env.module, :__components__)
