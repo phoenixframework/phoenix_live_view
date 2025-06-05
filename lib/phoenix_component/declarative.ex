@@ -619,13 +619,23 @@ defmodule Phoenix.Component.Declarative do
     attrs = pop_attrs(env)
 
     validate_misplaced_attrs!(attrs, env.file, fn ->
-      "cannot define attributes without a related function component"
+      "cannot define attributes without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define attributes. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
+
+  * Use only the embedded template file, or
+  * Use only the function component with attributes
+
+Having both will cause conflicts as the embedded template is loaded first."
     end)
 
     slots = pop_slots(env)
 
     validate_misplaced_slots!(slots, env.file, fn ->
-      "cannot define slots without a related function component"
+      "cannot define slots without a related function component. This error commonly occurs when using `embed_templates` alongside function components that define slots. If you have both an embedded template file (e.g., app.html.heex) and a function component with the same name (e.g., def app), you should choose one approach:
+
+  * Use only the embedded template file, or
+  * Use only the function component with slots
+
+Having both will cause conflicts as the embedded template is loaded first."
     end)
 
     components = Module.get_attribute(env.module, :__components__)
@@ -1081,13 +1091,31 @@ defmodule Phoenix.Component.Declarative do
 
       with [%{line: first_attr_line} | _] <- attrs do
         compile_error!(first_attr_line, env.file, """
-        attributes must be defined before the first function clause at line #{meta[:line]}
+        attributes must be defined before the first function clause at line #{meta[:line]}.
+
+        This error commonly occurs when using `embed_templates` alongside function components
+        that define attributes. If you have both an embedded template file (e.g., app.html.heex)
+        and a function component with the same name (e.g., def app), you should choose one approach:
+
+        * Use only the embedded template file, or
+        * Use only the function component with attributes
+
+        Having both will cause conflicts as the embedded template is loaded first.
         """)
       end
 
       with [%{line: first_slot_line} | _] <- slots do
         compile_error!(first_slot_line, env.file, """
-        slots must be defined before the first function clause at line #{meta[:line]}
+        slots must be defined before the first function clause at line #{meta[:line]}.
+
+        This error commonly occurs when using `embed_templates` alongside function components
+        that define slots. If you have both an embedded template file (e.g., app.html.heex)
+        and a function component with the same name (e.g., def app), you should choose one approach:
+
+        * Use only the embedded template file, or
+        * Use only the function component with slots
+
+        Having both will cause conflicts as the embedded template is loaded first.
         """)
       end
     end
