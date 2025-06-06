@@ -270,8 +270,8 @@ There are two common solutions to this problem.
 The first one is to also provide a `:key` expression:
 
 ```heex
-<section :for={@post <- @posts} :key={@post.id}>
-  <h1>{expand_title(@post.title)}</h1>
+<section :for={post <- @posts} :key={post.id}>
+  <h1>{expand_title(post.title)}</h1>
 </section>
 ```
 
