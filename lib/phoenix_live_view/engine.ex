@@ -1051,7 +1051,8 @@ defmodule Phoenix.LiveView.Engine do
     {expr, vars, assigns}
   end
 
-  # Vars always taint unless we are in restricted mode.
+  # Vars always taint unless we are in restricted mode
+  # or the variable is marked as `:change_track` for vars_changed.
   defp analyze({name, meta, nil} = expr, {:restricted, map} = vars, assigns, caller)
        when is_atom(name) do
     case map do
