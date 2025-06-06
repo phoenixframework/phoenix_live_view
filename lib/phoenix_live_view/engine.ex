@@ -118,21 +118,6 @@ defmodule Phoenix.LiveView.Comprehension do
   end
 end
 
-defmodule Phoenix.LiveView.KeyedComprehension do
-  @moduledoc false
-
-  def update(%{assigns: assigns, render: render}, socket) do
-    socket =
-      Enum.reduce(assigns, socket, fn {key, value}, socket ->
-        Phoenix.LiveView.Utils.assign(socket, key, value)
-      end)
-
-    {:ok, Phoenix.LiveView.render_with(socket, render)}
-  end
-
-  def __live__, do: %{kind: :component, layout: false}
-end
-
 defmodule Phoenix.LiveView.Rendered do
   @moduledoc """
   The struct returned by .heex templates.
@@ -370,10 +355,12 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def handle_body(state, opts \\ []) do
+    vars = {:untainted, Map.new(opts[:vars_changed] || [], fn key -> {key, :change_track} end)}
+
     {:ok, rendered} =
       state
       |> handle_end(opts)
-      |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
+      |> to_rendered_struct(vars, %{}, state.caller, opts)
 
     if opts[:skip_require] do
       rendered
@@ -638,11 +625,22 @@ defmodule Phoenix.LiveView.Engine do
 
   defp changed_assigns(assigns) do
     checks =
-      for {key, _} <- assigns, not nested_and_parent_is_checked?(key, assigns) do
+      for {{changed_var, key}, _} <- assigns, not nested_and_parent_is_checked?(key, assigns) do
+        changed =
+          case changed_var do
+            :changed ->
+              quote do
+                changed
+              end
+
+            :vars_changed ->
+              Macro.var(:vars_changed, __MODULE__)
+          end
+
         case key do
           [assign] ->
             quote do
-              unquote(__MODULE__).changed_assign?(changed, unquote(assign))
+              unquote(__MODULE__).changed_assign?(unquote(changed), unquote(assign))
             end
 
           [assign | tail] ->
@@ -651,7 +649,7 @@ defmodule Phoenix.LiveView.Engine do
                 unquote(tail),
                 unquote(assign),
                 unquote(@assigns_var),
-                changed
+                unquote(changed)
               )
             end
         end
@@ -720,8 +718,25 @@ defmodule Phoenix.LiveView.Engine do
               keys != %{},
               do: {key, to_component_keys(keys)}
 
+        has_vars_changed? =
+          Enum.any?(keys, fn {_name, entries} ->
+            is_list(entries) and Enum.any?(entries, &match?({:vars_changed, _}, &1))
+          end)
+
+        vars_changed =
+          if has_vars_changed? do
+            Macro.var(:vars_changed, __MODULE__)
+          else
+            []
+          end
+
         quote do
-          unquote(__MODULE__).to_component_static(unquote(keys), unquote(@assigns_var), changed)
+          unquote(__MODULE__).to_component_static(
+            unquote(keys),
+            unquote(@assigns_var),
+            changed,
+            unquote(vars_changed)
+          )
         end
       else
         Macro.escape(%{})
@@ -753,6 +768,15 @@ defmodule Phoenix.LiveView.Engine do
       true ->
         {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller)
 
+        has_vars_changed? = keys != :all and Enum.any?(keys, &match?({:vars_changed, _}, &1))
+
+        vars_changed =
+          if has_vars_changed? do
+            Macro.var(:vars_changed, __MODULE__)
+          else
+            []
+          end
+
         quote do
           unquote(__MODULE__).to_component_dynamic(
             %{unquote_splicing(static)},
@@ -760,7 +784,8 @@ defmodule Phoenix.LiveView.Engine do
             unquote(static_changed),
             unquote(to_component_keys(keys)),
             unquote(@assigns_var),
-            changed
+            changed,
+            unquote(vars_changed)
           )
         end
     end
@@ -770,25 +795,25 @@ defmodule Phoenix.LiveView.Engine do
   defp to_component_keys(map), do: Map.keys(map)
 
   @doc false
-  def to_component_static(_keys, _assigns, nil) do
+  def to_component_static(_keys, _assigns, nil, []) do
     nil
   end
 
-  def to_component_static(keys, assigns, changed) do
+  def to_component_static(keys, assigns, changed, vars_changed) do
     for {assign, entries} <- keys,
-        changed = component_changed(entries, assigns, changed),
+        changed = component_changed(entries, assigns, changed, vars_changed),
         into: %{},
         do: {assign, changed}
   end
 
   @doc false
-  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil) do
+  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil, []) do
     merge_dynamic_static_changed(dynamic, static, nil)
   end
 
-  def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed) do
+  def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed, vars_changed) do
     component_changed =
-      if component_changed(keys, assigns, changed) do
+      if component_changed(keys, assigns, changed, vars_changed) do
         Enum.reduce(dynamic, static_changed, fn {k, _}, acc -> Map.put(acc, k, true) end)
       else
         static_changed
@@ -801,19 +826,23 @@ defmodule Phoenix.LiveView.Engine do
     dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
   end
 
-  defp component_changed(:all, _assigns, _changed), do: true
+  defp component_changed(:all, _assigns, _changed, _vars_changed), do: true
 
-  defp component_changed([path], assigns, changed) do
+  defp component_changed([path], assigns, changed, vars_changed) do
     case path do
-      [key] -> changed_assign(changed, key)
-      [key | tail] -> nested_changed_assign(tail, key, assigns, changed)
+      {:changed, [key]} -> changed_assign(changed, key)
+      {:changed, [key | tail]} -> nested_changed_assign(tail, key, assigns, changed)
+      {:vars_changed, [key]} -> changed_assign(vars_changed, key)
+      {:vars_changed, [key | tail]} -> nested_changed_assign(tail, key, assigns, vars_changed)
     end
   end
 
-  defp component_changed(entries, assigns, changed) do
+  defp component_changed(entries, assigns, changed, vars_changed) do
     Enum.any?(entries, fn
-      [key] -> changed_assign?(changed, key)
-      [key | tail] -> nested_changed_assign?(tail, key, assigns, changed)
+      {:changed, [key]} -> changed_assign?(changed, key)
+      {:changed, [key | tail]} -> nested_changed_assign?(tail, key, assigns, changed)
+      {:vars_changed, [key]} -> changed_assign?(vars_changed, key)
+      {:vars_changed, [key | tail]} -> nested_changed_assign?(tail, key, assigns, vars_changed)
     end)
   end
 
@@ -907,11 +936,29 @@ defmodule Phoenix.LiveView.Engine do
     {ast, keys, vars}
   end
 
+  # if we find a variable (or something more complex handled by the other clauses)
+  # like foo[:bar][:baz] and foo is marked as :change_track in vars, we consider it
+  # as an assign, but look into vars_changed instead of changed
+  defp analyze_assign(
+         {name, _, context} = expr,
+         {type, map} = vars,
+         assigns,
+         _caller,
+         nest
+       )
+       when is_atom(name) and is_atom(context) and is_map_key(map, name) and type != :tainted do
+    if map[name] == :change_track do
+      {expr, vars, Map.put(assigns, {:vars_changed, [name | nest]}, true)}
+    else
+      {expr, vars, assigns}
+    end
+  end
+
   # @name
   defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, _caller, nest)
        when is_atom(name) and is_atom(context) do
     expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
-    {expr, vars, Map.put(assigns, [name | nest], true)}
+    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
   end
 
   # assigns.name
@@ -923,7 +970,7 @@ defmodule Phoenix.LiveView.Engine do
          nest
        )
        when is_atom(name) and args in [[], nil] do
-    {expr, vars, Map.put(assigns, [name | nest], true)}
+    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
   end
 
   # assigns[:name]
@@ -935,7 +982,7 @@ defmodule Phoenix.LiveView.Engine do
          nest
        )
        when is_atom(name) and is_access(access) do
-    {expr, vars, Map.put(assigns, [name | nest], true)}
+    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
   end
 
   # Maybe: assigns.foo[:bar]
@@ -1005,19 +1052,29 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Vars always taint unless we are in restricted mode.
-  defp analyze({name, meta, nil} = expr, {:restricted, map}, assigns, caller)
+  defp analyze({name, meta, nil} = expr, {:restricted, map} = vars, assigns, caller)
        when is_atom(name) do
-    if Map.has_key?(map, name) do
-      maybe_warn_taint(name, meta, caller)
-      {expr, {:tainted, map}, assigns}
-    else
-      {expr, {:restricted, map}, assigns}
+    case map do
+      %{^name => :tainted} ->
+        maybe_warn_taint(name, meta, caller)
+        {expr, {:tainted, map}, assigns}
+
+      %{^name => :change_track} ->
+        {expr, vars, Map.put(assigns, {:vars_changed, [name]}, true)}
+
+      _ ->
+        {expr, {:restricted, map}, assigns}
     end
   end
 
-  defp analyze({name, meta, nil} = expr, {_, map}, assigns, caller) when is_atom(name) do
-    maybe_warn_taint(name, meta, caller)
-    {expr, {:tainted, Map.put(map, name, true)}, assigns}
+  defp analyze({name, meta, nil} = expr, {type, map}, assigns, caller)
+       when is_atom(name) do
+    if Map.get(map, name) == :change_track do
+      {expr, {type, map}, Map.put(assigns, {:vars_changed, [name]}, true)}
+    else
+      maybe_warn_taint(name, meta, caller)
+      {expr, {:tainted, Map.put(map, name, :tainted)}, assigns}
+    end
   end
 
   # Quoted vars are ignored as they come from engine code.

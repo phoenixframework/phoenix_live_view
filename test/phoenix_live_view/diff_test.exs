@@ -1694,8 +1694,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def keyed_comprehension_with_pattern(assigns) do
       ~H"""
       <ul>
-        <li :for={%{id: @id, name: @name} <- @items} :key={@id}>
-          Outside assign: {@count} Inside assign: {@name}
+        <li :for={%{id: id, name: name} <- @items} :key={id}>
+          Outside assign: {@count} Inside assign: {name}
         </li>
       </ul>
       """
@@ -1707,7 +1707,7 @@ defmodule Phoenix.LiveView.DiffTest do
         %{id: 2, name: "Second"}
       ]
 
-      assigns = %{socket: %Socket{}, items: items, count: 0}
+      assigns = %{socket: %Socket{}, items: items, count: 0, __changed__: %{}}
       {full_render, fingerprints, components} = render(keyed_comprehension_with_pattern(assigns))
 
       assert full_render == %{
@@ -1727,9 +1727,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert {%{
                 1 =>
-                  {Phoenix.LiveView.KeyedComprehension, 1,
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, 1},
                    %{
-                     count: 0,
                      id: 1,
                      name: "First",
                      __changed__: %{},
@@ -1737,19 +1736,21 @@ defmodule Phoenix.LiveView.DiffTest do
                      myself: %Phoenix.LiveComponent.CID{cid: 1}
                    }, %{}, _},
                 2 =>
-                  {Phoenix.LiveView.KeyedComprehension, 2,
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, 2},
                    %{
-                     count: 0,
                      id: 2,
                      name: "Second",
                      __changed__: %{},
                      flash: %{},
                      myself: %Phoenix.LiveComponent.CID{cid: 2}
                    }, %{}, _}
-              }, %{Phoenix.LiveView.KeyedComprehension => %{1 => 1, 2 => 2}}, 3} = components
+              }, %{Phoenix.LiveView.KeyedComprehension => %{}}, 3} = components
 
       # change order of items
-      assigns = Map.put(assigns, :items, Enum.reverse(assigns.items))
+      assigns =
+        assigns
+        |> Map.put(:__changed__, %{})
+        |> Phoenix.Component.assign(:items, Enum.reverse(assigns.items))
 
       {second_render, fingerprints, components} =
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
@@ -1757,7 +1758,10 @@ defmodule Phoenix.LiveView.DiffTest do
       assert second_render == %{0 => %{d: [[2], [1]]}}
 
       # update count
-      assigns = Map.put(assigns, :count, 1)
+      assigns =
+        assigns
+        |> Map.put(:__changed__, %{})
+        |> Phoenix.Component.assign(:count, 1)
 
       {third_render, fingerprints, components} =
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
@@ -1766,7 +1770,9 @@ defmodule Phoenix.LiveView.DiffTest do
 
       # replace item
       assigns =
-        Map.put(assigns, :items, [
+        assigns
+        |> Map.put(:__changed__, %{})
+        |> Phoenix.Component.assign(:items, [
           %{id: 1, name: "First"},
           %{id: 3, name: "Third"}
         ])

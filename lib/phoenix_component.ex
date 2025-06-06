@@ -838,16 +838,12 @@ defmodule Phoenix.Component do
 
   ```heex
   <ul>
-    <li :for={%{id: @id, name: @name} <- @items} :key={@id}>
+    <li :for={%{id: id, name: name} <- @items} :key={id}>
       Count: <span>{@count}</span>,
-      item: {@name}
+      item: {name}
     </li>
   </ul>
   ```
-
-  Note that the `:for` expression is special for comprehensions with `:key` in that you
-  must define the generator expression using the `@` assigns syntax. This allows LiveView
-  to track the change-tracked assigns introduced by the comprehension.
 
   Internally, this works by turning the tag where the comprehension is defined on
   into the template of a `Phoenix.LiveComponent`. Because of this, the following limitations

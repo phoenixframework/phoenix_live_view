@@ -1190,101 +1190,56 @@ defmodule Phoenix.LiveView.TagEngine do
       tag_meta[:for] || raise_syntax_error!("cannot use :key without :for", tag_meta, state)
 
     if_expr = tag_meta[:if]
-    ast = invoke_subengine(state, :handle_body, [[skip_require: true, root: true]])
+    for_assigns = extract_variables(for_expr)
+    vars_changed = Enum.map(for_assigns, fn {name, _} -> name end)
 
-    try do
-      map_assigns(for_expr, key_expr, ast)
-    rescue
-      e in ArgumentError ->
-        raise_syntax_error!(Exception.message(e), tag_meta, state)
+    ast =
+      invoke_subengine(state, :handle_body, [
+        [skip_require: true, root: true, vars_changed: vars_changed]
+      ])
+
+    vars_changed = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
+
+    new_ast =
+      quote do
+        Phoenix.LiveView.TagEngine.component(
+          &Phoenix.Component.live_component/1,
+          %{
+            id: {unquote(state.caller.module), unquote(tag_meta.line), unquote(key_expr)},
+            module: Phoenix.LiveView.KeyedComprehension,
+            vars_changed: %{unquote_splicing(for_assigns)},
+            render: fn unquote(vars_changed) -> unquote(ast) end
+          },
+          {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
+        )
+      end
+
+    state = pop_substate_from_stack(state)
+
+    for_ast =
+      state
+      |> push_substate_to_stack()
+      |> update_subengine(:handle_begin, [])
+      |> update_subengine(:handle_expr, ["=", new_ast])
+      |> invoke_subengine(:handle_end, [])
+
+    if if_expr do
+      quote do
+        for unquote(for_expr), unquote(if_expr), do: unquote(for_ast)
+      end
     else
-      {for_expr, for_assigns, key_expr, assigns_to_pick} ->
-        new_ast =
-          quote do
-            Phoenix.LiveView.TagEngine.component(
-              &Phoenix.Component.live_component/1,
-              %{
-                id: unquote(key_expr),
-                module: Phoenix.LiveView.KeyedComprehension,
-                render: fn var!(assigns) -> unquote(ast) end,
-                assigns:
-                  Map.merge(Map.take(var!(assigns), unquote(assigns_to_pick)), %{
-                    unquote_splicing(for_assigns)
-                  })
-              },
-              {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
-            )
-          end
-
-        state = pop_substate_from_stack(state)
-
-        for_ast =
-          state
-          |> push_substate_to_stack()
-          |> update_subengine(:handle_begin, [])
-          |> update_subengine(:handle_expr, ["=", new_ast])
-          |> invoke_subengine(:handle_end, [])
-
-        if if_expr do
-          quote do
-            for unquote(for_expr), unquote(if_expr), do: unquote(for_ast)
-          end
-        else
-          quote do
-            for unquote(for_expr), do: unquote(for_ast)
-          end
-        end
+      quote do
+        for unquote(for_expr), do: unquote(for_ast)
+      end
     end
   end
 
-  defp map_assigns(for_expr, key_expr, ast) do
-    {for_expr, for_assigns} = map_for_expr(for_expr)
-    key_expr = map_key_expr(key_expr)
-
-    # we only pick the assigns that are used inside;
-    # and because it is already AST from the engine, we know that
-    # all assigns are of the form assign.key
-    {_ast, assigns_to_pick} =
-      Macro.prewalk(ast, [], fn
-        {:., dot_meta, [{:assigns, assigns_meta, context}, assign]} = node, acc
-        when is_atom(assign) and is_list(dot_meta) and is_list(assigns_meta) and is_atom(context) ->
-          {node, [assign | acc]}
-
-        other, acc ->
-          {other, acc}
-      end)
-
-    {for_expr, for_assigns, key_expr, assigns_to_pick}
-  end
-
-  # transform a for expression of the form `@item <- ...`
-  # into `item <- ...` and returns the name of all assigns,
-  # in this example `[item: item]`
-  defp map_for_expr(for_expr) do
-    # we already validated that the for expression has the correct shape in
-    # validate_quoted_special_attr
-    {:<-, for_meta, [lhs, rhs]} = for_expr
-
-    # validate that there are no variables that are not assigns in the lhs
-    Macro.prewalk(lhs, fn
-      {:@, _, [{name, meta, context}]}
-      when is_atom(name) and is_list(meta) and is_atom(context) ->
-        # replace with empty list to avoid walking the content
-        []
-
-      {name, meta, context} = var when is_atom(name) and is_list(meta) and is_atom(context) ->
-        raise ArgumentError,
-              "cannot use non-assign variable in left-hand side of keyed :for comprehension. Got: #{Macro.to_string(var)}"
-
-      other ->
-        other
-    end)
-
-    # extract all @assigns from the left-hand side of the for expression
-    # to use as change-tracked assigns in the body
-    {lhs, for_assigns} =
+  # we already validated that the for expression has the correct shape in
+  # validate_quoted_special_attr
+  defp extract_variables({:<-, _for_meta, [lhs, _rhs]}) do
+    {_ast, variables} =
       Macro.prewalk(lhs, [], fn
-        {:@, _, [{name, meta, context} = var]}, acc
+        {name, meta, context} = var, acc
         when is_atom(name) and is_list(meta) and is_atom(context) ->
           {var, [{name, var} | acc]}
 
@@ -1292,29 +1247,7 @@ defmodule Phoenix.LiveView.TagEngine do
           {other, acc}
       end)
 
-    for_expr = {:<-, for_meta, [lhs, rhs]}
-
-    {for_expr, for_assigns}
-  end
-
-  # replaces @item with item
-  defp map_key_expr(key_expr) do
-    mapped_key_expr =
-      Macro.prewalk(key_expr, fn
-        {:@, _, [{name, meta, context} = var]}
-        when is_atom(name) and is_list(meta) and is_atom(context) ->
-          var
-
-        other ->
-          other
-      end)
-
-    if mapped_key_expr == key_expr do
-      raise ArgumentError,
-            ":key expression must contain an assign from the left-hand side of the :for expression. Got: #{Macro.to_string(key_expr)}"
-    end
-
-    mapped_key_expr
+    variables
   end
 
   ## build_self_close_component_assigns/build_component_assigns
