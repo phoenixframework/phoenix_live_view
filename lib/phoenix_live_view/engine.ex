@@ -570,7 +570,7 @@ defmodule Phoenix.LiveView.Engine do
       case {call, args} do
         # If we have a component, we provide change tracking to individual keys.
         {:component, [fun, expr, metadata]} ->
-          [fun, to_component_tracking(meta, fun, expr, [], vars, caller), metadata]
+          [fun, to_component_tracking(meta, fun, expr, [], vars, caller, vars_changed), metadata]
 
         {_, _} ->
           args
@@ -700,7 +700,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Component keys change tracking
 
-  defp to_component_tracking(meta, fun, expr, extra, vars, caller) do
+  defp to_component_tracking(meta, fun, expr, extra, vars, caller, vars_changed) do
     # Separate static and dynamic parts
     {static, dynamic} =
       case expr do
@@ -731,13 +731,30 @@ defmodule Phoenix.LiveView.Engine do
           for {key, value} <- static_extra,
               # We pass empty assigns because if this code is rendered,
               # it means that upstream assigns were change tracked.
-              {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}, caller),
+              {_, keys, _} =
+                analyze_and_return_tainted_keys(value, vars, %{}, caller, vars_changed),
               # If keys are empty, it is never changed.
               keys != %{},
               do: {key, to_component_keys(keys)}
 
-        quote do
-          unquote(__MODULE__).to_component_static(unquote(keys), unquote(@assigns_var), changed)
+        if vars_changed != [] do
+          quote do
+            unquote(__MODULE__).to_component_static(
+              unquote(keys),
+              unquote(@assigns_var),
+              changed,
+              var!(vars_changed)
+            )
+          end
+        else
+          quote do
+            unquote(__MODULE__).to_component_static(
+              unquote(keys),
+              unquote(@assigns_var),
+              changed,
+              []
+            )
+          end
         end
       else
         Macro.escape(%{})
@@ -767,44 +784,59 @@ defmodule Phoenix.LiveView.Engine do
 
       # Merge both static and dynamic.
       true ->
-        {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller)
+        {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller, vars_changed)
 
-        quote do
-          unquote(__MODULE__).to_component_dynamic(
-            %{unquote_splicing(static)},
-            unquote(dynamic),
-            unquote(static_changed),
-            unquote(to_component_keys(keys)),
-            unquote(@assigns_var),
-            changed
-          )
+        if vars_changed != [] do
+          quote do
+            unquote(__MODULE__).to_component_dynamic(
+              %{unquote_splicing(static)},
+              unquote(dynamic),
+              unquote(static_changed),
+              unquote(to_component_keys(keys)),
+              unquote(@assigns_var),
+              changed,
+              var!(vars_changed)
+            )
+          end
+        else
+          quote do
+            unquote(__MODULE__).to_component_dynamic(
+              %{unquote_splicing(static)},
+              unquote(dynamic),
+              unquote(static_changed),
+              unquote(to_component_keys(keys)),
+              unquote(@assigns_var),
+              changed,
+              []
+            )
+          end
         end
     end
   end
 
   defp to_component_keys(:all), do: :all
-  defp to_component_keys(map), do: Map.keys(map) |> Enum.map(fn {:changed, path} -> path end)
+  defp to_component_keys(map), do: Map.keys(map)
 
   @doc false
-  def to_component_static(_keys, _assigns, nil) do
+  def to_component_static(_keys, _assigns, nil, []) do
     nil
   end
 
-  def to_component_static(keys, assigns, changed) do
+  def to_component_static(keys, assigns, changed, vars_changed) do
     for {assign, entries} <- keys,
-        changed = component_changed(entries, assigns, changed),
+        changed = component_changed(entries, assigns, changed, vars_changed),
         into: %{},
         do: {assign, changed}
   end
 
   @doc false
-  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil) do
+  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil, []) do
     merge_dynamic_static_changed(dynamic, static, nil)
   end
 
-  def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed) do
+  def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed, vars_changed) do
     component_changed =
-      if component_changed(keys, assigns, changed) do
+      if component_changed(keys, assigns, changed, vars_changed) do
         Enum.reduce(dynamic, static_changed, fn {k, _}, acc -> Map.put(acc, k, true) end)
       else
         static_changed
@@ -817,19 +849,23 @@ defmodule Phoenix.LiveView.Engine do
     dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
   end
 
-  defp component_changed(:all, _assigns, _changed), do: true
+  defp component_changed(:all, _assigns, _changed, _vars_changed), do: true
 
-  defp component_changed([path], assigns, changed) do
+  defp component_changed([path], assigns, changed, vars_changed) do
     case path do
-      [key] -> changed_assign(changed, key)
-      [key | tail] -> nested_changed_assign(tail, key, assigns, changed)
+      {:changed, [key]} -> changed_assign(changed, key)
+      {:changed, [key | tail]} -> nested_changed_assign(tail, key, assigns, changed)
+      {:vars_changed, [key]} -> changed_assign(vars_changed, key)
+      {:vars_changed, [key | tail]} -> nested_changed_assign(tail, key, assigns, vars_changed)
     end
   end
 
-  defp component_changed(entries, assigns, changed) do
+  defp component_changed(entries, assigns, changed, vars_changed) do
     Enum.any?(entries, fn
-      [key] -> changed_assign?(changed, key)
-      [key | tail] -> nested_changed_assign?(tail, key, assigns, changed)
+      {:changed, [key]} -> changed_assign?(changed, key)
+      {:changed, [key | tail]} -> nested_changed_assign?(tail, key, assigns, changed)
+      {:vars_changed, [key]} -> changed_assign?(vars_changed, key)
+      {:vars_changed, [key | tail]} -> nested_changed_assign?(tail, key, assigns, vars_changed)
     end)
   end
 
@@ -916,7 +952,7 @@ defmodule Phoenix.LiveView.Engine do
   # because it is disabled under certain special forms. There is also
   # strong-tainting, which are always computed. Strong-tainting only happens
   # if the `assigns` variable is used.
-  defp analyze_and_return_tainted_keys(ast, vars, assigns, caller, vars_changed \\ []) do
+  defp analyze_and_return_tainted_keys(ast, vars, assigns, caller, vars_changed) do
     {ast, vars, assigns} = analyze(ast, vars, assigns, caller, vars_changed)
     {tainted_assigns?, assigns} = Map.pop(assigns, __MODULE__, false)
     keys = if match?({:tainted, _}, vars) or tainted_assigns?, do: :all, else: assigns
