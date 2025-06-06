@@ -1198,6 +1198,8 @@ defmodule Phoenix.LiveView.TagEngine do
         [skip_require: true, root: true, vars_changed: vars_changed]
       ])
 
+    vars_changed = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
+
     new_ast =
       quote do
         Phoenix.LiveView.TagEngine.component(
@@ -1206,7 +1208,7 @@ defmodule Phoenix.LiveView.TagEngine do
             id: {unquote(state.caller.module), unquote(tag_meta.line), unquote(key_expr)},
             module: Phoenix.LiveView.KeyedComprehension,
             vars_changed: %{unquote_splicing(for_assigns)},
-            render: fn var!(vars_changed) -> unquote(ast) end
+            render: fn unquote(vars_changed) -> unquote(ast) end
           },
           {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
         )

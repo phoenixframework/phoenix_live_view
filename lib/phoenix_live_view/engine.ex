@@ -355,10 +355,12 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def handle_body(state, opts \\ []) do
+    vars = {:untainted, Map.new(opts[:vars_changed] || [], fn key -> {key, :change_track} end)}
+
     {:ok, rendered} =
       state
       |> handle_end(opts)
-      |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
+      |> to_rendered_struct(vars, %{}, state.caller, opts)
 
     if opts[:skip_require] do
       rendered
@@ -402,14 +404,7 @@ defmodule Phoenix.LiveView.Engine do
     with {:__block__, [live_rendered: true] ++ meta, entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(
-          static,
-          dynamic,
-          vars,
-          assigns,
-          caller,
-          opts[:vars_changed] || []
-        )
+        analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
 
       static =
         case Keyword.fetch(meta, :template_annotation) do
@@ -464,21 +459,18 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns, caller, vars_changed) do
+  defp analyze_static_and_dynamic(static, dynamic, initial_vars, assigns, caller) do
     {block, _} =
       Enum.map_reduce(dynamic, initial_vars, fn
         to_safe_match(var, ast), vars ->
           vars = set_vars(initial_vars, vars)
-
-          {ast, keys, vars} =
-            analyze_and_return_tainted_keys(ast, vars, assigns, caller, vars_changed)
-
-          live_struct = to_live_struct(ast, vars, assigns, caller, vars_changed)
+          {ast, keys, vars} = analyze_and_return_tainted_keys(ast, vars, assigns, caller)
+          live_struct = to_live_struct(ast, vars, assigns, caller)
           {to_conditional_var(keys, var, live_struct), vars}
 
         ast, vars ->
           vars = set_vars(initial_vars, vars)
-          {ast, vars, _} = analyze(ast, vars, assigns, caller, vars_changed)
+          {ast, vars, _} = analyze(ast, vars, assigns, caller)
           {ast, vars}
       end)
 
@@ -488,13 +480,13 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns, caller, vars_changed) do
+  defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns, caller) do
     with {:for, meta, [gen | args]} <- expr,
          {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
          {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller, vars_changed)
+        analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller)
 
       gen_var = Macro.unique_var(:for, __MODULE__)
 
@@ -524,7 +516,7 @@ defmodule Phoenix.LiveView.Engine do
     end
   end
 
-  defp to_live_struct({left, meta, [_ | _] = args}, vars, assigns, caller, vars_changed) do
+  defp to_live_struct({left, meta, [_ | _] = args}, vars, assigns, caller) do
     call = extract_call(left)
 
     args =
@@ -554,7 +546,7 @@ defmodule Phoenix.LiveView.Engine do
         # untainting, as the parent untainting is already causing
         # the block to be rendered and then we can proceed with
         # its own tainting.
-        {args, vars, _} = analyze_list(args, vars, assigns, caller, [], vars_changed)
+        {args, vars, _} = analyze_list(args, vars, assigns, caller, [])
 
         opts =
           for {key, value} <- opts do
@@ -570,7 +562,7 @@ defmodule Phoenix.LiveView.Engine do
       case {call, args} do
         # If we have a component, we provide change tracking to individual keys.
         {:component, [fun, expr, metadata]} ->
-          [fun, to_component_tracking(meta, fun, expr, [], vars, caller, vars_changed), metadata]
+          [fun, to_component_tracking(meta, fun, expr, [], vars, caller), metadata]
 
         {_, _} ->
           args
@@ -579,7 +571,7 @@ defmodule Phoenix.LiveView.Engine do
     to_safe({left, meta, args}, true)
   end
 
-  defp to_live_struct(expr, _vars, _assigns, _caller, _vars_changed) do
+  defp to_live_struct(expr, _vars, _assigns, _caller) do
     to_safe(expr, true)
   end
 
@@ -591,7 +583,7 @@ defmodule Phoenix.LiveView.Engine do
 
   defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, caller) do
     for {:->, meta, [args, block]} <- blocks do
-      {args, vars, assigns} = analyze_list(args, vars, %{}, caller, [], [])
+      {args, vars, assigns} = analyze_list(args, vars, %{}, caller, [])
 
       case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
         {:ok, rendered} -> {:->, meta, [args, rendered]}
@@ -634,41 +626,31 @@ defmodule Phoenix.LiveView.Engine do
   defp changed_assigns(assigns) do
     checks =
       for {{changed_var, key}, _} <- assigns, not nested_and_parent_is_checked?(key, assigns) do
-        case changed_var do
-          :changed ->
-            case key do
-              [assign] ->
-                quote do
-                  unquote(__MODULE__).changed_assign?(changed, unquote(assign))
-                end
+        changed =
+          case changed_var do
+            :changed ->
+              quote do
+                changed
+              end
 
-              [assign | tail] ->
-                quote do
-                  unquote(__MODULE__).nested_changed_assign?(
-                    unquote(tail),
-                    unquote(assign),
-                    unquote(@assigns_var),
-                    changed
-                  )
-                end
+            :vars_changed ->
+              Macro.var(:vars_changed, __MODULE__)
+          end
+
+        case key do
+          [assign] ->
+            quote do
+              unquote(__MODULE__).changed_assign?(unquote(changed), unquote(assign))
             end
 
-          :vars_changed ->
-            case key do
-              [assign] ->
-                quote do
-                  unquote(__MODULE__).changed_assign?(var!(vars_changed), unquote(assign))
-                end
-
-              [assign | tail] ->
-                quote do
-                  unquote(__MODULE__).nested_changed_assign?(
-                    unquote(tail),
-                    unquote(assign),
-                    unquote(@assigns_var),
-                    var!(vars_changed)
-                  )
-                end
+          [assign | tail] ->
+            quote do
+              unquote(__MODULE__).nested_changed_assign?(
+                unquote(tail),
+                unquote(assign),
+                unquote(@assigns_var),
+                unquote(changed)
+              )
             end
         end
       end
@@ -700,7 +682,7 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Component keys change tracking
 
-  defp to_component_tracking(meta, fun, expr, extra, vars, caller, vars_changed) do
+  defp to_component_tracking(meta, fun, expr, extra, vars, caller) do
     # Separate static and dynamic parts
     {static, dynamic} =
       case expr do
@@ -731,30 +713,30 @@ defmodule Phoenix.LiveView.Engine do
           for {key, value} <- static_extra,
               # We pass empty assigns because if this code is rendered,
               # it means that upstream assigns were change tracked.
-              {_, keys, _} =
-                analyze_and_return_tainted_keys(value, vars, %{}, caller, vars_changed),
+              {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}, caller),
               # If keys are empty, it is never changed.
               keys != %{},
               do: {key, to_component_keys(keys)}
 
-        if vars_changed != [] do
-          quote do
-            unquote(__MODULE__).to_component_static(
-              unquote(keys),
-              unquote(@assigns_var),
-              changed,
-              var!(vars_changed)
-            )
+        has_vars_changed? =
+          Enum.any?(keys, fn {_name, entries} ->
+            is_list(entries) and Enum.any?(entries, &match?({:vars_changed, _}, &1))
+          end)
+
+        vars_changed =
+          if has_vars_changed? do
+            Macro.var(:vars_changed, __MODULE__)
+          else
+            []
           end
-        else
-          quote do
-            unquote(__MODULE__).to_component_static(
-              unquote(keys),
-              unquote(@assigns_var),
-              changed,
-              []
-            )
-          end
+
+        quote do
+          unquote(__MODULE__).to_component_static(
+            unquote(keys),
+            unquote(@assigns_var),
+            changed,
+            unquote(vars_changed)
+          )
         end
       else
         Macro.escape(%{})
@@ -784,32 +766,27 @@ defmodule Phoenix.LiveView.Engine do
 
       # Merge both static and dynamic.
       true ->
-        {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller, vars_changed)
+        {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller)
 
-        if vars_changed != [] do
-          quote do
-            unquote(__MODULE__).to_component_dynamic(
-              %{unquote_splicing(static)},
-              unquote(dynamic),
-              unquote(static_changed),
-              unquote(to_component_keys(keys)),
-              unquote(@assigns_var),
-              changed,
-              var!(vars_changed)
-            )
+        has_vars_changed? = keys != :all and Enum.any?(keys, &match?({:vars_changed, _}, &1))
+
+        vars_changed =
+          if has_vars_changed? do
+            Macro.var(:vars_changed, __MODULE__)
+          else
+            []
           end
-        else
-          quote do
-            unquote(__MODULE__).to_component_dynamic(
-              %{unquote_splicing(static)},
-              unquote(dynamic),
-              unquote(static_changed),
-              unquote(to_component_keys(keys)),
-              unquote(@assigns_var),
-              changed,
-              []
-            )
-          end
+
+        quote do
+          unquote(__MODULE__).to_component_dynamic(
+            %{unquote_splicing(static)},
+            unquote(dynamic),
+            unquote(static_changed),
+            unquote(to_component_keys(keys)),
+            unquote(@assigns_var),
+            changed,
+            unquote(vars_changed)
+          )
         end
     end
   end
@@ -952,17 +929,25 @@ defmodule Phoenix.LiveView.Engine do
   # because it is disabled under certain special forms. There is also
   # strong-tainting, which are always computed. Strong-tainting only happens
   # if the `assigns` variable is used.
-  defp analyze_and_return_tainted_keys(ast, vars, assigns, caller, vars_changed) do
-    {ast, vars, assigns} = analyze(ast, vars, assigns, caller, vars_changed)
+  defp analyze_and_return_tainted_keys(ast, vars, assigns, caller) do
+    {ast, vars, assigns} = analyze(ast, vars, assigns, caller)
     {tainted_assigns?, assigns} = Map.pop(assigns, __MODULE__, false)
     keys = if match?({:tainted, _}, vars) or tainted_assigns?, do: :all, else: assigns
     {ast, keys, vars}
   end
 
-  # handle vars_changed
-  defp analyze_assign({name, _, context} = expr, vars, assigns, _caller, nest, vars_changed)
-       when is_atom(name) and is_atom(context) do
-    if name in vars_changed do
+  # if we find a variable (or something more complex handled by the other clauses)
+  # like foo[:bar][:baz] and foo is marked as :change_track in vars, we consider it
+  # as an assign, but look into vars_changed instead of changed
+  defp analyze_assign(
+         {name, _, context} = expr,
+         {type, map} = vars,
+         assigns,
+         _caller,
+         nest
+       )
+       when is_atom(name) and is_atom(context) and is_map_key(map, name) and type != :tainted do
+    if map[name] == :change_track do
       {expr, vars, Map.put(assigns, {:vars_changed, [name | nest]}, true)}
     else
       {expr, vars, assigns}
@@ -970,14 +955,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # @name
-  defp analyze_assign(
-         {:@, meta, [{name, _, context}]},
-         vars,
-         assigns,
-         _caller,
-         nest,
-         _vars_changed
-       )
+  defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, _caller, nest)
        when is_atom(name) and is_atom(context) do
     expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
     {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
@@ -989,8 +967,7 @@ defmodule Phoenix.LiveView.Engine do
          vars,
          assigns,
          _caller,
-         nest,
-         _vars_changed
+         nest
        )
        when is_atom(name) and args in [[], nil] do
     {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
@@ -1002,8 +979,7 @@ defmodule Phoenix.LiveView.Engine do
          vars,
          assigns,
          _caller,
-         nest,
-         _vars_changed
+         nest
        )
        when is_atom(name) and is_access(access) do
     {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
@@ -1015,19 +991,18 @@ defmodule Phoenix.LiveView.Engine do
          vars,
          assigns,
          caller,
-         nest,
-         vars_changed
+         nest
        )
        when is_access(access) do
     {args, vars, assigns} =
       if Macro.quoted_literal?(right) do
         {left, vars, assigns} =
-          analyze_assign(left, vars, assigns, caller, [{:access, right} | nest], vars_changed)
+          analyze_assign(left, vars, assigns, caller, [{:access, right} | nest])
 
         {[left, right], vars, assigns}
       else
-        {left, vars, assigns} = analyze(left, vars, assigns, caller, vars_changed)
-        {right, vars, assigns} = analyze(right, vars, assigns, caller, vars_changed)
+        {left, vars, assigns} = analyze(left, vars, assigns, caller)
+        {right, vars, assigns} = analyze(right, vars, assigns, caller)
         {[left, right], vars, assigns}
       end
 
@@ -1035,100 +1010,89 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   # Maybe: assigns.foo.bar
-  defp analyze_assign(
-         {{:., dot_meta, [left, right]}, meta, args},
-         vars,
-         assigns,
-         caller,
-         nest,
-         vars_changed
-       )
+  defp analyze_assign({{:., dot_meta, [left, right]}, meta, args}, vars, assigns, caller, nest)
        when args in [[], nil] do
-    {left, vars, assigns} =
-      analyze_assign(left, vars, assigns, caller, [{:struct, right} | nest], vars_changed)
-
+    {left, vars, assigns} = analyze_assign(left, vars, assigns, caller, [{:struct, right} | nest])
     {{{:., dot_meta, [left, right]}, meta, []}, vars, assigns}
   end
 
-  defp analyze_assign(expr, vars, assigns, caller, _nest, vars_changed) do
-    analyze(expr, vars, assigns, caller, vars_changed)
+  defp analyze_assign(expr, vars, assigns, caller, _nest) do
+    analyze(expr, vars, assigns, caller)
   end
 
   # Delegates to analyze assign
-  defp analyze({{:., _, [access, :get]}, _, [_, _]} = expr, vars, assigns, caller, vars_changed)
+  defp analyze({{:., _, [access, :get]}, _, [_, _]} = expr, vars, assigns, caller)
        when is_access(access) do
-    analyze_assign(expr, vars, assigns, caller, [], vars_changed)
+    analyze_assign(expr, vars, assigns, caller, [])
   end
 
-  defp analyze({{:., _, [_, _]}, _, args} = expr, vars, assigns, caller, vars_changed)
-       when args in [[], nil] do
-    analyze_assign(expr, vars, assigns, caller, [], vars_changed)
+  defp analyze({{:., _, [_, _]}, _, args} = expr, vars, assigns, caller) when args in [[], nil] do
+    analyze_assign(expr, vars, assigns, caller, [])
   end
 
-  defp analyze({:@, _, [{name, _, context}]} = expr, vars, assigns, caller, vars_changed)
+  defp analyze({:@, _, [{name, _, context}]} = expr, vars, assigns, caller)
        when is_atom(name) and is_atom(context) do
-    analyze_assign(expr, vars, assigns, caller, [], vars_changed)
+    analyze_assign(expr, vars, assigns, caller, [])
   end
 
   # Assigns is a strong-taint
-  defp analyze({:assigns, _, nil} = expr, vars, assigns, _caller, _vars_changed) do
+  defp analyze({:assigns, _, nil} = expr, vars, assigns, _caller) do
     {expr, vars, taint_assigns(assigns)}
   end
 
   # Ignore underscore
-  defp analyze({:_, _, context} = expr, vars, assigns, _caller, _vars_changed)
-       when is_atom(context) do
+  defp analyze({:_, _, context} = expr, vars, assigns, _caller) when is_atom(context) do
     {expr, vars, assigns}
   end
 
   # Also skip special variables
-  defp analyze({name, _, context} = expr, vars, assigns, _caller, _vars_changed)
+  defp analyze({name, _, context} = expr, vars, assigns, _caller)
        when name in [:__MODULE__, :__ENV__, :__STACKTRACE__, :__DIR__] and is_atom(context) do
     {expr, vars, assigns}
   end
 
-  # handle vars_changed
-  defp analyze({name, _meta, nil} = expr, vars, assigns, caller, [_ | _] = vars_changed) do
-    if name in vars_changed do
-      {expr, vars, Map.put(assigns, {:vars_changed, [name]}, true)}
-    else
-      analyze(expr, vars, assigns, caller, [])
-    end
-  end
-
   # Vars always taint unless we are in restricted mode.
-  defp analyze({name, meta, nil} = expr, {:restricted, map}, assigns, caller, _vars_changed)
+  defp analyze({name, meta, nil} = expr, {:restricted, map} = vars, assigns, caller)
        when is_atom(name) do
-    if Map.has_key?(map, name) do
-      maybe_warn_taint(name, meta, caller)
-      {expr, {:tainted, map}, assigns}
-    else
-      {expr, {:restricted, map}, assigns}
+    case map do
+      %{^name => :tainted} ->
+        maybe_warn_taint(name, meta, caller)
+        {expr, {:tainted, map}, assigns}
+
+      %{^name => :change_track} ->
+        {expr, vars, Map.put(assigns, {:vars_changed, [name]}, true)}
+
+      _ ->
+        {expr, {:restricted, map}, assigns}
     end
   end
 
-  defp analyze({name, meta, nil} = expr, {_, map}, assigns, caller, _vars_changed)
+  defp analyze({name, meta, nil} = expr, {type, map}, assigns, caller)
        when is_atom(name) do
-    maybe_warn_taint(name, meta, caller)
-    {expr, {:tainted, Map.put(map, name, true)}, assigns}
+    if Map.get(map, name) == :change_track do
+      {expr, {type, map}, Map.put(assigns, {:vars_changed, [name]}, true)}
+    else
+      maybe_warn_taint(name, meta, caller)
+      {expr, {:tainted, Map.put(map, name, :tainted)}, assigns}
+    end
   end
 
   # Quoted vars are ignored as they come from engine code.
-  defp analyze({name, _meta, context} = expr, vars, assigns, _caller, _vars_changed)
+  defp analyze({name, _meta, context} = expr, vars, assigns, _caller)
        when is_atom(name) and is_atom(context) do
     {expr, vars, assigns}
   end
 
   # Ignore right side of |> if a variable
-  defp analyze({:|>, meta, [left, {_, _, context} = right]}, vars, assigns, caller, vars_changed)
+  defp analyze({:|>, meta, [left, {_, _, context} = right]}, vars, assigns, caller)
        when is_atom(context) do
-    {left, vars, assigns} = analyze(left, vars, assigns, caller, vars_changed)
+    {left, vars, assigns} = analyze(left, vars, assigns, caller)
     {{:|>, meta, [left, right]}, vars, assigns}
   end
 
   # Ignore binary modifiers
-  defp analyze({:"::", meta, [left, right]}, vars, assigns, caller, vars_changed) do
-    {left, vars, assigns} = analyze(left, vars, assigns, caller, vars_changed)
+  defp analyze({:"::", meta, [left, right]}, vars, assigns, caller) do
+    {left, vars, assigns} = analyze(left, vars, assigns, caller)
     {{:"::", meta, [left, right]}, vars, assigns}
   end
 
@@ -1136,24 +1100,18 @@ defmodule Phoenix.LiveView.Engine do
   # Ideally we would track all variables on the patterns and expand all generators
   # but except for the unlikely scenario of combinations, all comprehensions will
   # be using nested generators.
-  defp analyze(
-         {for_with, meta, [{:<-, arrow_meta, [left, right]} | args]},
-         vars,
-         assigns,
-         caller,
-         vars_changed
-       )
+  defp analyze({for_with, meta, [{:<-, arrow_meta, [left, right]} | args]}, vars, assigns, caller)
        when for_with in [:for, :with] do
-    {right, vars, assigns} = analyze(right, vars, assigns, caller, vars_changed)
+    {right, vars, assigns} = analyze(right, vars, assigns, caller)
 
     {[left | args], vars, assigns} =
-      analyze_with_restricted_vars([left | args], vars, assigns, caller, vars_changed)
+      analyze_with_restricted_vars([left | args], vars, assigns, caller)
 
     {{for_with, meta, [{:<-, arrow_meta, [left, right]} | args]}, vars, assigns}
   end
 
   # Classify calls
-  defp analyze({left, meta, args}, vars, assigns, caller, vars_changed) do
+  defp analyze({left, meta, args}, vars, assigns, caller) do
     call = extract_call(left)
 
     case classify_taint(call, args) do
@@ -1162,49 +1120,42 @@ defmodule Phoenix.LiveView.Engine do
         {code, vars, assigns}
 
       :none ->
-        {left, vars, assigns} = analyze(left, vars, assigns, caller, vars_changed)
-        {args, vars, assigns} = analyze_list(args, vars, assigns, caller, [], vars_changed)
+        {left, vars, assigns} = analyze(left, vars, assigns, caller)
+        {args, vars, assigns} = analyze_list(args, vars, assigns, caller, [])
         {{left, meta, args}, vars, assigns}
 
       :live ->
         {args, [opts]} = Enum.split(args, -1)
-
-        {args, vars, assigns} =
-          analyze_skip_assignment_list(args, vars, assigns, caller, [], vars_changed)
-
-        {opts, vars, assigns} =
-          analyze_with_restricted_vars(opts, vars, assigns, caller, vars_changed)
-
+        {args, vars, assigns} = analyze_skip_assignment_list(args, vars, assigns, caller, [])
+        {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns, caller)
         {{left, meta, args ++ [opts]}, vars, assigns}
 
       :never ->
-        {args, vars, assigns} =
-          analyze_with_restricted_vars(args, vars, assigns, caller, vars_changed)
-
+        {args, vars, assigns} = analyze_with_restricted_vars(args, vars, assigns, caller)
         {{left, meta, args}, vars, assigns}
     end
   end
 
-  defp analyze({left, right}, vars, assigns, caller, vars_changed) do
-    {left, vars, assigns} = analyze(left, vars, assigns, caller, vars_changed)
-    {right, vars, assigns} = analyze(right, vars, assigns, caller, vars_changed)
+  defp analyze({left, right}, vars, assigns, caller) do
+    {left, vars, assigns} = analyze(left, vars, assigns, caller)
+    {right, vars, assigns} = analyze(right, vars, assigns, caller)
     {{left, right}, vars, assigns}
   end
 
-  defp analyze([_ | _] = list, vars, assigns, caller, vars_changed) do
-    analyze_list(list, vars, assigns, caller, [], vars_changed)
+  defp analyze([_ | _] = list, vars, assigns, caller) do
+    analyze_list(list, vars, assigns, caller, [])
   end
 
-  defp analyze(other, vars, assigns, _caller, _vars_changed) do
+  defp analyze(other, vars, assigns, _caller) do
     {other, vars, assigns}
   end
 
-  defp analyze_list([head | tail], vars, assigns, caller, acc, vars_changed) do
-    {head, vars, assigns} = analyze(head, vars, assigns, caller, vars_changed)
-    analyze_list(tail, vars, assigns, caller, [head | acc], vars_changed)
+  defp analyze_list([head | tail], vars, assigns, caller, acc) do
+    {head, vars, assigns} = analyze(head, vars, assigns, caller)
+    analyze_list(tail, vars, assigns, caller, [head | acc])
   end
 
-  defp analyze_list([], vars, assigns, _caller, acc, _vars_changed) do
+  defp analyze_list([], vars, assigns, _caller, acc) do
     {Enum.reverse(acc), vars, assigns}
   end
 
@@ -1213,27 +1164,18 @@ defmodule Phoenix.LiveView.Engine do
          vars,
          assigns,
          caller,
-         acc,
-         vars_changed
+         acc
        ) do
-    {right, vars, assigns} = analyze(right, vars, assigns, caller, vars_changed)
-
-    analyze_skip_assignment_list(
-      tail,
-      vars,
-      assigns,
-      caller,
-      [{:=, meta, [left, right]} | acc],
-      vars_changed
-    )
+    {right, vars, assigns} = analyze(right, vars, assigns, caller)
+    analyze_skip_assignment_list(tail, vars, assigns, caller, [{:=, meta, [left, right]} | acc])
   end
 
-  defp analyze_skip_assignment_list([head | tail], vars, assigns, caller, acc, vars_changed) do
-    {head, vars, assigns} = analyze(head, vars, assigns, caller, vars_changed)
-    analyze_skip_assignment_list(tail, vars, assigns, caller, [head | acc], vars_changed)
+  defp analyze_skip_assignment_list([head | tail], vars, assigns, caller, acc) do
+    {head, vars, assigns} = analyze(head, vars, assigns, caller)
+    analyze_skip_assignment_list(tail, vars, assigns, caller, [head | acc])
   end
 
-  defp analyze_skip_assignment_list([], vars, assigns, _caller, acc, _vars_changed) do
+  defp analyze_skip_assignment_list([], vars, assigns, _caller, acc) do
     {Enum.reverse(acc), vars, assigns}
   end
 
@@ -1248,9 +1190,9 @@ defmodule Phoenix.LiveView.Engine do
   # tainted if it came from outside of the case/cond/with/fn/try.
   # So for those constructs we set the mode to restricted and stop
   # collecting vars.
-  defp analyze_with_restricted_vars(ast, {kind, map}, assigns, caller, vars_changed) do
+  defp analyze_with_restricted_vars(ast, {kind, map}, assigns, caller) do
     {ast, {new_kind, _}, assigns} =
-      analyze(ast, {unless_tainted(kind, :restricted), map}, assigns, caller, vars_changed)
+      analyze(ast, {unless_tainted(kind, :restricted), map}, assigns, caller)
 
     {ast, {unless_tainted(new_kind, kind), map}, assigns}
   end
