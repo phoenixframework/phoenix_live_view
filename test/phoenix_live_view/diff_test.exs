@@ -1694,8 +1694,8 @@ defmodule Phoenix.LiveView.DiffTest do
     def keyed_comprehension_with_pattern(assigns) do
       ~H"""
       <ul>
-        <li :for={%{id: @id, name: @name} <- @items} :key={@id}>
-          Outside assign: {@count} Inside assign: {@name}
+        <li :for={%{id: id, name: name} <- @items} :key={id}>
+          Outside assign: {@count} Inside assign: {name}
         </li>
       </ul>
       """
