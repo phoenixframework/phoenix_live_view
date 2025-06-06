@@ -1727,7 +1727,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert {%{
                 1 =>
-                  {Phoenix.LiveView.KeyedComprehension, 1,
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, 1},
                    %{
                      id: 1,
                      name: "First",
@@ -1736,7 +1736,7 @@ defmodule Phoenix.LiveView.DiffTest do
                      myself: %Phoenix.LiveComponent.CID{cid: 1}
                    }, %{}, _},
                 2 =>
-                  {Phoenix.LiveView.KeyedComprehension, 2,
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, 2},
                    %{
                      id: 2,
                      name: "Second",
@@ -1744,7 +1744,7 @@ defmodule Phoenix.LiveView.DiffTest do
                      flash: %{},
                      myself: %Phoenix.LiveComponent.CID{cid: 2}
                    }, %{}, _}
-              }, %{Phoenix.LiveView.KeyedComprehension => %{1 => 1, 2 => 2}}, 3} = components
+              }, %{Phoenix.LiveView.KeyedComprehension => %{}}, 3} = components
 
       # change order of items
       assigns =

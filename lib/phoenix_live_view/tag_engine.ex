@@ -1203,7 +1203,7 @@ defmodule Phoenix.LiveView.TagEngine do
         Phoenix.LiveView.TagEngine.component(
           &Phoenix.Component.live_component/1,
           %{
-            id: unquote(key_expr),
+            id: {unquote(state.caller.module), unquote(tag_meta.line), unquote(key_expr)},
             module: Phoenix.LiveView.KeyedComprehension,
             vars_changed: %{unquote_splicing(for_assigns)},
             render: fn var!(vars_changed) -> unquote(ast) end
