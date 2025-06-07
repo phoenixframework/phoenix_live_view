@@ -1250,7 +1250,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
         {name, meta, context}, {true, vars}
         when is_atom(name) and is_list(meta) and is_atom(context) ->
-          var = {name, [:change_track | meta], context}
+          var = {name, Keyword.put(meta, :change_track, true), context}
           {var, {true, [{name, var} | vars]}}
 
         other, acc ->
