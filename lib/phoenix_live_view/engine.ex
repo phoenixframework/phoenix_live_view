@@ -360,13 +360,9 @@ defmodule Phoenix.LiveView.Engine do
       |> handle_end(opts)
       |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
 
-    if opts[:skip_require] do
-      rendered
-    else
-      quote do
-        require Phoenix.LiveView.Engine
-        unquote(rendered)
-      end
+    quote do
+      require Phoenix.LiveView.Engine
+      unquote(rendered)
     end
   end
 
