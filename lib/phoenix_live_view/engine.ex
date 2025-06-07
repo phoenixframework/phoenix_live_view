@@ -355,12 +355,10 @@ defmodule Phoenix.LiveView.Engine do
 
   @impl true
   def handle_body(state, opts \\ []) do
-    vars = {:untainted, Map.new(opts[:vars_changed] || [], fn key -> {key, :change_track} end)}
-
     {:ok, rendered} =
       state
       |> handle_end(opts)
-      |> to_rendered_struct(vars, %{}, state.caller, opts)
+      |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
 
     if opts[:skip_require] do
       rendered
@@ -1061,11 +1059,19 @@ defmodule Phoenix.LiveView.Engine do
 
   defp analyze({name, meta, nil} = expr, {type, map}, assigns, caller)
        when is_atom(name) do
-    if Map.get(map, name) == :change_track do
-      {expr, {type, map}, Map.put(assigns, {:vars_changed, [name]}, true)}
-    else
-      maybe_warn_taint(name, meta, caller)
-      {expr, {:tainted, Map.put(map, name, :tainted)}, assigns}
+    cond do
+      Map.get(map, name) == :change_track ->
+        {expr, {type, map}, Map.put(assigns, {:vars_changed, [name]}, true)}
+
+      :change_track in meta ->
+        # this is a variable inside the left-hand side of a keyed for expression;
+        # we mark it as change_track in the vars map so that we treat it as change-tracked
+        # when we see it used again later (see the previous analyze clause above)
+        {expr, {type, Map.put(map, name, :change_track)}, assigns}
+
+      true ->
+        maybe_warn_taint(name, meta, caller)
+        {expr, {:tainted, Map.put(map, name, :tainted)}, assigns}
     end
   end
 
@@ -1403,8 +1409,11 @@ defmodule Phoenix.LiveView.Engine do
   defp classify_taint(:with, [_ | _]), do: :live
   defp classify_taint(:for, [_ | _]), do: :live
 
-  # Constructs from Phoenix and TagEngine
+  # Constructs from TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
+  defp classify_taint(:keyed_comprehension, [_, _, [do: _]]), do: :live
+
+  # Constructs from Phoenix.View
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
 
   # Special forms are forbidden and raise.
