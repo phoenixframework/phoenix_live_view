@@ -1202,16 +1202,14 @@ defmodule Phoenix.LiveView.TagEngine do
 
     new_ast =
       quote do
-        Phoenix.LiveView.TagEngine.component(
-          &Phoenix.Component.live_component/1,
-          %{
-            id: {unquote(state.caller.module), unquote(tag_meta.line), unquote(key_expr)},
-            module: Phoenix.LiveView.KeyedComprehension,
+        %Phoenix.LiveView.Component{
+          id: {unquote(state.caller.module), unquote(tag_meta.line), unquote(key_expr)},
+          component: Phoenix.LiveView.KeyedComprehension,
+          assigns: %{
             vars_changed: %{unquote_splicing(for_assigns)},
             render: fn unquote(vars_changed) -> unquote(ast) end
-          },
-          {__MODULE__, __ENV__.function, __ENV__.file, unquote(tag_meta.line)}
-        )
+          }
+        }
       end
 
     state = pop_substate_from_stack(state)

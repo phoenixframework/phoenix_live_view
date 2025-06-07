@@ -626,16 +626,7 @@ defmodule Phoenix.LiveView.Engine do
   defp changed_assigns(assigns) do
     checks =
       for {{changed_var, key}, _} <- assigns, not nested_and_parent_is_checked?(key, assigns) do
-        changed =
-          case changed_var do
-            :changed ->
-              quote do
-                changed
-              end
-
-            :vars_changed ->
-              Macro.var(:vars_changed, __MODULE__)
-          end
+        changed = Macro.var(changed_var, __MODULE__)
 
         case key do
           [assign] ->
