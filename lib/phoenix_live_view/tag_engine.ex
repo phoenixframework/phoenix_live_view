@@ -550,7 +550,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
-        |> handle_special_expr(new_meta)
+        |> handle_special_expr(:remote_component, new_meta)
         |> continue(tokens)
     end
   end
@@ -613,7 +613,7 @@ defmodule Phoenix.LiveView.TagEngine do
     |> pop_substate_from_stack()
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
-    |> handle_special_expr(tag_meta)
+    |> handle_special_expr(:remote_component, tag_meta)
     |> continue(tokens)
   end
 
@@ -720,7 +720,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
-        |> handle_special_expr(new_meta)
+        |> handle_special_expr(:local_component, new_meta)
         |> continue(tokens)
     end
   end
@@ -782,7 +782,7 @@ defmodule Phoenix.LiveView.TagEngine do
     |> pop_substate_from_stack()
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
-    |> handle_special_expr(tag_meta)
+    |> handle_special_expr(:local_component, tag_meta)
     |> continue(tokens)
   end
 
@@ -807,7 +807,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
         |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta))
-        |> handle_special_expr(new_meta)
+        |> handle_special_expr(:tag, new_meta)
         |> continue(tokens)
     end
   end
@@ -850,7 +850,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state
     |> update_subengine(:handle_text, [to_location(tag_meta), "</#{name}>"])
-    |> handle_special_expr(tag_open_meta)
+    |> handle_special_expr(:tag, tag_open_meta)
     |> continue(tokens)
   end
 
@@ -1144,11 +1144,11 @@ defmodule Phoenix.LiveView.TagEngine do
   defp literal_keys?([]), do: true
   defp literal_keys?(_other), do: false
 
-  defp handle_special_expr(state, tag_meta) do
+  defp handle_special_expr(state, type, tag_meta) do
     ast =
       case tag_meta do
         %{key: key_expr} ->
-          handle_keyed_comprehension(key_expr, state, tag_meta)
+          handle_keyed_comprehension(key_expr, state, type, tag_meta)
 
         %{for: for_expr, if: if_expr} ->
           quote do
@@ -1179,27 +1179,15 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp handle_keyed_comprehension(key_expr, state, tag_meta) do
+  defp handle_keyed_comprehension(key_expr, state, type, tag_meta) do
     # for now, we only support plain tags because we don't know if a function component
     # renders to a single tag which is required by live components
-    case state.tag_handler.classify_type(tag_meta.tag_name) do
-      {:tag, _} ->
-        :ok
-
-      other ->
-        type =
-          case other do
-            {:local_component, _} -> "function components"
-            {:remote_component, _} -> "function components"
-            # special attrs for slots are handled separately, see wrap_special_slot
-            other -> inspect(other)
-          end
-
-        raise_syntax_error!(
-          "keyed :for comprehensions are not supported on #{type}",
-          tag_meta,
-          state
-        )
+    if type != :tag do
+      raise_syntax_error!(
+        "keyed :for comprehensions only supported on regular tags, not for #{tag_meta.tag_name}",
+        tag_meta,
+        state
+      )
     end
 
     for_expr =
