@@ -19,7 +19,9 @@ defmodule Phoenix.LiveView.KeyedComprehension do
     {:ok,
      render_with(socket, fn assigns ->
        vars_changed = Map.take(assigns.__changed__, assigns.keys)
-       assigns.render.(vars_changed)
+       rendered = assigns.render.(vars_changed)
+       # the engine ensures that this is valid
+       %{rendered | root: true}
      end)}
   end
 end

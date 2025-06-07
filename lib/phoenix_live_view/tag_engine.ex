@@ -168,6 +168,22 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc false
+  defmacro keyed_comprehension(id, vars_changed, do: do_block) do
+    quote do
+      %Phoenix.LiveView.Component{
+        id: unquote(id),
+        component: Phoenix.LiveView.KeyedComprehension,
+        assigns: %{
+          vars_changed: unquote(vars_changed),
+          render: fn unquote(Macro.var(:vars_changed, Phoenix.LiveView.Engine)) ->
+            unquote(do_block)
+          end
+        }
+      }
+    end
+  end
+
+  @doc false
   def __assigns__(assigns, key, parent_changed) do
     # If the component is in its initial render (parent_changed == nil)
     # or the slot/block key is in parent_changed, then we render the
@@ -1190,28 +1206,23 @@ defmodule Phoenix.LiveView.TagEngine do
       tag_meta[:for] || raise_syntax_error!("cannot use :key without :for", tag_meta, state)
 
     if_expr = tag_meta[:if]
-    for_assigns = extract_variables(for_expr)
-    vars_changed = Enum.map(for_assigns, fn {name, _} -> name end)
 
+    # we already validated that the for expression has the correct shape in
+    # validate_quoted_special_attr
+    {:<-, for_meta, [lhs, rhs]} = for_expr
+    # now we mark all eligible variables in the left-hand side as `:change_track`able
+    {lhs, variables} = mark_variables_as_change_tracked(lhs)
+    for_expr = {:<-, for_meta, [lhs, rhs]}
+
+    # now we build the new ast that we pass to the engine
     ast =
-      invoke_subengine(state, :handle_body, [
-        [skip_require: true, root: true, vars_changed: vars_changed]
-      ])
-
-    vars_changed = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
-
-    new_ast =
       quote do
-        %Phoenix.LiveView.Component{
-          id:
-            {unquote(state.caller.module), unquote(tag_meta.line), unquote(tag_meta.column),
-             unquote(key_expr)},
-          component: Phoenix.LiveView.KeyedComprehension,
-          assigns: %{
-            vars_changed: %{unquote_splicing(for_assigns)},
-            render: fn unquote(vars_changed) -> unquote(ast) end
-          }
-        }
+        Phoenix.LiveView.TagEngine.keyed_comprehension(
+          {unquote(state.caller.module), unquote(tag_meta.line), unquote(tag_meta.column),
+           unquote(key_expr)},
+          %{unquote_splicing(variables)},
+          do: unquote(invoke_subengine(state, :handle_end, []))
+        )
       end
 
     state = pop_substate_from_stack(state)
@@ -1220,7 +1231,7 @@ defmodule Phoenix.LiveView.TagEngine do
       state
       |> push_substate_to_stack()
       |> update_subengine(:handle_begin, [])
-      |> update_subengine(:handle_expr, ["=", new_ast])
+      |> update_subengine(:handle_expr, ["=", ast])
       |> invoke_subengine(:handle_end, [])
 
     if if_expr do
@@ -1236,27 +1247,29 @@ defmodule Phoenix.LiveView.TagEngine do
 
   # we already validated that the for expression has the correct shape in
   # validate_quoted_special_attr
-  defp extract_variables({:<-, _for_meta, [lhs, _rhs]}) do
-    {_ast, variables} =
-      Macro.prewalk(lhs, [], fn
+  defp mark_variables_as_change_tracked(ast) do
+    {ast, {_, vars}} =
+      Macro.prewalk(ast, {true, []}, fn
         # skip pinned expressions
-        {:^, _, [_expr]}, acc ->
-          {[], acc}
+        {:^, _, [_expr]} = pin_expr, {true, vars} ->
+          {pin_expr, {false, vars}}
 
         # skip the right hand side in something like <<foo::binary>>
-        {:"::", _, [left, _right]}, acc ->
+        {:"::", meta, [left, right]}, {true, vars} ->
           # we need to return a list for prewalk to walk the left hand side
-          {[left], acc}
+          {new_left, inner_vars} = mark_variables_as_change_tracked(left)
+          {{:"::", meta, [new_left, right]}, {false, vars ++ inner_vars}}
 
-        {name, meta, context} = var, acc
+        {name, meta, context}, {true, vars}
         when is_atom(name) and is_list(meta) and is_atom(context) ->
-          {var, [{name, var} | acc]}
+          var = {name, [:change_track | meta], context}
+          {var, {true, [{name, var} | vars]}}
 
         other, acc ->
           {other, acc}
       end)
 
-    variables
+    {ast, vars}
   end
 
   ## build_self_close_component_assigns/build_component_assigns
