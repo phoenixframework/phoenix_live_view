@@ -1147,24 +1147,27 @@ defmodule Phoenix.LiveView.TagEngine do
   defp handle_special_expr(state, type, tag_meta) do
     ast =
       case tag_meta do
-        %{key: key_expr} ->
-          handle_keyed_comprehension(key_expr, state, type, tag_meta)
+        %{for: _for_expr, if: if_expr} ->
+          {for_expr, ast} = maybe_keyed(state, type, tag_meta)
 
-        %{for: for_expr, if: if_expr} ->
           quote do
-            for unquote(for_expr), unquote(if_expr),
-              do: unquote(invoke_subengine(state, :handle_end, []))
+            for unquote(for_expr), unquote(if_expr), do: unquote(ast)
           end
 
-        %{for: for_expr} ->
+        %{for: _for_expr} ->
+          {for_expr, ast} = maybe_keyed(state, type, tag_meta)
+
           quote do
-            for unquote(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
+            for unquote(for_expr), do: unquote(ast)
           end
 
         %{if: if_expr} ->
           quote do
             if unquote(if_expr), do: unquote(invoke_subengine(state, :handle_end, []))
           end
+
+        %{key: _} ->
+          raise_syntax_error!("cannot use :key without :for", tag_meta, state)
 
         %{} ->
           nil
@@ -1179,7 +1182,7 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp handle_keyed_comprehension(key_expr, state, type, tag_meta) do
+  defp maybe_keyed(state, type, %{key: key_expr, for: for_expr} = tag_meta) do
     # for now, we only support plain tags because we don't know if a function component
     # renders to a single tag which is required by live components
     if type != :tag do
@@ -1189,11 +1192,6 @@ defmodule Phoenix.LiveView.TagEngine do
         state
       )
     end
-
-    for_expr =
-      tag_meta[:for] || raise_syntax_error!("cannot use :key without :for", tag_meta, state)
-
-    if_expr = tag_meta[:if]
 
     # we already validated that the for expression has the correct shape in
     # validate_quoted_special_attr
@@ -1215,22 +1213,18 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state = pop_substate_from_stack(state)
 
-    for_ast =
+    keyed_ast =
       state
       |> push_substate_to_stack()
       |> update_subengine(:handle_begin, [])
       |> update_subengine(:handle_expr, ["=", ast])
       |> invoke_subengine(:handle_end, [])
 
-    if if_expr do
-      quote do
-        for unquote(for_expr), unquote(if_expr), do: unquote(for_ast)
-      end
-    else
-      quote do
-        for unquote(for_expr), do: unquote(for_ast)
-      end
-    end
+    {for_expr, keyed_ast}
+  end
+
+  defp maybe_keyed(state, _type, %{for: for_expr}) do
+    {for_expr, invoke_subengine(state, :handle_end, [])}
   end
 
   # we already validated that the for expression has the correct shape in
