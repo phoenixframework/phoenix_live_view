@@ -1227,8 +1227,6 @@ defmodule Phoenix.LiveView.TagEngine do
     {for_expr, invoke_subengine(state, :handle_end, [])}
   end
 
-  # we already validated that the for expression has the correct shape in
-  # validate_quoted_special_attr
   defp mark_variables_as_change_tracked(ast) do
     {ast, {_, vars}} =
       Macro.prewalk(ast, {true, []}, fn
