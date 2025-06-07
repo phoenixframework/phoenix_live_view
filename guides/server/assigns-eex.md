@@ -287,7 +287,7 @@ Since LiveComponents have their own assigns, LiveComponents would allow
 you to perform change tracking for each item. If the `@posts` variable
 changes, the client will simply send a list of component IDs (which are
 integers) and only the data for the posts that actually changed.
-You can read more about `:key` in the [documentation for sigil_H/2](Phoenix.Component.html#sigil_H/2-special-attributes).
+You can read more about `:key` in the [documentation for `sigil_H/2`](Phoenix.Component.html#sigil_H/2-special-attributes).
 
 The second solution is to use `Phoenix.LiveView.stream/4`, which gives you
 precise control over how elements are added, removed, and updated. Streams
