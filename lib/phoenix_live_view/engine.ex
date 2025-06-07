@@ -1059,7 +1059,7 @@ defmodule Phoenix.LiveView.Engine do
       Map.get(map, name) == :change_track ->
         {expr, {type, map}, Map.put(assigns, {:vars_changed, [name]}, true)}
 
-      :change_track in meta ->
+      Keyword.get(meta, :change_track) ->
         # this is a variable inside the left-hand side of a keyed for expression;
         # we mark it as change_track in the vars map so that we treat it as change-tracked
         # when we see it used again later (see the previous analyze clause above)
