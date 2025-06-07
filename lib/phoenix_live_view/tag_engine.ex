@@ -1203,7 +1203,9 @@ defmodule Phoenix.LiveView.TagEngine do
     new_ast =
       quote do
         %Phoenix.LiveView.Component{
-          id: {unquote(state.caller.module), unquote(tag_meta.line), unquote(key_expr)},
+          id:
+            {unquote(state.caller.module), unquote(tag_meta.line), unquote(tag_meta.column),
+             unquote(key_expr)},
           component: Phoenix.LiveView.KeyedComprehension,
           assigns: %{
             vars_changed: %{unquote_splicing(for_assigns)},
@@ -1237,6 +1239,15 @@ defmodule Phoenix.LiveView.TagEngine do
   defp extract_variables({:<-, _for_meta, [lhs, _rhs]}) do
     {_ast, variables} =
       Macro.prewalk(lhs, [], fn
+        # skip pinned expressions
+        {:^, _, [_expr]}, acc ->
+          {[], acc}
+
+        # skip the right hand side in something like <<foo::binary>>
+        {:"::", _, [left, _right]}, acc ->
+          # we need to return a list for prewalk to walk the left hand side
+          {[left], acc}
+
         {name, meta, context} = var, acc
         when is_atom(name) and is_list(meta) and is_atom(context) ->
           {var, [{name, var} | acc]}

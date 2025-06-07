@@ -1727,7 +1727,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert {%{
                 1 =>
-                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, 1},
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, _, 1},
                    %{
                      id: 1,
                      name: "First",
@@ -1736,7 +1736,7 @@ defmodule Phoenix.LiveView.DiffTest do
                      myself: %Phoenix.LiveComponent.CID{cid: 1}
                    }, %{}, _},
                 2 =>
-                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, 2},
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, _, 2},
                    %{
                      id: 2,
                      name: "Second",
