@@ -423,6 +423,8 @@ defmodule Phoenix.LiveView.Engine do
           end
         end
 
+      root = Keyword.get(opts, :root, meta[:root])
+
       {:ok,
        quote do
          dynamic = fn track_changes? ->
@@ -435,7 +437,7 @@ defmodule Phoenix.LiveView.Engine do
            static: unquote(static),
            dynamic: dynamic,
            fingerprint: unquote(fingerprint),
-           root: unquote(opts[:root])
+           root: unquote(root)
          }
        end}
     else

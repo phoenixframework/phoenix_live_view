@@ -21,8 +21,6 @@ defmodule Phoenix.LiveView.KeyedComprehension do
   @impl true
   def render(assigns) do
     vars_changed = Map.take(assigns.__changed__, assigns.keys)
-    rendered = assigns.render.(vars_changed)
-    # the engine ensures that this is valid
-    %{rendered | root: true}
+    assigns.render.(vars_changed)
   end
 end

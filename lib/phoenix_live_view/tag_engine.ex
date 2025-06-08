@@ -1207,7 +1207,7 @@ defmodule Phoenix.LiveView.TagEngine do
           {unquote(state.caller.module), unquote(tag_meta.line), unquote(tag_meta.column),
            unquote(key_expr)},
           %{unquote_splicing(variables)},
-          do: unquote(invoke_subengine(state, :handle_end, []))
+          do: unquote(invoke_subengine(state, :handle_end, [[meta: [root: true]]]))
         )
       end
 
