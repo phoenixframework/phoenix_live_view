@@ -71,7 +71,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def init(opts) do
     # Since we are always running in the test client, we will disable
     # our own logging and let the client do the job.
-    Logger.disable(self())
+    Logger.put_process_level(self(), :none)
 
     %{
       caller: {_, ref} = caller,
