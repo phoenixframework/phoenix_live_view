@@ -1228,26 +1228,54 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp mark_variables_as_change_tracked(ast) do
+    # we traverse the AST and mark elements that should not considered
+    # to be variables as "skip";
+    # we need to handle both the pre and post phases to properly unmark
+    # the skip after we handled an expression
     {ast, {_, vars}} =
-      Macro.prewalk(ast, {true, []}, fn
-        # skip pinned expressions
-        {:^, _, [_expr]} = pin_expr, {true, vars} ->
-          {pin_expr, {false, vars}}
+      Macro.traverse(
+        ast,
+        # we start in collect mode (true) and an empty list of vars
+        {true, []},
+        fn
+          # skip pinned expressions, marking the pin expression and setting
+          # collect to false
+          {:^, meta, [expr]}, {true, vars} ->
+            {{:^, Keyword.put(meta, :skip_mark, true), [expr]}, {false, vars}}
 
-        # skip the right hand side in something like <<foo::binary>>
-        {:"::", meta, [left, right]}, {true, vars} ->
-          # we need to return a list for prewalk to walk the left hand side
-          {new_left, inner_vars} = mark_variables_as_change_tracked(left)
-          {{:"::", meta, [new_left, right]}, {false, vars ++ inner_vars}}
+          # skip the right hand side in something like <<foo::binary>>
+          {:"::", meta, [left, right]}, {true, vars} ->
+            # we need to return a list for prewalk to walk the left hand side
+            {new_left, inner_vars} = mark_variables_as_change_tracked(left)
 
-        {name, meta, context}, {true, vars}
-        when is_atom(name) and is_list(meta) and is_atom(context) ->
-          var = {name, Keyword.put(meta, :change_track, true), context}
-          {var, {true, [{name, var} | vars]}}
+            {{:"::", Keyword.put(meta, :skip_mark, true), [new_left, right]},
+             {false, vars ++ inner_vars}}
 
-        other, acc ->
-          {other, acc}
-      end)
+          # collect mode -> mark the variable as change_track and collect
+          # it for passing it to the KeyedComprehension component
+          {name, meta, context}, {true, vars}
+          when is_atom(name) and is_list(meta) and is_atom(context) ->
+            var = {name, Keyword.put(meta, :change_track, true), context}
+            {var, {true, [{name, var} | vars]}}
+
+          other, acc ->
+            {other, acc}
+        end,
+        fn
+          {op, meta, args}, {false, vars} when is_atom(op) and is_list(meta) and is_list(args) ->
+            case Keyword.pop(meta, :skip_mark) do
+              {nil, meta} ->
+                {{op, meta, args}, {false, vars}}
+
+              {true, meta} ->
+                # reset the collect mode
+                {{op, meta, args}, {true, vars}}
+            end
+
+          other, acc ->
+            {other, acc}
+        end
+      )
 
     {ast, vars}
   end
