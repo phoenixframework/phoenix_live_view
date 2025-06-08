@@ -1227,7 +1227,8 @@ defmodule Phoenix.LiveView.TagEngine do
     {for_expr, invoke_subengine(state, :handle_end, [])}
   end
 
-  defp mark_variables_as_change_tracked(ast) do
+  @doc false
+  def mark_variables_as_change_tracked(ast) do
     # we traverse the AST and mark elements that should not considered
     # to be variables as "skip";
     # we need to handle both the pre and post phases to properly unmark
