@@ -631,11 +631,23 @@ defmodule Phoenix.LiveView.Engine do
             end
 
           [assign | tail] ->
+            assigns_var =
+              case changed_var do
+                :changed ->
+                  @assigns_var
+
+                :vars_changed ->
+                  # we pass a map %{var: var} for nested change tracking
+                  quote do
+                    %{unquote(assign) => unquote(Macro.var(assign, nil))}
+                  end
+              end
+
             quote do
               unquote(__MODULE__).nested_changed_assign?(
                 unquote(tail),
                 unquote(assign),
-                unquote(@assigns_var),
+                unquote(assigns_var),
                 unquote(changed)
               )
             end
