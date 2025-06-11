@@ -896,20 +896,7 @@ defmodule Phoenix.Component do
       tag_handler: Phoenix.LiveView.HTMLEngine
     ]
 
-    tokens = EEx.compile_string(expr, options)
-    {:ok, ast} = Phoenix.Component.MacroComponent.build_ast(tokens, __CALLER__)
-
-    quote do
-      require Phoenix.LiveView.TagEngine
-
-      Phoenix.LiveView.TagEngine.finalize(
-        unquote(ast),
-        unquote(
-          Keyword.drop(options, [:file, :line, :caller])
-          |> Keyword.put(:subengine_call, :handle_body)
-        )
-      )
-    end
+    EEx.compile_string(expr, options)
   end
 
   @doc ~S'''

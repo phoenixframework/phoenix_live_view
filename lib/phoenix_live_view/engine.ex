@@ -444,7 +444,7 @@ defmodule Phoenix.LiveView.Engine do
 
   defmacrop to_safe_match(var, ast) do
     quote do
-      {:=, [],
+      {:=, _,
        [
          {_, _, __MODULE__} = unquote(var),
          {{:., _, [__MODULE__, :to_safe]}, _, [unquote(ast)]}
@@ -476,7 +476,8 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns, caller) do
     with {:for, meta, [gen | args]} <- expr,
          {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
-         {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
+         {filters, [[do: arg]]} <- Enum.split(args, -1),
+         {:__block__, _, block} <- maybe_expand(arg, caller),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller)
@@ -567,6 +568,15 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct(expr, _vars, _assigns, _caller) do
     to_safe(expr, true)
   end
+
+  defp maybe_expand(
+         {{:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, :finalize]}, _, _} = call,
+         env
+       ) do
+    Macro.expand(call, env)
+  end
+
+  defp maybe_expand(arg, _env), do: arg
 
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, func]}),
     do: func
@@ -988,7 +998,6 @@ defmodule Phoenix.LiveView.Engine do
   defp analyze({name, meta, nil} = expr, {:restricted, map}, assigns, caller)
        when is_atom(name) do
     if Map.has_key?(map, name) do
-      IO.inspect("tainting now from restricted #{inspect(map)}")
       maybe_warn_taint(name, meta, caller)
       {expr, {:tainted, map}, assigns}
     else
@@ -1049,6 +1058,7 @@ defmodule Phoenix.LiveView.Engine do
         {{left, meta, args}, vars, assigns}
 
       :live ->
+        {left, meta, args} = maybe_expand({left, meta, args}, caller)
         {args, [opts]} = Enum.split(args, -1)
         {args, vars, assigns} = analyze_skip_assignment_list(args, vars, assigns, caller, [])
         {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns, caller)
@@ -1337,7 +1347,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Constructs from Phoenix and TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
-  defp classify_taint(:finalize, [_, _]), do: :live
+  defp classify_taint(:finalize, [_, [do: _]]), do: :live
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
 
   # Special forms are forbidden and raise.

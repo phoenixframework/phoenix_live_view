@@ -11,6 +11,7 @@ defmodule Phoenix.LiveView.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
+      test_elixirc_options: [debug_info: true],
       test_coverage: [summary: [threshold: 85], ignore_modules: coverage_ignore_modules()],
       xref: [exclude: [LazyHTML, LazyHTML.Tree]],
       package: package(),
@@ -62,7 +63,8 @@ defmodule Phoenix.LiveView.MixProject do
       {:phoenix_html_helpers, "~> 1.0", only: :test},
       {:bandit, "~> 1.5", only: :e2e},
       {:ecto, "~> 3.11", only: :e2e},
-      {:phoenix_ecto, "~> 4.5", only: :e2e}
+      {:phoenix_ecto, "~> 4.5", only: :e2e},
+      {:beam_file, "~> 0.6.2", only: :test}
     ]
   end
 

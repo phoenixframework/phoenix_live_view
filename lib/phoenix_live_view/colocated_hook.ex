@@ -125,8 +125,9 @@ defmodule Phoenix.LiveView.ColocatedHook do
   @behaviour Phoenix.Component.MacroComponent
 
   @impl true
-  def transform({"script", attributes, [text_content], _tag_meta} = _ast, meta) do
-    opts = Map.new(attributes)
+  def transform({:tag, _, ["script", attributes, [do: content]]} = _ast, meta) do
+    text_content = Phoenix.Component.MacroComponent.ast_to_string(content)
+    opts = Map.new(attributes, fn {:attribute, _, [key, _, value]} -> {key, value} end)
 
     name =
       case opts do
