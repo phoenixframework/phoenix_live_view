@@ -988,6 +988,7 @@ defmodule Phoenix.LiveView.Engine do
   defp analyze({name, meta, nil} = expr, {:restricted, map}, assigns, caller)
        when is_atom(name) do
     if Map.has_key?(map, name) do
+      IO.inspect("tainting now from restricted #{inspect(map)}")
       maybe_warn_taint(name, meta, caller)
       {expr, {:tainted, map}, assigns}
     else
@@ -1336,6 +1337,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Constructs from Phoenix and TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
+  defp classify_taint(:finalize, [_, _]), do: :live
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
 
   # Special forms are forbidden and raise.

@@ -151,89 +151,92 @@ defmodule Phoenix.Component.MacroComponent do
   end
 
   @doc false
-  def build_ast([{:tag, name, attrs, tag_meta} | rest], env) do
-    if closing = tag_meta[:closing] do
-      # we assert here because we don't expect any other values
-      true = closing in [:self, :void]
-    end
-
-    meta = Map.take(tag_meta, [:closing])
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), meta}], env)
+  def build_ast(tokens, env) do
+    build_ast(tokens, [], [], env)
   end
 
   # recursive case: build_ast(tokens, acc, stack)
+  defp build_ast([], acc, [], _env) do
+    {:ok, Enum.reverse(acc)}
+  end
 
-  # closing for final stack element -> done!
-  defp build_ast([{:close, :tag, _, _} | rest], acc, [{tag_name, attrs, meta}], _env) do
-    {:ok, {tag_name, attrs, Enum.reverse(acc), meta}, rest}
+  defp build_ast([], _acc, [_ | _], _env) do
+    raise ArgumentError, "unexpected end of input"
   end
 
   # tag open (self closing or void)
-  defp build_ast([{:tag, name, attrs, %{closing: type}} | rest], acc, stack, env)
-       when type in [:self, :void] do
-    acc = [{name, token_attrs_to_ast(attrs, env), [], %{closing: type}} | acc]
+  defp build_ast([{type, name, attrs, %{closing: closing} = meta} | rest], acc, stack, env)
+       when type != :close and closing in [:self, :void] do
+    meta = Enum.to_list(Map.delete(meta, :closing))
+
+    acc = [
+      {type, [{:closing, closing} | meta],
+       [name, token_attrs_to_ast(attrs, env), {:__block__, [], []}]}
+      | acc
+    ]
+
     build_ast(rest, acc, stack, env)
   end
 
   # tag open
-  defp build_ast([{:tag, name, attrs, _tag_meta} | rest], acc, stack, env) do
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), %{}, acc} | stack], env)
+  defp build_ast([{type, name, attrs, tag_meta} | rest], acc, stack, env)
+       when type != :close do
+    build_ast(
+      rest,
+      [],
+      [
+        {type, Enum.to_list(tag_meta), [name, token_attrs_to_ast(attrs, env)], acc}
+        | stack
+      ],
+      env
+    )
   end
 
   # tag close
   defp build_ast(
-         [{:close, :tag, name, _tag_meta} | tokens],
+         [{:close, type, _name, tag_meta} | tokens],
          acc,
-         [{name, attrs, meta, prev_acc} | stack],
+         [{type, meta, body, prev_acc} | stack],
          env
        ) do
-    build_ast(tokens, [{name, attrs, Enum.reverse(acc), meta} | prev_acc], stack, env)
+    build_ast(
+      tokens,
+      [
+        {type, meta ++ [{:close_meta, Enum.to_list(tag_meta)}],
+         body ++ [{:__block__, [], Enum.reverse(acc)}]}
+        | prev_acc
+      ],
+      stack,
+      env
+    )
   end
 
   # text
-  defp build_ast([{:text, text, _meta} | rest], acc, stack, env) do
-    build_ast(rest, [text | acc], stack, env)
+  defp build_ast([{:text, text, meta} | rest], acc, stack, env) do
+    build_ast(rest, [{:<<>>, Enum.to_list(meta), [text]} | acc], stack, env)
   end
 
-  # unsupported token
-  defp build_ast([{type, _name, _attrs, meta} | _tokens], _acc, _stack, _env)
-       when type in [:local_component, :remote_component] do
-    {:error, "function components cannot be nested inside a macro component", meta}
+  defp build_ast([{:expr, marker, ast} | rest], acc, stack, env) do
+    build_ast(rest, [{:expr, [marker: marker], [ast]} | acc], stack, env)
   end
 
-  defp build_ast([{:expr, _, _} | _], _acc, _stack, _env) do
-    # we raise here because we don't have a meta map (line + column) available
-    raise ArgumentError, "EEx is not currently supported in macro components"
-  end
-
-  defp build_ast([{:body_expr, _, meta} | _], _acc, _stack, _env) do
-    {:error, "interpolation is not currently supported in macro components", meta}
+  defp build_ast([{:body_expr, code, meta} | rest], acc, stack, env) do
+    ast = Code.string_to_quoted!(code, line: meta.line, column: meta.column, file: env.file)
+    build_ast(rest, [{:body_expr, Enum.to_list(meta), [ast]} | acc], stack, env)
   end
 
   defp token_attrs_to_ast(attrs, env) do
-    Enum.map(attrs, fn {name, value, _meta} ->
-      # for now, we don't support root expressions (<div {@foo}>)
-      if name == :root do
-        format_attr = fn
-          {:string, binary, _meta} -> binary
-          {:expr, code, _meta} -> code
-          nil -> "nil"
-        end
-
-        raise ArgumentError,
-              "dynamic attributes are not supported in macro components, got: #{format_attr.(value)}"
-      end
-
+    Enum.map(attrs, fn {name, value, meta} ->
       case value do
-        {:string, binary, _meta} ->
-          {name, binary}
+        {:string, binary, string_meta} ->
+          {:attribute, Enum.to_list(meta), [name, Enum.to_list(string_meta), binary]}
 
-        {:expr, code, meta} ->
+        {:expr, code, expr_meta} ->
           ast = Code.string_to_quoted!(code, line: meta.line, column: meta.column, file: env.file)
-          {name, ast}
+          {:attribute, Enum.to_list(meta), [name, expr_meta, ast]}
 
         nil ->
-          {name, nil}
+          {:attribute, [], [name, nil]}
       end
     end)
   end
