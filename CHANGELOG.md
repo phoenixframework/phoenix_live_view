@@ -16,7 +16,7 @@ Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
 2. Still in your `mix.exs`, prepend `:phoenix_live_view` to your list of compilers inside `def project`, such as:
 
     ```elixir
-    compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
+    compilers: [:phoenix_live_view] ++ Mix.compilers(),
     ```
 
 3. (optional) In your `config/dev.exs`, find `debug_heex_annotations`, and also add `debug_tags_location` for improved annotations:
