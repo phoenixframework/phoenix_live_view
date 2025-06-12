@@ -3469,4 +3469,56 @@ defmodule Phoenix.Component do
         ~H|{render_slot(@failed, @assign.failed)}|
     end
   end
+
+  @doc """
+  Renders a portal.
+
+  A portal is a component that teleports its content to another place in the DOM.
+  It is useful in cases where you need to render some content in another place, for
+  example due to overflow or [stacking context](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_positioned_layout/Stacking_context).
+
+  A portal consists of two parts:
+
+  1. The portal source: the component that should be teleported.
+  2. The portal target: the DOM element that will render the content of the portal source.
+
+  Any element can be a portal target. In most cases, the target would be rendered inside
+  the layout of your application. Portal sources must be defined with the `.portal` component.
+
+  ## Examples
+
+  ```heex
+  <.portal id="modal" target="target-id">
+    ...
+  </.portal>
+  <!-- The content of the portal will be rendered in the div below -->
+  <div id="target-id"></div>
+  ```
+  """
+
+  attr.(:id, :string, required: true)
+  attr.(:target, :string, required: true)
+  attr.(:class, :string, default: nil, doc: "The class to apply to the portal wrapper.")
+  attr.(:container, :string, default: "div", doc: "The HTML tag to use as the portal wrapper.")
+  slot.(:inner_block, required: true)
+
+  def portal(assigns) do
+    ~H"""
+    <template id={@id} data-phx-portal={@target}>
+      <%!--
+        For correct DOM patching, each portal source (template) must have a single root element,
+        which we enforce by wrapping the slot in a div. In the generated CSS for
+        new projects, we include a display: contents rule for data-phx-portal-root.
+      --%>
+      <.dynamic_tag
+        tag_name={@container}
+        id={"_lv_portal_wrap_" <> @id}
+        class={@class}
+        data-phx-portal-wrapper
+      >
+        {render_slot(@inner_block)}
+      </.dynamic_tag>
+    </template>
+    """
+  end
 end

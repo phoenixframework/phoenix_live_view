@@ -4,6 +4,8 @@ import {
   DEBOUNCE_TRIGGER,
   FOCUSABLE_INPUTS,
   PHX_COMPONENT,
+  PHX_VIEW_REF,
+  PHX_TELEPORTED_REF,
   PHX_HAS_FOCUSED,
   PHX_HAS_SUBMITTED,
   PHX_MAIN,
@@ -20,6 +22,7 @@ import {
   PHX_STICKY,
   PHX_EVENT_CLASSES,
   THROTTLED,
+  PHX_PORTAL,
   PHX_STREAM,
 } from "./constants";
 
@@ -73,10 +76,10 @@ const DOM = {
     );
   },
 
-  findComponentNodeList(node, cid) {
-    return this.filterWithinSameLiveView(
-      this.all(node, `[${PHX_COMPONENT}="${cid}"]`),
-      node,
+  findComponentNodeList(viewId, cid, doc = document) {
+    return this.all(
+      doc,
+      `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
     );
   },
 
@@ -189,7 +192,7 @@ const DOM = {
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`);
   },
 
-  findExistingParentCIDs(node, cids) {
+  findExistingParentCIDs(viewId, cids) {
     // we only want to find parents that exist on the page
     // if a cid is not on the page, the only way it can be added back to the page
     // is if a parent adds it back, therefore if a cid does not exist on the page,
@@ -199,15 +202,12 @@ const DOM = {
     const childrenCids = new Set();
 
     cids.forEach((cid) => {
-      this.filterWithinSameLiveView(
-        this.all(node, `[${PHX_COMPONENT}="${cid}"]`),
-        node,
+      this.all(
+        document,
+        `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
       ).forEach((parent) => {
         parentCids.add(cid);
-        this.filterWithinSameLiveView(
-          this.all(parent, `[${PHX_COMPONENT}]`),
-          parent,
-        )
+        this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`)
           .map((el) => parseInt(el.getAttribute(PHX_COMPONENT)))
           .forEach((childCID) => childrenCids.add(childCID));
       });
@@ -216,25 +216,6 @@ const DOM = {
     childrenCids.forEach((childCid) => parentCids.delete(childCid));
 
     return parentCids;
-  },
-
-  filterWithinSameLiveView(nodes, parent) {
-    if (parent.querySelector(PHX_VIEW_SELECTOR)) {
-      return nodes.filter((el) => this.withinSameLiveView(el, parent));
-    } else {
-      return nodes;
-    }
-  },
-
-  withinSameLiveView(node, parent) {
-    while ((node = node.parentNode)) {
-      if (node.isSameNode(parent)) {
-        return true;
-      }
-      if (node.getAttribute(PHX_SESSION) !== null) {
-        return false;
-      }
-    }
   },
 
   private(el, key) {
@@ -483,6 +464,27 @@ const DOM = {
 
   firstPhxChild(el) {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
+  },
+
+  isPortalTemplate(el) {
+    return el.tagName === "TEMPLATE" && el.hasAttribute(PHX_PORTAL);
+  },
+
+  closestViewEl(el) {
+    // find the closest portal or view element, whichever comes first
+    const portalOrViewEl = el.closest(
+      `[${PHX_TELEPORTED_REF}],${PHX_VIEW_SELECTOR}`,
+    );
+    if (!portalOrViewEl) {
+      return null;
+    }
+    if (portalOrViewEl.hasAttribute(PHX_TELEPORTED_REF)) {
+      // PHX_TELEPORTED_REF is set to the id of the view that owns the portal element
+      return this.byId(portalOrViewEl.getAttribute(PHX_TELEPORTED_REF));
+    } else if (portalOrViewEl.hasAttribute(PHX_SESSION)) {
+      return portalOrViewEl;
+    }
+    return null;
   },
 
   dispatchEvent(target, name, opts = {}) {

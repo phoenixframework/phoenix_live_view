@@ -129,6 +129,10 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     plug :put_root_layout, html: {Phoenix.LiveViewTest.E2E.Layout, :root}
   end
 
+  pipeline :portal_root do
+    plug :put_root_layout, html: {Phoenix.LiveViewTest.E2E.PortalLive, :root}
+  end
+
   live_session :default,
     layout: {Phoenix.LiveViewTest.E2E.Layout, :live},
     on_mount: {Phoenix.LiveViewTest.E2E.Hooks, :default} do
@@ -151,6 +155,12 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/js", E2E.JsLive
       live "/select", E2E.SelectLive
       live "/components", E2E.ComponentsLive
+    end
+
+    scope "/portal", Phoenix.LiveViewTest do
+      pipe_through([:browser, :portal_root])
+
+      live "/", E2E.PortalLive
     end
 
     scope "/issues", Phoenix.LiveViewTest.E2E do
