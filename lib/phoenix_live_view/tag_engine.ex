@@ -274,7 +274,8 @@ defmodule Phoenix.LiveView.TagEngine do
     do: has_tags?(children) or has_tags?(tokens)
 
   defp has_tags?([{type, _meta, _args} | _tokens])
-       when type in [:local_component, :remote_component, :tag], do: true
+       when type in [:local_component, :remote_component, :tag],
+       do: true
 
   defp has_tags?([_ | tokens]), do: has_tags?(tokens)
   defp has_tags?([]), do: false

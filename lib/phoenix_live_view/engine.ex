@@ -571,7 +571,8 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp maybe_expand(
-         {{:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, :finalize]}, _, _} = call,
+         {{:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, :finalize]}, _, _} =
+           call,
          env
        ) do
     Macro.expand(call, env)

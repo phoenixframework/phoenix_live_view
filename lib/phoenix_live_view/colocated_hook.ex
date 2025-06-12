@@ -127,7 +127,12 @@ defmodule Phoenix.LiveView.ColocatedHook do
   @impl true
   def transform({:tag, _, ["script", attributes, [do: content]]} = _ast, meta) do
     text_content = Phoenix.Component.MacroComponent.ast_to_string(content)
-    opts = Map.new(attributes, fn {:attribute, _, [key, _, value]} -> {key, value} end)
+
+    opts =
+      Map.new(attributes, fn
+        {:attribute, _, [key, _, value]} -> {key, value}
+        {:attribute, _, [key, nil]} -> {key, nil}
+      end)
 
     name =
       case opts do
@@ -158,8 +163,24 @@ defmodule Phoenix.LiveView.ColocatedHook do
         }
         """
 
-        attrs = Enum.to_list(Map.drop(opts, ["name", "runtime"]))
-        {:ok, {"script", [{"data-phx-runtime-hook", name} | attrs], [new_content], %{}}}
+        attrs =
+          [
+            quote do
+              attribute("data-phx-runtime-hook", [], unquote(name))
+            end
+            | Enum.map(Map.drop(opts, ["name", "runtime"]), fn {key, value} ->
+                quote do
+                  attribute(unquote(key), [], unquote(value))
+                end
+              end)
+          ]
+
+        {:ok,
+         quote do
+           tag("script", unquote(attrs)) do
+             unquote(new_content)
+           end
+         end}
 
       _ ->
         # a colocated hook is just a special type of colocated JS,
