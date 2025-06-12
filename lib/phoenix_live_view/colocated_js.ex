@@ -102,7 +102,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   > #### Warning! {: .warning}
   >
   > LiveView assumes full ownership over the configured `:target_directory`. When
-  > compiling, it will **delete** any files and folders inside the `:target_directory`, 
+  > compiling, it will **delete** any files and folders inside the `:target_directory`,
   > that it does not associate with a colocated JavaScript module or manifest.
 
   ### Imports in colocated JS
@@ -275,13 +275,20 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp write_new_manifests!(files) do
-    files
-    |> Enum.group_by(fn {_file, config} ->
-      config[:manifest] || "index.js"
-    end)
-    |> Enum.each(fn {manifest, entries} ->
-      write_manifest(manifest, entries)
-    end)
+    if files == [] do
+      File.write!(
+        Path.join(target_dir(), "index.js"),
+        "export const hooks = {};\nexport default {};"
+      )
+    else
+      files
+      |> Enum.group_by(fn {_file, config} ->
+        config[:manifest] || "index.js"
+      end)
+      |> Enum.each(fn {manifest, entries} ->
+        write_manifest(manifest, entries)
+      end)
+    end
   end
 
   defp write_manifest(manifest, entries) do
