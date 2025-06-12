@@ -16,48 +16,75 @@ defmodule Phoenix.Component.MacroComponentTest do
 
   describe "ast_to_string/1" do
     test "simple cases" do
-      assert MacroComponent.ast_to_string({"div", [{"id", "1"}], ["Hello"], %{}}) ==
-               "<div id=\"1\">Hello</div>"
-
-      assert MacroComponent.ast_to_string({"div", [{"id", "<bar>"}], ["Hello"], %{}}) ==
+      assert MacroComponent.ast_to_string(
+               quote do
+                 tag("div", [attribute("id", [], "<bar>")]) do
+                   "Hello"
+                 end
+               end
+             ) ==
                "<div id=\"<bar>\">Hello</div>"
     end
 
     test "handles self closing and void tags" do
       assert MacroComponent.ast_to_string(
-               {"div", [{"id", "<bar>"}], [{"hr", [], [], %{closing: :void}}], %{}}
+               quote do
+                 tag("div", [attribute("id", [], "<bar>")]) do
+                   tag("hr", [], closing: :void)
+                 end
+               end
              ) ==
                "<div id=\"<bar>\"><hr></div>"
 
-      assert MacroComponent.ast_to_string({"circle", [{"id", "1"}], [], %{closing: :self}}) ==
-               "<circle id=\"1\"/>"
+      assert MacroComponent.ast_to_string(
+               quote do
+                 tag("circle", [attribute("id", [], "1")], closing: :self)
+               end
+             ) ==
+               "<circle id=\"1\"></circle>"
     end
 
     test "attribute without value" do
       assert MacroComponent.ast_to_string(
-               {"div", [{"foo", nil}, {"bar", "baz"}], [], %{closing: :self}}
+               quote do
+                 tag("div", [attribute("foo", nil), attribute("bar", [], "baz")], closing: :self)
+               end
              ) ==
-               "<div foo bar=\"baz\"/>"
+               "<div foo bar=\"baz\"></div>"
     end
 
     test "handles quotes" do
-      assert MacroComponent.ast_to_string({"div", [{"foo", ~s['bar']}], [], %{}}) ==
+      assert MacroComponent.ast_to_string(
+               quote do
+                 tag("div", [attribute("foo", [], unquote(~s['bar']))], do: [])
+               end
+             ) ==
                ~s[<div foo="'bar'"></div>]
 
-      assert MacroComponent.ast_to_string({"div", [{"foo", ~s["bar"]}], [], %{}}) ==
+      assert MacroComponent.ast_to_string(
+               quote do
+                 tag("div", [attribute("foo", [], unquote(~s["bar"]))], do: [])
+               end
+             ) ==
                ~s[<div foo='"bar"'></div>]
 
       assert_raise ArgumentError, ~r/invalid attribute value for "foo"/, fn ->
-        MacroComponent.ast_to_string({"div", [{"foo", ~s["'bar'"]}], [], %{}})
+        MacroComponent.ast_to_string(
+          quote do
+            tag("div", [attribute("foo", [], unquote(~s["'bar'"]))], do: [])
+          end
+        )
       end
     end
 
     test "invalid attribute" do
-      assert_raise ArgumentError,
-                   ~r/cannot convert AST with non-string attribute "id" to string. Got: @bar/,
+      assert_raise KeyError,
+                   ~r/:foo not found/,
                    fn ->
                      MacroComponent.ast_to_string(
-                       {"div", [{"id", quote(do: @bar)}], ["Hello"], %{}}
+                       quote do
+                         tag("div", [attribute("id", [], @foo)], do: [])
+                       end
                      )
                    end
     end
