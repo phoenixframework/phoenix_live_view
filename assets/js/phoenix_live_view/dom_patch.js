@@ -759,7 +759,7 @@ export default class DOMPatch {
     // is outside the view itself
     this.view.pushPortalElementId(toTeleport.id);
   }
-  
+
   handleRuntimeHook(el, source) {
     // usually, scripts are not executed when morphdom adds them to the DOM
     // we special case runtime colocated hooks
