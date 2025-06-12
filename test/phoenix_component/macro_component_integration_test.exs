@@ -217,18 +217,31 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                            {:@, _, [{:foo, _, nil}]},
                            [
                              do:
-                               {{:., _,
-                                 [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, :finalize]},
-                                _,
+                               {:try, _,
                                 [
-                                  _,
                                   [
-                                    do: [
-                                      {:<<>>, _, _},
-                                      {:tag, _,
-                                       ["p", [], [do: {:__block__, _, [{:<<>>, _, ["foo"]}]}]]},
-                                      {:<<>>, _, _}
-                                    ]
+                                    {:do,
+                                     {{:., _,
+                                       [
+                                         {:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]},
+                                         :finalize
+                                       ]}, _,
+                                      [
+                                        _,
+                                        [
+                                          do: [
+                                            {:<<>>, _, _},
+                                            {:tag, _,
+                                             [
+                                               "p",
+                                               [],
+                                               [do: {:__block__, _, [{:<<>>, _, ["foo"]}]}]
+                                             ]},
+                                            {:<<>>, _, _}
+                                          ]
+                                        ]
+                                      ]}},
+                                    {:after, :ok}
                                   ]
                                 ]}
                            ]

@@ -264,8 +264,8 @@ defmodule Phoenix.Component.MacroComponent do
         {:expr, code, expr_meta} ->
           ast =
             Code.string_to_quoted!(code,
-              line: meta.line,
-              column: meta.column,
+              line: expr_meta.line,
+              column: expr_meta.column,
               file: opts[:env].file
             )
 
@@ -274,7 +274,7 @@ defmodule Phoenix.Component.MacroComponent do
            [name, Enum.to_list(expr_meta), ast]}
 
         nil ->
-          {:attribute, [], [name, nil]}
+          {:attribute, Enum.to_list(meta), [name, nil]}
       end
     end)
   end
