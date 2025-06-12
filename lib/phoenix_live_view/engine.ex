@@ -590,14 +590,14 @@ defmodule Phoenix.LiveView.Engine do
   defp extract_call(call),
     do: call
 
-  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, caller) do
-    for {:->, meta, [args, block]} <- blocks do
-      {args, vars, assigns} = analyze_list(args, vars, %{}, caller, [])
+  defp maybe_block_to_rendered(ast, vars, caller, assigns \\ %{})
 
-      case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
-        {:ok, rendered} -> {:->, meta, [args, rendered]}
-        :error -> {:->, meta, [args, block]}
-      end
+  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, caller, assigns) do
+    for {:->, meta, [args, block]} <- blocks do
+      {args, vars, assigns} = analyze_list(args, vars, assigns, caller, [])
+
+      block = maybe_block_to_rendered(block, vars, caller, assigns)
+      {:->, meta, [args, block]}
     end
   end
 
@@ -606,16 +606,17 @@ defmodule Phoenix.LiveView.Engine do
   defp maybe_block_to_rendered(
          {:try, meta, [[{:do, block}, {:after, :ok}]]} = original,
          vars,
-         caller
+         caller,
+         assigns
        ) do
-    case to_rendered_struct(block, untaint_vars(vars), %{}, caller, []) do
+    case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
       {:ok, rendered} -> {:try, meta, [[{:do, rendered}, {:after, :ok}]]}
       :error -> original
     end
   end
 
-  defp maybe_block_to_rendered(block, vars, caller) do
-    case to_rendered_struct(block, untaint_vars(vars), %{}, caller, []) do
+  defp maybe_block_to_rendered(block, vars, caller, assigns) do
+    case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
       {:ok, rendered} -> rendered
       :error -> block
     end
