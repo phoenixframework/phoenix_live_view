@@ -84,7 +84,9 @@ defmodule Phoenix.LiveView.Comprehension do
 
   @doc false
   def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
-    inserts = for {id, at, _item, limit} <- stream.inserts, do: [id, at, limit]
+    inserts =
+      for {id, at, _item, limit, update_only} <- stream.inserts, do: [id, at, limit, update_only]
+
     data = [stream.ref, inserts, stream.deletes]
 
     if stream.reset? do
@@ -343,16 +345,19 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @impl true
-  def handle_end(state) do
+  def handle_end(state, opts \\ []) do
     %{static: static, dynamic: dynamic} = state
     safe = {:safe, Enum.reverse(static)}
-    {:__block__, [live_rendered: true], Enum.reverse([safe | dynamic])}
+    meta = [live_rendered: true] ++ Keyword.get(opts, :meta, [])
+    {:__block__, meta, Enum.reverse([safe | dynamic])}
   end
 
   @impl true
   def handle_body(state, opts \\ []) do
     {:ok, rendered} =
-      to_rendered_struct(handle_end(state), {:untainted, %{}}, %{}, state.caller, opts)
+      state
+      |> handle_end(opts)
+      |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
 
     quote do
       require Phoenix.LiveView.Engine
@@ -389,13 +394,13 @@ defmodule Phoenix.LiveView.Engine do
   ## Entry point for rendered structs
 
   defp to_rendered_struct(expr, vars, assigns, caller, opts) do
-    with {:__block__, [live_rendered: true], entries} <- expr,
+    with {:__block__, [live_rendered: true] ++ meta, entries} <- expr,
          {dynamic, [{:safe, static}]} <- Enum.split(entries, -1) do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, vars, assigns, caller)
 
       static =
-        case Keyword.fetch(opts, :body_annotation) do
+        case Keyword.fetch(meta, :template_annotation) do
           {:ok, {before, aft}} ->
             case static do
               [] ->

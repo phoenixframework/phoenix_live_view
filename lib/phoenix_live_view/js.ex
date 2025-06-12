@@ -266,6 +266,9 @@ defmodule Phoenix.LiveView.JS do
       with the client event. The details will be available in the
       `event.detail` attribute for event listeners.
     * `:bubbles` – A boolean flag to bubble the event or not. Defaults to `true`.
+    * `:blocking` - A boolean flag to block the UI until the event handler calls `event.detail.done()`.
+      The done function is injected by LiveView and *must* be called eventually to unblock the UI.
+      This is useful to integrate with third party JavaScript based animation libraries.
 
   ## Examples
 
@@ -283,7 +286,7 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `dispatch/2`."
   def dispatch(%JS{} = js, event, opts) do
-    opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles])
+    opts = validate_keys(opts, :dispatch, [:to, :detail, :bubbles, :blocking])
     args = [event: event, to: opts[:to]]
 
     args =
@@ -297,6 +300,21 @@ defmodule Phoenix.LiveView.JS do
         :error ->
           args
       end
+
+    if opts[:blocking] do
+      case opts[:detail] do
+        map when is_map(map) and (is_map_key(map, "done") or is_map_key(map, :done)) ->
+          raise ArgumentError, """
+          the detail map passed to JS.dispatch must not contain a `done` key
+          when `blocking: true` is used!
+
+          Got: #{inspect(map)}
+          """
+
+        _ ->
+          :ok
+      end
+    end
 
     args =
       case {event, Keyword.fetch(opts, :detail)} do
@@ -319,6 +337,15 @@ defmodule Phoenix.LiveView.JS do
           Keyword.put(args, :detail, detail)
 
         {_, :error} ->
+          args
+      end
+
+    args =
+      case Keyword.get(opts, :blocking) do
+        true ->
+          Keyword.put(args, :blocking, opts[:blocking])
+
+        _ ->
           args
       end
 

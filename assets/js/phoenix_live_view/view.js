@@ -57,6 +57,8 @@ import Rendered from "./rendered";
 import { ViewHook } from "./view_hook";
 import JS from "./js";
 
+import morphdom from "morphdom";
+
 export const prependFormDataKey = (key, prefix) => {
   const isArray = key.endsWith("[]");
   // Remove the "[]" if it's an array
@@ -167,6 +169,23 @@ export default class View {
     this.parent = parentView;
     this.root = parentView ? parentView.root : this;
     this.el = el;
+    // see https://github.com/phoenixframework/phoenix_live_view/pull/3721
+    // check if the element is already bound to a view
+    const boundView = DOM.private(this.el, "view");
+    if (boundView !== undefined && boundView.isDead !== true) {
+      logError(
+        `The DOM element for this view has already been bound to a view.
+
+        An element can only ever be associated with a single view!
+        Please ensure that you are not trying to initialize multiple LiveSockets on the same page.
+        This could happen if you're accidentally trying to render your root layout more than once.
+        Ensure that the template set on the LiveView is different than the root layout.
+      `,
+        { view: boundView },
+      );
+      throw new Error("Cannot bind multiple views to the same DOM element.");
+    }
+    // bind the view to the element
     DOM.putPrivate(this.el, "view", this);
     this.id = this.el.id;
     this.ref = 0;
@@ -254,6 +273,7 @@ export default class View {
     this.destroyAllChildren();
     this.destroyPortalElements();
     this.destroyed = true;
+    DOM.deletePrivate(this.el, "view");
     delete this.root.children[this.id];
     if (this.parent) {
       delete this.root.children[this.parent.id][this.id];
@@ -880,7 +900,12 @@ export default class View {
       const hookName =
         el.getAttribute(`data-phx-${PHX_HOOK}`) ||
         el.getAttribute(this.binding(PHX_HOOK));
-      const hookDefinition = this.liveSocket.getHookCallbacks(hookName);
+
+      if (!hookName) {
+        return;
+      }
+
+      const hookDefinition = this.liveSocket.getHookDefinition(hookName);
 
       if (hookDefinition) {
         if (!el.id) {
@@ -1729,6 +1754,9 @@ export default class View {
         form: formEl,
         submitter: submitter,
       });
+    // store the submitter in the form element in order to trigger it
+    // for phx-trigger-action
+    DOM.putPrivate(formEl, "submitter", submitter);
     const cid = this.targetComponentID(formEl, targetCtx);
     if (LiveUploader.hasUploadsInProgress(formEl)) {
       const [ref, _els] = refGenerator();
@@ -1905,6 +1933,7 @@ export default class View {
       (el) => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange),
     );
     if (inputs.length === 0) {
+      callback();
       return;
     }
 
@@ -1999,7 +2028,26 @@ export default class View {
         (form) =>
           form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore",
       )
-      .map((form) => form.cloneNode(true))
+      .map((form) => {
+        // we perform a shallow clone and manually copy all elements
+        const clonedForm = form.cloneNode(false);
+        // we need to copy the private data as it contains
+        // the information about touched fields
+        DOM.copyPrivates(clonedForm, form);
+        Array.from(form.elements).forEach((el) => {
+          // we need to clone all child nodes as well,
+          // because those could also be selects
+          const clonedEl = el.cloneNode(true);
+          // we call morphdom to copy any special state
+          // like the selected option of a <select> element;
+          // this should be plenty fast as we call it on a small subset of the DOM,
+          // single inputs or a select with children
+          morphdom(clonedEl, el);
+          DOM.copyPrivates(clonedEl, el);
+          clonedForm.appendChild(clonedEl);
+        });
+        return clonedForm;
+      })
       .reduce((acc, form) => {
         acc[form.id] = form;
         return acc;
@@ -2010,6 +2058,12 @@ export default class View {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
       return DOM.findComponentNodeList(this.el, cid).length === 0;
     });
+
+    const onError = (error) => {
+      if (!this.isDestroyed()) {
+        logError("Failed to push components destroyed", error);
+      }
+    };
 
     if (willDestroyCIDs.length > 0) {
       // we must reset the render change tracking for cids that
@@ -2034,15 +2088,11 @@ export default class View {
                 .then(({ resp }) => {
                   this.rendered.pruneCIDs(resp.cids);
                 })
-                .catch((error) =>
-                  logError("Failed to push components destroyed", error),
-                );
+                .catch(onError);
             }
           });
         })
-        .catch((error) =>
-          logError("Failed to push components destroyed", error),
-        );
+        .catch(onError);
     }
   }
 

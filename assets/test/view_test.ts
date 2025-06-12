@@ -29,10 +29,17 @@ const simulateUsedInput = (input) => {
 };
 
 describe("View + DOM", function () {
+  let liveSocket;
+
   beforeEach(() => {
     submitBefore = HTMLFormElement.prototype.submit;
     global.Phoenix = { Socket };
     global.document.body.innerHTML = liveViewDOM().outerHTML;
+  });
+
+  afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+    liveSocket = null;
   });
 
   afterAll(() => {
@@ -40,7 +47,7 @@ describe("View + DOM", function () {
   });
 
   test("update", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const updateDiff = {
       s: ["<h2>", "</h2>"],
@@ -58,7 +65,7 @@ describe("View + DOM", function () {
     appendTitle({}, "Foo");
 
     const titleEl = document.querySelector("title");
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const updateDiff = {
       s: ["<h2>", "</h2>"],
@@ -87,11 +94,18 @@ describe("View + DOM", function () {
   test("pushWithReply", function () {
     expect.assertions(1);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
 
     const view = simulateJoinedView(el, liveSocket);
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.value).toBe("increment=1");
         return {
@@ -111,7 +125,7 @@ describe("View + DOM", function () {
   });
 
   test("pushWithReply with update", function () {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
 
     const view = simulateJoinedView(el, liveSocket);
@@ -151,12 +165,19 @@ describe("View + DOM", function () {
   test("pushEvent", function () {
     expect.assertions(3);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const input = el.querySelector("input");
 
     const view = simulateJoinedView(el, liveSocket);
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.type).toBe("keyup");
         expect(payload.event).toBeDefined();
@@ -176,12 +197,19 @@ describe("View + DOM", function () {
   test("pushEvent as checkbox not checked", function () {
     expect.assertions(1);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const input = el.querySelector('input[type="checkbox"]');
 
     const view = simulateJoinedView(el, liveSocket);
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.value).toEqual({});
         return {
@@ -199,7 +227,7 @@ describe("View + DOM", function () {
   test("pushEvent as checkbox when checked", function () {
     expect.assertions(1);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const input: HTMLInputElement = el.querySelector('input[type="checkbox"]');
     const view = simulateJoinedView(el, liveSocket);
@@ -207,6 +235,13 @@ describe("View + DOM", function () {
     input.checked = true;
 
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.value).toEqual({ value: "on" });
         return {
@@ -224,7 +259,7 @@ describe("View + DOM", function () {
   test("pushEvent as checkbox with value", function () {
     expect.assertions(1);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const input: HTMLInputElement = el.querySelector('input[type="checkbox"]');
     const view = simulateJoinedView(el, liveSocket);
@@ -233,6 +268,13 @@ describe("View + DOM", function () {
     input.checked = true;
 
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.value).toEqual({ value: "1" });
         return {
@@ -256,6 +298,13 @@ describe("View + DOM", function () {
     simulateUsedInput(input);
     const view = simulateJoinedView(el, liveSocket);
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.type).toBe("form");
         expect(payload.event).toBeDefined();
@@ -320,13 +369,20 @@ describe("View + DOM", function () {
   test("pushInput with nameless input", function () {
     expect.assertions(4);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const input = el.querySelector("input");
     input.removeAttribute("name");
     simulateUsedInput(input);
     const view = simulateJoinedView(el, liveSocket);
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.type).toBe("form");
         expect(payload.event).toBeDefined();
@@ -345,9 +401,8 @@ describe("View + DOM", function () {
   });
 
   test("getFormsForRecovery", function () {
-    let view,
-      html,
-      liveSocket = new LiveSocket("/live", Socket);
+    let view, html;
+    liveSocket = new LiveSocket("/live", Socket);
 
     html = '<form id="my-form" phx-change="cg"><input name="foo"></form>';
     view = new View(liveViewDOM(html), liveSocket);
@@ -927,6 +982,8 @@ describe("View + DOM", function () {
 
 let submitBefore;
 describe("View", function () {
+  let liveSocket;
+
   beforeEach(() => {
     submitBefore = HTMLFormElement.prototype.submit;
     global.Phoenix = { Socket };
@@ -934,6 +991,8 @@ describe("View", function () {
   });
 
   afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+    liveSocket = null;
     HTMLFormElement.prototype.submit = submitBefore;
     jest.useRealTimers();
   });
@@ -943,7 +1002,7 @@ describe("View", function () {
   });
 
   test("sets defaults", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const view = simulateJoinedView(el, liveSocket);
     expect(view.liveSocket).toBe(liveSocket);
@@ -956,24 +1015,25 @@ describe("View", function () {
   });
 
   test("binding", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const view = simulateJoinedView(el, liveSocket);
     expect(view.binding("submit")).toEqual("phx-submit");
   });
 
   test("getSession", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const view = simulateJoinedView(el, liveSocket);
     expect(view.getSession()).toEqual("abc123");
   });
 
   test("getStatic", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     let view = simulateJoinedView(el, liveSocket);
     expect(view.getStatic()).toEqual(null);
+    view.destroy();
 
     el.setAttribute("data-phx-static", "foo");
     view = simulateJoinedView(el, liveSocket);
@@ -981,7 +1041,7 @@ describe("View", function () {
   });
 
   test("showLoader and hideLoader", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = document.querySelector("[data-phx-session]");
 
     const view = simulateJoinedView(el, liveSocket);
@@ -997,7 +1057,7 @@ describe("View", function () {
 
   test("displayError and hideLoader", (done) => {
     jest.useFakeTimers();
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const loader = document.createElement("span");
     const phxView = document.querySelector("[data-phx-session]");
     phxView.parentNode.insertBefore(loader, phxView.nextSibling);
@@ -1026,7 +1086,7 @@ describe("View", function () {
   });
 
   test("join", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const _view = simulateJoinedView(el, liveSocket);
 
@@ -1035,7 +1095,7 @@ describe("View", function () {
   });
 
   test("sends _track_static and _mounts on params", () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const view = new View(el, liveSocket);
     stubChannel(view);
@@ -1077,8 +1137,15 @@ describe("View", function () {
 });
 
 describe("View Hooks", function () {
+  let liveSocket;
+
   beforeEach(() => {
     global.document.body.innerHTML = liveViewDOM().outerHTML;
+  });
+
+  afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+    liveSocket = null;
   });
 
   afterAll(() => {
@@ -1086,7 +1153,7 @@ describe("View Hooks", function () {
   });
 
   test("phx-mounted", (done) => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
 
     const html =
@@ -1155,7 +1222,7 @@ describe("View Hooks", function () {
         },
       },
     };
-    const liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
     const el = liveViewDOM();
 
     const view = simulateJoinedView(el, liveSocket);
@@ -1431,9 +1498,16 @@ function liveViewComponent() {
 }
 
 describe("View + Component", function () {
+  let liveSocket;
+
   beforeEach(() => {
     global.Phoenix = { Socket };
     global.document.body.innerHTML = liveViewComponent().outerHTML;
+  });
+
+  afterEach(() => {
+    liveSocket && liveSocket.destroyAllViews();
+    liveSocket = null;
   });
 
   afterAll(() => {
@@ -1441,7 +1515,7 @@ describe("View + Component", function () {
   });
 
   test("targetComponentID", async () => {
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewComponent();
     const view = simulateJoinedView(el, liveSocket);
     const form = el.querySelector('input[type="checkbox"]');
@@ -1453,21 +1527,28 @@ describe("View + Component", function () {
   test("pushEvent", (done) => {
     expect.assertions(17);
 
-    const liveSocket = new LiveSocket("/live", Socket);
+    liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewComponent();
     const targetCtx = el.querySelector(".form-wrapper");
 
     const view = simulateJoinedView(el, liveSocket);
     const input = view.el.querySelector("input[id=plus]");
     const channelStub = {
+      leave() {
+        return {
+          receive(_status, _cb) {
+            return this;
+          },
+        };
+      },
       push(_evt, payload, _timeout) {
         expect(payload.type).toBe("keyup");
         expect(payload.event).toBeDefined();
         expect(payload.value).toEqual({ value: "1" });
         expect(payload.cid).toEqual(0);
         return {
-          receive(status, callback) {
-            callback({ ref: payload.ref });
+          receive(_status, cb) {
+            cb({ ref: payload.ref });
             return this;
           },
         };

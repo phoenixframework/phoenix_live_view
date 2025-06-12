@@ -17,20 +17,21 @@ defmodule Phoenix.LiveView.LiveReloadTest do
   @endpoint Endpoint
   @pubsub PubSub
 
-  @live_reload_config [
-    url: "ws://localhost:4004",
-    patterns: [
-      ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$"
-    ],
-    notify: [
-      live_view: [
-        ~r"lib/test_auth_web/live/.*(ex)$"
+  defp live_reload_config,
+    do: [
+      url: "ws://localhost:4004",
+      patterns: [
+        ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$"
+      ],
+      notify: [
+        live_view: [
+          ~r"lib/test_auth_web/live/.*(ex)$"
+        ]
       ]
     ]
-  ]
 
   test "LiveView renders again when the phoenix_live_reload is received" do
-    %{conn: conn, socket: socket} = start(@live_reload_config)
+    %{conn: conn, socket: socket} = start(live_reload_config())
 
     Application.put_env(:phoenix_live_view, :vsn, 1)
     {:ok, lv, _html} = live(conn, "/live-reload")
@@ -54,7 +55,7 @@ defmodule Phoenix.LiveView.LiveReloadTest do
 
   test "custom reloader" do
     reloader = {__MODULE__, :reload, [self()]}
-    %{conn: conn, socket: socket} = start([reloader: reloader] ++ @live_reload_config)
+    %{conn: conn, socket: socket} = start([reloader: reloader] ++ live_reload_config())
 
     Application.put_env(:phoenix_live_view, :vsn, 1)
     {:ok, lv, _html} = live(conn, "/live-reload")

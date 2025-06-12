@@ -17,6 +17,7 @@ import {
   PHX_PORTAL,
   PHX_TELEPORTED_REF,
   PHX_TELEPORTED_SRC,
+  PHX_RUNTIME_HOOK,
 } from "./constants";
 
 import { detectDuplicateIds, detectInvalidStreamInserts, isCid } from "./utils";
@@ -164,6 +165,14 @@ export default class DOMPatch {
           }
         },
         onBeforeNodeAdded: (el) => {
+          // don't add update_only nodes if they did not already exist
+          if (
+            this.getStreamInsert(el)?.updateOnly &&
+            !this.streamComponentRestore[el.id]
+          ) {
+            return false;
+          }
+
           DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom);
           this.trackBefore("added", el);
 
@@ -204,6 +213,12 @@ export default class DOMPatch {
           ) {
             this.trackAfter("phxChildAdded", el);
           }
+
+          // data-phx-runtime-hook
+          if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
+            this.handleRuntimeHook(el, source);
+          }
+
           added.push(el);
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
@@ -422,8 +437,8 @@ export default class DOMPatch {
 
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
-        inserts.forEach(([key, streamAt, limit]) => {
-          this.streamInserts[key] = { ref, streamAt, limit, reset };
+        inserts.forEach(([key, streamAt, limit, updateOnly]) => {
+          this.streamInserts[key] = { ref, streamAt, limit, reset, updateOnly };
         });
         if (reset !== undefined) {
           DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
@@ -508,6 +523,21 @@ export default class DOMPatch {
 
     if (externalFormTriggered) {
       liveSocket.unload();
+      // check for submitter and inject it as hidden input for external submit;
+      // In theory, it could happen that the stored submitter is outdated and doesn't
+      // exist in the DOM any more, but this is unlikely, so we just accept it for now.
+      const submitter = DOM.private(externalFormTriggered, "submitter");
+      if (submitter && submitter.name && targetContainer.contains(submitter)) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        const formId = submitter.getAttribute("form");
+        if (formId) {
+          input.setAttribute("form", formId);
+        }
+        input.name = submitter.name;
+        input.value = submitter.value;
+        submitter.parentElement.insertBefore(input, submitter);
+      }
       // use prototype's submit in case there's a form control with name or id of "submit"
       // https://developer.mozilla.org/en-US/docs/Web/API/HTMLFormElement/submit
       Object.getPrototypeOf(externalFormTriggered).submit.call(
@@ -728,5 +758,27 @@ export default class DOMPatch {
     // to cleanup when the view is destroyed, in case the portal target
     // is outside the view itself
     this.view.pushPortalElementId(toTeleport.id);
+  }
+  
+  handleRuntimeHook(el, source) {
+    // usually, scripts are not executed when morphdom adds them to the DOM
+    // we special case runtime colocated hooks
+    const name = el.getAttribute(PHX_RUNTIME_HOOK);
+    let nonce = el.hasAttribute("nonce") ? el.getAttribute("nonce") : null;
+    if (el.hasAttribute("nonce")) {
+      const template = document.createElement("template");
+      template.innerHTML = source;
+      nonce = template.content
+        .querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`)
+        .getAttribute("nonce");
+    }
+    const script = document.createElement("script");
+    script.textContent = el.textContent;
+    DOM.mergeAttrs(script, el, { isIgnored: false });
+    if (nonce) {
+      script.nonce = nonce;
+    }
+    el.replaceWith(script);
+    el = script;
   }
 }

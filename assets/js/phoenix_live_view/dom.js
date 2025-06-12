@@ -23,6 +23,7 @@ import {
   PHX_EVENT_CLASSES,
   THROTTLED,
   PHX_PORTAL,
+  PHX_STREAM,
 } from "./constants";
 
 import { logError } from "./utils";
@@ -604,6 +605,18 @@ const DOM = {
   },
 
   isFormInput(el) {
+    if (el.localName && customElements.get(el.localName)) {
+      // Custom Elements may be form associated. This allows them
+      // to participate within a form's lifecycle, including form
+      // validity and form submissions.
+      // The spec for Form Associated custom elements requires the
+      // custom element's class to contain a static boolean value of `formAssociated`
+      // which identifies this class as allowed to associate to a form.
+      // See https://html.spec.whatwg.org/dev/custom-elements.html#custom-elements-face-example
+      // for details.
+      return customElements.get(el.localName)[`formAssociated`];
+    }
+
     return (
       /^(?:input|select|textarea)$/i.test(el.tagName) && el.type !== "button"
     );
@@ -631,7 +644,9 @@ const DOM = {
   },
 
   cleanChildNodes(container, phxUpdate) {
-    if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend"])) {
+    if (
+      DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])
+    ) {
       const toRemove = [];
       container.childNodes.forEach((childNode) => {
         if (!childNode.id) {

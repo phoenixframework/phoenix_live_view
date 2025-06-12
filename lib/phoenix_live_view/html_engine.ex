@@ -221,14 +221,23 @@ defmodule Phoenix.LiveView.HTMLEngine do
   @impl true
   def annotate_body(%Macro.Env{} = caller) do
     if Application.get_env(:phoenix_live_view, :debug_heex_annotations, false) do
-      %Macro.Env{module: mod, function: {func, _}, file: file, line: line} = caller
-      line = if line == 0, do: 1, else: line
-      file = Path.relative_to_cwd(file)
-
-      before = "<#{inspect(mod)}.#{func}> #{file}:#{line}"
-      aft = "</#{inspect(mod)}.#{func}>"
-      {"<!-- #{before} (#{current_otp_app()}) -->", "<!-- #{aft} -->"}
+      %Macro.Env{module: mod, function: {fun, _}, file: file, line: line} = caller
+      name = "#{inspect(mod)}.#{fun}"
+      annotate_source(name, file, line)
     end
+  end
+
+  @impl true
+  def annotate_slot(name, %{line: line}, _close_meta, %{file: file}) do
+    if Application.get_env(:phoenix_live_view, :debug_heex_annotations, false) do
+      annotate_source(":#{name}", file, line)
+    end
+  end
+
+  defp annotate_source(name, file, line) do
+    line = if line == 0, do: 1, else: line
+    file = Path.relative_to_cwd(file)
+    {"<!-- <#{name}> #{file}:#{line} (#{current_otp_app()}) -->", "<!-- </#{name}> -->"}
   end
 
   @impl true

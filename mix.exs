@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.MixProject do
     [
       app: :phoenix_live_view,
       version: @version,
-      elixir: "~> 1.14.1 or ~> 1.15",
+      elixir: "~> 1.15",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       test_options: [docs: true],
@@ -44,7 +44,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp deps do
     [
-      {:phoenix, "~> 1.6.15 or ~> 1.7.0"},
+      {:phoenix, "~> 1.6.15 or ~> 1.7.0 or ~> 1.8.0-rc"},
       {:plug, "~> 1.15"},
       {:phoenix_template, "~> 1.0"},
       {:phoenix_html, "~> 3.3 or ~> 4.0 or ~> 4.1"},
@@ -54,9 +54,9 @@ defmodule Phoenix.LiveView.MixProject do
       {:jason, "~> 1.0", optional: true},
       {:lazy_html, "~> 0.1.0", optional: true},
       {:ex_doc, "~> 0.29", only: :docs},
-      {:makeup_elixir, "~> 1.0.1 or ~> 1.1", only: :docs},
-      {:makeup_eex, "~> 2.0", only: :docs},
-      {:makeup_syntect, "~> 0.1.0", only: :docs},
+      {:makeup_elixir, "~> 1.0.1 or ~> 1.1", only: [:docs, :e2e]},
+      {:makeup_eex, "~> 2.0", only: [:docs, :e2e]},
+      {:makeup_syntect, "~> 0.1.0", only: [:docs, :e2e]},
       {:html_entities, ">= 0.0.0", only: :test},
       {:phoenix_live_reload, "~> 1.4", only: :test},
       {:phoenix_html_helpers, "~> 1.0", only: :test},

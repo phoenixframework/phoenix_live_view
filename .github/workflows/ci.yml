@@ -13,9 +13,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.14.5
-            otp: 24.3
-
           - elixir: 1.15.4
             otp: 25.3
 
@@ -23,13 +20,13 @@ jobs:
             otp: 26.2
 
           # update coverage report as well
-          - elixir: 1.18.1
-            otp: 27.2
+          - elixir: 1.18.4
+            otp: 27.3
             lint: lint
 
           # run against latest Elixir to catch warnings early
           - elixir: main
-            otp: maint-27
+            otp: maint-28
 
     runs-on: ubuntu-latest
 
@@ -102,8 +99,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.18.1
-            otp: 27.2
+          - elixir: 1.18.4
+            otp: 27.3
 
     runs-on: ubuntu-latest
     steps:
@@ -167,8 +164,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.18.1
-            otp: 27.2
+          - elixir: 1.18.4
+            otp: 27.3
 
     runs-on: ubuntu-latest
     container:
@@ -243,6 +240,12 @@ jobs:
     runs-on: ubuntu-latest
     needs: [mix_test, npm_test, e2e_test]
 
+    strategy:
+      matrix:
+        include:
+          - elixir: 1.18.4
+            otp: 27.3
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -250,14 +253,14 @@ jobs:
       - name: Set up Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: 1.18.1
-          otp-version: 27.2
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
 
       - name: Download mix unit coverage
         uses: actions/download-artifact@v4
         with:
           # This needs to be updated when changing the test matrix
-          name: mix-test-coverage-27.2-1.18.1
+          name: mix-test-coverage-${{ matrix.otp }}-${{ matrix.elixir }}
           path: cover/
 
       - name: Download mix e2e coverage
@@ -272,9 +275,9 @@ jobs:
           path: |
             deps
             _build
-          key: deps-${{ runner.os }}-27.2-1.18.1-${{ hashFiles('**/mix.lock') }}
+          key: deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('**/mix.lock') }}
           restore-keys: |
-            deps-${{ runner.os }}-27.2-1.18.1
+            deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
 
       - name: Generate mix coverage report
         run: mix test.coverage

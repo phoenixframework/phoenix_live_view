@@ -27,9 +27,17 @@ import {
   RELOAD_JITTER_MAX,
   PHX_REF_SRC,
   PHX_RELOAD_STATUS,
+  PHX_RUNTIME_HOOK,
 } from "./constants";
 
-import { clone, closestPhxBinding, closure, debug, maybe } from "./utils";
+import {
+  clone,
+  closestPhxBinding,
+  closure,
+  debug,
+  maybe,
+  logError,
+} from "./utils";
 
 import Browser from "./browser";
 import DOM from "./dom";
@@ -83,6 +91,8 @@ export default class LiveSocket {
     this.sessionStorage = opts.sessionStorage || window.sessionStorage;
     this.boundTopLevelEvents = false;
     this.boundEventNames = new Set();
+    this.blockPhxChangeWhileComposing =
+      opts.blockPhxChangeWhileComposing || false;
     this.serverCloseRef = null;
     this.domCallbacks = Object.assign(
       {
@@ -263,6 +273,10 @@ export default class LiveSocket {
     this.transitions.after(callback);
   }
 
+  asyncTransition(promise) {
+    this.transitions.addAsyncTransition(promise);
+  }
+
   transition(time, onStart, onDone = function () {}) {
     this.transitions.addTransition(time, onStart, onDone);
   }
@@ -318,10 +332,44 @@ export default class LiveSocket {
     }, afterMs);
   }
 
-  getHookCallbacks(name) {
-    return name && name.startsWith("Phoenix.")
-      ? Hooks[name.split(".")[1]]
-      : this.hooks[name];
+  getHookDefinition(name) {
+    if (!name) {
+      return;
+    }
+    return (
+      this.maybeInternalHook(name) ||
+      this.hooks[name] ||
+      this.maybeRuntimeHook(name)
+    );
+  }
+
+  maybeInternalHook(name) {
+    return name && name.startsWith("Phoenix.") && Hooks[name.split(".")[1]];
+  }
+
+  maybeRuntimeHook(name) {
+    const runtimeHook = document.querySelector(
+      `script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`,
+    );
+    if (!runtimeHook) {
+      return;
+    }
+    let callbacks = window[`phx_hook_${name}`];
+    if (!callbacks || typeof callbacks !== "function") {
+      logError("a runtime hook must be a function", runtimeHook);
+      return;
+    }
+    const hookDefiniton = callbacks();
+    if (
+      hookDefiniton &&
+      (typeof hookDefiniton === "object" || typeof hookDefiniton === "function")
+    ) {
+      return hookDefiniton;
+    }
+    logError(
+      "runtime hook must return an object with hook callbacks or an instance of ViewHook",
+      runtimeHook,
+    );
   }
 
   isUnloaded() {
@@ -471,8 +519,15 @@ export default class LiveSocket {
   }
 
   owner(childEl, callback) {
+    let view;
     const viewEl = DOM.closestViewEl(childEl);
-    const view = (viewEl && this.getViewByEl(viewEl)) || this.main;
+    if (viewEl) {
+      // it can happen that we find a view that is already destroyed;
+      // in that case we DO NOT want to fallback to the main element
+      view = this.getViewByEl(viewEl);
+    } else {
+      view = this.main;
+    }
     return view && callback ? callback(view) : view;
   }
 
@@ -1074,11 +1129,7 @@ export default class LiveSocket {
         }
         const phxChange = this.binding("change");
         const input = e.target;
-        // do not fire phx-change if we are in the middle of a composition session
-        // https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/isComposing
-        // Safari has issues if the input is updated while composing
-        // see https://github.com/phoenixframework/phoenix_live_view/issues/3322
-        if (e.isComposing) {
+        if (this.blockPhxChangeWhileComposing && e.isComposing) {
           const key = `composition-listener-${type}`;
           if (!DOM.private(input, key)) {
             DOM.putPrivate(input, key, true);
@@ -1207,6 +1258,7 @@ export default class LiveSocket {
 class TransitionSet {
   constructor() {
     this.transitions = new Set();
+    this.promises = new Set();
     this.pendingOps = [];
   }
 
@@ -1215,6 +1267,7 @@ class TransitionSet {
       clearTimeout(timer);
       this.transitions.delete(timer);
     });
+    this.promises.clear();
     this.flushPendingOps();
   }
 
@@ -1236,12 +1289,20 @@ class TransitionSet {
     this.transitions.add(timer);
   }
 
+  addAsyncTransition(promise) {
+    this.promises.add(promise);
+    promise.then(() => {
+      this.promises.delete(promise);
+      this.flushPendingOps();
+    });
+  }
+
   pushPendingOp(op) {
     this.pendingOps.push(op);
   }
 
   size() {
-    return this.transitions.size;
+    return this.transitions.size + this.promises.size;
   }
 
   flushPendingOps() {

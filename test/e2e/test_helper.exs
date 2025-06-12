@@ -37,6 +37,8 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     </script>
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
+    <script :if={assigns[:tailwind]} src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4">
+    </script>
     {assigns[:pre_script]}
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
@@ -61,7 +63,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
       window.liveSocket = liveSocket
     </script>
     <style>
-      * { font-size: 1.1em; }
+      * { font-size: 1.1rem; }
     </style>
     {@inner_content}
     """
@@ -107,6 +109,14 @@ defmodule Phoenix.LiveViewTest.E2E.EvalController do
   end
 end
 
+defmodule Phoenix.LiveViewTest.E2E.SubmitController do
+  use Phoenix.Controller
+
+  def submit(conn, params) do
+    send_resp(conn, 200, Phoenix.json_library().encode!(params))
+  end
+end
+
 defmodule Phoenix.LiveViewTest.E2E.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
@@ -144,6 +154,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/form/stream", E2E.FormStreamLive
       live "/js", E2E.JsLive
       live "/select", E2E.SelectLive
+      live "/components", E2E.ComponentsLive
     end
 
     scope "/portal", Phoenix.LiveViewTest do
@@ -181,6 +192,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3709", Issue3709Live
       live "/3709/:id", Issue3709Live
       live "/3719", Issue3719Live
+      live "/3814", Issue3814Live
+      live "/3819", Issue3819Live
     end
   end
 
@@ -210,6 +223,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
 
     live "/form/feedback", FormFeedbackLive
     live "/errors", ErrorLive
+    live "/colocated", ColocatedLive
 
     scope "/issues" do
       live "/2965", Issue2965Live
@@ -221,6 +235,8 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3681", Issue3681Live
       live "/3681/away", Issue3681.AwayLive
     end
+
+    post "/submit", SubmitController, :submit
   end
 
   post "/eval", Phoenix.LiveViewTest.E2E.EvalController, :eval
@@ -240,6 +256,11 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
 
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
+
+  plug Plug.Static,
+    from: Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view"),
+    at: "/assets/colocated"
+
   plug Plug.Static, from: System.tmp_dir!(), at: "/tmp"
 
   plug :health_check
@@ -278,6 +299,9 @@ end
   )
 
 IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
+
+# we need to manually compile the colocated hooks / js
+Phoenix.LiveView.ColocatedJS.compile()
 
 if not IEx.started?() do
   # when running the test server manually, we halt after

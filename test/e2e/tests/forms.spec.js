@@ -105,6 +105,7 @@ for (const path of ["/form/nested", "/form"]) {
 
         await page.locator("input[name=b]").fill("test");
         await page.locator("input[name=c]").fill("hello world");
+        await page.locator("select[name=d]").selectOption("bar");
         await expect(page.locator("input[name=c]")).toBeFocused();
         await syncLV(page);
 
@@ -132,6 +133,7 @@ for (const path of ["/form/nested", "/form"]) {
         if (path === "/form") {
           await expect(page.locator("input[name=c]")).toBeFocused();
         }
+        await expect(page.locator("select[name=d]")).toHaveValue("bar");
 
         expect(webSocketEvents).toEqual(
           expect.arrayContaining([
@@ -139,9 +141,7 @@ for (const path of ["/form/nested", "/form"]) {
             { type: "received", payload: expect.stringContaining("phx_reply") },
             {
               type: "sent",
-              payload: expect.stringMatching(
-                /event.*_unused_a=&a=foo&_unused_b=&b=test/,
-              ),
+              payload: expect.stringMatching(/event.*_unused_a=&a=foo&b=test/),
             },
           ]),
         );
@@ -258,9 +258,7 @@ for (const path of ["/form/nested", "/form"]) {
             { type: "received", payload: expect.stringContaining("phx_reply") },
             {
               type: "sent",
-              payload: expect.stringMatching(
-                /event.*_unused_a=&a=foo&_unused_b=&b=test/,
-              ),
+              payload: expect.stringMatching(/event.*_unused_a=&a=foo&b=test/),
             },
           ]),
         );
@@ -293,13 +291,13 @@ for (const path of ["/form/nested", "/form"]) {
       page,
       `
       <<"#PID"::binary, pid::binary>> = inspect(self())
-  
+
       pid_parts =
         pid
         |> String.trim_leading("<")
         |> String.trim_trailing(">")
         |> String.split(".")
-  
+
       %{lv_pid: pid_parts}
     `,
       nested ? "#nested" : undefined,

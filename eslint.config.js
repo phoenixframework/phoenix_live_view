@@ -22,6 +22,7 @@ const sharedRules = {
 export default tseslint.config([
   {
     ignores: [
+      "_build/",
       "assets/js/types/",
       "test/e2e/test-results/",
       "coverage/",

@@ -2253,29 +2253,26 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
-  # TODO: Remove this `if` when we require Elixir 1.14+
-  if function_exported?(EEx, :tokenize, 2) do
-    test "handle EEx comments" do
-      assert_formatter_doesnt_change("""
-      <div>
-        <%!-- some --%>
-        <%!-- comment --%>
-        <%!--
-          <div>
-            <%= @user.name %>
-          </div>
-        --%>
-      </div>
-      """)
+  test "handle EEx comments" do
+    assert_formatter_doesnt_change("""
+    <div>
+      <%!-- some --%>
+      <%!-- comment --%>
+      <%!--
+        <div>
+          <%= @user.name %>
+        </div>
+      --%>
+    </div>
+    """)
 
-      assert_formatter_doesnt_change("""
-      <div>
-        <%= # some %>
-        <%= # comment %>
-        <%= # lines %>
-      </div>
-      """)
-    end
+    assert_formatter_doesnt_change("""
+    <div>
+      <%= # some %>
+      <%= # comment %>
+      <%= # lines %>
+    </div>
+    """)
   end
 
   test "supports attribute_formatters" do

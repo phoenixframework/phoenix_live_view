@@ -405,27 +405,57 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     alias Phoenix.LiveViewTest.Support.DebugAnno
     import Phoenix.LiveViewTest.Support.DebugAnno
 
-    test "without root tag" do
+    test "components without tags" do
       assigns = %{}
       assert compile("<DebugAnno.remote value='1'/>") == "REMOTE COMPONENT: Value: 1"
       assert compile("<.local value='1'/>") == "LOCAL COMPONENT: Value: 1"
     end
 
-    test "with root tag" do
+    test "components with tags" do
       assigns = %{}
 
-      assert compile("<DebugAnno.remote_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.remote_with_root> test/support/live_views/debug_anno.exs:11 () --><div>REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.remote_with_root> -->"
+      assert compile("<DebugAnno.remote_with_tags value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.remote_with_tags> test/support/live_views/debug_anno.exs:11 () --><div data-phx-loc=\"12\">REMOTE COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.remote_with_tags> -->"
 
-      assert compile("<.local_with_root value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> -->"
+      assert compile("<.local_with_tags value='1'/>") ==
+               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> test/support/live_views/debug_anno.exs:19 () --><div data-phx-loc=\"20\">LOCAL COMPONENT: Value: 1</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> -->"
     end
 
     test "nesting" do
       assigns = %{}
 
       assert compile("<DebugAnno.nested value='1'/>") ==
-               "<!-- <Phoenix.LiveViewTest.Support.DebugAnno.nested> test/support/live_views/debug_anno.exs:23 () --><div>\n  <!-- @caller test/support/live_views/debug_anno.exs:25 () --><!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> test/support/live_views/debug_anno.exs:19 () --><div>LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_root> -->\n</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.nested> -->"
+               """
+               <!-- <Phoenix.LiveViewTest.Support.DebugAnno.nested> test/support/live_views/debug_anno.exs:23 () --><div data-phx-loc=\"24\">
+                 <!-- @caller test/support/live_views/debug_anno.exs:25 () --><!-- <Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> test/support/live_views/debug_anno.exs:19 () --><div data-phx-loc=\"20\">LOCAL COMPONENT: Value: local</div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.local_with_tags> -->
+               </div><!-- </Phoenix.LiveViewTest.Support.DebugAnno.nested> -->\
+               """
+    end
+
+    test "slots without tags" do
+      assigns = %{}
+
+      assert compile("<DebugAnno.slot />") ==
+               """
+               <!-- <Phoenix.LiveViewTest.Support.DebugAnno.slot> test/support/live_views/debug_anno.exs:31 () --><!-- @caller test/support/live_views/debug_anno.exs:32 () -->
+                 1
+               ,
+                 2
+               <!-- </Phoenix.LiveViewTest.Support.DebugAnno.slot> -->\
+               """
+    end
+
+    test "slots with tags" do
+      assigns = %{}
+
+      assert compile("<DebugAnno.slot_with_tags />") ==
+               """
+               <!-- <Phoenix.LiveViewTest.Support.DebugAnno.slot_with_tags> test/support/live_views/debug_anno.exs:40 () --><!-- @caller test/support/live_views/debug_anno.exs:41 () --><!-- <:inner_block> test/support/live_views/debug_anno.exs:41 () -->
+                 <div data-phx-loc=\"43\">1</div>
+               <!-- </:inner_block> --><!-- <:separator> test/support/live_views/debug_anno.exs:42 () --><hr data-phx-loc=\"42\"><!-- </:separator> --><!-- <:inner_block> test/support/live_views/debug_anno.exs:41 () -->
+                 <div data-phx-loc=\"43\">2</div>
+               <!-- </:inner_block> --><!-- </Phoenix.LiveViewTest.Support.DebugAnno.slot_with_tags> -->\
+               """
     end
   end
 

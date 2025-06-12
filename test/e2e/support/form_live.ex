@@ -143,6 +143,9 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
       <input type="text" name="a" readonly value={@params["a"]} />
       <input type="text" name="b" value={@params["b"]} />
       <input type="text" name="c" value={@params["c"]} />
+      <select name="d">
+        {Phoenix.HTML.Form.options_for_select(["foo", "bar", "baz"], @params["d"])}
+      </select>
       <button type="submit" phx-disable-with="Submitting" phx-click={JS.dispatch("test")}>
         Submit with JS
       </button>
