@@ -3488,16 +3488,19 @@ defmodule Phoenix.Component do
   ## Examples
 
   ```heex
-  <.portal id="modal" target="target-id">
+  <.portal id="modal" target="body">
     ...
   </.portal>
-  <!-- The content of the portal will be rendered in the div below -->
-  <div id="target-id"></div>
   ```
   """
 
   attr.(:id, :string, required: true)
-  attr.(:target, :string, required: true)
+
+  attr.(:target, :string,
+    required: true,
+    doc: "A CSS selector that identifies the target. The target must be unique."
+  )
+
   attr.(:class, :string, default: nil, doc: "The class to apply to the portal wrapper.")
   attr.(:container, :string, default: "div", doc: "The HTML tag to use as the portal wrapper.")
   slot.(:inner_block, required: true)

@@ -26,7 +26,7 @@ function createViewWithPortal(rootId = "root") {
 
 function createHtmlWithPortal(id, targetId, content) {
   const portalHtml = `
-    <template id="${id}" ${PHX_PORTAL}="${targetId}">
+    <template id="${id}" ${PHX_PORTAL}="#${targetId}">
       <div id="portal-content-${id}">
         ${content}
       </div>
@@ -149,7 +149,7 @@ describe("Portal handling", () => {
     // Expect error when teleporting
     expect(() => {
       performPatch(view, content, html);
-    }).toThrow("portal target with id non-existent-target not found");
+    }).toThrow("portal target with selector #non-existent-target not found");
   });
 
   test("portal template without id throws error", () => {
@@ -159,7 +159,7 @@ describe("Portal handling", () => {
     // Create template with content that has no ID
     const html = `
       <div>
-        <template id="invalid-portal" ${PHX_PORTAL}="portal-target">
+        <template id="invalid-portal" ${PHX_PORTAL}="#portal-target">
           <div>Content without ID</div>
         </template>
       </div>
@@ -259,7 +259,7 @@ describe("Portal handling", () => {
     // Create template with skipped content
     const html = `
       <div>
-        <template id="skipped-portal" ${PHX_PORTAL}="portal-target">
+        <template id="skipped-portal" ${PHX_PORTAL}="#portal-target">
           <div id="portal-content-skipped">Hello World!</div>
         </template>
       </div>
@@ -275,7 +275,7 @@ describe("Portal handling", () => {
 
     const html2 = `
       <div>
-        <template id="skipped-portal" ${PHX_PORTAL}="portal-target">
+        <template id="skipped-portal" ${PHX_PORTAL}="#portal-target">
           <div id="portal-content-skipped" ${PHX_SKIP}></div>
         </template>
       </div>

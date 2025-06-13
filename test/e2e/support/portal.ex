@@ -12,6 +12,9 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       </script>
       <script src="/assets/phoenix/phoenix.min.js">
       </script>
+      <style>
+        [data-phx-session], [data-phx-portal-wrapper] { display: contents }
+      </style>
       <script type="module">
         import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
         import { computePosition, autoUpdate, offset } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.0/+esm';
@@ -66,7 +69,6 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
     </head>
 
     <body>
-      <div id="tooltips"></div>
       <main style="flex: 1; padding: 2rem;">
         {@inner_content}
       </main>
@@ -79,7 +81,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
     ~H"""
     {@inner_content}
 
-    <div id="portal-target"></div>
+    <div id="app-portal"></div>
     """
   end
 
@@ -137,7 +139,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
 
     <.button phx-click={JS.navigate("/form")}>Live navigate</.button>
 
-    <.portal :if={@render_modal} id="portal-source" target="root-portal">
+    <.portal :if={@render_modal} id="portal-source" target="#root-portal">
       <.modal id="my-modal">
         This is a modal.
         <p>DOM patching works as expected: {@count}</p>
@@ -145,13 +147,13 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       </.modal>
     </.portal>
 
-    <.portal id="portal-source-2" target="portal-target">
+    <.portal id="portal-source-2" target="#app-portal">
       <.modal id="my-modal-2">
         This is a second modal.
       </.modal>
     </.portal>
 
-    <.portal id="portal-with-live-component" target="root-portal">
+    <.portal id="portal-with-live-component" target="#root-portal">
       <.live_component module={Phoenix.LiveViewTest.E2E.PortalLive.LC} id="lc" />
     </.portal>
 
@@ -300,9 +302,13 @@ end
 defmodule Phoenix.LiveViewTest.E2E.PortalLive.NestedLive do
   use Phoenix.LiveView
 
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, :count, 0)}
+  end
+
   def handle_event("event", _params, socket) do
     IO.puts("Nested LV got event!")
-    {:noreply, socket}
+    {:noreply, assign(socket, :count, socket.assigns.count + 1)}
   end
 
   def render(assigns) do
@@ -310,21 +316,19 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive.NestedLive do
     <div class="border border-orange-200">
       <h1>Nested LiveView</h1>
 
-      <button phx-click="event">Toggle event in nested LV</button>
+      <p id="nested-event-count">{@count}</p>
 
-      <template id="nested-tpl" phx-portal="portal-target">
-        <div id="button-from-nested-lv">
-          <button phx-click="event">Toggle event in nested LV (from teleported button)</button>
-        </div>
-      </template>
+      <button phx-click="event">Trigger event in nested LV</button>
 
-      <template id="teleported-nested-lv" phx-portal="portal-target">
-        <div id="nested-lv-container">
-          {live_render(@socket, Phoenix.LiveViewTest.E2E.PortalLive.NestedTeleportedLive,
-            id: "nested-teleported"
-          )}
-        </div>
-      </template>
+      <.portal id="nested-lv-button" target="body">
+        <button phx-click="event">Trigger event in nested LV (from teleported button)</button>
+      </.portal>
+
+      <.portal id="nested-lv" target="body">
+        {live_render(@socket, Phoenix.LiveViewTest.E2E.PortalLive.NestedTeleportedLive,
+          id: "nested-teleported"
+        )}
+      </.portal>
     </div>
     """
   end
@@ -351,7 +355,7 @@ end
 defmodule Phoenix.LiveViewTest.E2E.PortalLive.LC do
   use Phoenix.LiveComponent
 
-  def update(assigns, socket) do
+  def update(_assigns, socket) do
     {:ok, stream(socket, :items, [%{id: 1, name: "Item 1"}, %{id: 2, name: "Item 2"}])}
   end
 
@@ -403,7 +407,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalTooltip do
       <div id={"#{@id}-activator"} aria-describedby={@id} data-activator>
         {render_slot(@activator)}
       </div>
-      <.portal :if={@portal} id={"#{@id}-portal"} target="tooltips">
+      <.portal :if={@portal} id={"#{@id}-portal"} target="body">
         <div
           id={@id}
           phx-mounted={JS.ignore_attributes(["style"])}
