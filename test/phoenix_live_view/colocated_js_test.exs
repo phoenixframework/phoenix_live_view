@@ -59,6 +59,9 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
                script,
                Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/")
              )
+  after
+    :code.delete(__MODULE__.TestComponent)
+    :code.purge(__MODULE__.TestComponent)
   end
 
   test "keyed script is available under default named export" do
@@ -124,6 +127,9 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
     assert [_match, export_name] = Regex.run(~r/export \{ (imp_.*) as components \}/, manifest)
     assert manifest =~ "#{export_name}[\"my-script\"] = #{js_name};"
+  after
+    :code.delete(__MODULE__.TestComponentKey)
+    :code.purge(__MODULE__.TestComponentKey)
   end
 
   test "raises for invalid name" do
@@ -143,5 +149,12 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
                      end
                    end
                  end
+  end
+
+  test "writes empty index.js when no colocated scripts exist" do
+    manifest = Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/index.js")
+    Phoenix.LiveView.ColocatedJS.compile()
+    assert File.exists?(manifest)
+    assert File.read!(manifest) == "export const hooks = {};\nexport default {};"
   end
 end

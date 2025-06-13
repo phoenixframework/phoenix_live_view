@@ -520,11 +520,11 @@ export default class LiveSocket {
 
   owner(childEl, callback) {
     let view;
-    const closestViewEl = childEl.closest(PHX_VIEW_SELECTOR);
-    if (closestViewEl) {
+    const viewEl = DOM.closestViewEl(childEl);
+    if (viewEl) {
       // it can happen that we find a view that is already destroyed;
       // in that case we DO NOT want to fallback to the main element
-      view = this.getViewByEl(closestViewEl);
+      view = this.getViewByEl(viewEl);
     } else {
       view = this.main;
     }

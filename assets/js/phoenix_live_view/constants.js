@@ -14,6 +14,7 @@ export const PHX_EVENT_CLASSES = [
   "phx-hook-loading",
 ];
 export const PHX_COMPONENT = "data-phx-component";
+export const PHX_VIEW_REF = "data-phx-view";
 export const PHX_LIVE_LINK = "data-phx-link";
 export const PHX_TRACK_STATIC = "track-static";
 export const PHX_LINK_STATE = "data-phx-link-state";
@@ -74,6 +75,9 @@ export const PHX_THROTTLE = "throttle";
 export const PHX_UPDATE = "update";
 export const PHX_STREAM = "stream";
 export const PHX_STREAM_REF = "data-phx-stream";
+export const PHX_PORTAL = "data-phx-portal";
+export const PHX_TELEPORTED_REF = "data-phx-teleported";
+export const PHX_TELEPORTED_SRC = "data-phx-teleported-src";
 export const PHX_RUNTIME_HOOK = "data-phx-runtime-hook";
 export const PHX_KEY = "key";
 export const PHX_PRIVATE = "phxPrivate";

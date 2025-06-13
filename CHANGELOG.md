@@ -16,7 +16,7 @@ Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
 2. Still in your `mix.exs`, prepend `:phoenix_live_view` to your list of compilers inside `def project`, such as:
 
     ```elixir
-    compilers: [:gettext, :phoenix_live_view] ++ Mix.compilers(),
+    compilers: [:phoenix_live_view] ++ Mix.compilers(),
     ```
 
 3. (optional) In your `config/dev.exs`, find `debug_heex_annotations`, and also add `debug_tags_location` for improved annotations:
@@ -36,6 +36,55 @@ Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
         ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
       env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]},
     ```
+
+## Colocated hooks
+
+When writing hooks for a specific component, the need to place the JavaScript code in a whole separate file often feels inconvenient. LiveView 1.1 introduces colocated hooks to allow writing the hook's JavaScript code in the same file as your regular component code.
+
+A colocated hook is defined by placing the special `:type` attribute on a `<script>` tag:
+
+```elixir
+alias Phoenix.LiveView.ColocatedHook
+
+def input(%{type: "phone-number"} = assigns) do
+  ~H"""
+  <input type="text" name={@name} id={@id} value={@value} phx-hook=".PhoneNumber" />
+  <script :type={ColocatedHook} name=".PhoneNumber">
+    export default {
+      mounted() {
+        this.el.addEventListener("input", e => {
+          let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
+          if(match) {
+            this.el.value = `${match[1]}-${match[2]}-${match[3]}`
+          }
+        })
+      }
+    }
+  </script>
+  """
+end
+```
+
+Important: LiveView now supports the `phx-hook` attribute to start with a dot (`.PhoneNumber` above) for namespacing. Any hook name starting with a dot is prefixed at compile time with the module name of the component. If you named your hooks with a leading dot in the past, you'll need to adjust this for your hooks to work properly on LiveView 1.1.
+
+Colocated hooks are extracted to a `phoenix-colocated` folder inside your `_build/$MIX_ENV` directory (`Mix.Project.build_path()`). See the quick update section at the top of the changelog on how to adjust your `esbuild` configuration to handle this. With everything configured, you can import your colocated hooks inside of your `app.js` like this:
+
+```diff
+...
+  import {LiveSocket} from "phoenix_live_view"
++ import {hooks as colocatedHooks} from "phoenix-colocated/my_app"
+  import topbar from "../vendor/topbar"
+...
+  const liveSocket = new LiveSocket("/live", Socket, {
+    longPollFallbackMs: 2500,
++   params: {_csrf_token, csrfToken},
++   hooks: {...colocatedHooks}
+  })
+```
+
+The `phoenix-colocated` folder has subfolders for each application that uses colocated hooks, therefore you'll need to adjust the `my_app` part of the import depending on the name of your project (defined in your `mix.exs`). You can read more about colocated hooks in the module documentation of `Phoenix.LiveView.ColocatedHook`. There's also a more generalized version for colocated JavaScript, see the documentation for `Phoenix.LiveView.ColocatedJS`.
+
+We're planning to make the private `Phoenix.Component.MacroComponent` API that we use for those features public in a future release.
 
 ## Types for public interfaces
 
@@ -106,50 +155,20 @@ let liveSocket = new LiveSocket(..., {
 
 Using [`@types/phoenix_live_view`](https://www.npmjs.com/package/@types/phoenix_live_view) (not maintained by the Phoenix team) is not necessary any more.
 
-## Macro components and colocated hooks
+## Phoenix.Component.portal
 
-A `Phoenix.Component.MacroComponent` defines a compile-time transformation of a HEEx tag. This can be used to transform a tag and its content into something else, for example to perform compile time syntax highlighting, or even remove tags from the template entirely and write them to somewhere else. `Phoenix.LiveView.ColocatedHook` is a macro component that allows you to co-locate LiveView [JavaScript hooks](https://hexdocs.pm/phoenix_live_view/js-interop.html#client-hooks-via-phx-hook) next to the component code that uses them, while ensuring they are included in your regular JavaScript bundle. A colocated hook is defined by placing the special `:type` attribute on a `<script>` tag:
+When designing reusable HTML components for UI elements like tooltips or dialogs, it is sometimes necessary to render a part of a component's template outside of the regular DOM hierarchy of that component, for example to prevent clipping due to CSS rules like `overflow: hidden` that are not controlled by the component itself. Modern browser APIs for rendering elements in [the top layer](https://developer.mozilla.org/en-US/docs/Glossary/Top_layer) can help in many cases, but if you cannot use those for whatever reasons, LiveView previously did not have a solution to solve that problem. In LiveView 1.1, we introduce a new `Phoenix.Component.portal/1` component:
 
-```elixir
-alias Phoenix.LiveView.ColocatedHook
-
-def input(%{type: "phone-number"} = assigns) do
-  ~H"""
-  <input type="text" name={@name} id={@id} value={@value} phx-hook=".PhoneNumber" />
-  <script :type={ColocatedHook} name=".PhoneNumber">
-    export default {
-      mounted() {
-        this.el.addEventListener("input", e => {
-          let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
-          if(match) {
-            this.el.value = `${match[1]}-${match[2]}-${match[3]}`
-          }
-        })
-      }
-    }
-  </script>
-  """
-end
+```heex
+<%!-- in some nested LiveView or component --%>
+<.portal id="my-element" target="body">
+  <%!-- any content here will be teleported into the body tag --%>
+</.portal>
 ```
 
-Important: LiveView now supports the `phx-hook` attribute to start with a dot (`.PhoneNumber` above) for namespacing. Any hook name starting with a dot is prefixed at compile time with the module name of the component. If you named your hooks with a leading dot in the past, you'll need to adjust this for your hooks to work properly on LiveView 1.1.
+Any element can be teleported, even LiveComponents and nested LiveViews, and any `phx-*` events from inside a portal will still be handled by the correct LiveView. This is similar to [`<Teleport>` in Vue.js](https://vuejs.org/guide/built-ins/teleport) or [`createPortal` in React](https://react.dev/reference/react-dom/createPortal).
 
-Colocated hooks are extracted to a `phoenix-colocated` folder inside your `_build/$MIX_ENV` directory (`Mix.Project.build_path()`). See the quick update section at the top of the changelog on how to adjust your `esbuild` configuration to handle this. With everything configured, you can import your colocated hooks inside of your `app.js` like this:
-
-```diff
-...
-  import {LiveSocket} from "phoenix_live_view"
-+ import {hooks as colocatedHooks} from "phoenix-colocated/my_app"
-  import topbar from "../vendor/topbar"
-...
-  const liveSocket = new LiveSocket("/live", Socket, {
-    longPollFallbackMs: 2500,
-+   params: {_csrf_token, csrfToken},
-+   hooks: {...colocatedHooks}
-  })
-```
-
-The `phoenix-colocated` folder has subfolders for each application that uses colocated hooks, therefore you'll need to adjust the `my_app` part of the import depending on the name of your project (defined in your `mix.exs`). You can read more about colocated hooks in the module documentation of `Phoenix.LiveView.ColocatedHook` and `Phoenix.LiveView.ColocatedJS`.
+As a demo, we created [an example for implementing tooltips using `Phoenix.Component.portal`](https://gist.github.com/SteffenDE/f599405c7c2eddbb14723ed4f3b7213f) as a single-file Elixir script. When saved as `portal.exs`, you can execute it as `elixir portal.exs` and visit `http://localhost:5001` in your browser.
 
 ## JS.ignore_attributes
 
@@ -194,7 +213,6 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 * Add type annotations to all public JavaScript APIs ([#3789](https://github.com/phoenixframework/phoenix_live_view/pull/3789))
 * Add `Phoenix.LiveView.JS.ignore_attributes/1` to allow marking specific attributes to be ignored when LiveView patches an element ([#3765](https://github.com/phoenixframework/phoenix_live_view/pull/3765))
 * Add `Phoenix.LiveView.Debug` module with functions for inspecting LiveViews at runtime ([#3776](https://github.com/phoenixframework/phoenix_live_view/pull/3776))
-* Add `Phoenix.Component.MacroComponent` ([#3810](https://github.com/phoenixframework/phoenix_live_view/pull/3810))
 * Add `Phoenix.LiveView.ColocatedHook` and `Phoenix.LiveView.ColocatedJS` ([#3810](https://github.com/phoenixframework/phoenix_live_view/pull/3810))
 * Add `:update_only` option to `Phoenix.LiveView.stream_insert/4` ([#3573](https://github.com/phoenixframework/phoenix_live_view/pull/3573))
 * Use [`LazyHTML`](https://hexdocs.pm/lazy_html/) instead of [Floki](https://hexdocs.pm/floki) internally for LiveViewTest

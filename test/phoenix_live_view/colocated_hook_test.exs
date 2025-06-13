@@ -57,6 +57,9 @@ defmodule Phoenix.LiveView.ColocatedHookTest do
                script,
                Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/")
              )
+  after
+    :code.delete(__MODULE__.TestComponent)
+    :code.purge(__MODULE__.TestComponent)
   end
 
   test "raises for invalid name" do

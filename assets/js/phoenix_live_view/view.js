@@ -223,6 +223,7 @@ export default class View {
         sticky: this.el.hasAttribute(PHX_STICKY),
       };
     });
+    this.portalElementIds = new Set();
   }
 
   setHref(href) {
@@ -270,6 +271,7 @@ export default class View {
 
   destroy(callback = function () {}) {
     this.destroyAllChildren();
+    this.destroyPortalElements();
     this.destroyed = true;
     DOM.deletePrivate(this.el, "view");
     delete this.root.children[this.id];
@@ -350,7 +352,7 @@ export default class View {
   //  * a CID (Component ID), then we first search the component's element in the DOM
   //  * a selector, then we search the selector in the DOM and call the callback
   //    for each element found with the corresponding owner view
-  withinTargets(phxTarget, callback, dom = document, viewEl) {
+  withinTargets(phxTarget, callback, dom = document) {
     // in the form recovery case we search in a template fragment instead of
     // the real dom, therefore we optionally pass dom and viewEl
 
@@ -361,7 +363,7 @@ export default class View {
     }
 
     if (isCid(phxTarget)) {
-      const targets = DOM.findComponentNodeList(viewEl || this.el, phxTarget);
+      const targets = DOM.findComponentNodeList(this.id, phxTarget, dom);
       if (targets.length === 0) {
         logError(`no component found matching phx-target of ${phxTarget}`);
       } else {
@@ -497,11 +499,13 @@ export default class View {
   // by owner to ensure we aren't duplicating hooks across disconnect
   // and connected states. This also handles cases where hooks exist
   // in a root layout with a LV in the body
-  execNewMounted(parent = this.el) {
-    const phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
-    const phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
-    DOM.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
-      if (this.ownsElement(hookEl)) {
+  execNewMounted(parent = document) {
+    let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
+    let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
+    this.all(
+      parent,
+      `[${phxViewportTop}], [${phxViewportBottom}]`,
+      (hookEl) => {
         DOM.maintainPrivateHooks(
           hookEl,
           hookEl,
@@ -509,20 +513,24 @@ export default class View {
           phxViewportBottom,
         );
         this.maybeAddNewHook(hookEl);
-      }
-    });
-    DOM.all(
+      },
+    );
+    this.all(
       parent,
       `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`,
       (hookEl) => {
-        if (this.ownsElement(hookEl)) {
-          this.maybeAddNewHook(hookEl);
-        }
+        this.maybeAddNewHook(hookEl);
       },
     );
-    DOM.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+    this.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+      this.maybeMounted(el);
+    });
+  }
+
+  all(parent, selector, callback) {
+    DOM.all(parent, selector, (el) => {
       if (this.ownsElement(el)) {
-        this.maybeMounted(el);
+        callback(el);
       }
     });
   }
@@ -665,7 +673,7 @@ export default class View {
   }
 
   joinNewChildren() {
-    DOM.findPhxChildren(this.el, this.id).forEach((el) => this.joinChild(el));
+    DOM.findPhxChildren(document, this.id).forEach((el) => this.joinChild(el));
   }
 
   maybeRecoverForms(html, callback) {
@@ -817,7 +825,7 @@ export default class View {
     if (this.rendered.isComponentOnlyDiff(diff)) {
       this.liveSocket.time("component patch complete", () => {
         const parentCids = DOM.findExistingParentCIDs(
-          this.el,
+          this.id,
           this.rendered.componentCIDs(diff),
         );
         parentCids.forEach((parentCID) => {
@@ -1215,7 +1223,9 @@ export default class View {
       return Promise.reject(new Error("no connection"));
     }
 
-    const [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}];
+    const [ref, [el], opts] = refGenerator
+      ? refGenerator({ payload })
+      : [null, [], {}];
     const oldJoinCount = this.joinCount;
     let onLoadingDone = function () {};
     if (opts.page_loading) {
@@ -1246,7 +1256,7 @@ export default class View {
               this.onLiveRedirect(resp.live_redirect);
             }
             onLoadingDone();
-            resolve({ resp: resp, reply: hookReply });
+            resolve({ resp: resp, reply: hookReply, ref });
           };
           if (resp.diff) {
             this.liveSocket.requestDOMUpdate(() => {
@@ -1417,6 +1427,15 @@ export default class View {
           });
         },
       };
+      if (opts.payload) {
+        detail["payload"] = opts.payload;
+      }
+      if (opts.target) {
+        detail["target"] = opts.target;
+      }
+      if (opts.originalEvent) {
+        detail["originalEvent"] = opts.originalEvent;
+      }
       el.dispatchEvent(
         new CustomEvent("phx:push", {
           detail: detail,
@@ -1486,18 +1505,19 @@ export default class View {
         new Error("unable to push hook event. LiveView not connected"),
       );
     }
-    let [ref, els, opts] = this.putRef(
-      [{ el, loading: true, lock: true }],
-      event,
-      "hook",
-    );
 
-    return this.pushWithReply(() => [ref, els, opts], "event", {
+    const refGenerator = () =>
+      this.putRef([{ el, loading: true, lock: true }], event, "hook", {
+        payload,
+        target: targetCtx,
+      });
+
+    return this.pushWithReply(refGenerator, "event", {
       type: "hook",
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx),
-    }).then(({ resp: _resp, reply }) => ({ reply, ref }));
+    }).then(({ resp: _resp, reply, ref }) => ({ reply, ref }));
   }
 
   extractMeta(el, meta, value) {
@@ -1538,8 +1558,11 @@ export default class View {
 
   pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
     this.pushWithReply(
-      () =>
-        this.putRef([{ el, loading: true, lock: true }], phxEvent, type, opts),
+      (maybePayload) =>
+        this.putRef([{ el, loading: true, lock: true }], phxEvent, type, {
+          ...opts,
+          payload: maybePayload?.payload,
+        }),
       "event",
       {
         type: type,
@@ -1576,7 +1599,7 @@ export default class View {
     const cid = isCid(forceCid)
       ? forceCid
       : this.targetComponentID(inputEl.form, targetCtx, opts);
-    const refGenerator = () => {
+    const refGenerator = (maybePayload) => {
       return this.putRef(
         [
           { el: inputEl, loading: true, lock: true },
@@ -1584,7 +1607,7 @@ export default class View {
         ],
         phxEvent,
         "change",
-        opts,
+        { ...opts, payload: maybePayload?.payload },
       );
     };
     let formData;
@@ -1740,10 +1763,11 @@ export default class View {
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-    const refGenerator = () =>
+    const refGenerator = (maybePayload) =>
       this.disableForm(formEl, phxEvent, {
         ...opts,
         form: formEl,
+        payload: maybePayload?.payload,
         submitter: submitter,
       });
     // store the submitter in the form element in order to trigger it
@@ -1904,7 +1928,7 @@ export default class View {
 
   targetCtxElement(targetCtx) {
     if (isCid(targetCtx)) {
-      const [target] = DOM.findComponentNodeList(this.el, targetCtx);
+      const [target] = DOM.findComponentNodeList(this.id, targetCtx);
       return target;
     } else if (targetCtx) {
       return targetCtx;
@@ -1947,7 +1971,7 @@ export default class View {
       (targetView, targetCtx) => {
         const cid = this.targetComponentID(newForm, targetCtx);
         pending++;
-        const e = new CustomEvent("phx:form-recovery", {
+        let e = new CustomEvent("phx:form-recovery", {
           detail: { sourceElement: oldForm },
         });
         JS.exec(e, "change", phxEvent, this, input, [
@@ -1966,7 +1990,6 @@ export default class View {
           },
         ]);
       },
-      templateDom,
       templateDom,
     );
   }
@@ -2048,7 +2071,7 @@ export default class View {
   }
 
   maybePushComponentsDestroyed(destroyedCIDs) {
-    const willDestroyCIDs = destroyedCIDs.filter((cid) => {
+    let willDestroyCIDs = destroyedCIDs.filter((cid) => {
       return DOM.findComponentNodeList(this.el, cid).length === 0;
     });
 
@@ -2070,7 +2093,7 @@ export default class View {
           this.liveSocket.requestDOMUpdate(() => {
             // See if any of the cids we wanted to destroy were added back,
             // if they were added back, we don't actually destroy them.
-            const completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
+            let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
               return DOM.findComponentNodeList(this.el, cid).length === 0;
             });
 
@@ -2090,7 +2113,7 @@ export default class View {
   }
 
   ownsElement(el) {
-    const parentViewEl = el.closest(PHX_VIEW_SELECTOR);
+    let parentViewEl = el.closest(PHX_VIEW_SELECTOR);
     return (
       el.getAttribute(PHX_PARENT_ID) === this.id ||
       (parentViewEl && parentViewEl.id === this.id) ||
@@ -2110,5 +2133,23 @@ export default class View {
 
   binding(kind) {
     return this.liveSocket.binding(kind);
+  }
+
+  // phx-portal
+  pushPortalElementId(id) {
+    this.portalElementIds.add(id);
+  }
+
+  dropPortalElementId(id) {
+    this.portalElementIds.delete(id);
+  }
+
+  destroyPortalElements() {
+    this.portalElementIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.remove();
+      }
+    });
   }
 }

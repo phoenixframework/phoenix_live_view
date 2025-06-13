@@ -1689,4 +1689,183 @@ defmodule Phoenix.LiveView.DiffTest do
              }
     end
   end
+
+  describe "keyed comprehensions" do
+    defp keyed_comprehension_with_pattern(assigns) do
+      ~H"""
+      <ul>
+        <li :for={%{id: id, name: name} <- @items} :key={id}>
+          Outside assign: {@count} Inside assign: {name}
+        </li>
+      </ul>
+      """
+    end
+
+    defp keyed_comprehension_with_nested_access(assigns) do
+      ~H"""
+      <ul>
+        <li :for={{id, entry} <- @items} :key={id}>
+          <span>Count: {@count}</span>
+          <span>Dot: {entry.foo.bar}</span>
+          <span>Access: {entry[:foo][:bar]}</span>
+        </li>
+      </ul>
+      """
+    end
+
+    test "renders as live component with minimal diff updates" do
+      items = [
+        %{id: 1, name: "First"},
+        %{id: 2, name: "Second"}
+      ]
+
+      assigns = %{socket: %Socket{}, items: items, count: 0, __changed__: %{}}
+      {full_render, fingerprints, components} = render(keyed_comprehension_with_pattern(assigns))
+
+      assert full_render == %{
+               0 => %{s: ["", ""], d: [[1], [2]]},
+               :c => %{
+                 1 => %{
+                   0 => "0",
+                   1 => "First",
+                   :r => 1,
+                   :s => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"]
+                 },
+                 2 => %{0 => "0", 1 => "Second", :s => 1}
+               },
+               :s => ["<ul>\n  ", "\n</ul>"],
+               :r => 1
+             }
+
+      assert {%{
+                1 =>
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, _, 1},
+                   %{
+                     id: 1,
+                     name: "First",
+                     __changed__: %{},
+                     flash: %{},
+                     myself: %Phoenix.LiveComponent.CID{cid: 1}
+                   }, %{}, _},
+                2 =>
+                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, _, 2},
+                   %{
+                     id: 2,
+                     name: "Second",
+                     __changed__: %{},
+                     flash: %{},
+                     myself: %Phoenix.LiveComponent.CID{cid: 2}
+                   }, %{}, _}
+              }, %{Phoenix.LiveView.KeyedComprehension => %{}}, 3} = components
+
+      # change order of items
+      assigns =
+        assigns
+        |> Map.put(:__changed__, %{})
+        |> Phoenix.Component.assign(:items, Enum.reverse(assigns.items))
+
+      {second_render, fingerprints, components} =
+        render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
+
+      assert second_render == %{0 => %{d: [[2], [1]]}}
+
+      # update count
+      assigns =
+        assigns
+        |> Map.put(:__changed__, %{})
+        |> Phoenix.Component.assign(:count, 1)
+
+      {third_render, fingerprints, components} =
+        render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
+
+      assert third_render == %{0 => %{d: [[2], [1]]}, :c => %{1 => %{0 => "1"}, 2 => %{0 => "1"}}}
+
+      # replace item
+      assigns =
+        assigns
+        |> Map.put(:__changed__, %{})
+        |> Phoenix.Component.assign(:items, [
+          %{id: 1, name: "First"},
+          %{id: 3, name: "Third"}
+        ])
+
+      {fourth_render, _fingerprints, _components} =
+        render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
+
+      assert fourth_render == %{
+               0 => %{d: [[1], [3]]},
+               :c => %{3 => %{0 => "1", 1 => "Third", :s => -1}}
+             }
+    end
+
+    test "change-tracking for complex access" do
+      items = [
+        {1, %{foo: %{bar: "First", baz: "1"}, other: "hey"}},
+        {2, %{foo: %{bar: "Second", baz: "1"}, other: "hey"}}
+      ]
+
+      assigns = %{socket: %Socket{}, items: items, count: 0, __changed__: %{}}
+
+      {full_render, fingerprints, components} =
+        render(keyed_comprehension_with_nested_access(assigns))
+
+      assert full_render == %{
+               0 => %{d: [[1], [2]], s: ["", ""]},
+               :c => %{
+                 1 => %{
+                   0 => "0",
+                   1 => "First",
+                   :r => 1,
+                   :s => [
+                     "<li>\n    <span>Count: ",
+                     "</span>\n    <span>Dot: ",
+                     "</span>\n    <span>Access: ",
+                     "</span>\n  </li>"
+                   ],
+                   2 => "First"
+                 },
+                 2 => %{0 => "0", 1 => "Second", :s => 1, 2 => "Second"}
+               },
+               :r => 1,
+               :s => ["<ul>\n  ", "\n</ul>"]
+             }
+
+      # change entries, but no part that is rendered
+      assigns =
+        Phoenix.Component.assign(
+          assigns,
+          :items,
+          [
+            {1, %{foo: %{bar: "First", baz: "2"}, other: "heyo"}},
+            {2, %{foo: %{bar: "Second", baz: "2"}, other: "heyo"}}
+          ]
+        )
+
+      {second_render, fingerprints, components} =
+        render(keyed_comprehension_with_nested_access(assigns), fingerprints, components)
+
+      # no diff, because nothing relevant changed
+      assert second_render == %{0 => %{d: [[1], [2]]}}
+
+      # now change bar for first entry
+      assigns =
+        Phoenix.Component.assign(
+          assigns,
+          :items,
+          [
+            {1, %{foo: %{bar: "Updated", baz: "2"}, other: "heyo"}},
+            {2, %{foo: %{bar: "Second", baz: "2"}, other: "heyo"}}
+          ]
+        )
+
+      {third_render, _fingerprints, _components} =
+        render(keyed_comprehension_with_nested_access(assigns), fingerprints, components)
+
+      # no diff, because nothing relevant changed
+      assert third_render == %{
+               0 => %{d: [[1], [2]]},
+               :c => %{1 => %{1 => "Updated", 2 => "Updated"}}
+             }
+    end
+  end
 end

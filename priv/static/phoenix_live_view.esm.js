@@ -15,6 +15,7 @@ var PHX_EVENT_CLASSES = [
   "phx-hook-loading"
 ];
 var PHX_COMPONENT = "data-phx-component";
+var PHX_VIEW_REF = "data-phx-view";
 var PHX_LIVE_LINK = "data-phx-link";
 var PHX_TRACK_STATIC = "track-static";
 var PHX_LINK_STATE = "data-phx-link-state";
@@ -75,6 +76,9 @@ var PHX_THROTTLE = "throttle";
 var PHX_UPDATE = "update";
 var PHX_STREAM = "stream";
 var PHX_STREAM_REF = "data-phx-stream";
+var PHX_PORTAL = "data-phx-portal";
+var PHX_TELEPORTED_REF = "data-phx-teleported";
+var PHX_TELEPORTED_SRC = "data-phx-teleported-src";
 var PHX_RUNTIME_HOOK = "data-phx-runtime-hook";
 var PHX_KEY = "key";
 var PHX_PRIVATE = "phxPrivate";
@@ -371,10 +375,10 @@ var DOM = {
       inputsOutsideForm
     );
   },
-  findComponentNodeList(node, cid) {
-    return this.filterWithinSameLiveView(
-      this.all(node, `[${PHX_COMPONENT}="${cid}"]`),
-      node
+  findComponentNodeList(viewId, cid, doc2 = document) {
+    return this.all(
+      doc2,
+      `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`
     );
   },
   isPhxDestroyed(node) {
@@ -446,40 +450,20 @@ var DOM = {
   findPhxChildren(el, parentId) {
     return this.all(el, `${PHX_VIEW_SELECTOR}[${PHX_PARENT_ID}="${parentId}"]`);
   },
-  findExistingParentCIDs(node, cids) {
+  findExistingParentCIDs(viewId, cids) {
     const parentCids = /* @__PURE__ */ new Set();
     const childrenCids = /* @__PURE__ */ new Set();
     cids.forEach((cid) => {
-      this.filterWithinSameLiveView(
-        this.all(node, `[${PHX_COMPONENT}="${cid}"]`),
-        node
+      this.all(
+        document,
+        `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`
       ).forEach((parent) => {
         parentCids.add(cid);
-        this.filterWithinSameLiveView(
-          this.all(parent, `[${PHX_COMPONENT}]`),
-          parent
-        ).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => childrenCids.add(childCID));
+        this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`).map((el) => parseInt(el.getAttribute(PHX_COMPONENT))).forEach((childCID) => childrenCids.add(childCID));
       });
     });
     childrenCids.forEach((childCid) => parentCids.delete(childCid));
     return parentCids;
-  },
-  filterWithinSameLiveView(nodes, parent) {
-    if (parent.querySelector(PHX_VIEW_SELECTOR)) {
-      return nodes.filter((el) => this.withinSameLiveView(el, parent));
-    } else {
-      return nodes;
-    }
-  },
-  withinSameLiveView(node, parent) {
-    while (node = node.parentNode) {
-      if (node.isSameNode(parent)) {
-        return true;
-      }
-      if (node.getAttribute(PHX_SESSION) !== null) {
-        return false;
-      }
-    }
   },
   private(el, key) {
     return el[PHX_PRIVATE] && el[PHX_PRIVATE][key];
@@ -678,6 +662,23 @@ var DOM = {
   },
   firstPhxChild(el) {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
+  },
+  isPortalTemplate(el) {
+    return el.tagName === "TEMPLATE" && el.hasAttribute(PHX_PORTAL);
+  },
+  closestViewEl(el) {
+    const portalOrViewEl = el.closest(
+      `[${PHX_TELEPORTED_REF}],${PHX_VIEW_SELECTOR}`
+    );
+    if (!portalOrViewEl) {
+      return null;
+    }
+    if (portalOrViewEl.hasAttribute(PHX_TELEPORTED_REF)) {
+      return this.byId(portalOrViewEl.getAttribute(PHX_TELEPORTED_REF));
+    } else if (portalOrViewEl.hasAttribute(PHX_SESSION)) {
+      return portalOrViewEl;
+    }
+    return null;
   },
   dispatchEvent(target, name, opts = {}) {
     let defaultBubble = true;
@@ -2221,8 +2222,9 @@ var DOMPatch = class {
     const added = [];
     const updates = [];
     const appendPrependUpdates = [];
+    const portalCallbacks = [];
     let externalFormTriggered = null;
-    function morph(targetContainer2, source, withChildren = this.withChildren) {
+    const morph = (targetContainer2, source, withChildren = this.withChildren) => {
       const morphCallbacks = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
@@ -2276,13 +2278,16 @@ var DOMPatch = class {
           if (this.streamComponentRestore[el.id]) {
             morphedEl = this.streamComponentRestore[el.id];
             delete this.streamComponentRestore[el.id];
-            morph.call(this, morphedEl, el, true);
+            morph(morphedEl, el, true);
           }
           return morphedEl;
         },
         onNodeAdded: (el) => {
           if (el.getAttribute) {
             this.maybeReOrderStream(el, true);
+          }
+          if (dom_default.isPortalTemplate(el)) {
+            portalCallbacks.push(() => this.teleport(el, morph));
           }
           if (el instanceof HTMLImageElement && el.srcset) {
             el.srcset = el.srcset;
@@ -2312,11 +2317,24 @@ var DOMPatch = class {
           ])) {
             return false;
           }
+          if (el.getAttribute && el.getAttribute(PHX_TELEPORTED_REF)) {
+            return false;
+          }
           if (this.maybePendingRemove(el)) {
             return false;
           }
           if (this.skipCIDSibling(el)) {
             return false;
+          }
+          if (dom_default.isPortalTemplate(el)) {
+            const teleportedEl = document.getElementById(
+              el.content.firstElementChild.id
+            );
+            if (teleportedEl) {
+              teleportedEl.remove();
+              morphCallbacks.onNodeDiscarded(teleportedEl);
+              this.view.dropPortalElementId(teleportedEl.id);
+            }
           }
           return true;
         },
@@ -2408,6 +2426,10 @@ var DOMPatch = class {
             );
           }
           dom_default.copyPrivates(toEl, fromEl);
+          if (dom_default.isPortalTemplate(toEl)) {
+            portalCallbacks.push(() => this.teleport(toEl, morph));
+            return false;
+          }
           if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
             this.trackBefore("updated", fromEl, toEl);
             dom_default.mergeFocusedInput(fromEl, toEl);
@@ -2436,7 +2458,7 @@ var DOMPatch = class {
         }
       };
       morphdom_esm_default(targetContainer2, source, morphCallbacks);
-    }
+    };
     this.trackBefore("added", container);
     this.trackBefore("updated", container, container);
     liveSocket.time("morphdom", () => {
@@ -2463,7 +2485,21 @@ var DOMPatch = class {
           });
         });
       }
-      morph.call(this, targetContainer, html);
+      morph(targetContainer, html);
+      portalCallbacks.forEach((callback) => callback());
+      this.view.portalElementIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          const source = document.getElementById(
+            el.getAttribute(PHX_TELEPORTED_SRC)
+          );
+          if (!source) {
+            el.remove();
+            this.onNodeDiscarded(el);
+            this.view.dropPortalElementId(id);
+          }
+        }
+      });
     });
     if (liveSocket.isDebugEnabled()) {
       detectDuplicateIds();
@@ -2625,7 +2661,7 @@ var DOMPatch = class {
       return;
     }
     const [first, ...rest] = dom_default.findComponentNodeList(
-      this.container,
+      this.view.id,
       this.targetCID
     );
     if (rest.length === 0 && dom_default.childNodeLength(html) === 1) {
@@ -2636,6 +2672,41 @@ var DOMPatch = class {
   }
   indexOf(parent, child) {
     return Array.from(parent.children).indexOf(child);
+  }
+  teleport(el, morph) {
+    const targetSelector = el.getAttribute(PHX_PORTAL);
+    const portalContainer = document.querySelector(targetSelector);
+    if (!portalContainer) {
+      throw new Error(
+        "portal target with selector " + targetSelector + " not found"
+      );
+    }
+    const toTeleport = el.content.firstElementChild;
+    if (this.skipCIDSibling(toTeleport)) {
+      return;
+    }
+    if (!toTeleport?.id) {
+      throw new Error(
+        "phx-portal template must have a single root element with ID!"
+      );
+    }
+    const existing = document.getElementById(toTeleport.id);
+    let portalTarget;
+    if (existing) {
+      if (!portalContainer.contains(existing)) {
+        portalContainer.appendChild(existing);
+      }
+      portalTarget = existing;
+    } else {
+      portalTarget = document.createElement(toTeleport.tagName);
+      portalContainer.appendChild(portalTarget);
+    }
+    toTeleport.setAttribute(PHX_TELEPORTED_REF, this.view.id);
+    toTeleport.setAttribute(PHX_TELEPORTED_SRC, el.id);
+    morph(portalTarget, toTeleport, true);
+    toTeleport.removeAttribute(PHX_TELEPORTED_REF);
+    toTeleport.removeAttribute(PHX_TELEPORTED_SRC);
+    this.view.pushPortalElementId(toTeleport.id);
   }
   handleRuntimeHook(el, source) {
     const name = el.getAttribute(PHX_RUNTIME_HOOK);
@@ -3012,7 +3083,7 @@ var Rendered = class {
   }
   recursiveCIDToString(components, cid, onlyCids) {
     const component = components[cid] || logError(`no component for CID ${cid}`, components);
-    const attrs = { [PHX_COMPONENT]: cid };
+    const attrs = { [PHX_COMPONENT]: cid, [PHX_VIEW_REF]: this.viewId };
     const skip = onlyCids && !onlyCids.has(cid);
     component.newRender = !skip;
     component.magicId = `c${cid}-${this.parentViewId()}`;
@@ -3091,7 +3162,13 @@ var JS = {
       dispatcher,
       callback
     } = args;
-    const pushOpts = { loading, value, target, page_loading: !!page_loading };
+    const pushOpts = {
+      loading,
+      value,
+      target,
+      page_loading: !!page_loading,
+      originalEvent: e
+    };
     const targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
     const phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
     const handler = (targetView, targetCtx) => {
@@ -3972,6 +4049,7 @@ var View = class _View {
         sticky: this.el.hasAttribute(PHX_STICKY)
       };
     });
+    this.portalElementIds = /* @__PURE__ */ new Set();
   }
   setHref(href) {
     this.href = href;
@@ -4008,6 +4086,7 @@ var View = class _View {
   destroy(callback = function() {
   }) {
     this.destroyAllChildren();
+    this.destroyPortalElements();
     this.destroyed = true;
     dom_default.deletePrivate(this.el, "view");
     delete this.root.children[this.id];
@@ -4077,7 +4156,7 @@ var View = class _View {
   //  * a CID (Component ID), then we first search the component's element in the DOM
   //  * a selector, then we search the selector in the DOM and call the callback
   //    for each element found with the corresponding owner view
-  withinTargets(phxTarget, callback, dom = document, viewEl) {
+  withinTargets(phxTarget, callback, dom = document) {
     if (phxTarget instanceof HTMLElement || phxTarget instanceof SVGElement) {
       return this.liveSocket.owner(
         phxTarget,
@@ -4085,7 +4164,7 @@ var View = class _View {
       );
     }
     if (isCid(phxTarget)) {
-      const targets = dom_default.findComponentNodeList(viewEl || this.el, phxTarget);
+      const targets = dom_default.findComponentNodeList(this.id, phxTarget, dom);
       if (targets.length === 0) {
         logError(`no component found matching phx-target of ${phxTarget}`);
       } else {
@@ -4201,11 +4280,13 @@ var View = class _View {
   // by owner to ensure we aren't duplicating hooks across disconnect
   // and connected states. This also handles cases where hooks exist
   // in a root layout with a LV in the body
-  execNewMounted(parent = this.el) {
-    const phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
-    const phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
-    dom_default.all(parent, `[${phxViewportTop}], [${phxViewportBottom}]`, (hookEl) => {
-      if (this.ownsElement(hookEl)) {
+  execNewMounted(parent = document) {
+    let phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
+    let phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
+    this.all(
+      parent,
+      `[${phxViewportTop}], [${phxViewportBottom}]`,
+      (hookEl) => {
         dom_default.maintainPrivateHooks(
           hookEl,
           hookEl,
@@ -4214,19 +4295,22 @@ var View = class _View {
         );
         this.maybeAddNewHook(hookEl);
       }
-    });
-    dom_default.all(
+    );
+    this.all(
       parent,
       `[${this.binding(PHX_HOOK)}], [data-phx-${PHX_HOOK}]`,
       (hookEl) => {
-        if (this.ownsElement(hookEl)) {
-          this.maybeAddNewHook(hookEl);
-        }
+        this.maybeAddNewHook(hookEl);
       }
     );
-    dom_default.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+    this.all(parent, `[${this.binding(PHX_MOUNTED)}]`, (el) => {
+      this.maybeMounted(el);
+    });
+  }
+  all(parent, selector, callback) {
+    dom_default.all(parent, selector, (el) => {
       if (this.ownsElement(el)) {
-        this.maybeMounted(el);
+        callback(el);
       }
     });
   }
@@ -4345,7 +4429,7 @@ var View = class _View {
     }
   }
   joinNewChildren() {
-    dom_default.findPhxChildren(this.el, this.id).forEach((el) => this.joinChild(el));
+    dom_default.findPhxChildren(document, this.id).forEach((el) => this.joinChild(el));
   }
   maybeRecoverForms(html, callback) {
     const phxChange = this.binding("change");
@@ -4448,7 +4532,7 @@ var View = class _View {
     if (this.rendered.isComponentOnlyDiff(diff)) {
       this.liveSocket.time("component patch complete", () => {
         const parentCids = dom_default.findExistingParentCIDs(
-          this.el,
+          this.id,
           this.rendered.componentCIDs(diff)
         );
         parentCids.forEach((parentCID) => {
@@ -4777,7 +4861,7 @@ var View = class _View {
     if (!this.isConnected()) {
       return Promise.reject(new Error("no connection"));
     }
-    const [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}];
+    const [ref, [el], opts] = refGenerator ? refGenerator({ payload }) : [null, [], {}];
     const oldJoinCount = this.joinCount;
     let onLoadingDone = function() {
     };
@@ -4807,7 +4891,7 @@ var View = class _View {
               this.onLiveRedirect(resp.live_redirect);
             }
             onLoadingDone();
-            resolve({ resp, reply: hookReply });
+            resolve({ resp, reply: hookReply, ref });
           };
           if (resp.diff) {
             this.liveSocket.requestDOMUpdate(() => {
@@ -4961,6 +5045,15 @@ var View = class _View {
           });
         }
       };
+      if (opts.payload) {
+        detail["payload"] = opts.payload;
+      }
+      if (opts.target) {
+        detail["target"] = opts.target;
+      }
+      if (opts.originalEvent) {
+        detail["originalEvent"] = opts.originalEvent;
+      }
       el.dispatchEvent(
         new CustomEvent("phx:push", {
           detail,
@@ -5023,17 +5116,16 @@ var View = class _View {
         new Error("unable to push hook event. LiveView not connected")
       );
     }
-    let [ref, els, opts] = this.putRef(
-      [{ el, loading: true, lock: true }],
-      event,
-      "hook"
-    );
-    return this.pushWithReply(() => [ref, els, opts], "event", {
+    const refGenerator = () => this.putRef([{ el, loading: true, lock: true }], event, "hook", {
+      payload,
+      target: targetCtx
+    });
+    return this.pushWithReply(refGenerator, "event", {
       type: "hook",
       event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }).then(({ resp: _resp, reply }) => ({ reply, ref }));
+    }).then(({ resp: _resp, reply, ref }) => ({ reply, ref }));
   }
   extractMeta(el, meta, value) {
     const prefix = this.binding("value-");
@@ -5067,7 +5159,10 @@ var View = class _View {
   }
   pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
     this.pushWithReply(
-      () => this.putRef([{ el, loading: true, lock: true }], phxEvent, type, opts),
+      (maybePayload) => this.putRef([{ el, loading: true, lock: true }], phxEvent, type, {
+        ...opts,
+        payload: maybePayload?.payload
+      }),
       "event",
       {
         type,
@@ -5095,7 +5190,7 @@ var View = class _View {
     }
     let uploads;
     const cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts);
-    const refGenerator = () => {
+    const refGenerator = (maybePayload) => {
       return this.putRef(
         [
           { el: inputEl, loading: true, lock: true },
@@ -5103,7 +5198,7 @@ var View = class _View {
         ],
         phxEvent,
         "change",
-        opts
+        { ...opts, payload: maybePayload?.payload }
       );
     };
     let formData;
@@ -5229,9 +5324,10 @@ var View = class _View {
     return this.putRef(els, phxEvent, "submit", opts);
   }
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-    const refGenerator = () => this.disableForm(formEl, phxEvent, {
+    const refGenerator = (maybePayload) => this.disableForm(formEl, phxEvent, {
       ...opts,
       form: formEl,
+      payload: maybePayload?.payload,
       submitter
     });
     dom_default.putPrivate(formEl, "submitter", submitter);
@@ -5356,7 +5452,7 @@ var View = class _View {
   }
   targetCtxElement(targetCtx) {
     if (isCid(targetCtx)) {
-      const [target] = dom_default.findComponentNodeList(this.el, targetCtx);
+      const [target] = dom_default.findComponentNodeList(this.id, targetCtx);
       return target;
     } else if (targetCtx) {
       return targetCtx;
@@ -5385,7 +5481,7 @@ var View = class _View {
       (targetView, targetCtx) => {
         const cid = this.targetComponentID(newForm, targetCtx);
         pending++;
-        const e = new CustomEvent("phx:form-recovery", {
+        let e = new CustomEvent("phx:form-recovery", {
           detail: { sourceElement: oldForm }
         });
         js_default.exec(e, "change", phxEvent, this, input, [
@@ -5404,7 +5500,6 @@ var View = class _View {
           }
         ]);
       },
-      templateDom,
       templateDom
     );
   }
@@ -5458,7 +5553,7 @@ var View = class _View {
     }, {});
   }
   maybePushComponentsDestroyed(destroyedCIDs) {
-    const willDestroyCIDs = destroyedCIDs.filter((cid) => {
+    let willDestroyCIDs = destroyedCIDs.filter((cid) => {
       return dom_default.findComponentNodeList(this.el, cid).length === 0;
     });
     const onError = (error) => {
@@ -5470,7 +5565,7 @@ var View = class _View {
       willDestroyCIDs.forEach((cid) => this.rendered.resetRender(cid));
       this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }).then(() => {
         this.liveSocket.requestDOMUpdate(() => {
-          const completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
+          let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
             return dom_default.findComponentNodeList(this.el, cid).length === 0;
           });
           if (completelyDestroyCIDs.length > 0) {
@@ -5485,7 +5580,7 @@ var View = class _View {
     }
   }
   ownsElement(el) {
-    const parentViewEl = el.closest(PHX_VIEW_SELECTOR);
+    let parentViewEl = el.closest(PHX_VIEW_SELECTOR);
     return el.getAttribute(PHX_PARENT_ID) === this.id || parentViewEl && parentViewEl.id === this.id || !parentViewEl && this.isDead;
   }
   submitForm(form, targetCtx, phxEvent, submitter, opts = {}) {
@@ -5499,6 +5594,21 @@ var View = class _View {
   }
   binding(kind) {
     return this.liveSocket.binding(kind);
+  }
+  // phx-portal
+  pushPortalElementId(id) {
+    this.portalElementIds.add(id);
+  }
+  dropPortalElementId(id) {
+    this.portalElementIds.delete(id);
+  }
+  destroyPortalElements() {
+    this.portalElementIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.remove();
+      }
+    });
   }
 };
 
@@ -5894,9 +6004,9 @@ var LiveSocket = class {
   }
   owner(childEl, callback) {
     let view;
-    const closestViewEl = childEl.closest(PHX_VIEW_SELECTOR);
-    if (closestViewEl) {
-      view = this.getViewByEl(closestViewEl);
+    const viewEl = dom_default.closestViewEl(childEl);
+    if (viewEl) {
+      view = this.getViewByEl(viewEl);
     } else {
       view = this.main;
     }

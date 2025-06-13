@@ -10,7 +10,7 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
       compilers: [:phoenix_live_view] ++ Mix.compilers()
 
   """
-  use Mix.Task
+  use Mix.Task.Compiler
 
   @recursive true
 
