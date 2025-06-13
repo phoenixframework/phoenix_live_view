@@ -79,11 +79,17 @@ const Browser = {
     document.cookie = `${name}=; max-age=-1; path=/`;
   },
 
-  redirect(toURL, flash) {
+  redirect(
+    toURL,
+    flash,
+    navigate = (url) => {
+      window.location.href = url;
+    },
+  ) {
     if (flash) {
       this.setCookie("__phoenix_flash__", flash, 60);
     }
-    window.location.href = toURL;
+    navigate(toURL);
   },
 
   localKey(namespace, subkey) {
