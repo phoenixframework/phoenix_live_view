@@ -30,59 +30,22 @@ describe("Browser", () => {
   });
 
   describe("redirect", () => {
-    let originalLocation: Location;
-    let mockHrefSetter: jest.Mock;
-    let currentHref: string;
-
-    beforeAll(() => {
-      originalLocation = window.location;
-    });
-
-    beforeEach(() => {
-      currentHref = "https://example.com"; // Initial mocked URL
-      mockHrefSetter = jest.fn((newHref: string) => {
-        currentHref = newHref;
-      });
-
-      Object.defineProperty(window, "location", {
-        writable: true,
-        configurable: true,
-        value: {
-          get href() {
-            return currentHref;
-          },
-          set href(url: string) {
-            mockHrefSetter(url);
-          },
-        },
-      });
-    });
-
-    afterAll(() => {
-      // Restore the original window.location object
-      Object.defineProperty(window, "location", {
-        writable: true,
-        configurable: true,
-        value: originalLocation,
-      });
-    });
-
     test("redirects to a new URL", () => {
+      const navigate = jest.fn();
       const targetUrl = "https://phoenixframework.com";
-      Browser.redirect(targetUrl);
-      expect(mockHrefSetter).toHaveBeenCalledWith(targetUrl);
-      expect(window.location.href).toEqual(targetUrl);
+      Browser.redirect(targetUrl, null, navigate);
+      expect(navigate).toHaveBeenCalledWith(targetUrl);
     });
 
     test("sets a flash cookie before redirecting", () => {
+      const navigate = jest.fn();
       const targetUrl = "https://phoenixframework.com";
       const flashMessage = "mango";
-      Browser.redirect(targetUrl, flashMessage);
+      Browser.redirect(targetUrl, flashMessage, navigate);
 
       expect(document.cookie).toContain("__phoenix_flash__");
       expect(document.cookie).toContain(flashMessage);
-      expect(mockHrefSetter).toHaveBeenCalledWith(targetUrl);
-      expect(window.location.href).toEqual(targetUrl);
+      expect(navigate).toHaveBeenCalledWith(targetUrl);
     });
   });
 });
