@@ -302,9 +302,13 @@ end
 defmodule Phoenix.LiveViewTest.E2E.PortalLive.NestedLive do
   use Phoenix.LiveView
 
+  def mount(_params, _session, socket) do
+    {:ok, assign(socket, :count, 0)}
+  end
+
   def handle_event("event", _params, socket) do
     IO.puts("Nested LV got event!")
-    {:noreply, socket}
+    {:noreply, assign(socket, :count, socket.assigns.count + 1)}
   end
 
   def render(assigns) do
@@ -312,10 +316,12 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive.NestedLive do
     <div class="border border-orange-200">
       <h1>Nested LiveView</h1>
 
-      <button phx-click="event">Toggle event in nested LV</button>
+      <p id="nested-event-count">{@count}</p>
+
+      <button phx-click="event">Trigger event in nested LV</button>
 
       <.portal id="nested-lv-button" target="body">
-        <button phx-click="event">Toggle event in nested LV (from teleported button)</button>
+        <button phx-click="event">Trigger event in nested LV (from teleported button)</button>
       </.portal>
 
       <.portal id="nested-lv" target="body">
