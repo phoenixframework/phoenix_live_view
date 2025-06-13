@@ -153,15 +153,12 @@ Using [`@types/phoenix_live_view`](https://www.npmjs.com/package/@types/phoenix_
 
 ## Phoenix.Component.portal
 
-When designing reusable HTML components for UI elements like tooltips or dialogs, it is sometimes necessary to render a part of a component's template outside of the regular DOM hierarchy of that component, for example to prevent clipping due to CSS rules like `overflow: hidden` that are not controlled by the component itself. Modern browser APIs for rendering elements in [the top layer](https://developer.mozilla.org/en-US/docs/Glossary/Top_layer) can help in many cases, but if you cannot use those for whatever reasons, LiveView previously did not have a solution to solve that problem. In LiveView 1.1, we introduce a new `.portal` component:
+When designing reusable HTML components for UI elements like tooltips or dialogs, it is sometimes necessary to render a part of a component's template outside of the regular DOM hierarchy of that component, for example to prevent clipping due to CSS rules like `overflow: hidden` that are not controlled by the component itself. Modern browser APIs for rendering elements in [the top layer](https://developer.mozilla.org/en-US/docs/Glossary/Top_layer) can help in many cases, but if you cannot use those for whatever reasons, LiveView previously did not have a solution to solve that problem. In LiveView 1.1, we introduce a new `Phoenix.Component.portal/1` component:
 
 ```heex
-<%!-- somewhere in the DOM, for example in your root.html.heex --%>
-<div id="portal-target"></div>
-
 <%!-- in some nested LiveView or component --%>
-<.portal id="my-element" target="portal-target">
-  <%!-- any content here will be teleported into the #portal-target --%>
+<.portal id="my-element" target="body">
+  <%!-- any content here will be teleported into the body tag --%>
 </.portal>
 ```
 
