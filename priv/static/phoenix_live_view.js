@@ -2720,10 +2720,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return Array.from(parent.children).indexOf(child);
     }
     teleport(el, morph) {
-      const targetId = el.getAttribute(PHX_PORTAL);
-      const portalContainer = document.getElementById(targetId);
+      const targetSelector = el.getAttribute(PHX_PORTAL);
+      const portalContainer = document.querySelector(targetSelector);
       if (!portalContainer) {
-        throw new Error("portal target with id " + targetId + " not found");
+        throw new Error(
+          "portal target with selector " + targetSelector + " not found"
+        );
       }
       const toTeleport = el.content.firstElementChild;
       if (this.skipCIDSibling(toTeleport)) {
