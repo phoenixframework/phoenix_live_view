@@ -1692,14 +1692,14 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp validate_tag_attrs!(_name, _attrs, _state), do: :ok
 
-  # Check if `phx-update`, `phx-hook` or `phx-portal` is present in attrs and raises in case
+  # Check if `phx-update`, `phx-hook` is present in attrs and raises in case
   # there is no ID attribute set.
   defp validate_phx_attrs!(attrs, meta, state) do
     validate_phx_attrs!(attrs, meta, state, nil, false)
   end
 
   defp validate_phx_attrs!([], meta, state, attr, false)
-       when attr in ["phx-update", "phx-hook", "phx-portal"] do
+       when attr in ["phx-update", "phx-hook"] do
     message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
 
     raise_syntax_error!(message, meta, state)

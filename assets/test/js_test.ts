@@ -22,7 +22,6 @@ describe("JS", () => {
   beforeEach(() => {
     global.document.body.innerHTML = "";
     jest.useFakeTimers();
-    setStartSystemTime();
   });
 
   afterEach(() => {
@@ -301,27 +300,27 @@ describe("JS", () => {
       JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
       expect(hideStartCalled).toBe(true);
       // first tick: waiting for start classes to be set
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(modal.classList.contains("fade-out-start")).toBe(true);
       expect(modal.classList.contains("fade-out")).toBe(false);
       // second tick: waiting for out classes to be set
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(modal.classList.contains("fade-out-start")).toBe(true);
       expect(modal.classList.contains("fade-out")).toBe(true);
       // third tick: waiting for outEndClasses
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(modal.classList.contains("fade-out-start")).toBe(false);
       expect(modal.classList.contains("fade-out")).toBe(true);
       expect(modal.classList.contains("fade-out-end")).toBe(true);
       // wait for onEnd
       jest.runAllTimers();
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       // fifth tick: display: none
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(hideEndCalled).toBe(true);
       expect(modal.style.display).toEqual("none");
       // sixth tick, removed end classes
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(modal.classList.contains("fade-out-start")).toBe(false);
       expect(modal.classList.contains("fade-out")).toBe(false);
       expect(modal.classList.contains("fade-out-end")).toBe(false);
@@ -330,24 +329,24 @@ describe("JS", () => {
       JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
       expect(showStartCalled).toBe(true);
       // first tick: waiting for start classes to be set
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(modal.classList.contains("fade-in-start")).toBe(true);
       expect(modal.classList.contains("fade-in")).toBe(false);
       expect(modal.style.display).toEqual("none");
       // second tick: waiting for in classes to be set
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(modal.classList.contains("fade-in-start")).toBe(true);
       expect(modal.classList.contains("fade-in")).toBe(true);
       expect(modal.classList.contains("fade-in-end")).toBe(false);
       expect(modal.style.display).toEqual("block");
       // third tick: waiting for inEndClasses
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(modal.classList.contains("fade-in-start")).toBe(false);
       expect(modal.classList.contains("fade-in")).toBe(true);
       expect(modal.classList.contains("fade-in-end")).toBe(true);
       // wait for onEnd
       jest.runAllTimers();
-      advanceTimersToNextFrame();
+      jest.advanceTimersToNextFrame();
       expect(showEndCalled).toBe(true);
       // sixth tick, removed end classes
       expect(modal.classList.contains("fade-in-start")).toBe(false);

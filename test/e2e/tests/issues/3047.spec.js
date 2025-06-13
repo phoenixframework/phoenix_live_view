@@ -25,6 +25,7 @@ test("streams are not cleared in sticky live views", async ({ page }) => {
   ]);
 
   await page.getByRole("button", { name: "Reset" }).click();
+  await syncLV(page);
   expect(await listItems(page)).toEqual([
     "items-5",
     "items-6",
