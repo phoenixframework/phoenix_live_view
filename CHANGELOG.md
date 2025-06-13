@@ -165,7 +165,7 @@ When designing reusable HTML components for UI elements like tooltips or dialogs
 </.portal>
 ```
 
-Any element can be teleported, even LiveComponents and nested LiveViews, and any `phx-*` events from inside a portal will still be handled by the correct LiveView.
+Any element can be teleported, even LiveComponents and nested LiveViews, and any `phx-*` events from inside a portal will still be handled by the correct LiveView. This is similar to [`<Teleport>` in Vue.js](https://vuejs.org/guide/built-ins/teleport) or [`createPortal` in React](https://react.dev/reference/react-dom/createPortal).
 
 As a demo, we created [an example for implementing tooltips using `Phoenix.Component.portal`](https://gist.github.com/SteffenDE/f599405c7c2eddbb14723ed4f3b7213f) as a single-file Elixir script. When saved as `portal.exs`, you can execute it as `elixir portal.exs` and visit `http://localhost:5001` in your browser.
 
