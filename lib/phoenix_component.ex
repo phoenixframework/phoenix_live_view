@@ -3511,14 +3511,10 @@ defmodule Phoenix.Component do
       <%!--
         For correct DOM patching, each portal source (template) must have a single root element,
         which we enforce by wrapping the slot in a div. In the generated CSS for
-        new projects, we include a display: contents rule for data-phx-portal-root.
+        new projects, we include a display: contents rule for data-phx-teleported-src,
+        which is set by the LiveView JS when an element is teleported.
       --%>
-      <.dynamic_tag
-        tag_name={@container}
-        id={"_lv_portal_wrap_" <> @id}
-        class={@class}
-        data-phx-portal-wrapper
-      >
+      <.dynamic_tag tag_name={@container} id={"_lv_portal_wrap_" <> @id} class={@class}>
         {render_slot(@inner_block)}
       </.dynamic_tag>
     </template>

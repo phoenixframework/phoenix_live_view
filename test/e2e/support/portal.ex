@@ -13,7 +13,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       <script src="/assets/phoenix/phoenix.min.js">
       </script>
       <style>
-        [data-phx-session], [data-phx-portal-wrapper] { display: contents }
+        [data-phx-session], [data-phx-teleported-src] { display: contents }
       </style>
       <script type="module">
         import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
