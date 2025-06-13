@@ -56,20 +56,11 @@ test.describe("exception handling", () => {
       await page.goto("/errors?connected-mount=raise");
 
       // the page was loaded once
-      expect(networkEvents).toEqual([
-        {
-          method: "GET",
-          url: "http://localhost:4004/errors?connected-mount=raise",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix/phoenix.min.js",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js",
-        },
-      ]);
+      expect(
+        networkEvents.filter((e) =>
+          e.url.includes("http://localhost:4004/errors?connected-mount=raise"),
+        ),
+      ).toHaveLength(1);
 
       networkEvents = [];
 
@@ -137,20 +128,11 @@ test.describe("exception handling", () => {
       );
 
       // page was not reloaded
-      expect(networkEvents).toEqual([
-        {
-          method: "GET",
-          url: "http://localhost:4004/errors?connected-child-mount-raise=2",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix/phoenix.min.js",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js",
-        },
-      ]);
+      expect(
+        networkEvents.filter((e) =>
+          e.url.includes("http://localhost:4004/errors?"),
+        ),
+      ).toHaveLength(1);
     });
 
     /**
@@ -174,21 +156,13 @@ test.describe("exception handling", () => {
       ]);
 
       // page remained loaded without parent failsafe reload
-      expect(networkEvents).toEqual([
-        // initial load
-        {
-          method: "GET",
-          url: "http://localhost:4004/errors?connected-child-mount-raise=5",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix/phoenix.min.js",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js",
-        },
-      ]);
+      expect(
+        networkEvents.filter((e) =>
+          e.url.includes(
+            "http://localhost:4004/errors?connected-child-mount-raise=5",
+          ),
+        ),
+      ).toHaveLength(1);
     });
   });
 
@@ -231,17 +205,11 @@ test.describe("exception handling", () => {
       await expect(newParentTiem).toHaveText(parentTime);
 
       // page was not reloaded
-      expect(networkEvents).toEqual([
-        { method: "GET", url: "http://localhost:4004/errors?child" },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix/phoenix.min.js",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js",
-        },
-      ]);
+      expect(
+        networkEvents.filter((e) =>
+          e.url.includes("http://localhost:4004/errors?child"),
+        ),
+      ).toHaveLength(1);
     });
 
     /**
@@ -283,17 +251,11 @@ test.describe("exception handling", () => {
       ]);
 
       // page was not reloaded
-      expect(networkEvents).toEqual([
-        { method: "GET", url: "http://localhost:4004/errors?child" },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix/phoenix.min.js",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js",
-        },
-      ]);
+      expect(
+        networkEvents.filter((e) =>
+          e.url.includes("http://localhost:4004/errors?child"),
+        ),
+      ).toHaveLength(1);
     });
 
     /**
@@ -342,20 +304,13 @@ test.describe("exception handling", () => {
       ]);
 
       // page was not reloaded
-      expect(networkEvents).toEqual([
-        {
-          method: "GET",
-          url: "http://localhost:4004/errors?connected-child-mount-raise=link",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix/phoenix.min.js",
-        },
-        {
-          method: "GET",
-          url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js",
-        },
-      ]);
+      expect(
+        networkEvents.filter((e) =>
+          e.url.includes(
+            "http://localhost:4004/errors?connected-child-mount-raise=link",
+          ),
+        ),
+      ).toHaveLength(1);
     });
   });
 });
