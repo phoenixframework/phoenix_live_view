@@ -39,7 +39,7 @@ Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
 
 ## Macro components and colocated hooks
 
-A `Phoenix.Component.MacroComponent` defines a compile-time transformation of a HEEx tag. This can be used to transform a tag and its content into something else, for example to perform compile time syntax highlighting, or even remove tags from the template entirely and write them to somewhere else. `Phoenix.LiveView.ColocatedHook` is a macro component that allows you to co-locate LiveView [JavaScript hooks](https://hexdocs.pm/phoenix_live_view/js-interop.html#client-hooks-via-phx-hook) next to the component code that uses them, while ensuring they are included in your regular JavaScript bundle. A colocated hook is defined by placing the special `:type` attribute on a `<script>` tag:
+A `Phoenix.Component.MacroComponent` defines a compile-time transformation of a HEEx tag. This can be used to transform a tag and its content into something else, for example to perform compile time syntax highlighting, or even remove tags from the template entirely and write them elsewhere. `Phoenix.LiveView.ColocatedHook` is a macro component that allows you to co-locate LiveView [JavaScript hooks](https://hexdocs.pm/phoenix_live_view/js-interop.html#client-hooks-via-phx-hook) next to the component code that uses them, while ensuring they are included in your regular JavaScript bundle. A colocated hook is defined by placing the special `:type` attribute on a `<script>` tag:
 
 ```elixir
 alias Phoenix.LiveView.ColocatedHook
