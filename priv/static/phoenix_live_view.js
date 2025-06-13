@@ -3208,7 +3208,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         dispatcher,
         callback
       } = args;
-      const pushOpts = { loading, value, target, page_loading: !!page_loading };
+      const pushOpts = {
+        loading,
+        value,
+        target,
+        page_loading: !!page_loading,
+        originalEvent: e
+      };
       const targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
       const phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
       const handler = (targetView, targetCtx) => {
@@ -4901,7 +4907,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (!this.isConnected()) {
         return Promise.reject(new Error("no connection"));
       }
-      const [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}];
+      const [ref, [el], opts] = refGenerator ? refGenerator({ payload }) : [null, [], {}];
       const oldJoinCount = this.joinCount;
       let onLoadingDone = function() {
       };
@@ -4931,7 +4937,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
                 this.onLiveRedirect(resp.live_redirect);
               }
               onLoadingDone();
-              resolve({ resp, reply: hookReply });
+              resolve({ resp, reply: hookReply, ref });
             };
             if (resp.diff) {
               this.liveSocket.requestDOMUpdate(() => {
@@ -5085,6 +5091,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             });
           }
         };
+        if (opts.payload) {
+          detail["payload"] = opts.payload;
+        }
+        if (opts.target) {
+          detail["target"] = opts.target;
+        }
+        if (opts.originalEvent) {
+          detail["originalEvent"] = opts.originalEvent;
+        }
         el.dispatchEvent(
           new CustomEvent("phx:push", {
             detail,
@@ -5147,17 +5162,16 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           new Error("unable to push hook event. LiveView not connected")
         );
       }
-      let [ref, els, opts] = this.putRef(
-        [{ el, loading: true, lock: true }],
-        event,
-        "hook"
-      );
-      return this.pushWithReply(() => [ref, els, opts], "event", {
+      const refGenerator = () => this.putRef([{ el, loading: true, lock: true }], event, "hook", {
+        payload,
+        target: targetCtx
+      });
+      return this.pushWithReply(refGenerator, "event", {
         type: "hook",
         event,
         value: payload,
         cid: this.closestComponentID(targetCtx)
-      }).then(({ resp: _resp, reply }) => ({ reply, ref }));
+      }).then(({ resp: _resp, reply, ref }) => ({ reply, ref }));
     }
     extractMeta(el, meta, value) {
       const prefix = this.binding("value-");
@@ -5191,7 +5205,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
       this.pushWithReply(
-        () => this.putRef([{ el, loading: true, lock: true }], phxEvent, type, opts),
+        (maybePayload) => this.putRef([{ el, loading: true, lock: true }], phxEvent, type, __spreadProps(__spreadValues({}, opts), {
+          payload: maybePayload == null ? void 0 : maybePayload.payload
+        })),
         "event",
         {
           type,
@@ -5219,7 +5235,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       let uploads;
       const cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts);
-      const refGenerator = () => {
+      const refGenerator = (maybePayload) => {
         return this.putRef(
           [
             { el: inputEl, loading: true, lock: true },
@@ -5227,7 +5243,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           ],
           phxEvent,
           "change",
-          opts
+          __spreadProps(__spreadValues({}, opts), { payload: maybePayload == null ? void 0 : maybePayload.payload })
         );
       };
       let formData;
@@ -5352,8 +5368,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return this.putRef(els, phxEvent, "submit", opts);
     }
     pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-      const refGenerator = () => this.disableForm(formEl, phxEvent, __spreadProps(__spreadValues({}, opts), {
+      const refGenerator = (maybePayload) => this.disableForm(formEl, phxEvent, __spreadProps(__spreadValues({}, opts), {
         form: formEl,
+        payload: maybePayload == null ? void 0 : maybePayload.payload,
         submitter
       }));
       dom_default.putPrivate(formEl, "submitter", submitter);

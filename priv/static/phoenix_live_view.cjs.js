@@ -3190,7 +3190,13 @@ var JS = {
       dispatcher,
       callback
     } = args;
-    const pushOpts = { loading, value, target, page_loading: !!page_loading };
+    const pushOpts = {
+      loading,
+      value,
+      target,
+      page_loading: !!page_loading,
+      originalEvent: e
+    };
     const targetSrc = eventType === "change" && dispatcher ? dispatcher : sourceEl;
     const phxTarget = target || targetSrc.getAttribute(view.binding("target")) || targetSrc;
     const handler = (targetView, targetCtx) => {
@@ -4883,7 +4889,7 @@ var View = class _View {
     if (!this.isConnected()) {
       return Promise.reject(new Error("no connection"));
     }
-    const [ref, [el], opts] = refGenerator ? refGenerator() : [null, [], {}];
+    const [ref, [el], opts] = refGenerator ? refGenerator({ payload }) : [null, [], {}];
     const oldJoinCount = this.joinCount;
     let onLoadingDone = function() {
     };
@@ -4913,7 +4919,7 @@ var View = class _View {
               this.onLiveRedirect(resp.live_redirect);
             }
             onLoadingDone();
-            resolve({ resp, reply: hookReply });
+            resolve({ resp, reply: hookReply, ref });
           };
           if (resp.diff) {
             this.liveSocket.requestDOMUpdate(() => {
@@ -5067,6 +5073,15 @@ var View = class _View {
           });
         }
       };
+      if (opts.payload) {
+        detail["payload"] = opts.payload;
+      }
+      if (opts.target) {
+        detail["target"] = opts.target;
+      }
+      if (opts.originalEvent) {
+        detail["originalEvent"] = opts.originalEvent;
+      }
       el.dispatchEvent(
         new CustomEvent("phx:push", {
           detail,
@@ -5129,17 +5144,16 @@ var View = class _View {
         new Error("unable to push hook event. LiveView not connected")
       );
     }
-    let [ref, els, opts] = this.putRef(
-      [{ el, loading: true, lock: true }],
-      event,
-      "hook"
-    );
-    return this.pushWithReply(() => [ref, els, opts], "event", {
+    const refGenerator = () => this.putRef([{ el, loading: true, lock: true }], event, "hook", {
+      payload,
+      target: targetCtx
+    });
+    return this.pushWithReply(refGenerator, "event", {
       type: "hook",
       event,
       value: payload,
       cid: this.closestComponentID(targetCtx)
-    }).then(({ resp: _resp, reply }) => ({ reply, ref }));
+    }).then(({ resp: _resp, reply, ref }) => ({ reply, ref }));
   }
   extractMeta(el, meta, value) {
     const prefix = this.binding("value-");
@@ -5173,7 +5187,10 @@ var View = class _View {
   }
   pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
     this.pushWithReply(
-      () => this.putRef([{ el, loading: true, lock: true }], phxEvent, type, opts),
+      (maybePayload) => this.putRef([{ el, loading: true, lock: true }], phxEvent, type, {
+        ...opts,
+        payload: maybePayload?.payload
+      }),
       "event",
       {
         type,
@@ -5201,7 +5218,7 @@ var View = class _View {
     }
     let uploads;
     const cid = isCid(forceCid) ? forceCid : this.targetComponentID(inputEl.form, targetCtx, opts);
-    const refGenerator = () => {
+    const refGenerator = (maybePayload) => {
       return this.putRef(
         [
           { el: inputEl, loading: true, lock: true },
@@ -5209,7 +5226,7 @@ var View = class _View {
         ],
         phxEvent,
         "change",
-        opts
+        { ...opts, payload: maybePayload?.payload }
       );
     };
     let formData;
@@ -5335,9 +5352,10 @@ var View = class _View {
     return this.putRef(els, phxEvent, "submit", opts);
   }
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-    const refGenerator = () => this.disableForm(formEl, phxEvent, {
+    const refGenerator = (maybePayload) => this.disableForm(formEl, phxEvent, {
       ...opts,
       form: formEl,
+      payload: maybePayload?.payload,
       submitter
     });
     dom_default.putPrivate(formEl, "submitter", submitter);
