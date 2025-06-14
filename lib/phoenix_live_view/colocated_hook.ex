@@ -1,11 +1,11 @@
 defmodule Phoenix.LiveView.ColocatedHook do
   @moduledoc ~S'''
-  A `Phoenix.Component.MacroComponent` that extracts [hooks](js-interop.md#client-hooks-via-phx-hook)
+  A special HEEx `:type` that extracts [hooks](js-interop.md#client-hooks-via-phx-hook)
   from a co-located `<script>` tag at compile time.
 
   ## Introduction
 
-  Colocated hooks are defined as macro components with `:type={Phoenix.LiveView.ColocatedHook}`:
+  Colocated hooks are defined as with `:type={Phoenix.LiveView.ColocatedHook}`:
 
       defmodule MyAppWeb.DemoLive do
         use MyAppWeb, :live_view
