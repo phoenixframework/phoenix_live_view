@@ -276,6 +276,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   defp write_new_manifests!(files) do
     if files == [] do
+      File.mkdir_p!(target_dir())
+
       File.write!(
         Path.join(target_dir(), "index.js"),
         "export const hooks = {};\nexport default {};"
