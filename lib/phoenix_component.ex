@@ -831,6 +831,35 @@ defmodule Phoenix.Component do
   Note that unlike Elixir's regular `for`, HEEx' `:for` does not support multiple
   generators in one expression. In such cases, you must use `EEx`'s blocks.
 
+  #### `:key`ed comprehensions
+
+  When using `:for`, you can optionally provide a `:key` expression to also perform
+  change-tracking inside the comprehension:
+
+  ```heex
+  <ul>
+    <li :for={%{id: id, name: name} <- @items} :key={id}>
+      Count: <span>{@count}</span>,
+      item: {name}
+    </li>
+  </ul>
+  ```
+
+  Internally, this works by turning the tag where the comprehension is defined on
+  into the template of a `Phoenix.LiveComponent`. Because of this, the following limitations
+  apply to comprehensions defined with `:key`:
+
+    1. A `:key` can only be defined on regular HTML tags, not on components or slots.
+    2. The diff over the wire is optimized to only send changes for each item,
+       but it will always include a list of component IDs (integers) specifying
+       the overall order of items.
+    3. Removing an entry involves separate round-trips with the client to confirm
+       the component removal.
+
+  We recommend to use `:key`ed comprehensions only if you already determined that you need
+  to optimize the diff over the write and [streams](`Phoenix.LiveView.stream/4`)
+  are not an option.
+
   ### Function components
 
   Function components are stateless components implemented as pure functions
