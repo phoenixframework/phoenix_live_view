@@ -1197,7 +1197,7 @@ defmodule Phoenix.LiveView.TagEngine do
     # validate_quoted_special_attr
     {:<-, for_meta, [lhs, rhs]} = for_expr
     # now we mark all eligible variables in the left-hand side as `:change_track`able
-    {lhs, variables} = mark_variables_as_change_tracked(lhs)
+    {lhs, variables} = mark_variables_as_change_tracked(lhs, %{})
     for_expr = {:<-, for_meta, [lhs, rhs]}
 
     # now we build the new ast that we pass to the engine
@@ -1206,7 +1206,7 @@ defmodule Phoenix.LiveView.TagEngine do
         Phoenix.LiveView.TagEngine.keyed_comprehension(
           {unquote(state.caller.module), unquote(tag_meta.line), unquote(tag_meta.column),
            unquote(key_expr)},
-          %{unquote_splicing(variables)},
+          %{unquote_splicing(Map.to_list(variables))},
           do: unquote(invoke_subengine(state, :handle_end, [[meta: [root: true]]]))
         )
       end
@@ -1228,57 +1228,39 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc false
-  def mark_variables_as_change_tracked(ast) do
-    # we traverse the AST and mark elements that should not considered
-    # to be variables as "skip";
-    # we need to handle both the pre and post phases to properly unmark
-    # the skip after we handled an expression
-    {ast, {_, vars}} =
-      Macro.traverse(
-        ast,
-        # we start in collect mode (true) and an empty list of vars
-        {true, []},
-        fn
-          # skip pinned expressions, marking the pin expression and setting
-          # collect to false
-          {:^, meta, [expr]}, {true, vars} ->
-            {{:^, Keyword.put(meta, :skip_mark, true), [expr]}, {false, vars}}
-
-          # skip the right hand side in something like <<foo::binary>>
-          {:"::", meta, [left, right]}, {true, vars} ->
-            # we need to return a list for prewalk to walk the left hand side
-            {new_left, inner_vars} = mark_variables_as_change_tracked(left)
-
-            {{:"::", Keyword.put(meta, :skip_mark, true), [new_left, right]},
-             {false, vars ++ inner_vars}}
-
-          # collect mode -> mark the variable as change_track and collect
-          # it for passing it to the KeyedComprehension component
-          {name, meta, context}, {true, vars}
-          when is_atom(name) and is_list(meta) and is_atom(context) ->
-            var = {name, Keyword.put(meta, :change_track, true), context}
-            {var, {true, [{name, var} | vars]}}
-
-          other, acc ->
-            {other, acc}
-        end,
-        fn
-          {op, meta, args}, {false, vars} when is_atom(op) and is_list(meta) and is_list(args) ->
-            case Keyword.pop(meta, :skip_mark) do
-              {nil, meta} ->
-                {{op, meta, args}, {false, vars}}
-
-              {true, meta} ->
-                # reset the collect mode
-                {{op, meta, args}, {true, vars}}
-            end
-
-          other, acc ->
-            {other, acc}
-        end
-      )
-
+  def mark_variables_as_change_tracked({:^, _, [_]} = ast, vars) do
     {ast, vars}
+  end
+
+  def mark_variables_as_change_tracked({:"::", meta, [left, right]}, vars) do
+    {left, vars} = mark_variables_as_change_tracked(left, vars)
+    {{:"::", meta, [left, right]}, vars}
+  end
+
+  def mark_variables_as_change_tracked({name, meta, context}, vars)
+      when is_atom(name) and is_list(meta) and is_atom(context) do
+    var = {name, [change_track: true] ++ meta, context}
+    {var, Map.put(vars, name, var)}
+  end
+
+  def mark_variables_as_change_tracked({left, meta, right}, vars) do
+    {left, vars} = mark_variables_as_change_tracked(left, vars)
+    {right, vars} = mark_variables_as_change_tracked(right, vars)
+    {{left, meta, right}, vars}
+  end
+
+  def mark_variables_as_change_tracked({left, right}, vars) do
+    {left, vars} = mark_variables_as_change_tracked(left, vars)
+    {right, vars} = mark_variables_as_change_tracked(right, vars)
+    {{left, right}, vars}
+  end
+
+  def mark_variables_as_change_tracked([_ | _] = list, vars) do
+    Enum.map_reduce(list, vars, &mark_variables_as_change_tracked/2)
+  end
+
+  def mark_variables_as_change_tracked(other, vars) do
+    {other, vars}
   end
 
   ## build_self_close_component_assigns/build_component_assigns
