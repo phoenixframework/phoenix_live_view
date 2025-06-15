@@ -37,9 +37,11 @@ Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
       env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]},
     ```
 
-## Macro components and colocated hooks
+## Colocated hooks
 
-A `Phoenix.Component.MacroComponent` defines a compile-time transformation of a HEEx tag. This can be used to transform a tag and its content into something else, for example to perform compile time syntax highlighting, or even remove tags from the template entirely and write them elsewhere. `Phoenix.LiveView.ColocatedHook` is a macro component that allows you to co-locate LiveView [JavaScript hooks](https://hexdocs.pm/phoenix_live_view/js-interop.html#client-hooks-via-phx-hook) next to the component code that uses them, while ensuring they are included in your regular JavaScript bundle. A colocated hook is defined by placing the special `:type` attribute on a `<script>` tag:
+When writing hooks for a specific component, the need to place the JavaScript code in a whole separate file often feels inconvenient. LiveView 1.1 introduces colocated hooks to allow writing the hook's JavaScript code in the same file as your regular component code.
+
+A colocated hook is defined by placing the special `:type` attribute on a `<script>` tag:
 
 ```elixir
 alias Phoenix.LiveView.ColocatedHook
@@ -80,7 +82,9 @@ Colocated hooks are extracted to a `phoenix-colocated` folder inside your `_buil
   })
 ```
 
-The `phoenix-colocated` folder has subfolders for each application that uses colocated hooks, therefore you'll need to adjust the `my_app` part of the import depending on the name of your project (defined in your `mix.exs`). You can read more about colocated hooks in the module documentation of `Phoenix.LiveView.ColocatedHook` and `Phoenix.LiveView.ColocatedJS`.
+The `phoenix-colocated` folder has subfolders for each application that uses colocated hooks, therefore you'll need to adjust the `my_app` part of the import depending on the name of your project (defined in your `mix.exs`). You can read more about colocated hooks in the module documentation of `Phoenix.LiveView.ColocatedHook`. There's also a more generalized version for colocated JavaScript, see the documentation for `Phoenix.LiveView.ColocatedJS`.
+
+We're planning to make the private `Phoenix.Component.MacroComponent` API that we use for those features public in a future release.
 
 ## Types for public interfaces
 
@@ -209,7 +213,6 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 * Add type annotations to all public JavaScript APIs ([#3789](https://github.com/phoenixframework/phoenix_live_view/pull/3789))
 * Add `Phoenix.LiveView.JS.ignore_attributes/1` to allow marking specific attributes to be ignored when LiveView patches an element ([#3765](https://github.com/phoenixframework/phoenix_live_view/pull/3765))
 * Add `Phoenix.LiveView.Debug` module with functions for inspecting LiveViews at runtime ([#3776](https://github.com/phoenixframework/phoenix_live_view/pull/3776))
-* Add `Phoenix.Component.MacroComponent` ([#3810](https://github.com/phoenixframework/phoenix_live_view/pull/3810))
 * Add `Phoenix.LiveView.ColocatedHook` and `Phoenix.LiveView.ColocatedJS` ([#3810](https://github.com/phoenixframework/phoenix_live_view/pull/3810))
 * Add `:update_only` option to `Phoenix.LiveView.stream_insert/4` ([#3573](https://github.com/phoenixframework/phoenix_live_view/pull/3573))
 * Use [`LazyHTML`](https://hexdocs.pm/lazy_html/) instead of [Floki](https://hexdocs.pm/floki) internally for LiveViewTest

@@ -1,6 +1,6 @@
 defmodule Phoenix.LiveView.ColocatedJS do
   @moduledoc """
-  A `Phoenix.Component.MacroComponent` that extracts any JavaScript code from a co-located
+  A special HEEx `:type` that extracts any JavaScript code from a co-located
   `<script>` tag at compile time.
 
   Colocated JavaScript is a more generalized version of `Phoenix.LiveView.ColocatedHook`.
