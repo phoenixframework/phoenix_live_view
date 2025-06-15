@@ -168,6 +168,22 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc false
+  defmacro keyed_comprehension(id, vars_changed, do: do_block) do
+    quote do
+      %Phoenix.LiveView.Component{
+        id: unquote(id),
+        component: Phoenix.LiveView.KeyedComprehension,
+        assigns: %{
+          vars_changed: unquote(vars_changed),
+          render: fn unquote(Macro.var(:vars_changed, Phoenix.LiveView.Engine)) ->
+            unquote(do_block)
+          end
+        }
+      }
+    end
+  end
+
+  @doc false
   def __assigns__(assigns, key, parent_changed) do
     # If the component is in its initial render (parent_changed == nil)
     # or the slot/block key is in parent_changed, then we render the
@@ -534,7 +550,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
-        |> handle_special_expr(new_meta)
+        |> handle_special_expr(:remote_component, new_meta)
         |> continue(tokens)
     end
   end
@@ -597,7 +613,7 @@ defmodule Phoenix.LiveView.TagEngine do
     |> pop_substate_from_stack()
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
-    |> handle_special_expr(tag_meta)
+    |> handle_special_expr(:remote_component, tag_meta)
     |> continue(tokens)
   end
 
@@ -704,7 +720,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
-        |> handle_special_expr(new_meta)
+        |> handle_special_expr(:local_component, new_meta)
         |> continue(tokens)
     end
   end
@@ -766,7 +782,7 @@ defmodule Phoenix.LiveView.TagEngine do
     |> pop_substate_from_stack()
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
-    |> handle_special_expr(tag_meta)
+    |> handle_special_expr(:local_component, tag_meta)
     |> continue(tokens)
   end
 
@@ -791,7 +807,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
         |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta))
-        |> handle_special_expr(new_meta)
+        |> handle_special_expr(:tag, new_meta)
         |> continue(tokens)
     end
   end
@@ -834,7 +850,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state
     |> update_subengine(:handle_text, [to_location(tag_meta), "</#{name}>"])
-    |> handle_special_expr(tag_open_meta)
+    |> handle_special_expr(:tag, tag_open_meta)
     |> continue(tokens)
   end
 
@@ -986,7 +1002,7 @@ defmodule Phoenix.LiveView.TagEngine do
   #   pop_special_attrs!(state, ":for", attrs, %{}, state)
   #   => {%{}, []}
   defp pop_special_attrs!(attrs, tag_meta, state) do
-    Enum.reduce([for: ":for", if: ":if"], {false, tag_meta, attrs}, fn
+    Enum.reduce([for: ":for", if: ":if", key: ":key"], {false, tag_meta, attrs}, fn
       {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
         attrs_acc
         |> List.keytake(string_attr, 0)
@@ -1128,24 +1144,30 @@ defmodule Phoenix.LiveView.TagEngine do
   defp literal_keys?([]), do: true
   defp literal_keys?(_other), do: false
 
-  defp handle_special_expr(state, tag_meta) do
+  defp handle_special_expr(state, type, tag_meta) do
     ast =
       case tag_meta do
-        %{for: for_expr, if: if_expr} ->
+        %{for: _for_expr, if: if_expr} ->
+          {for_expr, ast} = maybe_keyed(state, type, tag_meta)
+
           quote do
-            for unquote(for_expr), unquote(if_expr),
-              do: unquote(invoke_subengine(state, :handle_end, []))
+            for unquote(for_expr), unquote(if_expr), do: unquote(ast)
           end
 
-        %{for: for_expr} ->
+        %{for: _for_expr} ->
+          {for_expr, ast} = maybe_keyed(state, type, tag_meta)
+
           quote do
-            for unquote(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
+            for unquote(for_expr), do: unquote(ast)
           end
 
         %{if: if_expr} ->
           quote do
             if unquote(if_expr), do: unquote(invoke_subengine(state, :handle_end, []))
           end
+
+        %{key: _} ->
+          raise_syntax_error!("cannot use :key without :for", tag_meta, state)
 
         %{} ->
           nil
@@ -1158,6 +1180,105 @@ defmodule Phoenix.LiveView.TagEngine do
     else
       state
     end
+  end
+
+  defp maybe_keyed(state, type, %{key: key_expr, for: for_expr} = tag_meta) do
+    # for now, we only support plain tags because we don't know if a function component
+    # renders to a single tag which is required by live components
+    if type != :tag do
+      raise_syntax_error!(
+        "keyed :for comprehensions only supported on regular tags, not for #{tag_meta.tag_name}",
+        tag_meta,
+        state
+      )
+    end
+
+    # we already validated that the for expression has the correct shape in
+    # validate_quoted_special_attr
+    {:<-, for_meta, [lhs, rhs]} = for_expr
+    # now we mark all eligible variables in the left-hand side as `:change_track`able
+    {lhs, variables} = mark_variables_as_change_tracked(lhs)
+    for_expr = {:<-, for_meta, [lhs, rhs]}
+
+    # now we build the new ast that we pass to the engine
+    ast =
+      quote do
+        Phoenix.LiveView.TagEngine.keyed_comprehension(
+          {unquote(state.caller.module), unquote(tag_meta.line), unquote(tag_meta.column),
+           unquote(key_expr)},
+          %{unquote_splicing(variables)},
+          do: unquote(invoke_subengine(state, :handle_end, [[meta: [root: true]]]))
+        )
+      end
+
+    state = pop_substate_from_stack(state)
+
+    keyed_ast =
+      state
+      |> push_substate_to_stack()
+      |> update_subengine(:handle_begin, [])
+      |> update_subengine(:handle_expr, ["=", ast])
+      |> invoke_subengine(:handle_end, [])
+
+    {for_expr, keyed_ast}
+  end
+
+  defp maybe_keyed(state, _type, %{for: for_expr}) do
+    {for_expr, invoke_subengine(state, :handle_end, [])}
+  end
+
+  @doc false
+  def mark_variables_as_change_tracked(ast) do
+    # we traverse the AST and mark elements that should not considered
+    # to be variables as "skip";
+    # we need to handle both the pre and post phases to properly unmark
+    # the skip after we handled an expression
+    {ast, {_, vars}} =
+      Macro.traverse(
+        ast,
+        # we start in collect mode (true) and an empty list of vars
+        {true, []},
+        fn
+          # skip pinned expressions, marking the pin expression and setting
+          # collect to false
+          {:^, meta, [expr]}, {true, vars} ->
+            {{:^, Keyword.put(meta, :skip_mark, true), [expr]}, {false, vars}}
+
+          # skip the right hand side in something like <<foo::binary>>
+          {:"::", meta, [left, right]}, {true, vars} ->
+            # we need to return a list for prewalk to walk the left hand side
+            {new_left, inner_vars} = mark_variables_as_change_tracked(left)
+
+            {{:"::", Keyword.put(meta, :skip_mark, true), [new_left, right]},
+             {false, vars ++ inner_vars}}
+
+          # collect mode -> mark the variable as change_track and collect
+          # it for passing it to the KeyedComprehension component
+          {name, meta, context}, {true, vars}
+          when is_atom(name) and is_list(meta) and is_atom(context) ->
+            var = {name, Keyword.put(meta, :change_track, true), context}
+            {var, {true, [{name, var} | vars]}}
+
+          other, acc ->
+            {other, acc}
+        end,
+        fn
+          {op, meta, args}, {false, vars} when is_atom(op) and is_list(meta) and is_list(args) ->
+            case Keyword.pop(meta, :skip_mark) do
+              {nil, meta} ->
+                {{op, meta, args}, {false, vars}}
+
+              {true, meta} ->
+                # reset the collect mode
+                {{op, meta, args}, {true, vars}}
+            end
+
+          other, acc ->
+            {other, acc}
+        end
+      )
+
+    {ast, vars}
   end
 
   ## build_self_close_component_assigns/build_component_assigns
@@ -1592,7 +1713,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp validate_phx_attrs!([{":" <> name, _, attr_meta} | _], _meta, state, _attr, _id?)
-       when name not in ~w(if for) do
+       when name not in ~w(if for key) do
     message = "unsupported attribute :#{name} in tags"
     raise_syntax_error!(message, attr_meta, state)
   end
