@@ -41,7 +41,7 @@ Configure your uploader on `c:Phoenix.LiveView.mount/3`:
     def mount(_params, _session, socket) do
       {:ok,
        socket
-       |> assign(:uploaded_files, [])
+       |> assign(:uploads, [])
        |> allow_upload(:avatar, accept: :any, max_entries: 3, external: &presign_upload/2)}
     end
 
@@ -144,7 +144,7 @@ We will first implement the LiveView portion:
 def mount(_params, _session, socket) do
   {:ok,
     socket
-    |> assign(:uploaded_files, [])
+    |> assign(:uploads, [])
     |> allow_upload(:avatar, accept: :any, max_entries: 3, external: &presign_upload/2)}
 end
 
