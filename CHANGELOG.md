@@ -84,6 +84,8 @@ Colocated hooks are extracted to a `phoenix-colocated` folder inside your `_buil
 
 The `phoenix-colocated` folder has subfolders for each application that uses colocated hooks, therefore you'll need to adjust the `my_app` part of the import depending on the name of your project (defined in your `mix.exs`). You can read more about colocated hooks in the module documentation of `Phoenix.LiveView.ColocatedHook`. There's also a more generalized version for colocated JavaScript, see the documentation for `Phoenix.LiveView.ColocatedJS`.
 
+We're planning to make the private `Phoenix.Component.MacroComponent` API that we use for those features public in a future release.
+
 ## Types for public interfaces
 
 LiveView 1.1 adds official types to the JavaScript client. This allows IntelliSense to work in editors that support it and is a massive improvement to the user experience when writing JavaScript hooks.
