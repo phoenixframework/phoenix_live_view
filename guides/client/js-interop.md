@@ -349,7 +349,37 @@ passed to the optional `pushEvent` response callback.
 Communication with the hook from the server can be done by reading data attributes on the
 hook element or by using `Phoenix.LiveView.push_event/3` on the server and `handleEvent` on the client.
 
-For example, to implement infinite scrolling, one can pass the current page using data attributes:
+An example of responding with `:reply` might look like this.
+
+```heex
+<div phx-hook="ClickMeHook" id="click-me">
+  Click me for a message!
+</div>
+```
+
+```javascript
+Hooks.ClickMeHook = {
+  mounted() {
+    this.el.addEventListener("click", () => {
+      // Push event to LiveView with callback for reply
+      this.pushEvent("get_message", {}, (reply) => {
+        console.debug(reply.message);
+      });
+    });
+  }
+}
+```
+
+Then in your callback you respond with `{:reply, map, socket}`
+
+```elixir
+def handle_event("get_message", _params, socket) do
+  # Use :reply to respond to the pushEvent
+  {:reply, %{message: "Hello from LiveView!"}, socket}
+end
+```
+
+Another example, to implement infinite scrolling, one can pass the current page using data attributes:
 
 ```heex
 <div id="infinite-scroll" phx-hook="InfiniteScroll" data-page={@page}>
