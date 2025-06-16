@@ -505,6 +505,7 @@ test("can dynamically add/remove inputs (ecto sort_param/drop_param)", async ({
 
   await page.locator("#my-form_name").fill("Test");
   await page.getByRole("button", { name: "add more" }).click();
+  await syncLV(page);
 
   expect(await formData()).toEqual(
     expect.objectContaining({
@@ -515,7 +516,9 @@ test("can dynamically add/remove inputs (ecto sort_param/drop_param)", async ({
 
   await page.locator("#my-form_users_0_name").fill("User A");
   await page.getByRole("button", { name: "add more" }).click();
+  await syncLV(page);
   await page.getByRole("button", { name: "add more" }).click();
+  await syncLV(page);
 
   await page.locator("#my-form_users_1_name").fill("User B");
   await page.locator("#my-form_users_2_name").fill("User C");
@@ -532,6 +535,7 @@ test("can dynamically add/remove inputs (ecto sort_param/drop_param)", async ({
 
   // remove User B
   await page.locator('button[name="my_form[users_drop][]"][value="1"]').click();
+  await syncLV(page);
 
   expect(await formData()).toEqual(
     expect.objectContaining({
@@ -586,6 +590,7 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
 
   // remove User B
   await page.locator('input[name="my_form[users_drop][]"][value="1"]').click();
+  await syncLV(page);
 
   expect(await formData()).toEqual(
     expect.objectContaining({

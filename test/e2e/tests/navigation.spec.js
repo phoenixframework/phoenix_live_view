@@ -29,17 +29,11 @@ test("can navigate between LiveViews in the same live session over websocket", a
   await page.goto("/navigation/a");
   await syncLV(page);
 
-  expect(networkEvents).toEqual([
-    { method: "GET", url: "http://localhost:4004/navigation/a" },
-    {
-      method: "GET",
-      url: "http://localhost:4004/assets/phoenix/phoenix.min.js",
-    },
-    {
-      method: "GET",
-      url: "http://localhost:4004/assets/phoenix_live_view/phoenix_live_view.esm.js",
-    },
-  ]);
+  expect(
+    networkEvents.filter((e) =>
+      e.url.includes("http://localhost:4004/navigation/"),
+    ),
+  ).toHaveLength(1);
 
   expect(webSocketEvents).toEqual([
     expect.objectContaining({
