@@ -86,6 +86,35 @@ The `phoenix-colocated` folder has subfolders for each application that uses col
 
 We're planning to make the private `Phoenix.Component.MacroComponent` API that we use for those features public in a future release.
 
+## Keyed Comprehensions
+
+One pitfall when rendering collections in LiveView is that they are not change tracked. If you have code like this:
+
+```heex
+<ul>
+  <li :for={item <- @items}>{item.name}</li>
+</ul>
+```
+
+When changing `@items`, all elements are re-sent over the wire. LiveView still optimizes the static and dynamic parts of the template, but if you have 100 items in your list and only change a single one (or append, prepend, etc.), LiveView still sends the dynamic parts of all items.
+
+To improve this, LiveView prior to version 1.1 had two solutions:
+
+1. Use streams. Streams are not kept in memory on the server and if you `stream_insert` a single item, only that item is sent over the wire. But because the server does not keep any state for streams, this also means that if you update an item in a stream, all the dynamic parts of the updated item are sent again.
+2. Use a LiveComponent for each entry. LiveComponents perform change tracking on their own assigns. So when you update a single item, LiveView only sends a list of component IDs and the changed parts for that item.
+
+So LiveComponents allow for more granular diffs and also a more declarative approach than streams, but require more memory on the server. Thus, when memory usage is a concern, especially for very large collections, streams should be your first choice. Another downside of LiveComponents is that they require you to write a whole separate module just to get an optimized diff.
+
+LiveView 1.1 introduces a new `:key` attribute that can be used with `:for`:
+
+```heex
+<ul>
+  <li :for={item <- @items} :key={item.id}>{item.name}</li>
+</ul>
+```
+
+Under the hood, this has the same diff over the wire as a LiveComponent for each entry, but it allows you to define the template inline. LiveView optimizes a `:key`ed comprehension into a special LiveComponent under the hood. Therefore, this optimization can only be used on regular HTML tags, while `:for` without `:key` also works on components and slots. In the future, we might introduce further optimizations that would allow this to also work on components and slots using the same `:key` syntax.
+
 ## Types for public interfaces
 
 LiveView 1.1 adds official types to the JavaScript client. This allows IntelliSense to work in editors that support it and is a massive improvement to the user experience when writing JavaScript hooks.
