@@ -590,6 +590,7 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
 
   // remove User B
   await page.locator('input[name="my_form[users_drop][]"][value="1"]').click();
+  await syncLV(page);
 
   expect(await formData()).toEqual(
     expect.objectContaining({
