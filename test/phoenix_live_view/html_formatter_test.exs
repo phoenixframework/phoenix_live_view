@@ -1515,6 +1515,33 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
+  test "treats components with link or button in their name as inline" do
+    assert_formatter_doesnt_change("""
+    <.styled_link> Foo: </.styled_link>
+    """)
+
+    assert_formatter_output(
+      """
+      <.styled_link> Foo: </.styled_link>
+      """,
+      """
+      <.styled_link>Foo:</.styled_link>
+      """,
+      inline_matcher: []
+    )
+
+    assert_formatter_doesnt_change("""
+    <.styled_button_custom> Foo: </.styled_button_custom>
+    """)
+
+    assert_formatter_doesnt_change(
+      """
+      <.my_custom_inline_element> Foo: </.my_custom_inline_element>
+      """,
+      inline_matcher: [~r/inline_element$/]
+    )
+  end
+
   test "does not keep empty lines on script and styles tags" do
     input = """
     <script>
