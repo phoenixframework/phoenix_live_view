@@ -73,7 +73,7 @@ defmodule Phoenix.Component.MacroComponent do
   #       markdown = Phoenix.Component.MacroComponent.to_string(children)
   #       html_doc = MDEx.to_html!(markdown)
   #
-  #       {"div", attrs, [html_doc]}
+  #       {:ok, {"div", attrs, [html_doc]}}
   #     end
   #   end
   #   ```
