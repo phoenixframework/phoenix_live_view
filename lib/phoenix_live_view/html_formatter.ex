@@ -62,7 +62,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
     * `:inline_matcher` - a list of regular expressions to determine if a component
       should be treated as inline.
-      Defaults to `[~r/link/, ~r/button/]`, which treats any component with `link
+      Defaults to `["link", "button"]`, which treats any component with `link
       or `button` in its name as inline.
       Can be disabled by setting it to an empty list.
 
@@ -237,7 +237,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     else
       line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
       newlines = :binary.matches(source, ["\r\n", "\n"])
-      inline_matcher = opts[:inline_matcher] || [~r/link/, ~r/button/]
+      inline_matcher = opts[:inline_matcher] || ["link", "button"]
 
       opts =
         Keyword.update(opts, :attribute_formatters, %{}, fn formatters ->
@@ -575,7 +575,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   defp inline?(tag_name, inline_elements, inline_matcher) do
     tag_name in inline_elements or
-      Enum.any?(inline_matcher, &Regex.match?(&1, tag_name))
+      Enum.any?(inline_matcher, &(tag_name =~ &1))
   end
 
   defp count_newlines_before_text(binary),
