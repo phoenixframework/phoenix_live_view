@@ -298,7 +298,7 @@ defmodule Phoenix.LiveView.Engine do
   If one entry in the comprehension changes, the whole collection
   is sent again. Consider using `Phoenix.LiveComponent` and
   `Phoenix.LiveView.stream/4` to optimize those cases, or see the
-  [`:key` attribute when using :for`](Phoenix.Component.html#sigil_H/2-special-attributes).
+  [`:key` attribute when using :for](Phoenix.Component.html#sigil_H/2-special-attributes).
 
   The list of dynamics is always a list of iodatas or components,
   as we don't perform change tracking inside the comprehensions

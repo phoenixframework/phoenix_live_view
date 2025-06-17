@@ -62,7 +62,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
     * `:inline_matcher` - a list of regular expressions to determine if a component
       should be treated as inline.
-      Defaults to `["link", "button"]`, which treats any component with `link
+      Defaults to `["link", "button"]`, which treats any component with `link`
       or `button` in its name as inline.
       Can be disabled by setting it to an empty list.
 
