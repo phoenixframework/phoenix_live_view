@@ -250,6 +250,7 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 * Raise an exception when trying to bind a single DOM element to multiple views (this could happen when accidentally loading your app.js twice) ([#3805](https://github.com/phoenixframework/phoenix_live_view/pull/3805))
 * Ensure promise rejections include stack traces ([#3738](https://github.com/phoenixframework/phoenix_live_view/pull/3738))
 * Treat form associated custom elements as form inputs ([3823](https://github.com/phoenixframework/phoenix_live_view/pull/3823))
+* Add `:inline_matcher` option to `Phoenix.LiveView.HTMLFormatter` which can be configured as a list of regular expressions to evaluate against tag names to treat them as inline ([#3795](https://github.com/phoenixframework/phoenix_live_view/pull/3795))
 
 ## v1.0
 
