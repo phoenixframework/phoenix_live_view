@@ -60,12 +60,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       ]
       ```
 
-    * `:inline_components` - a list of component names that should be treated as
-      inline elements.
-      Defaults to `[".link"]`.
-      This is an exact match, so by default, this rule would not match `<Phoenix.Component.link>`.
-      Also see the `:inline_matcher` option, which provides less strict matching.
-
     * `:inline_matcher` - a list of regular expressions to determine if a component
       should be treated as inline.
       Defaults to `[~r/link/, ~r/button/]`, which treats any component with `link
@@ -243,7 +237,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     else
       line_length = opts[:heex_line_length] || opts[:line_length] || @default_line_length
       newlines = :binary.matches(source, ["\r\n", "\n"])
-      inline_elements = @inline_tags ++ (opts[:inline_components] || [".link"])
       inline_matcher = opts[:inline_matcher] || [~r/link/, ~r/button/]
 
       opts =
@@ -263,7 +256,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         |> tokenize()
         |> to_tree([], [], %{
           source: {source, newlines},
-          inline_elements: inline_elements,
+          inline_elements: @inline_tags,
           inline_matcher: inline_matcher
         })
         |> case do

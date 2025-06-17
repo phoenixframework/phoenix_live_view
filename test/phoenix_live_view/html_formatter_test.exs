@@ -1530,14 +1530,6 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       inline_matcher: []
     )
 
-    assert_formatter_doesnt_change(
-      """
-      <.styled_link> Foo: </.styled_link>
-      """,
-      inline_matcher: [],
-      inline_components: [".styled_link", ".link"]
-    )
-
     assert_formatter_doesnt_change("""
     <.styled_button_custom> Foo: </.styled_button_custom>
     """)
