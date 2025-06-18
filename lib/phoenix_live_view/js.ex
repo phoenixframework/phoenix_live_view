@@ -190,7 +190,7 @@ defmodule Phoenix.LiveView.JS do
   </button>
   ```
 
-  Note that the commands themselves are executed on the client in a the order they are composed
+  Note that the commands themselves are executed on the client in the order they are composed
   and the client does not wait for a confirmation before executing the next command. If you chain
   `JS.push(...) |> JS.hide(...)`, since hide is a fully client-side command, it hides immediately
   after pushing the event, not waiting for the server to respond.
