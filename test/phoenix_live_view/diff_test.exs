@@ -1913,5 +1913,18 @@ defmodule Phoenix.LiveView.DiffTest do
                :c => %{1 => %{1 => "Updated", 2 => "Updated"}}
              }
     end
+
+    test "raises on duplicate key" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~H"""
+      <.keyed_comprehension_with_pattern items={[%{id: 1, name: "One"}]} />
+      <.keyed_comprehension_with_pattern items={[%{id: 1, name: "One"}]} />
+      """
+
+      assert_raise RuntimeError,
+                   ~r/found duplicate key 1 for keyed comprehension in module Phoenix.LiveView.DiffTest/,
+                   fn -> render(rendered) end
+    end
   end
 end
