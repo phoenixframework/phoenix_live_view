@@ -645,8 +645,15 @@ defmodule Phoenix.LiveView.Diff do
           Enum.reduce(entries, {[], [], components, seen_ids}, fn
             {cid, id, new?, new_assigns}, {assigns_sockets, metadata, components, seen_ids} ->
               if Map.has_key?(seen_ids, [component | id]) do
-                raise "found duplicate ID #{inspect(id)} " <>
-                        "for component #{inspect(component)} when rendering template"
+                case id do
+                  {:keyed_comprehension, module, line, column, key} ->
+                    raise "found duplicate key #{inspect(key)} " <>
+                            "for keyed comprehension in module #{inspect(module)} at line #{line} column #{column}"
+
+                  _ ->
+                    raise "found duplicate ID #{inspect(id)} " <>
+                            "for component #{inspect(component)} when rendering template"
+                end
               end
 
               {socket, components, prints} =
