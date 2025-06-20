@@ -750,6 +750,50 @@ defmodule Phoenix.LiveView.DiffTest do
              }
     end
 
+    defp fake_form(assigns) do
+      ~H"""
+      {render_slot(@inner_block, @form)}
+      """
+    end
+
+    defp access_let(assigns) do
+      ~H"""
+      <.fake_form :let={f} form={@form}>
+        {f[:name].value}
+      </.fake_form>
+      """
+    end
+
+    test ":let + access" do
+      assigns = %{socket: %Socket{}, form: %{name: %{value: "foo"}}}
+
+      {full_render, fingerprints, components} = render(access_let(assigns))
+
+      assert full_render == %{
+               0 => %{0 => %{0 => "foo", :s => ["\n  ", "\n"]}, :s => ["", ""]},
+               :s => ["", ""]
+             }
+
+      {full_render, _fingerprints, _components} =
+        render(access_let(assigns), fingerprints, components)
+
+      assert full_render == %{0 => %{0 => %{0 => "foo"}}}
+
+      assigns = Map.put(assigns, :__changed__, %{})
+
+      {full_render, _fingerprints, _components} =
+        render(access_let(assigns), fingerprints, components)
+
+      assert full_render == %{}
+
+      assigns = Map.put(assigns, :__changed__, %{form: true})
+
+      {full_render, _fingerprints, _components} =
+        render(access_let(assigns), fingerprints, components)
+
+      assert full_render == %{0 => %{0 => %{0 => "foo"}}}
+    end
+
     def render_multiple_slots(assigns) do
       ~H"""
       <div>
