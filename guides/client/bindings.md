@@ -353,6 +353,9 @@ may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
 The `phx-remove` command is only executed for the removed parent element.
 It does not cascade to children.
 
+Note that it's recommended that for `phx-remove` to work correctly, the parent
+element should have a (unique) DOM ID. If it doesn't have one, it may not fire.
+
 To react to elements being updated in the DOM, you'll need to use a
 [hook](js-interop.md#client-hooks-via-phx-hook), which gives you full access
 to the element life-cycle.
