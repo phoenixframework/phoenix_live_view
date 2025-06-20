@@ -447,7 +447,7 @@ defmodule Phoenix.LiveView.Engine do
 
   defmacrop to_safe_match(var, ast) do
     quote do
-      {:=, [],
+      {:=, _,
        [
          {_, _, __MODULE__} = unquote(var),
          {{:., _, [__MODULE__, :to_safe]}, _, [unquote(ast)]}
@@ -479,7 +479,9 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns, caller) do
     with {:for, meta, [gen | args]} <- expr,
          {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
-         {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
+         {filters, [[do: arg]]} <- Enum.split(args, -1),
+         arg <- maybe_expand(arg, caller),
+         {:__block__, _, block} <- maybe_extract_block(arg),
          {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       {block, static, dynamic, fingerprint} =
         analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller)
@@ -571,25 +573,53 @@ defmodule Phoenix.LiveView.Engine do
     to_safe(expr, true)
   end
 
+  defp maybe_expand(
+         {{:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, :finalize]}, _, _} =
+           call,
+         env
+       ) do
+    Macro.expand(call, env)
+  end
+
+  defp maybe_expand(arg, _env), do: arg
+
+  # to prevent variable conflicts, the TagEngine's finalize expands into a try after
+  defp maybe_extract_block({:try, _, [[{:do, block}, {:after, :ok}]]}), do: block
+  defp maybe_extract_block(arg), do: arg
+
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, func]}),
     do: func
 
   defp extract_call(call),
     do: call
 
-  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, caller) do
-    for {:->, meta, [args, block]} <- blocks do
-      {args, vars, assigns} = analyze_list(args, vars, %{}, caller, [])
+  defp maybe_block_to_rendered(ast, vars, caller, assigns \\ %{})
 
-      case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
-        {:ok, rendered} -> {:->, meta, [args, rendered]}
-        :error -> {:->, meta, [args, block]}
-      end
+  defp maybe_block_to_rendered([{:->, _, _} | _] = blocks, vars, caller, assigns) do
+    for {:->, meta, [args, block]} <- blocks do
+      {args, vars, assigns} = analyze_list(args, vars, assigns, caller, [])
+
+      block = maybe_block_to_rendered(block, vars, caller, assigns)
+      {:->, meta, [args, block]}
     end
   end
 
-  defp maybe_block_to_rendered(block, vars, caller) do
-    case to_rendered_struct(block, untaint_vars(vars), %{}, caller, []) do
+  # for preventing variable conflicts, the TagEngine finalize calls are wrapped
+  # in a try after block
+  defp maybe_block_to_rendered(
+         {:try, meta, [[{:do, block}, {:after, :ok}]]} = original,
+         vars,
+         caller,
+         assigns
+       ) do
+    case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
+      {:ok, rendered} -> {:try, meta, [[{:do, rendered}, {:after, :ok}]]}
+      :error -> original
+    end
+  end
+
+  defp maybe_block_to_rendered(block, vars, caller, assigns) do
+    case to_rendered_struct(block, untaint_vars(vars), assigns, caller, []) do
       {:ok, rendered} -> rendered
       :error -> block
     end
@@ -1133,6 +1163,7 @@ defmodule Phoenix.LiveView.Engine do
         {{left, meta, args}, vars, assigns}
 
       :live ->
+        {left, meta, args} = maybe_expand({left, meta, args}, caller)
         {args, [opts]} = Enum.split(args, -1)
         {args, vars, assigns} = analyze_skip_assignment_list(args, vars, assigns, caller, [])
         {opts, vars, assigns} = analyze_with_restricted_vars(opts, vars, assigns, caller)
@@ -1421,6 +1452,7 @@ defmodule Phoenix.LiveView.Engine do
 
   # Constructs from TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
+  defp classify_taint(:finalize, [_, [do: _]]), do: :live
   defp classify_taint(:keyed_comprehension, [_, _, [do: _]]), do: :live
 
   # Constructs from Phoenix.View

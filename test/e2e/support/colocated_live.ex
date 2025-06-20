@@ -5,20 +5,35 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
     @behaviour Phoenix.Component.MacroComponent
 
     @impl true
-    def transform({"pre", attrs, children, _tag_meta}, _meta) do
+    def transform({:tag, _, ["pre", attrs, [do: children]]}, _meta) do
       code = Phoenix.Component.MacroComponent.ast_to_string(children)
-      lang = Map.new(attrs)["language"] || raise ArgumentError, "language attribute is required"
+
+      attrs =
+        Map.new(attrs, fn
+          {:attribute, _, [key, _, value]} -> {key, value}
+          {:attribute, _, [key, nil]} -> {key, nil}
+        end)
+
+      lang =
+        attrs["language"] ||
+          raise ArgumentError, "language attribute is required"
+
       html_doc = highlight(String.trim_leading(code), lang)
 
       stylesheet =
         Makeup.Styles.HTML.Style.stylesheet(Makeup.Styles.HTML.StyleMap.monokai_style())
 
       {:ok,
-       {"pre", [{"class", "highlight"} | attrs],
-        [
-          {"style", [], [stylesheet, ".highlight { padding: 8px; border-radius: 4px; }"], %{}},
-          html_doc
-        ], %{}}}
+       quote do
+         tag("pre", [attribute("class", [], "highlight")]) do
+           tag("style", []) do
+             unquote(stylesheet)
+             ".highlight { padding: 8px; border-radius: 4px; }"
+           end
+
+           unquote(html_doc)
+         end
+       end}
     end
 
     defp highlight(code, lang) do
