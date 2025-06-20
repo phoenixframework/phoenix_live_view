@@ -942,14 +942,14 @@ defmodule Phoenix.LiveView.Engine do
          {name, _, context} = expr,
          {type, map} = vars,
          assigns,
-         _caller,
+         caller,
          nest
        )
        when is_atom(name) and is_atom(context) and is_map_key(map, name) and type != :tainted do
     if map[name] == :change_track do
       {expr, vars, Map.put(assigns, {:vars_changed, [name | nest]}, true)}
     else
-      {expr, vars, assigns}
+      analyze(expr, vars, assigns, caller)
     end
   end
 
