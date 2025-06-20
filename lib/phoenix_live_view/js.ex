@@ -173,6 +173,39 @@ defmodule Phoenix.LiveView.JS do
 
   You can also use `window.addEventListener` to listen to events pushed
   from the server. You can learn more in our [JS interoperability guide](js-interop.md).
+
+  ## Composing JS commands
+
+  All the functions in this module optionally accept an existing `%JS{}` struct as the first argument,
+  allowing you to chain multiple commands, like pushing an event to the server and optimistically hiding
+  a modal:
+
+  ```heex
+  <div id="modal" class="modal">
+    My Modal
+  </div>
+
+  <button phx-click={JS.push("modal-closed") |> JS.remove_class("show", to: "#modal", transition: "fade-out")}>
+    hide modal
+  </button>
+  ```
+
+  Note that the commands themselves are executed on the client in the order they are composed
+  and the client does not wait for a confirmation before executing the next command. If you chain
+  `JS.push(...) |> JS.hide(...)`, since hide is a fully client-side command, it hides immediately
+  after pushing the event, not waiting for the server to respond.
+
+  JS commands interacting with the server are documented as such. If you chain multiple commands that
+  interact with the server, those are also guaranteed to be executed in the order they are composed,
+  since a LiveView can only handle one event at a time. Therefore, if you do something like
+
+  ```elixir
+  JS.push("my-event") |> JS.patch("/my-path?foo=bar")
+  ```
+
+  it is guaranteed that the event will be pushed first and the patch will only be handled after
+  the first event was handled by the LiveView.
+
   '''
   alias Phoenix.LiveView.JS
 
