@@ -33,6 +33,18 @@ defmodule Phoenix.LiveView.DebugTest do
     end
   end
 
+  defmodule NotALiveView do
+    use GenServer
+
+    def start_link(opts) do
+      GenServer.start_link(__MODULE__, opts)
+    end
+
+    def init(opts) do
+      {:ok, opts}
+    end
+  end
+
   describe "list_liveviews/0" do
     test "returns a list of all currently connected LiveView processes" do
       conn = Plug.Test.conn(:get, "/")
@@ -64,18 +76,6 @@ defmodule Phoenix.LiveView.DebugTest do
     end
 
     test "returns an error if the given pid is not a LiveView process" do
-      defmodule NotALiveView do
-        use GenServer
-
-        def start_link(opts) do
-          GenServer.start_link(__MODULE__, opts)
-        end
-
-        def init(opts) do
-          {:ok, opts}
-        end
-      end
-
       pid = start_supervised!(NotALiveView)
       assert {:error, :not_alive_or_not_a_liveview} = Debug.socket(pid)
     end
@@ -88,6 +88,11 @@ defmodule Phoenix.LiveView.DebugTest do
 
       assert {:ok, [%{id: "component-1", module: TestLV.Component}]} =
                Debug.live_components(view.pid)
+    end
+
+    test "returns an error if the given pid is not a LiveView process" do
+      pid = start_supervised!(NotALiveView)
+      assert {:error, :not_alive_or_not_a_liveview} = Debug.live_components(pid)
     end
   end
 end
