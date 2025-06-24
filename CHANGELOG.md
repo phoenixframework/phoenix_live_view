@@ -237,7 +237,12 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 
 ### Enhancements
 
-* Allow omitting the `name` attribute when using `Phoenix.LiveView.ColocatedJS`
+* Allow omitting the `name` attribute when using `Phoenix.LiveView.ColocatedJS` ([#3860](https://github.com/phoenixframework/phoenix_live_view/pull/3860))
+* Improve error message when `:key` in keyed comprehensions leads to duplicate IDs ([#3857](https://github.com/phoenixframework/phoenix_live_view/pull/3857))
+
+### Bug fixes
+
+* Fix `Phoenix.LiveView.Debug.live_components/1` raising instead of returning an error tuple ([#3861](https://github.com/phoenixframework/phoenix_live_view/pull/3861))
 
 ## v1.1.0-rc.1 (2025-06-20)
 
