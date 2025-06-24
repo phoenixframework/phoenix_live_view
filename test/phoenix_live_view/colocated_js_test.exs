@@ -24,7 +24,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
     assert folder =
              Enum.find(module_folders, fn folder ->
-               folder =~ ~r/#{inspect(__MODULE__)}\.TestComponent/
+               folder =~ ~r/#{inspect(__MODULE__)}\.TestComponent$/
              end)
 
     assert [script] =
@@ -130,6 +130,67 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
   after
     :code.delete(__MODULE__.TestComponentKey)
     :code.purge(__MODULE__.TestComponentKey)
+  end
+
+  test "nameless script is imported for side effects only" do
+    defmodule TestComponentSideEffects do
+      use Phoenix.Component
+      alias Phoenix.LiveView.ColocatedJS, as: Colo
+
+      def fun(assigns) do
+        ~H"""
+        <script :type={Colo}>
+          console.log("hey!");
+        </script>
+        """
+      end
+    end
+
+    assert module_folders =
+             File.ls!(Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view"))
+
+    assert folder =
+             Enum.find(module_folders, fn folder ->
+               folder =~ ~r/#{inspect(__MODULE__)}\.TestComponentSideEffects/
+             end)
+
+    assert [script] =
+             Path.wildcard(
+               Path.join(
+                 Mix.Project.build_path(),
+                 "phoenix-colocated/phoenix_live_view/#{folder}/*.js"
+               )
+             )
+
+    assert File.read!(script) == """
+
+             console.log("hey!");
+           """
+
+    # now write the manifest manually as we are in a test
+    Phoenix.LiveView.ColocatedJS.compile()
+
+    relative_script_path =
+      Path.relative_to(
+        script,
+        Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/")
+      )
+
+    assert manifest =
+             File.read!(
+               Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/index.js")
+             )
+
+    assert line =
+             Enum.find(String.split(manifest, "\n"), fn line ->
+               line =~ inspect(__MODULE__.TestComponentSideEffects)
+             end)
+
+    assert [_match] =
+             Regex.run(~r/import "\.\/#{Regex.escape(relative_script_path)}";/, line)
+  after
+    :code.delete(__MODULE__.TestComponentSideEffects)
+    :code.purge(__MODULE__.TestComponentSideEffects)
   end
 
   test "raises for invalid name" do
