@@ -198,7 +198,7 @@ For live page navigation via `<.link navigate={...}>` and `<.link patch={...}>`,
 ```javascript
 // app.js
 import topbar from "topbar"
-window.addEventListener("phx:page-loading-start", info => topbar.delayedShow(500))
+window.addEventListener("phx:page-loading-start", info => topbar.show(500))
 window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 ```
 
