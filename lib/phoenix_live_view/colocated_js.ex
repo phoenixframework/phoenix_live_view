@@ -128,15 +128,14 @@ defmodule Phoenix.LiveView.ColocatedJS do
   The supported attributes are:
 
     * `name` - The name under which the default export of the script is available when importing
-      the manifest. This is required, even if you don't plan to access the exported values or the
-      script does not actually export anything.
+      the manifest. If omitted, the file will be imported for side effects only.
 
     * `key` - A custom key to use for the export. This is used by `Phoenix.LiveView.ColocatedHook` to
       export all hooks under the named `hooks` export (`export { ... as hooks }`).
       For example, you could set this to `web_components` for each colocated script that defines
       a web component and then import all of them as `import { web_components } from "phoenix-colocated/my_app"`.
       Defaults to `:default`, which means the export will be available under the manifest's `default` export.
-      This needs to be a valid JavaScript identifier.
+      This needs to be a valid JavaScript identifier. When given, a `name` is required as well.
 
     * `extension` - a custom extension to use when writing the extracted file. The default is `js`.
 
@@ -173,8 +172,12 @@ defmodule Phoenix.LiveView.ColocatedJS do
         raise ArgumentError,
               "the name attribute of a colocated script must be a compile-time string. Got: #{Macro.to_string(name)}"
 
+      %{"key" => _} ->
+        raise ArgumentError,
+              "a name is required when a key is given"
+
       _ ->
-        raise ArgumentError, "missing required name attribute for ColocatedJS"
+        :ok
     end
   end
 
@@ -191,7 +194,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
       |> maybe_put_opt(opts, "manifest", :manifest)
 
     hashed_name =
-      filename_opts.name
+      (filename_opts.name || text_content)
       |> then(&:crypto.hash(:md5, &1))
       |> Base.encode32(case: :lower, padding: false)
 
@@ -304,13 +307,17 @@ defmodule Phoenix.LiveView.ColocatedJS do
           {:default, entries} ->
             [
               acc,
-              Enum.map(entries, fn {file, %{name: name}} ->
-                import_name =
-                  "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
+              Enum.map(entries, fn
+                {file, %{name: nil}} ->
+                  ~s[import "./#{Path.relative_to(file, target_dir)}";\n]
 
-                escaped_name = Phoenix.HTML.javascript_escape(name)
+                {file, %{name: name}} ->
+                  import_name =
+                    "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
 
-                ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; js["#{escaped_name}"] = #{import_name};\n>
+                  escaped_name = Phoenix.HTML.javascript_escape(name)
+
+                  ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; js["#{escaped_name}"] = #{import_name};\n>
               end)
             ]
 
@@ -320,13 +327,17 @@ defmodule Phoenix.LiveView.ColocatedJS do
             [
               acc,
               ~s<const #{tmp_name} = {}; export { #{tmp_name} as #{key} };\n>,
-              Enum.map(entries, fn {file, %{name: name}} ->
-                import_name =
-                  "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
+              Enum.map(entries, fn
+                {file, %{name: nil}} ->
+                  ~s[import "./#{Path.relative_to(file, target_dir)}";\n]
 
-                escaped_name = Phoenix.HTML.javascript_escape(name)
+                {file, %{name: name}} ->
+                  import_name =
+                    "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
 
-                ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; #{tmp_name}["#{escaped_name}"] = #{import_name};\n>
+                  escaped_name = Phoenix.HTML.javascript_escape(name)
+
+                  ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; #{tmp_name}["#{escaped_name}"] = #{import_name};\n>
               end)
             ]
         end
