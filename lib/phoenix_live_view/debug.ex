@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.Debug do
   """
   def live_components(liveview_pid) do
     GenServer.call(liveview_pid, {:phoenix, :debug_live_components})
-  rescue
-    _ -> {:error, :not_alive_or_not_a_liveview}
+  catch
+    :exit, _ -> {:error, :not_alive_or_not_a_liveview}
   end
 end
