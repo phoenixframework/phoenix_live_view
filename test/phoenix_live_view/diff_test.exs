@@ -1783,7 +1783,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert {%{
                 1 =>
-                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, _, 1},
+                  {Phoenix.LiveView.KeyedComprehension,
+                   {:keyed_comprehension, Phoenix.LiveView.DiffTest, _, _, 1},
                    %{
                      id: 1,
                      name: "First",
@@ -1792,7 +1793,8 @@ defmodule Phoenix.LiveView.DiffTest do
                      myself: %Phoenix.LiveComponent.CID{cid: 1}
                    }, %{}, _},
                 2 =>
-                  {Phoenix.LiveView.KeyedComprehension, {Phoenix.LiveView.DiffTest, _, _, 2},
+                  {Phoenix.LiveView.KeyedComprehension,
+                   {:keyed_comprehension, Phoenix.LiveView.DiffTest, _, _, 2},
                    %{
                      id: 2,
                      name: "Second",
@@ -1910,6 +1912,19 @@ defmodule Phoenix.LiveView.DiffTest do
                0 => %{d: [[1], [2]]},
                :c => %{1 => %{1 => "Updated", 2 => "Updated"}}
              }
+    end
+
+    test "raises on duplicate key" do
+      assigns = %{socket: %Socket{}}
+
+      rendered = ~H"""
+      <.keyed_comprehension_with_pattern items={[%{id: 1, name: "One"}]} />
+      <.keyed_comprehension_with_pattern items={[%{id: 1, name: "One"}]} />
+      """
+
+      assert_raise RuntimeError,
+                   ~r/found duplicate key 1 for keyed comprehension in module Phoenix.LiveView.DiffTest/,
+                   fn -> render(rendered) end
     end
   end
 end

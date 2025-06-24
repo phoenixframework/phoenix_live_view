@@ -1204,8 +1204,8 @@ defmodule Phoenix.LiveView.TagEngine do
     ast =
       quote do
         Phoenix.LiveView.TagEngine.keyed_comprehension(
-          {unquote(state.caller.module), unquote(tag_meta.line), unquote(tag_meta.column),
-           unquote(key_expr)},
+          {:keyed_comprehension, unquote(state.caller.module), unquote(tag_meta.line),
+           unquote(tag_meta.column), unquote(key_expr)},
           %{unquote_splicing(Map.to_list(variables))},
           do: unquote(invoke_subengine(state, :handle_end, [[meta: [root: true]]]))
         )

@@ -850,10 +850,13 @@ defmodule Phoenix.Component do
   apply to comprehensions defined with `:key`:
 
     1. A `:key` can only be defined on regular HTML tags, not on components or slots.
-    2. The diff over the wire is optimized to only send changes for each item,
+    2. The `key` must be globally unique. LiveView prefixes the given value with the module,
+       line and file where the `:key` is defined, but there can still be situations where
+       conflicts occur.
+    3. The diff over the wire is optimized to only send changes for each item,
        but it will always include a list of component IDs (integers) specifying
        the overall order of items.
-    3. Removing an entry involves separate round-trips with the client to confirm
+    4. Removing an entry involves separate round-trips with the client to confirm
        the component removal.
 
   We recommend to use `:key`ed comprehensions only if you already determined that you need
