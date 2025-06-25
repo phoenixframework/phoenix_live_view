@@ -503,16 +503,21 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %Comprehension{dynamics: [], stream: nil},
+         %Comprehension{dynamics: [], stream: stream},
          _,
          pending,
          components,
          template,
          _changed?
        ) do
-    # The comprehension has no elements and it was not rendered yet,
-    # so we can skip it as long as it doesn't have a stream.
-    {"", nil, pending, components, template}
+    # The comprehension has no elements and it was not rendered yet, so we skip it,
+    # but if there is a stream delete, we send it
+    if stream do
+      diff = %{@dynamics => [], @static => []}
+      {maybe_add_stream(diff, stream), nil, pending, components, template}
+    else
+      {"", nil, pending, components, template}
+    end
   end
 
   defp traverse(
