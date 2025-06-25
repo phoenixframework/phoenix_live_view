@@ -1196,16 +1196,19 @@ defmodule Phoenix.LiveView.TagEngine do
     # we already validated that the for expression has the correct shape in
     # validate_quoted_special_attr
     {:<-, for_meta, [lhs, rhs]} = for_expr
+
     # now we mark all eligible variables in the left-hand side as `:change_track`able
     {lhs, variables} = mark_variables_as_change_tracked(lhs, %{})
-    for_expr = {:<-, for_meta, [lhs, rhs]}
+
+    # finally annotate the generator with the relevant metadata for the engine
+    keyed_comprehension = {state.caller.module, tag_meta.line, tag_meta.column}
+    for_expr = {:<-, [keyed_comprehension: keyed_comprehension] ++ for_meta, [lhs, rhs]}
 
     # now we build the new ast that we pass to the engine
     ast =
       quote do
         Phoenix.LiveView.TagEngine.keyed_comprehension(
-          {:keyed_comprehension, unquote(state.caller.module), unquote(tag_meta.line),
-           unquote(tag_meta.column), unquote(key_expr)},
+          unquote(key_expr),
           %{unquote_splicing(Map.to_list(variables))},
           do: unquote(invoke_subengine(state, :handle_end, [[meta: [root: true]]]))
         )

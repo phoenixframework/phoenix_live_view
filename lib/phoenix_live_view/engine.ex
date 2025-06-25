@@ -75,29 +75,6 @@ defmodule Phoenix.LiveView.Comprehension do
           fingerprint: integer()
         }
 
-  @doc false
-  def __mark_consumable__(%Phoenix.LiveView.LiveStream{} = stream) do
-    %{stream | consumable?: true}
-  end
-
-  def __mark_consumable__(collection), do: collection
-
-  @doc false
-  def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
-    inserts =
-      for {id, at, _item, limit, update_only} <- stream.inserts, do: [id, at, limit, update_only]
-
-    data = [stream.ref, inserts, stream.deletes]
-
-    if stream.reset? do
-      Map.put(comprehension, :stream, data ++ [true])
-    else
-      Map.put(comprehension, :stream, data)
-    end
-  end
-
-  def __annotate__(comprehension, _collection), do: comprehension
-
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%Phoenix.LiveView.Comprehension{static: static, dynamics: dynamics}) do
       for dynamic <- dynamics, do: to_iodata(static, dynamic)
@@ -489,21 +466,40 @@ defmodule Phoenix.LiveView.Engine do
       gen_collection =
         quote do
           unquote(gen_var) =
-            Phoenix.LiveView.Comprehension.__mark_consumable__(unquote(gen_collection))
+            Phoenix.LiveView.LiveStream.mark_consumable(unquote(gen_collection))
         end
 
       gen = {:<-, gen_meta, [gen_pattern, gen_var]}
-      for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
+
+      comprehension =
+        if keyed_fingerprint = Keyword.get(gen_meta, :keyed_comprehension) do
+          ["", ""] = static
+          [var] = dynamic
+          for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [var]}]]}
+
+          quote do
+            %Phoenix.LiveView.KeyedComprehension{
+              entries: unquote(for),
+              fingerprint: unquote(Macro.escape(keyed_fingerprint))
+            }
+          end
+        else
+          for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
+
+          quote do
+            %Phoenix.LiveView.Comprehension{
+              static: unquote(static),
+              dynamics: unquote(for),
+              fingerprint: unquote(fingerprint)
+            }
+          end
+        end
 
       quote do
         unquote(gen_collection)
 
-        Phoenix.LiveView.Comprehension.__annotate__(
-          %Phoenix.LiveView.Comprehension{
-            static: unquote(static),
-            dynamics: unquote(for),
-            fingerprint: unquote(fingerprint)
-          },
+        Phoenix.LiveView.LiveStream.annotate_comprehension(
+          unquote(comprehension),
           unquote(gen_var)
         )
       end
