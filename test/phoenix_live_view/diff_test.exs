@@ -1774,15 +1774,15 @@ defmodule Phoenix.LiveView.DiffTest do
       {full_render, fingerprints, components} = render(keyed_comprehension_with_pattern(assigns))
 
       assert full_render == %{
-               0 => %{s: ["", ""], d: [[2], [3]]},
+               0 => %{s: ["", ""], d: [[1], [2]]},
                :c => %{
-                 2 => %{
+                 1 => %{
                    0 => "0",
                    1 => "First",
                    :r => 1,
                    :s => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"]
                  },
-                 3 => %{0 => "0", 1 => "Second", :s => 2}
+                 2 => %{0 => "0", 1 => "Second", :s => 1}
                },
                :s => ["<ul>\n  ", "\n</ul>"],
                :r => 1
@@ -1794,7 +1794,7 @@ defmodule Phoenix.LiveView.DiffTest do
       {second_render, fingerprints, components} =
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
-      assert second_render == %{0 => %{d: [[3], [2]]}}
+      assert second_render == %{0 => %{d: [[2], [1]]}}
 
       # update count
       assigns = Phoenix.Component.assign(assigns, :count, 1)
@@ -1802,7 +1802,7 @@ defmodule Phoenix.LiveView.DiffTest do
       {third_render, fingerprints, components} =
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
-      assert third_render == %{0 => %{d: [[3], [2]]}, :c => %{2 => %{0 => "1"}, 3 => %{0 => "1"}}}
+      assert third_render == %{0 => %{d: [[2], [1]]}, :c => %{1 => %{0 => "1"}, 2 => %{0 => "1"}}}
 
       # replace item
       assigns =
@@ -1817,8 +1817,8 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
       assert fourth_render == %{
-               0 => %{d: [[2], [4]]},
-               :c => %{4 => %{0 => "1", 1 => "Third", :s => -2}}
+               0 => %{d: [[1], [3]]},
+               :c => %{3 => %{0 => "1", 1 => "Third", :s => -1}}
              }
     end
 
@@ -1834,9 +1834,9 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_nested_access(assigns))
 
       assert full_render == %{
-               0 => %{d: [[2], [3]], s: ["", ""]},
+               0 => %{d: [[1], [2]], s: ["", ""]},
                :c => %{
-                 2 => %{
+                 1 => %{
                    0 => "0",
                    1 => "First",
                    :r => 1,
@@ -1848,7 +1848,7 @@ defmodule Phoenix.LiveView.DiffTest do
                    ],
                    2 => "First"
                  },
-                 3 => %{0 => "0", 1 => "Second", :s => 2, 2 => "Second"}
+                 2 => %{0 => "0", 1 => "Second", :s => 1, 2 => "Second"}
                },
                :r => 1,
                :s => ["<ul>\n  ", "\n</ul>"]
@@ -1869,7 +1869,7 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_nested_access(assigns), fingerprints, components)
 
       # no diff, because nothing relevant changed
-      assert second_render == %{0 => %{d: [[2], [3]]}}
+      assert second_render == %{0 => %{d: [[1], [2]]}}
 
       # now change bar for first entry
       assigns =
@@ -1883,8 +1883,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
       # no diff, because nothing relevant changed
       assert third_render == %{
-               0 => %{d: [[2], [3]]},
-               :c => %{2 => %{1 => "Updated", 2 => "Updated"}}
+               0 => %{d: [[1], [2]]},
+               :c => %{1 => %{1 => "Updated", 2 => "Updated"}}
              }
     end
 
@@ -1898,32 +1898,40 @@ defmodule Phoenix.LiveView.DiffTest do
       {full_render, _fingerprints, components} = render(deep_keyed_comprehension(assigns))
 
       assert full_render == %{
-               0 => %{:s => ["<ul>\n  ", "\n</ul>"], 0 => %{d: [[2], [3]], s: ["", ""]}, :r => 1},
+               0 => %{:s => ["<ul>\n  ", "\n</ul>"], 0 => %{d: [[1], [2]], s: ["", ""]}, :r => 1},
                :c => %{
-                 2 => %{
+                 1 => %{
                    0 => "100",
                    1 => "First",
                    :r => 1,
                    :s => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"]
                  },
-                 3 => %{0 => "100", 1 => "Second", :s => 2},
-                 5 => %{0 => "200", 1 => "First", :s => 2},
-                 6 => %{0 => "200", 1 => "Second", :s => 2}
+                 2 => %{0 => "100", 1 => "Second", :s => 1},
+                 3 => %{0 => "200", 1 => "First", :s => 1},
+                 4 => %{0 => "200", 1 => "Second", :s => 1}
                },
                :s => ["", "\n", ""],
-               1 => %{0 => %{d: [[5], [6]], s: ["", ""]}, :r => 1, :s => ["<ul>\n  ", "\n</ul>"]}
+               1 => %{0 => %{d: [[3], [4]], s: ["", ""]}, :r => 1, :s => ["<ul>\n  ", "\n</ul>"]}
              }
 
       assert {%{
+                1 =>
+                  {Phoenix.LiveView.KeyedComprehension,
+                   [1, {Phoenix.LiveView.DiffTest, _, _}, 0, _, 0, _], %{id: 1, name: "First"},
+                   %{}, _},
                 2 =>
-                  {Phoenix.LiveView.KeyedComprehension, {1, 1}, %{id: 1, name: "First"}, %{}, _},
+                  {Phoenix.LiveView.KeyedComprehension,
+                   [2, {Phoenix.LiveView.DiffTest, _, _}, 0, _, 0, _], %{id: 2, name: "Second"},
+                   %{}, _},
                 3 =>
-                  {Phoenix.LiveView.KeyedComprehension, {1, 2}, %{id: 2, name: "Second"}, %{}, _},
-                5 =>
-                  {Phoenix.LiveView.KeyedComprehension, {4, 1}, %{id: 1, name: "First"}, %{}, _},
-                6 =>
-                  {Phoenix.LiveView.KeyedComprehension, {4, 2}, %{id: 2, name: "Second"}, %{}, _}
-              }, %{Phoenix.LiveView.KeyedComprehension => %{}}, 7} = components
+                  {Phoenix.LiveView.KeyedComprehension,
+                   [1, {Phoenix.LiveView.DiffTest, _, _}, 0, _, 1, _], %{id: 1, name: "First"},
+                   %{}, _},
+                4 =>
+                  {Phoenix.LiveView.KeyedComprehension,
+                   [2, {Phoenix.LiveView.DiffTest, _, _}, 0, _, 1, _], %{id: 2, name: "Second"},
+                   %{}, _}
+              }, %{Phoenix.LiveView.KeyedComprehension => %{}}, 5} = components
     end
   end
 end
