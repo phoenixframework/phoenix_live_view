@@ -449,7 +449,7 @@ defmodule Phoenix.LiveView.Diff do
        ) do
     {dynamics, {pending, components}} = traverse_keyed(entries, key, pending, components)
     diff = maybe_add_stream(%{@dynamics => dynamics}, stream)
-    {diff, fingerprint, pending, components, template}
+    {diff, {fingerprint, key}, pending, components, template}
   end
 
   defp traverse(
