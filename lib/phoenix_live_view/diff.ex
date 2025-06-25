@@ -4,7 +4,14 @@ defmodule Phoenix.LiveView.Diff do
   # handled here.
   @moduledoc false
 
-  alias Phoenix.LiveView.{Utils, Rendered, Comprehension, Component, Lifecycle}
+  alias Phoenix.LiveView.{
+    Component,
+    Comprehension,
+    KeyedComprehension,
+    Lifecycle,
+    Rendered,
+    Utils
+  }
 
   @components :c
   @static :s
@@ -421,15 +428,56 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %Component{} = component,
+         %Component{id: id} = component,
          _fingerprints_tree,
          pending,
          components,
          template,
          _changed?
        ) do
-    {cid, pending, components} = traverse_component(component, pending, components)
+    {cid, pending, components} = traverse_component(component, id, pending, components)
     {cid, nil, pending, components, template}
+  end
+
+  defp traverse(
+         %KeyedComprehension{entries: entries, fingerprint: fingerprint, stream: stream},
+         {fingerprint, key},
+         pending,
+         components,
+         template,
+         _changed?
+       ) do
+    {dynamics, {pending, components}} = traverse_keyed(entries, key, pending, components)
+    diff = maybe_add_stream(%{@dynamics => dynamics}, stream)
+    {diff, fingerprint, pending, components, template}
+  end
+
+  defp traverse(
+         %KeyedComprehension{entries: [], stream: nil},
+         _,
+         pending,
+         components,
+         template,
+         _changed?
+       ) do
+    # The comprehension has no elements and it was not rendered yet,
+    # so we can skip it as long as it doesn't have a stream.
+    {"", nil, pending, components, template}
+  end
+
+  defp traverse(
+         %KeyedComprehension{fingerprint: fingerprint, entries: entries, stream: stream},
+         _,
+         pending,
+         components,
+         template,
+         _changed?
+       ) do
+    {cid_to_component, id_to_cid, key} = components
+    components = {cid_to_component, id_to_cid, key + 1}
+    {dynamics, {pending, components}} = traverse_keyed(entries, key, pending, components)
+    diff = maybe_add_stream(%{@dynamics => dynamics, @static => ["", ""]}, stream)
+    {diff, {fingerprint, key}, pending, components, template}
   end
 
   defp traverse(
@@ -455,21 +503,16 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %Comprehension{dynamics: [], stream: stream},
+         %Comprehension{dynamics: [], stream: nil},
          _,
          pending,
          components,
          template,
          _changed?
        ) do
-    # The comprehension has no elements and it was not rendered yet, so we skip it,
-    # but if there is a stream delete, we send it
-    if stream do
-      diff = %{@dynamics => [], @static => []}
-      {maybe_add_stream(diff, stream), nil, pending, components, template}
-    else
-      {"", nil, pending, components, template}
-    end
+    # The comprehension has no elements and it was not rendered yet,
+    # so we can skip it as long as it doesn't have a stream.
+    {"", nil, pending, components, template}
   end
 
   defp traverse(
@@ -567,6 +610,14 @@ defmodule Phoenix.LiveView.Diff do
     end)
   end
 
+  defp traverse_keyed(entries, key, pending, components) do
+    Enum.map_reduce(entries, {pending, components}, fn
+      %Component{id: id} = component, {pending, components} ->
+        {cid, pending, components} = traverse_component(component, {key, id}, pending, components)
+        {[cid], {pending, components}}
+    end)
+  end
+
   defp traverse_comprehension(dynamics, pending, components, template) do
     Enum.map_reduce(dynamics, {pending, components, template}, fn rendereds, acc ->
       Enum.map_reduce(rendereds, acc, fn rendered, {pending, components, template} ->
@@ -606,7 +657,8 @@ defmodule Phoenix.LiveView.Diff do
   ## Stateful components helpers
 
   defp traverse_component(
-         %Component{id: id, assigns: assigns, component: component},
+         %Component{assigns: assigns, component: component},
+         id,
          pending,
          {cid_to_component, id_to_cid, uuids}
        ) do
@@ -645,15 +697,8 @@ defmodule Phoenix.LiveView.Diff do
           Enum.reduce(entries, {[], [], components, seen_ids}, fn
             {cid, id, new?, new_assigns}, {assigns_sockets, metadata, components, seen_ids} ->
               if Map.has_key?(seen_ids, [component | id]) do
-                case id do
-                  {:keyed_comprehension, module, line, column, key} ->
-                    raise "found duplicate key #{inspect(key)} " <>
-                            "for keyed comprehension in module #{inspect(module)} at line #{line} column #{column}"
-
-                  _ ->
-                    raise "found duplicate ID #{inspect(id)} " <>
-                            "for component #{inspect(component)} when rendering template"
-                end
+                raise "found duplicate ID #{inspect(id)} " <>
+                        "for component #{inspect(component)} when rendering template"
               end
 
               {socket, components, prints} =
