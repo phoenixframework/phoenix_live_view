@@ -169,15 +169,32 @@ defmodule Phoenix.LiveView.TagEngine do
 
   @doc false
   defmacro keyed_comprehension(id, vars_changed, do: do_block) do
+    vars_changed_var = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
+
+    render =
+      if Macro.Env.has_var?(__CALLER__, {:vars_changed, Phoenix.LiveView.Engine}) do
+        quote do
+          fn local_vars_changed ->
+            unquote(vars_changed_var) = Map.merge(unquote(vars_changed_var), local_vars_changed)
+
+            unquote(do_block)
+          end
+        end
+      else
+        quote do
+          fn unquote(vars_changed_var) ->
+            unquote(do_block)
+          end
+        end
+      end
+
     quote do
       %Phoenix.LiveView.Component{
         id: unquote(id),
         component: Phoenix.LiveView.KeyedComprehension,
         assigns: %{
           vars_changed: unquote(vars_changed),
-          render: fn unquote(Macro.var(:vars_changed, Phoenix.LiveView.Engine)) ->
-            unquote(do_block)
-          end
+          render: unquote(render)
         }
       }
     end
