@@ -7,11 +7,12 @@ defmodule Phoenix.LiveView.KeyedComprehension do
   """
   use Phoenix.LiveComponent
 
-  defstruct [:entries, :fingerprint, :stream]
+  defstruct [:static, :entries, :fingerprint, :stream]
 
   @type t :: %__MODULE__{
+          static: list(),
           stream: list() | nil,
-          entries: [Phoenix.LiveView.Component.t()],
+          entries: [Phoenix.LiveView.KeyedComprehensionEntry.t()],
           fingerprint: term()
         }
 

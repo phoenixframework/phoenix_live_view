@@ -95,6 +95,20 @@ defmodule Phoenix.LiveView.Comprehension do
   end
 end
 
+defmodule Phoenix.LiveView.KeyedComprehensionEntry do
+  defstruct [:fingerprint, :render]
+
+  defimpl Phoenix.HTML.Safe do
+    def to_iodata(%Phoenix.LiveView.KeyedComprehensionEntry{}) do
+      raise """
+      cannot convert keyed comprehension to HTML.
+
+      A keyed comprehension must always be returned directly as part of a LiveView template.
+      """
+    end
+  end
+end
+
 defmodule Phoenix.LiveView.Rendered do
   @moduledoc """
   The struct returned by .heex templates.
@@ -336,6 +350,7 @@ defmodule Phoenix.LiveView.Engine do
       state
       |> handle_end(opts)
       |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
+      |> tap(fn str -> IO.puts(Macro.to_string(str)) end)
 
     quote do
       require Phoenix.LiveView.Engine
@@ -473,12 +488,11 @@ defmodule Phoenix.LiveView.Engine do
 
       comprehension =
         if keyed_fingerprint = Keyword.get(gen_meta, :keyed_comprehension) do
-          ["", ""] = static
-          [var] = dynamic
-          for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [var]}]]}
+          for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
 
           quote do
             %Phoenix.LiveView.KeyedComprehension{
+              static: unquote(static),
               entries: unquote(for),
               fingerprint: unquote(Macro.escape(keyed_fingerprint))
             }
@@ -1320,6 +1334,7 @@ defmodule Phoenix.LiveView.Engine do
       %{__struct__: Phoenix.LiveView.Rendered} = other -> other
       %{__struct__: Phoenix.LiveView.Component} = other -> other
       %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
+      %{__struct__: Phoenix.LiveView.KeyedComprehensionEntry} = other -> other
       bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
       other -> Phoenix.HTML.Safe.to_iodata(other)
     end
