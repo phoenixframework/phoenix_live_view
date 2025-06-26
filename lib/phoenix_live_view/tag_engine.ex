@@ -168,34 +168,37 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc false
-  defmacro keyed_comprehension(id, vars_changed, do: do_block) do
+  defmacro keyed_comprehension(key, vars, do: do_block) do
     vars_changed_var = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
 
     render =
       if Macro.Env.has_var?(__CALLER__, {:vars_changed, Phoenix.LiveView.Engine}) do
         quote do
-          fn local_vars_changed ->
-            unquote(vars_changed_var) = Map.merge(unquote(vars_changed_var), local_vars_changed)
+          fn local_vars_changed, track_changes? ->
+            unquote(vars_changed_var) =
+              if track_changes? do
+                Map.merge(unquote(vars_changed_var), local_vars_changed)
+              else
+                nil
+              end
 
             unquote(do_block)
           end
         end
       else
         quote do
-          fn unquote(vars_changed_var) ->
+          fn unquote(vars_changed_var), track_changes? ->
+            unquote(vars_changed_var) = if track_changes?, do: unquote(vars_changed_var)
+
             unquote(do_block)
           end
         end
       end
 
     quote do
-      %Phoenix.LiveView.Component{
-        id: unquote(id),
-        component: Phoenix.LiveView.KeyedComprehension,
-        assigns: %{
-          vars_changed: unquote(vars_changed),
-          render: unquote(render)
-        }
+      %Phoenix.LiveView.KeyedComprehensionEntry{
+        fingerprint: {unquote(key), unquote(vars)},
+        render: unquote(render)
       }
     end
   end
@@ -1227,7 +1230,7 @@ defmodule Phoenix.LiveView.TagEngine do
         Phoenix.LiveView.TagEngine.keyed_comprehension(
           unquote(key_expr),
           %{unquote_splicing(Map.to_list(variables))},
-          do: unquote(invoke_subengine(state, :handle_end, [[meta: [root: true]]]))
+          do: unquote(invoke_subengine(state, :handle_end, []))
         )
       end
 

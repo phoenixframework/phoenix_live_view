@@ -136,6 +136,8 @@ var DYNAMICS = "d";
 var STATIC = "s";
 var ROOT = "r";
 var COMPONENTS = "c";
+var KEYED = "k";
+var KEYED_COUNT = "kc";
 var EVENTS = "e";
 var REPLY = "r";
 var TITLE = "t";
@@ -2906,6 +2908,11 @@ var Rendered = class {
     const newc = diff[COMPONENTS];
     const cache = {};
     delete diff[COMPONENTS];
+    console.log(
+      "merging",
+      structuredClone(this.rendered),
+      structuredClone(diff)
+    );
     this.rendered = this.mutableMerge(this.rendered, diff);
     this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {};
     if (newc) {
@@ -2950,19 +2957,51 @@ var Rendered = class {
     }
   }
   doMutableMerge(target, source) {
-    for (const key in source) {
-      const val = source[key];
-      const targetVal = target[key];
-      const isObjVal = isObject(val);
-      if (isObjVal && val[STATIC] === void 0 && isObject(targetVal)) {
-        this.doMutableMerge(targetVal, val);
-      } else {
-        target[key] = val;
+    if (source[KEYED]) {
+      this.mergeKeyed(target, source);
+    } else {
+      for (const key in source) {
+        const val = source[key];
+        const targetVal = target[key];
+        const isObjVal = isObject(val);
+        if (isObjVal && val[STATIC] === void 0 && isObject(targetVal)) {
+          this.doMutableMerge(targetVal, val);
+        } else {
+          target[key] = val;
+        }
       }
     }
     if (target[ROOT]) {
       target.newRender = true;
     }
+  }
+  // keyed comprehensions
+  mergeKeyed(target, source) {
+    console.log(structuredClone(target), structuredClone(source));
+    const clonedTarget = structuredClone(target);
+    for (let i = 0; i < source[KEYED_COUNT]; i++) {
+      const entry = source[KEYED][i];
+      if (!entry) {
+        continue;
+      }
+      if (Array.isArray(entry)) {
+        const [old_idx, diff] = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        this.doMutableMerge(target[KEYED][i], diff);
+      } else {
+        if (!target[KEYED][i]) {
+          target[KEYED][i] = {};
+        }
+        this.doMutableMerge(target[KEYED][i], entry);
+      }
+    }
+    if (source[KEYED_COUNT] < target[KEYED_COUNT]) {
+      for (let i = source[KEYED_COUNT]; i < target[KEYED_COUNT]; i++) {
+        delete target[KEYED][i];
+      }
+    }
+    target[KEYED_COUNT] = source[KEYED_COUNT];
+    console.log("merge done", target);
   }
   // Merges cid trees together, copying statics from source tree.
   //
@@ -3041,10 +3080,26 @@ var Rendered = class {
       rendered.newRender = true;
       rendered.magicId = this.nextMagicID();
     }
-    output.buffer += statics[0];
-    for (let i = 1; i < statics.length; i++) {
-      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
-      output.buffer += statics[i];
+    if (rendered[KEYED]) {
+      for (let i = 0; i < rendered[KEYED_COUNT]; i++) {
+        this.toOutputBuffer(
+          rendered[KEYED][i],
+          templates,
+          output,
+          changeTracking
+        );
+      }
+    } else {
+      output.buffer += statics[0];
+      for (let i = 1; i < statics.length; i++) {
+        this.dynamicToBuffer(
+          rendered[i - 1],
+          templates,
+          output,
+          changeTracking
+        );
+        output.buffer += statics[i];
+      }
     }
     if (isRoot) {
       let skip = false;
