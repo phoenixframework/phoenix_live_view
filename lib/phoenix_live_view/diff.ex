@@ -480,7 +480,16 @@ defmodule Phoenix.LiveView.Diff do
     nil = template
 
     {keyed, keyed_prints, pending, components, template} =
-      traverse_keyed(entries, previous_prints, pending, components, template, path, changed?)
+      traverse_keyed(
+        entries,
+        previous_prints,
+        pending,
+        components,
+        template,
+        path,
+        changed?,
+        stream != nil
+      )
 
     diff =
       %{}
@@ -520,7 +529,7 @@ defmodule Phoenix.LiveView.Diff do
        ) do
     if template do
       {keyed, keyed_prints, pending, components, template} =
-        traverse_keyed(entries, %{}, pending, components, template, path, changed?)
+        traverse_keyed(entries, %{}, pending, components, template, path, changed?, stream != nil)
 
       # TODO: I don't think we need this, but the client-side code breaks if we omit it
       #       so we should adjust it
@@ -534,7 +543,16 @@ defmodule Phoenix.LiveView.Diff do
       {diff, {fingerprint, keyed_prints}, pending, components, template}
     else
       {keyed, keyed_prints, pending, components, template} =
-        traverse_keyed(entries, %{}, pending, components, {%{}, %{}}, path, changed?)
+        traverse_keyed(
+          entries,
+          %{},
+          pending,
+          components,
+          {%{}, %{}},
+          path,
+          changed?,
+          stream != nil
+        )
 
       diff =
         %{@keyed => keyed, @static => ["", ""]}
@@ -707,7 +725,16 @@ defmodule Phoenix.LiveView.Diff do
     {Enum.reverse(rev), acc}
   end
 
-  defp traverse_keyed(entries, previous_prints, pending, components, template, path, changed?) do
+  defp traverse_keyed(
+         entries,
+         previous_prints,
+         pending,
+         components,
+         template,
+         path,
+         changed?,
+         stream?
+       ) do
     diff = %{}
     new_prints = %{}
 
@@ -718,7 +745,7 @@ defmodule Phoenix.LiveView.Diff do
         # it's an existing entry
         %KeyedComprehensionEntry{fingerprint: {fingerprint, new_vars}, render: render},
         {diff, index, new_prints, pending, components, template}
-        when is_map_key(previous_prints, fingerprint) ->
+        when is_map_key(previous_prints, fingerprint) and not stream? ->
           %{vars: previous_vars, index: previous_index, child_prints: child_prints} =
             Map.fetch!(previous_prints, fingerprint)
 
@@ -783,6 +810,9 @@ defmodule Phoenix.LiveView.Diff do
               # even if some parts of the template might not have changed themselves
               false
             )
+
+          # if this is a stream, we don't want to store the vars
+          vars = if stream?, do: nil, else: vars
 
           {Map.put(diff, index, child_diff), index + 1,
            Map.put(

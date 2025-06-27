@@ -3095,18 +3095,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         rendered.magicId = this.nextMagicID();
       }
       if (rendered[KEYED]) {
-        for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-          const keyedTemplates = rendered[TEMPLATES] || templates;
-          this.toOutputBuffer(
-            rendered[KEYED][i],
-            keyedTemplates,
-            output,
-            changeTracking
-          );
-        }
-        if (rendered[STREAM]) {
-          output.streams.add(rendered[STREAM]);
-        }
+        this.keyedComprehensionToBuffer(
+          rendered,
+          templates,
+          output,
+          changeTracking
+        );
       } else {
         output.buffer += statics[0];
         for (let i = 1; i < statics.length; i++) {
@@ -3167,6 +3161,28 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         delete rendered[STREAM];
         rendered[DYNAMICS] = [];
         output.streams.add(stream);
+      }
+    }
+    keyedComprehensionToBuffer(rendered, templates, output, changeTracking) {
+      for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+        const keyedTemplates = rendered[TEMPLATES] || templates;
+        this.toOutputBuffer(
+          rendered[KEYED][i],
+          keyedTemplates,
+          output,
+          changeTracking
+        );
+      }
+      if (rendered[STREAM]) {
+        const stream = rendered[STREAM];
+        const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
+        if (stream !== void 0 && (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset)) {
+          delete rendered[STREAM];
+          rendered[KEYED] = {
+            [KEYED_COUNT]: 0
+          };
+          output.streams.add(stream);
+        }
       }
     }
     dynamicToBuffer(rendered, templates, output, changeTracking) {
