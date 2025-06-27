@@ -833,8 +833,8 @@ defmodule Phoenix.Component do
 
   #### `:key`ed comprehensions
 
-  When using `:for`, you can optionally provide a `:key` expression to also perform
-  change-tracking inside the comprehension:
+  When using `:for`, you can optionally provide a `:key` expression to perform
+  better change-tracking inside the comprehension:
 
   ```heex
   <ul>
@@ -845,20 +845,10 @@ defmodule Phoenix.Component do
   </ul>
   ```
 
-  Internally, this works by turning the tag where the comprehension is defined on
-  into the template of a `Phoenix.LiveComponent`. Because of this, the following limitations
-  apply to comprehensions defined with `:key`:
+  By default, the index is used as a key, which means that appending an entry leads to
+  all items being considered changed. Therefore, we recommend to use a `:key` whenever possible.
 
-    1. A `:key` can only be defined on regular HTML tags, not on components or slots.
-    2. The diff over the wire is optimized to only send changes for each item,
-       but it will always include a list of component IDs (integers) specifying
-       the overall order of items.
-    3. Removing an entry involves separate round-trips with the client to confirm
-       the component removal.
-
-  We recommend to use `:key`ed comprehensions only if you already determined that you need
-  to optimize the diff over the write and [streams](`Phoenix.LiveView.stream/4`)
-  are not an option.
+  Note that the `:key` has no effect when using [streams](`Phoenix.LiveView.stream/4`).
 
   ### Function components
 
