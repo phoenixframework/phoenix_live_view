@@ -3100,9 +3100,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       if (rendered[KEYED]) {
         for (let i = 0; i < rendered[KEYED_COUNT]; i++) {
+          const keyedTemplates = templates || rendered[TEMPLATES];
           this.toOutputBuffer(
             rendered[KEYED][i],
-            templates,
+            keyedTemplates,
             output,
             changeTracking
           );
