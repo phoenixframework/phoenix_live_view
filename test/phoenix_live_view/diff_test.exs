@@ -1885,7 +1885,7 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_nested_access(assigns), fingerprints, components)
 
       # no diff, because nothing relevant changed
-      assert second_render == %{0 => %{k: %{kc: 2}}}
+      assert second_render == %{}
 
       # now change bar for first entry
       assigns =
@@ -1953,42 +1953,46 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => %{
-                 d: [
-                   [
-                     %{
+                 p: %{
+                   0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"],
+                   1 => ["", ""],
+                   2 => ["<ul>\n  ", "\n</ul>"],
+                   3 => ["\n  ", "\n"]
+                 },
+                 s: ["", ""],
+                 k: %{
+                   0 => %{
+                     0 => %{
                        0 => %{
-                         s: 1,
                          k: %{
                            0 => %{0 => "100", 1 => "First", :s => 0},
                            1 => %{0 => "100", 1 => "Second", :s => 0},
                            :kc => 2
-                         }
+                         },
+                         s: 1
                        },
                        :r => 1,
                        :s => 2
-                     }
-                   ],
-                   [
-                     %{
+                     },
+                     :s => 3
+                   },
+                   1 => %{
+                     0 => %{
                        0 => %{
-                         s: 1,
                          k: %{
                            0 => %{0 => "200", 1 => "First", :s => 0},
                            1 => %{0 => "200", 1 => "Second", :s => 0},
                            :kc => 2
-                         }
+                         },
+                         s: 1
                        },
                        :r => 1,
                        :s => 2
-                     }
-                   ]
-                 ],
-                 p: %{
-                   0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"],
-                   1 => ["", ""],
-                   2 => ["<ul>\n  ", "\n</ul>"]
-                 },
-                 s: ["\n  ", "\n"]
+                     },
+                     :s => 3
+                   },
+                   :kc => 2
+                 }
                },
                :s => ["", ""]
              }

@@ -307,6 +307,9 @@ export default class Rendered {
       }
     }
     target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
+    if (source[STREAM]) {
+      target[STREAM] = source[STREAM];
+    }
   }
 
   // Merges cid trees together, copying statics from source tree.
@@ -400,7 +403,6 @@ export default class Rendered {
 
     if (rendered[KEYED]) {
       for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-        // TODO: we need to handle the statics
         // TODO: check if this order is correct, comprehensionToBuffer does it
         //       the other way round, but that doesn't work here
         const keyedTemplates = rendered[TEMPLATES] || templates;
@@ -410,6 +412,9 @@ export default class Rendered {
           output,
           changeTracking,
         );
+      }
+      if (rendered[STREAM]) {
+        output.streams.add(rendered[STREAM]);
       }
     } else {
       output.buffer += statics[0];

@@ -54,19 +54,22 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp to_iodata(
-         %{@keyed => keyed, @static => static} = kc,
+         %{@keyed => keyed} = kc,
          components,
          template,
          mapper
        ) do
-    static = template_static(static, template)
     template = template || kc[@template]
 
-    for i <- 0..(keyed[@keyed_count] - 1), reduce: {[], components} do
-      {acc, components} ->
-        content = Map.fetch!(keyed, i)
-        {iodata, components} = to_iodata(content, components, template, mapper)
-        {[acc, iodata], components}
+    if !keyed or keyed[@keyed_count] == 0 do
+      {[], components}
+    else
+      for i <- 0..(keyed[@keyed_count] - 1), reduce: {[], components} do
+        {acc, components} ->
+          content = Map.fetch!(keyed, i)
+          {iodata, components} = to_iodata(content, components, template, mapper)
+          {[acc, iodata], components}
+      end
     end
   end
 
@@ -480,7 +483,8 @@ defmodule Phoenix.LiveView.Diff do
       traverse_keyed(entries, previous_prints, pending, components, template, path, changed?)
 
     diff =
-      %{@keyed => keyed}
+      %{}
+      |> maybe_add_keyed(keyed)
       |> maybe_add_stream(stream)
       |> maybe_add_template(template)
 
@@ -503,7 +507,6 @@ defmodule Phoenix.LiveView.Diff do
 
   defp traverse(
          %KeyedComprehension{
-           static: static,
            fingerprint: fingerprint,
            entries: entries,
            stream: stream
@@ -519,6 +522,10 @@ defmodule Phoenix.LiveView.Diff do
       {keyed, keyed_prints, pending, components, template} =
         traverse_keyed(entries, %{}, pending, components, template, path, changed?)
 
+      # TODO: I don't think we need this, but the client-side code breaks if we omit it
+      #       so we should adjust it
+      static = ["", ""]
+
       {diff, template} =
         %{@keyed => keyed, @static => static}
         |> maybe_add_stream(stream)
@@ -530,7 +537,7 @@ defmodule Phoenix.LiveView.Diff do
         traverse_keyed(entries, %{}, pending, components, {%{}, %{}}, path, changed?)
 
       diff =
-        %{@keyed => keyed, @static => static}
+        %{@keyed => keyed, @static => ["", ""]}
         |> maybe_add_stream(stream)
         |> maybe_add_template(template)
 
@@ -704,8 +711,6 @@ defmodule Phoenix.LiveView.Diff do
     diff = %{}
     new_prints = %{}
 
-    # TODO: find out why entries are one element lists
-
     # TODO: we could optimize the diff further and not send an empty @keyed when the
     # map_size(previous_prints) == map_size(new_prints)
     {diff, count, new_prints, pending, components, template} =
@@ -768,7 +773,7 @@ defmodule Phoenix.LiveView.Diff do
         {diff, index, new_prints, pending, components, template} ->
           {child_diff, child_prints, pending, components, template} =
             traverse(
-              render.(%{}, nil),
+              render.(%{}, false),
               %{},
               pending,
               components,
@@ -787,7 +792,13 @@ defmodule Phoenix.LiveView.Diff do
            ), pending, components, template}
       end)
 
-    {Map.put(diff, @keyed_count, count), new_prints, pending, components, template}
+    # we don't need to send the diff if nothing changed, but we need to send
+    # the count for the empty case
+    if diff == %{} and count > 0 do
+      {nil, new_prints, pending, components, template}
+    else
+      {Map.put(diff, @keyed_count, count), new_prints, pending, components, template}
+    end
   end
 
   defp maybe_share_template(map, fingerprint, static, {print_to_pos, pos_to_static}) do
@@ -814,6 +825,9 @@ defmodule Phoenix.LiveView.Diff do
 
   defp maybe_add_stream(diff, nil = _stream), do: diff
   defp maybe_add_stream(diff, stream), do: Map.put(diff, @stream, stream)
+
+  defp maybe_add_keyed(diff, nil = _keyed), do: diff
+  defp maybe_add_keyed(diff, keyed), do: Map.put(diff, @keyed, keyed)
 
   ## Stateful components helpers
 

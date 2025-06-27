@@ -3013,6 +3013,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       }
       target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
+      if (source[STREAM]) {
+        target[STREAM] = source[STREAM];
+      }
     }
     // Merges cid trees together, copying statics from source tree.
     //
@@ -3100,6 +3103,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             output,
             changeTracking
           );
+        }
+        if (rendered[STREAM]) {
+          output.streams.add(rendered[STREAM]);
         }
       } else {
         output.buffer += statics[0];

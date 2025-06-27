@@ -2967,6 +2967,9 @@ var Rendered = class {
       }
     }
     target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
+    if (source[STREAM]) {
+      target[STREAM] = source[STREAM];
+    }
   }
   // Merges cid trees together, copying statics from source tree.
   //
@@ -3054,6 +3057,9 @@ var Rendered = class {
           output,
           changeTracking
         );
+      }
+      if (rendered[STREAM]) {
+        output.streams.add(rendered[STREAM]);
       }
     } else {
       output.buffer += statics[0];
