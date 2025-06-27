@@ -39,7 +39,8 @@ defmodule Phoenix.LiveView.KeyedComprehension do
 
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%Phoenix.LiveView.KeyedComprehension{entries: entries}) do
-      for entry <- entries, do: Phoenix.HTML.Safe.to_iodata(entry)
+      # TODO: find out why we get one element lists here
+      for [entry] <- entries, do: Phoenix.HTML.Safe.to_iodata(entry)
     end
   end
 end

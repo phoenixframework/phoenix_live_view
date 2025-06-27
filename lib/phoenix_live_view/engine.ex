@@ -99,12 +99,8 @@ defmodule Phoenix.LiveView.KeyedComprehensionEntry do
   defstruct [:fingerprint, :render]
 
   defimpl Phoenix.HTML.Safe do
-    def to_iodata(%Phoenix.LiveView.KeyedComprehensionEntry{}) do
-      raise """
-      cannot convert keyed comprehension to HTML.
-
-      A keyed comprehension must always be returned directly as part of a LiveView template.
-      """
+    def to_iodata(%Phoenix.LiveView.KeyedComprehensionEntry{render: render}) do
+      Phoenix.HTML.Safe.to_iodata(render.(%{}, nil))
     end
   end
 end
