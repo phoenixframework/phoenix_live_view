@@ -350,7 +350,6 @@ defmodule Phoenix.LiveView.Engine do
       state
       |> handle_end(opts)
       |> to_rendered_struct({:untainted, %{}}, %{}, state.caller, opts)
-      |> tap(fn str -> IO.puts(Macro.to_string(str)) end)
 
     quote do
       require Phoenix.LiveView.Engine
