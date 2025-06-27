@@ -168,42 +168,6 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc false
-  defmacro keyed_comprehension(key, vars, do: do_block) do
-    vars_changed_var = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
-
-    render =
-      if Macro.Env.has_var?(__CALLER__, {:vars_changed, Phoenix.LiveView.Engine}) do
-        quote do
-          fn local_vars_changed, track_changes? ->
-            unquote(vars_changed_var) =
-              if track_changes? do
-                Map.merge(unquote(vars_changed_var), local_vars_changed)
-              else
-                nil
-              end
-
-            unquote(do_block)
-          end
-        end
-      else
-        quote do
-          fn unquote(vars_changed_var), track_changes? ->
-            unquote(vars_changed_var) = if track_changes?, do: unquote(vars_changed_var)
-
-            unquote(do_block)
-          end
-        end
-      end
-
-    quote do
-      %Phoenix.LiveView.KeyedComprehensionEntry{
-        fingerprint: {unquote(key), unquote(vars)},
-        render: unquote(render)
-      }
-    end
-  end
-
-  @doc false
   def __assigns__(assigns, key, parent_changed) do
     # If the component is in its initial render (parent_changed == nil)
     # or the slot/block key is in parent_changed, then we render the
@@ -1207,112 +1171,17 @@ defmodule Phoenix.LiveView.TagEngine do
     # validate_quoted_special_attr
     {:<-, for_meta, [lhs, rhs]} = for_expr
 
-    # now we mark all eligible variables in the left-hand side as `:change_track`able
-    {lhs, variables} = mark_variables_as_change_tracked(lhs, %{})
-
-    # finally annotate the generator with the relevant metadata for the engine
     keyed_comprehension = {state.caller.module, tag_meta.line, tag_meta.column}
-    for_expr = {:<-, [keyed_comprehension: keyed_comprehension] ++ for_meta, [lhs, rhs]}
 
-    # now we build the new ast that we pass to the engine
-    ast =
-      quote do
-        Phoenix.LiveView.TagEngine.keyed_comprehension(
-          unquote(key_expr),
-          %{unquote_splicing(Map.to_list(variables))},
-          do: unquote(invoke_subengine(state, :handle_end, []))
-        )
-      end
+    for_expr =
+      {:<-, [keyed_comprehension: keyed_comprehension, key_expr: key_expr] ++ for_meta,
+       [lhs, rhs]}
 
-    state = pop_substate_from_stack(state)
-
-    keyed_ast =
-      state
-      |> push_substate_to_stack()
-      |> update_subengine(:handle_begin, [])
-      |> update_subengine(:handle_expr, ["=", ast])
-      |> invoke_subengine(:handle_end, [])
-
-    {for_expr, keyed_ast}
+    {for_expr, invoke_subengine(state, :handle_end, [])}
   end
 
-  defp maybe_keyed(state, _type, %{for: for_expr} = tag_meta) do
-    {:<-, for_meta, [lhs, rhs]} = for_expr
-    key_expr = Macro.var(:key, Phoenix.LiveView.Engine)
-
-    # now we mark all eligible variables in the left-hand side as `:change_track`able
-    {lhs, variables} = mark_variables_as_change_tracked(lhs, %{})
-
-    lhs =
-      quote do
-        {unquote(lhs), unquote(key_expr)}
-      end
-
-    rhs =
-      quote do
-        Enum.with_index(unquote(rhs))
-      end
-
-    # finally annotate the generator with the relevant metadata for the engine
-    keyed_comprehension = {state.caller.module, tag_meta.line, tag_meta.column}
-    for_expr = {:<-, [keyed_comprehension: keyed_comprehension] ++ for_meta, [lhs, rhs]}
-
-    # now we build the new ast that we pass to the engine
-    ast =
-      quote do
-        Phoenix.LiveView.TagEngine.keyed_comprehension(
-          unquote(key_expr),
-          %{unquote_splicing(Map.to_list(variables))},
-          do: unquote(invoke_subengine(state, :handle_end, []))
-        )
-      end
-
-    state = pop_substate_from_stack(state)
-
-    keyed_ast =
-      state
-      |> push_substate_to_stack()
-      |> update_subengine(:handle_begin, [])
-      |> update_subengine(:handle_expr, ["=", ast])
-      |> invoke_subengine(:handle_end, [])
-
-    {for_expr, keyed_ast}
-  end
-
-  @doc false
-  def mark_variables_as_change_tracked({:^, _, [_]} = ast, vars) do
-    {ast, vars}
-  end
-
-  def mark_variables_as_change_tracked({:"::", meta, [left, right]}, vars) do
-    {left, vars} = mark_variables_as_change_tracked(left, vars)
-    {{:"::", meta, [left, right]}, vars}
-  end
-
-  def mark_variables_as_change_tracked({name, meta, context}, vars)
-      when is_atom(name) and is_list(meta) and is_atom(context) do
-    var = {name, [change_track: true] ++ meta, context}
-    {var, Map.put(vars, name, var)}
-  end
-
-  def mark_variables_as_change_tracked({left, meta, right}, vars) do
-    {left, vars} = mark_variables_as_change_tracked(left, vars)
-    {right, vars} = mark_variables_as_change_tracked(right, vars)
-    {{left, meta, right}, vars}
-  end
-
-  def mark_variables_as_change_tracked({left, right}, vars) do
-    {left, vars} = mark_variables_as_change_tracked(left, vars)
-    {right, vars} = mark_variables_as_change_tracked(right, vars)
-    {{left, right}, vars}
-  end
-
-  def mark_variables_as_change_tracked([_ | _] = list, vars) do
-    Enum.map_reduce(list, vars, &mark_variables_as_change_tracked/2)
-  end
-
-  def mark_variables_as_change_tracked(other, vars) do
-    {other, vars}
+  defp maybe_keyed(state, _type, %{for: for_expr}) do
+    {for_expr, invoke_subengine(state, :handle_end, [])}
   end
 
   ## build_self_close_component_assigns/build_component_assigns
