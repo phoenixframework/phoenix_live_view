@@ -1202,17 +1202,7 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp maybe_keyed(state, type, %{key: key_expr, for: for_expr} = tag_meta) do
-    # for now, we only support plain tags because we don't know if a function component
-    # renders to a single tag which is required by live components
-    if type != :tag do
-      raise_syntax_error!(
-        "keyed :for comprehensions only supported on regular tags, not for #{tag_meta.tag_name}",
-        tag_meta,
-        state
-      )
-    end
-
+  defp maybe_keyed(state, _type, %{key: key_expr, for: for_expr} = tag_meta) do
     # we already validated that the for expression has the correct shape in
     # validate_quoted_special_attr
     {:<-, for_meta, [lhs, rhs]} = for_expr
@@ -1246,8 +1236,50 @@ defmodule Phoenix.LiveView.TagEngine do
     {for_expr, keyed_ast}
   end
 
-  defp maybe_keyed(state, _type, %{for: for_expr}) do
-    {for_expr, invoke_subengine(state, :handle_end, [])}
+  defp maybe_keyed(state, _type, %{for: for_expr} = tag_meta) do
+    {:<-, for_meta, [lhs, rhs]} = for_expr
+    key_expr = Macro.var(:key, Phoenix.LiveView.Engine)
+
+    # now we mark all eligible variables in the left-hand side as `:change_track`able
+    {lhs, variables} = mark_variables_as_change_tracked(lhs, %{})
+
+    lhs =
+      quote do
+        {unquote(lhs), unquote(key_expr)}
+      end
+
+    rhs =
+      quote do
+        Enum.with_index(unquote(rhs))
+      end
+
+    # finally annotate the generator with the relevant metadata for the engine
+    keyed_comprehension = {state.caller.module, tag_meta.line, tag_meta.column}
+    for_expr = {:<-, [keyed_comprehension: keyed_comprehension] ++ for_meta, [lhs, rhs]}
+
+    # now we build the new ast that we pass to the engine
+    ast =
+      quote do
+        Phoenix.LiveView.TagEngine.keyed_comprehension(
+          unquote(key_expr),
+          %{unquote_splicing(Map.to_list(variables))},
+          do: unquote(invoke_subengine(state, :handle_end, []))
+        )
+      end
+
+    state = pop_substate_from_stack(state)
+
+    keyed_ast =
+      state
+      |> push_substate_to_stack()
+      |> update_subengine(:handle_begin, [])
+      |> update_subengine(:handle_expr, ["=", ast])
+      |> invoke_subengine(:handle_end, [])
+
+    Macro.to_string(for_expr) |> IO.puts()
+    Macro.to_string(keyed_ast) |> IO.puts()
+
+    {for_expr, keyed_ast}
   end
 
   @doc false
