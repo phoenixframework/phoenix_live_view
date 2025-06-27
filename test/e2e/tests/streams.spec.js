@@ -149,6 +149,8 @@ test("move-to-first moves the second element to the first position (LV)", async 
     .locator("#c_users-2")
     .getByRole("button", { name: "make first" })
     .click();
+  await syncLV(page);
+
   expect(await usersInDom(page, "c_users")).toEqual([
     { id: "c_users-2", text: "updated" },
     { id: "c_users-1", text: "chris" },
