@@ -2926,11 +2926,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const newc = diff[COMPONENTS];
       const cache = {};
       delete diff[COMPONENTS];
-      console.log(
-        "merging",
-        structuredClone(this.rendered),
-        structuredClone(diff)
-      );
       this.rendered = this.mutableMerge(this.rendered, diff);
       this.rendered[COMPONENTS] = this.rendered[COMPONENTS] || {};
       if (newc) {
@@ -2995,9 +2990,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     // keyed comprehensions
     mergeKeyed(target, source) {
-      console.log(structuredClone(target), structuredClone(source));
       const clonedTarget = structuredClone(target);
-      for (let i = 0; i < source[KEYED_COUNT]; i++) {
+      for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
         const entry = source[KEYED][i];
         if (!entry) {
           continue;
@@ -3013,13 +3007,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           this.doMutableMerge(target[KEYED][i], entry);
         }
       }
-      if (source[KEYED_COUNT] < target[KEYED_COUNT]) {
-        for (let i = source[KEYED_COUNT]; i < target[KEYED_COUNT]; i++) {
+      if (source[KEYED][KEYED_COUNT] < target[KEYED][KEYED_COUNT]) {
+        for (let i = source[KEYED][KEYED_COUNT]; i < target[KEYED][KEYED_COUNT]; i++) {
           delete target[KEYED][i];
         }
       }
-      target[KEYED_COUNT] = source[KEYED_COUNT];
-      console.log("merge done", target);
+      target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
     }
     // Merges cid trees together, copying statics from source tree.
     //
@@ -3099,8 +3092,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         rendered.magicId = this.nextMagicID();
       }
       if (rendered[KEYED]) {
-        for (let i = 0; i < rendered[KEYED_COUNT]; i++) {
-          const keyedTemplates = templates || rendered[TEMPLATES];
+        for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+          const keyedTemplates = rendered[TEMPLATES] || templates;
           this.toOutputBuffer(
             rendered[KEYED][i],
             keyedTemplates,
