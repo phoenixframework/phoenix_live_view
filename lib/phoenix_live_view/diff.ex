@@ -60,7 +60,6 @@ defmodule Phoenix.LiveView.Diff do
          mapper
        ) do
     static = template_static(static, template)
-    # I'm not sure if we need this
     template = template || kc[@template]
 
     for i <- 0..(keyed_count - 1), reduce: {[], components} do
@@ -473,11 +472,18 @@ defmodule Phoenix.LiveView.Diff do
          path,
          changed?
        ) do
+    # If we are diff tracking, then template must be nil
+    nil = template
+
     {keyed, count, keyed_prints, pending, components, template} =
       traverse_keyed(entries, previous_prints, pending, components, template, path, changed?)
 
-    diff = maybe_add_stream(%{@keyed => keyed, @keyed_count => count}, stream)
-    {diff, {fingerprint, keyed_prints}, pending, components, template}
+    diff =
+      %{@keyed => keyed, @keyed_count => count}
+      |> maybe_add_stream(stream)
+      |> maybe_add_template(template)
+
+    {diff, {fingerprint, keyed_prints}, pending, components, nil}
   end
 
   defp traverse(
@@ -508,11 +514,27 @@ defmodule Phoenix.LiveView.Diff do
          path,
          changed?
        ) do
-    {keyed, count, keyed_prints, pending, components, template} =
-      traverse_keyed(entries, %{}, pending, components, template, path, changed?)
+    if template do
+      {keyed, count, keyed_prints, pending, components, template} =
+        traverse_keyed(entries, %{}, pending, components, template, path, changed?)
 
-    diff = maybe_add_stream(%{@keyed => keyed, @keyed_count => count, @static => static}, stream)
-    {diff, {fingerprint, keyed_prints}, pending, components, template}
+      {diff, template} =
+        %{@keyed => keyed, @keyed_count => count, @static => static}
+        |> maybe_add_stream(stream)
+        |> maybe_share_template(fingerprint, static, template)
+
+      {diff, {fingerprint, keyed_prints}, pending, components, template}
+    else
+      {keyed, count, keyed_prints, pending, components, template} =
+        traverse_keyed(entries, %{}, pending, components, {%{}, %{}}, path, changed?)
+
+      diff =
+        %{@keyed => keyed, @keyed_count => count, @static => static}
+        |> maybe_add_stream(stream)
+        |> maybe_add_template(template)
+
+      {diff, {fingerprint, keyed_prints}, pending, components, nil}
+    end
   end
 
   defp traverse(

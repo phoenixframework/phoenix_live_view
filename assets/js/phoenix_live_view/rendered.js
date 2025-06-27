@@ -404,9 +404,10 @@ export default class Rendered {
     if (rendered[KEYED]) {
       for (let i = 0; i < rendered[KEYED_COUNT]; i++) {
         // TODO: we need to handle the statics
+        const keyedTemplates = templates || rendered[TEMPLATES];
         this.toOutputBuffer(
           rendered[KEYED][i],
-          templates,
+          keyedTemplates,
           output,
           changeTracking,
         );
