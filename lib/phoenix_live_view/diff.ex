@@ -65,7 +65,8 @@ defmodule Phoenix.LiveView.Diff do
     for i <- 0..(keyed[@keyed_count] - 1), reduce: {[], components} do
       {acc, components} ->
         content = Map.fetch!(keyed, i)
-        to_iodata(content, components, template, mapper)
+        {iodata, components} = to_iodata(content, components, template, mapper)
+        {[acc, iodata], components}
     end
   end
 
@@ -702,6 +703,8 @@ defmodule Phoenix.LiveView.Diff do
   defp traverse_keyed(entries, previous_prints, pending, components, template, path, changed?) do
     diff = %{}
     new_prints = %{}
+
+    # TODO: find out why entries are one element lists
 
     # TODO: we could optimize the diff further and not send an empty @keyed when the
     # map_size(previous_prints) == map_size(new_prints)

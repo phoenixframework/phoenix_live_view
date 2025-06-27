@@ -1276,9 +1276,6 @@ defmodule Phoenix.LiveView.TagEngine do
       |> update_subengine(:handle_expr, ["=", ast])
       |> invoke_subengine(:handle_end, [])
 
-    Macro.to_string(for_expr) |> IO.puts()
-    Macro.to_string(keyed_ast) |> IO.puts()
-
     {for_expr, keyed_ast}
   end
 
