@@ -750,9 +750,9 @@ defmodule Phoenix.LiveView.Diff do
             Map.fetch!(previous_prints, fingerprint)
 
           vars_changed =
-            Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn {key, value},
-                                                                                acc ->
-              Phoenix.Component.assign(acc, key, value)
+            Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn
+              {key, value}, acc ->
+                Phoenix.Component.assign(acc, key, value)
             end)
             |> Map.fetch!(:__changed__)
 
