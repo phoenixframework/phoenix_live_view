@@ -141,11 +141,14 @@ defmodule Phoenix.LiveView.EngineTest do
       assert static == ["before\n", "\nafter\n"]
 
       assert [
-               %Phoenix.LiveView.Comprehension{
-                 static: ["\n  x: ", "\n  y: ", "\n"],
-                 dynamics: [
-                   ["1", "2"],
-                   ["3", "4"]
+               %Phoenix.LiveView.KeyedComprehension{
+                 entries: [
+                   %Phoenix.LiveView.KeyedComprehensionEntry{
+                     fingerprint: {0, %{point: %{x: 1, y: 2}}}
+                   },
+                   %Phoenix.LiveView.KeyedComprehensionEntry{
+                     fingerprint: {1, %{point: %{x: 3, y: 4}}}
+                   }
                  ]
                }
              ] = dynamic.(true)
@@ -421,23 +424,13 @@ defmodule Phoenix.LiveView.EngineTest do
         "<%= for x <- @foo do %>X: <%= for y <- @bar do %>Y: <%= x %><%= y %><% end %><% end %>"
 
       assert [
-               %{
-                 dynamics: [
-                   [%{dynamics: [["1", "1"]], static: ["Y: ", "", ""]}]
-                 ],
-                 static: ["X: ", ""]
-               }
+               %Phoenix.LiveView.KeyedComprehension{}
              ] = changed(template, %{foo: [1], bar: [1]}, nil)
 
       assert [nil] = changed(template, %{foo: [1], bar: [1]}, %{})
 
       assert [
-               %{
-                 dynamics: [
-                   [%{dynamics: [["1", "1"]], static: ["Y: ", "", ""]}]
-                 ],
-                 static: ["X: ", ""]
-               }
+               %Phoenix.LiveView.KeyedComprehension{}
              ] = changed(template, %{foo: [1], bar: [1]}, %{foo: true, bar: true})
     end
 
@@ -779,10 +772,7 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [
                %Phoenix.LiveView.Rendered{
                  dynamic: [
-                   %Phoenix.LiveView.Comprehension{
-                     static: ["", ""],
-                     dynamics: [["1"], ["2"], ["3"]]
-                   }
+                   %Phoenix.LiveView.KeyedComprehension{}
                  ],
                  static: ["", ""]
                }
@@ -794,10 +784,7 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [
                %Phoenix.LiveView.Rendered{
                  dynamic: [
-                   %Phoenix.LiveView.Comprehension{
-                     static: ["", ""],
-                     dynamics: [["1"], ["2"], ["3"]]
-                   }
+                   %Phoenix.LiveView.KeyedComprehension{}
                  ],
                  static: ["", ""]
                }
@@ -927,6 +914,26 @@ defmodule Phoenix.LiveView.EngineTest do
 
     test "changes even with dynamic content" do
       assert eval("<%= :foo %>").fingerprint != eval("<%= :bar %>").fingerprint
+    end
+  end
+
+  describe "mark_variables_ast_change_tracked/1" do
+    test "ignores pinned variables and binary modifiers" do
+      ast =
+        quote do
+          %{foo: foo, bar: ^bar, bin: <<thebin::binary>>, other: other}
+        end
+
+      assert {new_ast, variables} = Engine.mark_variables_as_change_tracked(ast, %{})
+      assert map_size(variables) == 3
+
+      assert %{
+               foo: {:foo, [change_track: true], _},
+               other: {:other, [change_track: true], _},
+               thebin: {:thebin, [change_track: true], _}
+             } = variables
+
+      assert new_ast != ast
     end
   end
 

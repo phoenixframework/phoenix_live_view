@@ -102,10 +102,9 @@ defmodule Phoenix.LiveView.KeyedComprehension do
   It is a subset of a Comprehension struct where all of its entries
   are components.
   """
-  defstruct [:static, :entries, :fingerprint, :stream]
+  defstruct [:entries, :fingerprint, :stream]
 
   @type t :: %__MODULE__{
-          static: list(),
           stream: list() | nil,
           entries: [Phoenix.LiveView.KeyedComprehensionEntry.t()],
           fingerprint: term()
@@ -372,6 +371,8 @@ defmodule Phoenix.LiveView.Engine do
 
     quote do
       require Phoenix.LiveView.Engine
+      require Phoenix.LiveView.EngineHelpers
+
       unquote(rendered)
     end
   end
@@ -439,6 +440,7 @@ defmodule Phoenix.LiveView.Engine do
        quote do
          dynamic = fn track_changes? ->
            changed = unquote(changed)
+           vars_changed = Phoenix.LiveView.EngineHelpers.maybe_vars_changed?(track_changes?)
            unquote({:__block__, [], block})
            unquote(dynamic)
          end
@@ -484,41 +486,6 @@ defmodule Phoenix.LiveView.Engine do
     {block, static, dynamic, fingerprint(block, static)}
   end
 
-  defmacro keyed_comprehension(key, vars, do_block) do
-    vars_changed_var = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
-
-    render =
-      if Macro.Env.has_var?(__CALLER__, {:vars_changed, Phoenix.LiveView.Engine}) do
-        quote do
-          fn local_vars_changed, track_changes? ->
-            unquote(vars_changed_var) =
-              if track_changes? do
-                Map.merge(unquote(vars_changed_var), local_vars_changed)
-              else
-                nil
-              end
-
-            unquote(do_block)
-          end
-        end
-      else
-        quote do
-          fn unquote(vars_changed_var), track_changes? ->
-            unquote(vars_changed_var) = if track_changes?, do: unquote(vars_changed_var)
-
-            unquote(do_block)
-          end
-        end
-      end
-
-    quote do
-      %Phoenix.LiveView.KeyedComprehensionEntry{
-        fingerprint: {unquote(key), unquote(vars)},
-        render: unquote(render)
-      }
-    end
-  end
-
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, assigns, caller) do
@@ -543,12 +510,12 @@ defmodule Phoenix.LiveView.Engine do
           {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
           gen = {:<-, gen_meta, [gen_pattern, gen_var]}
 
-          dbg(block)
           block = maybe_block_to_rendered(block, vars, caller)
 
+          # if the keyed_comprehension macro is in this module, the has_var? check does not work
           comp =
             quote do
-              Phoenix.LiveView.Engine.keyed_comprehension(
+              Phoenix.LiveView.EngineHelpers.keyed_comprehension(
                 unquote(key_expr),
                 %{unquote_splicing(Map.to_list(variables))},
                 unquote(block)
@@ -559,7 +526,6 @@ defmodule Phoenix.LiveView.Engine do
 
           quote do
             %Phoenix.LiveView.KeyedComprehension{
-              static: ["", ""],
               entries: unquote(for),
               fingerprint: unquote(Macro.escape(keyed_fingerprint))
             }
@@ -583,9 +549,10 @@ defmodule Phoenix.LiveView.Engine do
           gen = {:<-, gen_meta, [gen_pattern, gen_var]}
           block = maybe_block_to_rendered(block, vars, caller)
 
+          # if the keyed_comprehension macro is in this module, the has_var? check does not work
           comp =
             quote do
-              Phoenix.LiveView.Engine.keyed_comprehension(
+              Phoenix.LiveView.EngineHelpers.keyed_comprehension(
                 unquote(key_expr),
                 %{unquote_splicing(Map.to_list(variables))},
                 unquote(block)
@@ -596,10 +563,8 @@ defmodule Phoenix.LiveView.Engine do
 
           quote do
             %Phoenix.LiveView.KeyedComprehension{
-              static: ["", ""],
               entries: unquote(for),
-              fingerprint:
-                unquote(Macro.escape({caller.module, caller.line, Keyword.get(meta, :column)}))
+              fingerprint: unquote(fingerprint(comp, []))
             }
           end
         end
@@ -688,8 +653,14 @@ defmodule Phoenix.LiveView.Engine do
 
   def mark_variables_as_change_tracked({name, meta, context}, vars)
       when is_atom(name) and is_list(meta) and is_atom(context) do
-    var = {name, [change_track: true] ++ meta, context}
-    {var, Map.put(vars, name, var)}
+    case Atom.to_string(name) do
+      "_" <> _rest ->
+        {{name, meta, context}, vars}
+
+      _ ->
+        var = {name, [change_track: true] ++ meta, context}
+        {var, Map.put(vars, name, var)}
+    end
   end
 
   def mark_variables_as_change_tracked({left, meta, right}, vars) do
@@ -1347,7 +1318,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp set_vars({kind, _}, {_, map}), do: {kind, map}
-  defp taint_vars({_, map}), do: {:tainted, map}
+  # defp taint_vars({_, map}), do: {:tainted, map}
   defp untaint_vars({_, map}), do: {:untainted, map}
 
   defp unless_tainted(:tainted, _), do: :tainted
