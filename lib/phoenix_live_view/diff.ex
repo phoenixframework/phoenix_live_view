@@ -711,7 +711,7 @@ defmodule Phoenix.LiveView.Diff do
     {diff, count, new_prints, pending, components, template} =
       Enum.reduce(entries, {diff, 0, new_prints, pending, components, template}, fn
         # it's an existing entry
-        [%KeyedComprehensionEntry{fingerprint: {fingerprint, new_vars}, render: render}],
+        %KeyedComprehensionEntry{fingerprint: {fingerprint, new_vars}, render: render},
         {diff, index, new_prints, pending, components, template}
         when is_map_key(previous_prints, fingerprint) ->
           %{vars: previous_vars, index: previous_index, child_prints: child_prints} =
@@ -764,7 +764,7 @@ defmodule Phoenix.LiveView.Diff do
           end
 
         # it's a new entry
-        [%KeyedComprehensionEntry{fingerprint: {fingerprint, vars}, render: render}],
+        %KeyedComprehensionEntry{fingerprint: {fingerprint, vars}, render: render},
         {diff, index, new_prints, pending, components, template} ->
           {child_diff, child_prints, pending, components, template} =
             traverse(
