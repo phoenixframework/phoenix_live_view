@@ -48,7 +48,8 @@ defmodule Phoenix.LiveView.Diff do
   It only accepts a full render diff.
   """
   def to_iodata(map, component_mapper \\ fn _cid, content -> content end) do
-    to_iodata(map, Map.get(map, @components, %{}), nil, component_mapper) |> elem(0)
+    to_iodata(map, Map.get(map, @components, %{}), Map.get(map, @template), component_mapper)
+    |> elem(0)
   end
 
   defp to_iodata(
@@ -143,8 +144,8 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   def render(socket, %Rendered{} = rendered, prints, components) do
-    {diff, prints, pending, components, nil} =
-      traverse(rendered, prints, %{}, components, nil, [], true)
+    {diff, prints, pending, components, template} =
+      traverse(rendered, prints, %{}, components, {%{}, %{}}, [], true)
 
     # cid_to_component is used by maybe_reuse_static and it must be a copy before changes.
     # However, given traverse does not change cid_to_component, we can read it now.
@@ -153,7 +154,10 @@ defmodule Phoenix.LiveView.Diff do
     {cdiffs, components} =
       render_pending_components(socket, pending, cid_to_component, %{}, components)
 
-    diff = maybe_put_title(diff, socket)
+    diff =
+      diff
+      |> maybe_add_template(template)
+      |> maybe_put_title(socket)
 
     {diff, cdiffs} = extract_events({diff, cdiffs})
     {maybe_put_cdiffs(diff, cdiffs), prints, components}

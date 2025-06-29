@@ -3048,6 +3048,10 @@ var Rendered = class {
         changeTracking
       );
     }
+    if (!templates && rendered[TEMPLATES]) {
+      templates = rendered[TEMPLATES];
+      delete rendered[TEMPLATES];
+    }
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
     rendered[STATIC] = statics;
