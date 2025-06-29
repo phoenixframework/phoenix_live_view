@@ -51,56 +51,9 @@ defmodule Phoenix.LiveView.Component do
   end
 end
 
-defmodule Phoenix.LiveView.Comprehension do
-  @moduledoc """
-  The struct returned by for-comprehensions in .heex templates.
-
-  See a description about its fields and use cases
-  in `Phoenix.LiveView.Engine` docs.
-  """
-
-  defstruct [:static, :dynamics, :fingerprint, :stream]
-
-  @type t :: %__MODULE__{
-          stream: list() | nil,
-          static: [String.t()],
-          dynamics: [
-            [
-              iodata()
-              | Phoenix.LiveView.Rendered.t()
-              | Phoenix.LiveView.Comprehension.t()
-              | Phoenix.LiveView.Component.t()
-            ]
-          ],
-          fingerprint: integer()
-        }
-
-  defimpl Phoenix.HTML.Safe do
-    def to_iodata(%Phoenix.LiveView.Comprehension{static: static, dynamics: dynamics}) do
-      for dynamic <- dynamics, do: to_iodata(static, dynamic)
-    end
-
-    defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail]) do
-      dynamic_head = Phoenix.HTML.Safe.to_iodata(struct)
-      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
-    end
-
-    defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail]) do
-      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
-    end
-
-    defp to_iodata([static_head], []) do
-      [static_head]
-    end
-  end
-end
-
 defmodule Phoenix.LiveView.KeyedComprehension do
   @moduledoc """
   The struct returned by keyed for-comprehensions in .heex templates.
-
-  It is a subset of a Comprehension struct where all of its entries
-  are components.
   """
   defstruct [:entries, :fingerprint, :stream]
 
@@ -118,7 +71,15 @@ defmodule Phoenix.LiveView.KeyedComprehension do
 end
 
 defmodule Phoenix.LiveView.KeyedComprehensionEntry do
+  @moduledoc """
+  The struct returned for each entry of a keyed comprehension in .heex templates.
+  """
   defstruct [:fingerprint, :render]
+
+  @type t :: %__MODULE__{
+          render: (map(), boolean() -> Phoenix.LiveView.Rendered.t()),
+          fingerprint: term()
+        }
 
   defimpl Phoenix.HTML.Safe do
     def to_iodata(%Phoenix.LiveView.KeyedComprehensionEntry{render: render}) do
@@ -144,7 +105,8 @@ defmodule Phoenix.LiveView.Rendered do
                         nil
                         | iodata()
                         | Phoenix.LiveView.Rendered.t()
-                        | Phoenix.LiveView.Comprehension.t()
+                        | Phoenix.LiveView.KeyedComprehension.t()
+                        | Phoenix.LiveView.KeyedComprehensionEntry.t()
                         | Phoenix.LiveView.Component.t()
                       ]),
           fingerprint: integer(),
@@ -203,7 +165,7 @@ defmodule Phoenix.LiveView.Engine do
     1. iodata - which is the dynamic content
     2. nil - the dynamic content did not change
     3. another `Phoenix.LiveView.Rendered` struct, see "Nesting and fingerprinting" below
-    4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
+    4. a `Phoenix.LiveView.KeyedComprehension` or `Phoenix.LiveView.KeyedComprehensionEntry` struct, see "Comprehensions" below
     5. a `Phoenix.LiveView.Component` struct, see "Component" below
 
   When you render a live template, you can convert the
@@ -275,6 +237,8 @@ defmodule Phoenix.LiveView.Engine do
   its changes.
 
   ## Comprehensions
+
+  TODO: outdated
 
   Another optimization done by live templates is to
   track comprehensions. If your code has this:
@@ -501,7 +465,7 @@ defmodule Phoenix.LiveView.Engine do
         end
 
       comprehension =
-        if keyed_fingerprint = Keyword.get(gen_meta, :keyed_comprehension) do
+        if Keyword.get(gen_meta, :keyed_comprehension) do
           key_expr = Keyword.fetch!(gen_meta, :key_expr)
 
           {key_expr, _vars, _} = analyze(key_expr, vars, assigns, caller)
@@ -527,7 +491,7 @@ defmodule Phoenix.LiveView.Engine do
           quote do
             %Phoenix.LiveView.KeyedComprehension{
               entries: unquote(for),
-              fingerprint: unquote(Macro.escape(keyed_fingerprint))
+              fingerprint: unquote(fingerprint(comp, []))
             }
           end
         else

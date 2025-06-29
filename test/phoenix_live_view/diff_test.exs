@@ -1783,7 +1783,6 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => %{
-                 s: ["", ""],
                  k: %{
                    0 => %{0 => "0", 1 => "First", :s => 0},
                    1 => %{0 => "0", 1 => "Second", :s => 0},
@@ -1824,18 +1823,11 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
       assert fourth_render == %{
-               0 => %{
-                 k: %{
-                   0 => 1,
-                   1 => %{
-                     0 => "1",
-                     1 => "Third",
-                     :s => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"]
-                   },
-                   :kc => 2
-                 }
-               }
-             }
+                    0 => %{
+                      k: %{0 => 1, 1 => %{0 => "1", 1 => "Third", :s => 0}, :kc => 2},
+                      p: %{0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"]}
+                    }
+                  }
     end
 
     test "change-tracking for complex access" do
@@ -1851,7 +1843,6 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => %{
-                 s: ["", ""],
                  k: %{
                    0 => %{0 => "0", 1 => "First", 2 => "First", :s => 0},
                    1 => %{0 => "0", 1 => "Second", 2 => "Second", :s => 0},
@@ -1914,7 +1905,6 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => %{
-                   s: ["", ""],
                    k: %{
                      0 => %{0 => "100", 1 => "First", :s => 0},
                      1 => %{0 => "100", 1 => "Second", :s => 0},
@@ -1927,7 +1917,6 @@ defmodule Phoenix.LiveView.DiffTest do
                },
                1 => %{
                  0 => %{
-                   s: ["", ""],
                    k: %{
                      0 => %{0 => "200", 1 => "First", :s => 0},
                      1 => %{0 => "200", 1 => "Second", :s => 0},
@@ -1952,50 +1941,34 @@ defmodule Phoenix.LiveView.DiffTest do
       {full_render, _fingerprints, components} = render(comprehended_keyed_comprehension(assigns))
 
       assert full_render == %{
-               0 => %{
-                 p: %{
-                   0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"],
-                   1 => ["", ""],
-                   2 => ["<ul>\n  ", "\n</ul>"],
-                   3 => ["\n  ", "\n"]
-                 },
-                 s: ["", ""],
-                 k: %{
-                   0 => %{
-                     0 => %{
-                       0 => %{
-                         k: %{
-                           0 => %{0 => "100", 1 => "First", :s => 0},
-                           1 => %{0 => "100", 1 => "Second", :s => 0},
-                           :kc => 2
-                         },
-                         s: 1
-                       },
-                       :r => 1,
-                       :s => 2
-                     },
-                     :s => 3
-                   },
-                   1 => %{
-                     0 => %{
-                       0 => %{
-                         k: %{
-                           0 => %{0 => "200", 1 => "First", :s => 0},
-                           1 => %{0 => "200", 1 => "Second", :s => 0},
-                           :kc => 2
-                         },
-                         s: 1
-                       },
-                       :r => 1,
-                       :s => 2
-                     },
-                     :s => 3
-                   },
-                   :kc => 2
-                 }
-               },
-               :s => ["", ""]
-             }
+                    0 => %{
+                      k: %{
+                        0 => %{
+                          0 => %{
+                            0 => %{k: %{0 => %{0 => "100", 1 => "First", :s => 0}, 1 => %{0 => "100", 1 => "Second", :s => 0}, :kc => 2}},
+                            :r => 1,
+                            :s => 1
+                          },
+                          :s => 2
+                        },
+                        1 => %{
+                          0 => %{
+                            0 => %{k: %{0 => %{0 => "200", 1 => "First", :s => 0}, 1 => %{0 => "200", 1 => "Second", :s => 0}, :kc => 2}},
+                            :r => 1,
+                            :s => 1
+                          },
+                          :s => 2
+                        },
+                        :kc => 2
+                      },
+                      p: %{
+                        0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"],
+                        1 => ["<ul>\n  ", "\n</ul>"],
+                        2 => ["\n  ", "\n"]
+                      }
+                    },
+                    :s => ["", ""]
+                  }
 
       assert {%{}, %{}, 1} = components
     end

@@ -3132,6 +3132,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
       }
     }
+    // TODO: remove
     comprehensionToBuffer(rendered, templates, output) {
       let {
         [DYNAMICS]: dynamics,

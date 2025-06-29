@@ -450,6 +450,7 @@ export default class Rendered {
     }
   }
 
+  // TODO: remove
   comprehensionToBuffer(rendered, templates, output) {
     let {
       [DYNAMICS]: dynamics,
