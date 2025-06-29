@@ -2975,14 +2975,17 @@ var Rendered = class {
     const clonedTarget = structuredClone(target);
     for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
       const entry = source[KEYED][i];
-      if (!entry) {
+      if (entry === void 0) {
         continue;
       }
       if (Array.isArray(entry)) {
         const [old_idx, diff] = entry;
         target[KEYED][i] = clonedTarget[KEYED][old_idx];
         this.doMutableMerge(target[KEYED][i], diff);
-      } else {
+      } else if (typeof entry === "number") {
+        const old_idx = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+      } else if (typeof entry === "object") {
         if (!target[KEYED][i]) {
           target[KEYED][i] = {};
         }
