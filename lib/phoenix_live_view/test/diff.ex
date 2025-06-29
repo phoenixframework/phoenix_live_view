@@ -6,6 +6,7 @@ defmodule Phoenix.LiveViewTest.Diff do
   @static :s
   @components :c
   @stream_id :stream
+  @template :p
   @phx_component "data-phx-component"
 
   def merge_diff(rendered, diff) do
@@ -67,6 +68,9 @@ defmodule Phoenix.LiveViewTest.Diff do
     update_in(rendered[@components], &Map.drop(&1, cids))
   end
 
+  defp deep_merge_diff(target, %{@template => template} = source),
+    do: deep_merge_diff(target, resolve_templates(Map.delete(source, @template), template))
+
   defp deep_merge_diff(_target, %{@static => _} = source),
     do: source
 
@@ -75,6 +79,22 @@ defmodule Phoenix.LiveViewTest.Diff do
 
   defp deep_merge_diff(_target, source),
     do: source
+
+  # we resolve any templates when merging, because subsequent patches can
+  # contain more templates that are not compatible with previous diffs
+  defp resolve_templates(%{@template => template} = rendered, nil) do
+    resolve_templates(Map.delete(rendered, @template), template)
+  end
+
+  defp resolve_templates(%{@static => static} = rendered, template) when is_integer(static) do
+    resolve_templates(Map.put(rendered, @static, Map.fetch!(template, static)), template)
+  end
+
+  defp resolve_templates(rendered, template) when is_map(rendered) do
+    Map.new(rendered, fn {k, v} -> {k, resolve_templates(v, template)} end)
+  end
+
+  defp resolve_templates(other, _template), do: other
 
   def extract_streams(%{} = source, streams) when not is_struct(source) do
     Enum.reduce(source, streams, fn

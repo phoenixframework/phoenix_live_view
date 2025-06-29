@@ -1166,16 +1166,13 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp maybe_keyed(state, _type, %{key: key_expr, for: for_expr} = tag_meta) do
+  defp maybe_keyed(state, _type, %{key: key_expr, for: for_expr}) do
     # we already validated that the for expression has the correct shape in
     # validate_quoted_special_attr
     {:<-, for_meta, [lhs, rhs]} = for_expr
 
-    keyed_comprehension = {state.caller.module, tag_meta.line, tag_meta.column}
-
     for_expr =
-      {:<-, [keyed_comprehension: keyed_comprehension, key_expr: key_expr] ++ for_meta,
-       [lhs, rhs]}
+      {:<-, [keyed_comprehension: true, key_expr: key_expr] ++ for_meta, [lhs, rhs]}
 
     {for_expr, invoke_subengine(state, :handle_end, [])}
   end

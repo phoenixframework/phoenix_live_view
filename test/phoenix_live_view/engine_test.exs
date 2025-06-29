@@ -325,10 +325,10 @@ defmodule Phoenix.LiveView.EngineTest do
       """
 
       old = %{map: [a: 1, b: 2, c: 3]}
-      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, nil)
+      assert [%Phoenix.LiveView.KeyedComprehension{}] = changed(template, old, nil)
       assert [nil] = changed(template, old, %{})
-      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, %{map: true})
-      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, old)
+      assert [%Phoenix.LiveView.KeyedComprehension{}] = changed(template, old, %{map: true})
+      assert [%Phoenix.LiveView.KeyedComprehension{}] = changed(template, old, old)
     end
 
     test "renders dynamic if it has variables" do

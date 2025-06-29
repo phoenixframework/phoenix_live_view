@@ -2975,14 +2975,17 @@ var Rendered = class {
     const clonedTarget = structuredClone(target);
     for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
       const entry = source[KEYED][i];
-      if (!entry) {
+      if (entry === void 0) {
         continue;
       }
       if (Array.isArray(entry)) {
         const [old_idx, diff] = entry;
         target[KEYED][i] = clonedTarget[KEYED][old_idx];
         this.doMutableMerge(target[KEYED][i], diff);
-      } else {
+      } else if (typeof entry === "number") {
+        const old_idx = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+      } else if (typeof entry === "object") {
         if (!target[KEYED][i]) {
           target[KEYED][i] = {};
         }
@@ -3076,6 +3079,10 @@ var Rendered = class {
         changeTracking
       );
     }
+    if (!templates && rendered[TEMPLATES]) {
+      templates = rendered[TEMPLATES];
+      delete rendered[TEMPLATES];
+    }
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
     rendered[STATIC] = statics;
@@ -3097,6 +3104,7 @@ var Rendered = class {
       let skip = false;
       let attrs;
       if (changeTracking || rendered.magicId) {
+        console.log("rendering magic ID", structuredClone(rendered));
         skip = changeTracking && !rendered.newRender;
         attrs = { [PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs };
       } else {
@@ -3114,6 +3122,7 @@ var Rendered = class {
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
     }
   }
+  // TODO: remove
   comprehensionToBuffer(rendered, templates, output) {
     let {
       [DYNAMICS]: dynamics,
