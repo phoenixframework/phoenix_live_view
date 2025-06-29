@@ -413,20 +413,20 @@ defmodule Phoenix.LiveView.Diff do
          changed?
        ) do
     # If we are diff tracking, then template must be nil
-    nil = template
+    # nil = template
 
-    {_counter, diff, children, pending, components, nil} =
+    {_counter, diff, children, pending, components, template} =
       traverse_dynamic(
         invoke_dynamic(rendered, changed?),
         children,
         pending,
         components,
-        nil,
+        template,
         [fingerprint | path],
         changed?
       )
 
-    {diff, {fingerprint, children}, pending, components, nil}
+    {diff, {fingerprint, children}, pending, components, template}
   end
 
   defp traverse(
@@ -477,27 +477,48 @@ defmodule Phoenix.LiveView.Diff do
          changed?
        ) do
     # If we are diff tracking, then template must be nil
-    nil = template
+    # nil = template
 
-    {keyed, keyed_prints, pending, components, template} =
-      traverse_keyed(
-        entries,
-        previous_prints,
-        pending,
-        components,
-        template,
-        path,
-        changed?,
-        stream != nil
-      )
+    if template do
+      {keyed, keyed_prints, pending, components, template} =
+        traverse_keyed(
+          entries,
+          previous_prints,
+          pending,
+          components,
+          template,
+          path,
+          changed?,
+          stream != nil
+        )
 
-    diff =
-      %{}
-      |> maybe_add_keyed(keyed)
-      |> maybe_add_stream(stream)
-      |> maybe_add_template(template)
+      diff =
+        %{}
+        |> maybe_add_keyed(keyed)
+        |> maybe_add_stream(stream)
 
-    {diff, {fingerprint, keyed_prints}, pending, components, nil}
+      {diff, {fingerprint, keyed_prints}, pending, components, template}
+    else
+      {keyed, keyed_prints, pending, components, template} =
+        traverse_keyed(
+          entries,
+          previous_prints,
+          pending,
+          components,
+          {%{}, %{}},
+          path,
+          changed?,
+          stream != nil
+        )
+
+      diff =
+        %{}
+        |> maybe_add_keyed(keyed)
+        |> maybe_add_stream(stream)
+        |> maybe_add_template(template)
+
+      {diff, {fingerprint, keyed_prints}, pending, components, nil}
+    end
   end
 
   defp traverse(
@@ -531,14 +552,7 @@ defmodule Phoenix.LiveView.Diff do
       {keyed, keyed_prints, pending, components, template} =
         traverse_keyed(entries, %{}, pending, components, template, path, changed?, stream != nil)
 
-      # TODO: I don't think we need this, but the client-side code breaks if we omit it
-      #       so we should adjust it
-      static = ["", ""]
-
-      {diff, template} =
-        %{@keyed => keyed, @static => static}
-        |> maybe_add_stream(stream)
-        |> maybe_share_template(fingerprint, static, template)
+      diff = maybe_add_stream(%{@keyed => keyed}, stream)
 
       {diff, {fingerprint, keyed_prints}, pending, components, template}
     else
@@ -555,7 +569,7 @@ defmodule Phoenix.LiveView.Diff do
         )
 
       diff =
-        %{@keyed => keyed, @static => ["", ""]}
+        %{@keyed => keyed}
         |> maybe_add_stream(stream)
         |> maybe_add_template(template)
 
