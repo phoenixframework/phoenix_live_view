@@ -70,6 +70,27 @@ defmodule Phoenix.LiveView.LiveStream do
     %{stream | inserts: [{item_id, at, item, limit, update_only} | stream.inserts]}
   end
 
+  def mark_consumable(%Phoenix.LiveView.LiveStream{} = stream) do
+    %{stream | consumable?: true}
+  end
+
+  def mark_consumable(collection), do: collection
+
+  def annotate_comprehension(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
+    inserts =
+      for {id, at, _item, limit, update_only} <- stream.inserts, do: [id, at, limit, update_only]
+
+    data = [stream.ref, inserts, stream.deletes]
+
+    if stream.reset? do
+      Map.put(comprehension, :stream, data ++ [true])
+    else
+      Map.put(comprehension, :stream, data)
+    end
+  end
+
+  def annotate_comprehension(comprehension, _collection), do: comprehension
+
   defimpl Enumerable, for: LiveStream do
     def count(%LiveStream{inserts: inserts}), do: {:ok, length(inserts)}
 

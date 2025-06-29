@@ -168,22 +168,6 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   @doc false
-  defmacro keyed_comprehension(id, vars_changed, do: do_block) do
-    quote do
-      %Phoenix.LiveView.Component{
-        id: unquote(id),
-        component: Phoenix.LiveView.KeyedComprehension,
-        assigns: %{
-          vars_changed: unquote(vars_changed),
-          render: fn unquote(Macro.var(:vars_changed, Phoenix.LiveView.Engine)) ->
-            unquote(do_block)
-          end
-        }
-      }
-    end
-  end
-
-  @doc false
   def __assigns__(assigns, key, parent_changed) do
     # If the component is in its initial render (parent_changed == nil)
     # or the slot/block key is in parent_changed, then we render the
@@ -1182,85 +1166,19 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp maybe_keyed(state, type, %{key: key_expr, for: for_expr} = tag_meta) do
-    # for now, we only support plain tags because we don't know if a function component
-    # renders to a single tag which is required by live components
-    if type != :tag do
-      raise_syntax_error!(
-        "keyed :for comprehensions only supported on regular tags, not for #{tag_meta.tag_name}",
-        tag_meta,
-        state
-      )
-    end
-
+  defp maybe_keyed(state, _type, %{key: key_expr, for: for_expr}) do
     # we already validated that the for expression has the correct shape in
     # validate_quoted_special_attr
     {:<-, for_meta, [lhs, rhs]} = for_expr
-    # now we mark all eligible variables in the left-hand side as `:change_track`able
-    {lhs, variables} = mark_variables_as_change_tracked(lhs, %{})
-    for_expr = {:<-, for_meta, [lhs, rhs]}
 
-    # now we build the new ast that we pass to the engine
-    ast =
-      quote do
-        Phoenix.LiveView.TagEngine.keyed_comprehension(
-          {:keyed_comprehension, unquote(state.caller.module), unquote(tag_meta.line),
-           unquote(tag_meta.column), unquote(key_expr)},
-          %{unquote_splicing(Map.to_list(variables))},
-          do: unquote(invoke_subengine(state, :handle_end, [[meta: [root: true]]]))
-        )
-      end
+    for_expr =
+      {:<-, [keyed_comprehension: true, key_expr: key_expr] ++ for_meta, [lhs, rhs]}
 
-    state = pop_substate_from_stack(state)
-
-    keyed_ast =
-      state
-      |> push_substate_to_stack()
-      |> update_subengine(:handle_begin, [])
-      |> update_subengine(:handle_expr, ["=", ast])
-      |> invoke_subengine(:handle_end, [])
-
-    {for_expr, keyed_ast}
+    {for_expr, invoke_subengine(state, :handle_end, [])}
   end
 
   defp maybe_keyed(state, _type, %{for: for_expr}) do
     {for_expr, invoke_subengine(state, :handle_end, [])}
-  end
-
-  @doc false
-  def mark_variables_as_change_tracked({:^, _, [_]} = ast, vars) do
-    {ast, vars}
-  end
-
-  def mark_variables_as_change_tracked({:"::", meta, [left, right]}, vars) do
-    {left, vars} = mark_variables_as_change_tracked(left, vars)
-    {{:"::", meta, [left, right]}, vars}
-  end
-
-  def mark_variables_as_change_tracked({name, meta, context}, vars)
-      when is_atom(name) and is_list(meta) and is_atom(context) do
-    var = {name, [change_track: true] ++ meta, context}
-    {var, Map.put(vars, name, var)}
-  end
-
-  def mark_variables_as_change_tracked({left, meta, right}, vars) do
-    {left, vars} = mark_variables_as_change_tracked(left, vars)
-    {right, vars} = mark_variables_as_change_tracked(right, vars)
-    {{left, meta, right}, vars}
-  end
-
-  def mark_variables_as_change_tracked({left, right}, vars) do
-    {left, vars} = mark_variables_as_change_tracked(left, vars)
-    {right, vars} = mark_variables_as_change_tracked(right, vars)
-    {{left, right}, vars}
-  end
-
-  def mark_variables_as_change_tracked([_ | _] = list, vars) do
-    Enum.map_reduce(list, vars, &mark_variables_as_change_tracked/2)
-  end
-
-  def mark_variables_as_change_tracked(other, vars) do
-    {other, vars}
   end
 
   ## build_self_close_component_assigns/build_component_assigns

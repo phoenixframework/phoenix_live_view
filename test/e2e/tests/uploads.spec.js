@@ -224,6 +224,7 @@ test("issue 3115 - cancelled upload is not re-added", async ({ page }) => {
   ]);
   await syncLV(page);
   await page.getByRole("button", { name: "Upload" }).click();
+  await syncLV(page);
 
   // we should see one uploaded file in the list
   await expect(page.locator("ul li")).toHaveCount(1);

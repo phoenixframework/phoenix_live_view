@@ -136,6 +136,8 @@ var DYNAMICS = "d";
 var STATIC = "s";
 var ROOT = "r";
 var COMPONENTS = "c";
+var KEYED = "k";
+var KEYED_COUNT = "kc";
 var EVENTS = "e";
 var REPLY = "r";
 var TITLE = "t";
@@ -2950,18 +2952,57 @@ var Rendered = class {
     }
   }
   doMutableMerge(target, source) {
-    for (const key in source) {
-      const val = source[key];
-      const targetVal = target[key];
-      const isObjVal = isObject(val);
-      if (isObjVal && val[STATIC] === void 0 && isObject(targetVal)) {
-        this.doMutableMerge(targetVal, val);
-      } else {
-        target[key] = val;
+    if (source[KEYED]) {
+      this.mergeKeyed(target, source);
+    } else {
+      for (const key in source) {
+        const val = source[key];
+        const targetVal = target[key];
+        const isObjVal = isObject(val);
+        if (isObjVal && val[STATIC] === void 0 && isObject(targetVal)) {
+          this.doMutableMerge(targetVal, val);
+        } else {
+          target[key] = val;
+        }
       }
     }
     if (target[ROOT]) {
       target.newRender = true;
+    }
+  }
+  // keyed comprehensions
+  mergeKeyed(target, source) {
+    const clonedTarget = structuredClone(target);
+    for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
+      const entry = source[KEYED][i];
+      if (entry === void 0) {
+        continue;
+      }
+      if (Array.isArray(entry)) {
+        const [old_idx, diff] = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        this.doMutableMerge(target[KEYED][i], diff);
+      } else if (typeof entry === "number") {
+        const old_idx = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+      } else if (typeof entry === "object") {
+        if (!target[KEYED][i]) {
+          target[KEYED][i] = {};
+        }
+        this.doMutableMerge(target[KEYED][i], entry);
+      }
+    }
+    if (source[KEYED][KEYED_COUNT] < target[KEYED][KEYED_COUNT]) {
+      for (let i = source[KEYED][KEYED_COUNT]; i < target[KEYED][KEYED_COUNT]; i++) {
+        delete target[KEYED][i];
+      }
+    }
+    target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
+    if (source[STREAM]) {
+      target[STREAM] = source[STREAM];
+    }
+    if (source[TEMPLATES]) {
+      target[TEMPLATES] = source[TEMPLATES];
     }
   }
   // Merges cid trees together, copying statics from source tree.
@@ -3030,21 +3071,30 @@ var Rendered = class {
     if (rendered[DYNAMICS]) {
       return this.comprehensionToBuffer(rendered, templates, output);
     }
+    if (rendered[KEYED]) {
+      return this.keyedComprehensionToBuffer(
+        rendered,
+        templates,
+        output,
+        changeTracking
+      );
+    }
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
+    rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     const prevBuffer = output.buffer;
     if (isRoot) {
       output.buffer = "";
     }
-    if (changeTracking && isRoot && !rendered.magicId) {
-      rendered.newRender = true;
-      rendered.magicId = this.nextMagicID();
-    }
     output.buffer += statics[0];
     for (let i = 1; i < statics.length; i++) {
       this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
       output.buffer += statics[i];
+    }
+    if (changeTracking && isRoot && !rendered.magicId) {
+      rendered.newRender = true;
+      rendered.magicId = this.nextMagicID();
     }
     if (isRoot) {
       let skip = false;
@@ -3067,6 +3117,7 @@ var Rendered = class {
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
     }
   }
+  // TODO: remove
   comprehensionToBuffer(rendered, templates, output) {
     let {
       [DYNAMICS]: dynamics,
@@ -3075,7 +3126,9 @@ var Rendered = class {
     } = rendered;
     const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
     statics = this.templateStatic(statics, templates);
-    const compTemplates = templates || rendered[TEMPLATES];
+    rendered[STATIC] = statics;
+    const compTemplates = { ...templates || rendered[TEMPLATES] };
+    delete rendered[TEMPLATES];
     for (let d = 0; d < dynamics.length; d++) {
       const dynamic = dynamics[d];
       output.buffer += statics[0];
@@ -3094,6 +3147,29 @@ var Rendered = class {
       delete rendered[STREAM];
       rendered[DYNAMICS] = [];
       output.streams.add(stream);
+    }
+  }
+  keyedComprehensionToBuffer(rendered, templates, output, changeTracking) {
+    const keyedTemplates = { ...rendered[TEMPLATES] || templates };
+    delete rendered[TEMPLATES];
+    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+      this.toOutputBuffer(
+        rendered[KEYED][i],
+        keyedTemplates,
+        output,
+        changeTracking
+      );
+    }
+    if (rendered[STREAM]) {
+      const stream = rendered[STREAM];
+      const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
+      if (stream !== void 0 && (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset)) {
+        delete rendered[STREAM];
+        rendered[KEYED] = {
+          [KEYED_COUNT]: 0
+        };
+        output.streams.add(stream);
+      }
     }
   }
   dynamicToBuffer(rendered, templates, output, changeTracking) {

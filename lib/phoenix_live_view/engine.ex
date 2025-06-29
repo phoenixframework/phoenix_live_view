@@ -51,69 +51,39 @@ defmodule Phoenix.LiveView.Component do
   end
 end
 
-defmodule Phoenix.LiveView.Comprehension do
+defmodule Phoenix.LiveView.KeyedComprehension do
   @moduledoc """
-  The struct returned by for-comprehensions in .heex templates.
-
-  See a description about its fields and use cases
-  in `Phoenix.LiveView.Engine` docs.
+  The struct returned by keyed for-comprehensions in .heex templates.
   """
-
-  defstruct [:static, :dynamics, :fingerprint, :stream]
+  defstruct [:entries, :fingerprint, :stream]
 
   @type t :: %__MODULE__{
           stream: list() | nil,
-          static: [String.t()],
-          dynamics: [
-            [
-              iodata()
-              | Phoenix.LiveView.Rendered.t()
-              | Phoenix.LiveView.Comprehension.t()
-              | Phoenix.LiveView.Component.t()
-            ]
-          ],
-          fingerprint: integer()
+          entries: [Phoenix.LiveView.KeyedComprehensionEntry.t()],
+          fingerprint: term()
         }
 
-  @doc false
-  def __mark_consumable__(%Phoenix.LiveView.LiveStream{} = stream) do
-    %{stream | consumable?: true}
-  end
-
-  def __mark_consumable__(collection), do: collection
-
-  @doc false
-  def __annotate__(comprehension, %Phoenix.LiveView.LiveStream{} = stream) do
-    inserts =
-      for {id, at, _item, limit, update_only} <- stream.inserts, do: [id, at, limit, update_only]
-
-    data = [stream.ref, inserts, stream.deletes]
-
-    if stream.reset? do
-      Map.put(comprehension, :stream, data ++ [true])
-    else
-      Map.put(comprehension, :stream, data)
+  defimpl Phoenix.HTML.Safe do
+    def to_iodata(%Phoenix.LiveView.KeyedComprehension{entries: entries}) do
+      for entry <- entries, do: Phoenix.HTML.Safe.to_iodata(entry)
     end
   end
+end
 
-  def __annotate__(comprehension, _collection), do: comprehension
+defmodule Phoenix.LiveView.KeyedComprehensionEntry do
+  @moduledoc """
+  The struct returned for each entry of a keyed comprehension in .heex templates.
+  """
+  defstruct [:fingerprint, :render]
+
+  @type t :: %__MODULE__{
+          render: (map(), boolean() -> Phoenix.LiveView.Rendered.t()),
+          fingerprint: term()
+        }
 
   defimpl Phoenix.HTML.Safe do
-    def to_iodata(%Phoenix.LiveView.Comprehension{static: static, dynamics: dynamics}) do
-      for dynamic <- dynamics, do: to_iodata(static, dynamic)
-    end
-
-    defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail]) do
-      dynamic_head = Phoenix.HTML.Safe.to_iodata(struct)
-      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
-    end
-
-    defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail]) do
-      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
-    end
-
-    defp to_iodata([static_head], []) do
-      [static_head]
+    def to_iodata(%Phoenix.LiveView.KeyedComprehensionEntry{render: render}) do
+      Phoenix.HTML.Safe.to_iodata(render.(%{}, nil))
     end
   end
 end
@@ -135,7 +105,8 @@ defmodule Phoenix.LiveView.Rendered do
                         nil
                         | iodata()
                         | Phoenix.LiveView.Rendered.t()
-                        | Phoenix.LiveView.Comprehension.t()
+                        | Phoenix.LiveView.KeyedComprehension.t()
+                        | Phoenix.LiveView.KeyedComprehensionEntry.t()
                         | Phoenix.LiveView.Component.t()
                       ]),
           fingerprint: integer(),
@@ -194,7 +165,7 @@ defmodule Phoenix.LiveView.Engine do
     1. iodata - which is the dynamic content
     2. nil - the dynamic content did not change
     3. another `Phoenix.LiveView.Rendered` struct, see "Nesting and fingerprinting" below
-    4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
+    4. a `Phoenix.LiveView.KeyedComprehension` or `Phoenix.LiveView.KeyedComprehensionEntry` struct, see "Comprehensions" below
     5. a `Phoenix.LiveView.Component` struct, see "Component" below
 
   When you render a live template, you can convert the
@@ -266,6 +237,8 @@ defmodule Phoenix.LiveView.Engine do
   its changes.
 
   ## Comprehensions
+
+  TODO: outdated
 
   Another optimization done by live templates is to
   track comprehensions. If your code has this:
@@ -362,6 +335,8 @@ defmodule Phoenix.LiveView.Engine do
 
     quote do
       require Phoenix.LiveView.Engine
+      require Phoenix.LiveView.EngineHelpers
+
       unquote(rendered)
     end
   end
@@ -429,6 +404,7 @@ defmodule Phoenix.LiveView.Engine do
        quote do
          dynamic = fn track_changes? ->
            changed = unquote(changed)
+           vars_changed = Phoenix.LiveView.EngineHelpers.maybe_vars_changed?(track_changes?)
            unquote({:__block__, [], block})
            unquote(dynamic)
          end
@@ -476,34 +452,92 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Optimize possible expressions into live structs (rendered / comprehensions)
 
-  defp to_live_struct({:for, _, [_ | _]} = expr, vars, _assigns, caller) do
+  defp to_live_struct({:for, _, [_ | _]} = expr, vars, assigns, caller) do
     with {:for, meta, [gen | args]} <- expr,
          {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
-         {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
-         {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
-      {block, static, dynamic, fingerprint} =
-        analyze_static_and_dynamic(static, dynamic, taint_vars(vars), %{}, caller)
-
+         {filters, [[do: block]]} <- Enum.split(args, -1) do
       gen_var = Macro.unique_var(:for, __MODULE__)
 
       gen_collection =
         quote do
           unquote(gen_var) =
-            Phoenix.LiveView.Comprehension.__mark_consumable__(unquote(gen_collection))
+            Phoenix.LiveView.LiveStream.mark_consumable(unquote(gen_collection))
         end
 
-      gen = {:<-, gen_meta, [gen_pattern, gen_var]}
-      for = {:for, meta, [gen | filters] ++ [[do: {:__block__, [], block ++ [dynamic]}]]}
+      comprehension =
+        if Keyword.get(gen_meta, :keyed_comprehension) do
+          key_expr = Keyword.fetch!(gen_meta, :key_expr)
+
+          {key_expr, _vars, _} = analyze(key_expr, vars, assigns, caller)
+          {gen_pattern, variables} = mark_variables_as_change_tracked(gen_pattern, %{})
+
+          {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
+          gen = {:<-, gen_meta, [gen_pattern, gen_var]}
+
+          block = maybe_block_to_rendered(block, vars, caller)
+
+          # if the keyed_comprehension macro is in this module, the has_var? check does not work
+          comp =
+            quote do
+              Phoenix.LiveView.EngineHelpers.keyed_comprehension(
+                unquote(key_expr),
+                %{unquote_splicing(Map.to_list(variables))},
+                unquote(block)
+              )
+            end
+
+          for = {:for, meta, [gen | filters] ++ [[do: comp]]}
+
+          quote do
+            %Phoenix.LiveView.KeyedComprehension{
+              entries: unquote(for),
+              fingerprint: unquote(fingerprint(comp, []))
+            }
+          end
+        else
+          key_expr = Macro.var(:key, nil)
+
+          {gen_pattern, variables} = mark_variables_as_change_tracked(gen_pattern, %{})
+          {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
+
+          gen_pattern =
+            quote do
+              {unquote(gen_pattern), unquote(key_expr)}
+            end
+
+          gen_var =
+            quote do
+              Enum.with_index(unquote(gen_var))
+            end
+
+          gen = {:<-, gen_meta, [gen_pattern, gen_var]}
+          block = maybe_block_to_rendered(block, vars, caller)
+
+          # if the keyed_comprehension macro is in this module, the has_var? check does not work
+          comp =
+            quote do
+              Phoenix.LiveView.EngineHelpers.keyed_comprehension(
+                unquote(key_expr),
+                %{unquote_splicing(Map.to_list(variables))},
+                unquote(block)
+              )
+            end
+
+          for = {:for, meta, [gen | filters] ++ [[do: comp]]}
+
+          quote do
+            %Phoenix.LiveView.KeyedComprehension{
+              entries: unquote(for),
+              fingerprint: unquote(fingerprint(comp, []))
+            }
+          end
+        end
 
       quote do
         unquote(gen_collection)
 
-        Phoenix.LiveView.Comprehension.__annotate__(
-          %Phoenix.LiveView.Comprehension{
-            static: unquote(static),
-            dynamics: unquote(for),
-            fingerprint: unquote(fingerprint)
-          },
+        Phoenix.LiveView.LiveStream.annotate_comprehension(
+          unquote(comprehension),
           unquote(gen_var)
         )
       end
@@ -569,6 +603,48 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_live_struct(expr, _vars, _assigns, _caller) do
     to_safe(expr, true)
+  end
+
+  @doc false
+  def mark_variables_as_change_tracked({:^, _, [_]} = ast, vars) do
+    {ast, vars}
+  end
+
+  def mark_variables_as_change_tracked({:"::", meta, [left, right]}, vars) do
+    {left, vars} = mark_variables_as_change_tracked(left, vars)
+    {{:"::", meta, [left, right]}, vars}
+  end
+
+  def mark_variables_as_change_tracked({name, meta, context}, vars)
+      when is_atom(name) and is_list(meta) and is_atom(context) do
+    case Atom.to_string(name) do
+      "_" <> _rest ->
+        {{name, meta, context}, vars}
+
+      _ ->
+        var = {name, [change_track: true] ++ meta, context}
+        {var, Map.put(vars, name, var)}
+    end
+  end
+
+  def mark_variables_as_change_tracked({left, meta, right}, vars) do
+    {left, vars} = mark_variables_as_change_tracked(left, vars)
+    {right, vars} = mark_variables_as_change_tracked(right, vars)
+    {{left, meta, right}, vars}
+  end
+
+  def mark_variables_as_change_tracked({left, right}, vars) do
+    {left, vars} = mark_variables_as_change_tracked(left, vars)
+    {right, vars} = mark_variables_as_change_tracked(right, vars)
+    {{left, right}, vars}
+  end
+
+  def mark_variables_as_change_tracked([_ | _] = list, vars) do
+    Enum.map_reduce(list, vars, &mark_variables_as_change_tracked/2)
+  end
+
+  def mark_variables_as_change_tracked(other, vars) do
+    {other, vars}
   end
 
   defp extract_call({:., _, [{:__aliases__, _, [:Phoenix, :LiveView, :TagEngine]}, func]}),
@@ -1206,7 +1282,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp set_vars({kind, _}, {_, map}), do: {kind, map}
-  defp taint_vars({_, map}), do: {:tainted, map}
+  # defp taint_vars({_, map}), do: {:tainted, map}
   defp untaint_vars({_, map}), do: {:untainted, map}
 
   defp unless_tainted(:tainted, _), do: :tainted
@@ -1324,6 +1400,7 @@ defmodule Phoenix.LiveView.Engine do
       %{__struct__: Phoenix.LiveView.Rendered} = other -> other
       %{__struct__: Phoenix.LiveView.Component} = other -> other
       %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
+      %{__struct__: Phoenix.LiveView.KeyedComprehensionEntry} = other -> other
       bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
       other -> Phoenix.HTML.Safe.to_iodata(other)
     end

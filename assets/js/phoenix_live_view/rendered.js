@@ -12,6 +12,8 @@ import {
   TITLE,
   STREAM,
   ROOT,
+  KEYED,
+  KEYED_COUNT,
 } from "./constants";
 
 import { isObject, logError, isCid } from "./utils";
@@ -253,18 +255,68 @@ export default class Rendered {
   }
 
   doMutableMerge(target, source) {
-    for (const key in source) {
-      const val = source[key];
-      const targetVal = target[key];
-      const isObjVal = isObject(val);
-      if (isObjVal && val[STATIC] === undefined && isObject(targetVal)) {
-        this.doMutableMerge(targetVal, val);
-      } else {
-        target[key] = val;
+    if (source[KEYED]) {
+      this.mergeKeyed(target, source);
+    } else {
+      for (const key in source) {
+        const val = source[key];
+        const targetVal = target[key];
+        const isObjVal = isObject(val);
+        if (isObjVal && val[STATIC] === undefined && isObject(targetVal)) {
+          this.doMutableMerge(targetVal, val);
+        } else {
+          target[key] = val;
+        }
       }
     }
     if (target[ROOT]) {
       target.newRender = true;
+    }
+  }
+
+  // keyed comprehensions
+  mergeKeyed(target, source) {
+    const clonedTarget = structuredClone(target);
+    for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
+      const entry = source[KEYED][i];
+      if (entry === undefined) {
+        // non-changed entries can be skipped
+        continue;
+      }
+      if (Array.isArray(entry)) {
+        // [old_idx, diff]
+        // moved with diff
+        const [old_idx, diff] = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        this.doMutableMerge(target[KEYED][i], diff);
+      } else if (typeof entry === "number") {
+        // moved without diff
+        const old_idx = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+      } else if (typeof entry === "object") {
+        // diff, same position
+        if (!target[KEYED][i]) {
+          target[KEYED][i] = {};
+        }
+        this.doMutableMerge(target[KEYED][i], entry);
+      }
+    }
+    // drop extra entries
+    if (source[KEYED][KEYED_COUNT] < target[KEYED][KEYED_COUNT]) {
+      for (
+        let i = source[KEYED][KEYED_COUNT];
+        i < target[KEYED][KEYED_COUNT];
+        i++
+      ) {
+        delete target[KEYED][i];
+      }
+    }
+    target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
+    if (source[STREAM]) {
+      target[STREAM] = source[STREAM];
+    }
+    if (source[TEMPLATES]) {
+      target[TEMPLATES] = source[TEMPLATES];
     }
   }
 
@@ -342,12 +394,28 @@ export default class Rendered {
     if (rendered[DYNAMICS]) {
       return this.comprehensionToBuffer(rendered, templates, output);
     }
+    if (rendered[KEYED]) {
+      return this.keyedComprehensionToBuffer(
+        rendered,
+        templates,
+        output,
+        changeTracking,
+      );
+    }
+
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
+    rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     const prevBuffer = output.buffer;
     if (isRoot) {
       output.buffer = "";
+    }
+
+    output.buffer += statics[0];
+    for (let i = 1; i < statics.length; i++) {
+      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
+      output.buffer += statics[i];
     }
 
     // this condition is called when first rendering an optimizable function component.
@@ -355,12 +423,6 @@ export default class Rendered {
     if (changeTracking && isRoot && !rendered.magicId) {
       rendered.newRender = true;
       rendered.magicId = this.nextMagicID();
-    }
-
-    output.buffer += statics[0];
-    for (let i = 1; i < statics.length; i++) {
-      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
-      output.buffer += statics[i];
     }
 
     // Applies the root tag "skip" optimization if supported, which clears
@@ -393,6 +455,7 @@ export default class Rendered {
     }
   }
 
+  // TODO: remove
   comprehensionToBuffer(rendered, templates, output) {
     let {
       [DYNAMICS]: dynamics,
@@ -401,7 +464,9 @@ export default class Rendered {
     } = rendered;
     const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
     statics = this.templateStatic(statics, templates);
-    const compTemplates = templates || rendered[TEMPLATES];
+    rendered[STATIC] = statics;
+    const compTemplates = { ...(templates || rendered[TEMPLATES]) };
+    delete rendered[TEMPLATES];
     for (let d = 0; d < dynamics.length; d++) {
       const dynamic = dynamics[d];
       output.buffer += statics[0];
@@ -428,6 +493,36 @@ export default class Rendered {
       delete rendered[STREAM];
       rendered[DYNAMICS] = [];
       output.streams.add(stream);
+    }
+  }
+
+  keyedComprehensionToBuffer(rendered, templates, output, changeTracking) {
+    // TODO: check if this order is correct, comprehensionToBuffer does it
+    //       the other way round, but that doesn't work here
+    const keyedTemplates = { ...(rendered[TEMPLATES] || templates) };
+    delete rendered[TEMPLATES];
+    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+      this.toOutputBuffer(
+        rendered[KEYED][i],
+        keyedTemplates,
+        output,
+        changeTracking,
+      );
+    }
+    // TODO: should streams just use regular comprehensions instead?
+    if (rendered[STREAM]) {
+      const stream = rendered[STREAM];
+      const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
+      if (
+        stream !== undefined &&
+        (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset)
+      ) {
+        delete rendered[STREAM];
+        rendered[KEYED] = {
+          [KEYED_COUNT]: 0,
+        };
+        output.streams.add(stream);
+      }
     }
   }
 
