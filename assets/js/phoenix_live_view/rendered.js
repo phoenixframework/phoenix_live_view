@@ -310,6 +310,9 @@ export default class Rendered {
     if (source[STREAM]) {
       target[STREAM] = source[STREAM];
     }
+    if (source[TEMPLATES]) {
+      target[TEMPLATES] = source[TEMPLATES];
+    }
   }
 
   // Merges cid trees together, copying statics from source tree.
@@ -386,12 +389,28 @@ export default class Rendered {
     if (rendered[DYNAMICS]) {
       return this.comprehensionToBuffer(rendered, templates, output);
     }
+    if (rendered[KEYED]) {
+      return this.keyedComprehensionToBuffer(
+        rendered,
+        templates,
+        output,
+        changeTracking,
+      );
+    }
+
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
+    rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     const prevBuffer = output.buffer;
     if (isRoot) {
       output.buffer = "";
+    }
+
+    output.buffer += statics[0];
+    for (let i = 1; i < statics.length; i++) {
+      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
+      output.buffer += statics[i];
     }
 
     // this condition is called when first rendering an optimizable function component.
@@ -399,26 +418,6 @@ export default class Rendered {
     if (changeTracking && isRoot && !rendered.magicId) {
       rendered.newRender = true;
       rendered.magicId = this.nextMagicID();
-    }
-
-    if (rendered[KEYED]) {
-      this.keyedComprehensionToBuffer(
-        rendered,
-        templates,
-        output,
-        changeTracking,
-      );
-    } else {
-      output.buffer += statics[0];
-      for (let i = 1; i < statics.length; i++) {
-        this.dynamicToBuffer(
-          rendered[i - 1],
-          templates,
-          output,
-          changeTracking,
-        );
-        output.buffer += statics[i];
-      }
     }
 
     // Applies the root tag "skip" optimization if supported, which clears
@@ -459,7 +458,9 @@ export default class Rendered {
     } = rendered;
     const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
     statics = this.templateStatic(statics, templates);
-    const compTemplates = templates || rendered[TEMPLATES];
+    rendered[STATIC] = statics;
+    const compTemplates = { ...(templates || rendered[TEMPLATES]) };
+    delete rendered[TEMPLATES];
     for (let d = 0; d < dynamics.length; d++) {
       const dynamic = dynamics[d];
       output.buffer += statics[0];
@@ -490,10 +491,11 @@ export default class Rendered {
   }
 
   keyedComprehensionToBuffer(rendered, templates, output, changeTracking) {
+    // TODO: check if this order is correct, comprehensionToBuffer does it
+    //       the other way round, but that doesn't work here
+    const keyedTemplates = { ...(rendered[TEMPLATES] || templates) };
+    delete rendered[TEMPLATES];
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      // TODO: check if this order is correct, comprehensionToBuffer does it
-      //       the other way round, but that doesn't work here
-      const keyedTemplates = rendered[TEMPLATES] || templates;
       this.toOutputBuffer(
         rendered[KEYED][i],
         keyedTemplates,

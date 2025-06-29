@@ -3016,6 +3016,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (source[STREAM]) {
         target[STREAM] = source[STREAM];
       }
+      if (source[TEMPLATES]) {
+        target[TEMPLATES] = source[TEMPLATES];
+      }
     }
     // Merges cid trees together, copying statics from source tree.
     //
@@ -3083,35 +3086,30 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (rendered[DYNAMICS]) {
         return this.comprehensionToBuffer(rendered, templates, output);
       }
-      let { [STATIC]: statics } = rendered;
-      statics = this.templateStatic(statics, templates);
-      const isRoot = rendered[ROOT];
-      const prevBuffer = output.buffer;
-      if (isRoot) {
-        output.buffer = "";
-      }
-      if (changeTracking && isRoot && !rendered.magicId) {
-        rendered.newRender = true;
-        rendered.magicId = this.nextMagicID();
-      }
       if (rendered[KEYED]) {
-        this.keyedComprehensionToBuffer(
+        return this.keyedComprehensionToBuffer(
           rendered,
           templates,
           output,
           changeTracking
         );
-      } else {
-        output.buffer += statics[0];
-        for (let i = 1; i < statics.length; i++) {
-          this.dynamicToBuffer(
-            rendered[i - 1],
-            templates,
-            output,
-            changeTracking
-          );
-          output.buffer += statics[i];
-        }
+      }
+      let { [STATIC]: statics } = rendered;
+      statics = this.templateStatic(statics, templates);
+      rendered[STATIC] = statics;
+      const isRoot = rendered[ROOT];
+      const prevBuffer = output.buffer;
+      if (isRoot) {
+        output.buffer = "";
+      }
+      output.buffer += statics[0];
+      for (let i = 1; i < statics.length; i++) {
+        this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
+        output.buffer += statics[i];
+      }
+      if (changeTracking && isRoot && !rendered.magicId) {
+        rendered.newRender = true;
+        rendered.magicId = this.nextMagicID();
       }
       if (isRoot) {
         let skip = false;
@@ -3142,7 +3140,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       } = rendered;
       const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
       statics = this.templateStatic(statics, templates);
-      const compTemplates = templates || rendered[TEMPLATES];
+      rendered[STATIC] = statics;
+      const compTemplates = __spreadValues({}, templates || rendered[TEMPLATES]);
+      delete rendered[TEMPLATES];
       for (let d = 0; d < dynamics.length; d++) {
         const dynamic = dynamics[d];
         output.buffer += statics[0];
@@ -3164,8 +3164,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     keyedComprehensionToBuffer(rendered, templates, output, changeTracking) {
+      const keyedTemplates = __spreadValues({}, rendered[TEMPLATES] || templates);
+      delete rendered[TEMPLATES];
       for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-        const keyedTemplates = rendered[TEMPLATES] || templates;
         this.toOutputBuffer(
           rendered[KEYED][i],
           keyedTemplates,
