@@ -279,17 +279,22 @@ export default class Rendered {
     const clonedTarget = structuredClone(target);
     for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
       const entry = source[KEYED][i];
-      if (!entry) {
+      if (entry === undefined) {
         // non-changed entries can be skipped
         continue;
       }
       if (Array.isArray(entry)) {
         // [old_idx, diff]
+        // moved with diff
         const [old_idx, diff] = entry;
         target[KEYED][i] = clonedTarget[KEYED][old_idx];
         this.doMutableMerge(target[KEYED][i], diff);
-      } else {
-        // diff
+      } else if (typeof entry === "number") {
+        // moved without diff
+        const old_idx = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+      } else if (typeof entry === "object") {
+        // diff, same position
         if (!target[KEYED][i]) {
           target[KEYED][i] = {};
         }
@@ -438,6 +443,7 @@ export default class Rendered {
       // from any function component so the next time the LC is updated, we can apply
       // the skip optimization
       if (changeTracking || rendered.magicId) {
+        console.log("rendering magic ID", structuredClone(rendered));
         skip = changeTracking && !rendered.newRender;
         attrs = { [PHX_MAGIC_ID]: rendered.magicId, ...rootAttrs };
       } else {
