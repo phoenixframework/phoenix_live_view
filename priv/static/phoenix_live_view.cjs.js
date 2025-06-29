@@ -3114,6 +3114,7 @@ var Rendered = class {
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
     }
   }
+  // TODO: remove
   comprehensionToBuffer(rendered, templates, output) {
     let {
       [DYNAMICS]: dynamics,
