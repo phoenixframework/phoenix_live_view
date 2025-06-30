@@ -1963,7 +1963,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           %{__changed__: %{items: true}, items: [1, 2]}
         )
 
-      assert [%Phoenix.LiveView.KeyedComprehension{}] = dynamic.(true)
+      assert [%Phoenix.LiveView.Comprehension{}] = dynamic.(true)
     end
 
     test ":for in components" do

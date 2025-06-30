@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.EngineHelpers do
 
   defmacro keyed_comprehension(key, vars, do_block) do
     vars_changed_var = Macro.var(:vars_changed, Phoenix.LiveView.Engine)
+    changed_var = Macro.var(:changed, Phoenix.LiveView.Engine)
 
     render =
       if Macro.Env.has_var?(__CALLER__, {:vars_changed, Phoenix.LiveView.Engine}) do
@@ -15,6 +16,8 @@ defmodule Phoenix.LiveView.EngineHelpers do
                 nil
               end
 
+            unquote(changed_var) = if track_changes?, do: unquote(changed_var)
+
             unquote(do_block)
           end
         end
@@ -22,6 +25,7 @@ defmodule Phoenix.LiveView.EngineHelpers do
         quote do
           fn unquote(vars_changed_var), track_changes? ->
             unquote(vars_changed_var) = if track_changes?, do: unquote(vars_changed_var)
+            unquote(changed_var) = if track_changes?, do: unquote(changed_var)
 
             unquote(do_block)
           end
@@ -29,10 +33,7 @@ defmodule Phoenix.LiveView.EngineHelpers do
       end
 
     quote do
-      %Phoenix.LiveView.KeyedComprehensionEntry{
-        fingerprint: {unquote(key), unquote(vars)},
-        render: unquote(render)
-      }
+      {unquote(key), unquote(vars), unquote(render)}
     end
   end
 

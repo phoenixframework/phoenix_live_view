@@ -132,7 +132,6 @@ var DEFAULTS = {
   throttle: 300
 };
 var PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK];
-var DYNAMICS = "d";
 var STATIC = "s";
 var ROOT = "r";
 var COMPONENTS = "c";
@@ -3068,23 +3067,23 @@ var Rendered = class {
   // It is disabled for comprehensions since we must re-render the entire collection
   // and no individual element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
-    if (rendered[DYNAMICS]) {
-      return this.comprehensionToBuffer(rendered, templates, output);
-    }
     if (rendered[KEYED]) {
-      return this.keyedComprehensionToBuffer(
+      return this.comprehensionToBuffer(
         rendered,
         templates,
         output,
         changeTracking
       );
     }
-    if (!templates && rendered[TEMPLATES]) {
+    if (rendered[TEMPLATES]) {
       templates = rendered[TEMPLATES];
       delete rendered[TEMPLATES];
     }
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
+    if (statics == void 0) {
+      debugger;
+    }
     rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     const prevBuffer = output.buffer;
@@ -3121,48 +3120,23 @@ var Rendered = class {
       output.buffer = prevBuffer + commentBefore + newRoot + commentAfter;
     }
   }
-  // TODO: remove
-  comprehensionToBuffer(rendered, templates, output) {
-    let {
-      [DYNAMICS]: dynamics,
-      [STATIC]: statics,
-      [STREAM]: stream
-    } = rendered;
-    const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
-    statics = this.templateStatic(statics, templates);
+  comprehensionToBuffer(rendered, templates, output, changeTracking) {
+    const keyedTemplates = templates || rendered[TEMPLATES];
+    const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
-    const compTemplates = { ...templates || rendered[TEMPLATES] };
     delete rendered[TEMPLATES];
-    for (let d = 0; d < dynamics.length; d++) {
-      const dynamic = dynamics[d];
+    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+      const entry = rendered[KEYED][i];
       output.buffer += statics[0];
-      for (let i = 1; i < statics.length; i++) {
-        const changeTracking = false;
+      for (let j = 1; j < statics.length; j++) {
         this.dynamicToBuffer(
-          dynamic[i - 1],
-          compTemplates,
+          entry[j - 1],
+          keyedTemplates,
           output,
           changeTracking
         );
-        output.buffer += statics[i];
+        output.buffer += statics[j];
       }
-    }
-    if (stream !== void 0 && (rendered[DYNAMICS].length > 0 || deleteIds.length > 0 || reset)) {
-      delete rendered[STREAM];
-      rendered[DYNAMICS] = [];
-      output.streams.add(stream);
-    }
-  }
-  keyedComprehensionToBuffer(rendered, templates, output, changeTracking) {
-    const keyedTemplates = { ...rendered[TEMPLATES] || templates };
-    delete rendered[TEMPLATES];
-    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      this.toOutputBuffer(
-        rendered[KEYED][i],
-        keyedTemplates,
-        output,
-        changeTracking
-      );
     }
     if (rendered[STREAM]) {
       const stream = rendered[STREAM];

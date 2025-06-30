@@ -6,8 +6,7 @@ defmodule Phoenix.LiveView.Diff do
 
   alias Phoenix.LiveView.{
     Component,
-    KeyedComprehension,
-    KeyedComprehensionEntry,
+    Comprehension,
     Lifecycle,
     Rendered,
     Utils
@@ -53,7 +52,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp to_iodata(
-         %{@keyed => keyed} = kc,
+         %{@static => static, @keyed => keyed} = kc,
          components,
          template,
          mapper
@@ -63,12 +62,10 @@ defmodule Phoenix.LiveView.Diff do
     if !keyed or keyed[@keyed_count] == 0 do
       {[], components}
     else
-      for i <- 0..(keyed[@keyed_count] - 1), reduce: {[], components} do
-        {acc, components} ->
-          content = Map.fetch!(keyed, i)
-          {iodata, components} = to_iodata(content, components, template, mapper)
-          {[acc, iodata], components}
-      end
+      Enum.map_reduce(0..(keyed[@keyed_count] - 1), components, fn index, components ->
+        rendered = Map.fetch!(keyed, index)
+        to_iodata(Map.put(rendered, @static, static), components, template, mapper)
+      end)
     end
   end
 
@@ -453,7 +450,12 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %KeyedComprehension{fingerprint: fingerprint, entries: entries, stream: stream},
+         %Comprehension{
+           fingerprint: fingerprint,
+           entries: entries,
+           stream: stream,
+           has_key?: has_key?
+         },
          {fingerprint, previous_prints},
          pending,
          components,
@@ -471,7 +473,8 @@ defmodule Phoenix.LiveView.Diff do
           template,
           path,
           changed?,
-          stream != nil
+          stream != nil,
+          has_key?
         )
 
       diff =
@@ -490,7 +493,8 @@ defmodule Phoenix.LiveView.Diff do
           {%{}, %{}},
           path,
           changed?,
-          stream != nil
+          stream != nil,
+          has_key?
         )
 
       diff =
@@ -504,7 +508,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %KeyedComprehension{entries: [], stream: nil},
+         %Comprehension{entries: [], stream: nil},
          _,
          pending,
          components,
@@ -518,10 +522,12 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %KeyedComprehension{
+         %Comprehension{
+           static: static,
            fingerprint: fingerprint,
            entries: entries,
-           stream: stream
+           stream: stream,
+           has_key?: has_key?
          },
          _,
          pending,
@@ -532,26 +538,40 @@ defmodule Phoenix.LiveView.Diff do
        ) do
     if template do
       {keyed, keyed_prints, pending, components, template} =
-        traverse_keyed(entries, %{}, pending, components, template, path, changed?, stream != nil)
+        traverse_keyed(
+          entries,
+          %{},
+          pending,
+          components,
+          template,
+          path,
+          changed?,
+          stream != nil,
+          has_key?
+        )
 
-      diff = maybe_add_stream(%{@keyed => keyed}, stream)
+      {diff, template} =
+        %{@keyed => keyed}
+        |> maybe_add_stream(stream)
+        |> maybe_share_template(fingerprint, static, template)
 
       {diff, {fingerprint, keyed_prints}, pending, components, template}
     else
       {keyed, keyed_prints, pending, components, template} =
         traverse_keyed(
           entries,
-          %{},
+          nil,
           pending,
           components,
           {%{}, %{}},
           path,
           changed?,
-          stream != nil
+          stream != nil,
+          has_key?
         )
 
       diff =
-        %{@keyed => keyed}
+        %{@static => static, @keyed => keyed}
         |> maybe_add_stream(stream)
         |> maybe_add_template(template)
 
@@ -631,101 +651,108 @@ defmodule Phoenix.LiveView.Diff do
          template,
          path,
          changed?,
-         stream?
+         stream?,
+         has_key?
        ) do
     diff = %{}
     new_prints = %{}
 
-    # TODO: we could optimize the diff further and not send an empty @keyed when the
-    # map_size(previous_prints) == map_size(new_prints)
     {diff, count, new_prints, pending, components, template} =
       Enum.reduce(entries, {diff, 0, new_prints, pending, components, template}, fn
-        # it's an existing entry
-        %KeyedComprehensionEntry{fingerprint: {fingerprint, new_vars}, render: render},
-        {diff, index, new_prints, pending, components, template}
-        when is_map_key(previous_prints, fingerprint) and not stream? ->
-          %{vars: previous_vars, index: previous_index, child_prints: child_prints} =
-            Map.fetch!(previous_prints, fingerprint)
-
-          vars_changed =
-            Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn
-              {key, value}, acc ->
-                Phoenix.Component.assign(acc, key, value)
-            end)
-            |> Map.fetch!(:__changed__)
-
-          {child_diff, child_prints, pending, components, template} =
-            traverse(
-              render.(vars_changed, changed?),
-              child_prints,
-              pending,
-              components,
-              template,
-              [fingerprint | path],
-              changed?
-            )
-
-          new_prints =
-            Map.put(new_prints, fingerprint, %{
-              index: index,
-              vars: new_vars,
-              child_prints: child_prints
-            })
-
-          if child_diff == %{} or child_diff == nil do
-            # the entry did not change, we can skip it
-            if previous_index != index do
-              # the entry moved, annotate it with the previous index
-              {Map.put(diff, index, previous_index), index + 1, new_prints, pending, components,
-               template}
-            else
-              {diff, index + 1, new_prints, pending, components, template}
-            end
-          else
-            child_diff =
-              if previous_index != index do
-                [previous_index, child_diff]
-              else
-                child_diff
-              end
-
-            {Map.put(diff, index, child_diff), index + 1, new_prints, pending, components,
-             template}
-          end
-
-        # it's a new entry
-        %KeyedComprehensionEntry{fingerprint: {fingerprint, vars}, render: render},
-        {diff, index, new_prints, pending, components, template} ->
-          {child_diff, child_prints, pending, components, template} =
-            traverse(
-              render.(%{}, false),
-              %{},
-              pending,
-              components,
-              template,
-              [fingerprint | path],
-              # we need to disable change-tracking to force a fully render,
-              # even if some parts of the template might not have changed themselves
-              false
-            )
-
-          # if this is a stream, we don't want to store the vars
-          vars = if stream?, do: nil, else: vars
-
-          {Map.put(diff, index, child_diff), index + 1,
-           Map.put(
-             new_prints,
-             fingerprint,
-             %{index: index, vars: vars, child_prints: child_prints}
-           ), pending, components, template}
+        {key, vars, render},
+        {_diff, index, _new_prints, _pending, _components, _template} = acc ->
+          key = (has_key? && key) || index
+          process_keyed({key, vars, render}, previous_prints, path, changed?, stream?, acc)
       end)
 
     # we don't need to send the diff if nothing changed
-    if diff == %{} and count == map_size(previous_prints) do
+    if diff == %{} and count > 0 and count == map_size(previous_prints) do
       {nil, new_prints, pending, components, template}
     else
       {Map.put(diff, @keyed_count, count), new_prints, pending, components, template}
     end
+  end
+
+  # it's an existing entry
+  defp process_keyed({key, new_vars, render}, previous_prints, path, changed?, stream?, acc)
+       when is_map_key(previous_prints, key) and not stream? do
+    {diff, index, new_prints, pending, components, template} = acc
+
+    %{vars: previous_vars, index: previous_index, child_prints: child_prints} =
+      Map.fetch!(previous_prints, key)
+
+    vars_changed =
+      Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn
+        {key, value}, acc ->
+          Phoenix.Component.assign(acc, key, value)
+      end)
+      |> Map.fetch!(:__changed__)
+
+    {_counter, child_diff, child_prints, pending, components, template} =
+      traverse_dynamic(
+        render.(vars_changed, changed?),
+        child_prints,
+        pending,
+        components,
+        template,
+        [key | path],
+        changed?
+      )
+
+    new_prints =
+      Map.put(new_prints, key, %{
+        index: index,
+        vars: new_vars,
+        child_prints: child_prints
+      })
+
+    if child_diff == %{} or child_diff == nil do
+      # the entry did not change, we can skip it
+      if previous_index != index do
+        # the entry moved, annotate it with the previous index
+        {Map.put(diff, index, previous_index), index + 1, new_prints, pending, components,
+         template}
+      else
+        {diff, index + 1, new_prints, pending, components, template}
+      end
+    else
+      child_diff =
+        if previous_index != index do
+          [previous_index, child_diff]
+        else
+          child_diff
+        end
+
+      {Map.put(diff, index, child_diff), index + 1, new_prints, pending, components, template}
+    end
+  end
+
+  # it's a new entry
+  defp process_keyed({key, vars, render}, _previous_prints, path, _changed?, stream?, acc) do
+    {diff, index, new_prints, pending, components, template} = acc
+
+    {_counter, child_diff, child_prints, pending, components, template} =
+      traverse_dynamic(
+        render.(%{}, false),
+        %{},
+        pending,
+        components,
+        template,
+        [key | path],
+        # we need to disable change-tracking to force a fully render,
+        # even if some parts of the template might not have changed themselves
+        false
+      )
+
+    # if this is a stream, we don't want to store the vars
+    vars = if stream?, do: nil, else: vars
+
+    {Map.put(diff, index, child_diff), index + 1,
+     Map.put(
+       new_prints,
+       key,
+       %{index: index, vars: vars, child_prints: child_prints}
+     ), pending, components, template}
   end
 
   defp maybe_share_template(map, fingerprint, static, {print_to_pos, pos_to_static}) do

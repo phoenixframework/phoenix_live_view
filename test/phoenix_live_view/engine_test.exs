@@ -141,14 +141,10 @@ defmodule Phoenix.LiveView.EngineTest do
       assert static == ["before\n", "\nafter\n"]
 
       assert [
-               %Phoenix.LiveView.KeyedComprehension{
+               %Phoenix.LiveView.Comprehension{
                  entries: [
-                   %Phoenix.LiveView.KeyedComprehensionEntry{
-                     fingerprint: {0, %{point: %{x: 1, y: 2}}}
-                   },
-                   %Phoenix.LiveView.KeyedComprehensionEntry{
-                     fingerprint: {1, %{point: %{x: 3, y: 4}}}
-                   }
+                   {0, %{point: %{x: 1, y: 2}}, _},
+                   {1, %{point: %{x: 3, y: 4}}, _}
                  ]
                }
              ] = dynamic.(true)
@@ -325,10 +321,10 @@ defmodule Phoenix.LiveView.EngineTest do
       """
 
       old = %{map: [a: 1, b: 2, c: 3]}
-      assert [%Phoenix.LiveView.KeyedComprehension{}] = changed(template, old, nil)
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, nil)
       assert [nil] = changed(template, old, %{})
-      assert [%Phoenix.LiveView.KeyedComprehension{}] = changed(template, old, %{map: true})
-      assert [%Phoenix.LiveView.KeyedComprehension{}] = changed(template, old, old)
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, %{map: true})
+      assert [%Phoenix.LiveView.Comprehension{}] = changed(template, old, old)
     end
 
     test "renders dynamic if it has variables" do
@@ -424,13 +420,13 @@ defmodule Phoenix.LiveView.EngineTest do
         "<%= for x <- @foo do %>X: <%= for y <- @bar do %>Y: <%= x %><%= y %><% end %><% end %>"
 
       assert [
-               %Phoenix.LiveView.KeyedComprehension{}
+               %Phoenix.LiveView.Comprehension{}
              ] = changed(template, %{foo: [1], bar: [1]}, nil)
 
       assert [nil] = changed(template, %{foo: [1], bar: [1]}, %{})
 
       assert [
-               %Phoenix.LiveView.KeyedComprehension{}
+               %Phoenix.LiveView.Comprehension{}
              ] = changed(template, %{foo: [1], bar: [1]}, %{foo: true, bar: true})
     end
 
@@ -772,7 +768,7 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [
                %Phoenix.LiveView.Rendered{
                  dynamic: [
-                   %Phoenix.LiveView.KeyedComprehension{}
+                   %Phoenix.LiveView.Comprehension{}
                  ],
                  static: ["", ""]
                }
@@ -784,7 +780,7 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [
                %Phoenix.LiveView.Rendered{
                  dynamic: [
-                   %Phoenix.LiveView.KeyedComprehension{}
+                   %Phoenix.LiveView.Comprehension{}
                  ],
                  static: ["", ""]
                }

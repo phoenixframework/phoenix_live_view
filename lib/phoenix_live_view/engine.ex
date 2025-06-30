@@ -51,39 +51,48 @@ defmodule Phoenix.LiveView.Component do
   end
 end
 
-defmodule Phoenix.LiveView.KeyedComprehension do
+defmodule Phoenix.LiveView.Comprehension do
   @moduledoc """
-  The struct returned by keyed for-comprehensions in .heex templates.
+  The struct returned by for-comprehensions in .heex templates.
   """
-  defstruct [:entries, :fingerprint, :stream]
+  defstruct [:static, :has_key?, :entries, :fingerprint, :stream]
+
+  @type key :: term()
+  @type keyed_render_fun :: (map(), boolean() -> [Phoenix.LiveView.Rendered.dyn()])
 
   @type t :: %__MODULE__{
-          stream: list() | nil,
-          entries: [Phoenix.LiveView.KeyedComprehensionEntry.t()],
-          fingerprint: term()
+          static: [String.t()] | non_neg_integer(),
+          has_key?: boolean(),
+          # Each entry is a three-element tuple.
+          #
+          #   The first element is the evaluated key (or nil if there is none).
+          #
+          #   The second element is a map of variables to be change-tracked.
+          #
+          #   The third element is the keyed render function that receives the vars_changed map,
+          #   and a boolean to enable or disable change tracking.
+          #
+          entries: [{key(), map(), keyed_render_fun()}],
+          fingerprint: term(),
+          stream: list() | nil
         }
 
   defimpl Phoenix.HTML.Safe do
-    def to_iodata(%Phoenix.LiveView.KeyedComprehension{entries: entries}) do
-      for entry <- entries, do: Phoenix.HTML.Safe.to_iodata(entry)
+    def to_iodata(%Phoenix.LiveView.Comprehension{static: static, entries: entries}) do
+      for {_key, _vars, render} <- entries, do: to_iodata(static, render.(%{}, false))
     end
-  end
-end
 
-defmodule Phoenix.LiveView.KeyedComprehensionEntry do
-  @moduledoc """
-  The struct returned for each entry of a keyed comprehension in .heex templates.
-  """
-  defstruct [:fingerprint, :render]
+    defp to_iodata([static_head | static_tail], [%_{} = struct | dynamic_tail]) do
+      dynamic_head = Phoenix.HTML.Safe.to_iodata(struct)
+      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
+    end
 
-  @type t :: %__MODULE__{
-          render: (map(), boolean() -> Phoenix.LiveView.Rendered.t()),
-          fingerprint: term()
-        }
+    defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail]) do
+      [static_head, dynamic_head | to_iodata(static_tail, dynamic_tail)]
+    end
 
-  defimpl Phoenix.HTML.Safe do
-    def to_iodata(%Phoenix.LiveView.KeyedComprehensionEntry{render: render}) do
-      Phoenix.HTML.Safe.to_iodata(render.(%{}, nil))
+    defp to_iodata([static_head], []) do
+      [static_head]
     end
   end
 end
@@ -98,17 +107,16 @@ defmodule Phoenix.LiveView.Rendered do
 
   defstruct [:static, :dynamic, :fingerprint, :root, caller: :not_available]
 
+  @type dyn ::
+          nil
+          | iodata()
+          | Phoenix.LiveView.Rendered.t()
+          | Phoenix.LiveView.Comprehension.t()
+          | Phoenix.LiveView.Component.t()
+
   @type t :: %__MODULE__{
           static: [String.t()],
-          dynamic: (boolean() ->
-                      [
-                        nil
-                        | iodata()
-                        | Phoenix.LiveView.Rendered.t()
-                        | Phoenix.LiveView.KeyedComprehension.t()
-                        | Phoenix.LiveView.KeyedComprehensionEntry.t()
-                        | Phoenix.LiveView.Component.t()
-                      ]),
+          dynamic: (boolean() -> [dyn()]),
           fingerprint: integer(),
           root: nil | true | false,
           caller:
@@ -165,7 +173,7 @@ defmodule Phoenix.LiveView.Engine do
     1. iodata - which is the dynamic content
     2. nil - the dynamic content did not change
     3. another `Phoenix.LiveView.Rendered` struct, see "Nesting and fingerprinting" below
-    4. a `Phoenix.LiveView.KeyedComprehension` or `Phoenix.LiveView.KeyedComprehensionEntry` struct, see "Comprehensions" below
+    4. a `Phoenix.LiveView.Comprehension` struct, see "Comprehensions" below
     5. a `Phoenix.LiveView.Component` struct, see "Component" below
 
   When you render a live template, you can convert the
@@ -455,7 +463,8 @@ defmodule Phoenix.LiveView.Engine do
   defp to_live_struct({:for, _, [_ | _]} = expr, vars, assigns, caller) do
     with {:for, meta, [gen | args]} <- expr,
          {:<-, gen_meta, [gen_pattern, gen_collection]} <- gen,
-         {filters, [[do: block]]} <- Enum.split(args, -1) do
+         {filters, [[do: {:__block__, _, block}]]} <- Enum.split(args, -1),
+         {dynamic, [{:safe, static}]} <- Enum.split(block, -1) do
       gen_var = Macro.unique_var(:for, __MODULE__)
 
       gen_collection =
@@ -464,80 +473,45 @@ defmodule Phoenix.LiveView.Engine do
             Phoenix.LiveView.LiveStream.mark_consumable(unquote(gen_collection))
         end
 
-      comprehension =
-        if Keyword.get(gen_meta, :keyed_comprehension) do
-          key_expr = Keyword.fetch!(gen_meta, :key_expr)
+      {gen_pattern, variables} = mark_variables_as_change_tracked(gen_pattern, %{})
+      {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
 
-          {key_expr, _vars, _} = analyze(key_expr, vars, assigns, caller)
-          {gen_pattern, variables} = mark_variables_as_change_tracked(gen_pattern, %{})
+      {block, static, dynamic, fingerprint} =
+        analyze_static_and_dynamic(static, dynamic, vars, %{}, caller)
 
-          {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
-          gen = {:<-, gen_meta, [gen_pattern, gen_var]}
+      key_expr =
+        case Keyword.get(gen_meta, :key_expr) do
+          nil ->
+            nil
 
-          block = maybe_block_to_rendered(block, vars, caller)
-
-          # if the keyed_comprehension macro is in this module, the has_var? check does not work
-          comp =
-            quote do
-              Phoenix.LiveView.EngineHelpers.keyed_comprehension(
-                unquote(key_expr),
-                %{unquote_splicing(Map.to_list(variables))},
-                unquote(block)
-              )
-            end
-
-          for = {:for, meta, [gen | filters] ++ [[do: comp]]}
-
-          quote do
-            %Phoenix.LiveView.KeyedComprehension{
-              entries: unquote(for),
-              fingerprint: unquote(fingerprint(comp, []))
-            }
-          end
-        else
-          key_expr = Macro.var(:key, __MODULE__)
-
-          {gen_pattern, variables} = mark_variables_as_change_tracked(gen_pattern, %{})
-          {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
-
-          gen_pattern =
-            quote do
-              {unquote(gen_pattern), unquote(key_expr)}
-            end
-
-          gen_var =
-            quote do
-              Enum.with_index(unquote(gen_var))
-            end
-
-          gen = {:<-, gen_meta, [gen_pattern, gen_var]}
-          block = maybe_block_to_rendered(block, vars, caller)
-
-          # if the keyed_comprehension macro is in this module, the has_var? check does not work
-          comp =
-            quote do
-              Phoenix.LiveView.EngineHelpers.keyed_comprehension(
-                unquote(key_expr),
-                %{unquote_splicing(Map.to_list(variables))},
-                unquote(block)
-              )
-            end
-
-          for = {:for, meta, [gen | filters] ++ [[do: comp]]}
-
-          quote do
-            %Phoenix.LiveView.KeyedComprehension{
-              entries: unquote(for),
-              fingerprint: unquote(fingerprint(comp, []))
-            }
-          end
+          expr ->
+            {expr, _vars, _} = analyze(expr, vars, assigns, caller)
+            expr
         end
+
+      # if the keyed_comprehension macro is in this module, the has_var? check does not work
+      entry =
+        quote do
+          Phoenix.LiveView.EngineHelpers.keyed_comprehension(
+            unquote(key_expr),
+            %{unquote_splicing(Map.to_list(variables))},
+            unquote({:__block__, [], block ++ [dynamic]})
+          )
+        end
+
+      gen = {:<-, gen_meta, [gen_pattern, gen_var]}
+      for = {:for, meta, [gen | filters] ++ [[do: entry]]}
 
       quote do
         unquote(gen_collection)
 
         Phoenix.LiveView.LiveStream.annotate_comprehension(
-          unquote(comprehension),
+          %Phoenix.LiveView.Comprehension{
+            has_key?: unquote(key_expr != nil),
+            static: unquote(static),
+            entries: unquote(for),
+            fingerprint: unquote(fingerprint)
+          },
           unquote(gen_var)
         )
       end
@@ -1379,7 +1353,6 @@ defmodule Phoenix.LiveView.Engine do
       %{__struct__: Phoenix.LiveView.Rendered} = other -> other
       %{__struct__: Phoenix.LiveView.Component} = other -> other
       %{__struct__: Phoenix.LiveView.Comprehension} = other -> other
-      %{__struct__: Phoenix.LiveView.KeyedComprehensionEntry} = other -> other
       bin when is_binary(bin) -> Plug.HTML.html_escape_to_iodata(bin)
       other -> Phoenix.HTML.Safe.to_iodata(other)
     end

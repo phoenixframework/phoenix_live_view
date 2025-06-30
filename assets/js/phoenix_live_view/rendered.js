@@ -391,11 +391,8 @@ export default class Rendered {
   // It is disabled for comprehensions since we must re-render the entire collection
   // and no individual element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
-    if (rendered[DYNAMICS]) {
-      return this.comprehensionToBuffer(rendered, templates, output);
-    }
     if (rendered[KEYED]) {
-      return this.keyedComprehensionToBuffer(
+      return this.comprehensionToBuffer(
         rendered,
         templates,
         output,
@@ -403,14 +400,22 @@ export default class Rendered {
       );
     }
 
-    // templates can also be at the root
-    if (!templates && rendered[TEMPLATES]) {
+    // Templates are a way of sharing statics between multiple rendered structs.
+    // Since LiveView 1.1, those can also appear at the root - for example if one renders
+    // two comprehensions that can share statics.
+    // Whenever we find templates, we need to use them recursively. Also, templates can
+    // be sent for each diff, not only for the initial one. We don't want to merge them
+    // though, so we always resolve them and remove them from the rendered object.
+    if (rendered[TEMPLATES]) {
       templates = rendered[TEMPLATES];
       delete rendered[TEMPLATES];
     }
 
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
+    if (statics == undefined) {
+      debugger;
+    }
     rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     const prevBuffer = output.buffer;
@@ -461,61 +466,25 @@ export default class Rendered {
     }
   }
 
-  // TODO: remove
-  comprehensionToBuffer(rendered, templates, output) {
-    let {
-      [DYNAMICS]: dynamics,
-      [STATIC]: statics,
-      [STREAM]: stream,
-    } = rendered;
-    const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
-    statics = this.templateStatic(statics, templates);
+  comprehensionToBuffer(rendered, templates, output, changeTracking) {
+    const keyedTemplates = templates || rendered[TEMPLATES];
+    const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
-    const compTemplates = { ...(templates || rendered[TEMPLATES]) };
     delete rendered[TEMPLATES];
-    for (let d = 0; d < dynamics.length; d++) {
-      const dynamic = dynamics[d];
+    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+      const entry = rendered[KEYED][i];
       output.buffer += statics[0];
-      for (let i = 1; i < statics.length; i++) {
-        // Inside a comprehension, we don't track how dynamics change
-        // over time (and features like streams would make that impossible
-        // unless we move the stream diffing away from morphdom),
-        // so we can't perform root change tracking.
-        const changeTracking = false;
+      for (let j = 1; j < statics.length; j++) {
         this.dynamicToBuffer(
-          dynamic[i - 1],
-          compTemplates,
+          entry[j - 1],
+          keyedTemplates,
           output,
           changeTracking,
         );
-        output.buffer += statics[i];
+        output.buffer += statics[j];
       }
     }
-
-    if (
-      stream !== undefined &&
-      (rendered[DYNAMICS].length > 0 || deleteIds.length > 0 || reset)
-    ) {
-      delete rendered[STREAM];
-      rendered[DYNAMICS] = [];
-      output.streams.add(stream);
-    }
-  }
-
-  keyedComprehensionToBuffer(rendered, templates, output, changeTracking) {
-    // TODO: check if this order is correct, comprehensionToBuffer does it
-    //       the other way round, but that doesn't work here
-    const keyedTemplates = { ...(rendered[TEMPLATES] || templates) };
-    delete rendered[TEMPLATES];
-    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      this.toOutputBuffer(
-        rendered[KEYED][i],
-        keyedTemplates,
-        output,
-        changeTracking,
-      );
-    }
-    // TODO: should streams just use regular comprehensions instead?
+    // we don't need to store the rendered tree for streams
     if (rendered[STREAM]) {
       const stream = rendered[STREAM];
       const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
