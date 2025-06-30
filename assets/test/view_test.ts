@@ -1477,6 +1477,47 @@ describe("View Hooks", function () {
     expect(toHTML).toBe("updated");
     expect(view.el.firstChild.innerHTML).toBe("updated");
   });
+
+  test("can overwrite property", async () => {
+    let customHandleEventCalled = false;
+    const Hooks = {
+      Upcase: {
+        mounted() {
+          this.handleEvent = () => {
+            customHandleEventCalled = true;
+          };
+          this.el.innerHTML = this.el.innerHTML.toUpperCase();
+        },
+        updated() {
+          this.handleEvent();
+        },
+      },
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="up" phx-hook="Upcase">test mount</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT");
+    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+
+    expect(customHandleEventCalled).toBe(false);
+    view.update(
+      {
+        s: ['<h2 id="up" phx-hook="Upcase">test update</h2>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+    expect(customHandleEventCalled).toBe(true);
+  });
 });
 
 function liveViewComponent() {
