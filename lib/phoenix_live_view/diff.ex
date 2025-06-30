@@ -720,9 +720,8 @@ defmodule Phoenix.LiveView.Diff do
            ), pending, components, template}
       end)
 
-    # we don't need to send the diff if nothing changed, but we need to send
-    # the count for the empty case
-    if diff == %{} and count > 0 do
+    # we don't need to send the diff if nothing changed
+    if diff == %{} and count == map_size(previous_prints) do
       {nil, new_prints, pending, components, template}
     else
       {Map.put(diff, @keyed_count, count), new_prints, pending, components, template}
