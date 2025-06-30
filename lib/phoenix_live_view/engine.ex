@@ -793,24 +793,12 @@ defmodule Phoenix.LiveView.Engine do
               keys != %{},
               do: {key, to_component_keys(keys)}
 
-        has_vars_changed? =
-          Enum.any?(keys, fn {_name, entries} ->
-            is_list(entries) and Enum.any?(entries, &match?({:vars_changed, _}, &1))
-          end)
-
-        vars_changed =
-          if has_vars_changed? do
-            Macro.var(:vars_changed, __MODULE__)
-          else
-            []
-          end
-
         quote do
           unquote(__MODULE__).to_component_static(
             unquote(keys),
             unquote(@assigns_var),
             changed,
-            unquote(vars_changed)
+            vars_changed
           )
         end
       else
@@ -843,15 +831,6 @@ defmodule Phoenix.LiveView.Engine do
       true ->
         {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller)
 
-        has_vars_changed? = keys != :all and Enum.any?(keys, &match?({:vars_changed, _}, &1))
-
-        vars_changed =
-          if has_vars_changed? do
-            Macro.var(:vars_changed, __MODULE__)
-          else
-            []
-          end
-
         quote do
           unquote(__MODULE__).to_component_dynamic(
             %{unquote_splicing(static)},
@@ -860,7 +839,7 @@ defmodule Phoenix.LiveView.Engine do
             unquote(to_component_keys(keys)),
             unquote(@assigns_var),
             changed,
-            unquote(vars_changed)
+            vars_changed
           )
         end
     end
@@ -870,7 +849,7 @@ defmodule Phoenix.LiveView.Engine do
   defp to_component_keys(map), do: Map.keys(map)
 
   @doc false
-  def to_component_static(_keys, _assigns, nil, []) do
+  def to_component_static(_keys, _assigns, nil, nil) do
     nil
   end
 
@@ -882,7 +861,7 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   @doc false
-  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil, []) do
+  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil, nil) do
     merge_dynamic_static_changed(dynamic, static, nil)
   end
 
