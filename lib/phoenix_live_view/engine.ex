@@ -495,7 +495,7 @@ defmodule Phoenix.LiveView.Engine do
             }
           end
         else
-          key_expr = Macro.var(:key, nil)
+          key_expr = Macro.var(:key, __MODULE__)
 
           {gen_pattern, variables} = mark_variables_as_change_tracked(gen_pattern, %{})
           {gen_pattern, vars, _} = analyze(gen_pattern, vars, assigns, caller)
