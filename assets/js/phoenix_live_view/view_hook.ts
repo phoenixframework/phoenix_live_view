@@ -288,28 +288,12 @@ export class ViewHook implements HookInterface {
 
       for (const key in callbacks) {
         if (Object.prototype.hasOwnProperty.call(callbacks, key)) {
+          (this as any)[key] = callbacks[key];
+          // for backwards compatibility, we allow the overwrite, but we log a warning
           if (protectedProps.has(key)) {
-            // Optionally log a warning if a user tries to overwrite a protected property/method
-            // For now, we silently prioritize the ViewHook's own properties/methods.
-            if (
-              typeof (this as any)[key] === "function" &&
-              typeof callbacks[key] !== "function" &&
-              ![
-                "mounted",
-                "beforeUpdate",
-                "updated",
-                "destroyed",
-                "disconnected",
-                "reconnected",
-              ].includes(key)
-            ) {
-              // If core method is a function and callback is not, likely an error from user.
-              console.warn(
-                `Hook object for element #${el.id} attempted to overwrite core method '${key}' with a non-function value. This is not allowed.`,
-              );
-            }
-          } else {
-            (this as any)[key] = callbacks[key];
+            console.warn(
+              `Hook object for element #${el.id} overwrites core property '${key}'!`,
+            );
           }
         }
       }
