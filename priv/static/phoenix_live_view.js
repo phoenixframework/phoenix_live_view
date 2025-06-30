@@ -3797,21 +3797,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         ]);
         for (const key in callbacks) {
           if (Object.prototype.hasOwnProperty.call(callbacks, key)) {
+            this[key] = callbacks[key];
             if (protectedProps.has(key)) {
-              if (typeof this[key] === "function" && typeof callbacks[key] !== "function" && ![
-                "mounted",
-                "beforeUpdate",
-                "updated",
-                "destroyed",
-                "disconnected",
-                "reconnected"
-              ].includes(key)) {
-                console.warn(
-                  `Hook object for element #${el.id} attempted to overwrite core method '${key}' with a non-function value. This is not allowed.`
-                );
-              }
-            } else {
-              this[key] = callbacks[key];
+              console.warn(
+                `Hook object for element #${el.id} overwrites core property '${key}'!`
+              );
             }
           }
         }
