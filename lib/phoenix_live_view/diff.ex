@@ -546,7 +546,7 @@ defmodule Phoenix.LiveView.Diff do
       {keyed, keyed_prints, pending, components, template} =
         traverse_keyed(
           entries,
-          nil,
+          %{},
           pending,
           components,
           {%{}, %{}},
