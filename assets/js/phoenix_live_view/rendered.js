@@ -391,8 +391,6 @@ export default class Rendered {
   // Converts rendered tree to output buffer.
   //
   // changeTracking controls if we can apply the PHX_SKIP optimization.
-  // It is disabled for comprehensions since we must re-render the entire collection
-  // and no individual element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
     if (rendered[KEYED]) {
       return this.comprehensionToBuffer(
@@ -438,7 +436,7 @@ export default class Rendered {
 
     // Applies the root tag "skip" optimization if supported, which clears
     // the root tag attributes and innerHTML, and only maintains the magicId.
-    // We can only skip when changeTracking is supported (outside of a comprehension),
+    // We can only skip when changeTracking is supported,
     // and when the root element hasn't experienced an unrendered merge (newRender true).
     if (isRoot) {
       let skip = false;

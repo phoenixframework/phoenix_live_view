@@ -834,7 +834,7 @@ defmodule Phoenix.Component do
   #### `:key`ed comprehensions
 
   When using `:for`, you can optionally provide a `:key` expression to perform
-  better change-tracking inside the comprehension:
+  better change tracking inside the comprehension:
 
   ```heex
   <ul>

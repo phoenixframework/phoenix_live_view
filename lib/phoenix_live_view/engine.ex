@@ -246,8 +246,6 @@ defmodule Phoenix.LiveView.Engine do
 
   ## Comprehensions
 
-  TODO: outdated
-
   Another optimization done by live templates is to
   track comprehensions. If your code has this:
 
@@ -261,33 +259,27 @@ defmodule Phoenix.LiveView.Engine do
   Instead of rendering all points with both static and
   dynamic parts, it returns a `Phoenix.LiveView.Comprehension`
   struct with the static parts, that are shared across all
-  points, and a list of dynamics to be interpolated inside
-  the static parts. If `@points` is a list with `%{x: 1, y: 2}`
+  points, and a list of entries with a render function for the
+  dynamics inside. If `@points` is a list with `%{x: 1, y: 2}`
   and `%{x: 3, y: 4}`, the above expression would return:
 
       %Phoenix.LiveView.Comprehension{
         static: ["\n  x: ", "\n  y: ", "\n"],
-        dynamics: [
-          ["1", "2"],
-          ["3", "4"]
+        entries: [
+          {nil, %{point: %{x: 1, y: 2}}, fn vars_changed, track_changes? -> ... end,
+          {nil, %{point: %{x: 3, y: 4}}, fn vars_changed, track_changes? -> ... end,
         ]
       }
 
   This allows live templates to send the static parts only once,
-  regardless of the number of items. On the other hand, keep in
-  mind the collection itself is not "diffed" across renders.
-  If one entry in the comprehension changes, the whole collection
-  is sent again. Consider using `Phoenix.LiveComponent` and
-  `Phoenix.LiveView.stream/4` to optimize those cases, or see the
-  [`:key` attribute when using :for](Phoenix.Component.html#sigil_H/2-special-attributes).
+  regardless of the number of items. Moreover, the diff algorithm
+  also tracks the variables introduced by the comprehension as part
+  of the entries and calculates which variables changed between renders.
 
-  The list of dynamics is always a list of iodatas or components,
-  as we don't perform change tracking inside the comprehensions
-  themselves. Similarly, comprehensions do not have fingerprints
-  because they are only optimized at the root, so conditional
-  evaluation, as the one seen in rendering, is not possible.
-  The only possible outcome for a dynamic field that returns a
-  comprehension is `nil`.
+  In HEEx templates, a `:key` attribute can be provided when using `:for`
+  on a tag to make the diffing more efficient. By default, the index
+  of each item is used for diffing, which means that if an element is
+  prepended to the list, the whole collection is sent again.
 
   ## Components
 
