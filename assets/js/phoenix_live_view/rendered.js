@@ -424,9 +424,6 @@ export default class Rendered {
 
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
-    if (statics == undefined) {
-      debugger;
-    }
     rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     const prevBuffer = output.buffer;

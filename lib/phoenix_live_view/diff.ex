@@ -393,9 +393,6 @@ defmodule Phoenix.LiveView.Diff do
          template,
          changed?
        ) do
-    # If we are diff tracking, then template must be nil
-    # nil = template
-
     {_counter, diff, children, pending, components, template} =
       traverse_dynamic(
         invoke_dynamic(rendered, changed?),
@@ -644,13 +641,30 @@ defmodule Phoenix.LiveView.Diff do
     diff = %{}
     new_prints = %{}
 
-    {diff, count, new_prints, pending, components, template, _canonical_print} =
-      Enum.reduce(entries, {diff, 0, new_prints, pending, components, template, nil}, fn
-        {key, vars, render},
-        {_diff, index, _new_prints, _pending, _components, _template, _canonical_print} = acc ->
-          key = (has_key? && key) || index
-          process_keyed({key, vars, render}, previous_prints, changed?, stream?, acc)
-      end)
+    {{diff, count, new_prints, pending, components, template, _canonical_print}, _seen_keys} =
+      Enum.reduce(
+        entries,
+        {{diff, 0, new_prints, pending, components, template, nil}, MapSet.new()},
+        fn
+          {key, vars, render},
+          {{_diff, index, _new_prints, _pending, _components, _template, _canonical_print} = acc,
+           seen_keys} ->
+            {key, seen_keys} =
+              if has_key? do
+                if MapSet.member?(seen_keys, key) do
+                  raise "found duplicate key #{inspect(key)} in comprehension"
+                else
+                  {key, MapSet.put(seen_keys, key)}
+                end
+              else
+                # no need to check for duplicates if we use the index
+                {index, seen_keys}
+              end
+
+            {process_keyed({key, vars, render}, previous_prints, changed?, stream?, acc),
+             seen_keys}
+        end
+      )
 
     # we don't need to send the diff if nothing changed;
     # map_size - 1 because the prints also contain the :canonical_print
@@ -696,13 +710,14 @@ defmodule Phoenix.LiveView.Diff do
     {new_prints, canonical_print} =
       canonical_print(new_prints, canonical_print, key, index, new_vars, child_prints)
 
+    # if the diff is empty, we need to check if the item moved
     if child_diff == %{} or child_diff == nil do
-      # the entry did not change, we can skip it
       if previous_index != index do
         # the entry moved, annotate it with the previous index
         {Map.put(diff, index, previous_index), index + 1, new_prints, pending, components,
          template, canonical_print}
       else
+        # no diff
         {diff, index + 1, new_prints, pending, components, template, canonical_print}
       end
     else
