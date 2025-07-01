@@ -665,8 +665,9 @@ defmodule Phoenix.LiveView.Diff do
           process_keyed({key, vars, render}, previous_prints, path, changed?, stream?, acc)
       end)
 
-    # we don't need to send the diff if nothing changed
-    if diff == %{} and count > 0 and count == map_size(previous_prints) do
+    # we don't need to send the diff if nothing changed;
+    # map_size - 1 because the prints also contain the :canonical_print
+    if diff == %{} and count > 0 and count == map_size(previous_prints) - 1 do
       {nil, new_prints, pending, components, template}
     else
       {Map.put(diff, @keyed_count, count), new_prints, pending, components, template}

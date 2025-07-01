@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.EngineTest do
   use ExUnit.Case, async: true
 
-  alias Phoenix.LiveView.{Engine, Rendered}
+  alias Phoenix.LiveView.{Engine, Rendered, Comprehension}
 
   def safe(do: {:safe, _} = safe), do: safe
   def unsafe(do: {:safe, content}), do: content
@@ -384,21 +384,20 @@ defmodule Phoenix.LiveView.EngineTest do
       template = "<%= for x <- foo do %><%= x %><% end %>"
 
       rendered = eval(template, %{__changed__: nil}, foo: [1, 2, 3])
-      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
+      assert [%{entries: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
 
       rendered = eval(template, %{__changed__: %{}}, foo: [1, 2, 3])
-      assert [%{dynamics: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
+      assert [%{entries: [["1"], ["2"], ["3"]]}] = expand_dynamic(rendered.dynamic, true)
     end
 
     test "does not render dynamic if it has variables inside optimized comprehension" do
       template = "<%= for foo <- @foo do %><%= foo %><% end %>"
 
-      assert [%{entries: [_, _, _]}] =
-               changed(template, %{foo: ["1", "2", "3"]}, nil)
+      assert [%{entries: [["1"], ["2"], ["3"]]}] = changed(template, %{foo: ["1", "2", "3"]}, nil)
 
       assert [nil] = changed(template, %{foo: ["1", "2", "3"]}, %{})
 
-      assert [%{entries: [_, _, _]}] =
+      assert [%{entries: [["1"], ["2"], ["3"]]}] =
                changed(template, %{foo: ["1", "2", "3"]}, %{foo: true})
     end
 
@@ -406,12 +405,12 @@ defmodule Phoenix.LiveView.EngineTest do
       template =
         "<%= for foo <- @foo do %><%= if foo == @selected, do: ~s(selected) %><%= foo %><% end %>"
 
-      assert [%{dynamics: [["", "1"], ["selected", "2"], ["", "3"]]}] =
+      assert [%{entries: [["", "1"], ["selected", "2"], ["", "3"]]}] =
                changed(template, %{foo: ["1", "2", "3"], selected: "2"}, nil)
 
       assert [nil] = changed(template, %{foo: ["1", "2", "3"], selected: "2"}, %{})
 
-      assert [%{dynamics: [["", "1"], ["selected", "2"], ["", "3"]]}] =
+      assert [%{entries: [["", "1"], ["selected", "2"], ["", "3"]]}] =
                changed(template, %{foo: ["1", "2", "3"], selected: "2"}, %{foo: true})
     end
 
@@ -420,13 +419,23 @@ defmodule Phoenix.LiveView.EngineTest do
         "<%= for x <- @foo do %>X: <%= for y <- @bar do %>Y: <%= x %><%= y %><% end %><% end %>"
 
       assert [
-               %Phoenix.LiveView.Comprehension{}
+               %{
+                 entries: [
+                   [%{entries: [["1", "1"]], static: ["Y: ", "", ""]}]
+                 ],
+                 static: ["X: ", ""]
+               }
              ] = changed(template, %{foo: [1], bar: [1]}, nil)
 
       assert [nil] = changed(template, %{foo: [1], bar: [1]}, %{})
 
       assert [
-               %Phoenix.LiveView.Comprehension{}
+               %{
+                 entries: [
+                   [%{entries: [["1", "1"]], static: ["Y: ", "", ""]}]
+                 ],
+                 static: ["X: ", ""]
+               }
              ] = changed(template, %{foo: [1], bar: [1]}, %{foo: true, bar: true})
     end
 
@@ -436,8 +445,8 @@ defmodule Phoenix.LiveView.EngineTest do
 
       assert [
                %{
-                 dynamics: [
-                   [%{dynamics: [["1", "1"]], static: ["", "", ""]}]
+                 entries: [
+                   [%{entries: [["1", "1"]], static: ["", "", ""]}]
                  ],
                  static: ["", ""]
                }
@@ -768,7 +777,10 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [
                %Phoenix.LiveView.Rendered{
                  dynamic: [
-                   %Phoenix.LiveView.Comprehension{}
+                   %Phoenix.LiveView.Comprehension{
+                     static: ["", ""],
+                     entries: [["1"], ["2"], ["3"]]
+                   }
                  ],
                  static: ["", ""]
                }
@@ -780,7 +792,10 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [
                %Phoenix.LiveView.Rendered{
                  dynamic: [
-                   %Phoenix.LiveView.Comprehension{}
+                   %Phoenix.LiveView.Comprehension{
+                     static: ["", ""],
+                     entries: [["1"], ["2"], ["3"]]
+                   }
                  ],
                  static: ["", ""]
                }
@@ -948,6 +963,16 @@ defmodule Phoenix.LiveView.EngineTest do
 
   defp expand_rendered(%Rendered{} = rendered, track_changes?) do
     update_in(rendered.dynamic, &expand_dynamic(&1, track_changes?))
+  end
+
+  defp expand_rendered(%Comprehension{entries: entries} = comprehension, track_changes?) do
+    expanded_entries =
+      Enum.map(entries, fn {_key, _vars, render} ->
+        # for simplicity, we don't care about vars_changed here
+        Enum.map(render.(nil, track_changes?), &expand_rendered(&1, track_changes?))
+      end)
+
+    %{comprehension | entries: expanded_entries}
   end
 
   defp expand_rendered(other, _track_changes), do: other

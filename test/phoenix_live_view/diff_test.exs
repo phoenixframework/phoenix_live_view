@@ -86,7 +86,15 @@ defmodule Phoenix.LiveView.DiffTest do
   describe "to_iodata" do
     test "with subtrees chain" do
       assert rendered_to_binary(%{
-               0 => %{d: [["1", 1], ["2", 2], ["3", 3]], s: ["\n", ":", ""]},
+               0 => %{
+                 k: %{
+                   0 => %{0 => "1", 1 => 1},
+                   1 => %{0 => "2", 1 => 2},
+                   2 => %{0 => "3", 1 => 3},
+                   kc: 3
+                 },
+                 s: ["\n", ":", ""]
+               },
                :c => %{
                  1 => %{0 => %{0 => "index_1", :s => ["\nIF ", ""]}, :s => ["", ""]},
                  2 => %{0 => %{0 => "index_2", :s => ["\nELSE ", ""]}, :s => 1},
@@ -112,7 +120,7 @@ defmodule Phoenix.LiveView.DiffTest do
                :c => %{
                  1 => %{
                    0 => %{
-                     0 => %{d: [[], [], []], s: ["ROW"]},
+                     0 => %{k: %{0 => %{}, 1 => %{}, 2 => %{}, :kc => 3}, s: ["ROW"]},
                      :s => ["\n", ""]
                    },
                    :s => ["<div>", "</div>"]
@@ -208,7 +216,13 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       assert {^fingerprint, %{1 => comprehension_print}} = fingerprints
-      assert is_integer(comprehension_print)
+
+      assert {_,
+              %{
+                0 => %{index: 0, vars: %{name: "phoenix"}, child_prints: :canonical_print},
+                1 => %{index: 1, vars: %{name: "elixir"}, child_prints: :canonical_print},
+                :canonical_print => %{}
+              }} = comprehension_print
     end
 
     test "empty comprehensions" do
@@ -240,18 +254,15 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       assert {^fingerprint, %{1 => comprehension_print}} = fingerprints
-      assert is_integer(comprehension_print)
 
-      # Making them empty again does not reset the fingerprint
+      # Making them empty again changes the fingerprint
       rendered = comprehension_template(%{title: "Users", names: []})
       {full_render, fingerprints, _components} = render(rendered, fingerprints, components)
 
-      assert full_render == %{
-               0 => "Users",
-               1 => %{d: []}
-             }
+      assert full_render == %{0 => "Users", 1 => %{k: %{kc: 0}}}
 
-      assert {^fingerprint, %{1 => ^comprehension_print}} = fingerprints
+      assert {^fingerprint, %{1 => new_comprehension_print}} = fingerprints
+      refute comprehension_print == new_comprehension_print
     end
 
     test "nested comprehensions" do
@@ -291,7 +302,21 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       assert {^fingerprint, %{1 => comprehension_print}} = fingerprints
-      assert is_integer(comprehension_print)
+
+      assert {_,
+              %{
+                0 => %{index: 0, vars: %{name: "phoenix"}, child_prints: :canonical_print},
+                1 => %{index: 1, vars: %{name: "elixir"}, child_prints: :canonical_print},
+                :canonical_print => %{
+                  1 =>
+                    {_,
+                     %{
+                       0 => %{index: 0, vars: %{score: 1}, child_prints: :canonical_print},
+                       1 => %{index: 1, vars: %{score: 2}, child_prints: :canonical_print},
+                       :canonical_print => %{}
+                     }}
+                }
+              }} = comprehension_print
     end
   end
 
@@ -1894,10 +1919,7 @@ defmodule Phoenix.LiveView.DiffTest do
       {fourth_render, _fingerprints, _components} =
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
-      assert fourth_render == %{
-               0 => %{k: %{0 => 1, 1 => %{0 => "1", 1 => "Third", :s => 0}, :kc => 2}},
-               :p => %{0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"]}
-             }
+      assert fourth_render == %{0 => %{k: %{0 => 1, 1 => %{0 => "1", 1 => "Third"}, :kc => 2}}}
     end
 
     test "change-tracking for complex access" do

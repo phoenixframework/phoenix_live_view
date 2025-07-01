@@ -10,10 +10,12 @@ defmodule Phoenix.LiveView.EngineHelpers do
         quote do
           fn local_vars_changed, track_changes? ->
             unquote(vars_changed_var) =
-              if track_changes? do
-                Map.merge(unquote(vars_changed_var) || %{}, local_vars_changed)
-              else
-                nil
+              case local_vars_changed do
+                %{} when track_changes? ->
+                  Map.merge(unquote(vars_changed_var) || %{}, local_vars_changed)
+
+                _ ->
+                  nil
               end
 
             unquote(changed_var) = if track_changes?, do: unquote(changed_var)
