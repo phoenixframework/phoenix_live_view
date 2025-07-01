@@ -25,7 +25,7 @@ jobs:
             lint: lint
 
           # run against latest Elixir to catch warnings early
-          - elixir: main
+          - elixir: main-otp-28
             otp: maint-28
 
     runs-on: ubuntu-latest
