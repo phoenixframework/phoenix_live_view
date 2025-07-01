@@ -142,7 +142,7 @@ defmodule Phoenix.LiveView.Diff do
 
   def render(socket, %Rendered{} = rendered, prints, components) do
     {diff, prints, pending, components, template} =
-      traverse(rendered, prints, %{}, components, {%{}, %{}}, [], true)
+      traverse(rendered, prints, %{}, components, {%{}, %{}}, true)
 
     # cid_to_component is used by maybe_reuse_static and it must be a copy before changes.
     # However, given traverse does not change cid_to_component, we can read it now.
@@ -391,7 +391,6 @@ defmodule Phoenix.LiveView.Diff do
          pending,
          components,
          template,
-         path,
          changed?
        ) do
     # If we are diff tracking, then template must be nil
@@ -404,7 +403,6 @@ defmodule Phoenix.LiveView.Diff do
         pending,
         components,
         template,
-        [fingerprint | path],
         changed?
       )
 
@@ -417,7 +415,6 @@ defmodule Phoenix.LiveView.Diff do
          pending,
          components,
          template,
-         path,
          changed?
        ) do
     {_counter, diff, children, pending, components, template} =
@@ -427,7 +424,6 @@ defmodule Phoenix.LiveView.Diff do
         pending,
         components,
         template,
-        [fingerprint | path],
         changed?
       )
 
@@ -437,15 +433,14 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %Component{id: id} = component,
+         %Component{} = component,
          _fingerprints_tree,
          pending,
          components,
          template,
-         _path,
          _changed?
        ) do
-    {cid, pending, components} = traverse_component(component, id, pending, components)
+    {cid, pending, components} = traverse_component(component, pending, components)
     {cid, nil, pending, components, template}
   end
 
@@ -460,7 +455,6 @@ defmodule Phoenix.LiveView.Diff do
          pending,
          components,
          template,
-         path,
          changed?
        ) do
     if template do
@@ -471,7 +465,6 @@ defmodule Phoenix.LiveView.Diff do
           pending,
           components,
           template,
-          path,
           changed?,
           stream != nil,
           has_key?
@@ -491,7 +484,6 @@ defmodule Phoenix.LiveView.Diff do
           pending,
           components,
           {%{}, %{}},
-          path,
           changed?,
           stream != nil,
           has_key?
@@ -513,7 +505,6 @@ defmodule Phoenix.LiveView.Diff do
          pending,
          components,
          template,
-         _path,
          _changed?
        ) do
     # The comprehension has no elements and it was not rendered yet,
@@ -533,7 +524,6 @@ defmodule Phoenix.LiveView.Diff do
          pending,
          components,
          template,
-         path,
          changed?
        ) do
     if template do
@@ -544,7 +534,6 @@ defmodule Phoenix.LiveView.Diff do
           pending,
           components,
           template,
-          path,
           changed?,
           stream != nil,
           has_key?
@@ -564,7 +553,6 @@ defmodule Phoenix.LiveView.Diff do
           pending,
           components,
           {%{}, %{}},
-          path,
           changed?,
           stream != nil,
           has_key?
@@ -579,11 +567,11 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  defp traverse(nil, fingerprint_tree, pending, components, template, _path, _changed?) do
+  defp traverse(nil, fingerprint_tree, pending, components, template, _changed?) do
     {nil, fingerprint_tree, pending, components, template}
   end
 
-  defp traverse(iodata, _, pending, components, template, _path, _changed?) do
+  defp traverse(iodata, _, pending, components, template, _changed?) do
     {IO.iodata_to_binary(iodata), nil, pending, components, template}
   end
 
@@ -614,13 +602,13 @@ defmodule Phoenix.LiveView.Diff do
     [entry]
   end
 
-  defp traverse_dynamic(dynamic, children, pending, components, template, path, changed?) do
+  defp traverse_dynamic(dynamic, children, pending, components, template, changed?) do
     Enum.reduce(dynamic, {0, %{}, children, pending, components, template}, fn
       entry, {counter, diff, children, pending, components, template} ->
         child = Map.get(children, counter)
 
         {serialized, child_fingerprint, pending, components, template} =
-          traverse(entry, child, pending, components, template, [counter | path], changed?)
+          traverse(entry, child, pending, components, template, changed?)
 
         # If serialized is nil, it means no changes.
         # If it is an empty map, then it means it is a rendered struct
@@ -649,7 +637,6 @@ defmodule Phoenix.LiveView.Diff do
          pending,
          components,
          template,
-         path,
          changed?,
          stream?,
          has_key?
@@ -662,7 +649,7 @@ defmodule Phoenix.LiveView.Diff do
         {key, vars, render},
         {_diff, index, _new_prints, _pending, _components, _template, _canonical_print} = acc ->
           key = (has_key? && key) || index
-          process_keyed({key, vars, render}, previous_prints, path, changed?, stream?, acc)
+          process_keyed({key, vars, render}, previous_prints, changed?, stream?, acc)
       end)
 
     # we don't need to send the diff if nothing changed;
@@ -675,7 +662,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   # it's an existing entry
-  defp process_keyed({key, new_vars, render}, previous_prints, path, changed?, stream?, acc)
+  defp process_keyed({key, new_vars, render}, previous_prints, changed?, stream?, acc)
        when is_map_key(previous_prints, key) and not stream? do
     {diff, index, new_prints, pending, components, template, canonical_print} = acc
 
@@ -703,7 +690,6 @@ defmodule Phoenix.LiveView.Diff do
         pending,
         components,
         template,
-        [key | path],
         changed?
       )
 
@@ -733,7 +719,7 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   # it's a new entry
-  defp process_keyed({key, vars, render}, _previous_prints, path, _changed?, stream?, acc) do
+  defp process_keyed({key, vars, render}, _previous_prints, _changed?, stream?, acc) do
     {diff, index, new_prints, pending, components, template, canonical_print} = acc
 
     {_counter, child_diff, child_prints, pending, components, template} =
@@ -743,7 +729,6 @@ defmodule Phoenix.LiveView.Diff do
         pending,
         components,
         template,
-        [key | path],
         # we need to disable change-tracking to force a fully render,
         # even if some parts of the template might not have changed themselves
         false
@@ -821,8 +806,7 @@ defmodule Phoenix.LiveView.Diff do
   ## Stateful components helpers
 
   defp traverse_component(
-         %Component{assigns: assigns, component: component},
-         id,
+         %Component{id: id, assigns: assigns, component: component},
          pending,
          {cid_to_component, id_to_cid, uuids}
        ) do
@@ -986,7 +970,7 @@ defmodule Phoenix.LiveView.Diff do
           maybe_reuse_static(rendered, component, prints, cids, components)
 
         {diff, prints, pending, components, nil} =
-          traverse(rendered, prints, %{}, components, nil, [cid], changed?)
+          traverse(rendered, prints, %{}, components, nil, changed?)
 
         children_cids =
           for {_component, list} <- pending,
