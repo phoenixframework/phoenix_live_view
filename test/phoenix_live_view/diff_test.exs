@@ -138,8 +138,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => "10:30",
                1 => "Sunny",
-               :s => ["<div>\n  <h2>It's ", "</h2>\n  ", "\n</div>"],
-               :r => 1
+               :r => 1,
+               :s => 0,
+               :p => %{0 => ["<div>\n  <h2>It's ", "</h2>\n  ", "\n</div>"]}
              }
 
       assert rendered_to_binary(full_render) ==
@@ -197,11 +198,12 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => "Users",
-               :s => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>"],
+               1 => %{s: 0, k: %{0 => %{0 => "phoenix"}, 1 => %{0 => "elixir"}, :kc => 2}},
                :r => 1,
-               1 => %{
-                 s: ["\n    <br>", "\n  "],
-                 d: [["phoenix"], ["elixir"]]
+               :s => 1,
+               :p => %{
+                 0 => ["\n    <br>", "\n  "],
+                 1 => ["<div>\n  <h1>", "</h1>\n  ", "\n</div>"]
                }
              }
 
@@ -339,13 +341,14 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert diffed_render == %{
                0 => "hi",
-               1 => %{
-                 0 => "abc",
-                 1 => "efg",
-                 :s => ["s1", "s2", "s3"]
-               },
-               2 => %{0 => "efg", :s => ["s1", "s2"]},
-               :s => ["<h2>", "</h2>", "<span>", "</span>"]
+               1 => %{0 => "abc", 1 => "efg", :s => 0},
+               2 => %{0 => "efg", :s => 1},
+               :s => 2,
+               :p => %{
+                 0 => ["s1", "s2", "s3"],
+                 1 => ["s1", "s2"],
+                 2 => ["<h2>", "</h2>", "<span>", "</span>"]
+               }
              }
 
       assert fingerprints == {123, %{2 => {789, %{}}, 1 => {456, %{}}}}
@@ -646,13 +649,18 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "DEFAULT",
-                 1 => %{s: ["\n  INSIDE BLOCK\n"]},
+                 1 => %{s: 0},
                  2 => "DEFAULT",
-                 3 => %{s: ["\n  INSIDE BLOCK\n"]},
-                 :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
-                 :r => 1
+                 3 => %{s: 0},
+                 :r => 1,
+                 :s => 1
                },
-               :s => ["", ""]
+               :s => 2,
+               :p => %{
+                 0 => ["\n  INSIDE BLOCK\n"],
+                 1 => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
+                 2 => ["", ""]
+               }
              }
 
       {full_render, _fingerprints, _components} =
@@ -675,15 +683,13 @@ defmodule Phoenix.LiveView.DiffTest do
       {full_render, fingerprints, components} = render(rendered)
 
       assert full_render == %{
-               0 => %{
-                 0 => "MY ID",
-                 1 => %{s: ["\n    INSIDE SLOT\n  "]},
-                 2 => "MY ID",
-                 3 => %{s: ["\n    INSIDE SLOT\n  "]},
-                 :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
-                 :r => 1
-               },
-               :s => ["", ""]
+               0 => %{0 => "MY ID", 1 => %{s: 0}, 2 => "MY ID", 3 => %{s: 0}, :r => 1, :s => 1},
+               :s => 2,
+               :p => %{
+                 0 => ["\n    INSIDE SLOT\n  "],
+                 1 => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
+                 2 => ["", ""]
+               }
              }
 
       {full_render, _fingerprints, _components} =
@@ -708,13 +714,18 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  0 => "DEFAULT",
-                 1 => %{0 => "1", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
+                 1 => %{0 => "1", 1 => "123", :s => 0},
                  2 => "DEFAULT",
-                 3 => %{0 => "2", :s => ["\n  WITH VALUE ", " - ", "\n"], 1 => "123"},
-                 :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
-                 :r => 1
+                 3 => %{0 => "2", 1 => "123", :s => 0},
+                 :r => 1,
+                 :s => 1
                },
-               :s => ["", ""]
+               :s => 2,
+               :p => %{
+                 0 => ["\n  WITH VALUE ", " - ", "\n"],
+                 1 => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
+                 2 => ["", ""]
+               }
              }
 
       {full_render, _fingerprints, _components} =
@@ -925,18 +936,19 @@ defmodule Phoenix.LiveView.DiffTest do
       {full_render, fingerprints, components} = render(rendered)
 
       assert full_render == %{
-               0 => %{0 => 1, :s => ["COMPONENT\n", ""]},
+               0 => %{0 => 1, :s => 0},
                :c => %{
                  1 => %{
                    0 => "WORLD",
                    1 => %{0 => "1", :s => ["\n  WITH VALUE ", "\n"]},
                    2 => "WORLD",
                    3 => %{0 => "2", :s => ["\n  WITH VALUE ", "\n"]},
-                   :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"],
-                   :r => 1
+                   :r => 1,
+                   :s => ["<div>\n  HELLO ", " ", " HELLO ", " ", "\n</div>"]
                  }
                },
-               :s => ["", ""]
+               :s => 1,
+               :p => %{0 => ["COMPONENT\n", ""], 1 => ["", ""]}
              }
 
       {full_render, _fingerprints, _components} =
@@ -958,12 +970,13 @@ defmodule Phoenix.LiveView.DiffTest do
                  1 => %{
                    0 => "component",
                    1 => "world",
-                   :s => ["<div>FROM ", " ", "</div>"],
-                   :r => 1
+                   :r => 1,
+                   :s => ["<div>FROM ", " ", "</div>"]
                  }
                },
-               :s => ["<div>\n  ", "\n</div>"],
-               :r => 1
+               :r => 1,
+               :s => 0,
+               :p => %{0 => ["<div>\n  ", "\n</div>"]}
              }
 
       assert fingerprints == {rendered.fingerprint, %{}}
@@ -1111,9 +1124,10 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => 1,
-               :c => %{1 => %{0 => "WELCOME!", :s => ["<div>FROM ", "</div>"], :r => 1}},
-               :s => ["<div>\n  ", "\n</div>"],
-               :r => 1
+               :c => %{1 => %{0 => "WELCOME!", :r => 1, :s => ["<div>FROM ", "</div>"]}},
+               :r => 1,
+               :s => 0,
+               :p => %{0 => ["<div>\n  ", "\n</div>"]}
              }
 
       component = %Component{id: "hello", assigns: %{from: :rerender}, component: TempComponent}
@@ -1286,18 +1300,19 @@ defmodule Phoenix.LiveView.DiffTest do
       {full_render, fingerprints, components} = render(rendered)
 
       assert full_render == %{
-               0 => %{d: [["0", 1], ["1", 2]], s: ["\n    ", ": ", "\n  "]},
+               0 => %{s: 0, k: %{0 => %{0 => "0", 1 => 1}, 1 => %{0 => "1", 1 => 2}, :kc => 2}},
                :c => %{
                  1 => %{
                    0 => "index_1",
                    1 => "world",
-                   :s => ["<div>FROM ", " ", "</div>"],
-                   :r => 1
+                   :r => 1,
+                   :s => ["<div>FROM ", " ", "</div>"]
                  },
                  2 => %{0 => "index_2", 1 => "world", :s => 1}
                },
-               :s => ["<div>\n  ", "\n</div>"],
-               :r => 1
+               :r => 1,
+               :s => 1,
+               :p => %{0 => ["\n    ", ": ", "\n  "], 1 => ["<div>\n  ", "\n</div>"]}
              }
 
       assert {^fingerprint, %{0 => _}} = fingerprints
@@ -1379,7 +1394,7 @@ defmodule Phoenix.LiveView.DiffTest do
         render(template.(components), fingerprints, diff_components)
 
       assert diff == %{
-               0 => %{d: [["0", 4]]},
+               0 => %{k: %{0 => %{1 => 4}, :kc => 1}},
                :c => %{4 => %{0 => %{0 => "index_4", :s => ["\n    ELSE ", "\n  "]}, :s => -1}}
              }
 
@@ -1397,7 +1412,7 @@ defmodule Phoenix.LiveView.DiffTest do
         render(template.(components), fingerprints, diff_components)
 
       assert diff == %{
-               0 => %{d: [["0", 1], ["1", 5]]},
+               0 => %{k: %{0 => %{1 => 1}, 1 => %{1 => 5}, :kc => 2}},
                :c => %{
                  1 => %{0 => %{0 => "index_1", :s => ["\n    ELSE ", "\n  "]}},
                  5 => %{0 => %{0 => "index_5"}, :s => -1}
@@ -1432,26 +1447,43 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{
                0 => %{
-                 d: [
-                   ["foo", %{d: [["0", 1], ["1", 2]], s: 0}],
-                   ["bar", %{d: [["0", 3], ["1", 4]], s: 0}]
-                 ],
-                 s: ["\n    ", "\n    ", "\n  "],
-                 p: %{0 => ["\n      ", ": ", "\n    "]}
+                 s: 1,
+                 k: %{
+                   0 => %{
+                     0 => "foo",
+                     1 => %{
+                       k: %{0 => %{0 => "0", 1 => 1}, 1 => %{0 => "1", 1 => 2}, :kc => 2},
+                       s: 0
+                     }
+                   },
+                   1 => %{
+                     0 => "bar",
+                     1 => %{
+                       k: %{0 => %{0 => "0", 1 => 3}, 1 => %{0 => "1", 1 => 4}, :kc => 2},
+                       s: 0
+                     }
+                   },
+                   :kc => 2
+                 }
                },
                :c => %{
                  1 => %{
                    0 => "index_1",
                    1 => "world",
-                   :s => ["<div>FROM ", " ", "</div>"],
-                   :r => 1
+                   :r => 1,
+                   :s => ["<div>FROM ", " ", "</div>"]
                  },
                  2 => %{0 => "index_2", 1 => "world", :s => 1},
                  3 => %{0 => "index_1", 1 => "world", :s => 1},
                  4 => %{0 => "index_2", 1 => "world", :s => 3}
                },
-               :s => ["<div>\n  ", "\n</div>"],
-               :r => 1
+               :r => 1,
+               :s => 2,
+               :p => %{
+                 0 => ["\n      ", ": ", "\n    "],
+                 1 => ["\n    ", "\n    ", "\n  "],
+                 2 => ["<div>\n  ", "\n</div>"]
+               }
              }
 
       assert {^fingerprint, %{0 => _}} = fingerprints
@@ -1483,9 +1515,10 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>"], 1 => "", :r => 1}
+                 1 => %{0 => "1", 1 => "", :r => 1, :s => ["<div>\n  ID: ", "\n  ", "\n</div>"]}
                },
-               :s => ["", ""]
+               :s => 0,
+               :p => %{0 => ["", ""]}
              }
 
       {cid_to_component, _, 2} = diff_components
@@ -1498,8 +1531,8 @@ defmodule Phoenix.LiveView.DiffTest do
       assert diff == %{
                0 => 1,
                :c => %{
-                 1 => %{1 => %{d: [[2]], s: ["\n    ", "\n  "]}},
-                 2 => %{0 => "2", :s => -1, 1 => ""}
+                 1 => %{1 => %{s: ["\n    ", "\n  "], k: %{0 => %{0 => 2}, :kc => 1}}},
+                 2 => %{0 => "2", 1 => "", :s => -1}
                }
              }
 
@@ -1513,9 +1546,9 @@ defmodule Phoenix.LiveView.DiffTest do
       assert diff == %{
                0 => 1,
                :c => %{
-                 1 => %{1 => %{d: [[2]]}},
-                 2 => %{1 => %{d: [[3]], s: ["\n    ", "\n  "]}},
-                 3 => %{0 => "3", 1 => %{d: []}, :s => -1}
+                 1 => %{1 => %{k: %{0 => %{0 => 2}, :kc => 1}}},
+                 2 => %{1 => %{k: %{0 => %{0 => 3}, :kc => 1}, s: ["\n    ", "\n  "]}},
+                 3 => %{0 => "3", 1 => %{k: %{kc: 0}}, :s => -1}
                }
              }
 
@@ -1537,9 +1570,10 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => 1,
                :c => %{
-                 1 => %{0 => "1", :s => ["<div>\n  ID: ", "\n  ", "\n</div>"], :r => 1, 1 => ""}
+                 1 => %{0 => "1", 1 => "", :r => 1, :s => ["<div>\n  ID: ", "\n  ", "\n</div>"]}
                },
-               :s => ["", ""]
+               :s => 0,
+               :p => %{0 => ["", ""]}
              }
 
       {cid_to_component, _, 2} = diff_components
@@ -1554,7 +1588,7 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert diff == %{
                c: %{
-                 1 => %{1 => %{d: [[2]], s: ["\n    ", "\n  "]}},
+                 1 => %{1 => %{s: ["\n    ", "\n  "], k: %{0 => %{0 => 2}, :kc => 1}}},
                  2 => %{0 => "2", 1 => "", :s => -1}
                }
              }
@@ -1690,19 +1724,23 @@ defmodule Phoenix.LiveView.DiffTest do
       {full_render, _fingerprints, _components} = render(rendered)
 
       assert %{
-               0 => %{d: [[1], [2]], s: ["\n  ", "\n"]},
+               0 => %{s: 0, k: %{0 => %{0 => 1}, 1 => %{0 => 2}, :kc => 2}},
                :c => %{
-                 1 => %{0 => %{0 => "", :s => ["", ""]}, :s => ["<div>\n  ", "\n</div>"]},
+                 1 => %{0 => %{0 => "", :s => ["", ""]}, :s => ["<div>\n  ", "\n</div>"], :r => 1},
                  2 => %{0 => %{0 => 3, :s => ["", ""]}, :s => 1},
                  3 => %{
                    0 => %{
-                     0 => %{d: [["nothing", "nothing"]], s: ["\n  ", "", "\n"]},
+                     0 => %{
+                       s: ["\n  ", "", "\n"],
+                       k: %{0 => %{0 => "nothing", 1 => "nothing"}, :kc => 1}
+                     },
                      :s => ["", ""]
                    },
                    :s => static
                  }
                },
-               :s => ["", ""]
+               :s => 1,
+               :p => %{0 => ["\n  ", "\n"], 1 => ["", ""]}
              } = full_render
 
       assert is_integer(static)
@@ -1876,13 +1914,12 @@ defmodule Phoenix.LiveView.DiffTest do
       assert full_render == %{
                0 => %{
                  k: %{
-                   0 => %{0 => "0", 1 => "First", 2 => "First", :s => 0},
-                   1 => %{0 => "0", 1 => "Second", 2 => "Second", :s => 0},
+                   0 => %{0 => "0", 1 => "First", 2 => "First"},
+                   1 => %{0 => "0", 1 => "Second", 2 => "Second"},
                    :kc => 2
-                 }
+                 },
+                 s: 0
                },
-               :r => 1,
-               :s => 1,
                :p => %{
                  0 => [
                    "<li>\n    <span>Count: ",
@@ -1891,7 +1928,9 @@ defmodule Phoenix.LiveView.DiffTest do
                    "</span>\n  </li>"
                  ],
                  1 => ["<ul>\n  ", "\n</ul>"]
-               }
+               },
+               :r => 1,
+               :s => 1
              }
 
       # change entries, but no part that is rendered

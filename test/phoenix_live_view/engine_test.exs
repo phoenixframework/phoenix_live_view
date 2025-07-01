@@ -143,8 +143,8 @@ defmodule Phoenix.LiveView.EngineTest do
       assert [
                %Phoenix.LiveView.Comprehension{
                  entries: [
-                   {0, %{point: %{x: 1, y: 2}}, _},
-                   {1, %{point: %{x: 3, y: 4}}, _}
+                   {nil, %{point: %{x: 1, y: 2}}, _},
+                   {nil, %{point: %{x: 3, y: 4}}, _}
                  ]
                }
              ] = dynamic.(true)
@@ -393,12 +393,12 @@ defmodule Phoenix.LiveView.EngineTest do
     test "does not render dynamic if it has variables inside optimized comprehension" do
       template = "<%= for foo <- @foo do %><%= foo %><% end %>"
 
-      assert [%{dynamics: [["1"], ["2"], ["3"]]}] =
+      assert [%{entries: [_, _, _]}] =
                changed(template, %{foo: ["1", "2", "3"]}, nil)
 
       assert [nil] = changed(template, %{foo: ["1", "2", "3"]}, %{})
 
-      assert [%{dynamics: [["1"], ["2"], ["3"]]}] =
+      assert [%{entries: [_, _, _]}] =
                changed(template, %{foo: ["1", "2", "3"]}, %{foo: true})
     end
 
