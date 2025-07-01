@@ -534,7 +534,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
-        |> handle_special_expr(:remote_component, new_meta)
+        |> handle_special_expr(new_meta)
         |> continue(tokens)
     end
   end
@@ -597,7 +597,7 @@ defmodule Phoenix.LiveView.TagEngine do
     |> pop_substate_from_stack()
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
-    |> handle_special_expr(:remote_component, tag_meta)
+    |> handle_special_expr(tag_meta)
     |> continue(tokens)
   end
 
@@ -612,6 +612,7 @@ defmodule Phoenix.LiveView.TagEngine do
     attrs = postprocess_attrs(attrs, state)
     %{line: line} = tag_meta
     {special, roots, attrs, attr_info} = split_component_attrs({"slot", slot_name}, attrs, state)
+    raise_if_key!(special[":key"], {"slot", slot_name}, "", state.file)
     let = special[":let"]
 
     with {_, let_meta} <- let do
@@ -645,6 +646,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     attrs = postprocess_attrs(attrs, state)
     {special, roots, attrs, attr_info} = split_component_attrs({"slot", slot_name}, attrs, state)
+    raise_if_key!(special[":key"], {"slot", slot_name}, "", state.file)
     clauses = build_component_clauses(special[":let"], slot_name, tag_meta, tag_close_meta, state)
 
     ast =
@@ -704,7 +706,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> set_root_on_not_tag()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
-        |> handle_special_expr(:local_component, new_meta)
+        |> handle_special_expr(new_meta)
         |> continue(tokens)
     end
   end
@@ -766,7 +768,7 @@ defmodule Phoenix.LiveView.TagEngine do
     |> pop_substate_from_stack()
     |> maybe_anno_caller(meta, state.file, line)
     |> update_subengine(:handle_expr, ["=", ast])
-    |> handle_special_expr(:local_component, tag_meta)
+    |> handle_special_expr(tag_meta)
     |> continue(tokens)
   end
 
@@ -791,7 +793,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
         |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta))
-        |> handle_special_expr(:tag, new_meta)
+        |> handle_special_expr(new_meta)
         |> continue(tokens)
     end
   end
@@ -834,7 +836,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     state
     |> update_subengine(:handle_text, [to_location(tag_meta), "</#{name}>"])
-    |> handle_special_expr(:tag, tag_open_meta)
+    |> handle_special_expr(tag_open_meta)
     |> continue(tokens)
   end
 
@@ -1128,21 +1130,22 @@ defmodule Phoenix.LiveView.TagEngine do
   defp literal_keys?([]), do: true
   defp literal_keys?(_other), do: false
 
-  defp handle_special_expr(state, type, tag_meta) do
+  defp handle_special_expr(state, tag_meta) do
     ast =
       case tag_meta do
         %{for: _for_expr, if: if_expr} ->
-          {for_expr, ast} = maybe_keyed(state, type, tag_meta)
+          for_expr = maybe_keyed(tag_meta)
 
           quote do
-            for unquote(for_expr), unquote(if_expr), do: unquote(ast)
+            for unquote(for_expr), unquote(if_expr),
+              do: unquote(invoke_subengine(state, :handle_end, []))
           end
 
         %{for: _for_expr} ->
-          {for_expr, ast} = maybe_keyed(state, type, tag_meta)
+          for_expr = maybe_keyed(tag_meta)
 
           quote do
-            for unquote(for_expr), do: unquote(ast)
+            for unquote(for_expr), do: unquote(invoke_subengine(state, :handle_end, []))
           end
 
         %{if: if_expr} ->
@@ -1166,20 +1169,14 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp maybe_keyed(state, _type, %{key: key_expr, for: for_expr}) do
+  defp maybe_keyed(%{key: key_expr, for: for_expr}) do
     # we already validated that the for expression has the correct shape in
     # validate_quoted_special_attr
     {:<-, for_meta, [lhs, rhs]} = for_expr
-
-    for_expr =
-      {:<-, [keyed_comprehension: true, key_expr: key_expr] ++ for_meta, [lhs, rhs]}
-
-    {for_expr, invoke_subengine(state, :handle_end, [])}
+    {:<-, [keyed_comprehension: true, key_expr: key_expr] ++ for_meta, [lhs, rhs]}
   end
 
-  defp maybe_keyed(state, _type, %{for: for_expr}) do
-    {for_expr, invoke_subengine(state, :handle_end, [])}
-  end
+  defp maybe_keyed(%{for: for_expr}), do: for_expr
 
   ## build_self_close_component_assigns/build_component_assigns
 
@@ -1191,6 +1188,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp build_component_assigns(type_component, attrs, line, tag_meta, tag_close_meta, state) do
     {special, roots, attrs, attr_info} = split_component_attrs(type_component, attrs, state)
+    raise_if_key!(special[":key"], type_component, " with inner content", state.file)
 
     clauses =
       build_component_clauses(special[":let"], :inner_block, tag_meta, tag_close_meta, state)
@@ -1242,7 +1240,17 @@ defmodule Phoenix.LiveView.TagEngine do
     {special, [quoted_value | r], a, locs}
   end
 
-  @special_attrs ~w(:let :if :for)
+  @special_attrs ~w(:let :if :for :key)
+  defp split_component_attr(
+         {:key, _expr, attr_meta},
+         _,
+         state,
+         {:slot, slot_name}
+       ) do
+    message = ":key is not supported on slots: #{slot_name}"
+    raise_syntax_error!(message, attr_meta, state)
+  end
+
   defp split_component_attr(
          {attr, {:expr, value, %{line: line, column: col} = meta}, attr_meta},
          {special, r, a, locs},
@@ -1355,6 +1363,13 @@ defmodule Phoenix.LiveView.TagEngine do
   defp raise_if_let!(let, file) do
     with {_pattern, %{line: line}} <- let do
       message = "cannot use :let on a component without inner content"
+      raise CompileError, line: line, file: file, description: message
+    end
+  end
+
+  defp raise_if_key!(key, {type, component_or_slot}, extra, file) do
+    with {_pattern, %{line: line}} <- key do
+      message = "cannot use :key on a #{type}#{extra}: #{component_or_slot}"
       raise CompileError, line: line, file: file, description: message
     end
   end

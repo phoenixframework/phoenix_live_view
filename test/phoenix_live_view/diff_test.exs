@@ -1842,6 +1842,16 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
+    defp non_keyed_comprehension_with_pattern(assigns) do
+      ~H"""
+      <ul>
+        <li :for={%{id: id, name: name} <- @items}>
+          Outside assign: {@count} Inside assign: {name}
+        </li>
+      </ul>
+      """
+    end
+
     defp keyed_comprehension_with_nested_access(assigns) do
       ~H"""
       <ul>
@@ -1866,6 +1876,35 @@ defmodule Phoenix.LiveView.DiffTest do
       <%= for count <- [100, 200] do %>
         <.keyed_comprehension_with_pattern items={@items} count={count} />
       <% end %>
+      """
+    end
+
+    defp keyed_comprehension_with_component(assigns) do
+      ~H"""
+      <.non_keyed_comprehension_with_pattern
+        :for={{id, items} <- @list_of_items}
+        :key={id}
+        items={items}
+        count={@count}
+      />
+      """
+    end
+
+    defp keyed_comprehension_with_component_and_slots(assigns) do
+      ~H"""
+      <.my_demo_list :for={item <- @items} :key={item.id}>
+        <:entry :for={entry <- item.entries} key={entry.id}>
+          {entry.title} {@count}
+        </:entry>
+      </.my_demo_list>
+      """
+    end
+
+    defp my_demo_list(assigns) do
+      ~H"""
+      <ul>
+        <li :for={slot <- @entry} :key={slot.key}>{render_slot(slot)}</li>
+      </ul>
       """
     end
 
@@ -1920,6 +1959,66 @@ defmodule Phoenix.LiveView.DiffTest do
         render(keyed_comprehension_with_pattern(assigns), fingerprints, components)
 
       assert fourth_render == %{0 => %{k: %{0 => 1, 1 => %{0 => "1", 1 => "Third"}, :kc => 2}}}
+    end
+
+    test "change tracking when no key is given" do
+      items = [
+        %{id: 1, name: "First"},
+        %{id: 2, name: "Second"}
+      ]
+
+      assigns = %{socket: %Socket{}, items: items, count: 0, __changed__: %{}}
+
+      {full_render, fingerprints, components} =
+        render(non_keyed_comprehension_with_pattern(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 k: %{0 => %{0 => "0", 1 => "First"}, 1 => %{0 => "0", 1 => "Second"}, :kc => 2},
+                 s: 0
+               },
+               :p => %{
+                 0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"],
+                 1 => ["<ul>\n  ", "\n</ul>"]
+               },
+               :r => 1,
+               :s => 1
+             }
+
+      # change order of items
+      assigns = Phoenix.Component.assign(assigns, :items, Enum.reverse(assigns.items))
+
+      {second_render, fingerprints, components} =
+        render(non_keyed_comprehension_with_pattern(assigns), fingerprints, components)
+
+      # the index is the key, so we get the reversed order for the names
+      assert second_render == %{
+               0 => %{k: %{0 => %{1 => "Second"}, 1 => %{1 => "First"}, :kc => 2}}
+             }
+
+      # update count
+      assigns = Phoenix.Component.assign(assigns, :count, 1)
+
+      {third_render, fingerprints, components} =
+        render(non_keyed_comprehension_with_pattern(assigns), fingerprints, components)
+
+      # only the new count is sent
+      assert third_render == %{0 => %{k: %{0 => %{0 => "1"}, 1 => %{0 => "1"}, :kc => 2}}}
+
+      # replace item
+      assigns =
+        assigns
+        |> Map.put(:__changed__, %{})
+        |> Phoenix.Component.assign(:items, [
+          %{id: 1, name: "Second"},
+          %{id: 3, name: "Third"}
+        ])
+
+      {fourth_render, _fingerprints, _components} =
+        render(non_keyed_comprehension_with_pattern(assigns), fingerprints, components)
+
+      # only index 1 is updated
+      assert fourth_render == %{0 => %{k: %{1 => %{1 => "Third"}, :kc => 2}}}
     end
 
     test "change-tracking for complex access" do
@@ -2083,6 +2182,200 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       assert {%{}, %{}, 1} = components
+    end
+
+    test ":key on components" do
+      list_of_items = [
+        {1,
+         [
+           %{id: 1, name: "First"},
+           %{id: 2, name: "Second"}
+         ]},
+        {2,
+         [
+           %{id: 1, name: "Third"},
+           %{id: 2, name: "Fourth"}
+         ]}
+      ]
+
+      assigns = %{socket: %Socket{}, list_of_items: list_of_items, count: 0, __changed__: %{}}
+
+      {full_render, fingerprints, components} =
+        render(keyed_comprehension_with_component(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 k: %{
+                   0 => %{
+                     0 => %{
+                       0 => %{
+                         k: %{
+                           0 => %{0 => "0", 1 => "First"},
+                           1 => %{0 => "0", 1 => "Second"},
+                           :kc => 2
+                         },
+                         s: 0
+                       },
+                       :r => 1,
+                       :s => 1
+                     }
+                   },
+                   1 => %{
+                     0 => %{
+                       0 => %{
+                         k: %{
+                           0 => %{0 => "0", 1 => "Third"},
+                           1 => %{0 => "0", 1 => "Fourth"},
+                           :kc => 2
+                         },
+                         s: 0
+                       },
+                       :r => 1,
+                       :s => 1
+                     }
+                   },
+                   :kc => 2
+                 },
+                 s: 2
+               },
+               :p => %{
+                 0 => ["<li>\n    Outside assign: ", " Inside assign: ", "\n  </li>"],
+                 1 => ["<ul>\n  ", "\n</ul>"],
+                 2 => ["", ""],
+                 3 => ["", ""]
+               },
+               :s => 3
+             }
+
+      # change order of items
+      assigns =
+        Phoenix.Component.assign(assigns, :list_of_items, Enum.reverse(assigns.list_of_items))
+
+      {second_render, fingerprints, components} =
+        render(keyed_comprehension_with_component(assigns), fingerprints, components)
+
+      # only the order changed
+      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2}}}
+
+      # update count
+      assigns = Phoenix.Component.assign(%{assigns | __changed__: %{}}, :count, 1)
+
+      {third_render, _fingerprints, _components} =
+        render(keyed_comprehension_with_component(assigns), fingerprints, components)
+
+      # only sends the updated count
+      assert third_render == %{
+               0 => %{
+                 k: %{
+                   0 => %{0 => %{0 => %{k: %{0 => %{0 => "1"}, 1 => %{0 => "1"}, :kc => 2}}}},
+                   1 => %{0 => %{0 => %{k: %{0 => %{0 => "1"}, 1 => %{0 => "1"}, :kc => 2}}}},
+                   :kc => 2
+                 }
+               }
+             }
+    end
+
+    test ":key on component with slots" do
+      items = [
+        %{id: 1, entries: [%{id: 1, title: "1-1"}, %{id: 2, title: "1-2"}]},
+        %{id: 2, entries: [%{id: 1, title: "2-1"}, %{id: 2, title: "2-2"}]}
+      ]
+
+      assigns = %{socket: %Socket{}, items: items, count: 0, __changed__: %{}}
+
+      {full_render, fingerprints, components} =
+        render(keyed_comprehension_with_component_and_slots(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 k: %{
+                   0 => %{
+                     0 => %{
+                       0 => %{
+                         k: %{
+                           0 => %{0 => %{0 => "1-1", :s => 0, 1 => "0"}},
+                           1 => %{0 => %{0 => "1-2", :s => 0, 1 => "0"}},
+                           :kc => 2
+                         },
+                         s: 1
+                       },
+                       :r => 1,
+                       :s => 2
+                     }
+                   },
+                   1 => %{
+                     0 => %{
+                       0 => %{
+                         k: %{
+                           0 => %{0 => %{0 => "2-1", :s => 0, 1 => "0"}},
+                           1 => %{0 => %{0 => "2-2", :s => 0, 1 => "0"}},
+                           :kc => 2
+                         },
+                         s: 1
+                       },
+                       :r => 1,
+                       :s => 2
+                     }
+                   },
+                   :kc => 2
+                 },
+                 s: 3
+               },
+               :p => %{
+                 0 => ["\n    ", " ", "\n  "],
+                 1 => ["<li>", "</li>"],
+                 2 => ["<ul>\n  ", "\n</ul>"],
+                 3 => ["", ""],
+                 4 => ["", ""]
+               },
+               :s => 4
+             }
+
+      # change order of items
+      assigns = Phoenix.Component.assign(assigns, :items, Enum.reverse(assigns.items))
+
+      {second_render, fingerprints, components} =
+        render(keyed_comprehension_with_component_and_slots(assigns), fingerprints, components)
+
+      # only the order changed
+      assert second_render == %{0 => %{k: %{0 => 1, 1 => 0, :kc => 2}}}
+
+      # update count
+      assigns = Phoenix.Component.assign(%{assigns | __changed__: %{}}, :count, 1)
+
+      {third_render, _fingerprints, _components} =
+        render(keyed_comprehension_with_component_and_slots(assigns), fingerprints, components)
+
+      # :for on slots is not optimized right now :(
+      assert third_render == %{
+               0 => %{
+                 k: %{
+                   0 => %{
+                     0 => %{
+                       0 => %{
+                         k: %{
+                           0 => %{0 => %{0 => "2-1", 1 => "1"}},
+                           1 => %{0 => %{0 => "2-2", 1 => "1"}},
+                           :kc => 2
+                         }
+                       }
+                     }
+                   },
+                   1 => %{
+                     0 => %{
+                       0 => %{
+                         k: %{
+                           0 => %{0 => %{0 => "1-1", 1 => "1"}},
+                           1 => %{0 => %{0 => "1-2", 1 => "1"}},
+                           :kc => 2
+                         }
+                       }
+                     }
+                   },
+                   :kc => 2
+                 }
+               }
+             }
     end
   end
 end
