@@ -434,17 +434,17 @@ export default class Rendered {
       output.buffer = "";
     }
 
-    output.buffer += statics[0];
-    for (let i = 1; i < statics.length; i++) {
-      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
-      output.buffer += statics[i];
-    }
-
     // this condition is called when first rendering an optimizable function component.
     // LC have their magicId previously set
     if (changeTracking && isRoot && !rendered.magicId) {
       rendered.newRender = true;
       rendered.magicId = this.nextMagicID();
+    }
+
+    output.buffer += statics[0];
+    for (let i = 1; i < statics.length; i++) {
+      this.dynamicToBuffer(rendered[i - 1], templates, output, changeTracking);
+      output.buffer += statics[i];
     }
 
     // Applies the root tag "skip" optimization if supported, which clears
