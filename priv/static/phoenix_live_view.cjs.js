@@ -2971,26 +2971,36 @@ var Rendered = class {
   }
   // keyed comprehensions
   mergeKeyed(target, source) {
-    const clonedTarget = structuredClone(target);
-    for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
-      const entry = source[KEYED][i];
-      if (entry === void 0) {
-        continue;
+    const movedEntries = {};
+    Object.entries(source[KEYED]).forEach(([i, entry]) => {
+      if (i === KEYED_COUNT) {
+        return;
+      }
+      if (Array.isArray(entry)) {
+        movedEntries[entry[0]] = target[KEYED][i];
+      }
+      if (typeof entry === "number") {
+        movedEntries[entry] = target[KEYED][i];
+      }
+    });
+    Object.entries(source[KEYED]).forEach(([i, entry]) => {
+      if (i === KEYED_COUNT) {
+        return;
       }
       if (Array.isArray(entry)) {
         const [old_idx, diff] = entry;
-        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        target[KEYED][i] = movedEntries[old_idx];
         this.doMutableMerge(target[KEYED][i], diff);
       } else if (typeof entry === "number") {
         const old_idx = entry;
-        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        target[KEYED][i] = movedEntries[old_idx];
       } else if (typeof entry === "object") {
         if (!target[KEYED][i]) {
           target[KEYED][i] = {};
         }
         this.doMutableMerge(target[KEYED][i], entry);
       }
-    }
+    });
     if (source[KEYED][KEYED_COUNT] < target[KEYED][KEYED_COUNT]) {
       for (let i = source[KEYED][KEYED_COUNT]; i < target[KEYED][KEYED_COUNT]; i++) {
         delete target[KEYED][i];

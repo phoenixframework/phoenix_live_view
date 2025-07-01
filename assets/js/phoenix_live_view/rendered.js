@@ -1,6 +1,5 @@
 import {
   COMPONENTS,
-  DYNAMICS,
   TEMPLATES,
   EVENTS,
   PHX_COMPONENT,
@@ -276,23 +275,35 @@ export default class Rendered {
 
   // keyed comprehensions
   mergeKeyed(target, source) {
-    const clonedTarget = structuredClone(target);
-    for (let i = 0; i < source[KEYED][KEYED_COUNT]; i++) {
-      const entry = source[KEYED][i];
-      if (entry === undefined) {
-        // non-changed entries can be skipped
-        continue;
+    const movedEntries = {};
+    // First pass: save all original values that will be moved
+    Object.entries(source[KEYED]).forEach(([i, entry]) => {
+      if (i === KEYED_COUNT) {
+        return;
       }
       if (Array.isArray(entry)) {
-        // [old_idx, diff]
-        // moved with diff
+        // Save the original value before any mutations
+        movedEntries[entry[0]] = target[KEYED][i];
+      }
+      if (typeof entry === "number") {
+        movedEntries[entry] = target[KEYED][i];
+      }
+    });
+
+    // Second pass: perform the moves and merges
+    Object.entries(source[KEYED]).forEach(([i, entry]) => {
+      if (i === KEYED_COUNT) {
+        return;
+      }
+      if (Array.isArray(entry)) {
+        // [old_idx, diff] - moved with diff
         const [old_idx, diff] = entry;
-        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        target[KEYED][i] = movedEntries[old_idx];
         this.doMutableMerge(target[KEYED][i], diff);
       } else if (typeof entry === "number") {
         // moved without diff
         const old_idx = entry;
-        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        target[KEYED][i] = movedEntries[old_idx];
       } else if (typeof entry === "object") {
         // diff, same position
         if (!target[KEYED][i]) {
@@ -300,7 +311,7 @@ export default class Rendered {
         }
         this.doMutableMerge(target[KEYED][i], entry);
       }
-    }
+    });
     // drop extra entries
     if (source[KEYED][KEYED_COUNT] < target[KEYED][KEYED_COUNT]) {
       for (
