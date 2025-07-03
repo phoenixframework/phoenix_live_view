@@ -650,15 +650,16 @@ defmodule Phoenix.LiveView.Diff do
           {{_diff, index, _new_prints, _pending, _components, _template, _canonical_print} = acc,
            seen_keys} ->
             {key, seen_keys} =
-              if has_key? do
-                if MapSet.member?(seen_keys, key) do
+              cond do
+                not has_key? ->
+                  # no need to check for duplicates if we use the index
+                  {index, seen_keys}
+
+                MapSet.member?(seen_keys, key) ->
                   raise "found duplicate key #{inspect(key)} in comprehension"
-                else
+
+                true ->
                   {key, MapSet.put(seen_keys, key)}
-                end
-              else
-                # no need to check for duplicates if we use the index
-                {index, seen_keys}
               end
 
             {process_keyed({key, vars, render}, previous_prints, changed?, stream?, acc),
@@ -712,14 +713,9 @@ defmodule Phoenix.LiveView.Diff do
 
     # if the diff is empty, we need to check if the item moved
     if child_diff == %{} or child_diff == nil do
-      if previous_index != index do
-        # the entry moved, annotate it with the previous index
-        {Map.put(diff, index, previous_index), index + 1, new_prints, pending, components,
-         template, canonical_print}
-      else
-        # no diff
-        {diff, index + 1, new_prints, pending, components, template, canonical_print}
-      end
+      # check if the entry moved, then annotate it with the previous index
+      diff = if previous_index != index, do: Map.put(diff, index, previous_index), else: diff
+      {diff, index + 1, new_prints, pending, components, template, canonical_print}
     else
       child_diff =
         if previous_index != index do
@@ -744,7 +740,7 @@ defmodule Phoenix.LiveView.Diff do
         pending,
         components,
         template,
-        # we need to disable change-tracking to force a fully render,
+        # we need to disable change-tracking to force a full render,
         # even if some parts of the template might not have changed themselves
         false
       )
