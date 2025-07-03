@@ -357,38 +357,30 @@ defmodule Phoenix.LiveView.Diff do
   defp component_to_rendered(socket, component, id) do
     rendered = Phoenix.LiveView.Renderer.to_rendered(socket, component)
 
-    has_root = has_single_root_component?(rendered)
+    if id != nil do
+      raise_error = fn reason ->
+        raise ArgumentError,
+              "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{reason}"
+      end
 
-    if id != nil and !has_root do
-      reason =
-        case rendered.root do
-          nil -> "Stateful components must return a HEEx template (~H sigil or .heex extension)"
-          false -> "Stateful components must have a single static HTML tag at the root"
-        end
+      case rendered do
+        %{root: :check_child} ->
+          {%{rendered | root: true}, true}
 
-      raise ArgumentError,
-            "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{reason}"
+        %{root: true} ->
+          {rendered, false}
+
+        %{root: false} ->
+          raise_error.("Stateful components must have a single static HTML tag at the root")
+
+        %{root: nil} ->
+          raise_error.(
+            "Stateful components must return a HEEx template (~H sigil or .heex extension)"
+          )
+      end
     else
-      # Mark this element as having a root for future diffs.
-      %{rendered | root: true}
+      {rendered, false}
     end
-  end
-
-  defp has_single_root_component?(%Phoenix.LiveView.Rendered{root: true}) do
-    true
-  end
-
-  # Handle cases for LiveComponents with a single static root will have
-  # 2 static elements, either empty, or comments for annotations
-  defp has_single_root_component?(%Phoenix.LiveView.Rendered{static: [_, _], dynamic: dynamic}) do
-    case dynamic.(false) do
-      [%Phoenix.LiveView.Rendered{root: true}] -> true
-      _ -> false
-    end
-  end
-
-  defp has_single_root_component?(_) do
-    false
   end
 
   ## Traversal
@@ -435,7 +427,7 @@ defmodule Phoenix.LiveView.Diff do
         changed?
       )
 
-    diff = if rendered.root, do: Map.put(diff, :r, 1), else: diff
+    diff = if rendered.root == true, do: Map.put(diff, :r, 1), else: diff
     {diff, template} = maybe_share_template(diff, fingerprint, static, template)
     {diff, {fingerprint, children}, pending, components, template}
   end
@@ -791,13 +783,24 @@ defmodule Phoenix.LiveView.Diff do
 
     {socket, prints, pending, diff, components} =
       if changed? do
-        rendered = component_to_rendered(socket, component, id)
+        {rendered, check_child?} = component_to_rendered(socket, component, id)
 
         {changed?, linked_cid, prints} =
           maybe_reuse_static(rendered, component, prints, cids, components)
 
         {diff, prints, pending, components, nil} =
           traverse(rendered, prints, %{}, components, nil, changed?)
+
+        # TODO: make this less ugly
+        if new? and check_child? and not match?(%{0 => %{:r => 1}, :s => [_, _]}, diff) do
+          raise ArgumentError,
+                """
+                error on #{inspect(component)}.render/1 with id of #{inspect(id)}.
+
+                Stateful components must have a single static HTML tag at the root or
+                a function component that itself has a single static root tag.
+                """
+        end
 
         children_cids =
           for {_component, list} <- pending,

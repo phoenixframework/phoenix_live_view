@@ -490,7 +490,9 @@ defmodule Phoenix.LiveViewTest do
 
     socket
     |> Diff.component_to_rendered(component, assigns, mount_assigns)
-    |> rendered_to_diff_string(socket)
+    |> case do
+      {rendered, check_child?} -> rendered_to_diff_string(rendered, socket, check_child?)
+    end
   end
 
   def __render_component__(endpoint, function, assigns, opts) when is_function(function, 1) do
@@ -503,9 +505,18 @@ defmodule Phoenix.LiveViewTest do
     |> rendered_to_diff_string(socket)
   end
 
-  defp rendered_to_diff_string(rendered, socket) do
+  defp rendered_to_diff_string(rendered, socket, check_child? \\ false) do
     {diff, _, _} =
       Diff.render(socket, rendered, Diff.new_fingerprints(), Diff.new_components())
+
+    if check_child? and
+         not match?(%{0 => %{:r => 1}, :s => [_, _]}, diff) do
+      raise ArgumentError,
+            """
+            Stateful components must have a single static HTML tag at the root or
+            a function component that itself has a single static root tag.
+            """
+    end
 
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
