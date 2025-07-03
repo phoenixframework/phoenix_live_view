@@ -1405,10 +1405,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert eval("<%= 123 %><foo></foo>").root == false
       assert eval("123<foo></foo>").root == false
       assert eval("<foo></foo>123").root == false
-      assert eval("<.to_string />").root == :check_child
-      assert eval("<.to_string></.to_string>").root == :check_child
-      assert eval("<Kernel.to_string />").root == :check_child
-      assert eval("<Kernel.to_string></Kernel.to_string>").root == :check_child
+      assert eval("<.to_string />").root == :deferred
+      assert eval("<.to_string></.to_string>").root == :deferred
+      assert eval("<Kernel.to_string />").root == :deferred
+      assert eval("<Kernel.to_string></Kernel.to_string>").root == :deferred
       assert eval("<div :for={item <- @items}><%= item %></div>").root == false
       assert eval("<!-- comment --><div></div>").root == false
       assert eval("<div></div><!-- comment -->").root == false

@@ -491,7 +491,14 @@ defmodule Phoenix.LiveViewTest do
     socket
     |> Diff.component_to_rendered(component, assigns, mount_assigns)
     |> case do
-      {rendered, check_child?} -> rendered_to_diff_string(rendered, socket, check_child?)
+      {rendered, deferred_root_check?} ->
+        try do
+          rendered_to_diff_string(rendered, socket, deferred_root_check?)
+        rescue
+          e in ArgumentError ->
+            raise ArgumentError,
+                  "error on #{inspect(component)}.render/1 with id of #{inspect(assigns[:id])}. #{Exception.message(e)}"
+        end
     end
   end
 
@@ -505,18 +512,15 @@ defmodule Phoenix.LiveViewTest do
     |> rendered_to_diff_string(socket)
   end
 
-  defp rendered_to_diff_string(rendered, socket, check_child? \\ false) do
+  defp rendered_to_diff_string(rendered, socket, deferred_root_check? \\ false) do
     {diff, _, _} =
-      Diff.render(socket, rendered, Diff.new_fingerprints(), Diff.new_components())
-
-    if check_child? and
-         not match?(%{0 => %{:r => 1}, :s => [_, _]}, diff) do
-      raise ArgumentError,
-            """
-            Stateful components must have a single static HTML tag at the root or
-            a function component that itself has a single static root tag.
-            """
-    end
+      Diff.render(
+        socket,
+        rendered,
+        Diff.new_fingerprints(),
+        Diff.new_components(),
+        deferred_root_check?
+      )
 
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end

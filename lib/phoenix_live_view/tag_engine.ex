@@ -1051,7 +1051,7 @@ defmodule Phoenix.LiveView.TagEngine do
     case state do
       %{root: nil, tags: []} -> %{state | root: true}
       %{root: true, tags: []} -> %{state | root: false}
-      %{root: :check_child, tags: []} -> %{state | root: false}
+      %{root: :deferred, tags: []} -> %{state | root: false}
       _ -> state
     end
   end
@@ -1059,9 +1059,9 @@ defmodule Phoenix.LiveView.TagEngine do
   defp set_root_on_component(state) do
     case state do
       # when we encounter the first component, we mark it to be checked later
-      %{root: nil, tags: []} -> %{state | root: :check_child}
+      %{root: nil, tags: []} -> %{state | root: :deferred}
       # we already had a component -> this is a subsequent one
-      %{root: :check_child, tags: []} -> %{state | root: false}
+      %{root: :deferred, tags: []} -> %{state | root: false}
       # we already had a regular tag
       %{root: true, tags: []} -> %{state | root: false}
       _ -> state

@@ -122,19 +122,24 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Renders a diff for the rendered struct in regards to the given socket.
   """
+  def render(socket, rendered, fingerprints, components, deferred_root_check? \\ false)
+
   def render(
         socket,
         %Rendered{fingerprint: actual} = rendered,
         {expected, _},
-        {_, _, uuids}
+        {_, _, uuids},
+        deferred_root_check?
       )
       when expected != nil and expected != actual do
-    render(socket, rendered, new_fingerprints(), new_components(uuids))
+    render(socket, rendered, new_fingerprints(), new_components(uuids), deferred_root_check?)
   end
 
-  def render(socket, %Rendered{} = rendered, prints, components) do
+  def render(socket, %Rendered{} = rendered, prints, components, deferred_root_check?) do
     {diff, prints, pending, components, nil} =
       traverse(rendered, prints, %{}, components, nil, true)
+
+    if deferred_root_check?, do: deferred_root_check!(diff)
 
     # cid_to_component is used by maybe_reuse_static and it must be a copy before changes.
     # However, given traverse does not change cid_to_component, we can read it now.
@@ -364,7 +369,7 @@ defmodule Phoenix.LiveView.Diff do
       end
 
       case rendered do
-        %{root: :check_child} ->
+        %{root: :deferred} ->
           {%{rendered | root: true}, true}
 
         %{root: true} ->
@@ -783,7 +788,7 @@ defmodule Phoenix.LiveView.Diff do
 
     {socket, prints, pending, diff, components} =
       if changed? do
-        {rendered, check_child?} = component_to_rendered(socket, component, id)
+        {rendered, deferred_root_check?} = component_to_rendered(socket, component, id)
 
         {changed?, linked_cid, prints} =
           maybe_reuse_static(rendered, component, prints, cids, components)
@@ -791,15 +796,14 @@ defmodule Phoenix.LiveView.Diff do
         {diff, prints, pending, components, nil} =
           traverse(rendered, prints, %{}, components, nil, changed?)
 
-        # TODO: make this less ugly
-        if new? and check_child? and not match?(%{0 => %{:r => 1}, :s => [_, _]}, diff) do
-          raise ArgumentError,
-                """
-                error on #{inspect(component)}.render/1 with id of #{inspect(id)}.
-
-                Stateful components must have a single static HTML tag at the root or
-                a function component that itself has a single static root tag.
-                """
+        if new? and deferred_root_check? do
+          try do
+            deferred_root_check!(diff)
+          rescue
+            e in ArgumentError ->
+              raise ArgumentError,
+                    "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{Exception.message(e)}"
+          end
         end
 
         children_cids =
@@ -963,5 +967,22 @@ defmodule Phoenix.LiveView.Diff do
 
   defp dump_component(socket, component, id, prints) do
     {component, id, socket.assigns, socket.private, prints}
+  end
+
+  defp deferred_root_check!(diff) do
+    cond do
+      match?(%{0 => %{:r => 1}, :s => [_, _]}, diff) ->
+        :ok
+
+      match?(%{0 => _, :s => [_, _]}, diff) ->
+        deferred_root_check!(Map.fetch!(diff, 0))
+
+      true ->
+        raise ArgumentError,
+              """
+              Stateful components must have a single static HTML tag at the root or
+              render a function component that itself has a single static root tag.
+              """
+    end
   end
 end

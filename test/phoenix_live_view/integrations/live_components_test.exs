@@ -550,10 +550,69 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       """
     end
 
-    def container(assigns) do
+    defp container(assigns) do
       ~H"""
       <div class="wrapper">
         {@name}
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
+  end
+
+  defmodule ChainedFunctionComponentWithSingleRoot do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <.container name="foo">
+        <h3>Content with ID: {@id}</h3>
+      </.container>
+      """
+    end
+
+    defp container(assigns) do
+      ~H"""
+      <.container2>
+        {@name}
+        {render_slot(@inner_block)}
+      </.container2>
+      """
+    end
+
+    defp container2(assigns) do
+      ~H"""
+      <div class="wrapper">
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
+  end
+
+  defmodule ChainedFunctionComponentWithoutSingleRoot do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <.container name="foo">
+        <h3>Content with ID: {@id}</h3>
+      </.container>
+      """
+    end
+
+    defp container(assigns) do
+      ~H"""
+      <.container2>
+        {@name}
+        {render_slot(@inner_block)}
+      </.container2>
+      """
+    end
+
+    defp container2(assigns) do
+      ~H"""
+      foo
+      <div class="wrapper">
         {render_slot(@inner_block)}
       </div>
       """
@@ -590,6 +649,16 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       html = render_component(FunctionComponentWithSingleRoot, %{id: "test123"})
       assert html =~ "Content with ID: test123"
       assert html =~ ~s(<div class="wrapper">)
+
+      html = render_component(ChainedFunctionComponentWithSingleRoot, %{id: "test123"})
+      assert html =~ "Content with ID: test123"
+      assert html =~ ~s(<div class="wrapper">)
+
+      assert_raise ArgumentError,
+                   ~r/Stateful components must have a single static HTML tag at the root/,
+                   fn ->
+                     render_component(ChainedFunctionComponentWithoutSingleRoot, %{id: "test123"})
+                   end
     end
 
     test "loads unloaded component" do
