@@ -9,7 +9,6 @@ on:
 jobs:
   mix_test:
     name: mix test (OTP ${{matrix.otp}} | Elixir ${{matrix.elixir}})
-    continue-on-error: ${{ matrix.experimental }}
 
     strategy:
       fail-fast: false
@@ -17,22 +16,18 @@ jobs:
         include:
           - elixir: 1.15.4
             otp: 25.3
-            experimental: false
 
           - elixir: 1.16.3
             otp: 26.2
-            experimental: false
 
           # update coverage report as well
           - elixir: 1.18.4
             otp: 27.3
             lint: lint
-            experimental: false
 
           # run against latest Elixir to catch warnings early
           - elixir: main-otp-28
             otp: maint-28
-            experimental: true
 
     runs-on: ubuntu-latest
 
