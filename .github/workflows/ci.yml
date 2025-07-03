@@ -14,18 +14,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        experimental: [false]
         include:
           - elixir: 1.15.4
             otp: 25.3
+            experimental: false
 
           - elixir: 1.16.3
             otp: 26.2
+            experimental: false
 
           # update coverage report as well
           - elixir: 1.18.4
             otp: 27.3
             lint: lint
+            experimental: false
 
           # run against latest Elixir to catch warnings early
           - elixir: main-otp-28
