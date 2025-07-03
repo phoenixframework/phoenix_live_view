@@ -261,13 +261,12 @@ Or using the special `:for` attribute:
 
 Comprehensions in templates are optimized so the static parts of
 a comprehension are only sent once, regardless of the number of items.
-However, keep in mind LiveView does not track changes within the
-collection given to the comprehension. In other words, if one entry
-in `@posts` changes, all posts are sent again.
-
-There are two common solutions to this problem.
-
-The first one is to also provide a `:key` expression:
+Furthermore, LiveView tracks changes within the collection given to the
+comprehension. In the ideal case, if only a single entry in `@posts`
+changes, only this entry is sent again. By default, the index is used
+to track changes. This means that if an entry is appended, most items
+will be considered changed and sent again. To optimize this, you can
+also pass a `:key` on tags in HEEx:
 
 ```heex
 <section :for={post <- @posts} :key={post.id}>
@@ -275,25 +274,12 @@ The first one is to also provide a `:key` expression:
 </section>
 ```
 
-This is functionally equivalent to doing:
-
-```heex
-<section :for={post <- @posts}>
-  <.live_component module={PostComponent} id={"post-#{post.id}"} post={post} />
-</section>
-```
-
-Since LiveComponents have their own assigns, LiveComponents would allow
-you to perform change tracking for each item. If the `@posts` variable
-changes, the client will simply send a list of component IDs (which are
-integers) and only the data for the posts that actually changed.
 You can read more about `:key` in the [documentation for `sigil_H/2`](Phoenix.Component.html#sigil_H/2-special-attributes).
 
-The second solution is to use `Phoenix.LiveView.stream/4`, which gives you
-precise control over how elements are added, removed, and updated. Streams
-are particularly useful when you don't need to keep the collection in memory,
-allowing you to reduce the data sent over the wire and the server memory
-usage.
+To track changes in comprehensions, LiveView needs to perform additional
+bookkeeping, which requires extra memory on the server. If memory usage is a
+concern, you should also consider to use `Phoenix.LiveView.stream/4`, which
+allows you to manage collections without keeping them in memory.
 
 ### Summary
 

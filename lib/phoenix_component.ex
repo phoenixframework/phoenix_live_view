@@ -819,7 +819,7 @@ defmodule Phoenix.Component do
     <:col :for={header <- @headers} :let={user}>
       <td>{user[header]}</td>
     </:col>
-  <table>
+  <.table>
   ```
 
   You can also combine `:for` and `:if` for tags, components, and slot to act as a filter:
@@ -830,6 +830,16 @@ defmodule Phoenix.Component do
 
   Note that unlike Elixir's regular `for`, HEEx' `:for` does not support multiple
   generators in one expression. In such cases, you must use `EEx`'s blocks.
+
+  > #### Change tracking `:for` on slots {: .warning}
+  >
+  > Compared to regular HTML tags and components, LiveView does not
+  > optimize comprehensions on slots.
+  > This means that if `@headers` changes in the example above, all
+  > headers are sent over the wire again.
+  >
+  > Furthermore, `:key` (see below) is also not supported on slots
+  > right now.
 
   #### `:key`ed comprehensions
 
