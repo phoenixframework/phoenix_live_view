@@ -11,6 +11,7 @@ jobs:
     name: mix test (OTP ${{matrix.otp}} | Elixir ${{matrix.elixir}})
 
     strategy:
+      fail-fast: false
       matrix:
         include:
           - elixir: 1.15.4
