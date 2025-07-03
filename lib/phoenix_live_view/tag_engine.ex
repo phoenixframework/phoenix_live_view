@@ -612,7 +612,6 @@ defmodule Phoenix.LiveView.TagEngine do
     attrs = postprocess_attrs(attrs, state)
     %{line: line} = tag_meta
     {special, roots, attrs, attr_info} = split_component_attrs({"slot", slot_name}, attrs, state)
-    raise_if_key!(special[":key"], {"slot", slot_name}, "", state.file)
     let = special[":let"]
 
     with {_, let_meta} <- let do
@@ -646,7 +645,6 @@ defmodule Phoenix.LiveView.TagEngine do
 
     attrs = postprocess_attrs(attrs, state)
     {special, roots, attrs, attr_info} = split_component_attrs({"slot", slot_name}, attrs, state)
-    raise_if_key!(special[":key"], {"slot", slot_name}, "", state.file)
     clauses = build_component_clauses(special[":let"], slot_name, tag_meta, tag_close_meta, state)
 
     ast =
@@ -1188,7 +1186,6 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp build_component_assigns(type_component, attrs, line, tag_meta, tag_close_meta, state) do
     {special, roots, attrs, attr_info} = split_component_attrs(type_component, attrs, state)
-    raise_if_key!(special[":key"], type_component, " with inner content", state.file)
 
     clauses =
       build_component_clauses(special[":let"], :inner_block, tag_meta, tag_close_meta, state)
@@ -1242,10 +1239,10 @@ defmodule Phoenix.LiveView.TagEngine do
 
   @special_attrs ~w(:let :if :for :key)
   defp split_component_attr(
-         {:key, _expr, attr_meta},
+         {":key", _expr, attr_meta},
          _,
          state,
-         {:slot, slot_name}
+         {"slot", slot_name}
        ) do
     message = ":key is not supported on slots: #{slot_name}"
     raise_syntax_error!(message, attr_meta, state)
@@ -1363,13 +1360,6 @@ defmodule Phoenix.LiveView.TagEngine do
   defp raise_if_let!(let, file) do
     with {_pattern, %{line: line}} <- let do
       message = "cannot use :let on a component without inner content"
-      raise CompileError, line: line, file: file, description: message
-    end
-  end
-
-  defp raise_if_key!(key, {type, component_or_slot}, extra, file) do
-    with {_pattern, %{line: line}} <- key do
-      message = "cannot use :key on a #{type}#{extra}: #{component_or_slot}"
       raise CompileError, line: line, file: file, description: message
     end
   end

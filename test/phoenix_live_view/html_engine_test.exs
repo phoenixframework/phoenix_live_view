@@ -559,6 +559,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       end)
     end
 
+    test "raise when passing :key to slot" do
+      message = ~r":key is not supported on slots: sample"
+
+      assert_raise(ParseError, message, fn ->
+        eval("""
+        <.function_component_with_single_slot>
+          <:sample :for={i <- 1..2} :key={i}>
+            The sample slot
+          </:sample>
+        </.function_component_with_single_slot>
+        """)
+      end)
+    end
+
     test "local call (self close)" do
       assigns = %{}
 
