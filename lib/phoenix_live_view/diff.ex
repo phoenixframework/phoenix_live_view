@@ -357,7 +357,9 @@ defmodule Phoenix.LiveView.Diff do
   defp component_to_rendered(socket, component, id) do
     rendered = Phoenix.LiveView.Renderer.to_rendered(socket, component)
 
-    if rendered.root != true and id != nil do
+    has_root = has_single_root_component?(rendered)
+
+    if id != nil and !has_root do
       reason =
         case rendered.root do
           nil -> "Stateful components must return a HEEx template (~H sigil or .heex extension)"
@@ -366,9 +368,27 @@ defmodule Phoenix.LiveView.Diff do
 
       raise ArgumentError,
             "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{reason}"
+    else
+      # Mark this element as having a root for future diffs.
+      %{rendered | root: true}
     end
+  end
 
-    rendered
+  defp has_single_root_component?(%Phoenix.LiveView.Rendered{root: true}) do
+    true
+  end
+
+  # Handle cases for LiveComponents with a single static root will have
+  # 2 static elements, either empty, or comments for annotations
+  defp has_single_root_component?(%Phoenix.LiveView.Rendered{static: [_, _], dynamic: dynamic}) do
+    case dynamic.(false) do
+      [%Phoenix.LiveView.Rendered{root: true}] -> true
+      _ -> false
+    end
+  end
+
+  defp has_single_root_component?(_) do
+    false
   end
 
   ## Traversal

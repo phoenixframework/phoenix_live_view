@@ -539,6 +539,27 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     end
   end
 
+  defmodule FunctionComponentWithSingleRoot do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <.container name="foo">
+        <h3>Content with ID: {@id}</h3>
+      </.container>
+      """
+    end
+
+    def container(assigns) do
+      ~H"""
+      <div class="wrapper">
+        {@name}
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
+  end
+
   describe "render_component/2" do
     test "life-cycle" do
       assert render_component(MyComponent, %{from: "test", id: "stateful"}, router: SomeRouter) =~
@@ -563,6 +584,12 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert_raise ArgumentError, ~r/have a single static HTML tag at the root/, fn ->
         render_component(BadRootComponent, %{id: "id"})
       end
+    end
+
+    test "allows function components with single root" do
+      html = render_component(FunctionComponentWithSingleRoot, %{id: "test123"})
+      assert html =~ "Content with ID: test123"
+      assert html =~ ~s(<div class="wrapper">)
     end
 
     test "loads unloaded component" do
