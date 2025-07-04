@@ -62,10 +62,21 @@ defmodule Phoenix.LiveView.Diff do
     if !keyed or keyed[@keyed_count] == 0 do
       {[], components}
     else
-      Enum.map_reduce(0..(keyed[@keyed_count] - 1), components, fn index, components ->
-        rendered = Map.fetch!(keyed, index)
-        to_iodata(Map.put(rendered, @static, static), components, template, mapper)
-      end)
+      {diff, {components, _}} =
+        Enum.map_reduce(0..(keyed[@keyed_count] - 1), {components, nil}, fn
+          index, {components, canonical_diff} ->
+            diff = Map.fetch!(keyed, index)
+            canonical_diff = canonical_diff || diff
+            # merge nested statics from canonical diff
+            diff = deep_merge(canonical_diff, diff)
+
+            {iodata, components} =
+              to_iodata(Map.put(diff, @static, static), components, template, mapper)
+
+            {iodata, {components, canonical_diff}}
+        end)
+
+      {diff, components}
     end
   end
 
@@ -668,8 +679,7 @@ defmodule Phoenix.LiveView.Diff do
       )
 
     # we don't need to send the diff if nothing changed;
-    # map_size - 1 because the prints also contain the :canonical_print
-    if diff == %{} and count > 0 and count == map_size(previous_prints) - 1 do
+    if diff == %{} and count > 0 and count == map_size(previous_prints) do
       {nil, new_prints, pending, components, template}
     else
       {Map.put(diff, @keyed_count, count), new_prints, pending, components, template}
@@ -683,13 +693,6 @@ defmodule Phoenix.LiveView.Diff do
 
     %{vars: previous_vars, index: previous_index, child_prints: child_prints} =
       Map.fetch!(previous_prints, key)
-
-    child_prints =
-      if child_prints == :canonical_print do
-        Map.fetch!(previous_prints, :canonical_print)
-      else
-        child_prints
-      end
 
     vars_changed =
       Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn
@@ -708,8 +711,10 @@ defmodule Phoenix.LiveView.Diff do
         changed?
       )
 
-    {new_prints, canonical_print} =
-      canonical_print(new_prints, canonical_print, key, index, new_vars, child_prints)
+    canonical_print = canonical_print || child_prints
+
+    new_prints =
+      Map.put(new_prints, key, %{index: index, vars: new_vars, child_prints: child_prints})
 
     # if the diff is empty, we need to check if the item moved
     if child_diff == %{} or child_diff == nil do
@@ -736,7 +741,7 @@ defmodule Phoenix.LiveView.Diff do
     {_counter, child_diff, child_prints, pending, components, template} =
       traverse_dynamic(
         render.(%{}, false),
-        %{},
+        if(canonical_print, do: canonical_print, else: %{}),
         pending,
         components,
         template,
@@ -745,45 +750,19 @@ defmodule Phoenix.LiveView.Diff do
         false
       )
 
+    canonical_print = canonical_print || child_prints
+
     # if this is a stream, we don't store any fingerprints
-    {new_prints, canonical_print} =
+    new_prints =
       if stream? do
         {%{}, nil}
       else
-        canonical_print(new_prints, canonical_print, key, index, vars, child_prints)
+        Map.put(new_prints, key, %{index: index, vars: vars, child_prints: child_prints})
       end
 
     diff = Map.put(diff, index, child_diff)
 
     {diff, index + 1, new_prints, pending, components, template, canonical_print}
-  end
-
-  # when we don't have a canonical print yet, this is the canonical print
-  defp canonical_print(
-         new_prints,
-         _canonical_print = nil,
-         key,
-         index,
-         vars,
-         child_prints
-       ) do
-    new_prints =
-      new_prints
-      |> Map.put(key, %{index: index, vars: vars, child_prints: :canonical_print})
-      |> Map.put(:canonical_print, child_prints)
-
-    {new_prints, child_prints}
-  end
-
-  # if the print is equal to the canonical print, we just store :canonical_print instead
-  defp canonical_print(new_prints, print, key, index, vars, print) do
-    {Map.put(new_prints, key, %{index: index, vars: vars, child_prints: :canonical_print}), print}
-  end
-
-  # no match, we need to store the full fingerprint
-  defp canonical_print(new_prints, canonical_print, key, index, vars, child_prints) do
-    {Map.put(new_prints, key, %{index: index, vars: vars, child_prints: child_prints}),
-     canonical_print}
   end
 
   defp maybe_share_template(map, fingerprint, static, {print_to_pos, pos_to_static}) do

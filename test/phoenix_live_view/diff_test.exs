@@ -219,9 +219,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert {_,
               %{
-                0 => %{index: 0, vars: %{name: "phoenix"}, child_prints: :canonical_print},
-                1 => %{index: 1, vars: %{name: "elixir"}, child_prints: :canonical_print},
-                :canonical_print => %{}
+                0 => %{index: 0, vars: %{name: "phoenix"}, child_prints: print},
+                1 => %{index: 1, vars: %{name: "elixir"}, child_prints: print}
               }} = comprehension_print
     end
 
@@ -287,7 +286,7 @@ defmodule Phoenix.LiveView.DiffTest do
                    },
                    1 => %{
                      0 => "elixir",
-                     1 => %{k: %{0 => %{0 => "1"}, 1 => %{0 => "2"}, :kc => 2}, s: 0}
+                     1 => %{k: %{0 => %{0 => "1"}, 1 => %{0 => "2"}, :kc => 2}}
                    },
                    :kc => 2
                  }
@@ -305,17 +304,8 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert {_,
               %{
-                0 => %{index: 0, vars: %{name: "phoenix"}, child_prints: :canonical_print},
-                1 => %{index: 1, vars: %{name: "elixir"}, child_prints: :canonical_print},
-                :canonical_print => %{
-                  1 =>
-                    {_,
-                     %{
-                       0 => %{index: 0, vars: %{score: 1}, child_prints: :canonical_print},
-                       1 => %{index: 1, vars: %{score: 2}, child_prints: :canonical_print},
-                       :canonical_print => %{}
-                     }}
-                }
+                0 => %{index: 0, vars: %{name: "phoenix"}, child_prints: print},
+                1 => %{index: 1, vars: %{name: "elixir"}, child_prints: print}
               }} = comprehension_print
     end
   end
@@ -1484,8 +1474,7 @@ defmodule Phoenix.LiveView.DiffTest do
                    1 => %{
                      0 => "bar",
                      1 => %{
-                       k: %{0 => %{0 => "0", 1 => 3}, 1 => %{0 => "1", 1 => 4}, :kc => 2},
-                       s: 0
+                       k: %{0 => %{0 => "0", 1 => 3}, 1 => %{0 => "1", 1 => 4}, :kc => 2}
                      }
                    },
                    :kc => 2
@@ -1646,7 +1635,7 @@ defmodule Phoenix.LiveView.DiffTest do
                  s: 1,
                  k: %{
                    0 => %{0 => "1", 1 => %{0 => 1, :r => 1, :s => 0}},
-                   1 => %{0 => "2", 1 => %{0 => 2, :r => 1, :s => 0}},
+                   1 => %{0 => "2", 1 => %{0 => 2}},
                    :kc => 2
                  }
                },
@@ -2161,11 +2150,8 @@ defmodule Phoenix.LiveView.DiffTest do
                            0 => %{0 => "200", 1 => "First"},
                            1 => %{0 => "200", 1 => "Second"},
                            :kc => 2
-                         },
-                         s: 0
-                       },
-                       :r => 1,
-                       :s => 1
+                         }
+                       }
                      }
                    },
                    :kc => 2
@@ -2227,11 +2213,8 @@ defmodule Phoenix.LiveView.DiffTest do
                            0 => %{0 => "0", 1 => "Third"},
                            1 => %{0 => "0", 1 => "Fourth"},
                            :kc => 2
-                         },
-                         s: 0
-                       },
-                       :r => 1,
-                       :s => 1
+                         }
+                       }
                      }
                    },
                    :kc => 2
@@ -2294,7 +2277,7 @@ defmodule Phoenix.LiveView.DiffTest do
                        0 => %{
                          k: %{
                            0 => %{0 => %{0 => "1-1", :s => 0, 1 => "0"}},
-                           1 => %{0 => %{0 => "1-2", :s => 0, 1 => "0"}},
+                           1 => %{0 => %{0 => "1-2", 1 => "0"}},
                            :kc => 2
                          },
                          s: 1
@@ -2307,14 +2290,11 @@ defmodule Phoenix.LiveView.DiffTest do
                      0 => %{
                        0 => %{
                          k: %{
-                           0 => %{0 => %{0 => "2-1", :s => 0, 1 => "0"}},
-                           1 => %{0 => %{0 => "2-2", :s => 0, 1 => "0"}},
+                           0 => %{0 => %{0 => "2-1", 1 => "0"}},
+                           1 => %{0 => %{0 => "2-2", 1 => "0"}},
                            :kc => 2
-                         },
-                         s: 1
-                       },
-                       :r => 1,
-                       :s => 2
+                         }
+                       }
                      }
                    },
                    :kc => 2
