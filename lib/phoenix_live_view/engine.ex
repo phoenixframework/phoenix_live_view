@@ -1227,7 +1227,6 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp set_vars({kind, _}, {_, map}), do: {kind, map}
-  # defp taint_vars({_, map}), do: {:tainted, map}
   defp untaint_vars({_, map}), do: {:untainted, map}
 
   defp unless_tainted(:tainted, _), do: :tainted
