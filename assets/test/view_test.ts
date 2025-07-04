@@ -689,7 +689,7 @@ describe("View + DOM", function () {
     const countChildNodes = () =>
       document.getElementById("list").childNodes.length;
 
-    const createView = (updateType, initialDynamics) => {
+    const createView = (updateType, initialEntries) => {
       const liveSocket = new LiveSocket("/live", Socket);
       const el = liveViewDOM();
       const view = simulateJoinedView(el, liveSocket);
@@ -697,7 +697,7 @@ describe("View + DOM", function () {
       stubChannel(view);
 
       const joinDiff = {
-        "0": { d: initialDynamics, s: ['\n<div id="', '">', "</div>\n"] },
+        "0": { k: initialEntries, s: ['\n<div id="', '">', "</div>\n"] },
         s: [`<div id="list" phx-update="${updateType}">`, "</div>"],
       };
 
@@ -706,10 +706,10 @@ describe("View + DOM", function () {
       return view;
     };
 
-    const updateDynamics = (view, dynamics) => {
+    const updateEntries = (view, entries) => {
       const updateDiff = {
         "0": {
-          d: dynamics,
+          k: entries,
         },
       };
 
@@ -717,189 +717,215 @@ describe("View + DOM", function () {
     };
 
     test("replace", async () => {
-      const view = createView("replace", [["1", "1"]]);
+      const view = createView("replace", { 0: { 0: "1", 1: "1" }, kc: 1 });
       expect(childIds()).toEqual([1]);
 
-      updateDynamics(view, [
-        ["2", "2"],
-        ["3", "3"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "2", 1: "2" },
+        1: { 0: "3", 1: "3" },
+        kc: 2,
+      });
       expect(childIds()).toEqual([2, 3]);
     });
 
     test("append", async () => {
-      const view = createView("append", [["1", "1"]]);
+      const view = createView("append", { 0: { 0: "1", 1: "1" }, kc: 1 });
       expect(childIds()).toEqual([1]);
 
       // Append two elements
-      updateDynamics(view, [
-        ["2", "2"],
-        ["3", "3"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "2", 1: "2" },
+        1: { 0: "3", 1: "3" },
+        kc: 2,
+      });
       expect(childIds()).toEqual([1, 2, 3]);
 
       // Update the last element
-      updateDynamics(view, [["3", "3"]]);
+      updateEntries(view, {
+        0: { 0: "3", 1: "3" },
+        kc: 1,
+      });
       expect(childIds()).toEqual([1, 2, 3]);
 
       // Update the first element
-      updateDynamics(view, [["1", "1"]]);
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        kc: 1,
+      });
       expect(childIds()).toEqual([1, 2, 3]);
 
       // Update before new elements
-      updateDynamics(view, [
-        ["4", "4"],
-        ["5", "5"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "4", 1: "4" },
+        1: { 0: "5", 1: "5" },
+        kc: 2,
+      });
       expect(childIds()).toEqual([1, 2, 3, 4, 5]);
 
       // Update after new elements
-      updateDynamics(view, [
-        ["6", "6"],
-        ["7", "7"],
-        ["5", "modified"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "6", 1: "6" },
+        1: { 0: "7", 1: "7" },
+        2: { 0: "5", 1: "modified" },
+        kc: 3,
+      });
       expect(childIds()).toEqual([1, 2, 3, 4, 5, 6, 7]);
 
       // Sandwich an update between two new elements
-      updateDynamics(view, [
-        ["8", "8"],
-        ["7", "modified"],
-        ["9", "9"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "8", 1: "8" },
+        1: { 0: "7", 1: "modified" },
+        2: { 0: "9", 1: "9" },
+        kc: 3,
+      });
       expect(childIds()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
       // Update all elements in reverse order
-      updateDynamics(view, [
-        ["9", "9"],
-        ["8", "8"],
-        ["7", "7"],
-        ["6", "6"],
-        ["5", "5"],
-        ["4", "4"],
-        ["3", "3"],
-        ["2", "2"],
-        ["1", "1"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "9", 1: "9" },
+        1: { 0: "8", 1: "8" },
+        2: { 0: "7", 1: "7" },
+        3: { 0: "6", 1: "6" },
+        4: { 0: "5", 1: "5" },
+        5: { 0: "4", 1: "4" },
+        6: { 0: "3", 1: "3" },
+        7: { 0: "2", 1: "2" },
+        8: { 0: "1", 1: "1" },
+        kc: 9,
+      });
       expect(childIds()).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
       // Make sure we don't have a memory leak when doing updates
       const initialCount = countChildNodes();
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        1: { 0: "2", 1: "2" },
+        2: { 0: "3", 1: "3" },
+        kc: 3,
+      });
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        1: { 0: "2", 1: "2" },
+        2: { 0: "3", 1: "3" },
+        kc: 3,
+      });
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        1: { 0: "2", 1: "2" },
+        2: { 0: "3", 1: "3" },
+        kc: 3,
+      });
 
       expect(countChildNodes()).toBe(initialCount);
     });
 
     test("prepend", async () => {
-      const view = createView("prepend", [["1", "1"]]);
+      const view = createView("prepend", { 0: { 0: "1", 1: "1" }, kc: 1 });
       expect(childIds()).toEqual([1]);
 
       // Append two elements
-      updateDynamics(view, [
-        ["2", "2"],
-        ["3", "3"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "2", 1: "2" },
+        1: { 0: "3", 1: "3" },
+        kc: 2,
+      });
       expect(childIds()).toEqual([2, 3, 1]);
 
       // Update the last element
-      updateDynamics(view, [["3", "3"]]);
+      updateEntries(view, {
+        0: { 0: "3", 1: "3" },
+        kc: 1,
+      });
       expect(childIds()).toEqual([2, 3, 1]);
 
       // Update the first element
-      updateDynamics(view, [["1", "1"]]);
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        kc: 1,
+      });
       expect(childIds()).toEqual([2, 3, 1]);
 
       // Update before new elements
-      updateDynamics(view, [
-        ["4", "4"],
-        ["5", "5"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "4", 1: "4" },
+        1: { 0: "5", 1: "5" },
+        kc: 2,
+      });
       expect(childIds()).toEqual([4, 5, 2, 3, 1]);
 
       // Update after new elements
-      updateDynamics(view, [
-        ["6", "6"],
-        ["7", "7"],
-        ["5", "modified"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "6", 1: "6" },
+        1: { 0: "7", 1: "7" },
+        2: { 0: "5", 1: "modified" },
+        kc: 3,
+      });
       expect(childIds()).toEqual([6, 7, 4, 5, 2, 3, 1]);
 
       // Sandwich an update between two new elements
-      updateDynamics(view, [
-        ["8", "8"],
-        ["7", "modified"],
-        ["9", "9"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "8", 1: "8" },
+        1: { 0: "7", 1: "modified" },
+        2: { 0: "9", 1: "9" },
+        kc: 3,
+      });
       expect(childIds()).toEqual([8, 9, 6, 7, 4, 5, 2, 3, 1]);
 
       // Update all elements in reverse order
-      updateDynamics(view, [
-        ["1", "1"],
-        ["3", "3"],
-        ["2", "2"],
-        ["5", "5"],
-        ["4", "4"],
-        ["7", "7"],
-        ["6", "6"],
-        ["9", "9"],
-        ["8", "8"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "9", 1: "9" },
+        1: { 0: "8", 1: "8" },
+        2: { 0: "7", 1: "7" },
+        3: { 0: "6", 1: "6" },
+        4: { 0: "5", 1: "5" },
+        5: { 0: "4", 1: "4" },
+        6: { 0: "3", 1: "3" },
+        7: { 0: "2", 1: "2" },
+        8: { 0: "1", 1: "1" },
+        kc: 9,
+      });
       expect(childIds()).toEqual([8, 9, 6, 7, 4, 5, 2, 3, 1]);
 
       // Make sure we don't have a memory leak when doing updates
       const initialCount = countChildNodes();
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
-      updateDynamics(view, [
-        ["1", "1"],
-        ["2", "2"],
-        ["3", "3"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        1: { 0: "2", 1: "2" },
+        2: { 0: "3", 1: "3" },
+        kc: 3,
+      });
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        1: { 0: "2", 1: "2" },
+        2: { 0: "3", 1: "3" },
+        kc: 3,
+      });
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        1: { 0: "2", 1: "2" },
+        2: { 0: "3", 1: "3" },
+        kc: 3,
+      });
+      updateEntries(view, {
+        0: { 0: "1", 1: "1" },
+        1: { 0: "2", 1: "2" },
+        2: { 0: "3", 1: "3" },
+        kc: 3,
+      });
 
       expect(countChildNodes()).toBe(initialCount);
     });
 
     test("ignore", async () => {
-      const view = createView("ignore", [["1", "1"]]);
+      const view = createView("ignore", { 0: { 0: "1", 1: "1" }, kc: 1 });
       expect(childIds()).toEqual([1]);
 
       // Append two elements
-      updateDynamics(view, [
-        ["2", "2"],
-        ["3", "3"],
-      ]);
+      updateEntries(view, {
+        0: { 0: "2", 1: "2" },
+        1: { 0: "3", 1: "3" },
+        kc: 2,
+      });
       expect(childIds()).toEqual([1]);
     });
   });

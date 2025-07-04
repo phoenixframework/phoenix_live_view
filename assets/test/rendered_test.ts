@@ -1,9 +1,11 @@
 import Rendered from "phoenix_live_view/rendered";
-
-const STATIC = "s";
-const DYNAMICS = "d";
-const COMPONENTS = "c";
-const TEMPLATES = "p";
+import {
+  STATIC,
+  COMPONENTS,
+  KEYED,
+  KEYED_COUNT,
+  TEMPLATES,
+} from "phoenix_live_view/constants";
 
 describe("Rendered", () => {
   describe("mergeDiff", () => {
@@ -303,10 +305,11 @@ const simpleDiffResult = {
 const deepDiff1 = {
   "0": {
     "0": {
-      [DYNAMICS]: [
-        ["user1058", "1"],
-        ["user99", "1"],
-      ],
+      [KEYED]: {
+        0: { 0: "user1058", 1: "1" },
+        1: { 0: "user99", 1: "1" },
+        [KEYED_COUNT]: 2,
+      },
       [STATIC]: [
         "        <tr>\n          <td>",
         " (",
@@ -321,16 +324,17 @@ const deepDiff1 = {
     r: 1,
   },
   "1": {
-    [DYNAMICS]: [
-      [
-        "asdf_asdf",
-        "asdf@asdf.com",
-        "123-456-7890",
-        '<a href="/users/1">Show</a>',
-        '<a href="/users/1/edit">Edit</a>',
-        '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
-      ],
-    ],
+    [KEYED]: {
+      0: {
+        0: "asdf_asdf",
+        1: "asdf@asdf.com",
+        2: "123-456-7890",
+        3: '<a href="/users/1">Show</a>',
+        4: '<a href="/users/1/edit">Edit</a>',
+        5: '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
+      },
+      [KEYED_COUNT]: 1,
+    },
     [STATIC]: [
       "    <tr>\n      <td>",
       "</td>\n      <td>",
@@ -347,7 +351,7 @@ const deepDiff1 = {
 const deepDiff2 = {
   "0": {
     "0": {
-      [DYNAMICS]: [["user1058", "2"]],
+      [KEYED]: { 0: { 0: "user1058", 1: "2" }, [KEYED_COUNT]: 1 },
     },
   },
 };
@@ -356,7 +360,10 @@ const deepDiffResult = {
   "0": {
     "0": {
       newRender: true,
-      [DYNAMICS]: [["user1058", "2"]],
+      [KEYED]: {
+        0: { 0: "user1058", 1: "2" },
+        [KEYED_COUNT]: 1,
+      },
       [STATIC]: [
         "        <tr>\n          <td>",
         " (",
@@ -372,16 +379,17 @@ const deepDiffResult = {
     r: 1,
   },
   "1": {
-    [DYNAMICS]: [
-      [
-        "asdf_asdf",
-        "asdf@asdf.com",
-        "123-456-7890",
-        '<a href="/users/1">Show</a>',
-        '<a href="/users/1/edit">Edit</a>',
-        '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
-      ],
-    ],
+    [KEYED]: {
+      0: {
+        0: "asdf_asdf",
+        1: "asdf@asdf.com",
+        2: "123-456-7890",
+        3: '<a href="/users/1">Show</a>',
+        4: '<a href="/users/1/edit">Edit</a>',
+        5: '<a href="#" phx-click="delete_user" phx-value="1">Delete</a>',
+      },
+      [KEYED_COUNT]: 1,
+    },
     [STATIC]: [
       "    <tr>\n      <td>",
       "</td>\n      <td>",
@@ -397,28 +405,31 @@ const deepDiffResult = {
 
 const staticReuseDiff = {
   "0": {
-    [DYNAMICS]: [
-      [
-        "foo",
-        {
-          [DYNAMICS]: [
-            ["0", 1],
-            ["1", 2],
-          ],
+    [KEYED]: {
+      [KEYED_COUNT]: 2,
+      0: {
+        0: "foo",
+        1: {
+          [KEYED]: {
+            [KEYED_COUNT]: 2,
+            0: { 0: "0", 1: 1 },
+            1: { 0: "1", 1: 2 },
+          },
           [STATIC]: 0,
         },
-      ],
-      [
-        "bar",
-        {
-          [DYNAMICS]: [
-            ["0", 3],
-            ["1", 4],
-          ],
+      },
+      1: {
+        0: "bar",
+        1: {
+          [KEYED]: {
+            [KEYED_COUNT]: 2,
+            0: { 0: "0", 1: 3 },
+            1: { 0: "1", 1: 4 },
+          },
           [STATIC]: 0,
         },
-      ],
-    ],
+      },
+    },
     [STATIC]: ["\n  <p>\n    ", "\n    ", "\n  </p>\n"],
     r: 1,
     [TEMPLATES]: { "0": ["<span>", ": ", "</span>"] },

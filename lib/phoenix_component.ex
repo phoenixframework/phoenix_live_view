@@ -819,7 +819,7 @@ defmodule Phoenix.Component do
     <:col :for={header <- @headers} :let={user}>
       <td>{user[header]}</td>
     </:col>
-  <table>
+  <.table>
   ```
 
   You can also combine `:for` and `:if` for tags, components, and slot to act as a filter:
@@ -831,10 +831,20 @@ defmodule Phoenix.Component do
   Note that unlike Elixir's regular `for`, HEEx' `:for` does not support multiple
   generators in one expression. In such cases, you must use `EEx`'s blocks.
 
+  > #### Change tracking `:for` on slots {: .warning}
+  >
+  > Compared to regular HTML tags and components, LiveView does not
+  > optimize comprehensions on slots.
+  > This means that if `@headers` changes in the example above, all
+  > headers are sent over the wire again.
+  >
+  > Furthermore, `:key` (see below) is also not supported on slots
+  > right now.
+
   #### `:key`ed comprehensions
 
-  When using `:for`, you can optionally provide a `:key` expression to also perform
-  change-tracking inside the comprehension:
+  When using `:for`, you can optionally provide a `:key` expression to perform
+  better change tracking inside the comprehension:
 
   ```heex
   <ul>
@@ -845,23 +855,10 @@ defmodule Phoenix.Component do
   </ul>
   ```
 
-  Internally, this works by turning the tag where the comprehension is defined on
-  into the template of a `Phoenix.LiveComponent`. Because of this, the following limitations
-  apply to comprehensions defined with `:key`:
+  By default, the index is used as a key, which means that appending an entry leads to
+  all items being considered changed. Therefore, we recommend to use a `:key` whenever possible.
 
-    1. A `:key` can only be defined on regular HTML tags, not on components or slots.
-    2. The `key` must be globally unique. LiveView prefixes the given value with the module,
-       line and file where the `:key` is defined, but there can still be situations where
-       conflicts occur.
-    3. The diff over the wire is optimized to only send changes for each item,
-       but it will always include a list of component IDs (integers) specifying
-       the overall order of items.
-    4. Removing an entry involves separate round-trips with the client to confirm
-       the component removal.
-
-  We recommend to use `:key`ed comprehensions only if you already determined that you need
-  to optimize the diff over the write and [streams](`Phoenix.LiveView.stream/4`)
-  are not an option.
+  Note that the `:key` has no effect when using [streams](`Phoenix.LiveView.stream/4`).
 
   ### Function components
 

@@ -563,6 +563,7 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
 
   await page.locator("#my-form_name").fill("Test");
   await page.locator("label", { hasText: "add more" }).click();
+  await syncLV(page);
 
   expect(await formData()).toEqual(
     expect.objectContaining({
@@ -577,6 +578,7 @@ test("can dynamically add/remove inputs using checkboxes", async ({ page }) => {
 
   await page.locator("#my-form_users_1_name").fill("User B");
   await page.locator("#my-form_users_2_name").fill("User C");
+  await syncLV(page);
 
   expect(await formData()).toEqual(
     expect.objectContaining({

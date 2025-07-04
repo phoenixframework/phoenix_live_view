@@ -106,10 +106,11 @@ export const DEFAULTS = {
 };
 export const PHX_PENDING_ATTRS = [PHX_REF_LOADING, PHX_REF_SRC, PHX_REF_LOCK];
 // Rendered
-export const DYNAMICS = "d";
 export const STATIC = "s";
 export const ROOT = "r";
 export const COMPONENTS = "c";
+export const KEYED = "k";
+export const KEYED_COUNT = "kc";
 export const EVENTS = "e";
 export const REPLY = "r";
 export const TITLE = "t";
