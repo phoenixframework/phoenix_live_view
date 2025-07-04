@@ -273,15 +273,21 @@ export default class Rendered {
     }
   }
 
-  // keyed comprehensions
-  mergeKeyed(target, source) {
-    let clonedTarget;
+  clone(diff) {
     if ("structuredClone" in window) {
-      clonedTarget = structuredClone(target);
+      return structuredClone(diff);
     } else {
       // fallback for jest
-      clonedTarget = JSON.parse(JSON.stringify(target));
+      return JSON.parse(JSON.stringify(diff));
     }
+  }
+
+  // keyed comprehensions
+  mergeKeyed(target, source) {
+    // we need to clone the target since elements can move and otherwise
+    // it could happen that we modify an element that we'll need to refer to
+    // later
+    const clonedTarget = this.clone(target);
     Object.entries(source[KEYED]).forEach(([i, entry]) => {
       if (i === KEYED_COUNT) {
         return;
@@ -469,12 +475,27 @@ export default class Rendered {
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
+    let canonicalDiff;
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      const entry = rendered[KEYED][i];
+      // this is another optimization where we assume the first element in
+      // the comprehension has a "canonical diff" that is shared with all
+      // following elements (if possible). The diff only contains the
+      // dynamic parts for the parts that can be shared, therefore we use
+      // cloneMerge to copy all eligilbe statics from the first diff into
+      // all subsequent ones.
+      if (i == 0) {
+        canonicalDiff = rendered[KEYED][i];
+      } else {
+        rendered[KEYED][i] = this.cloneMerge(
+          canonicalDiff,
+          rendered[KEYED][i],
+          true,
+        );
+      }
       output.buffer += statics[0];
       for (let j = 1; j < statics.length; j++) {
         this.dynamicToBuffer(
-          entry[j - 1],
+          rendered[KEYED][i][j - 1],
           keyedTemplates,
           output,
           changeTracking,
