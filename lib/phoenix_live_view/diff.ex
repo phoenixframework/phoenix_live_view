@@ -413,86 +413,118 @@ defmodule Phoenix.LiveView.Diff do
 
   ## Traversal
 
-  defp traverse(
-         %Rendered{fingerprint: fingerprint} = rendered,
-         {fingerprint, {:collapse, child_print}} = fingerprint_tree,
+  defp traverse_rendered(
+         dynamics,
+         static_fun,
+         root,
+         fingerprint,
+         fingerprints_tree,
          pending,
          components,
          template,
          changed?
        ) do
-    [rendered] = invoke_dynamic(rendered, changed?)
+    case fingerprints_tree do
+      {^fingerprint, children} ->
+        {_counter, diff, children, pending, components, template} =
+          traverse_dynamic(dynamics, children, pending, components, template, changed?)
 
-    if rendered do
-      traverse(rendered, child_print, pending, components, template, changed?)
-    else
-      {%{}, fingerprint_tree, pending, components, template}
-    end
-  end
-
-  defp traverse(
-         %Rendered{fingerprint: fingerprint} = rendered,
-         {fingerprint, children},
-         pending,
-         components,
-         template,
-         changed?
-       ) do
-    {_counter, diff, children, pending, components, template} =
-      traverse_dynamic(
-        invoke_dynamic(rendered, changed?),
-        children,
-        pending,
-        components,
-        template,
-        changed?
-      )
-
-    {diff, {fingerprint, children}, pending, components, template}
-  end
-
-  defp traverse(
-         %Rendered{fingerprint: fingerprint, static: static, root: parent_root} = rendered,
-         _,
-         pending,
-         components,
-         template,
-         changed?
-       ) do
-    dynamics = invoke_dynamic(rendered, false)
-
-    case {static, dynamics} do
-      {[parent_first, parent_second], [%Rendered{static: [_, _ | _] = static} = rendered]} ->
-        {[first | rest], [last]} = Enum.split(static, -1)
-        new_static = [parent_first <> first] ++ rest ++ [last <> parent_second]
-
-        rendered = %{
-          rendered
-          | static: new_static,
-            root: if(parent_root == :deferred, do: rendered.root, else: parent_root)
-        }
-
-        {diff, child_print, pending, components, template} =
-          traverse(rendered, nil, pending, components, template, changed?)
-
-        {diff, {fingerprint, {:collapse, child_print}}, pending, components, template}
+        {diff, {fingerprint, children}, pending, components, template}
 
       _ ->
         {_counter, diff, children, pending, components, template} =
           traverse_dynamic(
-            invoke_dynamic(rendered, false),
+            dynamics,
             %{},
             pending,
             components,
             template,
-            changed?
+            false
           )
 
-        diff = if rendered.root == true, do: Map.put(diff, :r, 1), else: diff
-        {diff, template} = maybe_share_template(diff, fingerprint, static, template)
-
+        diff = if root == true, do: Map.put(diff, :r, 1), else: diff
+        {diff, template} = maybe_share_template(diff, fingerprint, static_fun.(), template)
         {diff, {fingerprint, children}, pending, components, template}
     end
+  end
+
+  defp traverse(
+         %Rendered{static: [left, right], fingerprint: fingerprint, root: root} = rendered,
+         fingerprints_tree,
+         pending,
+         components,
+         template,
+         changed?
+       ) do
+    changed? =
+      case fingerprints_tree do
+        {^fingerprint, _} -> changed?
+        _ -> false
+      end
+
+    case invoke_dynamic(rendered, changed?) do
+      [
+        %Rendered{
+          root: child_root,
+          static: [_, _ | _] = child_static,
+          fingerprint: child_fingerprint
+        } = rendered
+      ] ->
+        traverse_rendered(
+          invoke_dynamic(rendered, changed?),
+          fn ->
+            {[first | rest], [last]} = Enum.split(child_static, -1)
+            [left <> first] ++ rest ++ [last <> right]
+          end,
+          if(root == :deferred, do: child_root, else: root),
+          fingerprint,
+          fingerprints_tree,
+          pending,
+          components,
+          template,
+          changed?
+        )
+
+      dynamic ->
+        traverse_rendered(
+          dynamic,
+          fn -> rendered.static end,
+          root,
+          fingerprint,
+          fingerprints_tree,
+          pending,
+          components,
+          template,
+          changed?
+        )
+    end
+  end
+
+  defp traverse(
+         %Rendered{fingerprint: fingerprint, static: static, root: root} = rendered,
+         fingerprints_tree,
+         pending,
+         components,
+         template,
+         changed?
+       ) do
+    changed? =
+      case fingerprints_tree do
+        {^fingerprint, _} -> changed?
+        _ -> false
+      end
+
+    traverse_rendered(
+      invoke_dynamic(rendered, changed?),
+      fn -> static end,
+      root,
+      fingerprint,
+      fingerprints_tree,
+      pending,
+      components,
+      template,
+      changed?
+    )
   end
 
   defp traverse(
