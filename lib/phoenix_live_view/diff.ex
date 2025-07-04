@@ -141,19 +141,24 @@ defmodule Phoenix.LiveView.Diff do
   @doc """
   Renders a diff for the rendered struct in regards to the given socket.
   """
+  def render(socket, rendered, fingerprints, components, deferred_root_check? \\ false)
+
   def render(
         socket,
         %Rendered{fingerprint: actual} = rendered,
         {expected, _},
-        {_, _, uuids}
+        {_, _, uuids},
+        deferred_root_check?
       )
       when expected != nil and expected != actual do
-    render(socket, rendered, new_fingerprints(), new_components(uuids))
+    render(socket, rendered, new_fingerprints(), new_components(uuids), deferred_root_check?)
   end
 
-  def render(socket, %Rendered{} = rendered, prints, components) do
+  def render(socket, %Rendered{} = rendered, prints, components, deferred_root_check?) do
     {diff, prints, pending, components, template} =
       traverse(rendered, prints, %{}, components, {%{}, %{}}, true)
+
+    if deferred_root_check?, do: deferred_root_check!(diff)
 
     # cid_to_component is used by maybe_reuse_static and it must be a copy before changes.
     # However, given traverse does not change cid_to_component, we can read it now.
@@ -380,18 +385,30 @@ defmodule Phoenix.LiveView.Diff do
   defp component_to_rendered(socket, component, id) do
     rendered = Phoenix.LiveView.Renderer.to_rendered(socket, component)
 
-    if rendered.root != true and id != nil do
-      reason =
-        case rendered.root do
-          nil -> "Stateful components must return a HEEx template (~H sigil or .heex extension)"
-          false -> "Stateful components must have a single static HTML tag at the root"
-        end
+    if id != nil do
+      raise_error = fn reason ->
+        raise ArgumentError,
+              "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{reason}"
+      end
 
-      raise ArgumentError,
-            "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{reason}"
+      case rendered do
+        %{root: :deferred} ->
+          {%{rendered | root: true}, true}
+
+        %{root: true} ->
+          {rendered, false}
+
+        %{root: false} ->
+          raise_error.("Stateful components must have a single static HTML tag at the root")
+
+        %{root: nil} ->
+          raise_error.(
+            "Stateful components must return a HEEx template (~H sigil or .heex extension)"
+          )
+      end
+    else
+      {rendered, false}
     end
-
-    rendered
   end
 
   ## Traversal
@@ -435,7 +452,7 @@ defmodule Phoenix.LiveView.Diff do
         changed?
       )
 
-    diff = if rendered.root, do: Map.put(diff, :r, 1), else: diff
+    diff = if rendered.root == true, do: Map.put(diff, :r, 1), else: diff
     {diff, template} = maybe_share_template(diff, fingerprint, static, template)
     {diff, {fingerprint, children}, pending, components, template}
   end
@@ -954,13 +971,23 @@ defmodule Phoenix.LiveView.Diff do
 
     {socket, prints, pending, diff, components} =
       if changed? do
-        rendered = component_to_rendered(socket, component, id)
+        {rendered, deferred_root_check?} = component_to_rendered(socket, component, id)
 
         {changed?, linked_cid, prints} =
           maybe_reuse_static(rendered, component, prints, cids, components)
 
         {diff, prints, pending, components, nil} =
           traverse(rendered, prints, %{}, components, nil, changed?)
+
+        if new? and deferred_root_check? do
+          try do
+            deferred_root_check!(diff)
+          rescue
+            e in ArgumentError ->
+              raise ArgumentError,
+                    "error on #{inspect(component)}.render/1 with id of #{inspect(id)}. #{Exception.message(e)}"
+          end
+        end
 
         children_cids =
           for {_component, list} <- pending,
@@ -1123,5 +1150,22 @@ defmodule Phoenix.LiveView.Diff do
 
   defp dump_component(socket, component, id, prints) do
     {component, id, socket.assigns, socket.private, prints}
+  end
+
+  defp deferred_root_check!(diff) do
+    cond do
+      match?(%{0 => %{:r => 1}, :s => [_, _]}, diff) ->
+        :ok
+
+      match?(%{0 => _, :s => [_, _]}, diff) ->
+        deferred_root_check!(Map.fetch!(diff, 0))
+
+      true ->
+        raise ArgumentError,
+              """
+              Stateful components must have a single static HTML tag at the root or
+              render a function component that itself has a single static root tag.
+              """
+    end
   end
 end

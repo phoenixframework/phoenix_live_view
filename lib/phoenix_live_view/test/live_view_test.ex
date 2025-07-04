@@ -490,7 +490,16 @@ defmodule Phoenix.LiveViewTest do
 
     socket
     |> Diff.component_to_rendered(component, assigns, mount_assigns)
-    |> rendered_to_diff_string(socket)
+    |> case do
+      {rendered, deferred_root_check?} ->
+        try do
+          rendered_to_diff_string(rendered, socket, deferred_root_check?)
+        rescue
+          e in ArgumentError ->
+            raise ArgumentError,
+                  "error on #{inspect(component)}.render/1 with id of #{inspect(assigns[:id])}. #{Exception.message(e)}"
+        end
+    end
   end
 
   def __render_component__(endpoint, function, assigns, opts) when is_function(function, 1) do
@@ -503,9 +512,15 @@ defmodule Phoenix.LiveViewTest do
     |> rendered_to_diff_string(socket)
   end
 
-  defp rendered_to_diff_string(rendered, socket) do
+  defp rendered_to_diff_string(rendered, socket, deferred_root_check? \\ false) do
     {diff, _, _} =
-      Diff.render(socket, rendered, Diff.new_fingerprints(), Diff.new_components())
+      Diff.render(
+        socket,
+        rendered,
+        Diff.new_fingerprints(),
+        Diff.new_components(),
+        deferred_root_check?
+      )
 
     diff |> Diff.to_iodata() |> IO.iodata_to_binary()
   end

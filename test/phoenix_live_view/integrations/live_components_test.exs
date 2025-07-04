@@ -539,6 +539,86 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
     end
   end
 
+  defmodule FunctionComponentWithSingleRoot do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <.container name="foo">
+        <h3>Content with ID: {@id}</h3>
+      </.container>
+      """
+    end
+
+    defp container(assigns) do
+      ~H"""
+      <div class="wrapper">
+        {@name}
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
+  end
+
+  defmodule ChainedFunctionComponentWithSingleRoot do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <.container name="foo">
+        <h3>Content with ID: {@id}</h3>
+      </.container>
+      """
+    end
+
+    defp container(assigns) do
+      ~H"""
+      <.container2>
+        {@name}
+        {render_slot(@inner_block)}
+      </.container2>
+      """
+    end
+
+    defp container2(assigns) do
+      ~H"""
+      <div class="wrapper">
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
+  end
+
+  defmodule ChainedFunctionComponentWithoutSingleRoot do
+    use Phoenix.LiveComponent
+
+    def render(assigns) do
+      ~H"""
+      <.container name="foo">
+        <h3>Content with ID: {@id}</h3>
+      </.container>
+      """
+    end
+
+    defp container(assigns) do
+      ~H"""
+      <.container2>
+        {@name}
+        {render_slot(@inner_block)}
+      </.container2>
+      """
+    end
+
+    defp container2(assigns) do
+      ~H"""
+      foo
+      <div class="wrapper">
+        {render_slot(@inner_block)}
+      </div>
+      """
+    end
+  end
+
   describe "render_component/2" do
     test "life-cycle" do
       assert render_component(MyComponent, %{from: "test", id: "stateful"}, router: SomeRouter) =~
@@ -563,6 +643,22 @@ defmodule Phoenix.LiveView.LiveComponentsTest do
       assert_raise ArgumentError, ~r/have a single static HTML tag at the root/, fn ->
         render_component(BadRootComponent, %{id: "id"})
       end
+    end
+
+    test "allows function components with single root" do
+      html = render_component(FunctionComponentWithSingleRoot, %{id: "test123"})
+      assert html =~ "Content with ID: test123"
+      assert html =~ ~s(<div class="wrapper">)
+
+      html = render_component(ChainedFunctionComponentWithSingleRoot, %{id: "test123"})
+      assert html =~ "Content with ID: test123"
+      assert html =~ ~s(<div class="wrapper">)
+
+      assert_raise ArgumentError,
+                   ~r/Stateful components must have a single static HTML tag at the root/,
+                   fn ->
+                     render_component(ChainedFunctionComponentWithoutSingleRoot, %{id: "test123"})
+                   end
     end
 
     test "loads unloaded component" do

@@ -522,7 +522,7 @@ defmodule Phoenix.LiveView.TagEngine do
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, _tag_meta, _attrs} ->
         state
-        |> set_root_on_not_tag()
+        |> set_root_on_component()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
         |> continue(tokens)
@@ -548,7 +548,7 @@ defmodule Phoenix.LiveView.TagEngine do
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
         state
-        |> set_root_on_not_tag()
+        |> set_root_on_component()
         |> push_tag({:remote_component, name, attrs, tag_meta})
         |> init_slots()
         |> push_substate_to_stack()
@@ -692,7 +692,7 @@ defmodule Phoenix.LiveView.TagEngine do
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, _tag_meta, _attrs} ->
         state
-        |> set_root_on_not_tag()
+        |> set_root_on_component()
         |> maybe_anno_caller(meta, state.file, line)
         |> update_subengine(:handle_expr, ["=", ast])
         |> continue(tokens)
@@ -717,7 +717,7 @@ defmodule Phoenix.LiveView.TagEngine do
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
         state
-        |> set_root_on_not_tag()
+        |> set_root_on_component()
         |> push_tag({:local_component, name, attrs, tag_meta})
         |> init_slots()
         |> push_substate_to_stack()
@@ -1035,7 +1035,20 @@ defmodule Phoenix.LiveView.TagEngine do
     case state do
       %{root: nil, tags: []} -> %{state | root: true}
       %{root: true, tags: []} -> %{state | root: false}
-      %{root: bool} when is_boolean(bool) -> state
+      %{root: :deferred, tags: []} -> %{state | root: false}
+      _ -> state
+    end
+  end
+
+  defp set_root_on_component(state) do
+    case state do
+      # when we encounter the first component, we mark it to be checked later
+      %{root: nil, tags: []} -> %{state | root: :deferred}
+      # we already had a component -> this is a subsequent one
+      %{root: :deferred, tags: []} -> %{state | root: false}
+      # we already had a regular tag
+      %{root: true, tags: []} -> %{state | root: false}
+      _ -> state
     end
   end
 
