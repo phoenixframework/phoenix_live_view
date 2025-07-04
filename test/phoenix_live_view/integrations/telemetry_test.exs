@@ -192,7 +192,7 @@ defmodule Phoenix.LiveView.TelemetryTest do
       assert metadata.params == %{"foo" => "bar"}
     end
 
-    test " with a successful render callback emits render telemetry events", %{conn: conn} do
+    test "with a successful render callback emits render telemetry events", %{conn: conn} do
       attach_telemetry([:phoenix, :live_view, :render])
 
       {:ok, view, _} = live(conn, "/thermo")
@@ -213,6 +213,52 @@ defmodule Phoenix.LiveView.TelemetryTest do
       render_submit(view, :save, %{temp: 20})
 
       assert_receive {:event, [:phoenix, :live_view, :render, :stop], %{duration: _}, _}
+    end
+
+    test "each live view on_mount hook emits start and stop events, nested in mount event, nested in mount event",
+         %{conn: conn} do
+      attach_telemetries([[:phoenix, :live_view, :mount], [:phoenix, :live_view, :on_mount]])
+
+      {:ok, _view, _} = live(conn, "/lifecycle")
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], _, _}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :start], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.InitAssigns, :default}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :stop], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.InitAssigns, :default}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :start], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.InitAssigns, :other}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :stop], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.InitAssigns, :other}
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], _, _}
+    end
+
+    test "each live session on_mount hook emits start and stop events, nested in mount events",
+         %{conn: conn} do
+      attach_telemetries([[:phoenix, :live_view, :mount], [:phoenix, :live_view, :on_mount]])
+
+      {:ok, _view, _} = live(conn, "/lifecycle/mount-mods")
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :start], _, _}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :start], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.OnMount, :default}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :stop], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.OnMount, :default}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :start], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.OtherOnMount, :default}
+
+      assert_receive {:event, [:phoenix, :live_view, :on_mount, :stop], _, metadata}
+      assert metadata.hook == {Phoenix.LiveViewTest.Support.OtherOnMount, :default}
+
+      assert_receive {:event, [:phoenix, :live_view, :mount, :stop], _, _}
     end
   end
 

@@ -21,6 +21,8 @@ defmodule Phoenix.LiveView.Logger do
 
   The following `Phoenix.LiveView` and `Phoenix.LiveComponent` events are logged:
 
+    - `[:phoenix, :live_view, :on_mount, :start]`
+    - `[:phoenix, :live_view, :on_mount, :stop]`
     - `[:phoenix, :live_view, :mount, :start]`
     - `[:phoenix, :live_view, :mount, :stop]`
     - `[:phoenix, :live_view, :handle_params, :start]`
@@ -46,6 +48,8 @@ defmodule Phoenix.LiveView.Logger do
   @doc false
   def install do
     handlers = %{
+      [:phoenix, :live_view, :on_mount, :start] => &__MODULE__.lv_on_mount_start/4,
+      [:phoenix, :live_view, :on_mount, :stop] => &__MODULE__.lv_on_mount_stop/4,
       [:phoenix, :live_view, :mount, :start] => &__MODULE__.lv_mount_start/4,
       [:phoenix, :live_view, :mount, :stop] => &__MODULE__.lv_mount_stop/4,
       [:phoenix, :live_view, :handle_params, :start] => &__MODULE__.lv_handle_params_start/4,
@@ -63,6 +67,49 @@ defmodule Phoenix.LiveView.Logger do
 
   defp log_level(socket) do
     Map.fetch!(socket.view.__live__(), :log)
+  end
+
+  @doc false
+  def lv_on_mount_start(_event, measurement, metadata, _config) do
+    %{socket: socket, params: params, session: session, hook: hook} = metadata
+    %{system_time: _system_time} = measurement
+    level = log_level(socket)
+
+    if level && connected?(socket) do
+      Logger.log(level, fn ->
+        [
+          "ON_MOUNT ",
+          inspect(socket.view),
+          inspect(hook),
+          ?\n,
+          "  Parameters: ",
+          inspect(filter_values(params)),
+          ?\n,
+          "  Session: ",
+          inspect(session)
+        ]
+      end)
+    end
+
+    :ok
+  end
+
+  @doc false
+  def lv_on_mount_stop(_event, measurement, metadata, _config) do
+    %{socket: socket, params: _params, session: _session, hook: _hook} = metadata
+    %{duration: duration} = measurement
+    level = log_level(socket)
+
+    if level && connected?(socket) do
+      Logger.log(level, fn ->
+        [
+          "Replied in ",
+          duration(duration)
+        ]
+      end)
+    end
+
+    :ok
   end
 
   @doc false

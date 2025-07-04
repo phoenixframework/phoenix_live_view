@@ -155,25 +155,34 @@ defmodule Phoenix.LiveView.Lifecycle do
   @doc false
   def mount(params, session, %Socket{private: %{@lifecycle => lifecycle}} = socket) do
     reduce_socket(lifecycle.mount, socket, fn %{id: {mod, arg}} = hook, acc ->
-      case hook.function.(arg, params, session, acc) do
-        {:halt, %Socket{redirected: nil}} ->
-          raise_halt_without_redirect!(hook)
+      :telemetry.span(
+        [:phoenix, :live_view, :on_mount],
+        %{socket: socket, params: params, session: session, hook: {mod, arg}},
+        fn ->
+          {res, socket} =
+            case hook.function.(arg, params, session, acc) do
+              {:halt, %Socket{redirected: nil}} ->
+                raise_halt_without_redirect!(hook)
 
-        {:halt, %Socket{redirected: nil}, _opts} ->
-          raise_halt_without_redirect!(hook)
+              {:halt, %Socket{redirected: nil}, _opts} ->
+                raise_halt_without_redirect!(hook)
 
-        {:cont, %Socket{redirected: to}} when not is_nil(to) ->
-          raise_continue_with_redirect!(hook)
+              {:cont, %Socket{redirected: to}} when not is_nil(to) ->
+                raise_continue_with_redirect!(hook)
 
-        {:cont, %Socket{redirected: to}, _opts} when not is_nil(to) ->
-          raise_continue_with_redirect!(hook)
+              {:cont, %Socket{redirected: to}, _opts} when not is_nil(to) ->
+                raise_continue_with_redirect!(hook)
 
-        {:cont, socket, opts} ->
-          {:cont, Utils.handle_mount_options!(socket, opts, {mod, :on_mount, 4})}
+              {:cont, socket, opts} ->
+                {:cont, Utils.handle_mount_options!(socket, opts, {mod, :on_mount, 4})}
 
-        ok ->
-          ok
-      end
+              ok ->
+                ok
+            end
+
+          {{res, socket}, %{socket: socket, params: params, session: session, hook: {mod, arg}}}
+        end
+      )
     end)
   end
 

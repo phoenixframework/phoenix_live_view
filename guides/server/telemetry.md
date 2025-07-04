@@ -50,6 +50,54 @@ LiveView currently exposes the following [`telemetry`](https://hexdocs.pm/teleme
             uri: String.t() | nil
           }
 
+  * `[:phoenix, :live_view, :on_mount, :start]` - Dispatched by a `Phoenix.LiveView`
+    immediately before each [`on_mount/1`](`Phoenix.LiveView.on_mount/1`) hook is invoked.
+
+    * Measurement:
+
+          %{system_time: System.monotonic_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            params: unsigned_params | :not_mounted_at_router,
+            session: map,
+            hook: {module, atom}
+          }
+
+  * `[:phoenix, :live_view, :on_mount, :stop]` - Dispatched by a `Phoenix.LiveView`
+    when each [`on_mount/1`](`Phoenix.LiveView.on_mount/1`) hook completes successfully.
+
+    * Measurement:
+
+          %{duration: native_time}
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            params: unsigned_params | :not_mounted_at_router,
+            session: map,
+            hook: {module, atom}
+          }
+
+  * `[:phoenix, :live_view, :on_mount, :exception]` - Dispatched by a `Phoenix.LiveView`
+    when an exception is raised in a [`on_mount/1`](`Phoenix.LiveView.on_mount/1`) hook.
+
+    * Measurement: `%{duration: native_time}`
+
+    * Metadata:
+
+          %{
+            socket: Phoenix.LiveView.Socket.t,
+            kind: atom,
+            reason: term,
+            params: unsigned_params | :not_mounted_at_router,
+            session: map,
+            hook: {module, atom}
+          }
+
   * `[:phoenix, :live_view, :handle_params, :start]` - Dispatched by a `Phoenix.LiveView`
     immediately before [`handle_params/3`](`c:Phoenix.LiveView.handle_params/3`) is invoked.
 
