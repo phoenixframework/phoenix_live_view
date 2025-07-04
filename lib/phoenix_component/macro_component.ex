@@ -151,91 +151,138 @@ defmodule Phoenix.Component.MacroComponent do
   end
 
   @doc false
-  def build_ast([{:tag, name, attrs, tag_meta} | rest], env) do
-    if closing = tag_meta[:closing] do
-      # we assert here because we don't expect any other values
-      true = closing in [:self, :void]
-    end
-
-    meta = Map.take(tag_meta, [:closing])
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), meta}], env)
+  def build_ast(tokens, opts) do
+    build_ast(tokens, [], [], opts)
   end
 
-  # recursive case: build_ast(tokens, acc, stack)
+  # recursive case: build_ast(tokens, acc, stack, opts)
 
-  # closing for final stack element -> done!
-  defp build_ast([{:close, :tag, _, _} | rest], acc, [{tag_name, attrs, meta}], _env) do
-    {:ok, {tag_name, attrs, Enum.reverse(acc), meta}, rest}
+  defp build_ast([], acc, [], _opts) do
+    {:ok, Enum.reverse(acc)}
+  end
+
+  defp build_ast([], _acc, [{_type, meta, [name, _, _], _} | _], opts) do
+    open_meta = Keyword.get(meta, :open_meta, [])
+    tag_name = Keyword.get(open_meta, :tag_name, name)
+    message = "end of #{opts[:context]} reached without closing tag for <#{tag_name}>"
+    raise_syntax_error!(message, open_meta, opts)
   end
 
   # tag open (self closing or void)
-  defp build_ast([{:tag, name, attrs, %{closing: type}} | rest], acc, stack, env)
-       when type in [:self, :void] do
-    acc = [{name, token_attrs_to_ast(attrs, env), [], %{closing: type}} | acc]
-    build_ast(rest, acc, stack, env)
+  defp build_ast([{type, name, attrs, %{closing: closing} = meta} | rest], acc, stack, opts)
+       when type != :close and closing in [:self, :void] do
+    meta = Enum.to_list(Map.delete(meta, :closing))
+
+    acc = [
+      {type, [open_meta: meta], [name, token_attrs_to_ast(attrs, opts), [closing: closing]]}
+      | acc
+    ]
+
+    build_ast(rest, acc, stack, opts)
   end
 
   # tag open
-  defp build_ast([{:tag, name, attrs, _tag_meta} | rest], acc, stack, env) do
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), %{}, acc} | stack], env)
+  defp build_ast([{type, name, attrs, tag_meta} | rest], acc, stack, opts)
+       when type != :close do
+    build_ast(
+      rest,
+      [],
+      [
+        {type, [open_meta: Enum.to_list(tag_meta)], [name, token_attrs_to_ast(attrs, opts), []],
+         acc}
+        | stack
+      ],
+      opts
+    )
   end
 
   # tag close
   defp build_ast(
-         [{:close, :tag, name, _tag_meta} | tokens],
+         [{:close, type, name, tag_meta} | tokens],
          acc,
-         [{name, attrs, meta, prev_acc} | stack],
-         env
+         [{type, meta, [name, attrs, args], prev_acc} | stack],
+         opts
        ) do
-    build_ast(tokens, [{name, attrs, Enum.reverse(acc), meta} | prev_acc], stack, env)
+    build_ast(
+      tokens,
+      [
+        {type, meta ++ [{:close_meta, Enum.to_list(tag_meta)}],
+         [name, attrs, Keyword.put(args, :do, {:__block__, [], Enum.reverse(acc)})]}
+        | prev_acc
+      ],
+      stack,
+      opts
+    )
+  end
+
+  defp build_ast(
+         [{:close, _type, tag_close_name, tag_close_meta} | _tokens],
+         _acc,
+         [{_opening_type, opening_meta, [opening_name, _, _], _} | _stack],
+         opts
+       ) do
+    opening_meta = Keyword.get(opening_meta, :open_meta, [])
+    tag_name = Keyword.get(opening_meta, :tag_name, opening_name)
+    hint = closing_void_hint(tag_close_name, opts[:tag_handler])
+
+    message = """
+    unmatched closing tag. Expected </#{tag_name}> for <#{tag_name}> \
+    at line #{Keyword.get(opening_meta, :line)}, got: </#{tag_close_name}>#{hint}\
+    """
+
+    raise_syntax_error!(message, tag_close_meta, opts)
+  end
+
+  defp build_ast([{:close, _type, _name, tag_close_meta} = _token | _tokens], _acc, _stack, opts) do
+    hint = closing_void_hint(tag_close_meta.tag_name, opts[:tag_handler])
+    message = "missing opening tag for </#{tag_close_meta.tag_name}>#{hint}"
+    raise_syntax_error!(message, tag_close_meta, opts)
   end
 
   # text
-  defp build_ast([{:text, text, _meta} | rest], acc, stack, env) do
-    build_ast(rest, [text | acc], stack, env)
+  defp build_ast([{:text, text, meta} | rest], acc, stack, opts) do
+    build_ast(rest, [{:<<>>, Enum.to_list(meta), [text]} | acc], stack, opts)
   end
 
-  # unsupported token
-  defp build_ast([{type, _name, _attrs, meta} | _tokens], _acc, _stack, _env)
-       when type in [:local_component, :remote_component] do
-    {:error, "function components cannot be nested inside a macro component", meta}
+  defp build_ast([{:expr, marker, ast} | rest], acc, stack, opts) do
+    build_ast(rest, [{:expr, [marker: marker], [ast]} | acc], stack, opts)
   end
 
-  defp build_ast([{:expr, _, _} | _], _acc, _stack, _env) do
-    # we raise here because we don't have a meta map (line + column) available
-    raise ArgumentError, "EEx is not currently supported in macro components"
+  defp build_ast([{:body_expr, code, meta} | rest], acc, stack, opts) do
+    ast =
+      Code.string_to_quoted!(code, line: meta.line, column: meta.column, file: opts[:env].file)
+
+    build_ast(rest, [{:body_expr, Enum.to_list(meta), [ast]} | acc], stack, opts)
   end
 
-  defp build_ast([{:body_expr, _, meta} | _], _acc, _stack, _env) do
-    {:error, "interpolation is not currently supported in macro components", meta}
-  end
-
-  defp token_attrs_to_ast(attrs, env) do
-    Enum.map(attrs, fn {name, value, _meta} ->
-      # for now, we don't support root expressions (<div {@foo}>)
-      if name == :root do
-        format_attr = fn
-          {:string, binary, _meta} -> binary
-          {:expr, code, _meta} -> code
-          nil -> "nil"
-        end
-
-        raise ArgumentError,
-              "dynamic attributes are not supported in macro components, got: #{format_attr.(value)}"
-      end
-
+  defp token_attrs_to_ast(attrs, opts) do
+    Enum.map(attrs, fn {name, value, meta} ->
       case value do
-        {:string, binary, _meta} ->
-          {name, binary}
+        {:string, binary, string_meta} ->
+          {:attribute, Enum.to_list(meta), [name, Enum.to_list(string_meta), binary]}
 
-        {:expr, code, meta} ->
-          ast = Code.string_to_quoted!(code, line: meta.line, column: meta.column, file: env.file)
-          {name, ast}
+        {:expr, code, expr_meta} ->
+          ast =
+            Code.string_to_quoted!(code,
+              line: expr_meta.line,
+              column: expr_meta.column,
+              file: opts[:env].file
+            )
+
+          # we set is_expr because it could also evaluate to a string
+          {:attribute, [{:is_expr, true} | Enum.to_list(meta)],
+           [name, Enum.to_list(expr_meta), ast]}
 
         nil ->
-          {name, nil}
+          {:attribute, Enum.to_list(meta), [name, nil]}
       end
     end)
+  end
+
+  defp env do
+    require Phoenix.LiveView.TagEngine
+
+    __ENV__
   end
 
   @doc """
@@ -243,86 +290,66 @@ defmodule Phoenix.Component.MacroComponent do
 
   ## Options
 
-    * `attributes_encoder` - a custom function to encode attributes to iodata.
+    * `binding` - a custom function to encode attributes to iodata.
        Defaults to an HTML-safe encoder.
 
-  """
-  @spec ast_to_string(heex_ast(), keyword()) :: binary()
-  def ast_to_string(ast, opts \\ []) do
-    opts = Keyword.put_new(opts, :attributes_encoder, &ast_attributes_to_iodata/1)
+    * `tag_handler` - the tag handler, defaults to `Phoenix.LiveView.HTMLEngine`
 
-    ast
-    |> ast_to_iodata(opts)
+  """
+  @spec ast_to_string(heex_ast()) :: binary()
+  def ast_to_string(ast, opts \\ []) do
+    binding = Keyword.get(opts, :binding, assigns: %{})
+    tag_handler = Keyword.get(opts, :tag_handler, Phoenix.LiveView.HTMLEngine)
+
+    {result, _} =
+      Code.eval_quoted(
+        quote do
+          Phoenix.LiveView.TagEngine.finalize(
+            [
+              tag_handler: unquote(tag_handler),
+              indentation: 0,
+              subengine_call: :handle_body,
+              source: ""
+            ],
+            do: unquote(List.wrap(ast))
+          )
+        end,
+        binding,
+        env()
+      )
+
+    result
+    |> Phoenix.HTML.Safe.to_iodata()
     |> IO.iodata_to_binary()
   end
 
-  defp ast_to_iodata(list, opts) when is_list(list) do
-    Enum.map(list, &ast_to_iodata(&1, opts))
+  defp closing_void_hint(tag_name, tag_handler) do
+    if tag_handler && tag_handler.void?(tag_name) do
+      " (note <#{tag_name}> is a void tag and cannot have any content)"
+    else
+      ""
+    end
   end
 
-  # self closing / void tags cannot have children
-  defp ast_to_iodata({name, attrs, [], %{closing: closing}}, opts) do
-    suffix =
-      case closing do
-        :void -> ">"
-        :self -> "/>"
-      end
+  defp raise_syntax_error!(message, meta, opts) do
+    meta = Map.new(meta)
+    line = Map.get(meta, :line)
+    column = Map.get(meta, :column)
 
-    [
-      "<",
-      name,
-      opts[:attributes_encoder].(attrs),
-      suffix
-    ]
-  end
-
-  defp ast_to_iodata({name, attrs, children, _meta}, opts) do
-    [
-      "<",
-      name,
-      opts[:attributes_encoder].(attrs),
-      ">",
-      Enum.map(children, &ast_to_iodata(&1, opts)),
-      "</",
-      name,
-      ">"
-    ]
-  end
-
-  defp ast_to_iodata(binary, _opts) when is_binary(binary) do
-    binary
-  end
-
-  defp ast_attributes_to_iodata(attrs) do
-    Enum.map(attrs, fn
-      {key, value} when is_binary(value) ->
-        encode_binary_attribute(key, value)
-
-      {key, nil} ->
-        ~s( #{key})
-
-      {key, value} ->
-        raise ArgumentError,
-              "cannot convert AST with non-string attribute \"#{key}\" to string. Got: #{Macro.to_string(value)}"
-    end)
-  end
-
-  @doc false
-  def encode_binary_attribute(key, value) when is_binary(key) and is_binary(value) do
-    case {:binary.match(value, ~s["]), :binary.match(value, "'")} do
-      {:nomatch, _} ->
-        ~s( #{key}="#{value}")
-
-      {_, :nomatch} ->
-        ~s( #{key}='#{value}')
-
-      _ ->
-        raise ArgumentError, """
-        invalid attribute value for \"#{key}\".
-        Attribute values must not contain single and double quotes at the same time.
-
-        You need to escape your attribute before using it in the MacroComponent AST. You can use `Phoenix.HTML.attributes_escape/1` to do so.
-        """
+    if !line || !column do
+      raise ArgumentError, message
+    else
+      raise Phoenix.LiveView.Tokenizer.ParseError,
+        line: line,
+        column: column,
+        file: opts[:env].file,
+        description:
+          message <>
+            Phoenix.LiveView.Tokenizer.ParseError.code_snippet(
+              opts[:source],
+              %{line: line, column: column},
+              opts[:indentation]
+            )
     end
   end
 end
