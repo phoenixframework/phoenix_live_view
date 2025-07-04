@@ -77,7 +77,7 @@ Colocated hooks are extracted to a `phoenix-colocated` folder inside your `_buil
 ...
   const liveSocket = new LiveSocket("/live", Socket, {
     longPollFallbackMs: 2500,
-+   params: {_csrf_token, csrfToken},
+    params: {_csrf_token: csrfToken},
 +   hooks: {...colocatedHooks}
   })
 ```
