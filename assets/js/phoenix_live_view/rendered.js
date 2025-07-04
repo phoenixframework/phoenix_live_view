@@ -1,6 +1,5 @@
 import {
   COMPONENTS,
-  DYNAMICS,
   TEMPLATES,
   EVENTS,
   PHX_COMPONENT,
@@ -12,6 +11,8 @@ import {
   TITLE,
   STREAM,
   ROOT,
+  KEYED,
+  KEYED_COUNT,
 } from "./constants";
 
 import { isObject, logError, isCid } from "./utils";
@@ -253,18 +254,78 @@ export default class Rendered {
   }
 
   doMutableMerge(target, source) {
-    for (const key in source) {
-      const val = source[key];
-      const targetVal = target[key];
-      const isObjVal = isObject(val);
-      if (isObjVal && val[STATIC] === undefined && isObject(targetVal)) {
-        this.doMutableMerge(targetVal, val);
-      } else {
-        target[key] = val;
+    if (source[KEYED]) {
+      this.mergeKeyed(target, source);
+    } else {
+      for (const key in source) {
+        const val = source[key];
+        const targetVal = target[key];
+        const isObjVal = isObject(val);
+        if (isObjVal && val[STATIC] === undefined && isObject(targetVal)) {
+          this.doMutableMerge(targetVal, val);
+        } else {
+          target[key] = val;
+        }
       }
     }
     if (target[ROOT]) {
       target.newRender = true;
+    }
+  }
+
+  clone(diff) {
+    if ("structuredClone" in window) {
+      return structuredClone(diff);
+    } else {
+      // fallback for jest
+      return JSON.parse(JSON.stringify(diff));
+    }
+  }
+
+  // keyed comprehensions
+  mergeKeyed(target, source) {
+    // we need to clone the target since elements can move and otherwise
+    // it could happen that we modify an element that we'll need to refer to
+    // later
+    const clonedTarget = this.clone(target);
+    Object.entries(source[KEYED]).forEach(([i, entry]) => {
+      if (i === KEYED_COUNT) {
+        return;
+      }
+      if (Array.isArray(entry)) {
+        // [old_idx, diff]
+        // moved with diff
+        const [old_idx, diff] = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+        this.doMutableMerge(target[KEYED][i], diff);
+      } else if (typeof entry === "number") {
+        // moved without diff
+        const old_idx = entry;
+        target[KEYED][i] = clonedTarget[KEYED][old_idx];
+      } else if (typeof entry === "object") {
+        // diff, same position
+        if (!target[KEYED][i]) {
+          target[KEYED][i] = {};
+        }
+        this.doMutableMerge(target[KEYED][i], entry);
+      }
+    });
+    // drop extra entries
+    if (source[KEYED][KEYED_COUNT] < target[KEYED][KEYED_COUNT]) {
+      for (
+        let i = source[KEYED][KEYED_COUNT];
+        i < target[KEYED][KEYED_COUNT];
+        i++
+      ) {
+        delete target[KEYED][i];
+      }
+    }
+    target[KEYED][KEYED_COUNT] = source[KEYED][KEYED_COUNT];
+    if (source[STREAM]) {
+      target[STREAM] = source[STREAM];
+    }
+    if (source[TEMPLATES]) {
+      target[TEMPLATES] = source[TEMPLATES];
     }
   }
 
@@ -336,14 +397,30 @@ export default class Rendered {
   // Converts rendered tree to output buffer.
   //
   // changeTracking controls if we can apply the PHX_SKIP optimization.
-  // It is disabled for comprehensions since we must re-render the entire collection
-  // and no individual element is tracked inside the comprehension.
   toOutputBuffer(rendered, templates, output, changeTracking, rootAttrs = {}) {
-    if (rendered[DYNAMICS]) {
-      return this.comprehensionToBuffer(rendered, templates, output);
+    if (rendered[KEYED]) {
+      return this.comprehensionToBuffer(
+        rendered,
+        templates,
+        output,
+        changeTracking,
+      );
     }
+
+    // Templates are a way of sharing statics between multiple rendered structs.
+    // Since LiveView 1.1, those can also appear at the root - for example if one renders
+    // two comprehensions that can share statics.
+    // Whenever we find templates, we need to use them recursively. Also, templates can
+    // be sent for each diff, not only for the initial one. We don't want to merge them
+    // though, so we always resolve them and remove them from the rendered object.
+    if (rendered[TEMPLATES]) {
+      templates = rendered[TEMPLATES];
+      delete rendered[TEMPLATES];
+    }
+
     let { [STATIC]: statics } = rendered;
     statics = this.templateStatic(statics, templates);
+    rendered[STATIC] = statics;
     const isRoot = rendered[ROOT];
     const prevBuffer = output.buffer;
     if (isRoot) {
@@ -365,7 +442,7 @@ export default class Rendered {
 
     // Applies the root tag "skip" optimization if supported, which clears
     // the root tag attributes and innerHTML, and only maintains the magicId.
-    // We can only skip when changeTracking is supported (outside of a comprehension),
+    // We can only skip when changeTracking is supported,
     // and when the root element hasn't experienced an unrendered merge (newRender true).
     if (isRoot) {
       let skip = false;
@@ -393,41 +470,53 @@ export default class Rendered {
     }
   }
 
-  comprehensionToBuffer(rendered, templates, output) {
-    let {
-      [DYNAMICS]: dynamics,
-      [STATIC]: statics,
-      [STREAM]: stream,
-    } = rendered;
-    const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
-    statics = this.templateStatic(statics, templates);
-    const compTemplates = templates || rendered[TEMPLATES];
-    for (let d = 0; d < dynamics.length; d++) {
-      const dynamic = dynamics[d];
+  comprehensionToBuffer(rendered, templates, output, changeTracking) {
+    const keyedTemplates = templates || rendered[TEMPLATES];
+    const statics = this.templateStatic(rendered[STATIC], templates);
+    rendered[STATIC] = statics;
+    delete rendered[TEMPLATES];
+    let canonicalDiff;
+    for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
+      // this is another optimization where we assume the first element in
+      // the comprehension has a "canonical diff" that is shared with all
+      // following elements (if possible). The diff only contains the
+      // dynamic parts for the parts that can be shared, therefore we use
+      // cloneMerge to copy all eligilbe statics from the first diff into
+      // all subsequent ones.
+      if (i == 0) {
+        canonicalDiff = rendered[KEYED][i];
+      } else {
+        rendered[KEYED][i] = this.cloneMerge(
+          canonicalDiff,
+          rendered[KEYED][i],
+          true,
+        );
+      }
       output.buffer += statics[0];
-      for (let i = 1; i < statics.length; i++) {
-        // Inside a comprehension, we don't track how dynamics change
-        // over time (and features like streams would make that impossible
-        // unless we move the stream diffing away from morphdom),
-        // so we can't perform root change tracking.
-        const changeTracking = false;
+      for (let j = 1; j < statics.length; j++) {
         this.dynamicToBuffer(
-          dynamic[i - 1],
-          compTemplates,
+          rendered[KEYED][i][j - 1],
+          keyedTemplates,
           output,
           changeTracking,
         );
-        output.buffer += statics[i];
+        output.buffer += statics[j];
       }
     }
-
-    if (
-      stream !== undefined &&
-      (rendered[DYNAMICS].length > 0 || deleteIds.length > 0 || reset)
-    ) {
-      delete rendered[STREAM];
-      rendered[DYNAMICS] = [];
-      output.streams.add(stream);
+    // we don't need to store the rendered tree for streams
+    if (rendered[STREAM]) {
+      const stream = rendered[STREAM];
+      const [_ref, _inserts, deleteIds, reset] = stream || [null, {}, [], null];
+      if (
+        stream !== undefined &&
+        (rendered[KEYED][KEYED_COUNT] > 0 || deleteIds.length > 0 || reset)
+      ) {
+        delete rendered[STREAM];
+        rendered[KEYED] = {
+          [KEYED_COUNT]: 0,
+        };
+        output.streams.add(stream);
+      }
     }
   }
 

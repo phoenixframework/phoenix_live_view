@@ -80,6 +80,7 @@ test("streams work in teleported LiveComponent", async ({ page }) => {
     ),
   ).toEqual(2);
   await page.getByRole("button", { name: "Prepend item" }).click();
+  await syncLV(page);
   expect(
     await page.evaluate(
       () => document.querySelector("#stream-in-lc").children.length,
