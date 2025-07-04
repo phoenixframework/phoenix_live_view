@@ -217,6 +217,15 @@ defmodule Phoenix.LiveView do
       this option will override any layout previously set via
       `Phoenix.LiveView.Router.live_session/2` or on `use Phoenix.LiveView`
 
+    * `:auto_connect` - if false, instructs the LiveView JavaScript client
+      to not automatically connect to the server on disconnected render.
+      This is useful when you have a static page that does not require
+      any connected functionality, but should render over the existing
+      connection when navigating from an already connected LiveView.
+      Defaults to `true`. When navigating from a page that has `auto_connect: false`
+      and is not connected, all navigations perform a regular `window.location`
+      update, triggering a full page reload.
+
   """
   @callback mount(
               params :: unsigned_params() | :not_mounted_at_router,

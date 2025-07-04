@@ -161,6 +161,12 @@ defmodule Phoenix.LiveView.Static do
 
         data_attrs = if(router, do: [phx_main: true], else: []) ++ data_attrs
 
+        data_attrs =
+          if(not Map.get(socket.private, :auto_connect, true),
+            do: [phx_auto_connect: "false"],
+            else: []
+          ) ++ data_attrs
+
         attrs = [
           {:id, socket.id},
           {:data, data_attrs}
