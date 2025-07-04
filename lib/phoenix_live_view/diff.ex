@@ -393,7 +393,7 @@ defmodule Phoenix.LiveView.Diff do
 
       case rendered do
         %{root: :deferred} ->
-          {%{rendered | root: true}, true}
+          {rendered, true}
 
         %{root: true} ->
           {rendered, false}
@@ -412,6 +412,23 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   ## Traversal
+
+  defp traverse(
+         %Rendered{fingerprint: fingerprint} = rendered,
+         {fingerprint, {:collapse, child_print}} = fingerprint_tree,
+         pending,
+         components,
+         template,
+         changed?
+       ) do
+    [rendered] = invoke_dynamic(rendered, changed?)
+
+    if rendered do
+      traverse(rendered, child_print, pending, components, template, changed?)
+    else
+      {%{}, fingerprint_tree, pending, components, template}
+    end
+  end
 
   defp traverse(
          %Rendered{fingerprint: fingerprint} = rendered,
@@ -435,26 +452,47 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse(
-         %Rendered{fingerprint: fingerprint, static: static} = rendered,
+         %Rendered{fingerprint: fingerprint, static: static, root: parent_root} = rendered,
          _,
          pending,
          components,
          template,
          changed?
        ) do
-    {_counter, diff, children, pending, components, template} =
-      traverse_dynamic(
-        invoke_dynamic(rendered, false),
-        %{},
-        pending,
-        components,
-        template,
-        changed?
-      )
+    dynamics = invoke_dynamic(rendered, false)
 
-    diff = if rendered.root == true, do: Map.put(diff, :r, 1), else: diff
-    {diff, template} = maybe_share_template(diff, fingerprint, static, template)
-    {diff, {fingerprint, children}, pending, components, template}
+    case {static, dynamics} do
+      {[parent_first, parent_second], [%Rendered{static: [_, _ | _] = static} = rendered]} ->
+        {[first | rest], [last]} = Enum.split(static, -1)
+        new_static = [parent_first <> first] ++ rest ++ [last <> parent_second]
+
+        rendered = %{
+          rendered
+          | static: new_static,
+            root: if(parent_root == :deferred, do: rendered.root, else: parent_root)
+        }
+
+        {diff, child_print, pending, components, template} =
+          traverse(rendered, nil, pending, components, template, changed?)
+
+        {diff, {fingerprint, {:collapse, child_print}}, pending, components, template}
+
+      _ ->
+        {_counter, diff, children, pending, components, template} =
+          traverse_dynamic(
+            invoke_dynamic(rendered, false),
+            %{},
+            pending,
+            components,
+            template,
+            changed?
+          )
+
+        diff = if rendered.root == true, do: Map.put(diff, :r, 1), else: diff
+        {diff, template} = maybe_share_template(diff, fingerprint, static, template)
+
+        {diff, {fingerprint, children}, pending, components, template}
+    end
   end
 
   defp traverse(
@@ -1154,11 +1192,8 @@ defmodule Phoenix.LiveView.Diff do
 
   defp deferred_root_check!(diff) do
     cond do
-      match?(%{0 => %{:r => 1}, :s => [_, _]}, diff) ->
+      match?(%{:r => 1}, diff) ->
         :ok
-
-      match?(%{0 => _, :s => [_, _]}, diff) ->
-        deferred_root_check!(Map.fetch!(diff, 0))
 
       true ->
         raise ArgumentError,
