@@ -335,8 +335,7 @@ defmodule Phoenix.LiveView.Engine do
 
     quote do
       require Phoenix.LiveView.Engine
-      require Phoenix.LiveView.EngineHelpers
-
+      vars_changed = nil
       unquote(rendered)
     end
   end
@@ -404,7 +403,7 @@ defmodule Phoenix.LiveView.Engine do
        quote do
          dynamic = fn track_changes? ->
            changed = unquote(changed)
-           vars_changed = Phoenix.LiveView.EngineHelpers.maybe_vars_changed?(track_changes?)
+           vars_changed = if track_changes?, do: vars_changed
            unquote({:__block__, [], block})
            unquote(dynamic)
          end
@@ -481,14 +480,26 @@ defmodule Phoenix.LiveView.Engine do
             expr
         end
 
-      # if the keyed_comprehension macro is in this module, the has_var? check does not work
+      dynamic =
+        quote do
+          fn local_vars_changed, track_changes? ->
+            vars_changed =
+              case local_vars_changed do
+                %{} when track_changes? ->
+                  Map.merge(vars_changed || %{}, local_vars_changed)
+
+                _ ->
+                  nil
+              end
+
+            changed = if track_changes?, do: changed
+            unquote({:__block__, [], block ++ [dynamic]})
+          end
+        end
+
       entry =
         quote do
-          Phoenix.LiveView.EngineHelpers.keyed_comprehension(
-            unquote(key_expr),
-            %{unquote_splicing(Map.to_list(variables))},
-            unquote({:__block__, [], block ++ [dynamic]})
-          )
+          {unquote(key_expr), %{unquote_splicing(Map.to_list(variables))}, unquote(dynamic)}
         end
 
       gen = {:<-, gen_meta, [gen_pattern, gen_var]}
@@ -1441,7 +1452,6 @@ defmodule Phoenix.LiveView.Engine do
 
   # Constructs from TagEngine
   defp classify_taint(:inner_block, [_, [do: _]]), do: :live
-  defp classify_taint(:keyed_comprehension, [_, _, [do: _]]), do: :live
 
   # Constructs from Phoenix.View
   defp classify_taint(:render_layout, [_, _, _, [do: _]]), do: :live
