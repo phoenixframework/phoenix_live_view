@@ -98,7 +98,7 @@ One pitfall when rendering collections in LiveView was that they were not change
 
 When changing `@items`, all elements were re-sent over the wire. LiveView still optimized the static and dynamic parts of the template, but if you had 100 items in your list and only changed a single one (also applies to append, prepend, etc.), LiveView still sent the dynamic parts of all items.
 
-To improve this, LiveView prior to version v1.1 had two solutions:
+To improve this, LiveView prior to v1.1 had two solutions:
 
 1. Use streams. Streams are not kept in memory on the server and if you `stream_insert` a single item, only that item is sent over the wire. But because the server does not keep any state for streams, this also means that if you update an item in a stream, all the dynamic parts of the updated item are sent again.
 2. Use a LiveComponent for each entry. LiveComponents perform change tracking on their own assigns. So when you update a single item, LiveView only sends a list of component IDs and the changed parts for that item.
@@ -238,7 +238,7 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 ### Enhancements
 
 * Allow omitting the `name` attribute when using `Phoenix.LiveView.ColocatedJS` ([#3860](https://github.com/phoenixframework/phoenix_live_view/pull/3860))
-* Add change tracking in comprehensions by default; `:key` does not use LiveComponents any more which allows it to be used on components and improves payload sizes ([#3865](https://github.com/phoenixframework/phoenix_live_view/pull/3865))
+* Add change tracking in comprehensions by default; `:key` does not use LiveComponents anymore which allows it to be used on components and improves payload sizes ([#3865](https://github.com/phoenixframework/phoenix_live_view/pull/3865))
 
 ### Bug fixes
 
