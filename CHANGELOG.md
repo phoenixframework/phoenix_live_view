@@ -39,7 +39,7 @@ Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
 
 ## Colocated hooks
 
-LiveView 1.1 introduces colocated hooks to allow writing the hook's JavaScript code in the same file as your regular component code.
+LiveView v1.1 introduces colocated hooks to allow writing the hook's JavaScript code in the same file as your regular component code.
 
 A colocated hook is defined by placing the special `:type` attribute on a `<script>` tag:
 
@@ -65,7 +65,7 @@ def input(%{type: "phone-number"} = assigns) do
 end
 ```
 
-Important: LiveView now supports the `phx-hook` attribute to start with a dot (`.PhoneNumber` above) for namespacing. Any hook name starting with a dot is prefixed at compile time with the module name of the component. If you named your hooks with a leading dot in the past, you'll need to adjust this for your hooks to work properly on LiveView 1.1.
+Important: LiveView now supports the `phx-hook` attribute to start with a dot (`.PhoneNumber` above) for namespacing. Any hook name starting with a dot is prefixed at compile time with the module name of the component. If you named your hooks with a leading dot in the past, you'll need to adjust this for your hooks to work properly on LiveView v1.1.
 
 Colocated hooks are extracted to a `phoenix-colocated` folder inside your `_build/$MIX_ENV` directory (`Mix.Project.build_path()`). See the quick update section at the top of the changelog on how to adjust your `esbuild` configuration to handle this. With everything configured, you can import your colocated hooks inside of your `app.js` like this:
 
@@ -86,9 +86,9 @@ The `phoenix-colocated` folder has subfolders for each application that uses col
 
 We're planning to make the private `Phoenix.Component.MacroComponent` API that we use for those features public in a future release.
 
-## Keyed Comprehensions
+## Change tracking in comprehensions
 
-One pitfall when rendering collections in LiveView is that they are not change tracked. If you have code like this:
+One pitfall when rendering collections in LiveView was that they were not change tracked. If you had code like this:
 
 ```heex
 <ul>
@@ -96,16 +96,16 @@ One pitfall when rendering collections in LiveView is that they are not change t
 </ul>
 ```
 
-When changing `@items`, all elements are re-sent over the wire. LiveView still optimizes the static and dynamic parts of the template, but if you have 100 items in your list and only change a single one (or append, prepend, etc.), LiveView still sends the dynamic parts of all items.
+When changing `@items`, all elements were re-sent over the wire. LiveView still optimized the static and dynamic parts of the template, but if you had 100 items in your list and only changed a single one (also applies to append, prepend, etc.), LiveView still sent the dynamic parts of all items.
 
-To improve this, LiveView prior to version 1.1 had two solutions:
+To improve this, LiveView prior to version v1.1 had two solutions:
 
 1. Use streams. Streams are not kept in memory on the server and if you `stream_insert` a single item, only that item is sent over the wire. But because the server does not keep any state for streams, this also means that if you update an item in a stream, all the dynamic parts of the updated item are sent again.
 2. Use a LiveComponent for each entry. LiveComponents perform change tracking on their own assigns. So when you update a single item, LiveView only sends a list of component IDs and the changed parts for that item.
 
 So LiveComponents allow for more granular diffs and also a more declarative approach than streams, but require more memory on the server. Thus, when memory usage is a concern, especially for very large collections, streams should be your first choice. Another downside of LiveComponents is that they require you to write a whole separate module just to get an optimized diff.
 
-LiveView 1.1 introduces a new `:key` attribute that can be used with `:for`:
+LiveView v1.1 changes how comprehensions are handled to enable change tracking by default. If you only change a single item in a list, only its changes are sent. To do this, LiveView uses an element's index to track changes. This means that if you prepend an entry in a list, all items after the new one will be sent again. To improve this even further, LiveView v1.1 introduces a new `:key` attribute that can be used with `:for`:
 
 ```heex
 <ul>
@@ -113,11 +113,11 @@ LiveView 1.1 introduces a new `:key` attribute that can be used with `:for`:
 </ul>
 ```
 
-Under the hood, this has the same diff over the wire as a LiveComponent for each entry, but it allows you to define the template inline. Therefore, this optimization can only be used on regular HTML tags, while `:for` without `:key` also works on components and slots. In the future, we might introduce further enhancements and optimizations.
+LiveView uses the key to efficiently calculate a diff that only contains the new indexes of moved items. Change tracking in comprehensions comes with a slightly increased memory footprint. If memory is a concern, you should think about using streams.
 
 ## Types for public interfaces
 
-LiveView 1.1 adds official types to the JavaScript client. This allows IntelliSense to work in editors that support it and is a massive improvement to the user experience when writing JavaScript hooks. If you're not using TypeScript, you can also add the necessary JSDoc hints to your hook definitions, assuming your editor supports them.
+LiveView v1.1 adds official types to the JavaScript client. This allows IntelliSense to work in editors that support it and is a massive improvement to the user experience when writing JavaScript hooks. If you're not using TypeScript, you can also add the necessary JSDoc hints to your hook definitions, assuming your editor supports them.
 
 Example when defining a hook object that is meant to be passed to the `LiveSocket` constructor:
 
@@ -210,7 +210,7 @@ Sometimes it is useful to prevent some attributes from being patched by LiveView
 
 ## Moving from Floki to LazyHTML
 
-LiveView 1.1 moves to [LazyHTML](https://hexdocs.pm/lazy_html/) as the HTML engine used by `LiveViewTest`. LazyHTML is based on [lexbor](https://github.com/lexbor/lexbor) and allows the use of modern CSS selector features, like `:is()`, `:has()`, etc. to target elements. Lexbor's stated goal is to create output that "should match that of modern browsers, meeting industry specifications".
+LiveView v1.1 moves to [LazyHTML](https://hexdocs.pm/lazy_html/) as the HTML engine used by `LiveViewTest`. LazyHTML is based on [lexbor](https://github.com/lexbor/lexbor) and allows the use of modern CSS selector features, like `:is()`, `:has()`, etc. to target elements. Lexbor's stated goal is to create output that "should match that of modern browsers, meeting industry specifications".
 
 This is a mostly backwards compatible change. The only way in which this affects LiveView projects is when using Floki specific selectors (`fl-contains`, `fl-icontains`), which will not work any more in selectors passed to LiveViewTest's [`element/3`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html#element/3) function. In most cases, the `text_filter` option of [`element/3`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveViewTest.html#element/3) should be a sufficient replacement, which has been available since LiveView v0.12.
 
@@ -238,7 +238,7 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 ### Enhancements
 
 * Allow omitting the `name` attribute when using `Phoenix.LiveView.ColocatedJS` ([#3860](https://github.com/phoenixframework/phoenix_live_view/pull/3860))
-* Improve error message when `:key` in keyed comprehensions leads to duplicate IDs ([#3857](https://github.com/phoenixframework/phoenix_live_view/pull/3857))
+* Add change tracking in comprehensions by default; `:key` does not use LiveComponents any more which allows it to be used on components and improves payload sizes ([#3865](https://github.com/phoenixframework/phoenix_live_view/pull/3865))
 
 ### Bug fixes
 
