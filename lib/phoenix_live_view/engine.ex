@@ -403,6 +403,7 @@ defmodule Phoenix.LiveView.Engine do
        quote do
          dynamic = fn track_changes? ->
            changed = unquote(changed)
+           vars_changed = if track_changes?, do: vars_changed
            unquote({:__block__, [], block})
            unquote(dynamic)
          end
