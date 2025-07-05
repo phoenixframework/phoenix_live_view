@@ -1897,6 +1897,26 @@ defmodule Phoenix.LiveView.DiffTest do
       """
     end
 
+    defp comprehended_keyed_comprehension_with_slot(assigns) do
+      ~H"""
+      <%= for count <- [100, 200] do %>
+        <.slotted_list :let={%{name: name}} items={@items}>
+          Outside assign: {count} Inside assign: {name}
+        </.slotted_list>
+      <% end %>
+      """
+    end
+
+    defp slotted_list(assigns) do
+      ~H"""
+      <ul>
+        <li :for={%{id: id} = item <- @items} :key={id}>
+          {render_slot(@inner_block, item)}}
+        </li>
+      </ul>
+      """
+    end
+
     test "change tracking with minimal diff updates" do
       items = [
         %{id: 1, name: "First"},
@@ -2168,6 +2188,95 @@ defmodule Phoenix.LiveView.DiffTest do
              }
 
       assert {%{}, %{}, 1} = components
+    end
+
+    test "vars_changed is reset for new items" do
+      items = [
+        %{id: 1, name: "First"},
+        %{id: 2, name: "Second"}
+      ]
+
+      assigns = %{socket: %Socket{}, items: items, __changed__: %{}}
+
+      {full_render, fingerprints, components} =
+        render(comprehended_keyed_comprehension_with_slot(assigns))
+
+      assert full_render == %{
+               0 => %{
+                 k: %{
+                   0 => %{
+                     0 => %{
+                       :s => 2,
+                       0 => %{
+                         k: %{
+                           0 => %{0 => %{0 => "100", 1 => "First", :s => 0}},
+                           1 => %{0 => %{0 => "100", 1 => "Second"}},
+                           :kc => 2
+                         },
+                         s: 1
+                       },
+                       :r => 1
+                     }
+                   },
+                   1 => %{
+                     0 => %{
+                       0 => %{
+                         k: %{
+                           0 => %{0 => %{0 => "200", 1 => "First"}},
+                           1 => %{0 => %{0 => "200", 1 => "Second"}},
+                           :kc => 2
+                         }
+                       }
+                     }
+                   },
+                   :kc => 2
+                 },
+                 s: 3
+               },
+               :p => %{
+                 0 => ["\n    Outside assign: ", " Inside assign: ", "\n  "],
+                 1 => ["<li>\n    ", "}\n  </li>"],
+                 2 => ["<ul>\n  ", "\n</ul>"],
+                 3 => ["\n  ", "\n"],
+                 4 => ["", ""]
+               },
+               :s => 4
+             }
+
+      assert {%{}, %{}, 1} = components
+
+      assigns =
+        Phoenix.Component.assign(assigns, :items, [
+          %{id: 3, name: "Third"},
+          %{id: 2, name: "Second"}
+        ])
+
+      assert {second_render, _fingerprints, _components} =
+               render(
+                 comprehended_keyed_comprehension_with_slot(assigns),
+                 fingerprints,
+                 components
+               )
+
+      # we still get 100 and 200 from the outer comprehension, even those did not change
+      assert second_render == %{
+               0 => %{
+                 k: %{
+                   0 => %{
+                     0 => %{
+                       0 => %{k: %{0 => %{0 => %{1 => "Third", :s => 0, 0 => "100"}}, :kc => 2}}
+                     }
+                   },
+                   1 => %{
+                     0 => %{
+                       0 => %{k: %{0 => %{0 => %{1 => "Third", :s => 0, 0 => "200"}}, :kc => 2}}
+                     }
+                   },
+                   :kc => 2
+                 }
+               },
+               :p => %{0 => ["\n    Outside assign: ", " Inside assign: ", "\n  "]}
+             }
     end
 
     test ":key on components" do
