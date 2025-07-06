@@ -471,7 +471,6 @@ export default class Rendered {
   }
 
   comprehensionToBuffer(rendered, templates, output, changeTracking) {
-    console.log("rendering keyed", structuredClone(rendered));
     const keyedTemplates = templates || rendered[TEMPLATES];
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
