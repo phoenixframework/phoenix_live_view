@@ -155,6 +155,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/js", E2E.JsLive
       live "/select", E2E.SelectLive
       live "/components", E2E.ComponentsLive
+      live "/keyed-comprehension", E2E.KeyedComprehensionLive
     end
 
     scope "/portal", Phoenix.LiveViewTest do

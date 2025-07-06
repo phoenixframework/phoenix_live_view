@@ -62,21 +62,11 @@ defmodule Phoenix.LiveView.Diff do
     if !keyed or keyed[@keyed_count] == 0 do
       {[], components}
     else
-      {diff, {components, _}} =
-        Enum.map_reduce(0..(keyed[@keyed_count] - 1), {components, nil}, fn
-          index, {components, canonical_diff} ->
-            diff = Map.fetch!(keyed, index)
-            canonical_diff = canonical_diff || diff
-            # merge nested statics from canonical diff
-            diff = deep_merge(canonical_diff, diff)
+      Enum.map_reduce(0..(keyed[@keyed_count] - 1), components, fn index, components ->
+        diff = Map.fetch!(keyed, index)
 
-            {iodata, components} =
-              to_iodata(Map.put(diff, @static, static), components, template, mapper)
-
-            {iodata, {components, canonical_diff}}
-        end)
-
-      {diff, components}
+        to_iodata(Map.put(diff, @static, static), components, template, mapper)
+      end)
     end
   end
 
@@ -652,14 +642,13 @@ defmodule Phoenix.LiveView.Diff do
     diff = %{}
     new_prints = %{}
 
-    {{diff, count, new_prints, pending, components, template, _canonical_print}, _seen_keys} =
+    {{diff, count, new_prints, pending, components, template}, _seen_keys} =
       Enum.reduce(
         entries,
-        {{diff, 0, new_prints, pending, components, template, nil}, MapSet.new()},
+        {{diff, 0, new_prints, pending, components, template}, MapSet.new()},
         fn
           {key, vars, render},
-          {{_diff, index, _new_prints, _pending, _components, _template, _canonical_print} = acc,
-           seen_keys} ->
+          {{_diff, index, _new_prints, _pending, _components, _template} = acc, seen_keys} ->
             {key, seen_keys} =
               cond do
                 not has_key? ->
@@ -689,7 +678,7 @@ defmodule Phoenix.LiveView.Diff do
   # it's an existing entry
   defp process_keyed({key, new_vars, render}, previous_prints, changed?, stream?, acc)
        when is_map_key(previous_prints, key) and not stream? do
-    {diff, index, new_prints, pending, components, template, canonical_print} = acc
+    {diff, index, new_prints, pending, components, template} = acc
 
     %{vars: previous_vars, index: previous_index, child_prints: child_prints} =
       Map.fetch!(previous_prints, key)
@@ -711,8 +700,6 @@ defmodule Phoenix.LiveView.Diff do
         changed?
       )
 
-    canonical_print = canonical_print || child_prints
-
     new_prints =
       Map.put(new_prints, key, %{index: index, vars: new_vars, child_prints: child_prints})
 
@@ -720,7 +707,7 @@ defmodule Phoenix.LiveView.Diff do
     if child_diff == %{} or child_diff == nil do
       # check if the entry moved, then annotate it with the previous index
       diff = if previous_index != index, do: Map.put(diff, index, previous_index), else: diff
-      {diff, index + 1, new_prints, pending, components, template, canonical_print}
+      {diff, index + 1, new_prints, pending, components, template}
     else
       child_diff =
         if previous_index != index do
@@ -729,19 +716,18 @@ defmodule Phoenix.LiveView.Diff do
           child_diff
         end
 
-      {Map.put(diff, index, child_diff), index + 1, new_prints, pending, components, template,
-       canonical_print}
+      {Map.put(diff, index, child_diff), index + 1, new_prints, pending, components, template}
     end
   end
 
   # it's a new entry
   defp process_keyed({key, vars, render}, _previous_prints, _changed?, stream?, acc) do
-    {diff, index, new_prints, pending, components, template, canonical_print} = acc
+    {diff, index, new_prints, pending, components, template} = acc
 
     {_counter, child_diff, child_prints, pending, components, template} =
       traverse_dynamic(
         render.(%{}, false),
-        if(canonical_print, do: canonical_print, else: %{}),
+        %{},
         pending,
         components,
         template,
@@ -749,8 +735,6 @@ defmodule Phoenix.LiveView.Diff do
         # even if some parts of the template might not have changed themselves
         false
       )
-
-    canonical_print = canonical_print || child_prints
 
     # if this is a stream, we don't store any fingerprints
     new_prints =
@@ -762,7 +746,7 @@ defmodule Phoenix.LiveView.Diff do
 
     diff = Map.put(diff, index, child_diff)
 
-    {diff, index + 1, new_prints, pending, components, template, canonical_print}
+    {diff, index + 1, new_prints, pending, components, template}
   end
 
   defp maybe_share_template(map, fingerprint, static, {print_to_pos, pos_to_static}) do

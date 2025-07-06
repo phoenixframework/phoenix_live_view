@@ -475,23 +475,7 @@ export default class Rendered {
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
-    let canonicalDiff;
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      // this is another optimization where we assume the first element in
-      // the comprehension has a "canonical diff" that is shared with all
-      // following elements (if possible). The diff only contains the
-      // dynamic parts for the parts that can be shared, therefore we use
-      // cloneMerge to copy all eligilbe statics from the first diff into
-      // all subsequent ones.
-      if (i == 0) {
-        canonicalDiff = rendered[KEYED][i];
-      } else {
-        rendered[KEYED][i] = this.cloneMerge(
-          canonicalDiff,
-          rendered[KEYED][i],
-          true,
-        );
-      }
       output.buffer += statics[0];
       for (let j = 1; j < statics.length; j++) {
         this.dynamicToBuffer(
