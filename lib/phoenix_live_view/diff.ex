@@ -63,9 +63,9 @@ defmodule Phoenix.LiveView.Diff do
       {[], components}
     else
       Enum.map_reduce(0..(keyed[@keyed_count] - 1), components, fn index, components ->
-          diff = Map.fetch!(keyed, index)
+        diff = Map.fetch!(keyed, index)
 
-          to_iodata(Map.put(diff, @static, static), components, template, mapper)
+        to_iodata(Map.put(diff, @static, static), components, template, mapper)
       end)
     end
   end
@@ -648,8 +648,7 @@ defmodule Phoenix.LiveView.Diff do
         {{diff, 0, new_prints, pending, components, template}, MapSet.new()},
         fn
           {key, vars, render},
-          {{_diff, index, _new_prints, _pending, _components, _template} = acc,
-           seen_keys} ->
+          {{_diff, index, _new_prints, _pending, _components, _template} = acc, seen_keys} ->
             {key, seen_keys} =
               cond do
                 not has_key? ->
