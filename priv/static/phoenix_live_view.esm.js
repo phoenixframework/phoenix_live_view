@@ -3098,17 +3098,7 @@ var Rendered = class {
     const statics = this.templateStatic(rendered[STATIC], templates);
     rendered[STATIC] = statics;
     delete rendered[TEMPLATES];
-    let canonicalDiff;
     for (let i = 0; i < rendered[KEYED][KEYED_COUNT]; i++) {
-      if (i == 0) {
-        canonicalDiff = rendered[KEYED][i];
-      } else {
-        rendered[KEYED][i] = this.cloneMerge(
-          canonicalDiff,
-          rendered[KEYED][i],
-          true
-        );
-      }
       output.buffer += statics[0];
       for (let j = 1; j < statics.length; j++) {
         this.dynamicToBuffer(
