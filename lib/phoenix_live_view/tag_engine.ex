@@ -366,8 +366,6 @@ defmodule Phoenix.LiveView.TagEngine do
   defp maybe_prune_text_after_macro_component("", tokens), do: prune_text(tokens)
   defp maybe_prune_text_after_macro_component(_ast, tokens), do: tokens
 
-  defp prune_text_after_slot(tokens), do: prune_text(tokens)
-
   defp prune_text([{:text, text, meta} | tokens]),
     do: [{:text, String.trim_leading(text), meta} | tokens]
 
@@ -633,7 +631,7 @@ defmodule Phoenix.LiveView.TagEngine do
     assigns = wrap_special_slot(special, merge_component_attrs(roots, attrs, line))
 
     add_slot(state, slot_name, assigns, attr_info, tag_meta, special)
-    |> continue(prune_text_after_slot(tokens))
+    |> continue(prune_text(tokens))
   end
 
   # Slot (with inner content)
@@ -669,7 +667,7 @@ defmodule Phoenix.LiveView.TagEngine do
     state
     |> add_slot(slot_name, assigns, inner, tag_meta, special)
     |> pop_substate_from_stack()
-    |> continue(prune_text_after_slot(tokens))
+    |> continue(prune_text(tokens))
   end
 
   # Local function component (self close)
