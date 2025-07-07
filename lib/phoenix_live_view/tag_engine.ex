@@ -363,10 +363,13 @@ defmodule Phoenix.LiveView.TagEngine do
     %{state | slots: [[slot | slots] | other_slots]}
   end
 
-  defp prune_text_after_slot([{:text, text, meta} | tokens]),
+  defp maybe_prune_text_after_macro_component("", tokens), do: prune_text(tokens)
+  defp maybe_prune_text_after_macro_component(_ast, tokens), do: tokens
+
+  defp prune_text([{:text, text, meta} | tokens]),
     do: [{:text, String.trim_leading(text), meta} | tokens]
 
-  defp prune_text_after_slot(tokens),
+  defp prune_text(tokens),
     do: tokens
 
   defp validate_slot!(%{tags: [{type, _, _, _} | _]}, _name, _tag_meta)
@@ -422,6 +425,11 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp push_tag(state, token) do
     %{state | tags: [token | state.tags]}
+  end
+
+  # special clause for macro components
+  defp pop_tag!(%{tags: [{:macro_tag, name} | tags]} = state, {:close, :macro_tag, name}) do
+    %{state | tags: tags}
   end
 
   defp pop_tag!(
@@ -623,7 +631,7 @@ defmodule Phoenix.LiveView.TagEngine do
     assigns = wrap_special_slot(special, merge_component_attrs(roots, attrs, line))
 
     add_slot(state, slot_name, assigns, attr_info, tag_meta, special)
-    |> continue(prune_text_after_slot(tokens))
+    |> continue(prune_text(tokens))
   end
 
   # Slot (with inner content)
@@ -659,7 +667,7 @@ defmodule Phoenix.LiveView.TagEngine do
     state
     |> add_slot(slot_name, assigns, inner, tag_meta, special)
     |> pop_substate_from_stack()
-    |> continue(prune_text_after_slot(tokens))
+    |> continue(prune_text(tokens))
   end
 
   # Local function component (self close)
@@ -859,11 +867,6 @@ defmodule Phoenix.LiveView.TagEngine do
 
     module = validate_module!(module_string, tag_meta, state)
 
-    # we do not perform root tracking on macro components
-    # but we call set_root_on_not_tag since a macro component could be
-    # just some text without any tags
-    state = set_root_on_not_tag(state)
-
     try do
       {ast, rest} =
         case Phoenix.Component.MacroComponent.build_ast(tokens, state.caller) do
@@ -883,14 +886,14 @@ defmodule Phoenix.LiveView.TagEngine do
       {{:ok, new_ast}, rest} ->
         state
         |> handle_ast(new_ast, tag_meta)
-        |> continue(rest)
+        |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
 
       {{:ok, new_ast, data}, rest} ->
         Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
 
         state
         |> handle_ast(new_ast, tag_meta)
-        |> continue(rest)
+        |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
 
       {other, _rest} ->
         raise ArgumentError,
@@ -907,6 +910,7 @@ defmodule Phoenix.LiveView.TagEngine do
       end
 
     state
+    |> set_root_on_tag()
     |> update_subengine(:handle_text, [[], "<#{tag}"])
     |> handle_ast_attrs(attrs, tag_open_meta)
     |> update_subengine(:handle_text, [[], suffix])
@@ -914,15 +918,22 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_ast(state, {tag, attrs, children, _meta}, tag_open_meta) do
     state
+    |> set_root_on_tag()
+    |> push_tag({:macro_tag, tag})
     |> update_subengine(:handle_text, [[], "<#{tag}"])
     |> handle_ast_attrs(attrs, tag_open_meta)
     |> update_subengine(:handle_text, [[], ">"])
     |> handle_ast(children, tag_open_meta)
     |> update_subengine(:handle_text, [[], "</#{tag}>"])
+    |> pop_tag!({:close, :macro_tag, tag})
   end
 
+  defp handle_ast(state, "", _tag_open_meta), do: state
+
   defp handle_ast(state, text, _tag_open_meta) when is_binary(text) do
-    update_subengine(state, :handle_text, [[], text])
+    state
+    |> set_root_on_not_tag()
+    |> update_subengine(:handle_text, [[], text])
   end
 
   defp handle_ast(state, children, tag_open_meta) when is_list(children) do
