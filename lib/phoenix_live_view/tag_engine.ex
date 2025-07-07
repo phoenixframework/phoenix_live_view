@@ -363,10 +363,15 @@ defmodule Phoenix.LiveView.TagEngine do
     %{state | slots: [[slot | slots] | other_slots]}
   end
 
-  defp prune_text_after_slot([{:text, text, meta} | tokens]),
+  defp maybe_prune_text_after_macro_component("", tokens), do: prune_text(tokens)
+  defp maybe_prune_text_after_macro_component(_ast, tokens), do: tokens
+
+  defp prune_text_after_slot(tokens), do: prune_text(tokens)
+
+  defp prune_text([{:text, text, meta} | tokens]),
     do: [{:text, String.trim_leading(text), meta} | tokens]
 
-  defp prune_text_after_slot(tokens),
+  defp prune_text(tokens),
     do: tokens
 
   defp validate_slot!(%{tags: [{type, _, _, _} | _]}, _name, _tag_meta)
@@ -883,14 +888,14 @@ defmodule Phoenix.LiveView.TagEngine do
       {{:ok, new_ast}, rest} ->
         state
         |> handle_ast(new_ast, tag_meta)
-        |> continue(rest)
+        |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
 
       {{:ok, new_ast, data}, rest} ->
         Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
 
         state
         |> handle_ast(new_ast, tag_meta)
-        |> continue(rest)
+        |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
 
       {other, _rest} ->
         raise ArgumentError,

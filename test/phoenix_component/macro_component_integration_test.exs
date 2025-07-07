@@ -339,7 +339,8 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     Process.put(:new_ast, "some text")
 
     refute eval_heex("""
-           <div :type={MyComponent}>Test</div><span>Another</span>
+           <div :type={MyComponent}>Test</div>
+           <span>Another</span>
            """).root
   end
 
