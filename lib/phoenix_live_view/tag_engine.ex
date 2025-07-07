@@ -424,6 +424,11 @@ defmodule Phoenix.LiveView.TagEngine do
     %{state | tags: [token | state.tags]}
   end
 
+  # special clause for macro components
+  defp pop_tag!(%{tags: [{:macro_tag, name} | tags]} = state, {:close, :macro_tag, name}) do
+    %{state | tags: tags}
+  end
+
   defp pop_tag!(
          %{tags: [{type, tag_name, _attrs, _meta} = tag | tags]} = state,
          {:close, type, tag_name, _}
@@ -859,11 +864,6 @@ defmodule Phoenix.LiveView.TagEngine do
 
     module = validate_module!(module_string, tag_meta, state)
 
-    # we do not perform root tracking on macro components
-    # but we call set_root_on_not_tag since a macro component could be
-    # just some text without any tags
-    state = set_root_on_not_tag(state)
-
     try do
       {ast, rest} =
         case Phoenix.Component.MacroComponent.build_ast(tokens, state.caller) do
@@ -907,6 +907,7 @@ defmodule Phoenix.LiveView.TagEngine do
       end
 
     state
+    |> set_root_on_tag()
     |> update_subengine(:handle_text, [[], "<#{tag}"])
     |> handle_ast_attrs(attrs, tag_open_meta)
     |> update_subengine(:handle_text, [[], suffix])
@@ -914,15 +915,22 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_ast(state, {tag, attrs, children, _meta}, tag_open_meta) do
     state
+    |> set_root_on_tag()
+    |> push_tag({:macro_tag, tag})
     |> update_subengine(:handle_text, [[], "<#{tag}"])
     |> handle_ast_attrs(attrs, tag_open_meta)
     |> update_subengine(:handle_text, [[], ">"])
     |> handle_ast(children, tag_open_meta)
     |> update_subengine(:handle_text, [[], "</#{tag}>"])
+    |> pop_tag!({:close, :macro_tag, tag})
   end
 
+  defp handle_ast(state, "", _tag_open_meta), do: state
+
   defp handle_ast(state, text, _tag_open_meta) when is_binary(text) do
-    update_subengine(state, :handle_text, [[], text])
+    state
+    |> set_root_on_not_tag()
+    |> update_subengine(:handle_text, [[], text])
   end
 
   defp handle_ast(state, children, tag_open_meta) when is_list(children) do
