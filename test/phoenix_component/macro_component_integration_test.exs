@@ -311,35 +311,52 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     assert Enum.find(data, fn %{opts: opts} -> opts == %{"id" => "2"} end)
   end
 
-  describe "root tracking" do
-    @endpoint Phoenix.LiveViewTest.Support.Endpoint
+  test "root tracking" do
+    assert eval_heex("<div :type={MyComponent}>Test</div>").root
 
-    test "does not count as root" do
-      defmodule TestLVDoesNotCountAsRoot do
-        use Phoenix.LiveView
+    refute eval_heex("""
+           <div :type={MyComponent}>Test</div>
+           <span>Another</span>
+           """).root
 
-        defmodule LC do
-          use Phoenix.LiveComponent
+    Process.put(
+      :new_ast,
+      {:div, [{"id", "1"}],
+       [
+         {"span", [{"class", "\"foo\""}], ["Test"], %{}},
+         {"span", [{"class", "'foo'"}], ["Test"], %{}}
+       ], %{}}
+    )
 
-          def render(assigns) do
-            ~H"""
-            <div :type={MyComponent}></div>
-            """
-          end
-        end
+    assert eval_heex("<div :type={MyComponent}>Test</div>").root
 
-        def render(assigns) do
-          ~H"""
-          <.live_component module={LC} id="my-lc" />
-          """
-        end
-      end
+    Process.put(:new_ast, "")
 
-      assert_raise ArgumentError,
-                   ~r/Stateful components must have a single static HTML tag at the root/,
-                   fn ->
-                     live_isolated(Phoenix.ConnTest.build_conn(), TestLVDoesNotCountAsRoot)
-                   end
-    end
+    assert eval_heex("""
+           <div :type={MyComponent}>Test</div><span>Another</span>
+           """).root
+
+    Process.put(:new_ast, "some text")
+
+    refute eval_heex("""
+           <div :type={MyComponent}>Test</div>
+           <span>Another</span>
+           """).root
+  end
+
+  defp eval_heex(source) do
+    require Phoenix.Component
+
+    EEx.compile_string(source,
+      engine: Phoenix.LiveView.TagEngine,
+      line: 1,
+      file: __ENV__.file,
+      trim: true,
+      caller: __ENV__,
+      source: source,
+      tag_handler: Phoenix.LiveView.HTMLEngine
+    )
+    |> Code.eval_quoted(assigns: %{})
+    |> elem(0)
   end
 end
