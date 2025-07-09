@@ -2,6 +2,14 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
   use ExUnit.Case, async: false
   import Igniter.Test
 
+  test "is idempontent" do
+    test_project()
+    |> run_upgrade()
+    |> apply_igniter!()
+    |> run_upgrade()
+    |> assert_unchanged()
+  end
+
   describe "dependency updates" do
     test "adds both dependencies" do
       test_project()
