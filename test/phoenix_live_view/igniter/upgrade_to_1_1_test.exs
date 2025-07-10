@@ -1,15 +1,21 @@
 defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
   use ExUnit.Case, async: false
   import Igniter.Test
-  import ExUnit.CaptureIO
+
+  test "is idempontent" do
+    test_project()
+    |> run_upgrade()
+    |> apply_igniter!()
+    |> run_upgrade()
+    |> assert_unchanged()
+  end
 
   describe "dependency updates" do
     test "adds both dependencies" do
       test_project()
       |> run_upgrade()
       |> assert_has_patch("mix.exs", """
-           25 + |      {:lazy_html, ">= 0.0.0", only: :test},
-           26 + |      {:phoenix_live_view, "~> 1.1"}
+      + |      {:lazy_html, ">= 0.0.0", only: :test}
       """)
     end
 
@@ -38,11 +44,9 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
           """
         }
       )
-      |> run_upgrade(input: "y\nn\n")
+      |> run_upgrade(input: ["y\n", "n\n"])
       |> assert_has_patch("mix.exs", """
-      15    - |      {:phoenix_live_view, "~> 0.20.0"}
          16 + |      {:lazy_html, ">= 0.0.0", only: :test},
-         17 + |      {:phoenix_live_view, "~> 1.1"}
       """)
     end
   end
@@ -52,9 +56,9 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       test_project()
       |> run_upgrade()
       |> assert_has_patch("mix.exs", """
-        10    - |      deps: deps()
-           10 + |      deps: deps(),
-           11 + |      compilers: [:phoenix_live_view] ++ Mix.compilers()
+      - |      deps: deps()
+      + |      deps: deps(),
+      + |      compilers: [:phoenix_live_view] ++ Mix.compilers()
       """)
     end
 
@@ -77,8 +81,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
 
             defp deps do
               [
-                {:lazy_html, ">= 0.0.0", only: :test},
-                {:phoenix_live_view, "~> 1.1"}
+                {:lazy_html, ">= 0.0.0", only: :test}
               ]
             end
           end
@@ -143,8 +146,8 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       |> run_upgrade()
       |> assert_has_patch("config/dev.exs", """
-         5    - |  reloadable_compilers: [:elixir, :app]
-            5 + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
+      - |  reloadable_compilers: [:elixir, :app]
+      + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
       """)
     end
 
@@ -167,8 +170,8 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       |> run_upgrade()
       |> assert_has_patch("config/dev.exs", """
-         5    - |  reloadable_compilers: [:elixir, :phoenix_live_view, :app]
-            5 + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
+      - |  reloadable_compilers: [:elixir, :phoenix_live_view, :app]
+      + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
       """)
     end
 
@@ -277,11 +280,11 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       # yes to esbuild
       |> run_upgrade(input: "y\n")
       |> assert_has_patch("config/config.exs", """
-          5   - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-            5 + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
-          6 6   |    cd: Path.expand("../assets", __DIR__),
-          7   - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-            7 + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+      - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
+      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
+        |    cd: Path.expand("../assets", __DIR__),
+      - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+      + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
       """)
       |> assert_has_notice(fn notice -> notice =~ "Final step for colocated hooks" end)
     end
@@ -305,8 +308,8 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       # yes to esbuild (no deps prompt since no existing deps)
       |> run_upgrade(input: "y\n")
       |> assert_has_patch("config/config.exs", """
-         5    - |    args: ["js/app.js", "--bundle", "--outdir=../priv/static/assets"],
-            5 + |    args: ["js/app.js", "--bundle", "--outdir=../priv/static/assets", "--alias:@=."],
+      - |    args: ["js/app.js", "--bundle", "--outdir=../priv/static/assets"],
+      + |    args: ["js/app.js", "--bundle", "--outdir=../priv/static/assets", "--alias:@=."],
       """)
       |> assert_has_notice(&(&1 =~ "Final step for colocated hooks"))
     end
@@ -330,11 +333,11 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       # yes to esbuild
       |> run_upgrade(input: "y\n")
       |> assert_has_patch("config/config.exs", """
-          5   - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-            5 + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
-          6 6   |    cd: Path.expand("../assets", __DIR__),
-          7   - |    env: %{"NODE_PATH" => "something_custom"}
-            7 + |    env: %{"NODE_PATH" => ["something_custom", Mix.Project.build_path()]}
+      - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
+      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
+        |    cd: Path.expand("../assets", __DIR__),
+      - |    env: %{"NODE_PATH" => "something_custom"}
+      + |    env: %{"NODE_PATH" => ["something_custom", Mix.Project.build_path()]}
       """)
       |> assert_has_notice(fn notice -> notice =~ "Final step for colocated hooks" end)
     end
@@ -398,7 +401,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
         }
       )
       # no to deps prompt, no to esbuild
-      |> run_upgrade(input: "n\nn\n")
+      |> run_upgrade(input: ["n\n", "n\n"])
       |> assert_unchanged("config/config.exs")
       |> refute_has_notice()
     end
@@ -460,28 +463,25 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
           """
         }
       )
-      |> run_upgrade(input: "y\ny\n")
+      |> run_upgrade(input: ["y\n", "y\n"])
       |> assert_has_patch("mix.exs", """
-         9    - |      deps: deps()
-            9 + |      deps: deps(),
-           10 + |      compilers: [:phoenix_live_view] ++ Mix.compilers()
+      - |      deps: deps()
+      + |      deps: deps(),
+      + |      compilers: [:phoenix_live_view] ++ Mix.compilers()
       """)
       |> assert_has_patch("mix.exs", """
-           16 + |      {:lazy_html, ">= 0.0.0", only: :test},
-        15 17   |      {:phoenix, "~> 1.7.0"},
-        16    - |      {:phoenix_live_view, "~> 0.20.0"}
-           18 + |      {:phoenix_live_view, "~> 1.1"}
+      + |      {:lazy_html, ">= 0.0.0", only: :test},
       """)
       |> assert_has_patch("config/dev.exs", """
-         5    - |  reloadable_compilers: [:elixir, :app]
-            5 + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
+      - |  reloadable_compilers: [:elixir, :app]
+      + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
       """)
       |> assert_has_patch("config/config.exs", """
-          5   - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-            5 + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
-          6 6   |    cd: Path.expand("../assets", __DIR__),
-          7   - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-            7 + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
+      - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
+      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
+        |    cd: Path.expand("../assets", __DIR__),
+      - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+      + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
       """)
     end
   end
@@ -490,12 +490,19 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
     # Default to no for esbuild prompt
     input = Keyword.get(opts, :input, "n\n")
 
-    {result, _output} =
-      with_io([input: input, capture_prompt: false], fn ->
-        Phoenix.LiveView.Igniter.UpgradeTo1_1.run(igniter, [])
-      end)
+    shell = Mix.shell()
 
-    result
+    try do
+      Mix.shell(Mix.Shell.Process)
+
+      input
+      |> List.wrap()
+      |> Enum.each(&send(self(), {:mix_shell_input, :prompt, &1}))
+
+      Igniter.compose_task(igniter, "phoenix_live_view.upgrade", ["1.0.0", "1.1.1"])
+    after
+      Mix.shell(shell)
+    end
   end
 
   defp refute_has_notice(igniter) do
