@@ -22,7 +22,9 @@ if Code.ensure_loaded?(Igniter) do
         # This ensures your option schema includes options from nested tasks
         composes: [],
         # `OptionParser` schema
-        schema: [],
+        schema: [
+          yes: :boolean
+        ],
         # Default values for the options in the `schema`
         defaults: [],
         # CLI aliases
