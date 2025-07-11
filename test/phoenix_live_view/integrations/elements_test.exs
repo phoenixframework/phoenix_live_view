@@ -784,6 +784,11 @@ defmodule Phoenix.LiveView.ElementsTest do
                    end
     end
 
+    test "fill in checkbox without value (default: on)", %{live: view} do
+      assert view |> form("#form", hello: [checkbox_no_value: "on"]) |> render_change
+      assert last_event(view) =~ ~s|"checkbox_no_value" => "on"|
+    end
+
     test "fill in multiple checkbox", %{live: view} do
       assert_raise ArgumentError,
                    "value for checkbox \"hello[multiple-checkbox][]\" must be one of [\"1\", \"2\", \"3\"], got: \"unknown\"",

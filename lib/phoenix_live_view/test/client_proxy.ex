@@ -1442,7 +1442,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp form_defaults("input", node, name, acc) do
     type = TreeDOM.attribute(node, "type") || "text"
-    value = TreeDOM.attribute(node, "value") || ""
+    value = TreeDOM.attribute(node, "value") || default_value(type)
 
     cond do
       type in ["radio", "checkbox"] ->
@@ -1568,7 +1568,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     type = TreeDOM.attribute(node, "type") || "text"
 
     if type in ["radio", "checkbox", "hidden"] do
-      value = TreeDOM.attribute(node, "value") || ""
+      value = TreeDOM.attribute(node, "value") || default_value(type)
       {[type | types], [value | values]}
     else
       {[type | types], values}
@@ -1591,6 +1591,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp collect_values(_tag, _node, types, values) do
     {types, values}
   end
+
+  defp default_value("checkbox"), do: "on"
+  defp default_value(_type), do: ""
 
   defp fill_in_name("", name), do: name
   defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
