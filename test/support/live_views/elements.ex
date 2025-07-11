@@ -161,6 +161,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       <input name="hello[checkbox]" type="checkbox" value="1" />
       <input name="hello[checkbox]" type="checkbox" value="2" checked />
       <input name="hello[checkbox]" type="checkbox" value="3" />
+      <input name="hello[checkbox_no_value]" type="checkbox" />
       <input name="hello[not-checked-checkbox]" type="checkbox" value="1" />
       <input name="hello[disabled-checkbox]" type="checkbox" value="1" checked disabled />
       <input name="hello[multiple-checkbox][]" type="checkbox" value="1" />
