@@ -86,6 +86,8 @@ The `phoenix-colocated` folder has subfolders for each application that uses col
 
 We're planning to make the private `Phoenix.Component.MacroComponent` API that we use for those features public in a future release.
 
+Note: Colocated hooks require Phoenix 1.8+.
+
 ## Change tracking in comprehensions
 
 One pitfall when rendering collections in LiveView was that they were not change tracked. If you had code like this:
