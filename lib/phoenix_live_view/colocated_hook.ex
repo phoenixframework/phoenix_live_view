@@ -55,9 +55,9 @@ defmodule Phoenix.LiveView.ColocatedHook do
   >
   > Colocated hooks are only written when the corresponding component is compiled.
   > Therefore, whenever you need to access a colocated hook, you need to ensure
-  > `mix compile` runs first.
+  > `mix compile` runs first. This automatically happens in development.
   >
-  > For example, if you have a custom mix alias, instead of
+  > If you have a custom mix alias, instead of
   >     release: ["assets.deploy", "release"]
   > do
   >     release: ["compile", "assets.deploy", "release"]
