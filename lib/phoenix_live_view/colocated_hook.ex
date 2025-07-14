@@ -51,6 +51,18 @@ defmodule Phoenix.LiveView.ColocatedHook do
   */
   ```
 
+  > #### Compilation order {: .info}
+  >
+  > Colocated hooks are only written when the corresponding component is compiled.
+  > Therefore, whenever you need to access a colocated hook, you need to ensure
+  > `mix compile` runs first. This automatically happens in development.
+  >
+  > If you have a custom mix alias, instead of
+  >     release: ["assets.deploy", "release"]
+  > do
+  >     release: ["compile", "assets.deploy", "release"]
+  > to ensure that all colocated hooks are extracted before esbuild or any other bundler runs.
+
   ## Options
 
   Colocated hooks are configured through the attributes of the `<script>` tag.
