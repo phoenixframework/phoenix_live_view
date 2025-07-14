@@ -196,9 +196,9 @@ defmodule Phoenix.LiveView.ColocatedHook do
   defp validate_phx_version! do
     phoenix_version = to_string(Application.spec(:phoenix, :vsn))
 
-    # TODO: bump to 1.8.0 when released
     if not Version.match?(phoenix_version, "~> 1.8.0-rc.4") do
-      raise ArgumentError, "ColocatedJS requires Phoenix 1.8"
+      # TODO: bump message to 1.8 once released to avoid confusion
+      raise ArgumentError, ~s|ColocatedHook requires at least {:phoenix, "~> 1.8.0-rc.4"}|
     end
   end
 end
