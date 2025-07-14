@@ -2,11 +2,11 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
   use ExUnit.Case, async: false
   import Igniter.Test
 
-  test "is idempontent" do
-    test_project()
-    |> run_upgrade()
+  test "is idempotent" do
+    full_project()
+    |> run_upgrade(input: ["y\n", "y\n"])
     |> apply_igniter!()
-    |> run_upgrade()
+    |> run_upgrade(input: ["y\n", "y\n"])
     |> assert_unchanged()
   end
 
@@ -259,6 +259,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       |> run_upgrade()
       |> assert_unchanged("config/config.exs")
+      |> refute_has_notice()
     end
 
     test "updates esbuild args and env when user confirms" do
@@ -281,7 +282,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       |> run_upgrade(input: "y\n")
       |> assert_has_patch("config/config.exs", """
       - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
+      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
         |    cd: Path.expand("../assets", __DIR__),
       - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
       + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
@@ -334,7 +335,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       |> run_upgrade(input: "y\n")
       |> assert_has_patch("config/config.exs", """
       - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
+      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
         |    cd: Path.expand("../assets", __DIR__),
       - |    env: %{"NODE_PATH" => "something_custom"}
       + |    env: %{"NODE_PATH" => ["something_custom", Mix.Project.build_path()]}
@@ -384,28 +385,6 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       |> refute_has_notice()
     end
 
-    test "skips esbuild update when user declines" do
-      test_project(
-        app_name: :my_app,
-        files: %{
-          "config/config.exs" => """
-          import Config
-
-          config :esbuild,
-            my_app: [
-              args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-              cd: Path.expand("../assets", __DIR__),
-              env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-            ]
-          """
-        }
-      )
-      # no to deps prompt, no to esbuild
-      |> run_upgrade(input: ["n\n", "n\n"])
-      |> assert_unchanged("config/config.exs")
-      |> refute_has_notice()
-    end
-
     test "skips esbuild update when no esbuild config exists" do
       test_project(app_name: :my_app)
       # yes to esbuild but no config exists (no deps prompt since no existing deps)
@@ -416,53 +395,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
 
   describe "full upgrade scenario" do
     test "performs complete upgrade for a Phoenix project" do
-      test_project(
-        app_name: :my_app,
-        files: %{
-          "mix.exs" => """
-          defmodule MyApp.MixProject do
-            use Mix.Project
-
-            def project do
-              [
-                app: :my_app,
-                version: "0.1.0",
-                elixir: "~> 1.14",
-                deps: deps()
-              ]
-            end
-
-            defp deps do
-              [
-                {:phoenix, "~> 1.7.0"},
-                {:phoenix_live_view, "~> 0.20.0"}
-              ]
-            end
-          end
-          """,
-          "lib/my_app_web.ex" => """
-          defmodule MyAppWeb do
-          end
-          """,
-          "config/config.exs" => """
-          import Config
-
-          config :esbuild,
-            my_app: [
-              args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-              cd: Path.expand("../assets", __DIR__),
-              env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
-            ]
-          """,
-          "config/dev.exs" => """
-          import Config
-
-          config :my_app, MyAppWeb.Endpoint,
-            http: [port: 4000],
-            reloadable_compilers: [:elixir, :app]
-          """
-        }
-      )
+      full_project()
       |> run_upgrade(input: ["y\n", "y\n"])
       |> assert_has_patch("mix.exs", """
       - |      deps: deps()
@@ -478,12 +411,62 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       """)
       |> assert_has_patch("config/config.exs", """
       - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
-      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=),
+      + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
         |    cd: Path.expand("../assets", __DIR__),
       - |    env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
       + |    env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
       """)
     end
+  end
+
+  defp full_project do
+    test_project(
+      app_name: :my_app,
+      files: %{
+        "mix.exs" => """
+        defmodule MyApp.MixProject do
+          use Mix.Project
+
+          def project do
+            [
+              app: :my_app,
+              version: "0.1.0",
+              elixir: "~> 1.14",
+              deps: deps()
+            ]
+          end
+
+          defp deps do
+            [
+              {:phoenix, "~> 1.7.0"},
+              {:phoenix_live_view, "~> 0.20.0"}
+            ]
+          end
+        end
+        """,
+        "lib/my_app_web.ex" => """
+        defmodule MyAppWeb do
+        end
+        """,
+        "config/config.exs" => """
+        import Config
+
+        config :esbuild,
+          my_app: [
+            args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
+            cd: Path.expand("../assets", __DIR__),
+            env: %{"NODE_PATH" => Path.expand("../deps", __DIR__)}
+          ]
+        """,
+        "config/dev.exs" => """
+        import Config
+
+        config :my_app, MyAppWeb.Endpoint,
+          http: [port: 4000],
+          reloadable_compilers: [:elixir, :app]
+        """
+      }
+    )
   end
 
   defp run_upgrade(igniter, opts \\ []) do

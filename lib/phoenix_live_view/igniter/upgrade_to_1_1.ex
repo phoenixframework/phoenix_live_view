@@ -118,7 +118,7 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1 do
                 args:
                   ~w(js/app.js --bundle --target=es2022 --outdir=../priv/static/assets/js --external:/fonts/* --external:/images/* --alias:@=.),
                 cd: "...",
-                env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]},
+                env: %{"NODE_PATH" => [Path.expand("../deps", __DIR__), Mix.Project.build_path()]}
               ]
         """
 
@@ -178,16 +178,20 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1 do
   defp update_esbuild_args(zipper, warning) do
     Igniter.Code.Keyword.put_in_keyword(zipper, [:args], nil, fn zipper ->
       if Igniter.Code.List.list?(zipper) do
-        Igniter.Code.List.append_to_list(zipper, "--alias:@=.")
+        Igniter.Code.List.append_new_to_list(zipper, "--alias:@=.")
       else
         # ~w()
         case zipper.node do
           {:sigil_w, _meta, [{:<<>>, _str_meta, [str]}, []]} ->
-            {:ok,
-             Igniter.Code.Common.replace_code(
-               zipper,
-               ~s[~w(#{str <> " --alias:@="})]
-             )}
+            if str =~ "--alias:@=." do
+              {:ok, zipper}
+            else
+              {:ok,
+               Igniter.Code.Common.replace_code(
+                 zipper,
+                 ~s[~w(#{str <> " --alias:@=."})]
+               )}
+            end
 
           _ ->
             {:warning, warning}
@@ -208,9 +212,29 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1 do
           ["NODE_PATH"],
           ~s<"[Path.expand("../deps", __DIR__), Mix.Project.build_path()])>,
           fn zipper ->
-            zipper
-            |> Igniter.Code.Common.replace_code("[Mix.Project.build_path()]")
-            |> Igniter.Code.List.prepend_to_list(zipper.node)
+            if Igniter.Code.List.list?(zipper) do
+              index =
+                Igniter.Code.List.find_list_item_index(zipper, fn zipper ->
+                  if Igniter.Code.Function.function_call?(
+                       zipper,
+                       {Mix.Project, :build_path},
+                       0
+                     ) do
+                    true
+                  end
+                end)
+
+              if index do
+                {:ok, zipper}
+              else
+                Igniter.Code.List.append_to_list(zipper, {:code, "Mix.Project.build_path()"})
+              end
+            else
+              # If NODE_PATH is not a list, convert it to a list with the original value and Mix.Project.build_path()
+              zipper
+              |> Igniter.Code.Common.replace_code("[Mix.Project.build_path()]")
+              |> Igniter.Code.List.prepend_to_list(zipper.node)
+            end
           end
         )
       end
