@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveViewTest.Support.Controller do
-  use Phoenix.Controller
+  use Phoenix.Controller, formats: [:html]
   import Phoenix.LiveView.Controller
 
   plug :put_layout, false
