@@ -8,7 +8,7 @@ When updating from LiveView 1.0, you can also use [igniter](https://hexdocs.pm/i
 mix igniter.upgrade phoenix_live_view
 ```
 
-Note: before the final release, you need to run `mix phoenix_live_view.upgrade 1.0.0 1.1.0` after upgrading to the latest release candidate instead.
+Note: before the final release, you need to run `mix igniter.apply_upgrades phoenix_live_view:1.0.0:1.1.0` after upgrading to the latest release candidate instead.
 
 Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
 
@@ -248,7 +248,7 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 ### Enhancements
 
 * Add [igniter](https://hexdocs.pm/igniter) upgrader for LiveView 1.0 to 1.1: `mix igniter.upgrade phoenix_live_view@1.1.0-rc.3` ([#3889](https://github.com/phoenixframework/phoenix_live_view/pull/3889))
-  * Note: before the final release, the actual upgrade requires a separate `mix phoenix_live_view.upgrade 1.0.0 1.1.0` after updating the dependency
+  * Note: before the final release, the actual upgrade requires a separate `mix igniter.apply_upgrades phoenix_live_view:1.0.0:1.1.0` after updating the dependency
 * Allow `ColocatedHook`s to work at the root of a LiveComponent ([#3882](https://github.com/phoenixframework/phoenix_live_view/pull/3882))
 * Use `"on"` as default value for checkboxes in LiveViewTest ([#3886](https://github.com/phoenixframework/phoenix_live_view/pull/3886))
 * Raise when using `ColocatedHook` / `ColocatedJS` on an unsupported Phoenix version
