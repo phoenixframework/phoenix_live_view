@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.ColocatedHook do
   A special HEEx `:type` that extracts [hooks](js-interop.md#client-hooks-via-phx-hook)
   from a co-located `<script>` tag at compile time.
 
+  Note: To use `ColocatedHook`, you need to run Phoenix 1.8+.
+
   ## Introduction
 
   Colocated hooks are defined as with `:type={Phoenix.LiveView.ColocatedHook}`:
@@ -138,6 +140,8 @@ defmodule Phoenix.LiveView.ColocatedHook do
 
   @impl true
   def transform({"script", attributes, [text_content], _tag_meta} = _ast, meta) do
+    validate_phx_version!()
+
     opts = Map.new(attributes)
 
     name =
@@ -187,5 +191,14 @@ defmodule Phoenix.LiveView.ColocatedHook do
 
   def transform(_ast, _meta) do
     raise ArgumentError, "a ColocatedHook can only be defined on script tags"
+  end
+
+  defp validate_phx_version! do
+    phoenix_version = to_string(Application.spec(:phoenix, :vsn))
+
+    if not Version.match?(phoenix_version, "~> 1.8.0-rc.4") do
+      # TODO: bump message to 1.8 once released to avoid confusion
+      raise ArgumentError, ~s|ColocatedHook requires at least {:phoenix, "~> 1.8.0-rc.4"}|
+    end
   end
 end
