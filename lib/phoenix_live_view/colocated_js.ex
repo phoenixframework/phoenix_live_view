@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
   A special HEEx `:type` that extracts any JavaScript code from a co-located
   `<script>` tag at compile time.
 
+  Note: To use `ColocatedJS`, you need to run Phoenix 1.8+.
+
   Colocated JavaScript is a more generalized version of `Phoenix.LiveView.ColocatedHook`.
   In fact, colocated hooks are built on top of `ColocatedJS`.
 
@@ -151,6 +153,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   @impl true
   def transform({"script", attributes, [text_content], _tag_meta} = _ast, meta) do
+    validate_phx_version!()
+
     opts = Map.new(attributes)
     validate_name!(opts)
     data = extract(opts, text_content, meta)
@@ -161,6 +165,15 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   def transform(_ast, _meta) do
     raise ArgumentError, "ColocatedJS can only be used on script tags"
+  end
+
+  defp validate_phx_version! do
+    phoenix_version = to_string(Application.spec(:phoenix, :vsn))
+
+    if not Version.match?(phoenix_version, "~> 1.8.0-rc.4") do
+      # TODO: bump message to 1.8 once released to avoid confusion
+      raise ArgumentError, ~s|ColocatedJS requires at least {:phoenix, "~> 1.8.0-rc.4"}|
+    end
   end
 
   defp validate_name!(opts) do
