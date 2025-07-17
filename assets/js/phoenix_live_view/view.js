@@ -36,6 +36,7 @@ import {
   PHX_VIEWPORT_TOP,
   PHX_VIEWPORT_BOTTOM,
   MAX_CHILD_JOIN_ATTEMPTS,
+  PHX_LV_PID,
 } from "./constants";
 
 import {
@@ -392,7 +393,7 @@ export default class View {
   }
 
   onJoin(resp) {
-    const { rendered, container, liveview_version } = resp;
+    const { rendered, container, liveview_version, pid } = resp;
     if (container) {
       const [tag, attrs] = container;
       this.el = DOM.replaceRootContainer(this.el, tag, attrs);
@@ -416,6 +417,15 @@ export default class View {
       console.error(
         `LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`,
       );
+    }
+
+    // The pid is only sent if
+    //
+    //    config :phoenix_live_view, :debug_attributes
+    //
+    // if set to true. It is to help debugging in development.
+    if (pid) {
+      this.el.setAttribute(PHX_LV_PID, pid);
     }
 
     Browser.dropLocal(

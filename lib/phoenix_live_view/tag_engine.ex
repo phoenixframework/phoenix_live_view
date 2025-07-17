@@ -1054,7 +1054,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_tag_and_attrs(state, name, attrs, suffix, meta) do
     text =
-      if Application.get_env(:phoenix_live_view, :debug_tags_location, false) do
+      if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
         "<#{name} data-phx-loc=\"#{meta[:line]}\""
       else
         "<#{name}"

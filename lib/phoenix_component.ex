@@ -535,7 +535,7 @@ defmodule Phoenix.Component do
   <!-- </AppWeb.CoreComponents.header> -->
   ```
 
-  Similarly, you can also turn on `:debug_tags_location`, which adds a
+  Similarly, you can also turn on `:debug_attributes`, which adds a
   `data-phx-loc` attribute with the line of where each HTML tag is defined:
 
   ```html
@@ -549,7 +549,7 @@ defmodule Phoenix.Component do
 
       config :phoenix_live_view,
         debug_heex_annotations: true,
-        debug_tags_location: true
+        debug_attributes: true
 
   Changing this configuration will require `mix clean` and a full recompile.
 
