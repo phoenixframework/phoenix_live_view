@@ -419,6 +419,11 @@ export default class View {
       );
     }
 
+    // The pid is only sent if
+    //
+    //    config :phoenix_live_view, :debug_pids
+    //
+    // if set to true. It is to help debugging in development.
     if (pid) {
       this.el.setAttribute(PHX_LV_PID, pid);
     }
