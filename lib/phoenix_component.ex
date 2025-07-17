@@ -3154,9 +3154,9 @@ defmodule Phoenix.Component do
   def focus_wrap(assigns) do
     ~H"""
     <div id={@id} phx-hook="Phoenix.FocusWrap" {@rest}>
-      <span id={"#{@id}-start"} tabindex="0" aria-hidden="true"></span>
+      <div id={"#{@id}-start"} tabindex="0" aria-hidden="true"></div>
       {render_slot(@inner_block)}
-      <span id={"#{@id}-end"} tabindex="0" aria-hidden="true"></span>
+      <div id={"#{@id}-end"} tabindex="0" aria-hidden="true"></div>
     </div>
     """
   end
