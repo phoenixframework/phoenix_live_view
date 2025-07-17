@@ -421,7 +421,7 @@ export default class View {
 
     // The pid is only sent if
     //
-    //    config :phoenix_live_view, :debug_pids
+    //    config :phoenix_live_view, :debug_attributes
     //
     // if set to true. It is to help debugging in development.
     if (pid) {

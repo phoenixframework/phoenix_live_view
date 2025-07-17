@@ -1425,7 +1425,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp maybe_put_debug_pid(diff) do
-    if Application.get_env(:phoenix_live_view, :debug_pids, false) do
+    if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
       Map.put(diff, :pid, inspect(self()))
     else
       diff
