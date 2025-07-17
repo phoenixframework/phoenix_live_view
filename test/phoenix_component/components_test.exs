@@ -144,9 +144,9 @@ defmodule Phoenix.LiveView.ComponentsTest do
       assert t2h(template) ==
                ~X"""
                <div id="wrap" phx-hook="Phoenix.FocusWrap" class="foo">
-                 <span id="wrap-start" tabindex="0" aria-hidden="true"></span>
+                 <div id="wrap-start" tabindex="0" aria-hidden="true"></div>
                  <div>content</div>
-                 <span id="wrap-end" tabindex="0" aria-hidden="true"></span>
+                 <div id="wrap-end" tabindex="0" aria-hidden="true"></div>
                </div>
                """
     end
