@@ -68,7 +68,20 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   ## Formatting
 
-  This formatter tries to be as consistent as possible with the Elixir formatter.
+  This formatter tries to be as consistent as possible with the Elixir formatter
+  and also take into account "block" and "inline" HTML elements.
+
+  In the past, HTML elements were categorized as either "block-level" or
+  "inline". While now these concepts are specified by CSS, the historical
+  distinction remains as it typically dictates the default browser rendering
+  behavior. In particular, adding or removing whitespace between the start and
+  end tags of a block-level element will not change the rendered output, while
+  it may for inline elements.
+
+  The following links further explain these concepts:
+
+  * https://developer.mozilla.org/en-US/docs/Glossary/Block-level_content
+  * https://developer.mozilla.org/en-US/docs/Glossary/Inline-level_content
 
   Given HTML like this:
 
@@ -86,11 +99,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   A block element will go to the next line, while inline elements will be kept in the current line
   as long as they fit within the configured line length.
-
-  The following links list all block and inline elements.
-
-  * https://developer.mozilla.org/en-US/docs/Web/HTML/Block-level_elements#elements
-  * https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
 
   It will also keep inline elements in their own lines if you intentionally write them this way:
 
@@ -179,9 +187,65 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   or after the element. Otherwise it would compromise what is rendered adding
   an extra whitespace.
 
-  This is the list of inline elements:
+  The formatter will consider these tags as inline elements:
 
-  https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
+  - `<a>`
+  - `<abbr>`
+  - `<acronym>`
+  - `<audio>`
+  - `<b>`
+  - `<bdi>`
+  - `<bdo>`
+  - `<big>`
+  - `<br>`
+  - `<button>`
+  - `<canvas>`
+  - `<cite>`
+  - `<code>`
+  - `<data>`
+  - `<datalist>`
+  - `<del>`
+  - `<dfn>`
+  - `<em>`
+  - `<embed>`
+  - `<i>`
+  - `<iframe>`
+  - `<img>`
+  - `<input>`
+  - `<ins>`
+  - `<kbd>`
+  - `<label>`
+  - `<map>`
+  - `<mark>`
+  - `<meter>`
+  - `<noscript>`
+  - `<object>`
+  - `<output>`
+  - `<picture>`
+  - `<progress>`
+  - `<q>`
+  - `<ruby>`
+  - `<s>`
+  - `<samp>`
+  - `<select>`
+  - `<slot>`
+  - `<small>`
+  - `<span>`
+  - `<strong>`
+  - `<sub>`
+  - `<sup>`
+  - `<svg>`
+  - `<template>`
+  - `<textarea>`
+  - `<time>`
+  - `<u>`
+  - `<tt>`
+  - `<var>`
+  - `<video>`
+  - `<wbr>`
+  - Tags/components that match the `:inline_matcher` option.
+
+  All other tags are considered block elements.
 
   ## Skip formatting
 
@@ -214,7 +278,9 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   # Reference for all inline elements so that we can tell the formatter to not
   # force a line break. This list has been taken from here:
   #
-  # https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
+  # https://web.archive.org/web/20220405120608/https://developer.mozilla.org/en-US/docs/Web/HTML/Inline_elements#list_of_inline_elements
+  #
+  # A notable omission is `<script>`, which is handled separately in `html_algebra.ex`.
   @inline_tags ~w(a abbr acronym audio b bdi bdo big br button canvas cite
   code data datalist del dfn em embed i iframe img input ins kbd label map
   mark meter noscript object output picture progress q ruby s samp select slot
