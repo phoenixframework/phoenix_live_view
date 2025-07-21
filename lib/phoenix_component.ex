@@ -1149,10 +1149,9 @@ defmodule Phoenix.Component do
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
-    if is_struct(entry.inner_block, Phoenix.LiveView.Rendered) do
-      entry.inner_block
-    else
-      entry.inner_block.(changed, argument)
+    case entry.inner_block do
+      %Phoenix.LiveView.Rendered{} = rendered -> rendered
+      fun -> fun.(changed, argument)
     end
   end
 
@@ -1162,10 +1161,9 @@ defmodule Phoenix.Component do
       raise RuntimeError, message
     end
 
-    if is_struct(entry.inner_block, Phoenix.LiveView.Rendered) do
-      entry.inner_block
-    else
-      entry.inner_block.(changed, argument)
+    case entry.inner_block do
+      %Phoenix.LiveView.Rendered{} = rendered -> rendered
+      fun -> fun.(changed, argument)
     end
   end
 
