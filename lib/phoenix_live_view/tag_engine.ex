@@ -140,6 +140,8 @@ defmodule Phoenix.LiveView.TagEngine do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
+    # we can skip generating the slot change tracking code if we know
+    # that there are no dynamics inside
     no_dynamics? =
       case do_block do
         {_, meta, _} -> Keyword.get(meta, :no_dynamics)
@@ -1397,6 +1399,7 @@ defmodule Phoenix.LiveView.TagEngine do
     ast = invoke_subengine(state, :handle_end, [opts])
 
     case ast do
+      # when the AST is marked as having no dynamics, we can skip generating clauses
       {:__block__, [live_rendered: true, no_dynamics: true] ++ _meta, _} ->
         ast
 
