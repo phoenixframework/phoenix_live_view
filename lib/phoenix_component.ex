@@ -1149,7 +1149,11 @@ defmodule Phoenix.Component do
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
-    entry.inner_block.(changed, argument)
+    if is_struct(entry.inner_block, Phoenix.LiveView.Rendered) do
+      entry.inner_block
+    else
+      entry.inner_block.(changed, argument)
+    end
   end
 
   defp call_inner_block!(entry, changed, argument) do
@@ -1158,7 +1162,11 @@ defmodule Phoenix.Component do
       raise RuntimeError, message
     end
 
-    entry.inner_block.(changed, argument)
+    if is_struct(entry.inner_block, Phoenix.LiveView.Rendered) do
+      entry.inner_block
+    else
+      entry.inner_block.(changed, argument)
+    end
   end
 
   @doc """

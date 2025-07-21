@@ -542,7 +542,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           {[value: "aBcD"]}
           :let={%{wrong: _}}
         >
-          ...
+          {@foo}
         </Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block_args>
         """)
       end)
@@ -636,7 +636,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           {[value: "aBcD"]}
           :let={%{wrong: _}}
         >
-          ...
+          {@foo}
         </.local_function_component_with_inner_block_args>
         """)
       end)

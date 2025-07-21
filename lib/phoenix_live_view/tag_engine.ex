@@ -140,8 +140,17 @@ defmodule Phoenix.LiveView.TagEngine do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
-    case do_block do
-      [{:->, meta, _} | _] ->
+    no_dynamics? =
+      case do_block do
+        {_, meta, _} -> Keyword.get(meta, :no_dynamics)
+        _ -> false
+      end
+
+    case {do_block, no_dynamics?} do
+      {ast, true} ->
+        ast
+
+      {[{:->, meta, _} | _], _} ->
         inner_fun = {:fn, meta, do_block}
 
         quote do
@@ -1387,28 +1396,34 @@ defmodule Phoenix.LiveView.TagEngine do
 
     ast = invoke_subengine(state, :handle_end, [opts])
 
-    case let do
-      # If we have a var, we can skip the catch-all clause
-      {{var, _, ctx} = pattern, %{line: line}} when is_atom(var) and is_atom(ctx) ->
-        quote line: line do
-          unquote(pattern) -> unquote(ast)
-        end
-
-      {pattern, %{line: line}} ->
-        quote line: line do
-          unquote(pattern) -> unquote(ast)
-        end ++
-          quote line: line, generated: true do
-            other ->
-              Phoenix.LiveView.TagEngine.__unmatched_let__!(
-                unquote(Macro.to_string(pattern)),
-                other
-              )
-          end
+    case ast do
+      {:__block__, [live_rendered: true, no_dynamics: true] ++ _meta, _} ->
+        ast
 
       _ ->
-        quote do
-          _ -> unquote(ast)
+        case let do
+          # If we have a var, we can skip the catch-all clause
+          {{var, _, ctx} = pattern, %{line: line}} when is_atom(var) and is_atom(ctx) ->
+            quote line: line do
+              unquote(pattern) -> unquote(ast)
+            end
+
+          {pattern, %{line: line}} ->
+            quote line: line do
+              unquote(pattern) -> unquote(ast)
+            end ++
+              quote line: line, generated: true do
+                other ->
+                  Phoenix.LiveView.TagEngine.__unmatched_let__!(
+                    unquote(Macro.to_string(pattern)),
+                    other
+                  )
+              end
+
+          _ ->
+            quote do
+              _ -> unquote(ast)
+            end
         end
     end
   end

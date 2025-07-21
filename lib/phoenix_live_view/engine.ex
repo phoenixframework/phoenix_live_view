@@ -322,7 +322,8 @@ defmodule Phoenix.LiveView.Engine do
   def handle_end(state, opts \\ []) do
     %{static: static, dynamic: dynamic} = state
     safe = {:safe, Enum.reverse(static)}
-    meta = [live_rendered: true] ++ Keyword.get(opts, :meta, [])
+    meta = [live_rendered: true, no_dynamics: dynamic == []] ++ Keyword.get(opts, :meta, [])
+
     {:__block__, meta, Enum.reverse([safe | dynamic])}
   end
 
@@ -399,22 +400,41 @@ defmodule Phoenix.LiveView.Engine do
 
       root = Keyword.get(opts, :root, meta[:root])
 
-      {:ok,
-       quote do
-         dynamic = fn track_changes? ->
-           changed = unquote(changed)
-           vars_changed = if track_changes?, do: vars_changed
-           unquote({:__block__, [], block})
-           unquote(dynamic)
-         end
+      if dynamic == [] do
+        fingerprint = fingerprint(nil, static)
 
-         %Phoenix.LiveView.Rendered{
-           static: unquote(static),
-           dynamic: dynamic,
-           fingerprint: unquote(fingerprint),
-           root: unquote(root)
-         }
-       end}
+        {expr, meta, content} =
+          quote do
+            %Phoenix.LiveView.Rendered{
+              static: unquote(static),
+              dynamic: fn _ ->
+                _ = unquote(@assigns_var)
+                []
+              end,
+              fingerprint: unquote(fingerprint),
+              root: unquote(root)
+            }
+          end
+
+        {:ok, {expr, Keyword.put(meta, :no_dynamics, true), content}}
+      else
+        {:ok,
+         quote do
+           dynamic = fn track_changes? ->
+             changed = unquote(changed)
+             vars_changed = if track_changes?, do: vars_changed
+             unquote({:__block__, [], block})
+             unquote(dynamic)
+           end
+
+           %Phoenix.LiveView.Rendered{
+             static: unquote(static),
+             dynamic: dynamic,
+             fingerprint: unquote(fingerprint),
+             root: unquote(root)
+           }
+         end}
+      end
     else
       _ -> :error
     end
