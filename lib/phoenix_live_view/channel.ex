@@ -1398,7 +1398,8 @@ defmodule Phoenix.LiveView.Channel do
 
     case result do
       {:ok, diff, :mount, new_state} ->
-        reply = put_container(session, route, %{rendered: diff, liveview_version: lv_vsn})
+        diff = maybe_put_debug_pid(%{rendered: diff, liveview_version: lv_vsn})
+        reply = put_container(session, route, diff)
         GenServer.reply(from, {:ok, reply})
         {:noreply, post_verified_mount(new_state)}
 
@@ -1420,6 +1421,14 @@ defmodule Phoenix.LiveView.Channel do
       {:redirect, opts, new_state} ->
         GenServer.reply(from, {:error, %{redirect: opts}})
         {:stop, :shutdown, new_state}
+    end
+  end
+
+  defp maybe_put_debug_pid(diff) do
+    if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
+      Map.put(diff, :pid, inspect(self()))
+    else
+      diff
     end
   end
 

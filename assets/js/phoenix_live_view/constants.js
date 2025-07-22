@@ -79,6 +79,7 @@ export const PHX_PORTAL = "data-phx-portal";
 export const PHX_TELEPORTED_REF = "data-phx-teleported";
 export const PHX_TELEPORTED_SRC = "data-phx-teleported-src";
 export const PHX_RUNTIME_HOOK = "data-phx-runtime-hook";
+export const PHX_LV_PID = "data-phx-pid";
 export const PHX_KEY = "key";
 export const PHX_PRIVATE = "phxPrivate";
 export const PHX_AUTO_RECOVER = "auto-recover";
