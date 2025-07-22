@@ -27,12 +27,12 @@ Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
     compilers: [:phoenix_live_view] ++ Mix.compilers(),
     ```
 
-3. (optional) In your `config/dev.exs`, find `debug_heex_annotations`, and also add `debug_tags_location` for improved annotations:
+3. (optional) In your `config/dev.exs`, find `debug_heex_annotations`, and also add `debug_attributes` for improved annotations:
 
     ```elixir
     config :phoenix_live_view,
       debug_heex_annotations: true,
-      debug_tags_location: true,
+      debug_attributes: true,
       enable_expensive_runtime_checks: true
     ```
 
@@ -239,9 +239,19 @@ If you're using Floki itself in your tests through its API (`Floki.parse_documen
 
 ## Slot and line annotations
 
-When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginning and end of each slot. A new `:debug_tags_location` has also been added, which adds the starting line of each tag. The goal is to provide more precise information to tools.
+When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginning and end of each slot. A new `:debug_attributes` option has also been added, which adds the starting line of each tag as a `data-phx-loc` attribute. It also adds the LiveView PID to the root element of each LiveView. The goal is to provide more precise information to tools.
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
+
+## v1.1.0-rc.4 (Unreleased)
+
+### Enhancements
+
+* Rename `debug_tags_location` to `debug_attributes` and add `data-phx-pid`
+
+### Bug fixes
+
+* Prevent `focus_wrap` from focusing the last element instead of the first on Firefox in rare cases ([#3895](https://github.com/phoenixframework/phoenix_live_view/pull/3895))
 
 ## v1.1.0-rc.3 (2025-07-15)
 
