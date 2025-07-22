@@ -80,6 +80,7 @@ var PHX_PORTAL = "data-phx-portal";
 var PHX_TELEPORTED_REF = "data-phx-teleported";
 var PHX_TELEPORTED_SRC = "data-phx-teleported-src";
 var PHX_RUNTIME_HOOK = "data-phx-runtime-hook";
+var PHX_LV_PID = "data-phx-pid";
 var PHX_KEY = "key";
 var PHX_PRIVATE = "phxPrivate";
 var PHX_AUTO_RECOVER = "auto-recover";
@@ -4237,7 +4238,7 @@ var View = class _View {
     }
   }
   onJoin(resp) {
-    const { rendered, container, liveview_version } = resp;
+    const { rendered, container, liveview_version, pid } = resp;
     if (container) {
       const [tag, attrs] = container;
       this.el = dom_default.replaceRootContainer(this.el, tag, attrs);
@@ -4259,6 +4260,9 @@ var View = class _View {
       console.error(
         `LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`
       );
+    }
+    if (pid) {
+      this.el.setAttribute(PHX_LV_PID, pid);
     }
     browser_default.dropLocal(
       this.liveSocket.localStorage,
