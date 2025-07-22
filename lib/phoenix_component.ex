@@ -536,7 +536,8 @@ defmodule Phoenix.Component do
   ```
 
   Similarly, you can also turn on `:debug_attributes`, which adds a
-  `data-phx-loc` attribute with the line of where each HTML tag is defined:
+  `data-phx-loc` attribute with the line of where each HTML tag is defined
+  (as well as `data-phx-pid` to the LiveView container):
 
   ```html
   <header data-phx-loc="125" class="p-5">
