@@ -243,15 +243,17 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
-## v1.1.0-rc.4 (Unreleased)
+## v1.1.0-rc.4 (2025-07-22)
 
 ### Enhancements
 
-* Rename `debug_tags_location` to `debug_attributes` and add `data-phx-pid`
+* Rename `debug_tags_location` to `debug_attributes` and add `data-phx-pid` ([#3898](https://github.com/phoenixframework/phoenix_live_view/pull/3898))
+* Simplify code generated for slots in HEEx when the slot does not contain any dynamic code ([#3902](https://github.com/phoenixframework/phoenix_live_view/pull/3902))
 
 ### Bug fixes
 
 * Prevent `focus_wrap` from focusing the last element instead of the first on Firefox in rare cases ([#3895](https://github.com/phoenixframework/phoenix_live_view/pull/3895))
+* Ensure comprehension entries perform a full render when change tracking is disabled ([#3904](https://github.com/phoenixframework/phoenix_live_view/pull/3904))
 
 ## v1.1.0-rc.3 (2025-07-15)
 
