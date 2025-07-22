@@ -675,8 +675,8 @@ defmodule Phoenix.LiveView.Diff do
     end
   end
 
-  # it's an existing entry
-  defp process_keyed({key, new_vars, render}, previous_prints, changed?, stream?, acc)
+  # it's an existing entry and we are change tracking
+  defp process_keyed({key, new_vars, render}, previous_prints, true = changed?, stream?, acc)
        when is_map_key(previous_prints, key) and not stream? do
     {diff, index, new_prints, pending, components, template} = acc
 
