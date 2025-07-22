@@ -921,6 +921,12 @@ defmodule Phoenix.LiveView.Engine do
                {:__block__, [live_rendered: true] ++ _meta, [{:safe, _}]} = static_block
              ]}
           ] ->
+            # This is an optimization that removes the extra anonymous function from
+            # the TagEngine's build_component_clauses function used for slots.
+            # We can do this when the slot does not contain any dynamics, which also helps
+            # to prevent uncovered lines when rendering a component with only a named slot.
+            # In that case, the component still has an inner_block, but it only consists of
+            # whitespace.
             maybe_block_to_rendered(static_block, vars, caller)
 
           _ ->
