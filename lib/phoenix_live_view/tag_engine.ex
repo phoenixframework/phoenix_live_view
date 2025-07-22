@@ -140,10 +140,7 @@ defmodule Phoenix.LiveView.TagEngine do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
-    # TODO: It is unfortunate this macro is defined in TagEngine
-    # but Engine has intrinstic knowledge about it. Perhaps it
-    # should be moved to the engine instead with the catch-all
-    # clause removed (it exists only for backwards compat).
+    # TODO: Remove the catch-all clause, it is no longer used
     case do_block do
       [{:->, meta, _} | _] ->
         inner_fun = {:fn, meta, do_block}
