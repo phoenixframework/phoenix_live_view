@@ -948,6 +948,47 @@ defmodule Phoenix.LiveView.EngineTest do
     end
   end
 
+  describe "slots" do
+    import Phoenix.Component, only: [sigil_H: 2]
+
+    defp component(assigns) do
+      %{inner_block: [%{inner_block: slot}]} = assigns
+      throw(slot)
+    end
+
+    test "slots with no dynamics represented as rendered struct" do
+      try do
+        assigns = %{}
+
+        %Phoenix.LiveView.Rendered{dynamic: dynamic} =
+          ~H"<.component>No dynamics</.component>"
+
+        dynamic.(true)
+      catch
+        slot ->
+          assert %Phoenix.LiveView.Rendered{} = slot
+      else
+        _ -> flunk("Should have caught")
+      end
+    end
+
+    test "slots with dynamics are represented as function" do
+      try do
+        assigns = %{}
+
+        %Phoenix.LiveView.Rendered{dynamic: dynamic} =
+          ~H"<.component>{1234}</.component>"
+
+        dynamic.(true)
+      catch
+        slot ->
+          assert is_function(slot)
+      else
+        _ -> flunk("Should have caught")
+      end
+    end
+  end
+
   defp eval(string, assigns \\ %{}, binding \\ []) do
     EEx.eval_string(string, [assigns: assigns] ++ binding, file: __ENV__.file, engine: Engine)
   end
