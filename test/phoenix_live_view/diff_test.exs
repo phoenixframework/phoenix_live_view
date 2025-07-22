@@ -2479,5 +2479,69 @@ defmodule Phoenix.LiveView.DiffTest do
                }
              }
     end
+
+    defmodule LiveComponentForIssue3904 do
+      # https://github.com/phoenixframework/phoenix_live_view/pull/3904
+      use Phoenix.LiveComponent
+
+      def render(assigns) do
+        ~H"""
+        <div>
+          <div :for={i <- 1..assigns.count}>
+            Shared
+            <%= if i == 2 do %>
+              1 {2} 3
+            <% end %>
+            <%= if i > 0 do %>
+              Always
+            <% end %>
+          </div>
+        </div>
+        """
+      end
+    end
+
+    test "considers element rendered in shared live component trees as new" do
+      assigns = %{}
+
+      template = ~H"""
+      <.live_component id={0} module={LiveComponentForIssue3904} count={1} />
+      <.live_component id={1} module={LiveComponentForIssue3904} count={2} />
+      """
+
+      {full_render, _fingerprints, _components} = render(template)
+
+      assert full_render == %{
+               0 => 1,
+               1 => 2,
+               :c => %{
+                 1 => %{
+                   0 => %{
+                     p: %{0 => ["\n      Always\n    "]},
+                     s: ["<div>\n    Shared\n    ", "\n    ", "\n  </div>"],
+                     k: %{0 => %{0 => "", 1 => %{s: 0}}, :kc => 1}
+                   },
+                   :r => 1,
+                   :s => ["<div>\n  ", "\n</div>"]
+                 },
+                 2 => %{
+                   0 => %{
+                     p: %{0 => ["\n      Always\n    "], 1 => ["\n      1 ", " 3\n    "]},
+                     k: %{
+                       0 => %{0 => "", 1 => %{s: 0}},
+                       1 => %{0 => %{0 => "2", :s => 1}, 1 => %{s: 0}},
+                       :kc => 2
+                     }
+                   },
+                   :s => 1
+                 }
+               },
+               :p => %{0 => ["", "\n", ""]},
+               :s => 0
+             }
+
+      assert rendered_to_binary(full_render) ==
+               "<div>\n  <div>\n    Shared\n    \n    \n      Always\n    \n  </div>\n</div>\n<div>\n  <div>\n    Shared\n    \n    \n      Always\n    \n  </div><div>\n    Shared\n    \n      1 2 3\n    \n    \n      Always\n    \n  </div>\n</div>"
+    end
   end
 end
