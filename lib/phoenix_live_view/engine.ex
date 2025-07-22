@@ -399,14 +399,28 @@ defmodule Phoenix.LiveView.Engine do
 
       root = Keyword.get(opts, :root, meta[:root])
 
+      dynamic =
+        if dynamic == [] do
+          quote do
+            fn _ ->
+              _ = unquote(@assigns_var)
+              []
+            end
+          end
+        else
+          quote do
+            fn track_changes? ->
+              changed = unquote(changed)
+              vars_changed = if track_changes?, do: vars_changed
+              unquote({:__block__, [], block})
+              unquote(dynamic)
+            end
+          end
+        end
+
       {:ok,
        quote do
-         dynamic = fn track_changes? ->
-           changed = unquote(changed)
-           vars_changed = if track_changes?, do: vars_changed
-           unquote({:__block__, [], block})
-           unquote(dynamic)
-         end
+         dynamic = unquote(dynamic)
 
          %Phoenix.LiveView.Rendered{
            static: unquote(static),
@@ -898,7 +912,26 @@ defmodule Phoenix.LiveView.Engine do
        ) do
     with {call, meta, [^key, [do: block]]} <- inner_block,
          :inner_block <- extract_call(call) do
-      inner_block = {call, meta, [key, [do: maybe_block_to_rendered(block, vars, caller)]]}
+      inner_block =
+        case block do
+          [
+            {:->, _,
+             [
+               [{:_, _, _}],
+               {:__block__, [live_rendered: true] ++ _meta, [{:safe, _}]} = static_block
+             ]}
+          ] ->
+            # This is an optimization that removes the extra anonymous function from
+            # the TagEngine's build_component_clauses function used for slots.
+            # We can do this when the slot does not contain any dynamics, which also helps
+            # to prevent uncovered lines when rendering a component with only a named slot.
+            # In that case, the component still has an inner_block, but it only consists of
+            # whitespace.
+            maybe_block_to_rendered(static_block, vars, caller)
+
+          _ ->
+            {call, meta, [key, [do: maybe_block_to_rendered(block, vars, caller)]]}
+        end
 
       {:%{}, map_meta, [__slot__: key, inner_block: inner_block] ++ attrs}
     else
@@ -1318,17 +1351,6 @@ defmodule Phoenix.LiveView.Engine do
 
   defp to_safe(literal, line, _extra_clauses?) when is_list(literal) do
     quote line: line, do: Phoenix.HTML.Safe.List.to_iodata(unquote(literal))
-  end
-
-  # Calls to attributes escape is always safe
-  defp to_safe(
-         {{:., _, [Phoenix.LiveView.TagEngine, :attributes_escape]}, _, [_]} = safe,
-         line,
-         _extra_clauses?
-       ) do
-    quote line: line do
-      elem(unquote(safe), 1)
-    end
   end
 
   defp to_safe(expr, line, false) do

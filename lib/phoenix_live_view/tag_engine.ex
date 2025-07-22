@@ -140,6 +140,7 @@ defmodule Phoenix.LiveView.TagEngine do
   for more information.
   """
   defmacro inner_block(name, do: do_block) do
+    # TODO: Remove the catch-all clause, it is no longer used
     case do_block do
       [{:->, meta, _} | _] ->
         inner_fun = {:fn, meta, do_block}

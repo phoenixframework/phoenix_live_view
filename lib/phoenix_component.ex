@@ -1150,7 +1150,10 @@ defmodule Phoenix.Component do
   end
 
   def __render_slot__(changed, entry, argument) when is_map(entry) do
-    entry.inner_block.(changed, argument)
+    case entry.inner_block do
+      %Phoenix.LiveView.Rendered{} = rendered -> rendered
+      fun -> fun.(changed, argument)
+    end
   end
 
   defp call_inner_block!(entry, changed, argument) do
@@ -1159,7 +1162,10 @@ defmodule Phoenix.Component do
       raise RuntimeError, message
     end
 
-    entry.inner_block.(changed, argument)
+    case entry.inner_block do
+      %Phoenix.LiveView.Rendered{} = rendered -> rendered
+      fun -> fun.(changed, argument)
+    end
   end
 
   @doc """
