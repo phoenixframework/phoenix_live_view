@@ -393,6 +393,45 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
     end
   end
 
+  describe "debug_attributes" do
+    test "adds debug_attributes when debug_heex_annotations is already set" do
+      test_project(
+        app_name: :my_app,
+        files: %{
+          "config/dev.exs" => """
+          import Config
+
+          config :phoenix_live_view,
+            enable_expensive_runtime_checks: true,
+            debug_heex_annotations: true
+          """
+        }
+      )
+      |> run_upgrade()
+      |> assert_has_patch("config/dev.exs", """
+      - |    debug_heex_annotations: true
+      + |    debug_heex_annotations: true,
+      + |    debug_attributes: true
+      """)
+    end
+
+    test "does not add debug_attributes when debug_heex_annotations is not set" do
+      test_project(
+        app_name: :my_app,
+        files: %{
+          "config/dev.exs" => """
+          import Config
+
+          config :phoenix_live_view,
+            enable_expensive_runtime_checks: true
+          """
+        }
+      )
+      |> run_upgrade()
+      |> assert_unchanged("config/dev.exs")
+    end
+  end
+
   describe "full upgrade scenario" do
     test "performs complete upgrade for a Phoenix project" do
       full_project()
@@ -408,6 +447,11 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       |> assert_has_patch("config/dev.exs", """
       - |  reloadable_compilers: [:elixir, :app]
       + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
+      """)
+      |> assert_has_patch("config/dev.exs", """
+      - |    debug_heex_annotations: true
+      + |    debug_heex_annotations: true,
+      + |    debug_attributes: true
       """)
       |> assert_has_patch("config/config.exs", """
       - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
@@ -464,6 +508,10 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
         config :my_app, MyAppWeb.Endpoint,
           http: [port: 4000],
           reloadable_compilers: [:elixir, :app]
+
+        config :phoenix_live_view,
+          enable_expensive_runtime_checks: true,
+          debug_heex_annotations: true
         """
       }
     )
