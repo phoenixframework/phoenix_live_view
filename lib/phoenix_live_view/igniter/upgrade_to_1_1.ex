@@ -29,6 +29,7 @@ if Code.ensure_loaded?(Igniter) do
       end)
       |> maybe_update_reloadable_compilers()
       |> maybe_update_esbuild_config()
+      |> maybe_update_debug_config()
     end
 
     defp maybe_update_reloadable_compilers(igniter) do
@@ -241,6 +242,34 @@ if Code.ensure_loaded?(Igniter) do
           )
         end
       )
+    end
+
+    defp maybe_update_debug_config(igniter) do
+      if Igniter.Project.Config.configures_key?(
+           igniter,
+           "dev.exs",
+           :phoenix_live_view,
+           :debug_heex_annotations
+         ) do
+        if Igniter.Project.Config.configures_key?(
+             igniter,
+             "dev.exs",
+             :phoenix_live_view,
+             :debug_attributes
+           ) do
+          igniter
+        else
+          Igniter.Project.Config.configure(
+            igniter,
+            "dev.exs",
+            :phoenix_live_view,
+            :debug_attributes,
+            true
+          )
+        end
+      else
+        igniter
+      end
     end
   end
 end
