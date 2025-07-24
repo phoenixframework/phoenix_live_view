@@ -1376,7 +1376,11 @@ defmodule Phoenix.LiveViewTest do
       :ok = refute_patched view, "/wrong_path"
 
   """
-  def refute_patched(view, to) do
+  def refuted_patched(view) do
+    refute_navigation(view, :patch, nil)
+  end
+
+  def refute_patched(view, to) when is_binary(to) do
     refute_navigation(view, :patch, to)
   end
 
