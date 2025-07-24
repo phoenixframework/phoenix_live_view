@@ -1376,7 +1376,7 @@ defmodule Phoenix.LiveViewTest do
       :ok = refute_patched view, "/wrong_path"
 
   """
-  def refuted_patched(view) do
+  def refute_patched(view) do
     refute_navigation(view, :patch, nil)
   end
 
