@@ -1365,6 +1365,25 @@ defmodule Phoenix.LiveViewTest do
     assert_patch(view, to, 0)
   end
 
+  @doc """
+  Refutes a live patch to a given path was performed.
+
+  It returns `:ok` if the specified patch isn't already in the mailbox.
+
+  ## Examples
+
+      render_click(view, :event_that_triggers_patch_to_path)
+      :ok = refute_patched view, "/wrong_path"
+
+  """
+  def refute_patched(view) do
+    refute_navigation(view, :patch, nil)
+  end
+
+  def refute_patched(view, to) when is_binary(to) do
+    refute_navigation(view, :patch, to)
+  end
+
   @doc ~S"""
   Asserts a redirect will happen within `timeout` milliseconds.
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
