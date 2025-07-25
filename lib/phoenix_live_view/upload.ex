@@ -361,7 +361,7 @@ defmodule Phoenix.LiveView.Upload do
         channel_preflight(new_socket, new_conf, new_entries, cid, client_meta)
 
       func when is_function(func) ->
-        external_preflight(new_socket, new_conf, new_entries, client_meta)
+        external_preflight(new_socket, new_conf, new_entries, cid, client_meta)
     end
   end
 
@@ -404,7 +404,13 @@ defmodule Phoenix.LiveView.Upload do
     for {ref, err} <- conf.errors, ref == entry.ref, do: err
   end
 
-  defp external_preflight(%Socket{} = socket, %UploadConfig{} = conf, entries, client_config_meta) do
+  defp external_preflight(
+         %Socket{} = socket,
+         %UploadConfig{} = conf,
+         entries,
+         cid,
+         client_config_meta
+       ) do
     reply_entries =
       Enum.reduce_while(entries, {:ok, %{}, %{}, socket}, fn entry, {:ok, metas, errors, acc} ->
         if conf.auto_upload? and not entry.valid? do
@@ -416,6 +422,16 @@ defmodule Phoenix.LiveView.Upload do
             {:ok, %{} = meta, new_socket} ->
               new_socket = update_upload_entry_meta(new_socket, conf.name, entry, meta)
               {:cont, {:ok, Map.put(metas, entry.ref, meta), errors, new_socket}}
+
+            {:ok, :default, new_socket} ->
+              token =
+                Phoenix.LiveView.Static.sign_token(socket.endpoint, %{
+                  pid: self(),
+                  ref: {conf.ref, entry.ref},
+                  cid: cid
+                })
+
+              {:cont, {:ok, Map.put(metas, entry.ref, token), errors, new_socket}}
 
             {:error, %{} = meta, new_socket} ->
               if conf.auto_upload? do
