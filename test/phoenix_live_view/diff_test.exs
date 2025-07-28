@@ -971,6 +971,68 @@ defmodule Phoenix.LiveView.DiffTest do
 
       assert full_render == %{0 => %{0 => 1}}
     end
+
+    def li(assigns) do
+      ~H"""
+      <li>{render_slot(@inner_block)}</li>
+      """
+    end
+
+    defp comprehension_with_and_without_component(assigns) do
+      ~H"""
+      <div>
+        <ul>
+          <li :for={item <- @items}>
+            {item.price}
+          </li>
+        </ul>
+
+        <ul>
+          <.li :for={item <- @items}>
+            {item.price}
+          </.li>
+        </ul>
+      </div>
+      """
+    end
+
+    test "vars_changed" do
+      # This came up in issue https://github.com/phoenixframework/phoenix_live_view/issues/3906
+      assigns = %{socket: %Socket{}, items: [%{price: 0}], item: %{price: 0}}
+
+      {full_render, fingerprints, components} =
+        render(comprehension_with_and_without_component(assigns))
+
+      assert full_render == %{
+               0 => %{s: 0, k: %{0 => %{0 => "0"}, :kc => 1}},
+               :p => %{
+                 0 => ["<li>\n      ", "\n    </li>"],
+                 1 => ["\n      ", "\n    "],
+                 2 => ["<li>", "</li>"],
+                 3 => ["", ""],
+                 4 => ["<div>\n  <ul>\n    ", "\n  </ul>\n\n  <ul>\n    ", "\n  </ul>\n</div>"]
+               },
+               :s => 4,
+               1 => %{
+                 s: 3,
+                 k: %{0 => %{0 => %{0 => %{0 => "0", :s => 1}, :s => 2, :r => 1}}, :kc => 1}
+               },
+               :r => 1
+             }
+
+      assigns =
+        assigns
+        |> Map.put(:items, [%{price: 1}])
+        |> Map.put(:__changed__, %{items: true})
+
+      {full_render, _fingerprints, _components} =
+        render(comprehension_with_and_without_component(assigns), fingerprints, components)
+
+      assert full_render == %{
+               0 => %{k: %{0 => %{0 => "1"}, :kc => 1}},
+               1 => %{k: %{0 => %{0 => %{0 => %{0 => "1"}}}, :kc => 1}}
+             }
+    end
   end
 
   describe "live components" do
