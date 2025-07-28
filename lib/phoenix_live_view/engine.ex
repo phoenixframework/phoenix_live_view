@@ -784,11 +784,21 @@ defmodule Phoenix.LiveView.Engine do
               keys != %{},
               do: {key, to_component_keys(keys)}
 
+        # [id: [changed: [:id]], children: [vars_changed: [:children]]]
+        # -> [changed: [:id], vars_changed: [:children]]
+        vars_changed_keys =
+          Enum.flat_map(keys, fn
+            {_assign, :all} -> []
+            {_assign, keys} -> keys
+          end)
+          |> Enum.uniq()
+
         quote do
           unquote(__MODULE__).to_component_static(
             unquote(keys),
             unquote(@assigns_var),
             changed,
+            %{unquote_splicing(vars_changed_vars(vars_changed_keys))},
             vars_changed
           )
         end
@@ -821,15 +831,17 @@ defmodule Phoenix.LiveView.Engine do
       # Merge both static and dynamic.
       true ->
         {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller)
+        keys = to_component_keys(keys)
 
         quote do
           unquote(__MODULE__).to_component_dynamic(
             %{unquote_splicing(static)},
             unquote(dynamic),
             unquote(static_changed),
-            unquote(to_component_keys(keys)),
+            unquote(keys),
             unquote(@assigns_var),
             changed,
+            %{unquote_splicing(vars_changed_vars(keys))},
             vars_changed
           )
         end
@@ -839,26 +851,61 @@ defmodule Phoenix.LiveView.Engine do
   defp to_component_keys(:all), do: :all
   defp to_component_keys(map), do: Map.keys(map)
 
+  defp vars_changed_vars(:all), do: []
+
+  defp vars_changed_vars(keys) do
+    # when we calculate the changed map for components, we need to
+    # also pass the variables for vars_changed;
+    # we do that by going over the keys [changed: [:id], vars_changed: [:item, struct: :name]]
+    # which would mean that the component accesses @id and item.name, thus
+    # we need to pass %{item: item} as "vars_changed_vars" to be later checked by nested_changed_assign
+    Enum.flat_map(keys, fn
+      {:vars_changed, [var | _]} ->
+        [{var, Macro.var(var, nil)}]
+
+      _ ->
+        []
+    end)
+  end
+
   @doc false
-  def to_component_static(_keys, _assigns, nil, nil) do
+  def to_component_static(_keys, _assigns, nil, _vars_changed_vars, nil) do
     nil
   end
 
-  def to_component_static(keys, assigns, changed, vars_changed) do
+  def to_component_static(keys, assigns, changed, vars_changed_vars, vars_changed) do
     for {assign, entries} <- keys,
-        changed = component_changed(entries, assigns, changed, vars_changed),
+        changed = component_changed(entries, assigns, changed, vars_changed_vars, vars_changed),
         into: %{},
         do: {assign, changed}
   end
 
   @doc false
-  def to_component_dynamic(static, dynamic, _static_changed, _keys, _assigns, nil, nil) do
+  def to_component_dynamic(
+        static,
+        dynamic,
+        _static_changed,
+        _keys,
+        _assigns,
+        nil,
+        _vars_changed_vars,
+        nil
+      ) do
     merge_dynamic_static_changed(dynamic, static, nil)
   end
 
-  def to_component_dynamic(static, dynamic, static_changed, keys, assigns, changed, vars_changed) do
+  def to_component_dynamic(
+        static,
+        dynamic,
+        static_changed,
+        keys,
+        assigns,
+        changed,
+        vars_changed_vars,
+        vars_changed
+      ) do
     component_changed =
-      if component_changed(keys, assigns, changed, vars_changed) do
+      if component_changed(keys, assigns, changed, vars_changed_vars, vars_changed) do
         Enum.reduce(dynamic, static_changed, fn {k, _}, acc -> Map.put(acc, k, true) end)
       else
         static_changed
@@ -871,23 +918,37 @@ defmodule Phoenix.LiveView.Engine do
     dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
   end
 
-  defp component_changed(:all, _assigns, _changed, _vars_changed), do: true
+  defp component_changed(:all, _assigns, _changed, _vars_changed_vars, _vars_changed), do: true
 
-  defp component_changed([path], assigns, changed, vars_changed) do
+  defp component_changed([path], assigns, changed, vars_changed_vars, vars_changed) do
     case path do
-      {:changed, [key]} -> changed_assign(changed, key)
-      {:changed, [key | tail]} -> nested_changed_assign(tail, key, assigns, changed)
-      {:vars_changed, [key]} -> changed_assign(vars_changed, key)
-      {:vars_changed, [key | tail]} -> nested_changed_assign(tail, key, assigns, vars_changed)
+      {:changed, [key]} ->
+        changed_assign(changed, key)
+
+      {:changed, [key | tail]} ->
+        nested_changed_assign(tail, key, assigns, changed)
+
+      {:vars_changed, [key]} ->
+        changed_assign(vars_changed, key)
+
+      {:vars_changed, [key | tail]} ->
+        nested_changed_assign(tail, key, vars_changed_vars, vars_changed)
     end
   end
 
-  defp component_changed(entries, assigns, changed, vars_changed) do
+  defp component_changed(entries, assigns, changed, vars_changed_vars, vars_changed) do
     Enum.any?(entries, fn
-      {:changed, [key]} -> changed_assign?(changed, key)
-      {:changed, [key | tail]} -> nested_changed_assign?(tail, key, assigns, changed)
-      {:vars_changed, [key]} -> changed_assign?(vars_changed, key)
-      {:vars_changed, [key | tail]} -> nested_changed_assign?(tail, key, assigns, vars_changed)
+      {:changed, [key]} ->
+        changed_assign?(changed, key)
+
+      {:changed, [key | tail]} ->
+        nested_changed_assign?(tail, key, assigns, changed)
+
+      {:vars_changed, [key]} ->
+        changed_assign?(vars_changed, key)
+
+      {:vars_changed, [key | tail]} ->
+        nested_changed_assign?(tail, key, vars_changed_vars, vars_changed)
     end)
   end
 
