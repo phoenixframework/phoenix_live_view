@@ -137,6 +137,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
       phx-submit="save"
       phx-change={@params["phx-change"]}
       phx-auto-recover={@params["phx-auto-recover"]}
+      phx-no-used-check={@params["phx-no-used-check"]}
       phx-target={assigns[:"phx-target"]}
       class="myformclass"
     >

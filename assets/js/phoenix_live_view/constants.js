@@ -70,6 +70,7 @@ export const PHX_DISABLED = "data-phx-disabled";
 export const PHX_DISABLE_WITH = "disable-with";
 export const PHX_DISABLE_WITH_RESTORE = "data-phx-disable-with-restore";
 export const PHX_HOOK = "hook";
+export const PHX_NO_USED_CHECK = "no-used-check";
 export const PHX_DEBOUNCE = "debounce";
 export const PHX_THROTTLE = "throttle";
 export const PHX_UPDATE = "update";

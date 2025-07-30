@@ -656,3 +656,39 @@ test("phx-no-feedback is applied correctly for backwards-compatible-shims", asyn
   await syncLV(page);
   await expect(page.locator("[data-feedback-container]")).toBeHidden();
 });
+
+test("phx-no-used-check is applied correctly and no unused variables are sent", async ({
+  page,
+}) => {
+  const webSocketEvents = [];
+
+  page.on("websocket", (ws) => {
+    ws.on("framesent", (event) =>
+      webSocketEvents.push({ type: "sent", payload: event.payload }),
+    );
+  });
+
+  await page.goto("/form?phx-no-used-check");
+  await syncLV(page);
+
+  await page.locator("input[name=b]").fill("test");
+  // blur, otherwise the input would not be morphed anyway
+  await page.locator("input[name=b]").blur();
+  await syncLV(page);
+
+  // Check that no unused params (_unused_*) are sent
+  const sentEvents = webSocketEvents.filter((event) => event.type === "sent");
+  const eventPayloads = sentEvents.map((event) => event.payload);
+
+  // Assert that no _unused_ parameters are present in any sent events
+  eventPayloads.forEach((payload) => {
+    expect(payload).not.toMatch(/_unused_/);
+  });
+
+  // Also check that the expected parameters ARE sent
+  expect(
+    eventPayloads.some((payload) =>
+      payload.includes("a=foo&b=test&c=baz&d=foo"),
+    ),
+  ).toBe(true);
+});
