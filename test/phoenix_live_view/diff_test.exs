@@ -983,13 +983,17 @@ defmodule Phoenix.LiveView.DiffTest do
       <div>
         <ul>
           <li :for={item <- @items}>
-            {item.price}
+            <%!--
+              we deliberately access two fields here, because we had a bug that caused warnings
+              https://github.com/phoenixframework/phoenix_live_view/issues/3912
+            --%>
+            {item.name} {item.price}
           </li>
         </ul>
 
         <ul>
           <.li :for={item <- @items}>
-            {item.price}
+            {item.name} {item.price}
           </.li>
         </ul>
       </div>
@@ -998,39 +1002,46 @@ defmodule Phoenix.LiveView.DiffTest do
 
     test "vars_changed" do
       # This came up in issue https://github.com/phoenixframework/phoenix_live_view/issues/3906
-      assigns = %{socket: %Socket{}, items: [%{price: 0}], item: %{price: 0}}
+      assigns = %{
+        socket: %Socket{},
+        items: [%{price: 0, name: "First"}],
+        item: %{name: "First", price: 0}
+      }
 
       {full_render, fingerprints, components} =
         render(comprehension_with_and_without_component(assigns))
 
       assert full_render == %{
-               0 => %{s: 0, k: %{0 => %{0 => "0"}, :kc => 1}},
+               0 => %{k: %{0 => %{0 => "First", 1 => "0"}, :kc => 1}, s: 0},
+               1 => %{
+                 k: %{
+                   0 => %{0 => %{0 => %{0 => "First", 1 => "0", :s => 1}, :r => 1, :s => 2}},
+                   :kc => 1
+                 },
+                 s: 3
+               },
                :p => %{
-                 0 => ["<li>\n      ", "\n    </li>"],
-                 1 => ["\n      ", "\n    "],
+                 0 => ["<li>\n      \n      ", " ", "\n    </li>"],
+                 1 => ["\n      ", " ", "\n    "],
                  2 => ["<li>", "</li>"],
                  3 => ["", ""],
                  4 => ["<div>\n  <ul>\n    ", "\n  </ul>\n\n  <ul>\n    ", "\n  </ul>\n</div>"]
                },
-               :s => 4,
-               1 => %{
-                 s: 3,
-                 k: %{0 => %{0 => %{0 => %{0 => "0", :s => 1}, :s => 2, :r => 1}}, :kc => 1}
-               },
-               :r => 1
+               :r => 1,
+               :s => 4
              }
 
       assigns =
         assigns
-        |> Map.put(:items, [%{price: 1}])
+        |> Map.put(:items, [%{name: "First", price: 1}])
         |> Map.put(:__changed__, %{items: true})
 
       {full_render, _fingerprints, _components} =
         render(comprehension_with_and_without_component(assigns), fingerprints, components)
 
       assert full_render == %{
-               0 => %{k: %{0 => %{0 => "1"}, :kc => 1}},
-               1 => %{k: %{0 => %{0 => %{0 => %{0 => "1"}}}, :kc => 1}}
+               0 => %{k: %{0 => %{1 => "1"}, :kc => 1}},
+               1 => %{k: %{0 => %{0 => %{0 => %{1 => "1"}}}, :kc => 1}}
              }
     end
   end
