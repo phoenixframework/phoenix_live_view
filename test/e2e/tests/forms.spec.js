@@ -657,7 +657,7 @@ test("phx-no-feedback is applied correctly for backwards-compatible-shims", asyn
   await expect(page.locator("[data-feedback-container]")).toBeHidden();
 });
 
-test("phx-no-used-check is applied correctly and no unused variables are sent", async ({
+test("phx-no-used-check on a form is applied correctly and no unused fields are sent", async ({
   page,
 }) => {
   const webSocketEvents = [];
@@ -668,7 +668,7 @@ test("phx-no-used-check is applied correctly and no unused variables are sent", 
     );
   });
 
-  await page.goto("/form?phx-no-used-check");
+  await page.goto("/form?phx-no-used-check-form");
   await syncLV(page);
 
   await page.locator("input[name=b]").fill("test");
@@ -676,19 +676,64 @@ test("phx-no-used-check is applied correctly and no unused variables are sent", 
   await page.locator("input[name=b]").blur();
   await syncLV(page);
 
-  // Check that no unused params (_unused_*) are sent
-  const sentEvents = webSocketEvents.filter((event) => event.type === "sent");
-  const eventPayloads = sentEvents.map((event) => event.payload);
+  // With phx-no-used-check on the form, no _unused_ parameters should be sent
+  expect(webSocketEvents).toEqual(
+    expect.arrayContaining([
+      {
+        type: "sent",
+        payload: expect.stringMatching(/event.*a=foo&b=test&c=baz&d=foo/),
+      },
+    ]),
+  );
 
-  // Assert that no _unused_ parameters are present in any sent events
-  eventPayloads.forEach((payload) => {
-    expect(payload).not.toMatch(/_unused_/);
+  // Ensure no _unused_ parameters are present in any sent events
+  const sentEvents = webSocketEvents.filter((event) => event.type === "sent");
+  sentEvents.forEach((event) => {
+    expect(event.payload).not.toMatch(/_unused_/);
+  });
+});
+
+test("phx-no-used-check on an input is applied correctly and no unused fields are sent for that specific input", async ({
+  page,
+}) => {
+  const webSocketEvents = [];
+
+  page.on("websocket", (ws) => {
+    ws.on("framesent", (event) =>
+      webSocketEvents.push({ type: "sent", payload: event.payload }),
+    );
   });
 
-  // Also check that the expected parameters ARE sent
-  expect(
-    eventPayloads.some((payload) =>
-      payload.includes("a=foo&b=test&c=baz&d=foo"),
-    ),
-  ).toBe(true);
+  await page.goto("/form?phx-no-used-check-input");
+  await syncLV(page);
+
+  await page.locator("input[name=b]").fill("test");
+  // blur, otherwise the input would not be morphed anyway
+  await page.locator("input[name=b]").blur();
+  await syncLV(page);
+
+  // Check that the form data and unused parameters are sent correctly
+  expect(webSocketEvents).toEqual(
+    expect.arrayContaining([
+      {
+        type: "sent",
+        payload: expect.stringMatching(
+          /event.*_unused_a=&a=foo&b=test&c=baz&_unused_d=&d=foo/,
+        ),
+      },
+    ]),
+  );
+
+  // Verify specific unused parameter behavior
+  const sentEvents = webSocketEvents.filter((event) => event.type === "sent");
+  const formDataEvent = sentEvents.find((event) =>
+    event.payload.includes("a=foo"),
+  );
+
+  // a and d should have _unused_ parameters (untouched, no phx-no-used-check)
+  expect(formDataEvent.payload).toMatch(/_unused_a=/);
+  expect(formDataEvent.payload).toMatch(/_unused_d=/);
+  // b and c should NOT have _unused_ parameters (b touched, c has phx-no-used-check)
+  expect(formDataEvent.payload).not.toMatch(/_unused_b=/);
+  expect(formDataEvent.payload).not.toMatch(/_unused_c=/);
 });

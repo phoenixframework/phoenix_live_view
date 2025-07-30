@@ -75,7 +75,7 @@ export const prependFormDataKey = (key, prefix) => {
 };
 
 const serializeForm = (form, opts, onlyNames = []) => {
-  const { submitter, skipUnusedCheck } = opts;
+  const { submitter } = opts;
 
   // We must inject the submitter in the order that it exists in the DOM
   // relative to other inputs. For example, for checkbox groups, the order must be maintained.
@@ -124,9 +124,13 @@ const serializeForm = (form, opts, onlyNames = []) => {
         onlyHiddenInputs[key] = true;
       }
 
+      const inputSkipUnusedField = input.hasAttribute(PHX_NO_USED_CHECK);
+
       const isUsed =
         DOM.private(input, PHX_HAS_FOCUSED) ||
-        DOM.private(input, PHX_HAS_SUBMITTED);
+        DOM.private(input, PHX_HAS_SUBMITTED) ||
+        inputSkipUnusedField;
+
       const isHidden = input.type === "hidden";
       inputsUnused[key] = inputsUnused[key] && !isUsed;
       onlyHiddenInputs[key] = onlyHiddenInputs[key] && isHidden;
@@ -136,12 +140,14 @@ const serializeForm = (form, opts, onlyNames = []) => {
     { inputsUnused: {}, onlyHiddenInputs: {} },
   );
 
-  console.log(skipUnusedCheck);
+  const formSkipUnusedFields = form.hasAttribute(PHX_NO_USED_CHECK);
 
   for (const [key, val] of formData.entries()) {
     if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
       const isUnused = inputsUnused[key];
       const hidden = onlyHiddenInputs[key];
+      const skipUnusedCheck = formSkipUnusedFields;
+
       if (
         !skipUnusedCheck &&
         isUnused &&
@@ -1630,17 +1636,10 @@ export default class View {
     };
     let formData;
     const meta = this.extractMeta(inputEl.form, {}, opts.value);
-
-    const serializeOpts = {
-      skipUnusedCheck: inputEl.form.hasAttribute(
-        this.binding(PHX_NO_USED_CHECK),
-      ),
-    };
-
+    const serializeOpts = {};
     if (inputEl instanceof HTMLButtonElement) {
       serializeOpts.submitter = inputEl;
     }
-
     if (inputEl.getAttribute(this.binding("change"))) {
       formData = serializeForm(inputEl.form, serializeOpts, [inputEl.name]);
     } else {
@@ -1821,13 +1820,7 @@ export default class View {
           return this.undoRefs(ref, phxEvent);
         }
         const meta = this.extractMeta(formEl, {}, opts.value);
-
-        const serializeOpts = {
-          submitter: submitter,
-          skipUnusedCheck: formEl.hasAttribute(this.binding(PHX_NO_USED_CHECK)),
-        };
-
-        const formData = serializeForm(formEl, serializeOpts);
+        const formData = serializeForm(formEl, { submitter });
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
@@ -1845,13 +1838,7 @@ export default class View {
       )
     ) {
       const meta = this.extractMeta(formEl, {}, opts.value);
-
-      const serializeOpts = {
-        submitter: submitter,
-        skipUnusedCheck: formEl.hasAttribute(this.binding(PHX_NO_USED_CHECK)),
-      };
-
-      const formData = serializeForm(formEl, serializeOpts);
+      const formData = serializeForm(formEl, { submitter });
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,
