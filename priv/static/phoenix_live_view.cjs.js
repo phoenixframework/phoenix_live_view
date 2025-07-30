@@ -5759,7 +5759,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.1.0-rc.4";
+    return "1.1.0";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
