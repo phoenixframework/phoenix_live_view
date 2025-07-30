@@ -243,6 +243,12 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.1 (2025-07-30)
+
+### Bug fixes
+
+* Fix `key will be overridden in map` warning ([#3912](https://github.com/phoenixframework/phoenix_live_view/issues/3912))
+
 ## v1.1.0 (2025-07-30) 🚀
 
 ### Bug fixes
