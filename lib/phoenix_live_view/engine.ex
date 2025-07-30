@@ -791,7 +791,6 @@ defmodule Phoenix.LiveView.Engine do
             {_assign, :all} -> []
             {_assign, keys} -> keys
           end)
-          |> Enum.uniq()
 
         quote do
           unquote(__MODULE__).to_component_static(
@@ -866,6 +865,7 @@ defmodule Phoenix.LiveView.Engine do
       _ ->
         []
     end)
+    |> Enum.uniq()
   end
 
   @doc false
