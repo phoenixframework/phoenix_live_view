@@ -96,6 +96,28 @@ We're planning to make the private `Phoenix.Component.MacroComponent` API that w
 
 Note: Colocated hooks require Phoenix 1.8+.
 
+> #### Compilation order {: .info}
+>
+> Colocated hooks are only written when the corresponding component is compiled.
+> Therefore, whenever you need to access a colocated hook, you need to ensure
+> `mix compile` runs first. This automatically happens in development.
+>
+> If you have a custom mix alias, instead of
+> 
+> ```
+> release: ["assets.deploy", "release"]
+> ```
+> 
+> do
+>
+> ```
+> release: ["compile", "assets.deploy", "release"]
+> ```
+> 
+> to ensure that all colocated hooks are extracted before esbuild or any other bundler runs.
+>
+> If you have a `Dockerfile` based on `mix phx.gen.release --docker`, ensure that `mix compile` runs before `mix assets.deploy`.
+
 ## Change tracking in comprehensions
 
 One pitfall when rendering collections in LiveView was that they were not change tracked. If you had code like this:
