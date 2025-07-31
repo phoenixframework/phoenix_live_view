@@ -129,6 +129,7 @@ var LiveView = (() => {
   var PHX_KEY = "key";
   var PHX_PRIVATE = "phxPrivate";
   var PHX_AUTO_RECOVER = "auto-recover";
+  var PHX_NO_USED_CHECK = "no-used-check";
   var PHX_LV_DEBUG = "phx:live-socket:debug";
   var PHX_LV_PROFILE = "phx:live-socket:profiling";
   var PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim";
@@ -4015,68 +4016,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     return baseKey;
   };
-  var serializeForm = (form, opts, onlyNames = []) => {
-    const { submitter } = opts;
-    let injectedElement;
-    if (submitter && submitter.name) {
-      const input = document.createElement("input");
-      input.type = "hidden";
-      const formId = submitter.getAttribute("form");
-      if (formId) {
-        input.setAttribute("form", formId);
-      }
-      input.name = submitter.name;
-      input.value = submitter.value;
-      submitter.parentElement.insertBefore(input, submitter);
-      injectedElement = input;
-    }
-    const formData = new FormData(form);
-    const toRemove = [];
-    formData.forEach((val, key, _index) => {
-      if (val instanceof File) {
-        toRemove.push(key);
-      }
-    });
-    toRemove.forEach((key) => formData.delete(key));
-    const params = new URLSearchParams();
-    const { inputsUnused, onlyHiddenInputs } = Array.from(form.elements).reduce(
-      (acc, input) => {
-        const { inputsUnused: inputsUnused2, onlyHiddenInputs: onlyHiddenInputs2 } = acc;
-        const key = input.name;
-        if (!key) {
-          return acc;
-        }
-        if (inputsUnused2[key] === void 0) {
-          inputsUnused2[key] = true;
-        }
-        if (onlyHiddenInputs2[key] === void 0) {
-          onlyHiddenInputs2[key] = true;
-        }
-        const isUsed = dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED);
-        const isHidden = input.type === "hidden";
-        inputsUnused2[key] = inputsUnused2[key] && !isUsed;
-        onlyHiddenInputs2[key] = onlyHiddenInputs2[key] && isHidden;
-        return acc;
-      },
-      { inputsUnused: {}, onlyHiddenInputs: {} }
-    );
-    for (const [key, val] of formData.entries()) {
-      if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
-        const isUnused = inputsUnused[key];
-        const hidden = onlyHiddenInputs[key];
-        if (isUnused && !(submitter && submitter.name == key) && !hidden) {
-          params.append(prependFormDataKey(key, "_unused_"), "");
-        }
-        if (typeof val === "string") {
-          params.append(key, val);
-        }
-      }
-    }
-    if (submitter && injectedElement) {
-      submitter.parentElement.removeChild(injectedElement);
-    }
-    return params.toString();
-  };
   var View = class _View {
     static closestView(el) {
       const liveViewEl = el.closest(PHX_VIEW_SELECTOR);
@@ -5253,6 +5192,75 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       return meta;
     }
+    serializeForm(form, opts, onlyNames = []) {
+      const { submitter } = opts;
+      let injectedElement;
+      if (submitter && submitter.name) {
+        const input = document.createElement("input");
+        input.type = "hidden";
+        const formId = submitter.getAttribute("form");
+        if (formId) {
+          input.setAttribute("form", formId);
+        }
+        input.name = submitter.name;
+        input.value = submitter.value;
+        submitter.parentElement.insertBefore(input, submitter);
+        injectedElement = input;
+      }
+      const formData = new FormData(form);
+      const toRemove = [];
+      formData.forEach((val, key, _index) => {
+        if (val instanceof File) {
+          toRemove.push(key);
+        }
+      });
+      toRemove.forEach((key) => formData.delete(key));
+      const params = new URLSearchParams();
+      const { inputsUnused, onlyHiddenInputs } = Array.from(form.elements).reduce(
+        (acc, input) => {
+          const { inputsUnused: inputsUnused2, onlyHiddenInputs: onlyHiddenInputs2 } = acc;
+          const key = input.name;
+          if (!key) {
+            return acc;
+          }
+          if (inputsUnused2[key] === void 0) {
+            inputsUnused2[key] = true;
+          }
+          if (onlyHiddenInputs2[key] === void 0) {
+            onlyHiddenInputs2[key] = true;
+          }
+          const inputSkipUnusedField = input.hasAttribute(
+            this.binding(PHX_NO_USED_CHECK)
+          );
+          const isUsed = dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED) || inputSkipUnusedField;
+          const isHidden = input.type === "hidden";
+          inputsUnused2[key] = inputsUnused2[key] && !isUsed;
+          onlyHiddenInputs2[key] = onlyHiddenInputs2[key] && isHidden;
+          return acc;
+        },
+        { inputsUnused: {}, onlyHiddenInputs: {} }
+      );
+      const formSkipUnusedFields = form.hasAttribute(
+        this.binding(PHX_NO_USED_CHECK)
+      );
+      for (const [key, val] of formData.entries()) {
+        if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
+          const isUnused = inputsUnused[key];
+          const hidden = onlyHiddenInputs[key];
+          const skipUnusedCheck = formSkipUnusedFields;
+          if (!skipUnusedCheck && isUnused && !(submitter && submitter.name == key) && !hidden) {
+            params.append(prependFormDataKey(key, "_unused_"), "");
+          }
+          if (typeof val === "string") {
+            params.append(key, val);
+          }
+        }
+      }
+      if (submitter && injectedElement) {
+        submitter.parentElement.removeChild(injectedElement);
+      }
+      return params.toString();
+    }
     pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
       this.pushWithReply(
         (maybePayload) => this.putRef([{ el, loading: true, lock: true }], phxEvent, type, __spreadProps(__spreadValues({}, opts), {
@@ -5303,9 +5311,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         serializeOpts.submitter = inputEl;
       }
       if (inputEl.getAttribute(this.binding("change"))) {
-        formData = serializeForm(inputEl.form, serializeOpts, [inputEl.name]);
+        formData = this.serializeForm(inputEl.form, serializeOpts, [
+          inputEl.name
+        ]);
       } else {
-        formData = serializeForm(inputEl.form, serializeOpts);
+        formData = this.serializeForm(inputEl.form, serializeOpts);
       }
       if (dom_default.isUploadInput(inputEl) && inputEl.files && inputEl.files.length > 0) {
         LiveUploader.trackFiles(inputEl, Array.from(inputEl.files));
@@ -5444,7 +5454,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             return this.undoRefs(ref, phxEvent);
           }
           const meta = this.extractMeta(formEl, {}, opts.value);
-          const formData = serializeForm(formEl, { submitter });
+          const formData = this.serializeForm(formEl, { submitter });
           this.pushWithReply(proxyRefGen, "event", {
             type: "form",
             event: phxEvent,
@@ -5455,7 +5465,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       } else if (!(formEl.hasAttribute(PHX_REF_SRC) && formEl.classList.contains("phx-submit-loading"))) {
         const meta = this.extractMeta(formEl, {}, opts.value);
-        const formData = serializeForm(formEl, { submitter });
+        const formData = this.serializeForm(formEl, { submitter });
         this.pushWithReply(refGenerator, "event", {
           type: "form",
           event: phxEvent,
