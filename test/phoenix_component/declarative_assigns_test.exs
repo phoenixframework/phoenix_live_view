@@ -615,8 +615,8 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
     assert_raise FunctionClauseError, fn -> StructTypes.example(%{other: 2, uri: :not_uri}) end
 
     uri = URI.parse("/relative")
-    assert StructTypes.example(%{other: 1, uri: uri}) == "one"
-    assert StructTypes.example(%{other: 2, uri: uri}) == "two"
+    assert StructTypes.example(%{other: 1, uri: uri, __changed__: nil}) == "one"
+    assert StructTypes.example(%{other: 2, uri: uri, __changed__: nil}) == "two"
   end
 
   test "provides attr defaults" do
