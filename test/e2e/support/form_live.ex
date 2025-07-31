@@ -137,7 +137,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
       phx-submit="save"
       phx-change={@params["phx-change"]}
       phx-auto-recover={@params["phx-auto-recover"]}
-      phx-no-used-check={@params["phx-no-used-check-form"]}
+      phx-no-usage-tracking={@params["phx-no-usage-tracking-form"]}
       phx-target={assigns[:"phx-target"]}
       class="myformclass"
     >
@@ -147,7 +147,7 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
         type="text"
         name="c"
         value={@params["c"]}
-        phx-no-used-check={@params["phx-no-used-check-input"]}
+        phx-no-usage-tracking={@params["phx-no-usage-tracking-input"]}
       />
       <select name="d">
         {Phoenix.HTML.Form.options_for_select(["foo", "bar", "baz"], @params["d"])}

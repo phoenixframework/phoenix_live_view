@@ -58,12 +58,13 @@ Attribute values can be:
 
 ### On `<form>` elements
 
-| Attribute                                          | Value                                                                      |
-|----------------------------------------------------|----------------------------------------------------------------------------|
-| [`phx-change`](../client/form-bindings.md)         | Event name or [JS commands](../client/bindings.md#js-commands)             |
-| [`phx-submit`](../client/form-bindings.md)         | Event name or [JS commands](../client/bindings.md#js-commands)             |
-| [`phx-auto-recover`](../client/form-bindings.md)   | Event name, [JS commands](../client/bindings.md#js-commands) or `"ignore"` |
-| [`phx-trigger-action`](../client/form-bindings.md) | `true` or `false`                                                          |
+| Attribute                                             | Value                                                                      |
+|-------------------------------------------------------|----------------------------------------------------------------------------|
+| [`phx-change`](../client/form-bindings.md)            | Event name or [JS commands](../client/bindings.md#js-commands)             |
+| [`phx-submit`](../client/form-bindings.md)            | Event name or [JS commands](../client/bindings.md#js-commands)             |
+| [`phx-auto-recover`](../client/form-bindings.md)      | Event name, [JS commands](../client/bindings.md#js-commands) or `"ignore"` |
+| [`phx-trigger-action`](../client/form-bindings.md)    | `true` or `false`                                                          |
+| [`phx-no-usage-tracking`](../client/form-bindings.md) | `true` or `false`                                                          |
 
 ### On `<button>` elements
 
