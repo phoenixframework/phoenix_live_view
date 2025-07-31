@@ -9,7 +9,10 @@
   "unpkg": "./priv/static/phoenix_live_view.min.js",
   "jsdelivr": "./priv/static/phoenix_live_view.min.js",
   "exports": {
-    "import": "./priv/static/phoenix_live_view.esm.js",
+    "import": {
+      "default": "./priv/static/phoenix_live_view.esm.js",
+      "types": "./assets/js/types/index.d.ts"
+    },
     "require": "./priv/static/phoenix_live_view.cjs.js"
   },
   "author": "Chris McCord <chris@chrismccord.com> (http://www.phoenixframework.org)",
