@@ -1745,4 +1745,48 @@ defmodule Phoenix.ComponentDeclarativeAssignsTest do
       end
     end
   end
+
+  attr :one, :integer, default: 1
+  attr :two, :integer, default: 2
+
+  def throw_defaults(assigns) do
+    assigns = Phoenix.Component.assign(assigns, :foo, :bar)
+    throw(assigns)
+  end
+
+  test "defaults are considered as changed" do
+    try do
+      throw_defaults(%{__changed__: %{}})
+    catch
+      assigns ->
+        assert Phoenix.Component.changed?(assigns, :one)
+        assert Phoenix.Component.changed?(assigns, :two)
+    else
+      _ -> flunk("Should have thrown")
+    end
+  end
+
+  test "defaults are not considered as changed when same value" do
+    try do
+      throw_defaults(%{__changed__: %{}, one: 1})
+    catch
+      assigns ->
+        refute Phoenix.Component.changed?(assigns, :one)
+        assert Phoenix.Component.changed?(assigns, :two)
+    else
+      _ -> flunk("Should have thrown")
+    end
+  end
+
+  test "defaults do not override existing changed" do
+    try do
+      throw_defaults(%{__changed__: %{one: 2}, one: 1})
+    catch
+      assigns ->
+        assert assigns.__changed__.one == 2
+        assert assigns.__changed__.two == true
+    else
+      _ -> flunk("Should have thrown")
+    end
+  end
 end
