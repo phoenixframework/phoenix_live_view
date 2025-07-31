@@ -238,12 +238,12 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
       id = keyfind(node, "id")
       static = keyfind(node, @phx_static)
       session = keyfind(node, "data-phx-session")
-      main = keyfind(node, "data-phx-main")
+      main = List.keymember?(node, "data-phx-main", 0)
 
       static = if static in [nil, ""], do: nil, else: static
       found = {id, session, static}
 
-      if main not in [nil, "", "false"] do
+      if main do
         acc ++ [found]
       else
         [found | acc]
