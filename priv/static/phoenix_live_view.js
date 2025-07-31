@@ -129,7 +129,7 @@ var LiveView = (() => {
   var PHX_KEY = "key";
   var PHX_PRIVATE = "phxPrivate";
   var PHX_AUTO_RECOVER = "auto-recover";
-  var PHX_NO_USED_CHECK = "no-used-check";
+  var PHX_NO_USAGE_TRACKING = "no-usage-tracking";
   var PHX_LV_DEBUG = "phx:live-socket:debug";
   var PHX_LV_PROFILE = "phx:live-socket:profiling";
   var PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim";
@@ -5230,7 +5230,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             onlyHiddenInputs2[key] = true;
           }
           const inputSkipUnusedField = input.hasAttribute(
-            this.binding(PHX_NO_USED_CHECK)
+            this.binding(PHX_NO_USAGE_TRACKING)
           );
           const isUsed = dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED) || inputSkipUnusedField;
           const isHidden = input.type === "hidden";
@@ -5241,7 +5241,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         { inputsUnused: {}, onlyHiddenInputs: {} }
       );
       const formSkipUnusedFields = form.hasAttribute(
-        this.binding(PHX_NO_USED_CHECK)
+        this.binding(PHX_NO_USAGE_TRACKING)
       );
       for (const [key, val] of formData.entries()) {
         if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
