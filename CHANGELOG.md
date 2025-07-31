@@ -96,8 +96,7 @@ We're planning to make the private `Phoenix.Component.MacroComponent` API that w
 
 Note: Colocated hooks require Phoenix 1.8+.
 
-> [!NOTE]
-> #### Compilation order
+> #### Compilation order {: .info}
 >
 > Colocated hooks are only written when the corresponding component is compiled.
 > Therefore, whenever you need to access a colocated hook, you need to ensure
