@@ -40,7 +40,7 @@ defmodule Phoenix.LiveViewTest.TreeDOMTest do
                  data-phx-static="STATIC2"
                  id="phx-456"></div>
              <div data-phx-session="SESSIONMAIN"
-               data-phx-main="true"
+               data-phx-main
                id="phx-458"></div>
              <h1>bottom</h1>
              """) == [
