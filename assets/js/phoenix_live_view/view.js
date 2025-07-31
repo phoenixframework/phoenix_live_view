@@ -2061,6 +2061,19 @@ export default class View {
   }
 
   getFormsForRecovery() {
+    // Form recovery is complex in LiveView:
+    // We want to support nested LiveViews and also provide a good user experience.
+    // Therefore, when the channel rejoins, we copy all forms that are eligible for
+    // recovery to be able to access them later.
+    // Why do we need to copy them? Because when the main LiveView joins, any forms
+    // in nested LiveViews would be lost.
+    //
+    // We should rework this in the future to serialize the form payload here
+    // instead of cloning the DOM nodes, but making this work correctly is tedious,
+    // as sending the correct form payload relies on JS.push to extract values
+    // from JS commands (phx-change={JS.push("event", value: ..., target: ...)}),
+    // as well as view.pushInput, which expects DOM elements.
+
     if (this.joinCount === 0) {
       return {};
     }
@@ -2075,19 +2088,33 @@ export default class View {
           form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore",
       )
       .map((form) => {
-        // we perform a shallow clone and manually copy all elements
-        const clonedForm = form.cloneNode(false);
-        // we need to copy the private data as it contains
-        // the information about touched fields
-        DOM.copyPrivates(clonedForm, form);
-        Array.from(form.elements).forEach((el) => {
-          // we need to clone all child nodes as well,
-          // because those could also be selects
+        // We need to clone the whole form, as relying on form.elements can lead to
+        // situations where we have
+        //
+        //   <form><fieldset disabled><input name="foo" value="bar"></fieldset></form>
+        //
+        // and form.elements returns both the fieldset and the input separately.
+        // Because the fieldset is disabled, the input should NOT be sent though.
+        // We can only reliably serialize the form by cloning it fully.
+        const clonedForm = form.cloneNode(true);
+        // we call morphdom to copy any special state
+        // like the selected option of a <select> element;
+        // any also copy over privates (which contain information about touched fields)
+        morphdom(clonedForm, form, {
+          onBeforeElUpdated: (fromEl, toEl) => {
+            DOM.copyPrivates(fromEl, toEl);
+            return true;
+          },
+        });
+        // next up, we also need to clone any elements with form="id" parameter
+        const externalElements = document.querySelectorAll(
+          `[form="${form.id}"]`,
+        );
+        Array.from(externalElements).forEach((el) => {
+          if (form.contains(el)) {
+            return;
+          }
           const clonedEl = el.cloneNode(true);
-          // we call morphdom to copy any special state
-          // like the selected option of a <select> element;
-          // this should be plenty fast as we call it on a small subset of the DOM,
-          // single inputs or a select with children
           morphdom(clonedEl, el);
           DOM.copyPrivates(clonedEl, el);
           clonedForm.appendChild(clonedEl);

@@ -76,38 +76,40 @@ defmodule Phoenix.LiveViewTest.E2E.FormDynamicInputsLive do
       phx-submit="save"
       style="display: flex; flex-direction: column; gap: 4px; max-width: 500px;"
     >
-      <input
-        type="text"
-        id={@form[:name].id}
-        name={@form[:name].name}
-        value={@form[:name].value}
-        placeholder="name"
-      />
-      <.inputs_for :let={ef} field={@form[:users]} default={[]}>
-        <div style="padding: 4px; border: 1px solid gray;">
-          <input type="hidden" name="my_form[users_sort][]" value={ef.index} />
-          <input
-            type="text"
-            id={ef[:name].id}
-            name={ef[:name].name}
-            value={ef[:name].value}
-            placeholder="name"
-          />
+      <fieldset>
+        <input
+          type="text"
+          id={@form[:name].id}
+          name={@form[:name].name}
+          value={@form[:name].value}
+          placeholder="name"
+        />
+        <.inputs_for :let={ef} field={@form[:users]} default={[]}>
+          <div style="padding: 4px; border: 1px solid gray;">
+            <input type="hidden" name="my_form[users_sort][]" value={ef.index} />
+            <input
+              type="text"
+              id={ef[:name].id}
+              name={ef[:name].name}
+              value={ef[:name].value}
+              placeholder="name"
+            />
 
-          <button
-            :if={!@checkboxes}
-            type="button"
-            name="my_form[users_drop][]"
-            value={ef.index}
-            phx-click={JS.dispatch("change")}
-          >
-            Remove
-          </button>
-          <label :if={@checkboxes}>
-            <input type="checkbox" name="my_form[users_drop][]" value={ef.index} /> Remove
-          </label>
-        </div>
-      </.inputs_for>
+            <button
+              :if={!@checkboxes}
+              type="button"
+              name="my_form[users_drop][]"
+              value={ef.index}
+              phx-click={JS.dispatch("change")}
+            >
+              Remove
+            </button>
+            <label :if={@checkboxes}>
+              <input type="checkbox" name="my_form[users_drop][]" value={ef.index} /> Remove
+            </label>
+          </div>
+        </.inputs_for>
+      </fieldset>
 
       <input type="hidden" name="my_form[users_drop][]" />
 
