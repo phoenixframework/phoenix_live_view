@@ -103,17 +103,17 @@ Note: Colocated hooks require Phoenix 1.8+.
 > `mix compile` runs first. This automatically happens in development.
 >
 > If you have a custom mix alias, instead of
-> 
+>
 > ```
 > release: ["assets.deploy", "release"]
 > ```
-> 
+>
 > do
 >
 > ```
 > release: ["compile", "assets.deploy", "release"]
 > ```
-> 
+>
 > to ensure that all colocated hooks are extracted before esbuild or any other bundler runs.
 >
 > If you have a `Dockerfile` based on `mix phx.gen.release --docker`, ensure that `mix compile` runs before `mix assets.deploy`.
@@ -264,6 +264,16 @@ If you're using Floki itself in your tests through its API (`Floki.parse_documen
 When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginning and end of each slot. A new `:debug_attributes` option has also been added, which adds the starting line of each tag as a `data-phx-loc` attribute. It also adds the LiveView PID to the root element of each LiveView. The goal is to provide more precise information to tools.
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
+
+## v1.1.2 (2025-07-31)
+
+### Bug fixes
+
+* Fix invalid component rendering when using dynamic assigns (`<.my_component {...}>`) in rare circumstances by
+  disabling change tracking. LiveView cannot properly track changes in those cases and this could lead to weird bugs ([#3919](https://github.com/phoenixframework/phoenix_live_view/issues/3919))
+  that were now more likely to surface with change tracked comprehensions.
+* Fix `LiveViewTest` not considering some LiveViews as main when using `live_render` ([#3917](https://github.com/phoenixframework/phoenix_live_view/issues/3917))
+* Fix JavaScript type definitions not being considered when using TypeScript in `bundler` resolution mode ([#3915](https://github.com/phoenixframework/phoenix_live_view/pull/3915))
 
 ## v1.1.1 (2025-07-30)
 
