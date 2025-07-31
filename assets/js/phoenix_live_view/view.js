@@ -37,6 +37,7 @@ import {
   PHX_VIEWPORT_BOTTOM,
   MAX_CHILD_JOIN_ATTEMPTS,
   PHX_LV_PID,
+  PHX_NO_USED_CHECK,
 } from "./constants";
 
 import {
@@ -71,90 +72,6 @@ export const prependFormDataKey = (key, prefix) => {
     baseKey += "[]";
   }
   return baseKey;
-};
-
-const serializeForm = (form, opts, onlyNames = []) => {
-  const { submitter } = opts;
-
-  // We must inject the submitter in the order that it exists in the DOM
-  // relative to other inputs. For example, for checkbox groups, the order must be maintained.
-  let injectedElement;
-  if (submitter && submitter.name) {
-    const input = document.createElement("input");
-    input.type = "hidden";
-    // set the form attribute if the submitter has one;
-    // this can happen if the element is outside the actual form element
-    const formId = submitter.getAttribute("form");
-    if (formId) {
-      input.setAttribute("form", formId);
-    }
-    input.name = submitter.name;
-    input.value = submitter.value;
-    submitter.parentElement.insertBefore(input, submitter);
-    injectedElement = input;
-  }
-
-  const formData = new FormData(form);
-  const toRemove = [];
-
-  formData.forEach((val, key, _index) => {
-    if (val instanceof File) {
-      toRemove.push(key);
-    }
-  });
-
-  // Cleanup after building fileData
-  toRemove.forEach((key) => formData.delete(key));
-
-  const params = new URLSearchParams();
-
-  const { inputsUnused, onlyHiddenInputs } = Array.from(form.elements).reduce(
-    (acc, input) => {
-      const { inputsUnused, onlyHiddenInputs } = acc;
-      const key = input.name;
-      if (!key) {
-        return acc;
-      }
-
-      if (inputsUnused[key] === undefined) {
-        inputsUnused[key] = true;
-      }
-      if (onlyHiddenInputs[key] === undefined) {
-        onlyHiddenInputs[key] = true;
-      }
-
-      const isUsed =
-        DOM.private(input, PHX_HAS_FOCUSED) ||
-        DOM.private(input, PHX_HAS_SUBMITTED);
-      const isHidden = input.type === "hidden";
-      inputsUnused[key] = inputsUnused[key] && !isUsed;
-      onlyHiddenInputs[key] = onlyHiddenInputs[key] && isHidden;
-
-      return acc;
-    },
-    { inputsUnused: {}, onlyHiddenInputs: {} },
-  );
-
-  for (const [key, val] of formData.entries()) {
-    if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
-      const isUnused = inputsUnused[key];
-      const hidden = onlyHiddenInputs[key];
-      if (isUnused && !(submitter && submitter.name == key) && !hidden) {
-        params.append(prependFormDataKey(key, "_unused_"), "");
-      }
-      if (typeof val === "string") {
-        params.append(key, val);
-      }
-    }
-  }
-
-  // remove the injected element again
-  // (it would be removed by the next dom patch anyway, but this is cleaner)
-  if (submitter && injectedElement) {
-    submitter.parentElement.removeChild(injectedElement);
-  }
-
-  return params.toString();
 };
 
 export default class View {
@@ -1566,6 +1483,107 @@ export default class View {
     return meta;
   }
 
+  serializeForm(form, opts, onlyNames = []) {
+    const { submitter } = opts;
+
+    // We must inject the submitter in the order that it exists in the DOM
+    // relative to other inputs. For example, for checkbox groups, the order must be maintained.
+    let injectedElement;
+    if (submitter && submitter.name) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      // set the form attribute if the submitter has one;
+      // this can happen if the element is outside the actual form element
+      const formId = submitter.getAttribute("form");
+      if (formId) {
+        input.setAttribute("form", formId);
+      }
+      input.name = submitter.name;
+      input.value = submitter.value;
+      submitter.parentElement.insertBefore(input, submitter);
+      injectedElement = input;
+    }
+
+    const formData = new FormData(form);
+    const toRemove = [];
+
+    formData.forEach((val, key, _index) => {
+      if (val instanceof File) {
+        toRemove.push(key);
+      }
+    });
+
+    // Cleanup after building fileData
+    toRemove.forEach((key) => formData.delete(key));
+
+    const params = new URLSearchParams();
+
+    const { inputsUnused, onlyHiddenInputs } = Array.from(form.elements).reduce(
+      (acc, input) => {
+        const { inputsUnused, onlyHiddenInputs } = acc;
+        const key = input.name;
+        if (!key) {
+          return acc;
+        }
+
+        if (inputsUnused[key] === undefined) {
+          inputsUnused[key] = true;
+        }
+        if (onlyHiddenInputs[key] === undefined) {
+          onlyHiddenInputs[key] = true;
+        }
+
+        const inputSkipUnusedField = input.hasAttribute(
+          this.binding(PHX_NO_USED_CHECK),
+        );
+
+        const isUsed =
+          DOM.private(input, PHX_HAS_FOCUSED) ||
+          DOM.private(input, PHX_HAS_SUBMITTED) ||
+          inputSkipUnusedField;
+
+        const isHidden = input.type === "hidden";
+        inputsUnused[key] = inputsUnused[key] && !isUsed;
+        onlyHiddenInputs[key] = onlyHiddenInputs[key] && isHidden;
+
+        return acc;
+      },
+      { inputsUnused: {}, onlyHiddenInputs: {} },
+    );
+
+    const formSkipUnusedFields = form.hasAttribute(
+      this.binding(PHX_NO_USED_CHECK),
+    );
+
+    for (const [key, val] of formData.entries()) {
+      if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
+        const isUnused = inputsUnused[key];
+        const hidden = onlyHiddenInputs[key];
+        const skipUnusedCheck = formSkipUnusedFields;
+
+        if (
+          !skipUnusedCheck &&
+          isUnused &&
+          !(submitter && submitter.name == key) &&
+          !hidden
+        ) {
+          params.append(prependFormDataKey(key, "_unused_"), "");
+        }
+        if (typeof val === "string") {
+          params.append(key, val);
+        }
+      }
+    }
+
+    // remove the injected element again
+    // (it would be removed by the next dom patch anyway, but this is cleaner)
+    if (submitter && injectedElement) {
+      submitter.parentElement.removeChild(injectedElement);
+    }
+
+    return params.toString();
+  }
+
   pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
     this.pushWithReply(
       (maybePayload) =>
@@ -1627,9 +1645,11 @@ export default class View {
       serializeOpts.submitter = inputEl;
     }
     if (inputEl.getAttribute(this.binding("change"))) {
-      formData = serializeForm(inputEl.form, serializeOpts, [inputEl.name]);
+      formData = this.serializeForm(inputEl.form, serializeOpts, [
+        inputEl.name,
+      ]);
     } else {
-      formData = serializeForm(inputEl.form, serializeOpts);
+      formData = this.serializeForm(inputEl.form, serializeOpts);
     }
     if (
       DOM.isUploadInput(inputEl) &&
@@ -1806,7 +1826,7 @@ export default class View {
           return this.undoRefs(ref, phxEvent);
         }
         const meta = this.extractMeta(formEl, {}, opts.value);
-        const formData = serializeForm(formEl, { submitter });
+        const formData = this.serializeForm(formEl, { submitter });
         this.pushWithReply(proxyRefGen, "event", {
           type: "form",
           event: phxEvent,
@@ -1824,7 +1844,7 @@ export default class View {
       )
     ) {
       const meta = this.extractMeta(formEl, {}, opts.value);
-      const formData = serializeForm(formEl, { submitter });
+      const formData = this.serializeForm(formEl, { submitter });
       this.pushWithReply(refGenerator, "event", {
         type: "form",
         event: phxEvent,

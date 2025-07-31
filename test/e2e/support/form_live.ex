@@ -137,12 +137,18 @@ defmodule Phoenix.LiveViewTest.E2E.FormLive do
       phx-submit="save"
       phx-change={@params["phx-change"]}
       phx-auto-recover={@params["phx-auto-recover"]}
+      phx-no-used-check={@params["phx-no-used-check-form"]}
       phx-target={assigns[:"phx-target"]}
       class="myformclass"
     >
       <input type="text" name="a" readonly value={@params["a"]} />
       <input type="text" name="b" value={@params["b"]} />
-      <input type="text" name="c" value={@params["c"]} />
+      <input
+        type="text"
+        name="c"
+        value={@params["c"]}
+        phx-no-used-check={@params["phx-no-used-check-input"]}
+      />
       <select name="d">
         {Phoenix.HTML.Form.options_for_select(["foo", "bar", "baz"], @params["d"])}
       </select>
