@@ -115,6 +115,8 @@ Note: Colocated hooks require Phoenix 1.8+.
 > ```
 > 
 > to ensure that all colocated hooks are extracted before esbuild or any other bundler runs.
+>
+> If you have a `Dockerfile` based on `mix phx.gen.release --docker`, ensure that `mix compile` runs before `mix assets.deploy`.
 
 ## Change tracking in comprehensions
 
