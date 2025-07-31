@@ -667,19 +667,25 @@ defmodule Phoenix.Component.Declarative do
                   %{} -> Map.merge(unquote(global_default), caller_globals)
                 end
 
+              defaults = %{unquote_splicing(defaults)}
+
               merged =
-                %{unquote_splicing(defaults)}
+                defaults
                 |> Map.merge(assigns)
                 |> Map.put(:__given__, assigns)
+                |> unquote(__MODULE__).defaults_to_changed(defaults)
 
               super(Phoenix.Component.assign(merged, unquote(global_name), globals))
             end
           else
             quote do
+              defaults = %{unquote_splicing(defaults)}
+
               merged =
-                %{unquote_splicing(defaults)}
+                defaults
                 |> Map.merge(assigns)
                 |> Map.put(:__given__, assigns)
+                |> unquote(__MODULE__).defaults_to_changed(defaults)
 
               super(merged)
             end
@@ -1306,5 +1312,19 @@ defmodule Phoenix.Component.Declarative do
         "you must `use Phoenix.Component` to declare attributes. It is currently only imported."
       )
     end
+  end
+
+  @doc false
+  def defaults_to_changed(%{__changed__: changed, __given__: given} = assigns, defaults) do
+    new_changed =
+      Enum.reduce(defaults, changed || %{}, fn {key, _value}, changed ->
+        if Map.has_key?(changed, key) or Map.has_key?(given, key) do
+          changed
+        else
+          Map.put(changed, key, true)
+        end
+      end)
+
+    %{assigns | __changed__: new_changed}
   end
 end
