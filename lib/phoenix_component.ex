@@ -706,7 +706,8 @@ defmodule Phoenix.Component do
     allows for rendering optimizations.
 
   * `list` (only for the `class` attribute) - each element of the list is processed
-    as a different class. `nil` and `false` elements are discarded.
+    as a different class. `nil` and `false` elements are discarded. Nested lists
+    are supported and flattened.
 
   For multiple dynamic attributes, you can use the same notation but without
   assigning the expression to any specific attribute:
