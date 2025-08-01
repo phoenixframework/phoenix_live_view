@@ -204,7 +204,7 @@ export interface Hook<T = object> {
   reconnected?: (this: T & HookInterface) => void;
 
   // Allow custom methods with any signature and custom properties
-  [key: string]: ((this: T & HookInterface, ...args: any[]) => any) | any;
+  [key: PropertyKey]: any;
 }
 
 /**
