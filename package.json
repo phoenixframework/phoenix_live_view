@@ -10,8 +10,8 @@
   "jsdelivr": "./priv/static/phoenix_live_view.min.js",
   "exports": {
     "import": {
-      "default": "./priv/static/phoenix_live_view.esm.js",
-      "types": "./assets/js/types/index.d.ts"
+      "types": "./assets/js/types/index.d.ts",
+      "default": "./priv/static/phoenix_live_view.esm.js"
     },
     "require": "./priv/static/phoenix_live_view.cjs.js"
   },
