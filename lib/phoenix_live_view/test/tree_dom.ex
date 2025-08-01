@@ -66,6 +66,7 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
     tree
     |> node_to_text()
     |> Enum.join()
+    # This causes linebreaks to be removed from textarea
     |> String.replace(~r/[\s]+/, " ")
     |> String.trim()
   end

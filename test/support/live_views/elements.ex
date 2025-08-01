@@ -203,6 +203,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       </select>
       <textarea name="hello[textarea]">Text</textarea>
       <textarea name="hello[textarea_empty]"></textarea>
+      <textarea name="hello[textarea_with_newlines]"><%= @multiline_text %></textarea>
       <!-- Mimic textarea from Phoenix.HTML -->
       <textarea name="hello[textarea_nl]">
     Text</textarea>
@@ -274,6 +275,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       socket
       |> assign(:event, nil)
       |> assign(:trigger_action, false)
+      |> assign(:multiline_text, "This is a test.\nIt has multiple\nlines of text.")
 
     {:ok, socket}
   end
