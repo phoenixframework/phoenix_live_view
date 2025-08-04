@@ -1327,10 +1327,10 @@ defmodule Phoenix.Component.Declarative do
 
     new_changed =
       Enum.reduce(defaults_keys, changed, fn key, changed ->
-        if Map.has_key?(changed, key) or Map.has_key?(given, key) do
+        if Map.has_key?(given, key) do
           changed
         else
-          Map.put(changed, key, true)
+          Map.put_new(changed, key, true)
         end
       end)
 
