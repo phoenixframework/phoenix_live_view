@@ -457,6 +457,13 @@ defmodule Phoenix.LiveView.ElementsTest do
     assert from_element.meta.submitter == from_selector.meta.submitter
   end
 
+  test "put_submitter/2 works on forms without IDs", %{live: view} do
+    view
+    |> element("form[data-name='form-without-id']")
+    |> put_submitter("[name=button]")
+    |> render_submit()
+  end
+
   describe "render_submit" do
     test "raises if element is not a form", %{live: view} do
       assert_raise ArgumentError, "phx-submit is only allowed in forms, got \"a\"", fn ->
