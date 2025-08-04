@@ -526,13 +526,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   defp to_tree([{:text, text, _meta} | tokens], buffer, stack, opts) do
     buffer = may_set_preserve_on_block(buffer, text)
-
-    if line_html_comment?(text) do
-      to_tree(tokens, [{:comment, text} | buffer], stack, opts)
-    else
-      meta = %{newlines: count_newlines_before_text(text)}
-      to_tree(tokens, [{:text, text, meta} | buffer], stack, opts)
-    end
+    meta = %{newlines: count_newlines_before_text(text)}
+    to_tree(tokens, [{:text, text, meta} | buffer], stack, opts)
   end
 
   defp to_tree([{:body_expr, value, meta} | tokens], buffer, stack, opts) do
@@ -660,18 +655,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       ?\n -> count_newlines_until_text(binary, counter + 1, pos + inc, inc)
       _ -> counter
     end
-  end
-
-  # We just want to handle as :comment when the whole line is a HTML comment.
-  #
-  #   <!-- Modal content -->
-  #   <%= render_slot(@inner_block) %>
-  #
-  # Therefore the case above will stay as is. Otherwise it would put them in the
-  # same line.
-  defp line_html_comment?(text) do
-    trimmed_text = String.trim(text)
-    String.starts_with?(trimmed_text, "<!--") and String.ends_with?(trimmed_text, "-->")
   end
 
   # In case the opening tag is immediately preceeded by non whitespace text,
