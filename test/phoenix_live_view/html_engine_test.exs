@@ -51,7 +51,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   end
 
   def assigns_component(assigns) do
-    ~H"{inspect(Map.delete(assigns, :__changed__))}"
+    ~H"{inspect(Map.drop(assigns, [:__changed__, :__dynamic_assigns__]))}"
   end
 
   def textarea(assigns) do

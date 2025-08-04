@@ -6,7 +6,7 @@ defmodule Phoenix.Component.Declarative do
   # This list should only contain attributes that are given to components by engines
   # @socket, @myself, etc. should not be listed here, as they shouldn't be given to
   # function components in the first place
-  @reserved_assigns [:__changed__, :__slot__, :__given__, :inner_block]
+  @reserved_assigns [:__changed__, :__slot__, :__given__, :__dynamic_assigns__, :inner_block]
 
   @doc false
   def __reserved__, do: @reserved_assigns
@@ -645,6 +645,7 @@ defmodule Phoenix.Component.Declarative do
           end
 
         defaults = attr_defaults ++ slot_defaults
+        defaults_keys = Enum.map(defaults, fn {key, _} -> key end)
 
         {global_name, global_default} =
           case Enum.find(attrs, fn attr -> attr.type == :global end) do
@@ -667,25 +668,21 @@ defmodule Phoenix.Component.Declarative do
                   %{} -> Map.merge(unquote(global_default), caller_globals)
                 end
 
-              defaults = %{unquote_splicing(defaults)}
-
               merged =
-                defaults
+                %{unquote_splicing(defaults)}
                 |> Map.merge(assigns)
                 |> Map.put(:__given__, assigns)
-                |> unquote(__MODULE__).defaults_to_changed(defaults)
+                |> unquote(__MODULE__).defaults_to_changed(unquote(defaults_keys))
 
               super(Phoenix.Component.assign(merged, unquote(global_name), globals))
             end
           else
             quote do
-              defaults = %{unquote_splicing(defaults)}
-
               merged =
-                defaults
+                %{unquote_splicing(defaults)}
                 |> Map.merge(assigns)
                 |> Map.put(:__given__, assigns)
-                |> unquote(__MODULE__).defaults_to_changed(defaults)
+                |> unquote(__MODULE__).defaults_to_changed(unquote(defaults_keys))
 
               super(merged)
             end
@@ -1315,9 +1312,21 @@ defmodule Phoenix.Component.Declarative do
   end
 
   @doc false
-  def defaults_to_changed(%{__changed__: changed, __given__: given} = assigns, defaults) do
+  def defaults_to_changed(
+        %{__changed__: changed, __given__: given, __dynamic_assigns__: true} = assigns,
+        [_ | _] = defaults_keys
+      )
+      when not is_nil(changed) do
+    # The component has defaults and the caller has passed dynamic assigns
+    # `<.my_component {some_expression}>`, therefore we need to mark all the
+    # default keys that are not explicitly passed as changed.
+    #
+    # This means that in case the dynamic assigns are only used for some
+    # attributes that have defaults, even attributes that ALWAYS have the
+    # default value will be re-sent each time.
+
     new_changed =
-      Enum.reduce(defaults, changed || %{}, fn {key, _value}, changed ->
+      Enum.reduce(defaults_keys, changed, fn key, changed ->
         if Map.has_key?(changed, key) or Map.has_key?(given, key) do
           changed
         else
@@ -1327,4 +1336,7 @@ defmodule Phoenix.Component.Declarative do
 
     %{assigns | __changed__: new_changed}
   end
+
+  # no dynamic expression or empty defaults
+  def defaults_to_changed(assigns, _defaults_keys), do: assigns
 end

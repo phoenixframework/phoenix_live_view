@@ -884,6 +884,19 @@ defmodule Phoenix.LiveView.Engine do
   def to_component_dynamic(
         static,
         dynamic,
+        static_changed,
+        _keys,
+        _assigns,
+        _changed,
+        _vars_changed_vars,
+        _vars_changed
+      )
+      when dynamic == %{},
+      do: Map.put(static, :__changed__, static_changed)
+
+  def to_component_dynamic(
+        static,
+        dynamic,
         _static_changed,
         _keys,
         _assigns,
@@ -915,7 +928,10 @@ defmodule Phoenix.LiveView.Engine do
   end
 
   defp merge_dynamic_static_changed(dynamic, static, changed) do
-    dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
+    dynamic
+    |> Map.merge(static)
+    |> Map.put(:__changed__, changed)
+    |> Map.put(:__dynamic_assigns__, true)
   end
 
   defp component_changed(:all, _assigns, _changed, _vars_changed_vars, _vars_changed), do: true
