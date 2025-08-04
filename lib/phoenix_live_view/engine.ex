@@ -815,7 +815,11 @@ defmodule Phoenix.LiveView.Engine do
         quote do: %{unquote_splicing(static)}
 
       true ->
-        quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
+        # we must disable change tracking when there is a non empty dynamic part
+        # (for example `<.my_component {assigns}>`) for anything inside the component;
+        # in case the parent assigns already contain a `__changed__` key, we must reset
+        # it to `nil` to do so
+        quote do: Map.merge(unquote(dynamic), %{unquote_splicing([__changed__: nil] ++ static)})
     end
   end
 
