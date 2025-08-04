@@ -1272,7 +1272,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
             _ ->
               # to collect the submitter by selector,
               # need to convert the tree to a lazy here :(
-              {form_inputs, fn -> DOM.to_lazy(node) end}
+              {form_inputs, fn -> DOM.to_lazy([node]) end}
           end
 
         defaults = Enum.reduce(value_inputs, Query.decode_init(), &form_defaults/2)

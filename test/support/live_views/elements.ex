@@ -234,6 +234,10 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       <button name="button_no_value">Button No Value</button>
     </form>
 
+    <form data-name="form-without-id" phx-submit="form-submit">
+      <button name="button" type="submit">button</button>
+    </form>
+
     <form
       id="trigger-form-default"
       phx-submit="form-submit-trigger"
