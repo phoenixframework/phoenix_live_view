@@ -71,8 +71,7 @@ defmodule Phoenix.LiveView.Integrations.HTMLFormatterTest do
     <section>
       <%= live_redirect to: "url", id: "link", role: "button" do %>
         <div>
-          <p>content 1</p>
-          <p>content 2</p>
+          <p>content 1</p><p>content 2</p>
         </div>
       <% end %>
       <p>{@user.name}</p>
@@ -124,9 +123,7 @@ defmodule Phoenix.LiveView.Integrations.HTMLFormatterTest do
     expected = """
     <section>
       <h1>
-        <b class="there are several classes">
-          {@user.name}
-        </b>
+        <b class="there are several classes">{@user.name}</b>
       </h1>
     </section>
     """
