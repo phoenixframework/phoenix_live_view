@@ -1431,7 +1431,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   end
 
   defp form_defaults("textarea", node, name, acc) do
-    value = TreeDOM.to_text(node)
+    value = TreeDOM.to_text(node, false)
 
     if value == "" do
       Plug.Conn.Query.decode_each({name, ""}, acc)

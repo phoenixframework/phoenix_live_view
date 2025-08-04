@@ -62,12 +62,19 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
   @doc """
   Returns the text representation of the node, removing extra whitespace.
   """
-  def to_text(tree) do
-    tree
-    |> node_to_text()
-    |> Enum.join()
-    |> String.replace(~r/[\s]+/, " ")
-    |> String.trim()
+  def to_text(tree, trim \\ true) do
+    text =
+      tree
+      |> node_to_text()
+      |> Enum.join()
+
+    if trim do
+      text
+      |> String.replace(~r/[\s]+/, " ")
+      |> String.trim()
+    else
+      text
+    end
   end
 
   defp node_to_text({_tag, _attrs, content}), do: node_to_text(content)

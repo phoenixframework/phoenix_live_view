@@ -618,6 +618,17 @@ defmodule Phoenix.LiveView.ElementsTest do
   end
 
   describe "submit_form" do
+    test "submits textarea with newline characters", %{live: view} do
+      view
+      |> form("#form")
+      |> render_submit()
+
+      expected_string_in_event =
+        "textarea_with_newlines\" => \"This is a test.\\nIt has multiple\\nlines of text.\""
+
+      assert last_event(view) =~ expected_string_in_event
+    end
+
     test "raises if element is not a form", %{live: view, conn: conn} do
       assert_raise ArgumentError,
                    ~r"given element did not return a form",
