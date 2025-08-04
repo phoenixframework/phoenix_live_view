@@ -776,65 +776,61 @@ defmodule Phoenix.LiveView.Engine do
     # Rewrite slots in static parts
     static = slots_to_rendered(static, vars, caller, Keyword.get(meta, :slots, []))
 
-    cond do
-      # Live components have their own tracking, so we skip the logic below
-      match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
-        if dynamic == %{} do
-          quote do: %{unquote_splicing(static)}
-        else
-          quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
-        end
-
-      # Compute change tracking for static parts
-      static_extra != [] ->
-        keys =
-          for {key, value} <- static_extra,
-              # We pass empty assigns because if this code is rendered,
-              # it means that upstream assigns were change tracked.
-              {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}, caller),
-              # If keys are empty, it is never changed.
-              keys != %{},
-              do: {key, to_component_keys(keys)}
-
-        # [id: [changed: [:id]], children: [vars_changed: [:children]]]
-        # -> [changed: [:id], vars_changed: [:children]]
-        vars_changed_keys =
-          Enum.flat_map(keys, fn
-            {_assign, :all} -> []
-            {_assign, keys} -> keys
-          end)
-
-        static_changed =
-          quote do
-            unquote(__MODULE__).to_component_static(
-              unquote(keys),
-              unquote(@assigns_var),
-              changed,
-              %{unquote_splicing(vars_changed_vars(vars_changed_keys))},
-              vars_changed
-            )
-          end
-
-        static = quote do: %{unquote_splicing([__changed__: static_changed] ++ static)}
-
-        if dynamic == %{} do
+    static =
+      cond do
+        # Live components have their own tracking, so we skip the logic below
+        match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
           static
-        else
-          quote do
-            unquote(__MODULE__).to_component_dynamic(unquote(dynamic), unquote(static))
-          end
-        end
 
-      true ->
-        if dynamic == %{} do
-          quote do: %{unquote_splicing(static)}
-        else
+        # Compute change tracking for static parts
+        static_extra != [] and (dynamic == %{} or without_dependencies?(dynamic, vars, caller)) ->
+          keys =
+            for {key, value} <- static_extra,
+                # We pass empty assigns because if this code is rendered,
+                # it means that upstream assigns were change tracked.
+                {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}, caller),
+                # If keys are empty, it is never changed.
+                keys != %{},
+                do: {key, to_component_keys(keys)}
+
+          # [id: [changed: [:id]], children: [vars_changed: [:children]]]
+          # -> [changed: [:id], vars_changed: [:children]]
+          vars_changed_keys =
+            Enum.flat_map(keys, fn
+              {_assign, :all} -> []
+              {_assign, keys} -> keys
+            end)
+
+          static_changed =
+            quote do
+              unquote(__MODULE__).to_component_static(
+                unquote(keys),
+                unquote(@assigns_var),
+                changed,
+                %{unquote_splicing(vars_changed_vars(vars_changed_keys))},
+                vars_changed
+              )
+            end
+
+          [__changed__: static_changed] ++ static
+
+        true ->
           # We must disable change tracking when there is a non empty dynamic part
           # (for example `<.my_component {assigns}>`) in case the parent assigns
           # already contain a `__changed__` key
-          quote do: Map.merge(unquote(dynamic), %{unquote_splicing([__changed__: nil] ++ static)})
-        end
+          [__changed__: nil] ++ static
+      end
+
+    if dynamic == %{} do
+      quote do: %{unquote_splicing(static)}
+    else
+      quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
     end
+  end
+
+  defp without_dependencies?(ast, vars, caller) do
+    {_, keys, _} = analyze_and_return_tainted_keys(ast, vars, %{}, caller)
+    keys == %{}
   end
 
   defp to_component_keys(:all), do: :all
@@ -856,15 +852,6 @@ defmodule Phoenix.LiveView.Engine do
         []
     end)
     |> Enum.uniq()
-  end
-
-  @doc false
-  def to_component_dynamic(dynamic, static) do
-    if dynamic == %{} do
-      static
-    else
-      Map.merge(dynamic, %{static | __changed__: nil})
-    end
   end
 
   @doc false
