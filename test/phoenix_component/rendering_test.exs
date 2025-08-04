@@ -175,40 +175,38 @@ defmodule Phoenix.ComponentRenderingTest do
       assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{}}
       assert eval(~H"<.changed foo={@foo} {@bar} />") == [nil]
 
-      # we cannot perform any change tracking when dynamic assigns are involved
       assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{bar: true}}
-      assert eval(~H"<.changed foo={@foo} {@bar} />") == [["nil"]]
+      assert eval(~H"<.changed foo={@foo} {@bar} />") == [["%{foo: true}"]]
 
       assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{foo: true}}
-      assert eval(~H"<.changed foo={@foo} {@bar} />") == [["nil"]]
+      assert eval(~H"<.changed foo={@foo} {@bar} />") == [["%{foo: true}"]]
 
       assigns = %{foo: 1, bar: %{foo: 2}, baz: 3, __changed__: %{baz: true}}
-      assert eval(~H"<.changed foo={@foo} {@bar} baz={@baz} />") == [["nil"]]
+      assert eval(~H"<.changed foo={@foo} {@bar} baz={@baz} />") == [["%{baz: true}"]]
     end
 
     test "with dynamic assigns" do
       assigns = %{foo: %{a: 1, b: 2}, __changed__: %{}}
       assert eval(~H"<.changed {@foo} />") == [nil]
 
-      # we cannot perform any change tracking when dynamic assigns are involved
       assigns = %{foo: %{a: 1, b: 2}, __changed__: %{foo: true}}
-      assert eval(~H"<.changed {@foo} />") == [["nil"]]
+      assert eval(~H"<.changed {@foo} />") == [["%{a: true, b: true}"]]
 
       assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
-      assert eval(~H"<.changed {@foo} bar={@bar} />") == [["nil"]]
+      assert eval(~H"<.changed {@foo} bar={@bar} />") == [["%{bar: true}"]]
 
       assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
-      assert eval(~H"<.changed {%{a: 1, b: 2}} bar={@bar} />") == [["nil"]]
+      assert eval(~H"<.changed {%{a: 1, b: 2}} bar={@bar} />") == [["%{bar: true}"]]
 
       assigns = %{bar: 3, __changed__: %{bar: true}}
 
       assert eval(~H"<.changed {%{a: assigns[:b], b: assigns[:a]}} bar={@bar} />") ==
-               [["nil"]]
+               [["%{bar: true}"]]
 
       assigns = %{a: 1, b: 2, bar: 3, __changed__: %{a: true, b: true, bar: true}}
 
       assert eval(~H"<.changed {%{a: assigns[:b], b: assigns[:a]}} bar={@bar} />") ==
-               [["nil"]]
+               [["%{a: true, b: true, bar: true}"]]
     end
 
     defp wrapper(assigns) do

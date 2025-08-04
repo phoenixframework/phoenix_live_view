@@ -773,14 +773,8 @@ defmodule Phoenix.LiveView.Engine do
 
     static_extra = extra ++ static
 
-    # Rewrite slots in static parts
-    static = slots_to_rendered(static, vars, caller, Keyword.get(meta, :slots, []))
-
-    cond do
-      # We can optimize when there are static parts and no dynamic parts.
-      # We skip live components because they have their own tracking.
-      static_extra != [] and dynamic == %{} and
-          not match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
+    static_changed =
+      if static_extra != [] do
         keys =
           for {key, value} <- static_extra,
               # We pass empty assigns because if this code is rendered,
@@ -798,28 +792,58 @@ defmodule Phoenix.LiveView.Engine do
             {_assign, keys} -> keys
           end)
 
-        static_changed =
-          quote do
-            unquote(__MODULE__).to_component_static(
-              unquote(keys),
-              unquote(@assigns_var),
-              changed,
-              %{unquote_splicing(vars_changed_vars(vars_changed_keys))},
-              vars_changed
-            )
-          end
+        quote do
+          unquote(__MODULE__).to_component_static(
+            unquote(keys),
+            unquote(@assigns_var),
+            changed,
+            %{unquote_splicing(vars_changed_vars(vars_changed_keys))},
+            vars_changed
+          )
+        end
+      else
+        Macro.escape(%{})
+      end
 
-        quote do: %{unquote_splicing([__changed__: static_changed] ++ static)}
+    static = slots_to_rendered(static, vars, caller, Keyword.get(meta, :slots, []))
 
+    cond do
+      # We can't infer anything, so return the expression as is.
+      static_extra == [] and dynamic == %{} ->
+        expr
+
+      # Live components do not need to compute the changed because they track their own changed.
+      match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
+        if dynamic == %{} do
+          quote do: %{unquote_splicing(static)}
+        else
+          quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
+        end
+
+      # We were actually able to find some static bits, but no dynamic.
+      # Embed the static parts alongside the computed changed.
       dynamic == %{} ->
-        quote do: %{unquote_splicing(static)}
+        quote do
+          %{unquote_splicing([__changed__: static_changed] ++ static)}
+        end
 
+      # Merge both static and dynamic.
       true ->
-        # we must disable change tracking when there is a non empty dynamic part
-        # (for example `<.my_component {assigns}>`) for anything inside the component;
-        # in case the parent assigns already contain a `__changed__` key, we must reset
-        # it to `nil` to do so
-        quote do: Map.merge(unquote(dynamic), %{unquote_splicing([__changed__: nil] ++ static)})
+        {_, keys, _} = analyze_and_return_tainted_keys(dynamic, vars, %{}, caller)
+        keys = to_component_keys(keys)
+
+        quote do
+          unquote(__MODULE__).to_component_dynamic(
+            %{unquote_splicing(static)},
+            unquote(dynamic),
+            unquote(static_changed),
+            unquote(keys),
+            unquote(@assigns_var),
+            changed,
+            %{unquote_splicing(vars_changed_vars(keys))},
+            vars_changed
+          )
+        end
     end
   end
 
@@ -854,6 +878,44 @@ defmodule Phoenix.LiveView.Engine do
         changed = component_changed(entries, assigns, changed, vars_changed_vars, vars_changed),
         into: %{},
         do: {assign, changed}
+  end
+
+  @doc false
+  def to_component_dynamic(
+        static,
+        dynamic,
+        _static_changed,
+        _keys,
+        _assigns,
+        nil,
+        _vars_changed_vars,
+        nil
+      ) do
+    merge_dynamic_static_changed(dynamic, static, nil)
+  end
+
+  def to_component_dynamic(
+        static,
+        dynamic,
+        static_changed,
+        keys,
+        assigns,
+        changed,
+        vars_changed_vars,
+        vars_changed
+      ) do
+    component_changed =
+      if component_changed(keys, assigns, changed, vars_changed_vars, vars_changed) do
+        Enum.reduce(dynamic, static_changed, fn {k, _}, acc -> Map.put(acc, k, true) end)
+      else
+        static_changed
+      end
+
+    merge_dynamic_static_changed(dynamic, static, component_changed)
+  end
+
+  defp merge_dynamic_static_changed(dynamic, static, changed) do
+    dynamic |> Map.merge(static) |> Map.put(:__changed__, changed)
   end
 
   defp component_changed(:all, _assigns, _changed, _vars_changed_vars, _vars_changed), do: true
