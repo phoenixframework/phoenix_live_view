@@ -546,18 +546,13 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          opts
        ) do
     {mode, block} =
-      cond do
-        tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs) ->
-          content =
-            content_from_source(opts.source, open_meta.inner_location, close_meta.inner_location)
+      if tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs) do
+        content =
+          content_from_source(opts.source, open_meta.inner_location, close_meta.inner_location)
 
-          {:preserve, [{:text, content, %{newlines_before_text: 0, newlines_after_text: 0}}]}
-
-        preceeded_by_non_white_space?(upper_buffer) ->
-          {:preserve, Enum.reverse(reversed_buffer)}
-
-        true ->
-          {:normal, Enum.reverse(reversed_buffer)}
+        {:preserve, [{:text, content, %{newlines_before_text: 0, newlines_after_text: 0}}]}
+      else
+        {:normal, Enum.reverse(reversed_buffer)}
       end
 
     tag_block = {:tag_block, tag_name, attrs, block, %{mode: mode}}
@@ -638,15 +633,6 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       _ -> counter
     end
   end
-
-  # In case the opening tag is immediately preceeded by non whitespace text,
-  # or an interpolation, we will set it as preserve.
-  defp preceeded_by_non_white_space?([{:text, text, _meta} | _]),
-    do: String.trim_leading(text) != "" and :binary.last(text) not in ~c"\s\t\n\r"
-
-  defp preceeded_by_non_white_space?([{:body_expr, _, _} | _]), do: true
-  defp preceeded_by_non_white_space?([{:eex, _, _} | _]), do: true
-  defp preceeded_by_non_white_space?(_), do: false
 
   # In case the closing tag is immediatelly followed by non whitespace text,
   # we want to set mode as preserve.
