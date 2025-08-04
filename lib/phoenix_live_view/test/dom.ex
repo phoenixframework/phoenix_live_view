@@ -146,7 +146,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   @doc """
   Turns a tree into a lazy.
   """
-  def to_lazy(tree), do: LazyHTML.from_tree(List.wrap(tree))
+  def to_lazy(tree), do: LazyHTML.from_tree(tree)
 
   @doc """
   Escapes a string for use as a CSS identifier.
