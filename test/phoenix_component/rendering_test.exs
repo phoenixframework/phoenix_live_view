@@ -175,7 +175,10 @@ defmodule Phoenix.ComponentRenderingTest do
       assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{}}
       assert eval(~H"<.changed foo={@foo} {@bar} />") == [nil]
 
-      # we cannot perform any change tracking when dynamic assigns are involved
+      # we cannot perform any change tracking when dynamic assigns are involved unless they are empty
+      assigns = %{foo: 1, bar: %{}, __changed__: %{bar: true}}
+      assert eval(~H"<.changed foo={@foo} {@bar} />") == [["%{}"]]
+
       assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{bar: true}}
       assert eval(~H"<.changed foo={@foo} {@bar} />") == [["nil"]]
 

@@ -777,10 +777,16 @@ defmodule Phoenix.LiveView.Engine do
     static = slots_to_rendered(static, vars, caller, Keyword.get(meta, :slots, []))
 
     cond do
-      # We can optimize when there are static parts and no dynamic parts.
-      # We skip live components because they have their own tracking.
-      static_extra != [] and dynamic == %{} and
-          not match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
+      # Live components have their own tracking, so we skip the logic below
+      match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
+        if dynamic == %{} do
+          quote do: %{unquote_splicing(static)}
+        else
+          quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
+        end
+
+      # Compute change tracking for static parts
+      static_extra != [] ->
         keys =
           for {key, value} <- static_extra,
               # We pass empty assigns because if this code is rendered,
@@ -809,17 +815,25 @@ defmodule Phoenix.LiveView.Engine do
             )
           end
 
-        quote do: %{unquote_splicing([__changed__: static_changed] ++ static)}
+        static = quote do: %{unquote_splicing([__changed__: static_changed] ++ static)}
 
-      dynamic == %{} ->
-        quote do: %{unquote_splicing(static)}
+        if dynamic == %{} do
+          static
+        else
+          quote do
+            unquote(__MODULE__).to_component_dynamic(unquote(dynamic), unquote(static))
+          end
+        end
 
       true ->
-        # we must disable change tracking when there is a non empty dynamic part
-        # (for example `<.my_component {assigns}>`) for anything inside the component;
-        # in case the parent assigns already contain a `__changed__` key, we must reset
-        # it to `nil` to do so
-        quote do: Map.merge(unquote(dynamic), %{unquote_splicing([__changed__: nil] ++ static)})
+        if dynamic == %{} do
+          quote do: %{unquote_splicing(static)}
+        else
+          # We must disable change tracking when there is a non empty dynamic part
+          # (for example `<.my_component {assigns}>`) in case the parent assigns
+          # already contain a `__changed__` key
+          quote do: Map.merge(unquote(dynamic), %{unquote_splicing([__changed__: nil] ++ static)})
+        end
     end
   end
 
@@ -842,6 +856,15 @@ defmodule Phoenix.LiveView.Engine do
         []
     end)
     |> Enum.uniq()
+  end
+
+  @doc false
+  def to_component_dynamic(dynamic, static) do
+    if dynamic == %{} do
+      static
+    else
+      Map.merge(dynamic, %{static | __changed__: nil})
+    end
   end
 
   @doc false
