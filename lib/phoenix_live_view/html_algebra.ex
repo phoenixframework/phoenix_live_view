@@ -243,13 +243,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       end
 
     group =
-      concat([
-        "<#{name}",
-        build_attrs(attrs, "", context.attr_formatters, context.opts),
-        ">",
-        doc,
-        "</#{name}>"
-      ])
+      concat([format_tag_open(name, attrs, context), doc, "</#{name}>"])
       |> group()
 
     {:block, group}
@@ -308,21 +302,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp to_algebra({:tag_self_close, name, attrs}, context) do
     doc =
-      case attrs do
-        [attr] ->
-          concat([
-            "<#{name} ",
-            render_attribute(attr, context.attr_formatters, context.opts),
-            " />"
-          ])
-
-        attrs ->
-          concat([
-            "<#{name}",
-            build_attrs(attrs, " ", context.attr_formatters, context.opts),
-            "/>"
-          ])
-      end
+      concat([
+        "<#{name}",
+        build_attrs(attrs, " ", context.attr_formatters, context.opts),
+        "/>"
+      ])
 
     {:inline, group(doc)}
   end
@@ -438,17 +422,31 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp build_attrs([], on_break, _formatters, _opts), do: on_break
 
-  defp build_attrs(attrs, on_break, formatters, opts) do
-    attrs
-    |> Enum.sort_by(&attrs_sorter/1)
-    |> Enum.reduce(
-      empty(),
-      &concat([&2, break(" "), render_attribute(&1, formatters, opts)])
-    )
-    |> nest(2)
-    |> concat(break(on_break))
-    |> group()
+  defp build_attrs([attr], on_break, formatters, opts) do
+    concat([" ", render_attribute(attr, formatters, opts), on_break])
   end
+
+  defp build_attrs(attrs, on_break, formatters, opts) do
+    doc =
+      attrs
+      |> Enum.sort_by(&attrs_sorter/1)
+      |> Enum.reduce(
+        empty(),
+        &concat([&2, break(" "), render_attribute(&1, formatters, opts)])
+      )
+      |> nest(2)
+      |> concat(break(on_break))
+
+    if distinct_lines?(attrs, -1) do
+      doc |> force_unfit() |> group()
+    else
+      group(doc)
+    end
+  end
+
+  defp distinct_lines?([{_, _, %{line: line}} | _], line), do: false
+  defp distinct_lines?([{_, _, %{line: line}} | tail], _line), do: distinct_lines?(tail, line)
+  defp distinct_lines?([], _line), do: true
 
   @attrs_order %{
     ":let" => 1,
@@ -465,9 +463,6 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       attrs_order -> attrs_order
     end
   end
-
-  defp format_tag_open(name, [attr], context),
-    do: concat(["<#{name} ", render_attribute(attr, context.attr_formatters, context.opts), ">"])
 
   defp format_tag_open(name, attrs, context),
     do: concat(["<#{name}", build_attrs(attrs, "", context.attr_formatters, context.opts), ">"])

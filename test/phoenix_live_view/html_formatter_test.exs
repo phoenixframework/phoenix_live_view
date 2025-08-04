@@ -294,6 +294,21 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     assert_formatter_doesnt_change(input)
   end
 
+  test "keep attributes in separate lines if written as such" do
+    input = """
+    <Component
+      foo="..."
+      bar="..."
+      baz="..."
+      qux="..."
+    >
+      Foo
+    </Component>
+    """
+
+    assert_formatter_doesnt_change(input)
+  end
+
   test "break attributes into multiple lines in case it doesn't fit 98 characters (default)" do
     input = """
     <div foo="..........." bar="....................." baz="................." qux="....................">
@@ -1882,9 +1897,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       <script phx-no-format><%= raw(js_code()) %></script>
       """,
       """
-      <script
-        phx-no-format
-      ><%= raw(js_code()) %></script>
+      <script phx-no-format><%= raw(js_code()) %></script>
       """,
       line_length: 5
     )
