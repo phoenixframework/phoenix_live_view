@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "es2016",
+    "target": "es2021",
     "module": "esnext",
     "moduleResolution": "node",
     "allowJs": true,
@@ -12,10 +12,7 @@
     "baseUrl": "./assets/js",
     "stripInternal": true,
     "paths": {
-      "*": [
-        "*",
-        "phoenix_live_view/*"
-      ]
+      "*": ["*", "phoenix_live_view/*"]
     },
     "declaration": true,
     "emitDeclarationOnly": true,
@@ -24,9 +21,5 @@
   "include": [
     "./assets/js/phoenix_live_view/*.js",
     "./assets/js/phoenix_live_view/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "assets/test/**/*"
   ]
 }

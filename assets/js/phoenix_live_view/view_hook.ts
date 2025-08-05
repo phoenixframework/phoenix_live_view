@@ -154,7 +154,7 @@ export interface HookInterface {
   uploadTo(selectorOrTarget: PhxTarget, name: any, files: any): any;
 
   // allow unknown methods, as people can define them in their hooks
-  [key: string]: any;
+  [key: PropertyKey]: any;
 }
 
 // based on https://github.com/DefinitelyTyped/DefinitelyTyped/blob/fac1aa75acdddbf4f1a95e98ee2297b54ce4b4c9/types/phoenix_live_view/hooks.d.ts#L26
@@ -204,7 +204,7 @@ export interface Hook<T = object> {
   reconnected?: (this: T & HookInterface) => void;
 
   // Allow custom methods with any signature and custom properties
-  [key: string]: ((this: T & HookInterface, ...args: any[]) => any) | any;
+  [key: PropertyKey]: any;
 }
 
 /**
