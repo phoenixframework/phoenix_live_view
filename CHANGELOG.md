@@ -265,7 +265,7 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
-## v1.1.3 (Unreleased)
+## v1.1.3 (2025-08-05)
 
 ### Bug fixes
 
@@ -273,11 +273,14 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 * Ensure form recovery respects fieldsets ([#3921](https://github.com/phoenixframework/phoenix_live_view/pull/3921))
 * LiveViewTest: Fix crasj when submitting a form with custom submitter, but without ID ([#3927](https://github.com/phoenixframework/phoenix_live_view/issues/3927))
 * LiveViewTest: Ensure whitespace in textarea content is preserved when submitting a form ([#3928](https://github.com/phoenixframework/phoenix_live_view/pull/3928))
+* Make hook types less strict ([#3913](https://github.com/phoenixframework/phoenix_live_view/issues/3913))
 
 ### Enhancements
 
 * HTMLFormatter: do not try to format attributes into a single line when they are spread over multiple lines.
   This follows the behavior of the Elixir formatter that also respects newlines.
+* Re-enable component change tracking in case the dynamic expression does not have any dependencies, for example:
+  `<.my_component some="key" {%{static: "map"}}>` ([#3936](https://github.com/phoenixframework/phoenix_live_view/pull/3936))
 
 ## v1.1.2 (2025-07-31)
 
