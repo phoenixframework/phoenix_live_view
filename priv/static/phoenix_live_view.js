@@ -5631,9 +5631,20 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id).filter((form) => form.elements.length > 0).filter(
         (form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore"
       ).map((form) => {
-        const clonedForm = form.cloneNode(false);
-        dom_default.copyPrivates(clonedForm, form);
-        Array.from(form.elements).forEach((el) => {
+        const clonedForm = form.cloneNode(true);
+        morphdom_esm_default(clonedForm, form, {
+          onBeforeElUpdated: (fromEl, toEl) => {
+            dom_default.copyPrivates(fromEl, toEl);
+            return true;
+          }
+        });
+        const externalElements = document.querySelectorAll(
+          `[form="${form.id}"]`
+        );
+        Array.from(externalElements).forEach((el) => {
+          if (form.contains(el)) {
+            return;
+          }
           const clonedEl = el.cloneNode(true);
           morphdom_esm_default(clonedEl, el);
           dom_default.copyPrivates(clonedEl, el);
