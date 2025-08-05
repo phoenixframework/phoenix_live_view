@@ -109,7 +109,13 @@ export default class View {
     this.ref = 0;
     this.lastAckRef = null;
     this.childJoins = 0;
+    /**
+     * @type {ReturnType<typeof setTimeout> | null}
+     */
     this.loaderTimer = null;
+    /**
+     * @type {ReturnType<typeof setTimeout> | null}
+     */
     this.disconnectedTimer = null;
     this.pendingDiffs = [];
     this.pendingForms = new Set();

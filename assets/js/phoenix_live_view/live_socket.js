@@ -82,6 +82,9 @@ export default class LiveSocket {
     this.uploaders = opts.uploaders || {};
     this.loaderTimeout = opts.loaderTimeout || LOADER_TIMEOUT;
     this.disconnectedTimeout = opts.disconnectedTimeout || DISCONNECTED_TIMEOUT;
+    /**
+     * @type {ReturnType<typeof setTimeout> | null}
+     */
     this.reloadWithJitterTimer = null;
     this.maxReloads = opts.maxReloads || MAX_RELOADS;
     this.reloadJitterMin = opts.reloadJitterMin || RELOAD_JITTER_MIN;
