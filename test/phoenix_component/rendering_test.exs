@@ -175,7 +175,10 @@ defmodule Phoenix.ComponentRenderingTest do
       assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{}}
       assert eval(~H"<.changed foo={@foo} {@bar} />") == [nil]
 
-      # we cannot perform any change tracking when dynamic assigns are involved
+      # We cannot perform any change tracking if dynamic assigns has dependencies
+      assigns = %{foo: 1, __changed__: %{foo: true}}
+      assert eval(~H"<.changed foo={@foo} {%{foo: 2}} />") == [["%{foo: true}"]]
+
       assigns = %{foo: 1, bar: %{foo: 2}, __changed__: %{bar: true}}
       assert eval(~H"<.changed foo={@foo} {@bar} />") == [["nil"]]
 
@@ -190,15 +193,18 @@ defmodule Phoenix.ComponentRenderingTest do
       assigns = %{foo: %{a: 1, b: 2}, __changed__: %{}}
       assert eval(~H"<.changed {@foo} />") == [nil]
 
-      # we cannot perform any change tracking when dynamic assigns are involved
+      # We cannot perform any change tracking if dynamic assigns has dependencies
       assigns = %{foo: %{a: 1, b: 2}, __changed__: %{foo: true}}
       assert eval(~H"<.changed {@foo} />") == [["nil"]]
 
       assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
-      assert eval(~H"<.changed {@foo} bar={@bar} />") == [["nil"]]
+      assert eval(~H"<.changed {%{a: 1, b: 2}} bar={@bar} />") == [["%{bar: true}"]]
 
       assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
-      assert eval(~H"<.changed {%{a: 1, b: 2}} bar={@bar} />") == [["nil"]]
+      assert eval(~H"<.changed {assigns} bar={@bar} />") == [["nil"]]
+
+      assigns = %{foo: %{a: 1, b: 2}, bar: 3, __changed__: %{bar: true}}
+      assert eval(~H"<.changed {@foo} bar={@bar} />") == [["nil"]]
 
       assigns = %{bar: 3, __changed__: %{bar: true}}
 

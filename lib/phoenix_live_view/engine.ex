@@ -776,51 +776,61 @@ defmodule Phoenix.LiveView.Engine do
     # Rewrite slots in static parts
     static = slots_to_rendered(static, vars, caller, Keyword.get(meta, :slots, []))
 
-    cond do
-      # We can optimize when there are static parts and no dynamic parts.
-      # We skip live components because they have their own tracking.
-      static_extra != [] and dynamic == %{} and
-          not match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
-        keys =
-          for {key, value} <- static_extra,
-              # We pass empty assigns because if this code is rendered,
-              # it means that upstream assigns were change tracked.
-              {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}, caller),
-              # If keys are empty, it is never changed.
-              keys != %{},
-              do: {key, to_component_keys(keys)}
+    static =
+      cond do
+        # Live components have their own tracking, so we skip the logic below
+        match?({:&, _, [{:/, _, [{:live_component, _, _}, 1]}]}, fun) ->
+          static
 
-        # [id: [changed: [:id]], children: [vars_changed: [:children]]]
-        # -> [changed: [:id], vars_changed: [:children]]
-        vars_changed_keys =
-          Enum.flat_map(keys, fn
-            {_assign, :all} -> []
-            {_assign, keys} -> keys
-          end)
+        # Compute change tracking for static parts
+        static_extra != [] and (dynamic == %{} or without_dependencies?(dynamic, vars, caller)) ->
+          keys =
+            for {key, value} <- static_extra,
+                # We pass empty assigns because if this code is rendered,
+                # it means that upstream assigns were change tracked.
+                {_, keys, _} = analyze_and_return_tainted_keys(value, vars, %{}, caller),
+                # If keys are empty, it is never changed.
+                keys != %{},
+                do: {key, to_component_keys(keys)}
 
-        static_changed =
-          quote do
-            unquote(__MODULE__).to_component_static(
-              unquote(keys),
-              unquote(@assigns_var),
-              changed,
-              %{unquote_splicing(vars_changed_vars(vars_changed_keys))},
-              vars_changed
-            )
-          end
+          # [id: [changed: [:id]], children: [vars_changed: [:children]]]
+          # -> [changed: [:id], vars_changed: [:children]]
+          vars_changed_keys =
+            Enum.flat_map(keys, fn
+              {_assign, :all} -> []
+              {_assign, keys} -> keys
+            end)
 
-        quote do: %{unquote_splicing([__changed__: static_changed] ++ static)}
+          static_changed =
+            quote do
+              unquote(__MODULE__).to_component_static(
+                unquote(keys),
+                unquote(@assigns_var),
+                changed,
+                %{unquote_splicing(vars_changed_vars(vars_changed_keys))},
+                vars_changed
+              )
+            end
 
-      dynamic == %{} ->
-        quote do: %{unquote_splicing(static)}
+          [__changed__: static_changed] ++ static
 
-      true ->
-        # we must disable change tracking when there is a non empty dynamic part
-        # (for example `<.my_component {assigns}>`) for anything inside the component;
-        # in case the parent assigns already contain a `__changed__` key, we must reset
-        # it to `nil` to do so
-        quote do: Map.merge(unquote(dynamic), %{unquote_splicing([__changed__: nil] ++ static)})
+        true ->
+          # We must disable change tracking when there is a non empty dynamic part
+          # (for example `<.my_component {assigns}>`) in case the parent assigns
+          # already contain a `__changed__` key
+          [__changed__: nil] ++ static
+      end
+
+    if dynamic == %{} do
+      quote do: %{unquote_splicing(static)}
+    else
+      quote do: Map.merge(unquote(dynamic), %{unquote_splicing(static)})
     end
+  end
+
+  defp without_dependencies?(ast, vars, caller) do
+    {_, keys, _} = analyze_and_return_tainted_keys(ast, vars, %{}, caller)
+    keys == %{}
   end
 
   defp to_component_keys(:all), do: :all
