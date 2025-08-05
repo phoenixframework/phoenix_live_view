@@ -780,7 +780,7 @@ defmodule Phoenix.LiveView.StreamTest do
       html
       |> TreeDOM.normalize_to_tree()
       |> TreeDOM.by_id!(id)
-      |> TreeDOM.all(fn node ->
+      |> TreeDOM.filter(fn node ->
         TreeDOM.tag(node) == "div" && TreeDOM.attribute(node, "phx-update") == "stream"
       end)
       |> case do
