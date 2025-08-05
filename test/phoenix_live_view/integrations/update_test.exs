@@ -43,6 +43,6 @@ defmodule Phoenix.LiveView.UpdateTest do
 
     html
     |> TreeDOM.normalize_to_tree(sort_attributes: true)
-    |> TreeDOM.all(fn node -> TreeDOM.attribute(node, "id") in ids end)
+    |> TreeDOM.filter(fn node -> TreeDOM.attribute(node, "id") in ids end)
   end
 end

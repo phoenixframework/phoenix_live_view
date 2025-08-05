@@ -1630,9 +1630,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp maybe_put_cid(payload, cid), do: Map.put(payload, "cid", cid)
 
   defp root_page_title(root_html) do
-    case TreeDOM.all(root_html, fn node -> TreeDOM.tag(node) == "head" end) do
+    case TreeDOM.filter(root_html, fn node -> TreeDOM.tag(node) == "head" end) do
       [node] ->
-        case TreeDOM.all(node, fn node -> TreeDOM.tag(node) == "title" end) do
+        case TreeDOM.filter(node, fn node -> TreeDOM.tag(node) == "title" end) do
           [title] -> TreeDOM.to_text(title)
           _ -> nil
         end

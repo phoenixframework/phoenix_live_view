@@ -16,20 +16,10 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
   @doc """
   Filters nodes and returns them in reverse order.
   """
-  def reverse_filter(node, fun) do
-    node
-    |> LazyHTML.Tree.postwalk([], fn node, acc ->
-      if fun.(node), do: {node, [node | acc]}, else: {node, acc}
+  def reverse_filter(tree, fun) do
+    reduce(tree, [], fn x, acc ->
+      if fun.(x), do: [x | acc], else: acc
     end)
-    |> elem(1)
-  end
-
-  @doc """
-  Finds all nodes that match `fun`. Walks the tree in a pre-walk manner, visiting parents before children.
-  """
-  def all(node, fun) do
-    prewalk(node, fun, [])
-    |> Enum.reverse()
   end
 
   @doc """
@@ -158,18 +148,41 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
   defp value_key(_), do: nil
 
   @doc """
+  Reduces the tree with the given function.
+  """
+  def reduce(tree, acc, fun) when is_function(fun, 2) do
+    do_reduce(tree, acc, fn
+      text, acc when is_binary(text) -> acc
+      {:comment, _children}, acc -> acc
+      {_tag, _attrs, _children} = node, acc -> fun.(node, acc)
+    end)
+  end
+
+  defp do_reduce([], acc, _fun), do: acc
+
+  defp do_reduce([node | rest], acc, fun) do
+    acc = do_reduce(node, acc, fun)
+    do_reduce(rest, acc, fun)
+  end
+
+  defp do_reduce({tag, attrs, children}, acc, fun) do
+    acc = fun.({tag, attrs, children}, acc)
+    do_reduce(children, acc, fun)
+  end
+
+  defp do_reduce(node, acc, fun) do
+    fun.(node, acc)
+  end
+
+  @doc """
   Walks the tree and updates nodes based on the given function.
   """
   def walk(tree, fun) when is_function(fun, 1) do
-    LazyHTML.Tree.postwalk(tree, walk_fun(fun))
-  end
-
-  defp walk_fun(fun) when is_function(fun, 1) do
-    fn
+    LazyHTML.Tree.postwalk(tree, fn
       text when is_binary(text) -> text
       {:comment, _children} = comment -> comment
       {_tag, _attrs, _children} = node -> fun.(node)
-    end
+    end)
   end
 
   defp by_id(tree, id) do
@@ -201,32 +214,6 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
   def inspect_html(dom_node),
     do: "    " <> String.replace(to_html(dom_node), "\n", "\n   ") <> "\n"
 
-  defp prewalk([], _fun, acc), do: List.flatten(acc)
-  defp prewalk(text, _fun, acc) when is_binary(text), do: acc
-  defp prewalk({:comment, _children} = _comment, _fun, acc), do: acc
-
-  defp prewalk({_tag, _attrs, children} = node, fun, acc) do
-    new_acc =
-      if fun.(node) do
-        [node | acc]
-      else
-        acc
-      end
-
-    prewalk_children(children, fun, new_acc)
-  end
-
-  defp prewalk(list, fun, acc) when is_list(list) do
-    prewalk_children(list, fun, acc)
-  end
-
-  defp prewalk_children([], _fun, acc), do: acc
-
-  defp prewalk_children([head | tail], fun, acc) do
-    new_acc = prewalk(head, fun, acc)
-    prewalk_children(tail, fun, new_acc)
-  end
-
   ### Functions specific for LiveView
 
   @doc """
@@ -234,7 +221,7 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
   """
   def find_live_views(tree) do
     tree
-    |> all(fn node -> attribute(node, "data-phx-session") end)
+    |> filter(fn node -> attribute(node, "data-phx-session") end)
     |> Enum.map(fn {_, attributes, _} -> attributes end)
     |> parse_live_views_attributes()
   end
@@ -321,7 +308,7 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
           error_reporter.("""
           Duplicate id found while testing LiveView: #{id}
 
-          #{inspect_html(all(tree, fn node -> attribute(node, "id") == id end))}
+          #{inspect_html(filter(tree, fn node -> attribute(node, "id") == id end))}
 
           LiveView requires that all elements have unique ids, duplicate IDs will cause
           undefined behavior at runtime, as DOM patching will not be able to target the correct
@@ -346,7 +333,7 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
         error_reporter.("""
         Duplicate live component found while testing LiveView:
 
-        #{inspect_html(all(tree, fn node -> attribute(node, @phx_component) == to_string(cid) end))}
+        #{inspect_html(filter(tree, fn node -> attribute(node, @phx_component) == to_string(cid) end))}
 
         This most likely means that you are conditionally rendering the same
         LiveComponent multiple times with the same ID in the same LiveView.

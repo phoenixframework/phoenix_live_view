@@ -621,7 +621,7 @@ defmodule Phoenix.LiveView.ComponentsTest do
       """
 
       html = t2h(template)
-      assert [p] = TreeDOM.all(html, &(TreeDOM.tag(&1) == "p"))
+      assert [p] = TreeDOM.filter(html, &(TreeDOM.tag(&1) == "p"))
       assert TreeDOM.to_text(p) =~ "bar"
     end
 
