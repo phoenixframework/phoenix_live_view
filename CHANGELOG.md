@@ -265,6 +265,20 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.3 (Unreleased)
+
+### Bug fixes
+
+* Fix warning when importing LiveView JS ([#3926](https://github.com/phoenixframework/phoenix_live_view/pull/3926))
+* Ensure form recovery respects fieldsets ([#3921](https://github.com/phoenixframework/phoenix_live_view/pull/3921))
+* LiveViewTest: Fix crasj when submitting a form with custom submitter, but without ID ([#3927](https://github.com/phoenixframework/phoenix_live_view/issues/3927))
+* LiveViewTest: Ensure whitespace in textarea content is preserved when submitting a form ([#3928](https://github.com/phoenixframework/phoenix_live_view/pull/3928))
+
+### Enhancements
+
+* HTMLFormatter: do not try to format attributes into a single line when they are spread over multiple lines.
+  This follows the behavior of the Elixir formatter that also respects newlines.
+
 ## v1.1.2 (2025-07-31)
 
 ### Bug fixes
