@@ -5,10 +5,12 @@
 When updating from LiveView 1.0, you can also use [igniter](https://hexdocs.pm/igniter) to perform the following changes for you:
 
 ```bash
+# Prior to / without running `mix deps.update`
 mix igniter.upgrade phoenix_live_view
-```
 
-Note: before the final release, you need to run `mix igniter.apply_upgrades phoenix_live_view:1.0.0:1.1.0` after upgrading to the latest release candidate instead.
+# Or if you have previously run `mix deps.update phoenix_live_view` or are upgrading from a release candidate.
+mix igniter.apply_upgrades phoenix_live_view:1.0.0:1.1.0
+```
 
 Here is a quick summary of the changes necessary to upgrade to LiveView v1.1:
 
