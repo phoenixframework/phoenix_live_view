@@ -273,7 +273,7 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 
 * Fix warning when importing LiveView JS ([#3926](https://github.com/phoenixframework/phoenix_live_view/pull/3926))
 * Ensure form recovery respects fieldsets ([#3921](https://github.com/phoenixframework/phoenix_live_view/pull/3921))
-* LiveViewTest: Fix crasj when submitting a form with custom submitter, but without ID ([#3927](https://github.com/phoenixframework/phoenix_live_view/issues/3927))
+* LiveViewTest: Fix crash when submitting a form with custom submitter, but without ID ([#3927](https://github.com/phoenixframework/phoenix_live_view/issues/3927))
 * LiveViewTest: Ensure whitespace in textarea content is preserved when submitting a form ([#3928](https://github.com/phoenixframework/phoenix_live_view/pull/3928))
 * Make hook types less strict ([#3913](https://github.com/phoenixframework/phoenix_live_view/issues/3913))
 
