@@ -93,6 +93,7 @@ export default class DOMPatch {
     }
 
     if (this.isCIDPatch()) {
+      // https://github.com/phoenixframework/phoenix_live_view/pull/3942
       // we need to ensure that no parent is locked
       const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
       if (closestLock) {
