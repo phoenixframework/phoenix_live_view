@@ -238,6 +238,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3647", Issue3647Live
       live "/3681", Issue3681Live
       live "/3681/away", Issue3681.AwayLive
+      live "/3941", Issue3941Live
     end
 
     post "/submit", SubmitController, :submit
