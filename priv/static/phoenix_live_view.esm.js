@@ -2214,9 +2214,21 @@ var DOMPatch = class {
     );
   }
   perform(isJoinPatch) {
-    const { view, liveSocket, html, container, targetContainer } = this;
-    if (this.isCIDPatch() && !targetContainer) {
+    const { view, liveSocket, html, container } = this;
+    let targetContainer = this.targetContainer;
+    if (this.isCIDPatch() && !this.targetContainer) {
       return;
+    }
+    if (this.isCIDPatch()) {
+      const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
+      if (closestLock) {
+        const clonedTree = dom_default.private(closestLock, PHX_REF_LOCK);
+        if (clonedTree) {
+          targetContainer = clonedTree.querySelector(
+            `[data-phx-component="${this.targetCID}"]`
+          );
+        }
+      }
     }
     const focused = liveSocket.getActiveElement();
     const { selectionStart, selectionEnd } = focused && dom_default.hasSelectionRange(focused) ? focused : {};
