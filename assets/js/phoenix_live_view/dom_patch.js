@@ -85,9 +85,26 @@ export default class DOMPatch {
   }
 
   perform(isJoinPatch) {
-    const { view, liveSocket, html, container, targetContainer } = this;
-    if (this.isCIDPatch() && !targetContainer) {
+    const { view, liveSocket, html, container } = this;
+    let targetContainer = this.targetContainer;
+
+    if (this.isCIDPatch() && !this.targetContainer) {
       return;
+    }
+
+    if (this.isCIDPatch()) {
+      // https://github.com/phoenixframework/phoenix_live_view/pull/3942
+      // we need to ensure that no parent is locked
+      const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
+      if (closestLock) {
+        const clonedTree = DOM.private(closestLock, PHX_REF_LOCK);
+        if (clonedTree) {
+          // if a parent is locked with a cloned tree, we need to patch the cloned tree instead
+          targetContainer = clonedTree.querySelector(
+            `[data-phx-component="${this.targetCID}"]`,
+          );
+        }
+      }
     }
 
     const focused = liveSocket.getActiveElement();
