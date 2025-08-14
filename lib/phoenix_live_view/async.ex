@@ -200,7 +200,7 @@ defmodule Phoenix.LiveView.Async do
       validate_function_env(func, :stream_async)
     end
 
-    {stream_opts, opts} = Keyword.pop(opts, :stream_opts, [])
+    {opts, stream_opts} = Keyword.pop(opts, :async_opts, [])
     reset = Keyword.get(opts, :reset, false)
 
     # store opts for streaming

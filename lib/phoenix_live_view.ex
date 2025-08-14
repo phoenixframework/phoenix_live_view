@@ -2266,10 +2266,8 @@ defmodule Phoenix.LiveView do
 
   ## Options
 
-    * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
-    * `:reset` - remove previous results during async operation when true. Possible values are
-      `true`, `false`, or a list of keys to reset. Defaults to `false`.
-    * `:stream_opts` - a keyword list of stream options, accepts the same options as `stream/4`.
+    * `:async_opts` - a keyword list accepting the same options as `start_async/4` and `assign_async/4`.
+    * any other options are passed to `stream/4`
 
   ## Examples
 
