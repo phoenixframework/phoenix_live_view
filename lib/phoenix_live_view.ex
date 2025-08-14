@@ -2253,6 +2253,42 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
+  Assigns a stream asynchronously.
+
+  Wraps your function in a task linked to the caller, errors are wrapped.
+  The key passed to `assign_async/3` will be used as the stream name. Furthermore,
+  a regular assign with the same name gets assigned a `Phoenix.LiveView.AsyncResult`
+  struct holding the status of the operation.
+
+  The function must return either an `Enumerable` representing the values to be streamed.
+
+  The task is only started when the socket is connected.
+
+  ## Options
+
+    * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
+    * `:reset` - remove previous results during async operation when true. Possible values are
+      `true`, `false`, or a list of keys to reset. Defaults to `false`.
+    * `:stream_opts` - a keyword list of stream options, accepts the same options as `stream/4`.
+
+  ## Examples
+
+  ```elixir
+  def mount(%{"slug" => slug}, _, socket) do
+    {:ok,
+      socket
+      # IMPORTANT: reset here does NOT reset the stream, but only the loading state
+      |> stream_async(:my_stream, fn -> {:ok, list_organizations!()} end, reset: true)
+      # This resets the stream, but has no effect in mount
+      |> stream_async(:my_reset_stream, fn -> {:ok, list_organizations!()} end, stream_opts: [reset: true])
+  end
+  ```
+  """
+  defmacro stream_async(socket, name, func, opts \\ []) do
+    Async.stream_async(socket, name, func, opts, __CALLER__)
+  end
+
+  @doc """
   Cancels an async operation if one exists.
 
   Accepts either the `%AsyncResult{}` when using `assign_async/3` or

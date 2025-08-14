@@ -180,6 +180,66 @@ defmodule Phoenix.LiveView.Async do
     |> run_async_task(keys, wrapped_func, :assign, opts)
   end
 
+  def stream_async(socket, key, func, opts, env) do
+    validate_function_env(func, :stream_async, env)
+
+    quote do
+      Phoenix.LiveView.Async.stream_async(
+        unquote(socket),
+        unquote(key),
+        unquote(func),
+        unquote(opts)
+      )
+    end
+  end
+
+  def stream_async(%Socket{} = socket, key, func, opts)
+      when is_atom(key) and is_function(func, 0) do
+    # runtime check
+    if Phoenix.LiveView.connected?(socket) do
+      validate_function_env(func, :stream_async)
+    end
+
+    {stream_opts, opts} = Keyword.pop(opts, :stream_opts, [])
+    reset = Keyword.get(opts, :reset, false)
+
+    # store opts for streaming
+    wrapped_func = fn ->
+      case func.() do
+        {:ok, result} ->
+          if Enumerable.impl_for(result) do
+            {:ok, %{stream: result, opts: stream_opts}}
+          else
+            raise ArgumentError, """
+            expected stream_async to return {:ok, Enumerable.t()} or {:error, reason} but the result
+            is does not implement the Enumerable protocol
+            """
+          end
+
+        {:error, reason} ->
+          {:error, reason}
+
+        other ->
+          raise ArgumentError, """
+          expected stream_async to return {:ok, Enumerable.t()} or {:error, reason}, got: #{inspect(other)}
+          """
+      end
+    end
+
+    value =
+      case {reset, socket.assigns} do
+        {false, %{^key => %AsyncResult{ok?: true} = existing}} ->
+          AsyncResult.loading(existing)
+
+        _ ->
+          AsyncResult.loading()
+      end
+
+    socket
+    |> Phoenix.Component.assign(key, value)
+    |> run_async_task(key, wrapped_func, :stream, opts)
+  end
+
   def run_async_task(%Socket{} = socket, key, func, kind, opts) when is_function(func, 0) do
     if Phoenix.LiveView.connected?(socket) do
       lv_pid = self()
@@ -309,6 +369,29 @@ defmodule Phoenix.LiveView.Async do
           end
 
         Phoenix.Component.assign(socket, new_assigns)
+    end
+  end
+
+  defp handle_kind(socket, _maybe_component, :stream, key, result) do
+    case result do
+      {:ok, {:ok, %{stream: stream, opts: opts}}} ->
+        socket
+        |> Phoenix.Component.assign(key, AsyncResult.ok(get_current_async!(socket, key), nil))
+        |> Phoenix.LiveView.stream(key, stream, opts)
+
+      {:ok, {:error, reason}} ->
+        Phoenix.Component.assign(
+          socket,
+          key,
+          AsyncResult.failed(get_current_async!(socket, key), {:error, reason})
+        )
+
+      {:exit, _reason} = normalized_exit ->
+        Phoenix.Component.assign(
+          socket,
+          key,
+          AsyncResult.failed(get_current_async!(socket, key), normalized_exit)
+        )
     end
   end
 
