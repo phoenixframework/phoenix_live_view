@@ -939,7 +939,8 @@ defmodule Phoenix.LiveViewTest do
   end
 
   @doc """
-  Awaits all current `assign_async` and `start_async` for a given LiveView or element.
+  Awaits all current `assign_async`, `stream_async` and `start_async` tasks
+  for a given LiveView or element.
 
   It renders the LiveView or Element once complete and returns the result.
   The default `timeout` is [ExUnit](https://hexdocs.pm/ex_unit/ExUnit.html#configure/1)'s
