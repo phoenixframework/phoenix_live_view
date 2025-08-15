@@ -758,6 +758,7 @@ var LiveView = (() => {
     // if an element is ignored, we only merge data attributes
     // including removing data attributes that are no longer in the source
     mergeAttrs(target, source, opts = {}) {
+      var _a;
       const exclude = new Set(opts.exclude || []);
       const isIgnored = opts.isIgnored;
       const sourceAttrs = source.attributes;
@@ -769,8 +770,11 @@ var LiveView = (() => {
             target.setAttribute(name, sourceValue);
           }
         } else {
-          if (name === "value" && target.value === source.value) {
-            target.setAttribute("value", source.getAttribute(name));
+          if (name === "value") {
+            const sourceValue = (_a = source.value) != null ? _a : source.getAttribute(name);
+            if (target.value === sourceValue) {
+              target.setAttribute("value", source.getAttribute(name));
+            }
           }
         }
       }

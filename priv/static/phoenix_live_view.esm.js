@@ -724,8 +724,11 @@ var DOM = {
           target.setAttribute(name, sourceValue);
         }
       } else {
-        if (name === "value" && target.value === source.value) {
-          target.setAttribute("value", source.getAttribute(name));
+        if (name === "value") {
+          const sourceValue = source.value ?? source.getAttribute(name);
+          if (target.value === sourceValue) {
+            target.setAttribute("value", source.getAttribute(name));
+          }
         }
       }
     }
