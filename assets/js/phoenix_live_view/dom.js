@@ -549,7 +549,7 @@ const DOM = {
             target.setAttribute("value", source.getAttribute(name));
           } else {
             logError('Skipped updating value on focused element.', target);
-	  }
+          }
         }
       }
     }
