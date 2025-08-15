@@ -2253,14 +2253,14 @@ defmodule Phoenix.LiveView do
   end
 
   @doc """
-  Assigns a stream asynchronously.
+  Inserts data into a stream asynchronously.
 
   Wraps your function in a task linked to the caller, errors are wrapped.
-  The key passed to `assign_async/3` will be used as the stream name. Furthermore,
+  The key passed to `stream_async/3` will be used as the stream name. Furthermore,
   a regular assign with the same name gets assigned a `Phoenix.LiveView.AsyncResult`
   struct holding the status of the operation.
 
-  The function must return either an `Enumerable` representing the values to be streamed.
+  The function must return an `Enumerable` representing the values to be streamed.
 
   The task is only started when the socket is connected.
 
