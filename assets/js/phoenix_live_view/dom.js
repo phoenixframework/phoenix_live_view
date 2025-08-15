@@ -542,9 +542,12 @@ const DOM = {
         // when an input is back in its "original state", because the attribute
         // was never changed, see:
         // https://github.com/phoenixframework/phoenix_live_view/issues/2163
-        if (name === "value" && target.value === source.value) {
-          // actually set the value attribute to sync it with the value property
-          target.setAttribute("value", source.getAttribute(name));
+        if (name === "value") {
+          const sourceValue = source.value ?? source.getAttribute(name);
+          if (target.value === sourceValue) {
+            // actually set the value attribute to sync it with the value property
+            target.setAttribute("value", source.getAttribute(name));
+          }
         }
       }
     }
