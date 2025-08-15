@@ -2263,6 +2263,9 @@ defmodule Phoenix.LiveView do
   The function must return `{:ok, Enumerable.t()}` or `{:ok, Enumerable.t(), opts}`
   where the opts are the same as in `stream/4`. The enumerable contains the values to be streamed.
 
+  If the function returns `{:error, any()}`, the `AsyncResult` is assigned as failed and
+  the stream is not updated.
+
   The task is only started when the socket is connected.
 
   ## Options
