@@ -2260,14 +2260,16 @@ defmodule Phoenix.LiveView do
   a regular assign with the same name gets assigned a `Phoenix.LiveView.AsyncResult`
   struct holding the status of the operation.
 
-  The function must return an `Enumerable` representing the values to be streamed.
+  The function must return `{:ok, Enumerable.t()}` or `{:ok, Enumerable.t(), opts}`
+  where the opts are the same as in `stream/4`. The enumerable contains the values to be streamed.
 
   The task is only started when the socket is connected.
 
   ## Options
 
-    * `:async_opts` - a keyword list accepting the same options as `start_async/4` and `assign_async/4`.
-    * any other options are passed to `stream/4`
+    * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
+    * `:reset` - remove previous results during async operation when true. Possible values are
+      `true`, `false`, or a list of keys to reset. Defaults to `false`.
 
   ## Examples
 
@@ -2277,8 +2279,8 @@ defmodule Phoenix.LiveView do
       socket
       # IMPORTANT: reset here does NOT reset the stream, but only the loading state
       |> stream_async(:my_stream, fn -> {:ok, list_organizations!()} end, reset: true)
-      # This resets the stream, but has no effect in mount
-      |> stream_async(:my_reset_stream, fn -> {:ok, list_organizations!()} end, stream_opts: [reset: true])
+      # This resets the stream
+      |> stream_async(:my_reset_stream, fn -> {:ok, list_organizations!(), reset: true} end)
   end
   ```
   """

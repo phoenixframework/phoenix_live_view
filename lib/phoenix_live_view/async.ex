@@ -200,21 +200,29 @@ defmodule Phoenix.LiveView.Async do
       validate_function_env(func, :stream_async)
     end
 
-    {opts, stream_opts} = Keyword.pop(opts, :async_opts, [])
     reset = Keyword.get(opts, :reset, false)
+
+    check_enumerable! = fn result ->
+      if Enumerable.impl_for(result) do
+        :ok
+      else
+        raise ArgumentError, """
+        expected stream_async to return {:ok, Enumerable.t()} or {:error, reason} but the result
+        is does not implement the Enumerable protocol
+        """
+      end
+    end
 
     # store opts for streaming
     wrapped_func = fn ->
       case func.() do
         {:ok, result} ->
-          if Enumerable.impl_for(result) do
-            {:ok, %{stream: result, opts: stream_opts}}
-          else
-            raise ArgumentError, """
-            expected stream_async to return {:ok, Enumerable.t()} or {:error, reason} but the result
-            is does not implement the Enumerable protocol
-            """
-          end
+          check_enumerable!.(result)
+          {:ok, result, []}
+
+        {:ok, result, opts} when is_list(opts) ->
+          check_enumerable!.(result)
+          {:ok, result, opts}
 
         {:error, reason} ->
           {:error, reason}
@@ -374,9 +382,9 @@ defmodule Phoenix.LiveView.Async do
 
   defp handle_kind(socket, _maybe_component, :stream, key, result) do
     case result do
-      {:ok, {:ok, %{stream: stream, opts: opts}}} ->
+      {:ok, {:ok, stream, opts}} ->
         socket
-        |> Phoenix.Component.assign(key, AsyncResult.ok(get_current_async!(socket, key), nil))
+        |> Phoenix.Component.assign(key, AsyncResult.ok(get_current_async!(socket, key), true))
         |> Phoenix.LiveView.stream(key, stream, opts)
 
       {:ok, {:error, reason}} ->
