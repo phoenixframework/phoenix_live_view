@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.AsyncTest do
   import ExUnit.CaptureIO
 
   describe "async operations - eval_quoted" do
-    for fun <- [:assign_async, :start_async] do
+    for fun <- [:assign_async, :start_async, :stream_async] do
       test "warns when passing socket to #{fun} function" do
         warnings =
           capture_io(:stderr, fn ->
@@ -54,7 +54,7 @@ defmodule Phoenix.LiveView.AsyncTest do
   end
 
   describe "async operations" do
-    for fun <- [:assign_async, :start_async] do
+    for fun <- [:assign_async, :start_async, :stream_async] do
       test "warns when passing socket to #{fun} function", %{test: test} do
         warnings =
           capture_io(:stderr, fn ->
