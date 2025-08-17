@@ -2176,7 +2176,7 @@ export default class View {
   }
 
   ownsElement(el) {
-    let parentViewEl = el.closest(PHX_VIEW_SELECTOR);
+    let parentViewEl = DOM.closestViewEl(el);
     return (
       el.getAttribute(PHX_PARENT_ID) === this.id ||
       (parentViewEl && parentViewEl.id === this.id) ||

@@ -60,6 +60,11 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
                 this.liveSocket.execJS(this.el, this.el.dataset.hide);
                 this.cleanup && this.cleanup();
               },
+            },
+            InsidePortal: {
+              mounted() {
+                this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
+              }
             }
           }
         })
@@ -145,6 +150,8 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         <p>DOM patching works as expected: {@count}</p>
         <.button phx-click={JS.patch("/portal?param=#{@param_next}")}>Patch this LiveView</.button>
       </.modal>
+
+      <div id="hook-test" phx-hook="InsidePortal">This should get a data attribute</div>
     </.portal>
 
     <.portal id="portal-source-2" target="#app-portal">
