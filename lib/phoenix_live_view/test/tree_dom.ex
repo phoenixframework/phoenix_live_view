@@ -293,43 +293,49 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
     {new_html, cids_before -- cids_after}
   end
 
-  def detect_duplicate_ids(tree, error_reporter),
-    do: detect_duplicate_ids(tree, tree, MapSet.new(), error_reporter)
+  def detect_duplicate_ids(tree, error_reporter) do
+    ids = get_tree_ids(tree, [])
 
-  defp detect_duplicate_ids(tree, [node | rest], ids, error_reporter) do
-    ids = detect_duplicate_ids(tree, node, ids, error_reporter)
-    detect_duplicate_ids(tree, rest, ids, error_reporter)
+    detect_duplicated_items(
+      ids,
+      fn id ->
+        error_reporter.("""
+        Duplicate id found while testing LiveView: #{id}
+
+        #{inspect_html(filter(tree, fn node -> attribute(node, "id") == id end))}
+
+        LiveView requires that all elements have unique ids, duplicate IDs will cause
+        undefined behavior at runtime, as DOM patching will not be able to target the correct
+        elements.
+        """)
+      end
+    )
   end
 
-  defp detect_duplicate_ids(tree, {_tag_name, _attrs, children} = node, ids, error_reporter) do
-    case attribute(node, "id") do
-      id when not is_nil(id) ->
-        if MapSet.member?(ids, id) do
-          error_reporter.("""
-          Duplicate id found while testing LiveView: #{id}
-
-          #{inspect_html(filter(tree, fn node -> attribute(node, "id") == id end))}
-
-          LiveView requires that all elements have unique ids, duplicate IDs will cause
-          undefined behavior at runtime, as DOM patching will not be able to target the correct
-          elements.
-          """)
-        end
-
-        detect_duplicate_ids(tree, children, MapSet.put(ids, id), error_reporter)
-
-      _ ->
-        detect_duplicate_ids(tree, children, ids, error_reporter)
-    end
+  defp get_tree_ids([node | rest], ids) do
+    ids = get_tree_ids(node, ids)
+    get_tree_ids(rest, ids)
   end
 
-  defp detect_duplicate_ids(_tree, _non_tag, seen_ids, _error_reporter), do: seen_ids
+  defp get_tree_ids({_tag_name, _attrs, children} = node, ids) do
+    ids =
+      case attribute(node, "id") do
+        id when not is_nil(id) ->
+          [id | ids]
+
+        _ ->
+          ids
+      end
+
+    get_tree_ids(children, ids)
+  end
+
+  defp get_tree_ids(_non_tag, ids), do: ids
 
   def detect_duplicate_components(tree, cids, error_reporter) do
-    cids
-    |> Enum.frequencies()
-    |> Enum.each(fn {cid, count} ->
-      if count > 1 do
+    detect_duplicated_items(
+      cids,
+      fn cid ->
         error_reporter.("""
         Duplicate live component found while testing LiveView:
 
@@ -340,7 +346,21 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
         This is not supported and will lead to broken behavior on the client.
         """)
       end
-    end)
+    )
+  end
+
+  defp detect_duplicated_items(list, on_duplicated) do
+    Enum.reduce(
+      list,
+      MapSet.new(),
+      fn item, seen_items ->
+        if MapSet.member?(seen_items, item) do
+          on_duplicated.(item)
+        end
+
+        MapSet.put(seen_items, item)
+      end
+    )
   end
 
   def component_ids(id, html_tree) do
