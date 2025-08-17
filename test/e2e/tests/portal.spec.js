@@ -103,3 +103,14 @@ test("tooltip example", async ({ page }) => {
   await expect(page.locator("#tooltip-example-portal")).toBeHidden();
   await expect(page.locator("#tooltip-example-no-portal")).toBeVisible();
 });
+
+test("teleported hook works correctly", async ({ page }) => {
+  // https://github.com/phoenixframework/phoenix_live_view/issues/3950
+  await page.goto("/portal?tick=false");
+  await syncLV(page);
+
+  await expect(page.locator("#hook-test")).toHaveAttribute(
+    "data-portalhook-mounted",
+    "true",
+  );
+});
