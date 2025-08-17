@@ -5710,7 +5710,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
     ownsElement(el) {
-      let parentViewEl = el.closest(PHX_VIEW_SELECTOR);
+      let parentViewEl = dom_default.closestViewEl(el);
       return el.getAttribute(PHX_PARENT_ID) === this.id || parentViewEl && parentViewEl.id === this.id || !parentViewEl && this.isDead;
     }
     submitForm(form, targetCtx, phxEvent, submitter, opts = {}) {
