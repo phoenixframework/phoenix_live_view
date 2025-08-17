@@ -2276,16 +2276,30 @@ defmodule Phoenix.LiveView do
 
   ## Examples
 
-  ```elixir
-  def mount(%{"slug" => slug}, _, socket) do
-    {:ok,
-      socket
-      # IMPORTANT: reset here does NOT reset the stream, but only the loading state
-      |> stream_async(:my_stream, fn -> {:ok, list_organizations!()} end, reset: true)
-      # This resets the stream
-      |> stream_async(:my_reset_stream, fn -> {:ok, list_organizations!(), reset: true} end)
-  end
-  ```
+      def mount(%{"slug" => slug}, _, socket) do
+        current_scope = socket.assigns.current_scope
+
+        {:ok,
+          socket
+          |> assign(:foo, "bar")
+          |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(current_scope)}} end)
+          |> stream_async(:posts, fn -> {:ok, list_posts!(current_scope), limit: 10} end)
+      end
+
+  Note the `reset` option controls the async assign, not the stream:
+
+      def mount(_, _, socket) do
+        {:ok,
+          socket
+          # IMPORTANT: reset here does NOT reset the stream, but only the loading state
+          |> stream_async(:my_stream, fn -> {:ok, list_items!()} end, reset: true)
+          # This resets the stream
+          |> stream_async(:my_reset_stream, fn -> {:ok, list_items!(), reset: true} end)
+      end
+
+  Any stream options need to be returned as optional third argument in the return value
+  of the asynchronous function.
+
   """
   defmacro stream_async(socket, name, func, opts \\ []) do
     Async.stream_async(socket, name, func, opts, __CALLER__)
