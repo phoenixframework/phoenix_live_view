@@ -4,6 +4,7 @@ import {
   CONSECUTIVE_RELOADS,
   PHX_AUTO_RECOVER,
   PHX_COMPONENT,
+  PHX_VIEW_REF,
   PHX_CONNECTED_CLASS,
   PHX_DISABLE_WITH,
   PHX_DISABLE_WITH_RESTORE,
@@ -581,7 +582,10 @@ export default class View {
   afterElementsRemoved(elements, pruneCids) {
     const destroyedCIDs = [];
     elements.forEach((parent) => {
-      const components = DOM.all(parent, `[${PHX_COMPONENT}]`);
+      const components = DOM.all(
+        parent,
+        `[${PHX_VIEW_REF}="${this.id}"][${PHX_COMPONENT}]`,
+      );
       const hooks = DOM.all(
         parent,
         `[${this.binding(PHX_HOOK)}], [data-phx-hook]`,
@@ -591,7 +595,7 @@ export default class View {
         if (
           isCid(cid) &&
           destroyedCIDs.indexOf(cid) === -1 &&
-          this.ownsElement(el)
+          el.getAttribute(PHX_VIEW_REF) === this.id
         ) {
           destroyedCIDs.push(cid);
         }
