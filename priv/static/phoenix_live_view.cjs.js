@@ -751,8 +751,11 @@ var DOM = {
           target.setAttribute(name, sourceValue);
         }
       } else {
-        if (name === "value" && target.value === source.value) {
-          target.setAttribute("value", source.getAttribute(name));
+        if (name === "value") {
+          const sourceValue = source.value ?? source.getAttribute(name);
+          if (target.value === sourceValue) {
+            target.setAttribute("value", source.getAttribute(name));
+          }
         }
       }
     }
@@ -5681,7 +5684,7 @@ var View = class _View {
     }
   }
   ownsElement(el) {
-    let parentViewEl = el.closest(PHX_VIEW_SELECTOR);
+    let parentViewEl = dom_default.closestViewEl(el);
     return el.getAttribute(PHX_PARENT_ID) === this.id || parentViewEl && parentViewEl.id === this.id || !parentViewEl && this.isDead;
   }
   submitForm(form, targetCtx, phxEvent, submitter, opts = {}) {
