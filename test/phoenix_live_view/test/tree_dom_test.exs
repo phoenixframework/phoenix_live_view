@@ -105,4 +105,171 @@ defmodule Phoenix.LiveViewTest.TreeDOMTest do
                ]
     end
   end
+
+  describe "apply_portal_teleportation" do
+    test "teleports portal content to target selector" do
+      html = ~x"""
+      <div>
+        <template id="my-portal" data-phx-portal="#target">
+          <div id="portal-content" class="modal">Hello World</div>
+        </template>
+        <div id="target"></div>
+      </div>
+      """
+
+      result = TreeDOM.apply_portal_teleportation(html)
+
+      expected = ~x"""
+      <div>
+        <template id="my-portal" data-phx-portal="#target">
+          <div id="portal-content" class="modal">Hello World</div>
+        </template>
+        <div id="target">
+          <div id="portal-content" class="modal">Hello World</div>
+        </div>
+      </div>
+      """
+
+      assert result == expected
+    end
+
+    test "updates existing portal content when re-rendering" do
+      html = ~x"""
+      <div>
+        <template id="my-portal" data-phx-portal="#target">
+          <div id="portal-content" class="modal">Updated Content</div>
+        </template>
+        <div id="target">
+          <div id="portal-content" class="modal" data-phx-teleported-src="true">Old Content</div>
+        </div>
+      </div>
+      """
+
+      result = TreeDOM.apply_portal_teleportation(html)
+
+      expected = ~x"""
+      <div>
+        <template id="my-portal" data-phx-portal="#target">
+          <div id="portal-content" class="modal">Updated Content</div>
+        </template>
+        <div id="target">
+          <div id="portal-content" class="modal">Updated Content</div>
+        </div>
+      </div>
+      """
+
+      assert result == expected
+    end
+
+    test "handles multiple portals to different targets" do
+      html = ~x"""
+      <div>
+        <template id="portal-1" data-phx-portal="#target-1">
+          <div id="content-1">Content 1</div>
+        </template>
+        <template id="portal-2" data-phx-portal="#target-2">
+          <div id="content-2">Content 2</div>
+        </template>
+        <div id="target-1"></div>
+        <div id="target-2"></div>
+      </div>
+      """
+
+      result = TreeDOM.apply_portal_teleportation(html)
+
+      expected = ~x"""
+      <div>
+        <template id="portal-1" data-phx-portal="#target-1">
+          <div id="content-1">Content 1</div>
+        </template>
+        <template id="portal-2" data-phx-portal="#target-2">
+          <div id="content-2">Content 2</div>
+        </template>
+        <div id="target-1">
+          <div id="content-1">Content 1</div>
+        </div>
+        <div id="target-2">
+          <div id="content-2">Content 2</div>
+        </div>
+      </div>
+      """
+
+      assert result == expected
+    end
+
+    test "ignores portals when target selector is not found" do
+      html = ~x"""
+      <div>
+        <template id="my-portal" data-phx-portal="#missing-target">
+          <div id="portal-content">Content</div>
+        </template>
+        <div id="existing-target"></div>
+      </div>
+      """
+
+      result = TreeDOM.apply_portal_teleportation(html)
+
+      # Should remain unchanged since target doesn't exist
+      expected = ~x"""
+      <div>
+        <template id="my-portal" data-phx-portal="#missing-target">
+          <div id="portal-content">Content</div>
+        </template>
+        <div id="existing-target"></div>
+      </div>
+      """
+
+      assert result == expected
+    end
+
+    test "works with nested elements" do
+      html =
+        TreeDOM.normalize_to_tree(
+          """
+          <body>
+            <template id="my-portal" data-phx-portal="body">
+              <div id="modal" class="modal-backdrop">
+                <div class="modal-content">
+                  <h1>Modal Title</h1>
+                  <p>Modal body text</p>
+                </div>
+              </div>
+            </template>
+            <div id="app">App content</div>
+          </body>
+          """,
+          full_document: true,
+          sort_attributes: true
+        )
+
+      result = TreeDOM.apply_portal_teleportation(html)
+
+      expected =
+        TreeDOM.normalize_to_tree(
+          """
+          <body>
+            <template id="my-portal" data-phx-portal="body">
+              <div id="modal" class="modal-backdrop">
+                <div class="modal-content">
+                  <h1>Modal Title</h1>
+                  <p>Modal body text</p>
+                </div>
+              </div>
+            </template>
+            <div id="app">App content</div>
+            <div id="modal" class="modal-backdrop">
+              <div class="modal-content">
+                <h1>Modal Title</h1>
+                <p>Modal body text</p>
+              </div>
+            </div>
+          </body>
+          """,
+          full_document: true,
+          sort_attributes: true
+        )
+
+      assert result == expected
+    end
+  end
 end
