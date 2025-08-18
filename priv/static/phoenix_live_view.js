@@ -4519,14 +4519,17 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     afterElementsRemoved(elements, pruneCids) {
       const destroyedCIDs = [];
       elements.forEach((parent) => {
-        const components = dom_default.all(parent, `[${PHX_COMPONENT}]`);
+        const components = dom_default.all(
+          parent,
+          `[${PHX_VIEW_REF}="${this.id}"][${PHX_COMPONENT}]`
+        );
         const hooks = dom_default.all(
           parent,
           `[${this.binding(PHX_HOOK)}], [data-phx-hook]`
         );
         components.concat(parent).forEach((el) => {
           const cid = this.componentID(el);
-          if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1 && this.ownsElement(el)) {
+          if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1 && el.getAttribute(PHX_VIEW_REF) === this.id) {
             destroyedCIDs.push(cid);
           }
         });
@@ -5801,7 +5804,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     // public
     version() {
-      return "1.1.6";
+      return "1.1.7";
     }
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
