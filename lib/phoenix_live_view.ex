@@ -2258,7 +2258,8 @@ defmodule Phoenix.LiveView do
   Wraps your function in a task linked to the caller, errors are wrapped.
   The key passed to `stream_async/3` will be used as the stream name. Furthermore,
   a regular assign with the same name gets assigned a `Phoenix.LiveView.AsyncResult`
-  struct holding the status of the operation.
+  struct holding the status of the operation. The stream is initialized to an empty list
+  before starting the asynchronous function, so accessing `@streams.name` is always possible.
 
   The function must return `{:ok, Enumerable.t()}` or `{:ok, Enumerable.t(), opts}`
   where the opts are the same as in `stream/4`. The enumerable contains the values to be streamed.
