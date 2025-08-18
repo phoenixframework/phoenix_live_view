@@ -1,7 +1,7 @@
 import { test, expect } from "../../test-fixtures";
 import { syncLV } from "../../utils";
 
-// https://github.com/phoenixframework/phoenix_live_view/issues/3941
+// https://github.com/phoenixframework/phoenix_live_view/issues/3953
 test("component destroy messages respect the parent", async ({ page }) => {
   await page.goto("/issues/3953");
   await syncLV(page);
