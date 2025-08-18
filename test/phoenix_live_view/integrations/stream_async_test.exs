@@ -174,6 +174,20 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
       refute rendered =~ "First"
       refute rendered =~ "Second"
     end
+
+    test "stream is available (empty) before async finishes", %{conn: conn} do
+      {:ok, lv, html} = live(conn, "/stream_async?test=ok&no_init=true")
+
+      refute html =~ "Initial"
+
+      rendered = render_async(lv)
+      lazy = LazyHTML.from_fragment(rendered)
+
+      assert [
+               {"li", [{"id", "my_stream-1"}, _], ["First"]},
+               {"li", [{"id", "my_stream-2"}, _], ["Second"]}
+             ] = LazyHTML.query(lazy, "li") |> LazyHTML.to_tree()
+    end
   end
 
   describe "LiveComponent stream_async" do

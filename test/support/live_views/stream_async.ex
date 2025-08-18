@@ -3,8 +3,14 @@ defmodule Phoenix.LiveViewTest.Support.StreamAsyncLive do
 
   on_mount({__MODULE__, :defaults})
 
-  def on_mount(:defaults, _params, _session, socket) do
-    {:cont, socket |> assign(:lc, false) |> stream(:my_stream, [%{id: 0, name: "Initial"}])}
+  def on_mount(:defaults, params, _session, socket) do
+    socket = socket |> assign(:lc, false)
+
+    if params["no_init"] do
+      {:cont, socket}
+    else
+      {:cont, stream(socket, :my_stream, [%{id: 0, name: "Initial"}])}
+    end
   end
 
   def render(assigns) do

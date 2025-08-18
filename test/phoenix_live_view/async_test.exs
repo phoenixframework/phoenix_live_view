@@ -15,7 +15,10 @@ defmodule Phoenix.LiveView.AsyncTest do
               quote do
                 require Phoenix.LiveView
 
-                socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+                socket = %Phoenix.LiveView.Socket{
+                  assigns: %{__changed__: %{}, bar: :baz},
+                  private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}}
+                }
 
                 Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
                   socket.assigns.bar
@@ -37,7 +40,11 @@ defmodule Phoenix.LiveView.AsyncTest do
               quote do
                 require Phoenix.LiveView
 
-                socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+                socket = %Phoenix.LiveView.Socket{
+                  assigns: %{__changed__: %{}, bar: :baz},
+                  private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}}
+                }
+
                 bar = socket.assigns.bar
 
                 Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->

@@ -245,7 +245,15 @@ defmodule Phoenix.LiveView.Async do
 
     socket
     |> Phoenix.Component.assign(key, value)
+    |> maybe_init_stream(key)
     |> run_async_task(key, wrapped_func, :stream, opts)
+  end
+
+  defp maybe_init_stream(socket, key) do
+    case socket.assigns do
+      %{streams: %{^key => _}} -> socket
+      _ -> Phoenix.LiveView.stream(socket, key, [])
+    end
   end
 
   def run_async_task(%Socket{} = socket, key, func, kind, opts) when is_function(func, 0) do
