@@ -4526,7 +4526,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         );
         components.concat(parent).forEach((el) => {
           const cid = this.componentID(el);
-          if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1) {
+          if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1 && this.ownsElement(el)) {
             destroyedCIDs.push(cid);
           }
         });
@@ -5801,7 +5801,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     // public
     version() {
-      return "1.1.5";
+      return "1.1.6";
     }
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
