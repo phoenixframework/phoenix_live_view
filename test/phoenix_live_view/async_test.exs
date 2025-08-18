@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.AsyncTest do
   import ExUnit.CaptureIO
 
   describe "async operations - eval_quoted" do
-    for fun <- [:assign_async, :start_async] do
+    for fun <- [:assign_async, :start_async, :stream_async] do
       test "warns when passing socket to #{fun} function" do
         warnings =
           capture_io(:stderr, fn ->
@@ -15,7 +15,10 @@ defmodule Phoenix.LiveView.AsyncTest do
               quote do
                 require Phoenix.LiveView
 
-                socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+                socket = %Phoenix.LiveView.Socket{
+                  assigns: %{__changed__: %{}, bar: :baz},
+                  private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}}
+                }
 
                 Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
                   socket.assigns.bar
@@ -37,7 +40,11 @@ defmodule Phoenix.LiveView.AsyncTest do
               quote do
                 require Phoenix.LiveView
 
-                socket = %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, bar: :baz}}
+                socket = %Phoenix.LiveView.Socket{
+                  assigns: %{__changed__: %{}, bar: :baz},
+                  private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}}
+                }
+
                 bar = socket.assigns.bar
 
                 Phoenix.LiveView.unquote(fun)(socket, :foo, fn ->
@@ -54,7 +61,7 @@ defmodule Phoenix.LiveView.AsyncTest do
   end
 
   describe "async operations" do
-    for fun <- [:assign_async, :start_async] do
+    for fun <- [:assign_async, :start_async, :stream_async] do
       test "warns when passing socket to #{fun} function", %{test: test} do
         warnings =
           capture_io(:stderr, fn ->
