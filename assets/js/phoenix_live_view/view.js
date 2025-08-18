@@ -671,7 +671,11 @@ export default class View {
       );
       components.concat(parent).forEach((el) => {
         const cid = this.componentID(el);
-        if (isCid(cid) && destroyedCIDs.indexOf(cid) === -1) {
+        if (
+          isCid(cid) &&
+          destroyedCIDs.indexOf(cid) === -1 &&
+          this.ownsElement(el)
+        ) {
           destroyedCIDs.push(cid);
         }
       });
