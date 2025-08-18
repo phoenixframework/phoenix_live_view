@@ -267,6 +267,18 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.5 (2025-08-18)
+
+### Bug fixes
+
+* Fix hooks not working when used inside of `Phoenix.Component.portal/1` ([#3950](https://github.com/phoenixframework/phoenix_live_view/issues/3950))
+* Fix form participating custom elements not being reset to empty in some cases ([#3946](https://github.com/phoenixframework/phoenix_live_view/pull/3946))
+
+### Enhancements
+
+* Allow `assign_async` to return a keyword list
+* Add `Phoenix.LiveView.stream_async/4` to asynchronously insert items into a stream
+
 ## v1.1.4 (2025-08-13)
 
 ### Bug fixes
