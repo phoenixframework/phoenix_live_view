@@ -4577,9 +4577,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.pendingJoinOps = [];
       });
     }
-    update(diff, events) {
+    update(diff, events, isPending = false) {
       if (this.isJoinPending() || this.liveSocket.hasPendingLink() && this.root.isMain()) {
-        return this.pendingDiffs.push({ diff, events });
+        if (!isPending) {
+          this.pendingDiffs.push({ diff, events });
+        }
+        return false;
       }
       this.rendered.mergeDiff(diff);
       let phxChildrenAdded = false;
@@ -4609,6 +4612,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (phxChildrenAdded) {
         this.joinNewChildren();
       }
+      return true;
     }
     renderContainer(diff, kind) {
       return this.liveSocket.time(`toString diff (${kind})`, () => {
@@ -4687,11 +4691,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       delete this.viewHooks[hookId];
     }
     applyPendingUpdates() {
-      if (this.liveSocket.hasPendingLink() && this.root.isMain()) {
-        return;
-      }
-      this.pendingDiffs.forEach(({ diff, events }) => this.update(diff, events));
-      this.pendingDiffs = [];
+      this.pendingDiffs = this.pendingDiffs.filter(
+        ({ diff, events }) => !this.update(diff, events, true)
+      );
       this.eachChild((child) => child.applyPendingUpdates());
     }
     eachChild(callback) {
