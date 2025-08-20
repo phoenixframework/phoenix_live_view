@@ -4619,9 +4619,12 @@ var View = class _View {
       this.pendingJoinOps = [];
     });
   }
-  update(diff, events) {
+  update(diff, events, isPending = false) {
     if (this.isJoinPending() || this.liveSocket.hasPendingLink() && this.root.isMain()) {
-      return this.pendingDiffs.push({ diff, events });
+      if (!isPending) {
+        this.pendingDiffs.push({ diff, events });
+      }
+      return false;
     }
     this.rendered.mergeDiff(diff);
     let phxChildrenAdded = false;
@@ -4651,6 +4654,7 @@ var View = class _View {
     if (phxChildrenAdded) {
       this.joinNewChildren();
     }
+    return true;
   }
   renderContainer(diff, kind) {
     return this.liveSocket.time(`toString diff (${kind})`, () => {
@@ -4729,11 +4733,9 @@ var View = class _View {
     delete this.viewHooks[hookId];
   }
   applyPendingUpdates() {
-    if (this.liveSocket.hasPendingLink() && this.root.isMain()) {
-      return;
-    }
-    this.pendingDiffs.forEach(({ diff, events }) => this.update(diff, events));
-    this.pendingDiffs = [];
+    this.pendingDiffs = this.pendingDiffs.filter(
+      ({ diff, events }) => !this.update(diff, events, true)
+    );
     this.eachChild((child) => child.applyPendingUpdates());
   }
   eachChild(callback) {
