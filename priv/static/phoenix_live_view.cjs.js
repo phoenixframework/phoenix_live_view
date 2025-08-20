@@ -1675,6 +1675,10 @@ var specialElHandlers = {
         if (nodeName === "OPTGROUP") {
           optgroup = curChild;
           curChild = optgroup.firstChild;
+          if (!curChild) {
+            curChild = optgroup.nextSibling;
+            optgroup = null;
+          }
         } else {
           if (nodeName === "OPTION") {
             if (curChild.hasAttribute("selected")) {
@@ -4879,7 +4883,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.0.17";
+    return "1.0.18";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";

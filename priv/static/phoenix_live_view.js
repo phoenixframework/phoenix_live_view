@@ -1692,6 +1692,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           if (nodeName === "OPTGROUP") {
             optgroup = curChild;
             curChild = optgroup.firstChild;
+            if (!curChild) {
+              curChild = optgroup.nextSibling;
+              optgroup = null;
+            }
           } else {
             if (nodeName === "OPTION") {
               if (curChild.hasAttribute("selected")) {
@@ -4895,7 +4899,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     // public
     version() {
-      return "1.0.17";
+      return "1.0.18";
     }
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
