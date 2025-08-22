@@ -117,7 +117,7 @@ generated user module:
 ### Bug fixes
 
 * Fix LiveComponent updates being inadvertently discarded in rare circumstances when locked DOM trees are restored ([#3941](https://github.com/phoenixframework/phoenix_live_view/issues/3941))
-* Fix race condition where patches were discarded when a join was still pending ([#3957](https://github.com/phoenixframework/phoenix_live_view/issues/3957))
+* Fix race condition where patches were discarded when a join was still pending ([#3957](https://github.com/phoenixframework/phoenix_live_view/issues/3957), big thank you to [@DaTrader](https://github.com/DaTrader))
 
 ## 1.0.17 (2025-06-04)
 
