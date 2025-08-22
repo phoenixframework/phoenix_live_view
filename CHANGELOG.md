@@ -271,7 +271,7 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 
 ### Bug fixes
 
-* Fix race condition where patches were discarded when a join was still pending ([#3957](https://github.com/phoenixframework/phoenix_live_view/issues/3957))
+* Fix race condition where patches were discarded when a join was still pending ([#3957](https://github.com/phoenixframework/phoenix_live_view/issues/3957), big thank you to [@DaTrader](https://github.com/DaTrader))
 
 ## v1.1.7 (2025-08-18)
 
