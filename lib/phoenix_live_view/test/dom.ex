@@ -24,7 +24,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     tree = LazyHTML.to_tree(lazydoc)
 
     if is_function(error_reporter, 1) do
-      Tree.detect_duplicate_ids(tree, error_reporter)
+      Tree.detect_duplicate_ids(lazydoc, error_reporter)
     end
 
     {lazydoc, tree}
@@ -36,7 +36,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     tree = LazyHTML.to_tree(lazydoc)
 
     if is_function(error_reporter, 1) do
-      Tree.detect_duplicate_ids(tree, error_reporter)
+      Tree.detect_duplicate_ids(lazydoc, error_reporter)
     end
 
     {lazydoc, tree}
