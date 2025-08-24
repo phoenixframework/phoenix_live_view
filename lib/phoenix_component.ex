@@ -3482,7 +3482,11 @@ defmodule Phoenix.Component do
   """
   @doc type: :component
   attr.(:assign, AsyncResult, required: true)
-  slot.(:loading, doc: "rendered while the assign is loading for the first time")
+
+  slot.(:loading,
+    doc:
+      "rendered while the assign is loading for the first time. Receives the loading state as a `:let`"
+  )
 
   slot.(:failed,
     doc:
@@ -3504,6 +3508,68 @@ defmodule Phoenix.Component do
 
       async_assign.failed ->
         ~H|{render_slot(@failed, @assign.failed)}|
+    end
+  end
+
+  @doc """
+  Handles rendering multiple `Phoenix.LiveView.AsyncResult` structs (e.g. from
+  `Phoenix.LiveView.assign_async/4`) with slots for the different loading states.
+  The result state takes precedence over subsequent loading and failed states.
+
+  > #### Note {: .info}
+  >
+  > The inner block receives the list of async results as a `:let` in the
+  > same order passed in. The let is only accessible to the inner block and
+  > is not in scope to the other slots.
+
+  ## Examples
+
+  ```elixir
+  def mount(%{"slug" => slug}, _, socket) do
+    {:ok,
+      socket
+      |> assign_async(:org, fn -> {:ok, %{org: fetch_org!(slug)}} end)
+      |> assign_async(:data, fn -> {:ok, %{data: fetch_data!(slug)}} end)
+  end
+  ```
+
+  ```heex
+  <.async_results :let={[org, data]} assigns={[@org, @data]}>
+    <:loading>Loading organization and data...</:loading>
+    <:failed :let={_failure}>there was an error loading the organization and/or the data</:failed>
+
+    {org.name} : {data.value}
+  </.async_results>
+  ```
+
+  See [Async Operations](`m:Phoenix.LiveView#module-async-operations`) and
+  `Phoenix.Component.async_result/1` for more information.
+  """
+  @doc type: :component
+  attr.(:assigns, :list, required: true, doc: "list of `Phoenix.LiveView.AsyncResult` structs")
+
+  slot.(:loading,
+    doc:
+      "rendered while any `Phoenix.LiveView.AsyncResult` is loading. Receives the loading state as a `:let`"
+  )
+
+  slot.(:failed, doc: "rendered when any error or exit is caught. Receives the error as a `:let`")
+
+  slot.(:inner_block,
+    doc:
+      "rendered when all `Phoenix.LiveView.AsyncResult` structs are loaded successfully via `AsyncResult.ok/2`. Receives the result as a `:let`"
+  )
+
+  def async_results(%{assigns: async_assigns} = assigns) do
+    cond do
+      Enum.all?(async_assigns, & &1.ok?) ->
+        ~H|{render_slot(@inner_block, Enum.map(@assigns, & &1.result))}|
+
+      Enum.any?(async_assigns, & &1.loading) ->
+        ~H|{render_slot(@loading, Enum.map(@assigns, & &1.loading))}|
+
+      Enum.any?(async_assigns, & &1.failed) ->
+        ~H|{render_slot(@failed, Enum.map(@assigns, & &1.failed))}|
     end
   end
 
