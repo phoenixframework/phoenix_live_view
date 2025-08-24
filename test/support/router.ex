@@ -47,6 +47,7 @@ defmodule Phoenix.LiveViewTest.Support.Router do
     live "/assign_async", AssignAsyncLive
     live "/start_async", StartAsyncLive
     live "/stream_async", StreamAsyncLive
+    live "/portal", PortalLive
 
     live "/expensive-runtime-checks", ExpensiveRuntimeChecksLive
 

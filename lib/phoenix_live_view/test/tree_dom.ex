@@ -185,6 +185,17 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
     end)
   end
 
+  @doc """
+  Walks the tree with accumulator and updates nodes based on the given function.
+  """
+  def walk(tree, acc, fun) when is_function(fun, 2) do
+    LazyHTML.Tree.postwalk(tree, acc, fn
+      text, acc when is_binary(text) -> {text, acc}
+      {:comment, _children} = comment, acc -> {comment, acc}
+      {_tag, _attrs, _children} = node, acc -> fun.(node, acc)
+    end)
+  end
+
   defp by_id(tree, id) do
     case filter(tree, fn node -> attribute(node, "id") == id end) do
       [node] -> node
@@ -274,14 +285,25 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
         apply_phx_update(attribute(node, "phx-update"), html, node, streams)
       end)
 
-    new_html =
-      walk(html, fn {tag, attrs, children} = node ->
+    {new_html, portals?} =
+      walk(html, false, fn {tag, attrs, children} = node, portals? ->
+        portals? = portals? or (tag == "template" and keyfind(attrs, "data-phx-portal") != nil)
+
         if attribute(node, "id") == id do
-          {tag, attrs, phx_update_tree}
+          {{tag, attrs, phx_update_tree}, portals?}
         else
-          {tag, attrs, children}
+          {{tag, attrs, children}, portals?}
         end
       end)
+
+    new_html =
+      if portals? do
+        # We only apply the portal teleportation when we found a portal
+        # template, because we don't want to unnecessarily convert to lazy
+        apply_portal_teleportation(new_html)
+      else
+        new_html
+      end
 
     cids_after = component_ids(id, new_html)
 
@@ -301,7 +323,8 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
     detect_duplicate_ids(tree, rest, ids, error_reporter)
   end
 
-  defp detect_duplicate_ids(tree, {_tag_name, _attrs, children} = node, ids, error_reporter) do
+  defp detect_duplicate_ids(tree, {tag_name, _attrs, children} = node, ids, error_reporter)
+       when tag_name != "template" do
     case attribute(node, "id") do
       id when not is_nil(id) ->
         if MapSet.member?(ids, id) do
@@ -545,6 +568,71 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
               "setting phx-update to #{inspect(type)} requires setting an ID on each child. " <>
                 "No ID was found on:\n\n#{to_html(child)}"
     end
+  end
+
+  @doc false
+  def apply_portal_teleportation(html_tree) do
+    # Convert tree to LazyHTML for manipulation
+    lazy_html = LazyHTML.from_tree(html_tree)
+
+    # Collect all portals and their target selectors
+    portals = collect_portals_from_lazy(lazy_html)
+
+    # Apply each portal teleportation
+    final_lazy =
+      Enum.reduce(portals, lazy_html, fn {target_selector, content_lazy}, lazy_acc ->
+        teleport_portal_in_lazy(lazy_acc, target_selector, content_lazy)
+      end)
+
+    # Convert back to tree
+    LazyHTML.to_tree(final_lazy)
+  end
+
+  defp collect_portals_from_lazy(lazy_html) do
+    # Find all template elements with data-phx-portal
+    templates = LazyHTML.query(lazy_html, "template[data-phx-portal]")
+
+    Enum.map(templates, fn template ->
+      [target_selector] = LazyHTML.attribute(template, "data-phx-portal")
+
+      # we cannot access the template content from the lazy, so we
+      # need to convert to HTML first
+      content_lazy =
+        template
+        |> LazyHTML.to_tree()
+        |> case do
+          [{"template", _, child_nodes}] -> LazyHTML.from_tree(child_nodes)
+        end
+
+      {target_selector, content_lazy}
+    end)
+  end
+
+  defp teleport_portal_in_lazy(lazy_html, target_selector, content_lazy) do
+    # Check if content with this ID already exists in the target
+    [content_id] = LazyHTML.attribute(content_lazy, "id")
+
+    lazy_with_content =
+      if content_id do
+        # Check if element with this ID already exists in target
+        existing = LazyHTML.query(lazy_html, "#{target_selector} ##{content_id}")
+
+        if not Enum.empty?(existing) do
+          # Replace existing content
+          LazyHTML.replace(lazy_html, "##{content_id}", content_lazy)
+        else
+          # Append new content
+          LazyHTML.appendChild(lazy_html, target_selector, content_lazy)
+        end
+      else
+        # No ID on content, just append
+        LazyHTML.appendChild(lazy_html, target_selector, content_lazy)
+      end
+
+    lazy_with_content
+  rescue
+    # it can happen that the LiveView does not actually contain the target selector
+    _ -> lazy_html
   end
 
   ## Test Helpers

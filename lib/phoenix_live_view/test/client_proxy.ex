@@ -776,9 +776,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         send(self(), {:test_error, msg})
       end)
 
-    # IO.puts("PATCH VIEW #{view.id}")
-    # dbg(child_html)
-
     case result do
       {new_html, [_ | _] = will_destroy_cids} ->
         topic = view.topic
