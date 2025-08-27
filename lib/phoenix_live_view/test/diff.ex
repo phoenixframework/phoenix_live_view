@@ -3,8 +3,10 @@ defmodule Phoenix.LiveViewTest.Diff do
 
   alias Phoenix.LiveViewTest.DOM
 
-  @static :s
   @components :c
+  @static :s
+  @keyed :k
+  @keyed_count :kc
   @stream_id :stream
   @template :p
   @phx_component "data-phx-component"
@@ -70,6 +72,27 @@ defmodule Phoenix.LiveViewTest.Diff do
 
   defp deep_merge_diff(target, %{@template => template} = source),
     do: deep_merge_diff(target, resolve_templates(Map.delete(source, @template), template))
+
+  defp deep_merge_diff(target, %{@keyed => source_keyed}) when is_map(target) do
+    target_keyed = target[@keyed]
+
+    merged_keyed =
+      0..(source_keyed[@keyed_count] - 1)
+      |> Map.new(fn key ->
+        value =
+          case source_keyed[key] do
+            nil -> target_keyed[key]
+            value when is_number(value) -> target_keyed[value]
+            value when is_map(value) -> deep_merge_diff(target_keyed[key], value)
+            [old_key, value] -> deep_merge_diff(target_keyed[old_key], value)
+          end
+
+        {key, value}
+      end)
+      |> Map.put(@keyed_count, source_keyed[@keyed_count])
+
+    Map.put(target, @keyed, merged_keyed)
+  end
 
   defp deep_merge_diff(_target, %{@static => _} = source),
     do: source
