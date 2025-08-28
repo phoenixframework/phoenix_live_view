@@ -909,6 +909,21 @@ defmodule Phoenix.LiveView.JS do
   </dialog>
   ```
 
+  > #### A note on the behavior of phx-mounted {: .info}
+  >
+  > The `phx-mounted` binding executes when the LiveView is mounted.
+  > This means that you cannot use `ignore_attributes/1` to retain attributes
+  > that are set during the disconnected render.
+  >
+  > If you need to do this, you can use custom JavaScript and set sticky attributes
+  > using `liveSocket.js().setAttribute(element, attribute, value)`.
+  > See [JS commands](js-interop.md#js-commands) for more information.
+  >
+  > Sidenote: An exception to this is elements rendered outside of a LiveView.
+  > For those, `phx-mounted` already runs on the initial disconnected render,
+  > but there's also no need to use `ignore_attributes/1` on them, as such elements
+  > are not patched by LiveView.
+
   ## Options
 
     * `:to` - An optional DOM selector to select the target element.
