@@ -346,7 +346,9 @@ can be used. For example, to animate an element on mount:
 ```
 
 If `phx-mounted` is used on the initial page render, it will be invoked only
-after the initial WebSocket connection is established.
+after the initial WebSocket connection is established. An exception to this is
+elements that are defined outside of a LiveView. For those, `phx-mounted` will
+run immediately when `liveSocket.connect()` is called.
 
 To react to elements being removed from the DOM, the `phx-remove` binding
 may be specified, which can contain a `Phoenix.LiveView.JS` command to execute.
