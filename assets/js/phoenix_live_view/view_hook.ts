@@ -11,11 +11,11 @@ export type CallbackRef = { event: string; callback: (payload: any) => any };
 
 export type PhxTarget = string | number | HTMLElement;
 
-export interface HookInterface {
+export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * The DOM element that the hook is attached to.
    */
-  el: HTMLElement;
+  el: E;
 
   /**
    * The LiveSocket instance that the hook is attached to.
@@ -159,13 +159,13 @@ export interface HookInterface {
 
 // based on https://github.com/DefinitelyTyped/DefinitelyTyped/blob/fac1aa75acdddbf4f1a95e98ee2297b54ce4b4c9/types/phoenix_live_view/hooks.d.ts#L26
 // licensed under MIT
-export interface Hook<out T = object> {
+export interface Hook<out T = object, E extends HTMLElement = HTMLElement> {
   /**
    * The mounted callback.
    *
    * Called when the element has been added to the DOM and its server LiveView has finished mounting.
    */
-  mounted?: (this: T & HookInterface) => void;
+  mounted?: (this: T & HookInterface<E>) => void;
 
   /**
    * The beforeUpdate callback.
@@ -173,35 +173,35 @@ export interface Hook<out T = object> {
    * Called when the element is about to be updated in the DOM.
    * Note: any call here must be synchronous as the operation cannot be deferred or cancelled.
    */
-  beforeUpdate?: (this: T & HookInterface) => void;
+  beforeUpdate?: (this: T & HookInterface<E>) => void;
 
   /**
    * The updated callback.
    *
    * Called when the element has been updated in the DOM by the server
    */
-  updated?: (this: T & HookInterface) => void;
+  updated?: (this: T & HookInterface<E>) => void;
 
   /**
    * The destroyed callback.
    *
    * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely
    */
-  destroyed?: (this: T & HookInterface) => void;
+  destroyed?: (this: T & HookInterface<E>) => void;
 
   /**
    * The disconnected callback.
    *
    * Called when the element's parent LiveView has disconnected from the server.
    */
-  disconnected?: (this: T & HookInterface) => void;
+  disconnected?: (this: T & HookInterface<E>) => void;
 
   /**
    * The reconnected callback.
    *
    * Called when the element's parent LiveView has reconnected to the server.
    */
-  reconnected?: (this: T & HookInterface) => void;
+  reconnected?: (this: T & HookInterface<E>) => void;
 
   // Allow custom methods with any signature and custom properties
   [key: PropertyKey]: any;
@@ -236,8 +236,10 @@ export interface Hook<out T = object> {
  * will refer to the hook instance, providing access to `this.el`, `this.liveSocket`,
  * `this.pushEvent()`, etc., as well as any properties or methods defined on the subclass.
  */
-export class ViewHook implements HookInterface {
-  el: HTMLElement;
+export class ViewHook<E extends HTMLElement = HTMLElement>
+  implements HookInterface<E>
+{
+  el: E;
   liveSocket: LiveSocket;
 
   private __listeners: Set<CallbackRef>;
@@ -251,7 +253,7 @@ export class ViewHook implements HookInterface {
     return DOM.private(el, HOOK_ID);
   }
 
-  constructor(view: View | null, el: HTMLElement, callbacks?: Hook) {
+  constructor(view: View | null, el: E, callbacks?: Hook) {
     this.el = el;
     this.__attachView(view);
     this.__listeners = new Set();
