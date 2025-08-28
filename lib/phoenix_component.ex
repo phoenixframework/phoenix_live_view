@@ -3522,6 +3522,27 @@ defmodule Phoenix.Component do
   Any element can be a portal target. In most cases, the target would be rendered inside
   the layout of your application. Portal sources must be defined with the `.portal` component.
 
+  > #### A note on testing {: .info}
+  >
+  > Because portals use `<template>` elements under the hood, you cannot query for elements
+  > inside of a portal when using `Phoenix.LiveViewTest.element/3` and other LiveViewTest functions.
+  >
+  > Instead, `Phoenix.LiveView.render/1` the portal element itself to an HTML string and do
+  > assertions on those:
+  >
+  > ```heex
+  > <.portal id="my-portal" target="body">
+  >   <div id="something-inside">...</div>
+  > </.portal>
+  > ```
+  >
+  > ```elixir
+  > # in your test, instead of
+  > # assert has_element?(view, "#something-inside")  <-- this won't work
+  > html = view |> element("#my-portal") |> render()
+  > assert html =~ "something-inside"
+  > ```
+
   ## Examples
 
   ```heex
