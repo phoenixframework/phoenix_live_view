@@ -547,6 +547,8 @@ const DOM = {
           if (target.value === sourceValue) {
             // actually set the value attribute to sync it with the value property
             target.setAttribute("value", source.getAttribute(name));
+          } else {
+            logError('Skipped updating value on focused element.', target);
           }
         }
       }
