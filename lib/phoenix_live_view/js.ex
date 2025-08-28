@@ -909,6 +909,13 @@ defmodule Phoenix.LiveView.JS do
   </dialog>
   ```
 
+  > #### A note on the behavior of phx-mounted {: .info}
+  >
+  > The `phx-mounted` binding executes when the LiveView is mounted.
+  > This means that you cannot use `ignore_attributes/1` to retain attributes
+  > that are set on the client during the disconnected render.
+  > `JS.ignore_attributes/0` will only ever ignore future changes from the server.
+
   ## Options
 
     * `:to` - An optional DOM selector to select the target element.
