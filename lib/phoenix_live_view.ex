@@ -964,6 +964,12 @@ defmodule Phoenix.LiveView do
   redirect location. The whole page will be reloaded and
   all state will be discarded.
 
+  Calling redirect shuts down the LiveView channel. If you need
+  to programatically open an external link without causing the
+  LiveView to shut down, for example because of `mailto:` or `tel:`
+  URL schemes, consider using `push_event/3` with a custom client-side
+  handler instead.
+
   ## Options
 
     * `:to` - the path to redirect to. It must always be a local path
