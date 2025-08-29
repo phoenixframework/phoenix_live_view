@@ -305,6 +305,27 @@ for (const path of ["/form/nested", "/form"]) {
           ]),
         );
       });
+
+      // nested LiveViews don't support handle_params
+      if (path === "/form") {
+        test("navigation during recovery is properly handled by the client", async ({
+          page,
+        }) => {
+          await page.goto(
+            `${path}?phx-auto-recover=patch-recovery&${additionalParams}`,
+          );
+          await syncLV(page);
+
+          await page.evaluate(
+            () =>
+              new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+          );
+          await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+          await page.evaluate(() => window.liveSocket.connect());
+          await expect(page).toHaveURL(/\patched=true/);
+        });
+      }
     });
   }
 
