@@ -213,7 +213,11 @@ export default class View {
       onDone && onDone();
     };
     this.stopCallback = function () {};
-    this.pendingJoinOps = this.parent ? null : [];
+    // usually, only the root LiveView stores pending
+    // join operations for all children (and itself),
+    // but in case of rejoins (joinCount > 1) each child
+    // stores its own events instead
+    this.pendingJoinOps = [];
     this.viewHooks = {};
     this.formSubmits = [];
     this.children = this.parent ? null : {};
@@ -553,6 +557,14 @@ export default class View {
   }
 
   applyJoinPatch(live_patch, html, streams, events) {
+    // in case of rejoins, we need to manually perform all
+    // pending ops
+    if (this.joinCount > 1) {
+      if (this.pendingJoinOps.length) {
+        this.pendingJoinOps.forEach((cb) => typeof cb === "function" && cb());
+        this.pendingJoinOps = [];
+      }
+    }
     this.attachTrueDocEl();
     const patch = new DOMPatch(this, this.el, this.id, html, streams, null);
     patch.markPrunableContentForRemoval();
@@ -1010,7 +1022,12 @@ export default class View {
   onChannel(event, cb) {
     this.liveSocket.onChannel(this.channel, event, (resp) => {
       if (this.isJoinPending()) {
-        this.root.pendingJoinOps.push([this, () => cb(resp)]);
+        // in case this is a rejoin (joinCount > 1) we store our own join ops
+        if (this.joinCount > 1) {
+          this.pendingJoinOps.push(() => cb(resp));
+        } else {
+          this.root.pendingJoinOps.push([this, () => cb(resp)]);
+        }
       } else {
         this.liveSocket.requestDOMUpdate(() => cb(resp));
       }
