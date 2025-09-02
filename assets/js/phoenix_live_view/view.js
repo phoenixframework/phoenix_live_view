@@ -1064,22 +1064,20 @@ export default class View {
     }
     this.log("error", () => ["unable to join", resp]);
     if (this.isMain()) {
-      this.displayError([
-        PHX_LOADING_CLASS,
-        PHX_ERROR_CLASS,
-        PHX_SERVER_ERROR_CLASS,
-      ]);
+      this.displayError(
+        [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+        { unstructuredError: resp, errorKind: "server" },
+      );
       if (this.liveSocket.isConnected()) {
         this.liveSocket.reloadWithJitter(this);
       }
     } else {
       if (this.joinAttempts >= MAX_CHILD_JOIN_ATTEMPTS) {
         // put the root review into permanent error state, but don't destroy it as it can remain active
-        this.root.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_SERVER_ERROR_CLASS,
-        ]);
+        this.root.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+          { unstructuredError: resp, errorKind: "server" },
+        );
         this.log("error", () => [
           `giving up trying to mount after ${MAX_CHILD_JOIN_ATTEMPTS} tries`,
           resp,
@@ -1089,11 +1087,10 @@ export default class View {
       const trueChildEl = DOM.byId(this.el.id);
       if (trueChildEl) {
         DOM.mergeAttrs(trueChildEl, this.el);
-        this.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_SERVER_ERROR_CLASS,
-        ]);
+        this.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+          { unstructuredError: resp, errorKind: "server" },
+        );
         this.el = trueChildEl;
       } else {
         this.destroy();
@@ -1126,25 +1123,23 @@ export default class View {
     }
     if (!this.liveSocket.isUnloaded()) {
       if (this.liveSocket.isConnected()) {
-        this.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_SERVER_ERROR_CLASS,
-        ]);
+        this.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+          { unstructuredError: reason, errorKind: "server" },
+        );
       } else {
-        this.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_CLIENT_ERROR_CLASS,
-        ]);
+        this.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS],
+          { unstructuredError: reason, errorKind: "client" },
+        );
       }
     }
   }
 
-  displayError(classes) {
+  displayError(classes, details = {}) {
     if (this.isMain()) {
       DOM.dispatchEvent(window, "phx:page-loading-start", {
-        detail: { to: this.href, kind: "error" },
+        detail: { to: this.href, kind: "error", ...details },
       });
     }
     this.showLoader();
