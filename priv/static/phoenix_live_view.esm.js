@@ -4776,21 +4776,19 @@ var View = class _View {
     }
     this.log("error", () => ["unable to join", resp]);
     if (this.isMain()) {
-      this.displayError([
-        PHX_LOADING_CLASS,
-        PHX_ERROR_CLASS,
-        PHX_SERVER_ERROR_CLASS
-      ]);
+      this.displayError(
+        [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+        { unstructuredError: resp, errorKind: "server" }
+      );
       if (this.liveSocket.isConnected()) {
         this.liveSocket.reloadWithJitter(this);
       }
     } else {
       if (this.joinAttempts >= MAX_CHILD_JOIN_ATTEMPTS) {
-        this.root.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_SERVER_ERROR_CLASS
-        ]);
+        this.root.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+          { unstructuredError: resp, errorKind: "server" }
+        );
         this.log("error", () => [
           `giving up trying to mount after ${MAX_CHILD_JOIN_ATTEMPTS} tries`,
           resp
@@ -4800,11 +4798,10 @@ var View = class _View {
       const trueChildEl = dom_default.byId(this.el.id);
       if (trueChildEl) {
         dom_default.mergeAttrs(trueChildEl, this.el);
-        this.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_SERVER_ERROR_CLASS
-        ]);
+        this.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+          { unstructuredError: resp, errorKind: "server" }
+        );
         this.el = trueChildEl;
       } else {
         this.destroy();
@@ -4831,24 +4828,22 @@ var View = class _View {
     }
     if (!this.liveSocket.isUnloaded()) {
       if (this.liveSocket.isConnected()) {
-        this.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_SERVER_ERROR_CLASS
-        ]);
+        this.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_SERVER_ERROR_CLASS],
+          { unstructuredError: reason, errorKind: "server" }
+        );
       } else {
-        this.displayError([
-          PHX_LOADING_CLASS,
-          PHX_ERROR_CLASS,
-          PHX_CLIENT_ERROR_CLASS
-        ]);
+        this.displayError(
+          [PHX_LOADING_CLASS, PHX_ERROR_CLASS, PHX_CLIENT_ERROR_CLASS],
+          { unstructuredError: reason, errorKind: "client" }
+        );
       }
     }
   }
-  displayError(classes) {
+  displayError(classes, details = {}) {
     if (this.isMain()) {
       dom_default.dispatchEvent(window, "phx:page-loading-start", {
-        detail: { to: this.href, kind: "error" }
+        detail: { to: this.href, kind: "error", ...details }
       });
     }
     this.showLoader();
