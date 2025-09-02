@@ -244,6 +244,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       phx-submit="form-submit-trigger"
       phx-trigger-action={@trigger_action}
     >
+      <input type="hidden" name="from-form" value="included" />
     </form>
 
     <form id="submit-form-default" action="/not_found"></form>
@@ -255,6 +256,7 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       phx-submit="form-submit-trigger"
       phx-trigger-action={@trigger_action}
     >
+      <input type="hidden" name="from-form" value="included" />
     </form>
 
     <form id="named" phx-submit="form-submit-named">

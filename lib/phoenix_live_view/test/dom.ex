@@ -4,6 +4,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   @phx_component "data-phx-component"
 
   alias Phoenix.LiveViewTest.TreeDOM, as: Tree
+  alias Plug.Conn.Query
 
   defguardp is_lazy(html) when is_struct(html, LazyHTML)
 
@@ -228,6 +229,122 @@ defmodule Phoenix.LiveViewTest.DOM do
     all(lazy, "[data-phx-static]")
     |> Enum.into(%{}, fn node ->
       {attribute(node, "id"), attribute(node, "data-phx-static")}
+    end)
+  end
+
+  ## Forms
+
+  def all_value_inputs({"form", attrs, _} = form, root) do
+    form_inputs = filtered_inputs(form)
+
+    case Enum.into(attrs, %{}) do
+      %{"id" => id} ->
+        by_form_id = all(root, ~s<[form="#{id}"]>) |> to_tree()
+        named_inputs = filtered_inputs(by_form_id)
+
+        # All inputs including buttons
+        # Remove the named inputs first to remove any possible
+        # duplicates if the child inputs also had a form attribite.
+        (form_inputs -- named_inputs) ++ named_inputs
+
+      _ ->
+        form_inputs
+    end
+  end
+
+  def collect_form_values(form, root, done \\ &Query.decode_done/1) do
+    form
+    |> all_value_inputs(root)
+    |> Enum.reduce(Query.decode_init(), &form_defaults/2)
+    |> then(done)
+  end
+
+  def collect_input_values(node) do
+    form_defaults(node, Query.decode_init()) |> Query.decode_done()
+  end
+
+  defp form_defaults(node, acc) do
+    tag = Tree.tag(node)
+
+    if name = Tree.attribute(node, "name") do
+      form_defaults(tag, node, name, acc)
+    else
+      acc
+    end
+  end
+
+  # Selectedness algorithm as outlined in
+  # https://html.spec.whatwg.org/multipage/form-elements.html#the-select-element
+  defp form_defaults("select", node, name, acc) do
+    options = Tree.filter(node, &(Tree.tag(&1) == "option"))
+
+    multiple_display_size =
+      case valid_display_size(node) do
+        int when is_integer(int) and int > 1 -> true
+        _ -> false
+      end
+
+    all_selected =
+      if Tree.attribute(node, "multiple") || multiple_display_size do
+        Enum.filter(options, &Tree.attribute(&1, "selected"))
+      else
+        List.wrap(
+          Enum.find(Enum.reverse(options), &Tree.attribute(&1, "selected")) ||
+            Enum.find(options, &(!Tree.attribute(&1, "disabled")))
+        )
+      end
+
+    Enum.reduce(all_selected, acc, fn selected, acc ->
+      Plug.Conn.Query.decode_each({name, Tree.attribute(selected, "value")}, acc)
+    end)
+  end
+
+  defp form_defaults("textarea", node, name, acc) do
+    value = Tree.to_text(node, false)
+
+    if value == "" do
+      Plug.Conn.Query.decode_each({name, ""}, acc)
+    else
+      Plug.Conn.Query.decode_each({name, String.replace_prefix(value, "\n", "")}, acc)
+    end
+  end
+
+  defp form_defaults("input", node, name, acc) do
+    type = Tree.attribute(node, "type") || "text"
+    value = Tree.attribute(node, "value") || default_value(type)
+
+    cond do
+      type in ["radio", "checkbox"] ->
+        if Tree.attribute(node, "checked") do
+          Plug.Conn.Query.decode_each({name, value}, acc)
+        else
+          acc
+        end
+
+      type in ["image", "submit"] ->
+        acc
+
+      true ->
+        Plug.Conn.Query.decode_each({name, value}, acc)
+    end
+  end
+
+  def default_value("checkbox"), do: "on"
+  def default_value(_type), do: ""
+
+  defp valid_display_size(node) do
+    with size when not is_nil(size) <- Tree.attribute(node, "size"),
+         {int, ""} when int > 0 <- Integer.parse(size) do
+      int
+    else
+      _ -> nil
+    end
+  end
+
+  defp filtered_inputs(nodes) do
+    Tree.filter(nodes, fn node ->
+      Tree.tag(node) in ~w(input textarea select) and
+        is_nil(Tree.attribute(node, "disabled"))
     end)
   end
 end
