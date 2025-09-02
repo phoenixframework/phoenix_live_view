@@ -267,7 +267,7 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
-## v1.1.9 (Unreleased)
+## v1.1.9 (2025-09-02)
 
 ### Bug fixes
 
@@ -280,6 +280,7 @@ To enable this, a new callback called `annotate_slot/4` was added. Custom implem
 * Include form values from DOM in `Phoenix.LiveViewTest.submit_form/2` and `Phoenix.LiveViewTest.follow_trigger_action/2` to mimic browser behavior ([#3885](https://github.com/phoenixframework/phoenix_live_view/issues/3885))
 * Allow assigning generic hooks to type `Hook` ([#3955](https://github.com/phoenixframework/phoenix_live_view/issues/3955))
 * Allow typing hook element when using TypeScript ([#3956](https://github.com/phoenixframework/phoenix_live_view/issues/3956))
+* Add more metadata to `phx:page-loading-start` event in case of errors ([#3910](https://github.com/phoenixframework/phoenix_live_view/issues/3910))
 
 ## v1.1.8 (2025-08-20)
 
