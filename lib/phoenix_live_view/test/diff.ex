@@ -113,7 +113,7 @@ defmodule Phoenix.LiveViewTest.Diff do
     resolve_templates(Map.put(rendered, @static, Map.fetch!(template, static)), template)
   end
 
-  defp resolve_templates(rendered, template) when is_map(rendered) do
+  defp resolve_templates(rendered, template) when is_map(rendered) and not is_struct(rendered) do
     Map.new(rendered, fn {k, v} -> {k, resolve_templates(v, template)} end)
   end
 

@@ -3,6 +3,8 @@ defmodule Phoenix.LiveViewTest.DiffTest do
 
   alias Phoenix.LiveViewTest.Diff
 
+  defstruct [:foo]
+
   describe "merge_diff" do
     test "merges unless static" do
       assert Diff.merge_diff(%{0 => "bar", s: "foo"}, %{0 => "baz"}) ==
@@ -40,6 +42,13 @@ defmodule Phoenix.LiveViewTest.DiffTest do
       }
 
       assert Diff.merge_diff(base, diff) == result
+    end
+
+    test "ignores structs when resolving templates" do
+      assert Diff.merge_diff(%{0 => %{}}, %{
+               0 => %{:s => 1, 0 => %__MODULE__{foo: :bar}},
+               :p => %{1 => ["foo", "bar"]}
+             }) == %{0 => %{0 => %__MODULE__{foo: :bar}, :s => ["foo", "bar"]}, :streams => []}
     end
   end
 end
