@@ -608,12 +608,12 @@ defmodule Phoenix.LiveView.ElementsTest do
 
       assert conn.method == "GET"
       assert conn.request_path == "/elements"
-      assert conn.query_string == "foo=bar"
+      assert %{"foo" => "bar", "from-form" => "included"} = URI.decode_query(conn.query_string)
 
       conn = view |> form("#trigger-form-value", %{"baz" => "bat"}) |> follow_trigger_action(conn)
       assert conn.method == "POST"
       assert conn.request_path == "/not_found"
-      assert conn.params == %{"baz" => "bat"}
+      assert %{"baz" => "bat", "from-form" => "included"} = conn.params
     end
   end
 
