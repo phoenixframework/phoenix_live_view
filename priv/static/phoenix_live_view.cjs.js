@@ -4121,7 +4121,7 @@ var View = class _View {
     };
     this.stopCallback = function() {
     };
-    this.pendingJoinOps = this.parent ? null : [];
+    this.pendingJoinOps = [];
     this.viewHooks = {};
     this.formSubmits = [];
     this.children = this.parent ? null : {};
@@ -4408,6 +4408,12 @@ var View = class _View {
     });
   }
   applyJoinPatch(live_patch, html, streams, events) {
+    if (this.joinCount > 1) {
+      if (this.pendingJoinOps.length) {
+        this.pendingJoinOps.forEach((cb) => typeof cb === "function" && cb());
+        this.pendingJoinOps = [];
+      }
+    }
     this.attachTrueDocEl();
     const patch = new DOMPatch(this, this.el, this.id, html, streams, null);
     patch.markPrunableContentForRemoval();
@@ -4747,7 +4753,11 @@ var View = class _View {
   onChannel(event, cb) {
     this.liveSocket.onChannel(this.channel, event, (resp) => {
       if (this.isJoinPending()) {
-        this.root.pendingJoinOps.push([this, () => cb(resp)]);
+        if (this.joinCount > 1) {
+          this.pendingJoinOps.push(() => cb(resp));
+        } else {
+          this.root.pendingJoinOps.push([this, () => cb(resp)]);
+        }
       } else {
         this.liveSocket.requestDOMUpdate(() => cb(resp));
       }
