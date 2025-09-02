@@ -1914,15 +1914,23 @@ defmodule Phoenix.LiveViewTest do
   end
 
   def __render_trigger_submit__(%Element{} = form, name, required_attr, error_msg) do
+    root = call(form, {:get_lazy, form})
+
     case render_tree(form) do
-      {"form", attrs, _child_nodes} ->
+      {"form", attrs, _child_nodes} = node ->
         if not List.keymember?(attrs, required_attr, 0) do
           raise ArgumentError, error_msg <> ", got: #{inspect(attrs)}"
         end
 
         {"action", path} = List.keyfind(attrs, "action", 0) || {"action", call(form, :url)}
         {"method", method} = List.keyfind(attrs, "method", 0) || {"method", "get"}
-        {method, path, form.form_data || %{}}
+
+        values =
+          node
+          |> DOM.collect_form_values(root)
+          |> Map.merge(form.form_data || %{})
+
+        {method, path, values}
 
       {tag, _, _} ->
         raise ArgumentError,

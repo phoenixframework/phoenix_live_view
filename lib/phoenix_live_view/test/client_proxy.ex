@@ -653,6 +653,12 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end)
   end
 
+  def handle_call({:get_lazy, %Element{} = element}, _from, state) do
+    view = fetch_view_by_topic!(state, proxy_topic(element))
+    {state, root} = root(state, view.id)
+    {:reply, {:ok, root}, state}
+  end
+
   def handle_call({:get_lazy, id}, _from, state) do
     {state, root} = root(state, id)
     {:reply, {:ok, root}, state}
@@ -1242,40 +1248,28 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp maybe_values(:hook, _root, _node, _element), do: {:ok, %{}}
 
-  defp maybe_values(type, root, {tag, attrs, _} = node, element)
+  defp maybe_values(type, root, {tag, _, _} = node, element)
        when type in [:change, :submit] do
     cond do
       tag == "form" ->
-        form_inputs = filtered_inputs(node)
+        value_inputs = DOM.all_value_inputs(node, root)
+        defaults = DOM.collect_form_values(node, root, fn defaults -> defaults end)
 
-        {value_inputs, lazy_submitter} =
-          case Enum.into(attrs, %{}) do
-            %{"id" => id} ->
-              by_form_id = DOM.all(root, ~s<[form="#{id}"]>) |> DOM.to_tree()
-              named_inputs = filtered_inputs(by_form_id)
-
-              # All inputs including buttons
-              # Remove the named inputs first to remove any possible
-              # duplicates if the child inputs also had a form attribite.
-              value_inputs = (form_inputs -- named_inputs) ++ named_inputs
-
-              {value_inputs,
-               fn ->
-                 # a lazy function that returns a lazy node with all form inputs
-                 # that could be the submitter to collect the submitter by selector
-                 DOM.all(root, ~s<
-                    ##{id} :is(input, button):not([form]:not([form="#{id}"])),
-                    :is(input, button)[form="#{id}"]
-                  >)
-               end}
-
-            _ ->
+        lazy_submitter =
+          case TreeDOM.attribute(node, "id") do
+            nil ->
               # to collect the submitter by selector,
               # need to convert the tree to a lazy here :(
-              {form_inputs, fn -> DOM.to_lazy([node]) end}
-          end
+              fn -> DOM.to_lazy([node]) end
 
-        defaults = Enum.reduce(value_inputs, Query.decode_init(), &form_defaults/2)
+            id ->
+              # a lazy function that returns a lazy node with all form inputs
+              # that could be the submitter to collect the submitter by selector
+              fn -> DOM.all(root, ~s<
+                ##{id} :is(input, button):not([form]:not([form="#{id}"])),
+                :is(input, button)[form="#{id}"]
+              >) end
+          end
 
         with {:ok, defaults} <-
                maybe_submitter(defaults, type, lazy_submitter, element),
@@ -1291,7 +1285,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         end
 
       type == :change and tag in ~w(input select textarea) ->
-        {:ok, form_defaults(node, Query.decode_init()) |> Query.decode_done()}
+        {:ok, DOM.collect_input_values(node)}
 
       true ->
         {:error, :invalid, "phx-#{type} is only allowed in forms, got #{inspect(tag)}"}
@@ -1307,13 +1301,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp deep_merge(_target, source),
     do: source
-
-  defp filtered_inputs(nodes) do
-    TreeDOM.filter(nodes, fn node ->
-      TreeDOM.tag(node) in ~w(input textarea select) and
-        is_nil(TreeDOM.attribute(node, "disabled"))
-    end)
-  end
 
   defp maybe_submitter(defaults, :submit, lazy, %Element{meta: %{submitter: element}}) do
     base = lazy.()
@@ -1391,81 +1378,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
       %{} ->
         {diff, state}
-    end
-  end
-
-  defp form_defaults(node, acc) do
-    tag = TreeDOM.tag(node)
-
-    if name = TreeDOM.attribute(node, "name") do
-      form_defaults(tag, node, name, acc)
-    else
-      acc
-    end
-  end
-
-  # Selectedness algorithm as outlined in
-  # https://html.spec.whatwg.org/multipage/form-elements.html#the-select-element
-  defp form_defaults("select", node, name, acc) do
-    options = TreeDOM.filter(node, &(TreeDOM.tag(&1) == "option"))
-
-    multiple_display_size =
-      case valid_display_size(node) do
-        int when is_integer(int) and int > 1 -> true
-        _ -> false
-      end
-
-    all_selected =
-      if TreeDOM.attribute(node, "multiple") || multiple_display_size do
-        Enum.filter(options, &TreeDOM.attribute(&1, "selected"))
-      else
-        List.wrap(
-          Enum.find(Enum.reverse(options), &TreeDOM.attribute(&1, "selected")) ||
-            Enum.find(options, &(!TreeDOM.attribute(&1, "disabled")))
-        )
-      end
-
-    Enum.reduce(all_selected, acc, fn selected, acc ->
-      Plug.Conn.Query.decode_each({name, TreeDOM.attribute(selected, "value")}, acc)
-    end)
-  end
-
-  defp form_defaults("textarea", node, name, acc) do
-    value = TreeDOM.to_text(node, false)
-
-    if value == "" do
-      Plug.Conn.Query.decode_each({name, ""}, acc)
-    else
-      Plug.Conn.Query.decode_each({name, String.replace_prefix(value, "\n", "")}, acc)
-    end
-  end
-
-  defp form_defaults("input", node, name, acc) do
-    type = TreeDOM.attribute(node, "type") || "text"
-    value = TreeDOM.attribute(node, "value") || default_value(type)
-
-    cond do
-      type in ["radio", "checkbox"] ->
-        if TreeDOM.attribute(node, "checked") do
-          Plug.Conn.Query.decode_each({name, value}, acc)
-        else
-          acc
-        end
-
-      type in ["image", "submit"] ->
-        acc
-
-      true ->
-        Plug.Conn.Query.decode_each({name, value}, acc)
-    end
-  end
-
-  defp valid_display_size(node) do
-    with size when not is_nil(size) <- TreeDOM.attribute(node, "size"),
-         {int, ""} when int > 0 <- Integer.parse(size) do
-      int
-    else
-      _ -> nil
     end
   end
 
@@ -1568,7 +1480,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     type = TreeDOM.attribute(node, "type") || "text"
 
     if type in ["radio", "checkbox", "hidden"] do
-      value = TreeDOM.attribute(node, "value") || default_value(type)
+      value = TreeDOM.attribute(node, "value") || DOM.default_value(type)
       {[type | types], [value | values]}
     else
       {[type | types], values}
@@ -1591,9 +1503,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   defp collect_values(_tag, _node, types, values) do
     {types, values}
   end
-
-  defp default_value("checkbox"), do: "on"
-  defp default_value(_type), do: ""
 
   defp fill_in_name("", name), do: name
   defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
