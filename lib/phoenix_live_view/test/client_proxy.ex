@@ -27,6 +27,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   alias Plug.Conn.Query
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, Diff, Element, TreeDOM, Upload, View}
+  import Phoenix.LiveViewTest.Utils, only: [stringify: 2]
 
   @doc """
   Encoding used by the Channel serializer.
@@ -1506,26 +1507,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
   defp fill_in_name("", name), do: name
   defp fill_in_name(prefix, name), do: prefix <> "[" <> name <> "]"
-
-  defp stringify(%Upload{}, _fun), do: %{}
-
-  defp stringify(%{__struct__: _} = struct, fun),
-    do: stringify_value(struct, fun)
-
-  defp stringify(%{} = params, fun),
-    do: Enum.into(params, %{}, &stringify_kv(&1, fun))
-
-  defp stringify([{_, _} | _] = params, fun),
-    do: Enum.into(params, %{}, &stringify_kv(&1, fun))
-
-  defp stringify(params, fun) when is_list(params),
-    do: Enum.map(params, &stringify(&1, fun))
-
-  defp stringify(other, fun),
-    do: stringify_value(other, fun)
-
-  defp stringify_value(other, fun), do: fun.(other)
-  defp stringify_kv({k, v}, fun), do: {to_string(k), stringify(v, fun)}
 
   defp maybe_put_uploads(payload, root, %Upload{} = upload) do
     {:ok, node} = select_node(root, upload.element)
