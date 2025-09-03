@@ -76,8 +76,14 @@ defmodule Phoenix.LiveViewTest.Diff do
   defp deep_merge_diff(target, %{@keyed => source_keyed}) when is_map(target) do
     target_keyed = target[@keyed]
 
+    diff_range =
+      case source_keyed[@keyed_count] do
+        0 -> 0..-1//-1
+        count when is_integer(count) and count > 0 -> 0..(count - 1)
+      end
+
     merged_keyed =
-      0..(source_keyed[@keyed_count] - 1)
+      diff_range
       |> Map.new(fn key ->
         value =
           case source_keyed[key] do
