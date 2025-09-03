@@ -1925,10 +1925,12 @@ defmodule Phoenix.LiveViewTest do
         {"action", path} = List.keyfind(attrs, "action", 0) || {"action", call(form, :url)}
         {"method", method} = List.keyfind(attrs, "method", 0) || {"method", "get"}
 
+        form_data = Map.new(form.form_data || %{})
+
         values =
           node
           |> DOM.collect_form_values(root)
-          |> Map.merge(form.form_data || %{})
+          |> Map.merge(form_data)
 
         {method, path, values}
 
