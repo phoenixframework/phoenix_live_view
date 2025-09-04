@@ -5684,7 +5684,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     maybePushComponentsDestroyed(destroyedCIDs) {
       let willDestroyCIDs = destroyedCIDs.filter((cid) => {
-        return dom_default.findComponentNodeList(this.el, cid).length === 0;
+        return dom_default.findComponentNodeList(this.id, cid).length === 0;
       });
       const onError = (error) => {
         if (!this.isDestroyed()) {
@@ -5696,7 +5696,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }).then(() => {
           this.liveSocket.requestDOMUpdate(() => {
             let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
-              return dom_default.findComponentNodeList(this.el, cid).length === 0;
+              return dom_default.findComponentNodeList(this.id, cid).length === 0;
             });
             if (completelyDestroyCIDs.length > 0) {
               this.pushWithReply(null, "cids_destroyed", {
