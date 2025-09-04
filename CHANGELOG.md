@@ -267,6 +267,17 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.11 (2025-09-04)
+
+### Bug fixes
+
+* Fix LiveComponents being destroyed when their DOM ID changes, even though they are still rendered ([#3981](https://github.com/phoenixframework/phoenix_live_view/pull/3981))
+* Fix warning when an empty comprehension is rendered in LiveViewTest
+
+### Enhancements
+
+* Speed up duplicate ID check in LiveViewTest ([#3962](https://github.com/phoenixframework/phoenix_live_view/pull/3962))
+
 ## v1.1.10 (2025-09-03)
 
 ### Bug fixxes
