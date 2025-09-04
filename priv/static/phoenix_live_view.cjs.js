@@ -5678,7 +5678,7 @@ var View = class _View {
   }
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
-      return dom_default.findComponentNodeList(this.el, cid).length === 0;
+      return dom_default.findComponentNodeList(this.id, cid).length === 0;
     });
     const onError = (error) => {
       if (!this.isDestroyed()) {
@@ -5690,7 +5690,7 @@ var View = class _View {
       this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs }).then(() => {
         this.liveSocket.requestDOMUpdate(() => {
           let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
-            return dom_default.findComponentNodeList(this.el, cid).length === 0;
+            return dom_default.findComponentNodeList(this.id, cid).length === 0;
           });
           if (completelyDestroyCIDs.length > 0) {
             this.pushWithReply(null, "cids_destroyed", {
