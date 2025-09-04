@@ -77,19 +77,23 @@ defmodule Phoenix.LiveViewTest.Diff do
     target_keyed = target[@keyed]
 
     merged_keyed =
-      0..(source_keyed[@keyed_count] - 1)
-      |> Map.new(fn key ->
-        value =
-          case source_keyed[key] do
-            nil -> target_keyed[key]
-            value when is_number(value) -> target_keyed[value]
-            value when is_map(value) -> deep_merge_diff(target_keyed[key], value)
-            [old_key, value] -> deep_merge_diff(target_keyed[old_key], value)
-          end
+      case source_keyed[@keyed_count] do
+        0 ->
+          %{@keyed_count => 0}
 
-        {key, value}
-      end)
-      |> Map.put(@keyed_count, source_keyed[@keyed_count])
+        count ->
+          for pos <- 0..(count - 1), into: %{@keyed_count => count} do
+            value =
+              case source_keyed[pos] do
+                nil -> target_keyed[pos]
+                value when is_number(value) -> target_keyed[value]
+                value when is_map(value) -> deep_merge_diff(target_keyed[pos], value)
+                [old_pos, value] -> deep_merge_diff(target_keyed[old_pos], value)
+              end
+
+            {pos, value}
+          end
+      end
 
     Map.put(target, @keyed, merged_keyed)
   end
