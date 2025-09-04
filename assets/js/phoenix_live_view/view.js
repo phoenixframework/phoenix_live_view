@@ -2157,7 +2157,7 @@ export default class View {
 
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
-      return DOM.findComponentNodeList(this.el, cid).length === 0;
+      return DOM.findComponentNodeList(this.id, cid).length === 0;
     });
 
     const onError = (error) => {
@@ -2179,7 +2179,7 @@ export default class View {
             // See if any of the cids we wanted to destroy were added back,
             // if they were added back, we don't actually destroy them.
             let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
-              return DOM.findComponentNodeList(this.el, cid).length === 0;
+              return DOM.findComponentNodeList(this.id, cid).length === 0;
             });
 
             if (completelyDestroyCIDs.length > 0) {
