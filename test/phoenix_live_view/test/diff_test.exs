@@ -20,7 +20,7 @@ defmodule Phoenix.LiveViewTest.DiffTest do
           0 => %{0 => "A"},
           1 => %{0 => "B"},
           2 => %{0 => "C", 1 => %{0 => "var1", :s => ["", ""]}},
-          :kc => 3
+          kc: 3
         }
       }
 
@@ -28,7 +28,7 @@ defmodule Phoenix.LiveViewTest.DiffTest do
         k: %{
           0 => 1,
           1 => [2, %{1 => %{0 => "var2"}}],
-          :kc => 2
+          kc: 2
         }
       }
 
@@ -36,8 +36,30 @@ defmodule Phoenix.LiveViewTest.DiffTest do
         k: %{
           0 => %{0 => "B"},
           1 => %{0 => "C", 1 => %{0 => "var2", :s => ["", ""]}},
-          :kc => 2
+          kc: 2
         },
+        streams: []
+      }
+
+      assert Diff.merge_diff(base, diff) == result
+    end
+
+    test "no warning when keyed count is 0" do
+      base = %{
+        k: %{
+          0 => %{0 => "A"},
+          1 => %{0 => "B"},
+          2 => %{0 => "C", 1 => %{0 => "var1", :s => ["", ""]}},
+          :kc => 3
+        }
+      }
+
+      diff = %{
+        k: %{kc: 0}
+      }
+
+      result = %{
+        k: %{kc: 0},
         streams: []
       }
 
