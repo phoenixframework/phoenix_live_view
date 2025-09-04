@@ -2157,7 +2157,7 @@ export default class View {
 
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
-      return DOM.findComponentNodeList(this.el, cid).length === 0;
+      return DOM.findComponentNodeList(this.id, cid).length === 0;
     });
 
     const onError = (error) => {
