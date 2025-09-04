@@ -25,7 +25,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     tree = LazyHTML.to_tree(lazydoc)
 
     if is_function(error_reporter, 1) do
-      Tree.detect_duplicate_ids(tree, error_reporter)
+      detect_duplicate_ids(lazydoc, error_reporter)
     end
 
     {lazydoc, tree}
@@ -37,10 +37,30 @@ defmodule Phoenix.LiveViewTest.DOM do
     tree = LazyHTML.to_tree(lazydoc)
 
     if is_function(error_reporter, 1) do
-      Tree.detect_duplicate_ids(tree, error_reporter)
+      detect_duplicate_ids(lazydoc, error_reporter)
     end
 
     {lazydoc, tree}
+  end
+
+  defp detect_duplicate_ids(lazydoc, error_reporter) do
+    lazydoc
+    |> LazyHTML.query("[id]")
+    |> LazyHTML.attribute("id")
+    |> Enum.frequencies()
+    |> Enum.each(fn {id, count} ->
+      if count > 1 do
+        error_reporter.("""
+        Duplicate id found while testing LiveView: #{id}
+
+        #{lazydoc |> by_id!(id) |> to_tree() |> Tree.inspect_html()}
+
+        LiveView requires that all elements have unique ids, duplicate IDs will cause
+        undefined behavior at runtime, as DOM patching will not be able to target the correct
+        elements.
+        """)
+      end
+    end)
   end
 
   def all(lazy, selector) do
