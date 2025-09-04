@@ -281,7 +281,7 @@ describe("DOM", () => {
       );
       document.body.appendChild(view);
       view.appendChild(component1);
-      expect(DOM.findComponentNodeList(document, 123)).toEqual([]);
+      expect(DOM.findComponentNodeList("bar", 123)).toEqual([]);
     });
   });
 
