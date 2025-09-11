@@ -118,26 +118,26 @@ defmodule Phoenix.LiveView.ColocatedJS do
   import somethingElse from "@/vendor/vendored-file";
   ```
 
-  When importing dependencies from `node_modules`, there are two cases two consider:
+  While dependencies from `node_modules` should work out of the box, you cannot simply refer to your
+  `assets/vendor` folder using a relative path. Instead, your bundler needs to be configured to handle
+  an alias like `@` to resolve to your local `assets` folder. This is configured by default in the
+  esbuild configuration for new Phoenix 1.8 applications using `esbuild`'s [alias option](https://esbuild.github.io/api/#alias),
+  as can be seen in the config snippet above (`--alias=@=.`).
 
-    1. Your `node_modules` folder is in the root of your project.
-       This should work with colocated JS out of the box.
-    2. Your `node_modules` folder is in the `assets` directory.
-       In this case, you need to either add a symlink from assets/node_modules to
-       node_modules, or you can configure LiveView to create a symlink into
-       the `phoenix-colocated` folder for you:
+  If your `node_modules` location is not `assets/node_modules` or `node_modules`, you may need to
+  configure the `:node_modules_location` option:
 
-       ```elixir
-       # config/config.exs
-       config :phoenix_live_view, :colocated_js,
-         symlink_node_modules_location: Path.expand("../assets/node_modules", __DIR__)
-       ```
+  ```elixir
+  # config/config.exs
+  config :phoenix_live_view, :colocated_js,
+    node_modules_location: fn -> "assets/node_modules" end
+  ```
 
-  Similarly, you cannot access the `assets/vendor` folder using a relative path. Instead,
-  your bundler needs to be configured to handle an alias like `@` to resolve to your local `assets` folder.
-  This is configured by default in the esbuild configuration for new Phoenix 1.8 applications
-  using `esbuild`'s [alias option](https://esbuild.github.io/api/#alias), as can be seen in the config
-  snippet above (`--alias=@=.`).
+  This example shows the default behavior.
+
+  If you have an umbrella project, the `node_modules_location` function will be called for each
+  application that has the `:phoenix_live_view` compiler configured, so you can configure a different
+  path for each app.
 
   ## Options
 
@@ -378,15 +378,42 @@ defmodule Phoenix.LiveView.ColocatedJS do
   defp maybe_link_node_modules! do
     settings = settings()
 
-    if location = Keyword.get(settings, :symlink_node_modules_location) do
-      location = Path.absname(location)
+    case Keyword.get(settings, :node_modules_location, {:fallback, "assets/node_modules"}) do
+      {:fallback, rel_path} ->
+        location = Path.absname(rel_path)
 
-      with {:error, reason} when reason != :eexist <-
-             File.ln_s(location, target_dir("node_modules")) do
-        IO.warn(
-          "Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}"
-        )
-      end
+        if File.exists?(location) do
+          do_symlink(location)
+        end
+
+      fun when is_function(fun, 0) ->
+        path = fun.()
+        location = Path.absname(path)
+
+        if File.exists?(location) do
+          do_symlink(location)
+        else
+          IO.warn("The configured node_modules_location #{location} does not exist!")
+        end
+    end
+  end
+
+  defp relative_to_target(location) do
+    if function_exported?(Path, :relative_to, 3) do
+      Path.relative_to(location, target_dir(), force: true)
+    else
+      Path.relative_to(location, target_dir())
+    end
+  end
+
+  defp do_symlink(node_modules_path) do
+    relative_node_modules_path = relative_to_target(node_modules_path)
+
+    with {:error, reason} when reason != :eexist <-
+           File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")) do
+      IO.warn(
+        "Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}"
+      )
     end
   end
 
@@ -394,8 +421,9 @@ defmodule Phoenix.LiveView.ColocatedJS do
     Application.get_env(:phoenix_live_view, :colocated_js, [])
   end
 
-  defp target_dir(app \\ to_string(Mix.Project.config()[:app])) do
+  defp target_dir do
     default = Path.join(Mix.Project.build_path(), "phoenix-colocated")
+    app = to_string(Mix.Project.config()[:app])
 
     settings()
     |> Keyword.get(:target_directory, default)
