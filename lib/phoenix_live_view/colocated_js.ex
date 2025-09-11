@@ -118,11 +118,26 @@ defmodule Phoenix.LiveView.ColocatedJS do
   import somethingElse from "@/vendor/vendored-file";
   ```
 
-  While dependencies from `node_modules` should work out of the box, you cannot simply refer to your
-  `assets/vendor` folder using a relative path. Instead, your bundler needs to be configured to handle
-  an alias like `@` to resolve to your local `assets` folder. This is configured by default in the
-  esbuild configuration for new Phoenix 1.8 applications using `esbuild`'s [alias option](https://esbuild.github.io/api/#alias),
-  as can be seen in the config snippet above (`--alias=@=.`).
+  When importing dependencies from `node_modules`, there are two cases two consider:
+
+    1. Your `node_modules` folder is in the root of your project.
+       This should work with colocated JS out of the box.
+    2. Your `node_modules` folder is in the `assets` directory.
+       In this case, you need to either add a symlink from assets/node_modules to
+       node_modules, or you can configure LiveView to create a symlink into
+       the `phoenix-colocated` folder for you:
+
+       ```elixir
+       # config/config.exs
+       config :phoenix_live_view, :colocated_js,
+         symlink_node_modules_location: Path.expand("../assets/node_modules", __DIR__)
+       ```
+
+  Similarly, you cannot access the `assets/vendor` folder using a relative path. Instead,
+  your bundler needs to be configured to handle an alias like `@` to resolve to your local `assets` folder.
+  This is configured by default in the esbuild configuration for new Phoenix 1.8 applications
+  using `esbuild`'s [alias option](https://esbuild.github.io/api/#alias), as can be seen in the config
+  snippet above (`--alias=@=.`).
 
   ## Options
 
@@ -236,6 +251,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
     clear_manifests!()
     files = clear_outdated_and_get_files!()
     write_new_manifests!(files)
+    maybe_link_node_modules!()
   end
 
   defp clear_manifests! do
@@ -359,13 +375,27 @@ defmodule Phoenix.LiveView.ColocatedJS do
     File.write!(Path.join(target_dir, manifest), content)
   end
 
+  defp maybe_link_node_modules! do
+    settings = settings()
+
+    if location = Keyword.get(settings, :symlink_node_modules_location) do
+      location = Path.absname(location)
+
+      with {:error, reason} when reason != :eexist <-
+             File.ln_s(location, target_dir("node_modules")) do
+        IO.warn(
+          "Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}"
+        )
+      end
+    end
+  end
+
   defp settings do
     Application.get_env(:phoenix_live_view, :colocated_js, [])
   end
 
-  defp target_dir do
+  defp target_dir(app \\ to_string(Mix.Project.config()[:app])) do
     default = Path.join(Mix.Project.build_path(), "phoenix-colocated")
-    app = to_string(Mix.Project.config()[:app])
 
     settings()
     |> Keyword.get(:target_directory, default)
