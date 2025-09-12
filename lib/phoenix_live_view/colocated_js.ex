@@ -383,23 +383,29 @@ defmodule Phoenix.LiveView.ColocatedJS do
   defp maybe_link_node_modules! do
     settings = project_settings()
 
-    case Keyword.get(settings, :node_modules_location, {:fallback, "assets/node_modules"}) do
-      {:fallback, rel_path} ->
-        location = Path.absname(rel_path)
+    if not is_dependency?() do
+      case Keyword.get(settings, :node_modules_location, {:fallback, "assets/node_modules"}) do
+        {:fallback, rel_path} ->
+          location = Path.absname(rel_path)
 
-        if File.exists?(location) do
-          do_symlink(location)
-        end
+          if File.exists?(location) do
+            do_symlink(location)
+          end
 
-      path when is_binary(path) ->
-        location = Path.absname(path)
+        path when is_binary(path) ->
+          location = Path.absname(path)
 
-        if File.exists?(location) do
-          do_symlink(location)
-        else
-          IO.warn("The configured node_modules_location #{location} does not exist!")
-        end
+          if File.exists?(location) do
+            do_symlink(location)
+          else
+            IO.warn("The configured node_modules_location #{location} does not exist!")
+          end
+      end
     end
+  end
+
+  defp is_dependency? do
+    Mix.Project.config()[:app] in Mix.Project.deps_apps()
   end
 
   defp relative_to_target(location) do
