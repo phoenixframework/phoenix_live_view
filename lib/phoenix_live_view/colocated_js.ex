@@ -128,16 +128,21 @@ defmodule Phoenix.LiveView.ColocatedJS do
   configure the `:node_modules_location` option:
 
   ```elixir
-  # config/config.exs
-  config :phoenix_live_view, :colocated_js,
-    node_modules_location: fn -> "assets/node_modules" end
+  # mix.exs
+  def project do
+    [
+      ...
+      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      phoenix_live_view: [colocated_js: [node_modules_location: "assets/node_modules"]],
+      ...
+    ]
+  end
   ```
 
   This example shows the default behavior.
 
-  If you have an umbrella project, the `node_modules_location` function will be called for each
-  application that has the `:phoenix_live_view` compiler configured, so you can configure a different
-  path for each app.
+  Note: In contrast to `:target_directory`, the `:node_modules_location` is a project
+  specific setting you need to set in your `mix.exs`.
 
   ## Options
 
@@ -376,7 +381,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp maybe_link_node_modules! do
-    settings = settings()
+    settings = project_settings()
 
     case Keyword.get(settings, :node_modules_location, {:fallback, "assets/node_modules"}) do
       {:fallback, rel_path} ->
@@ -417,15 +422,21 @@ defmodule Phoenix.LiveView.ColocatedJS do
     end
   end
 
-  defp settings do
+  defp global_settings do
     Application.get_env(:phoenix_live_view, :colocated_js, [])
+  end
+
+  defp project_settings do
+    Mix.Project.config()
+    |> Keyword.get(:phoenix_live_view, [])
+    |> Keyword.get(:colocated_js, [])
   end
 
   defp target_dir do
     default = Path.join(Mix.Project.build_path(), "phoenix-colocated")
     app = to_string(Mix.Project.config()[:app])
 
-    settings()
+    global_settings()
     |> Keyword.get(:target_directory, default)
     |> Path.join(app)
   end
