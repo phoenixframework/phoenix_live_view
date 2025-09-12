@@ -548,27 +548,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     {:noreply, state}
   end
 
-  def handle_info({:EXIT, _pid, reason}, state) do
-    async_pids =
-      Enum.flat_map(state.pids, fn {pid, _topic} ->
-        Phoenix.LiveView.Channel.async_pids(pid)
-      end)
-
-    async_pids
-    |> Enum.map(fn pid ->
-      Process.exit(pid, reason)
-      Process.monitor(pid)
-    end)
-    |> Enum.each(fn ref ->
-      receive do
-        {:DOWN, ^ref, :process, _pid, _reason} ->
-          :ok
-      end
-    end)
-
-    {:stop, reason, state}
-  end
-
   def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
     payload = maybe_put_cid(%{"entry_ref" => entry_ref, "progress" => progress}, cid)
     topic = proxy_topic(el)
@@ -687,6 +666,31 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:get_lazy, id}, _from, state) do
     {state, root} = root(state, id)
     {:reply, {:ok, root}, state}
+  end
+
+  def terminate(reason, state) do
+    async_pids =
+      Enum.flat_map(state.pids, fn {pid, _topic} ->
+        try do
+          {:ok, pids} = Phoenix.LiveView.Channel.async_pids(pid)
+          pids
+        catch
+          :exit, _ ->
+            []
+        end
+      end)
+
+    async_pids
+    |> Enum.map(fn pid ->
+      Process.exit(pid, reason)
+      Process.monitor(pid)
+    end)
+    |> Enum.each(fn ref ->
+      receive do
+        {:DOWN, ^ref, :process, _pid, _reason} ->
+          :ok
+      end
+    end)
   end
 
   defp ping!(pid, state, fun) do
