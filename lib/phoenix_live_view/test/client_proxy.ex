@@ -282,6 +282,49 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     }
 
     with {:ok, pid} <- Supervisor.start_child(state.test_supervisor, spec) do
+      cleaner_fun = fn ->
+        async_pids =
+          try do
+            {:ok, pids} = Phoenix.LiveView.Channel.async_pids(pid)
+            pids
+          catch
+            :exit, _ ->
+              []
+          end
+
+        timeout = Application.fetch_env!(:ex_unit, :assert_receive_timeout)
+        timeout_ref = make_ref()
+        Process.send_after(self(), {timeout_ref, :timeout}, timeout)
+
+        async_pids
+        |> Enum.map(&Process.monitor/1)
+        |> Enum.each(fn ref ->
+          receive do
+            {^timeout_ref, :timeout} ->
+              raise RuntimeError, "expected async processes to finish within #{timeout}ms"
+
+            {:DOWN, ^ref, :process, _pid, _reason} ->
+              :ok
+          end
+        end)
+
+        if !Process.cancel_timer(timeout_ref) do
+          receive do
+            {^timeout_ref, :timeout} -> :noop
+          after
+            0 -> :noop
+          end
+        end
+      end
+
+      cleaner_spec = %{
+        id: make_ref(),
+        start: {Task, :start_link, [cleaner_fun]},
+        restart: :temporary
+      }
+
+      {:ok, _} = Supervisor.start_child(state.test_supervisor, cleaner_spec)
+
       send(pid, {Phoenix.Channel, params, from, socket})
       {:ok, pid}
     end

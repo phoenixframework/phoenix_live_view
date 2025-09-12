@@ -385,6 +385,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call({@prefix, :async_pids}, _from, state) do
+    dbg(state)
     pids = state |> all_asyncs() |> Map.keys()
     {:reply, {:ok, pids}, state}
   end
