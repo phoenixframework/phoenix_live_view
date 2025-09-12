@@ -1399,7 +1399,7 @@ defmodule Phoenix.LiveView.TagEngine do
         quote line: line do
           unquote(pattern) -> unquote(ast)
         end ++
-          quote line: line, generated: true do
+          quote generated: true do
             other ->
               Phoenix.LiveView.TagEngine.__unmatched_let__!(
                 unquote(Macro.to_string(pattern)),
