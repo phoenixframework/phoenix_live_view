@@ -405,7 +405,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   defp relative_to_target(location) do
     if function_exported?(Path, :relative_to, 3) do
-      Path.relative_to(location, target_dir(), force: true)
+      apply(Path, :relative_to, [location, target_dir(), [force: true]])
     else
       Path.relative_to(location, target_dir())
     end
