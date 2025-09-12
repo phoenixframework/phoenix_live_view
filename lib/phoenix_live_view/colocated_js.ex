@@ -391,8 +391,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
           do_symlink(location)
         end
 
-      fun when is_function(fun, 0) ->
-        path = fun.()
+      path when is_binary(path) ->
         location = Path.absname(path)
 
         if File.exists?(location) do
