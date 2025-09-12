@@ -74,6 +74,9 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     # our own logging and let the client do the job.
     Logger.put_process_level(self(), :none)
 
+    # we trap exits to shutdown any async tasks (assign_async / start_async)
+    Process.flag(:trap_exit, true)
+
     %{
       caller: {_, ref} = caller,
       html: response_html,
@@ -543,6 +546,27 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     end
 
     {:noreply, state}
+  end
+
+  def handle_info({:EXIT, _pid, reason}, state) do
+    async_pids =
+      Enum.flat_map(state.pids, fn {pid, _topic} ->
+        Phoenix.LiveView.Channel.async_pids(pid)
+      end)
+
+    async_pids
+    |> Enum.map(fn pid ->
+      Process.exit(pid, reason)
+      Process.monitor(pid)
+    end)
+    |> Enum.each(fn ref ->
+      receive do
+        {:DOWN, ^ref, :process, _pid, _reason} ->
+          :ok
+      end
+    end)
+
+    {:stop, reason, state}
   end
 
   def handle_call({:upload_progress, from, %Element{} = el, entry_ref, progress, cid}, _, state) do
