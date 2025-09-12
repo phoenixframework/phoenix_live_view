@@ -74,9 +74,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     # our own logging and let the client do the job.
     Logger.put_process_level(self(), :none)
 
-    # we trap exits to shutdown any async tasks (assign_async / start_async)
-    Process.flag(:trap_exit, true)
-
     %{
       caller: {_, ref} = caller,
       html: response_html,
@@ -152,6 +149,14 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
     # clear stream elements from static render
     html_tree = TreeDOM.remove_stream_children(html_tree)
 
+    task_supervisor_spec = %{
+      id: make_ref(),
+      start: {Task.Supervisor, :start_link, []},
+      restart: :temporary
+    }
+
+    {:ok, task_supervisor_pid} = Supervisor.start_child(test_supervisor, task_supervisor_spec)
+
     state = %{
       join_ref: 0,
       ref: 0,
@@ -167,6 +172,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       static_path: static_path,
       session: session,
       test_supervisor: test_supervisor,
+      task_supervisor_pid: task_supervisor_pid,
       url: url,
       page_title: :unset,
       on_error: on_error
@@ -270,7 +276,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
       "session" => view.session_token,
       "static" => view.static_token,
       "params" => Map.put(view.connect_params, "_mounts", 0),
-      "caller" => state.caller
+      "caller" => state.caller,
+      "test_task_supervisor_pid" => state.task_supervisor_pid
     }
 
     params = put_non_nil(params, "url", url)
@@ -666,31 +673,6 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
   def handle_call({:get_lazy, id}, _from, state) do
     {state, root} = root(state, id)
     {:reply, {:ok, root}, state}
-  end
-
-  def terminate(reason, state) do
-    async_pids =
-      Enum.flat_map(state.pids, fn {pid, _topic} ->
-        try do
-          {:ok, pids} = Phoenix.LiveView.Channel.async_pids(pid)
-          pids
-        catch
-          :exit, _ ->
-            []
-        end
-      end)
-
-    async_pids
-    |> Enum.map(fn pid ->
-      Process.exit(pid, reason)
-      Process.monitor(pid)
-    end)
-    |> Enum.each(fn ref ->
-      receive do
-        {:DOWN, ^ref, :process, _pid, _reason} ->
-          :ok
-      end
-    end)
   end
 
   defp ping!(pid, state, fun) do

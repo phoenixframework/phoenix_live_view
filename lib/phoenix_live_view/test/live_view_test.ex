@@ -382,6 +382,7 @@ defmodule Phoenix.LiveViewTest do
 
   defp start_proxy(path, %{} = opts) do
     ref = make_ref()
+    test_supervisor = fetch_test_supervisor!()
 
     opts =
       Map.merge(opts, %{
@@ -393,7 +394,7 @@ defmodule Phoenix.LiveViewTest do
         endpoint: opts.endpoint,
         session: opts.session,
         url: opts.url,
-        test_supervisor: fetch_test_supervisor!(),
+        test_supervisor: test_supervisor,
         on_error: opts.on_error
       })
 

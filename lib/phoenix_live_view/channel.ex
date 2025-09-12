@@ -1188,6 +1188,14 @@ defmodule Phoenix.LiveView.Channel do
       _ -> Process.put(:"$callers", [transport_pid])
     end
 
+    case params do
+      %{"test_task_supervisor_pid" => pid} when is_pid(pid) ->
+        Process.put({Phoenix.LiveView, :test_task_supervisor}, pid)
+
+      _ ->
+        :ok
+    end
+
     # Optional parameter handling
     connect_params = params["params"]
 
