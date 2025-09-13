@@ -125,7 +125,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   as can be seen in the config snippet above (`--alias=@=.`).
 
   If your `node_modules` location is not `assets/node_modules` or `node_modules`, you may need to
-  configure the `:node_modules_location` option:
+  configure the `:node_modules_path` option:
 
   ```elixir
   # mix.exs
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
     [
       ...
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
-      phoenix_live_view: [colocated_js: [node_modules_location: "assets/node_modules"]],
+      phoenix_live_view: [colocated_js: [node_modules_path: "assets/node_modules"]],
       ...
     ]
   end
@@ -141,7 +141,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   This example shows the default behavior.
 
-  Note: In contrast to `:target_directory`, the `:node_modules_location` is a project
+  Note: In contrast to `:target_directory`, the `:node_modules_path` is a project
   specific setting you need to set in your `mix.exs`.
 
   ## Options
@@ -383,30 +383,15 @@ defmodule Phoenix.LiveView.ColocatedJS do
   defp maybe_link_node_modules! do
     settings = project_settings()
 
-    if not is_dependency?() do
-      case Keyword.get(settings, :node_modules_location, {:fallback, "assets/node_modules"}) do
-        {:fallback, rel_path} ->
-          location = Path.absname(rel_path)
+    case Keyword.get(settings, :node_modules_path, {:fallback, "assets/node_modules"}) do
+      {:fallback, rel_path} ->
+        location = Path.absname(rel_path)
+        do_symlink(location)
 
-          if File.exists?(location) do
-            do_symlink(location)
-          end
-
-        path when is_binary(path) ->
-          location = Path.absname(path)
-
-          if File.exists?(location) do
-            do_symlink(location)
-          else
-            IO.warn("The configured node_modules_location #{location} does not exist!")
-          end
-      end
+      path when is_binary(path) ->
+        location = Path.absname(path)
+        do_symlink(location)
     end
-  end
-
-  defp is_dependency? do
-    app = Mix.Project.config()[:app]
-    app in Mix.Project.deps_apps() and not is_binary(Mix.Project.apps_paths()[app])
   end
 
   defp relative_to_target(location) do
