@@ -405,7 +405,8 @@ defmodule Phoenix.LiveView.ColocatedJS do
   end
 
   defp is_dependency? do
-    Mix.Project.config()[:app] in Mix.Project.deps_apps()
+    app = Mix.Project.config()[:app]
+    app in Mix.Project.deps_apps() and not is_binary(Mix.Project.apps_paths()[app])
   end
 
   defp relative_to_target(location) do
