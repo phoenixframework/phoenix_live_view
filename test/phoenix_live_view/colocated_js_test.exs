@@ -218,4 +218,30 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
     assert File.exists?(manifest)
     assert File.read!(manifest) == "export const hooks = {};\nexport default {};"
   end
+
+  test "symlinks node_modules folder if exists" do
+    node_path = Path.expand("../../assets/node_modules", __DIR__)
+
+    if not File.exists?(node_path) do
+      on_exit(fn -> File.rm_rf!(node_path) end)
+    end
+
+    File.mkdir_p!(Path.join(node_path, "foo"))
+    Phoenix.LiveView.ColocatedJS.compile()
+
+    symlink =
+      Path.join(
+        Mix.Project.build_path(),
+        "phoenix-colocated/phoenix_live_view/node_modules"
+      )
+
+    assert File.exists?(symlink)
+    link = File.read_link!(symlink)
+
+    if function_exported?(Path, :relative_to, 3) do
+      assert String.starts_with?(link, "../")
+    end
+
+    assert "foo" in File.ls!(symlink)
+  end
 end
