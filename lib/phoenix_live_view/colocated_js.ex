@@ -124,6 +124,26 @@ defmodule Phoenix.LiveView.ColocatedJS do
   esbuild configuration for new Phoenix 1.8 applications using `esbuild`'s [alias option](https://esbuild.github.io/api/#alias),
   as can be seen in the config snippet above (`--alias=@=.`).
 
+  If your `node_modules` location is not `assets/node_modules` or `node_modules`, you may need to
+  configure the `:node_modules_path` option:
+
+  ```elixir
+  # mix.exs
+  def project do
+    [
+      ...
+      compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      phoenix_live_view: [colocated_js: [node_modules_path: "assets/node_modules"]],
+      ...
+    ]
+  end
+  ```
+
+  This example shows the default behavior.
+
+  Note: In contrast to `:target_directory`, the `:node_modules_path` is a project
+  specific setting you need to set in your `mix.exs`.
+
   ## Options
 
   Colocated JavaScript can be configured through the attributes of the `<script>` tag.
@@ -236,6 +256,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
     clear_manifests!()
     files = clear_outdated_and_get_files!()
     write_new_manifests!(files)
+    maybe_link_node_modules!()
   end
 
   defp clear_manifests! do
@@ -359,15 +380,54 @@ defmodule Phoenix.LiveView.ColocatedJS do
     File.write!(Path.join(target_dir, manifest), content)
   end
 
-  defp settings do
+  defp maybe_link_node_modules! do
+    settings = project_settings()
+
+    case Keyword.get(settings, :node_modules_path, {:fallback, "assets/node_modules"}) do
+      {:fallback, rel_path} ->
+        location = Path.absname(rel_path)
+        do_symlink(location)
+
+      path when is_binary(path) ->
+        location = Path.absname(path)
+        do_symlink(location)
+    end
+  end
+
+  defp relative_to_target(location) do
+    if function_exported?(Path, :relative_to, 3) do
+      apply(Path, :relative_to, [location, target_dir(), [force: true]])
+    else
+      Path.relative_to(location, target_dir())
+    end
+  end
+
+  defp do_symlink(node_modules_path) do
+    relative_node_modules_path = relative_to_target(node_modules_path)
+
+    with {:error, reason} when reason != :eexist <-
+           File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")) do
+      IO.warn(
+        "Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}"
+      )
+    end
+  end
+
+  defp global_settings do
     Application.get_env(:phoenix_live_view, :colocated_js, [])
+  end
+
+  defp project_settings do
+    Mix.Project.config()
+    |> Keyword.get(:phoenix_live_view, [])
+    |> Keyword.get(:colocated_js, [])
   end
 
   defp target_dir do
     default = Path.join(Mix.Project.build_path(), "phoenix-colocated")
     app = to_string(Mix.Project.config()[:app])
 
-    settings()
+    global_settings()
     |> Keyword.get(:target_directory, default)
     |> Path.join(app)
   end

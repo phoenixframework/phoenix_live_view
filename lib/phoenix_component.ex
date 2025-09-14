@@ -3527,7 +3527,7 @@ defmodule Phoenix.Component do
   > Because portals use `<template>` elements under the hood, you cannot query for elements
   > inside of a portal when using `Phoenix.LiveViewTest.element/3` and other LiveViewTest functions.
   >
-  > Instead, `Phoenix.LiveView.render/1` the portal element itself to an HTML string and do
+  > Instead, `Phoenix.LiveViewTest.render/1` the portal element itself to an HTML string and do
   > assertions on those:
   >
   > ```heex
