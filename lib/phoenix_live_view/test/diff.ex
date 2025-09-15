@@ -73,7 +73,7 @@ defmodule Phoenix.LiveViewTest.Diff do
   defp deep_merge_diff(target, %{@template => template} = source),
     do: deep_merge_diff(target, resolve_templates(Map.delete(source, @template), template))
 
-  defp deep_merge_diff(target, %{@keyed => source_keyed}) when is_map(target) do
+  defp deep_merge_diff(target, %{@keyed => source_keyed} = source) when is_map(target) do
     target_keyed = target[@keyed]
 
     merged_keyed =
@@ -95,7 +95,12 @@ defmodule Phoenix.LiveViewTest.Diff do
           end
       end
 
-    Map.put(target, @keyed, merged_keyed)
+    merged = %{target | @keyed => merged_keyed}
+
+    case source do
+      %{@stream_id => stream} -> Map.put(merged, @stream_id, stream)
+      _ -> Map.delete(merged, @stream_id)
+    end
   end
 
   defp deep_merge_diff(_target, %{@static => _} = source),
