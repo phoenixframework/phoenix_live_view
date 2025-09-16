@@ -95,12 +95,8 @@ defmodule Phoenix.LiveViewTest.Diff do
           end
       end
 
-    merged = %{target | @keyed => merged_keyed}
-
-    case source do
-      %{@stream_id => stream} -> Map.put(merged, @stream_id, stream)
-      _ -> Map.delete(merged, @stream_id)
-    end
+    merged = deep_merge_diff(Map.delete(target, @keyed), Map.delete(source, @keyed))
+    Map.put(merged, @keyed, merged_keyed)
   end
 
   defp deep_merge_diff(_target, %{@static => _} = source),
