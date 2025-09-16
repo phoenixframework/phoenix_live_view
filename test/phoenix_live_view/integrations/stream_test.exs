@@ -896,6 +896,21 @@ defmodule Phoenix.LiveView.StreamTest do
            ] = ul_list_children(html)
   end
 
+  test "issue #3993 - stream reset + keyed comprehensions", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/healthy/fruits")
+
+    assert has_element?(lv, "h1", "Fruits")
+    assert has_element?(lv, "li", "Apples")
+    assert has_element?(lv, "li", "Oranges")
+
+    html = render_hook(lv, "load-more", %{})
+
+    assert html =~ "Apples"
+    assert html =~ "Oranges"
+    assert html =~ "Pumpkins"
+    assert html =~ "Melons"
+  end
+
   defp assert_pruned_stream(lv) do
     stream = StreamLive.run(lv, fn socket -> {:reply, socket.assigns.streams.users, socket} end)
     assert stream.inserts == []

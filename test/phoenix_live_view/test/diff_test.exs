@@ -72,5 +72,38 @@ defmodule Phoenix.LiveViewTest.DiffTest do
                :p => %{1 => ["foo", "bar"]}
              }) == %{0 => %{0 => %__MODULE__{foo: :bar}, :s => ["foo", "bar"]}, :streams => []}
     end
+
+    test "copies streams" do
+      base = %{
+        k: %{
+          0 => %{0 => "A"},
+          1 => %{0 => "B"},
+          2 => %{0 => "C", 1 => %{0 => "var1", :s => ["", ""]}},
+          kc: 3
+        },
+        stream: "foo"
+      }
+
+      diff = %{
+        k: %{
+          0 => 1,
+          1 => [2, %{1 => %{0 => "var2"}}],
+          kc: 2
+        },
+        stream: "bar"
+      }
+
+      result = %{
+        k: %{
+          0 => %{0 => "B"},
+          1 => %{0 => "C", 1 => %{0 => "var2", :s => ["", ""]}},
+          kc: 2
+        },
+        stream: "bar",
+        streams: ["bar"]
+      }
+
+      assert Diff.merge_diff(base, diff) == result
+    end
   end
 end
