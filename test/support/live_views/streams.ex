@@ -305,6 +305,7 @@ defmodule Phoenix.LiveViewTest.Support.HealthyLive do
     socket =
       socket
       |> assign(:category, category)
+      |> stream(:items, [])
 
     {:ok, socket}
   end
@@ -316,6 +317,17 @@ defmodule Phoenix.LiveViewTest.Support.HealthyLive do
       |> stream(:items, Map.fetch!(@healthy_stuff, category), reset: true)
 
     {:noreply, socket}
+  end
+
+  def handle_event("load-more", %{}, socket) do
+    new_items = [
+      %{id: 5, name: "Pumpkins"},
+      %{id: 6, name: "Melons"}
+    ]
+
+    {:noreply,
+     socket
+     |> stream(:items, new_items, at: -1)}
   end
 end
 
