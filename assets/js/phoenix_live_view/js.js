@@ -334,6 +334,7 @@ const JS = {
             attrs.some(
               (toIgnore) =>
                 attr.name == toIgnore ||
+                toIgnore === "*" ||
                 (toIgnore.includes("*") && attr.name.match(toIgnore) != null),
             )
           ) {
