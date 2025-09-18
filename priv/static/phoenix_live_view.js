@@ -3418,7 +3418,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         apply: (fromEl, toEl) => {
           Array.from(fromEl.attributes).forEach((attr) => {
             if (attrs.some(
-              (toIgnore) => attr.name == toIgnore || toIgnore.includes("*") && attr.name.match(toIgnore) != null
+              (toIgnore) => attr.name == toIgnore || toIgnore === "*" || toIgnore.includes("*") && attr.name.match(toIgnore) != null
             )) {
               toEl.setAttribute(attr.name, attr.value);
             }
