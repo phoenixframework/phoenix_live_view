@@ -17,19 +17,20 @@ jobs:
     strategy:
       matrix:
         include:
+          # look for correct alpine image here: https://hub.docker.com/r/hexpm/elixir/tags
           - elixir: 1.15.8
             otp: 25.3.2.9
+            suffix: "alpine-3.20.3"
 
-          - elixir: 1.18.4
-            otp: 27.3
+          - elixir: 1.17.3
+            otp: 27.1.2
+            suffix: "alpine-3.20.3"
 
-          - elixir: 1.18.4
-            otp: 28.1
-
-    env:
-      MIX_ENV: test
-      PHX_CI: true
-      ELIXIR_ASSERT_TIMEOUT: 10000
+    container:
+      image: hexpm/elixir:${{ matrix.elixir }}-erlang-${{ matrix.otp }}-${{ matrix.suffix }}
+      env:
+        ELIXIR_ASSERT_TIMEOUT: 10000
+        PHX_CI: true
 
     services:
       postgres:
@@ -64,38 +65,12 @@ jobs:
           repository: phoenixframework/phoenix
           path: phoenix
 
-      - name: Set up Elixir
-        uses: erlef/setup-beam@e6d7c94229049569db56a7ad5a540c051a010af9 # v1.20.4
-        with:
-          elixir-version: ${{ matrix.elixir }}
-          otp-version: ${{ matrix.otp }}
-
-      - name: Restore deps and _build cache
-        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
-        with:
-          path: |
-            phoenix/deps
-            phoenix/_build
-          key: phoenix-deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('phoenix/**/mix.lock') }}
-          restore-keys: |
-            phoenix-deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
-
       - name: Modify Phoenix integration_test mix.exs to use local LiveView
         run: |
           cd phoenix/integration_test
           # Replace the phoenix_live_view dependency with a path dependency
           sed -i 's|{:phoenix_live_view[^}]*}|{:phoenix_live_view, path: "../../phoenix_live_view", override: true}|g' mix.exs
           cat mix.exs | grep phoenix_live_view
-
-      - name: Install dependencies
-        run: |
-          cd phoenix/integration_test
-          mix deps.get --only test
-
-      - name: Remove compiled application files
-        run: |
-          cd phoenix/integration_test
-          mix clean
 
       - name: Run integration tests
         run: |
