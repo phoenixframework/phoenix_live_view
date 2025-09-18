@@ -1518,6 +1518,40 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
     )
   end
 
+  test "doesn't add extra spaces to inline tags with nested inline tags with leading whitespace" do
+    assert_formatter_doesnt_change("""
+    <a>foo<b>bar</b></a>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <a>foo <b>bar</b></a>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <a> foo<b>bar</b></a>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <a> foo <b>bar</b></a>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <a>foo<b>bar</b></a>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <a>foo <b> bar</b></a>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <a> foo<b>bar </b></a>
+    """)
+
+    assert_formatter_doesnt_change("""
+    <a> foo <b> bar </b></a>
+    """)
+  end
+
   test "treats components with link or button in their name as inline" do
     assert_formatter_doesnt_change("""
     <.styled_link> Foo: </.styled_link>

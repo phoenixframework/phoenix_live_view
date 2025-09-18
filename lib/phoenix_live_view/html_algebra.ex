@@ -164,7 +164,8 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
       tag_block?(prev_node) and not tag?(next_node) ->
         break(" ")
 
-      text_ends_with_space?(prev_node) or text_starts_with_space?(next_node) ->
+      (text_ends_with_space?(prev_node) or text_starts_with_space?(next_node)) and
+          not text_preserve?(prev_node) ->
         flex_break(" ")
 
       true ->
@@ -198,6 +199,9 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   defp block_preserve?({:body_expr, _, _}), do: true
   defp block_preserve?({:eex, _, _}), do: true
   defp block_preserve?(_node), do: false
+
+  defp text_preserve?({:text, _, %{mode: :preserve}}), do: true
+  defp text_preserve?(_), do: false
 
   defp to_algebra({:html_comment, block}, context) do
     children = block_to_algebra(block, %{context | mode: :preserve})
