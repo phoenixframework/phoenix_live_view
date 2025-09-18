@@ -1,0 +1,103 @@
+name: Phoenix Integration
+
+on:
+  push:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  phoenix-integration:
+    name: Phoenix Integration (OTP ${{matrix.otp}} | Elixir ${{matrix.elixir}})
+    runs-on: ubuntu-24.04
+
+    strategy:
+      matrix:
+        include:
+          - elixir: 1.15.8
+            otp: 25.3.2.9
+
+          - elixir: 1.18.4
+            otp: 27.3
+
+          - elixir: 1.18.4
+            otp: 28.1
+
+    env:
+      MIX_ENV: test
+      PHX_CI: true
+      ELIXIR_ASSERT_TIMEOUT: 10000
+
+    services:
+      postgres:
+        image: postgres
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_PASSWORD: postgres
+      mysql:
+        image: mysql
+        ports:
+          - 3306:3306
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: "yes"
+      mssql:
+        image: mcr.microsoft.com/mssql/server:2019-latest
+        env:
+          ACCEPT_EULA: Y
+          SA_PASSWORD: some!Password
+        ports:
+          - 1433:1433
+
+    steps:
+      - name: Checkout LiveView
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          path: phoenix_live_view
+
+      - name: Checkout Phoenix
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
+        with:
+          repository: phoenixframework/phoenix
+          path: phoenix
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@e6d7c94229049569db56a7ad5a540c051a010af9 # v1.20.4
+        with:
+          elixir-version: ${{ matrix.elixir }}
+          otp-version: ${{ matrix.otp }}
+
+      - name: Restore deps and _build cache
+        uses: actions/cache@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        with:
+          path: |
+            phoenix/deps
+            phoenix/_build
+          key: phoenix-deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles('phoenix/**/mix.lock') }}
+          restore-keys: |
+            phoenix-deps-${{ runner.os }}-${{ matrix.otp }}-${{ matrix.elixir }}
+
+      - name: Modify Phoenix integration_test mix.exs to use local LiveView
+        run: |
+          cd phoenix/integration_test
+          # Replace the phoenix_live_view dependency with a path dependency
+          sed -i 's|{:phoenix_live_view[^}]*}|{:phoenix_live_view, path: "../../phoenix_live_view"}|g' mix.exs
+          cat mix.exs | grep phoenix_live_view
+
+      - name: Install dependencies
+        run: |
+          cd phoenix/integration_test
+          mix deps.get --only test
+
+      - name: Remove compiled application files
+        run: |
+          cd phoenix/integration_test
+          mix clean
+
+      - name: Run integration tests
+        run: |
+          cd phoenix
+          ./integration_test/test.sh
