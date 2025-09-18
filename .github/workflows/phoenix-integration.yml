@@ -71,10 +71,10 @@ jobs:
           # Get absolute path to phoenix_live_view
           LIVE_VIEW_PATH=$(realpath ../../phoenix_live_view)
           # Replace the phoenix_live_view dependency with a path dependency
-          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view, path: \"$LIVE_VIEW_PATH\", override: true}|g" mix.exs
-          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view, path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_single/mix.exs
-          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view, path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_umbrella/apps/app_name_web/mix.exs
-          sed -i "s|{:phoenix_live_view[^}]*}|\#{:phoenix_live_view, \">= 0.0.0\"}\n      {:phoenix_live_view, path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_umbrella/mix.exs
+          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" mix.exs
+          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_single/mix.exs
+          sed -i "s|{:phoenix_live_view[^}]*}|{:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_umbrella/apps/app_name_web/mix.exs
+          sed -i "s|{:phoenix_live_view[^}]*}|\# {:phoenix_live_view, \">= 0.0.0\"}\n      {:phoenix_live_view,\n       path: \"$LIVE_VIEW_PATH\", override: true}|g" ../installer/templates/phx_umbrella/mix.exs
           cat mix.exs | grep phoenix_live_view
 
       - name: Run integration tests
