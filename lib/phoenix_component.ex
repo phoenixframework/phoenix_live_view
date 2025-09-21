@@ -3559,7 +3559,7 @@ defmodule Phoenix.Component do
     doc: "A CSS selector that identifies the target. The target must be unique."
   )
 
-  attr.(:class, :string, default: nil, doc: "The class to apply to the portal wrapper.")
+  attr.(:class, :any, default: nil, doc: "The class to apply to the portal wrapper.")
   attr.(:container, :string, default: "div", doc: "The HTML tag to use as the portal wrapper.")
   slot.(:inner_block, required: true)
 
