@@ -185,7 +185,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
   end
 
   attr :type, :string, default: nil
-  attr :class, :string, default: nil
+  attr :class, :any, default: nil
   attr :rest, :global, include: ~w(disabled form name value)
 
   slot :inner_block, required: true
