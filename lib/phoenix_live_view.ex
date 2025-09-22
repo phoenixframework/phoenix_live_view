@@ -121,8 +121,8 @@ defmodule Phoenix.LiveView do
   >
   > See: https://hexdocs.pm/elixir/process-anti-patterns.html#sending-unnecessary-data
 
-  The state of the async operation is stored in the socket assigns within an
-  `Phoenix.LiveView.AsyncResult`. It carries the loading and failed states, as
+  The state of the async operation is stored as a `Phoenix.LiveView.AsyncResult`
+  in the socket assigns. It carries the loading and failed states, as
   well as the result. For example, if we wanted to show the loading states in
   the UI for the `:org`, our template could conditionally render the states:
 
