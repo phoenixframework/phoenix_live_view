@@ -113,9 +113,21 @@ defmodule Phoenix.LiveView.ColocatedJS do
   `esbuild`. Because colocated JS is extracted to a folder outside the regular `assets` folder,
   special care is necessary when you need to import other files inside the colocated JS:
 
-  ```javascript
-  import { someFunction } from "some-dependency";
-  import somethingElse from "@/vendor/vendored-file";
+  ```heex
+  def sha256(assigns) do
+    ~H"""
+    <div id="sha-256" phx-hook=".Sha256">Hello World</div>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Sha256">
+      import { sha256 } from "my-example-sha256-library"
+      import { reverse } from "@/vendor/vendored-file"
+      export default {
+        mounted() {
+          this.el.innerHTML = sha256(reverse(this.el.innerHTML))
+        }
+      }
+    </script>
+    """
+  end
   ```
 
   While dependencies from `node_modules` should work out of the box, you cannot simply refer to your
