@@ -131,6 +131,8 @@ for type <- [FormLive, FormLiveNested] do
     @impl Phoenix.LiveView
     def render(assigns) do
       ~H"""
+      <h1 :if={@params["portal"]}>Form</h1>
+
       <.my_form :if={!@params["live-component"]} params={@params} />
       <.live_component
         :if={@params["live-component"]}
@@ -140,6 +142,14 @@ for type <- [FormLive, FormLiveNested] do
       />
 
       <p :if={@submitted}>Form was submitted!</p>
+      """
+    end
+
+    def my_form(%{params: %{"portal" => _}} = assigns) do
+      ~H"""
+      <.portal id="form-portal" target="body">
+        <.my_form params={Map.delete(@params, "portal")} />
+      </.portal>
       """
     end
 
