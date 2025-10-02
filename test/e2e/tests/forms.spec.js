@@ -83,236 +83,99 @@ for (const path of ["/form/nested", "/form"]) {
     });
   });
 
-  for (const additionalParams of ["live-component", ""]) {
-    const append = additionalParams.length ? ` ${additionalParams}` : "";
-    test.describe(`${path}${append} - form recovery`, () => {
-      test("form state is recovered when socket reconnects", async ({
-        page,
-      }) => {
-        let webSocketEvents = [];
-        page.on("websocket", (ws) => {
-          ws.on("framesent", (event) =>
-            webSocketEvents.push({ type: "sent", payload: event.payload }),
-          );
-          ws.on("framereceived", (event) =>
-            webSocketEvents.push({ type: "received", payload: event.payload }),
-          );
-          ws.on("close", () => webSocketEvents.push({ type: "close" }));
-        });
-
-        await page.goto(path + "?" + additionalParams);
-        await syncLV(page);
-
-        await page.locator("input[name=b]").fill("test");
-        await page.locator("input[name=c]").fill("hello world");
-        await page.locator("select[name=d]").selectOption("bar");
-        await expect(page.locator("input[name=c]")).toBeFocused();
-        await syncLV(page);
-
-        await page.evaluate(
-          () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
-        );
-        await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-        expect(webSocketEvents).toEqual(
-          expect.arrayContaining([
-            { type: "sent", payload: expect.stringContaining("phx_join") },
-            { type: "received", payload: expect.stringContaining("phx_reply") },
-            { type: "close" },
-          ]),
-        );
-
-        webSocketEvents = [];
-
-        await page.evaluate(() => window.liveSocket.connect());
-        await syncLV(page);
-        await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-        await expect(page.locator("input[name=b]")).toHaveValue("test");
-        // c should still be focused (at least when not using a nested LV)
-        if (path === "/form") {
-          await expect(page.locator("input[name=c]")).toBeFocused();
-        }
-        await expect(page.locator("select[name=d]")).toHaveValue("bar");
-
-        expect(webSocketEvents).toEqual(
-          expect.arrayContaining([
-            { type: "sent", payload: expect.stringContaining("phx_join") },
-            { type: "received", payload: expect.stringContaining("phx_reply") },
-            {
-              type: "sent",
-              payload: expect.stringMatching(/event.*_unused_a=&a=foo&b=test/),
-            },
-          ]),
-        );
-      });
-
-      test("JS command in phx-change works during recovery", async ({
-        page,
-      }) => {
-        await page.goto(path + "?" + additionalParams + "&js-change=1");
-        await syncLV(page);
-
-        await page.locator("input[name=b]").fill("test");
-        // blur, otherwise the input would not be morphed anyway
-        await page.locator("input[name=b]").blur();
-        await expect(page.locator("form")).toHaveAttribute(
-          "phx-change",
-          /push/,
-        );
-        await syncLV(page);
-
-        await page.evaluate(
-          () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
-        );
-        await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-        await page.evaluate(() => window.liveSocket.connect());
-        await syncLV(page);
-        await expect(page.locator(".phx-loading")).toHaveCount(0);
-        await expect(page.locator("input[name=b]")).toHaveValue("test");
-      });
-
-      test("does not recover when form is missing id", async ({ page }) => {
-        await page.goto(`${path}?no-id&${additionalParams}`);
-        await syncLV(page);
-
-        await page.locator("input[name=b]").fill("test");
-        // blur, otherwise the input would not be morphed anyway
-        await page.locator("input[name=b]").blur();
-        await syncLV(page);
-
-        await page.evaluate(
-          () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
-        );
-        await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-        await page.evaluate(() => window.liveSocket.connect());
-        await syncLV(page);
-        await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-        await expect(page.locator("input[name=b]")).toHaveValue("bar");
-      });
-
-      test("does not recover when form is missing phx-change", async ({
-        page,
-      }) => {
-        await page.goto(`${path}?no-change-event&${additionalParams}`);
-        await syncLV(page);
-
-        await page.locator("input[name=b]").fill("test");
-        // blur, otherwise the input would not be morphed anyway
-        await page.locator("input[name=b]").blur();
-        await syncLV(page);
-
-        await page.evaluate(
-          () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
-        );
-        await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-        await page.evaluate(() => window.liveSocket.connect());
-        await syncLV(page);
-        await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-        await expect(page.locator("input[name=b]")).toHaveValue("bar");
-      });
-
-      test("phx-auto-recover", async ({ page }) => {
-        await page.goto(
-          `${path}?phx-auto-recover=custom-recovery&${additionalParams}`,
-        );
-        await syncLV(page);
-
-        await page.locator("input[name=b]").fill("test");
-        // blur, otherwise the input would not be morphed anyway
-        await page.locator("input[name=b]").blur();
-        await syncLV(page);
-
-        await page.evaluate(
-          () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
-        );
-        await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-        const webSocketEvents = [];
-        page.on("websocket", (ws) => {
-          ws.on("framesent", (event) =>
-            webSocketEvents.push({ type: "sent", payload: event.payload }),
-          );
-          ws.on("framereceived", (event) =>
-            webSocketEvents.push({ type: "received", payload: event.payload }),
-          );
-          ws.on("close", () => webSocketEvents.push({ type: "close" }));
-        });
-
-        await page.evaluate(() => window.liveSocket.connect());
-        await syncLV(page);
-        await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-        await expect(page.locator("input[name=b]")).toHaveValue(
-          "custom value from server",
-        );
-
-        expect(webSocketEvents).toEqual(
-          expect.arrayContaining([
-            { type: "sent", payload: expect.stringContaining("phx_join") },
-            { type: "received", payload: expect.stringContaining("phx_reply") },
-            {
-              type: "sent",
-              payload: expect.stringMatching(/event.*_unused_a=&a=foo&b=test/),
-            },
-          ]),
-        );
-      });
-
-      test("respects disabled state of a fieldset", async ({ page }) => {
-        let webSocketEvents = [];
-        page.on("websocket", (ws) => {
-          ws.on("framesent", (event) =>
-            webSocketEvents.push({ type: "sent", payload: event.payload }),
-          );
-          ws.on("framereceived", (event) =>
-            webSocketEvents.push({ type: "received", payload: event.payload }),
-          );
-          ws.on("close", () => webSocketEvents.push({ type: "close" }));
-        });
-
-        await page.goto(path + "?disabled-fieldset=true&" + additionalParams);
-        await syncLV(page);
-
-        await page.locator("input[name=c]").fill("hello world");
-        await page.locator("select[name=d]").selectOption("bar");
-        await expect(page.locator("input[name=c]")).toBeFocused();
-        await syncLV(page);
-
-        await page.evaluate(
-          () => new Promise((resolve) => window.liveSocket.disconnect(resolve)),
-        );
-        await expect(page.locator(".phx-loading")).toHaveCount(1);
-
-        webSocketEvents = [];
-        await page.evaluate(() => window.liveSocket.connect());
-        await syncLV(page);
-        await expect(page.locator(".phx-loading")).toHaveCount(0);
-
-        expect(webSocketEvents).toEqual(
-          expect.arrayContaining([
-            { type: "sent", payload: expect.stringContaining("phx_join") },
-            { type: "received", payload: expect.stringContaining("phx_reply") },
-            {
-              type: "sent",
-              payload: expect.stringMatching(/event.*"c=hello\+world&d=bar"/),
-            },
-          ]),
-        );
-      });
-
-      // nested LiveViews don't support handle_params
-      if (path === "/form") {
-        test("navigation during recovery is properly handled by the client", async ({
+  for (const additionalParams of ["live-component", "", "portal"]) {
+    if (additionalParams === "portal" && path === "/form/nested") {
+      // TODO: maybe revisit this in the future. I believe we could also track
+      // nested LiveViews by them being included in the DOM and only destroy when
+      // they are actually removed.
+    } else {
+      const append = additionalParams.length ? ` ${additionalParams}` : "";
+      test.describe(`${path}${append} - form recovery`, () => {
+        test("form state is recovered when socket reconnects", async ({
           page,
         }) => {
-          await page.goto(
-            `${path}?phx-auto-recover=patch-recovery&${additionalParams}`,
+          let webSocketEvents = [];
+          page.on("websocket", (ws) => {
+            ws.on("framesent", (event) =>
+              webSocketEvents.push({ type: "sent", payload: event.payload }),
+            );
+            ws.on("framereceived", (event) =>
+              webSocketEvents.push({
+                type: "received",
+                payload: event.payload,
+              }),
+            );
+            ws.on("close", () => webSocketEvents.push({ type: "close" }));
+          });
+
+          await page.goto(path + "?" + additionalParams);
+          await syncLV(page);
+
+          await page.locator("input[name=b]").fill("test");
+          await page.locator("input[name=c]").fill("hello world");
+          await page.locator("select[name=d]").selectOption("bar");
+          await expect(page.locator("input[name=c]")).toBeFocused();
+          await syncLV(page);
+
+          await page.evaluate(
+            () =>
+              new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+          );
+          await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+          expect(webSocketEvents).toEqual(
+            expect.arrayContaining([
+              { type: "sent", payload: expect.stringContaining("phx_join") },
+              {
+                type: "received",
+                payload: expect.stringContaining("phx_reply"),
+              },
+              { type: "close" },
+            ]),
+          );
+
+          webSocketEvents = [];
+
+          await page.evaluate(() => window.liveSocket.connect());
+          await syncLV(page);
+          await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+          await expect(page.locator("input[name=b]")).toHaveValue("test");
+          // c should still be focused (at least when not using a nested LV)
+          if (path === "/form") {
+            await expect(page.locator("input[name=c]")).toBeFocused();
+          }
+          await expect(page.locator("select[name=d]")).toHaveValue("bar");
+
+          expect(webSocketEvents).toEqual(
+            expect.arrayContaining([
+              { type: "sent", payload: expect.stringContaining("phx_join") },
+              {
+                type: "received",
+                payload: expect.stringContaining("phx_reply"),
+              },
+              {
+                type: "sent",
+                payload: expect.stringMatching(
+                  /event.*_unused_a=&a=foo&b=test/,
+                ),
+              },
+            ]),
+          );
+        });
+
+        test("JS command in phx-change works during recovery", async ({
+          page,
+        }) => {
+          await page.goto(path + "?" + additionalParams + "&js-change=1");
+          await syncLV(page);
+
+          await page.locator("input[name=b]").fill("test");
+          // blur, otherwise the input would not be morphed anyway
+          await page.locator("input[name=b]").blur();
+          await expect(page.locator("form")).toHaveAttribute(
+            "phx-change",
+            /push/,
           );
           await syncLV(page);
 
@@ -323,10 +186,184 @@ for (const path of ["/form/nested", "/form"]) {
           await expect(page.locator(".phx-loading")).toHaveCount(1);
 
           await page.evaluate(() => window.liveSocket.connect());
-          await expect(page).toHaveURL(/\patched=true/);
+          await syncLV(page);
+          await expect(page.locator(".phx-loading")).toHaveCount(0);
+          await expect(page.locator("input[name=b]")).toHaveValue("test");
         });
-      }
-    });
+
+        test("does not recover when form is missing id", async ({ page }) => {
+          await page.goto(`${path}?no-id&${additionalParams}`);
+          await syncLV(page);
+
+          await page.locator("input[name=b]").fill("test");
+          // blur, otherwise the input would not be morphed anyway
+          await page.locator("input[name=b]").blur();
+          await syncLV(page);
+
+          await page.evaluate(
+            () =>
+              new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+          );
+          await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+          await page.evaluate(() => window.liveSocket.connect());
+          await syncLV(page);
+          await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+          await expect(page.locator("input[name=b]")).toHaveValue("bar");
+        });
+
+        test("does not recover when form is missing phx-change", async ({
+          page,
+        }) => {
+          await page.goto(`${path}?no-change-event&${additionalParams}`);
+          await syncLV(page);
+
+          await page.locator("input[name=b]").fill("test");
+          // blur, otherwise the input would not be morphed anyway
+          await page.locator("input[name=b]").blur();
+          await syncLV(page);
+
+          await page.evaluate(
+            () =>
+              new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+          );
+          await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+          await page.evaluate(() => window.liveSocket.connect());
+          await syncLV(page);
+          await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+          await expect(page.locator("input[name=b]")).toHaveValue("bar");
+        });
+
+        test("phx-auto-recover", async ({ page }) => {
+          await page.goto(
+            `${path}?phx-auto-recover=custom-recovery&${additionalParams}`,
+          );
+          await syncLV(page);
+
+          await page.locator("input[name=b]").fill("test");
+          // blur, otherwise the input would not be morphed anyway
+          await page.locator("input[name=b]").blur();
+          await syncLV(page);
+
+          await page.evaluate(
+            () =>
+              new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+          );
+          await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+          const webSocketEvents = [];
+          page.on("websocket", (ws) => {
+            ws.on("framesent", (event) =>
+              webSocketEvents.push({ type: "sent", payload: event.payload }),
+            );
+            ws.on("framereceived", (event) =>
+              webSocketEvents.push({
+                type: "received",
+                payload: event.payload,
+              }),
+            );
+            ws.on("close", () => webSocketEvents.push({ type: "close" }));
+          });
+
+          await page.evaluate(() => window.liveSocket.connect());
+          await syncLV(page);
+          await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+          await expect(page.locator("input[name=b]")).toHaveValue(
+            "custom value from server",
+          );
+
+          expect(webSocketEvents).toEqual(
+            expect.arrayContaining([
+              { type: "sent", payload: expect.stringContaining("phx_join") },
+              {
+                type: "received",
+                payload: expect.stringContaining("phx_reply"),
+              },
+              {
+                type: "sent",
+                payload: expect.stringMatching(
+                  /event.*_unused_a=&a=foo&b=test/,
+                ),
+              },
+            ]),
+          );
+        });
+
+        test("respects disabled state of a fieldset", async ({ page }) => {
+          let webSocketEvents = [];
+          page.on("websocket", (ws) => {
+            ws.on("framesent", (event) =>
+              webSocketEvents.push({ type: "sent", payload: event.payload }),
+            );
+            ws.on("framereceived", (event) =>
+              webSocketEvents.push({
+                type: "received",
+                payload: event.payload,
+              }),
+            );
+            ws.on("close", () => webSocketEvents.push({ type: "close" }));
+          });
+
+          await page.goto(path + "?disabled-fieldset=true&" + additionalParams);
+          await syncLV(page);
+
+          await page.locator("input[name=c]").fill("hello world");
+          await page.locator("select[name=d]").selectOption("bar");
+          await expect(page.locator("input[name=c]")).toBeFocused();
+          await syncLV(page);
+
+          await page.evaluate(
+            () =>
+              new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+          );
+          await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+          webSocketEvents = [];
+          await page.evaluate(() => window.liveSocket.connect());
+          await syncLV(page);
+          await expect(page.locator(".phx-loading")).toHaveCount(0);
+
+          expect(webSocketEvents).toEqual(
+            expect.arrayContaining([
+              { type: "sent", payload: expect.stringContaining("phx_join") },
+              {
+                type: "received",
+                payload: expect.stringContaining("phx_reply"),
+              },
+              {
+                type: "sent",
+                payload: expect.stringMatching(/event.*"c=hello\+world&d=bar"/),
+              },
+            ]),
+          );
+        });
+
+        // nested LiveViews don't support handle_params
+        if (path === "/form") {
+          test("navigation during recovery is properly handled by the client", async ({
+            page,
+          }) => {
+            await page.goto(
+              `${path}?phx-auto-recover=patch-recovery&${additionalParams}`,
+            );
+            await syncLV(page);
+
+            await page.evaluate(
+              () =>
+                new Promise((resolve) => window.liveSocket.disconnect(resolve)),
+            );
+            await expect(page.locator(".phx-loading")).toHaveCount(1);
+
+            await page.evaluate(() => window.liveSocket.connect());
+            await expect(page).toHaveURL(/\patched=true/);
+          });
+        }
+      });
+    }
   }
 
   test(`${path} - can submit form with button that has phx-click`, async ({
