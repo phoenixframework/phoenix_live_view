@@ -757,6 +757,9 @@ defmodule Phoenix.LiveView.Channel do
             {:halt, %Socket{} = component_socket} ->
               component_socket
 
+            {:halt, %{} = reply, %Socket{} = component_socket} ->
+              Utils.put_reply(component_socket, reply)
+
             {:cont, %Socket{} = component_socket} ->
               case component.handle_event(event, val, component_socket) do
                 {:noreply, component_socket} ->
