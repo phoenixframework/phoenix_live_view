@@ -1,5 +1,5 @@
 defmodule Phoenix.LiveView.ColocatedJS do
-  @moduledoc """
+  @moduledoc ~S'''
   A special HEEx `:type` that extracts any JavaScript code from a co-located
   `<script>` tag at compile time.
 
@@ -113,7 +113,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
   `esbuild`. Because colocated JS is extracted to a folder outside the regular `assets` folder,
   special care is necessary when you need to import other files inside the colocated JS:
 
-  ```heex
+  ```elixir
   def sha256(assigns) do
     ~H"""
     <div id="sha-256" phx-hook=".Sha256">Hello World</div>
@@ -177,7 +177,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
       `web_components.ts`. If you change the manifest, you will need to change the
       path of your JavaScript imports accordingly.
 
-  """
+  '''
 
   @behaviour Phoenix.Component.MacroComponent
 
