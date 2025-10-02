@@ -4477,6 +4477,9 @@ var View = class _View {
     const oldForms = this.root.formsForRecovery;
     const template = document.createElement("template");
     template.innerHTML = html;
+    dom_default.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
+      template.content.appendChild(portalTemplate.content);
+    });
     const rootEl = template.content.firstElementChild;
     rootEl.id = this.id;
     rootEl.setAttribute(PHX_ROOT_ID, this.root.id);
@@ -5648,7 +5651,10 @@ var View = class _View {
       return {};
     }
     const phxChange = this.binding("change");
-    return dom_default.all(this.el, `form[${phxChange}]`).filter((form) => form.id).filter((form) => form.elements.length > 0).filter(
+    return dom_default.all(
+      document,
+      `#${CSS.escape(this.id)} form[${phxChange}], [${PHX_TELEPORTED_REF}="${CSS.escape(this.id)}"] form[${phxChange}]`
+    ).filter((form) => form.id).filter((form) => form.elements.length > 0).filter(
       (form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore"
     ).map((form) => {
       const clonedForm = form.cloneNode(true);
