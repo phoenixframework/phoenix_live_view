@@ -280,6 +280,9 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       # yes to esbuild
       |> run_upgrade(input: "y\n")
+      |> assert_has_patch("mix.exs", """
+      + |      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      """)
       |> assert_has_patch("config/config.exs", """
       - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
       + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
@@ -308,6 +311,9 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       # yes to esbuild (no deps prompt since no existing deps)
       |> run_upgrade(input: "y\n")
+      |> assert_has_patch("mix.exs", """
+      + |      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      """)
       |> assert_has_patch("config/config.exs", """
       - |    args: ["js/app.js", "--bundle", "--outdir=../priv/static/assets"],
       + |    args: ["js/app.js", "--bundle", "--outdir=../priv/static/assets", "--alias:@=."],
@@ -333,6 +339,9 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       # yes to esbuild
       |> run_upgrade(input: "y\n")
+      |> assert_has_patch("mix.exs", """
+      + |      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      """)
       |> assert_has_patch("config/config.exs", """
       - |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets),
       + |    args: ~w(js/app.js --bundle --outdir=../priv/static/assets --alias:@=.),
@@ -361,6 +370,9 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       # yes to esbuild (no deps prompt since no existing deps)
       |> run_upgrade(input: "y\n")
+      |> assert_has_patch("mix.exs", """
+      + |      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      """)
       |> assert_has_warning(&(&1 =~ "Failed to update esbuild configuration for colocated hooks"))
       |> refute_has_notice()
     end
@@ -381,6 +393,9 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       )
       # no to deps prompt, yes to esbuild
       |> run_upgrade(input: "y\n")
+      |> assert_has_patch("mix.exs", """
+      + |      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev},
+      """)
       |> assert_has_warning(&(&1 =~ "Failed to update esbuild configuration for colocated hooks"))
       |> refute_has_notice()
     end
@@ -444,6 +459,10 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
       |> assert_has_patch("mix.exs", """
       + |      {:lazy_html, ">= 0.0.0", only: :test},
       """)
+      |> assert_has_patch("mix.exs", """
+      - |      {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
+      + |      {:esbuild, "~> 0.10", runtime: Mix.env() == :dev}
+      """)
       |> assert_has_patch("config/dev.exs", """
       - |  reloadable_compilers: [:elixir, :app]
       + |  reloadable_compilers: [:phoenix_live_view, :elixir, :app]
@@ -483,7 +502,8 @@ defmodule Phoenix.LiveView.Igniter.UpgradeTo1_1Test do
           defp deps do
             [
               {:phoenix, "~> 1.7.0"},
-              {:phoenix_live_view, "~> 0.20.0"}
+              {:phoenix_live_view, "~> 0.20.0"},
+              {:esbuild, "~> 0.8", runtime: Mix.env() == :dev},
             ]
           end
         end

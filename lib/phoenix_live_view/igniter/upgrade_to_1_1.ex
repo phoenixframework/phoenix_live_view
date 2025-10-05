@@ -128,8 +128,12 @@ if Code.ensure_loaded?(Igniter) do
           config_exs_vsn = Rewrite.Source.version(igniter.rewrite.sources["config/config.exs"])
 
           igniter =
-            Igniter.Project.Config.configure(
-              igniter,
+            igniter
+            |> Igniter.Project.Deps.add_dep(
+              {:esbuild, "~> 0.10", runtime: quote(do: Mix.env() == :dev)},
+              on_exists: :overwrite
+            )
+            |> Igniter.Project.Config.configure(
               "config.exs",
               :esbuild,
               app_name,
