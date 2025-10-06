@@ -80,6 +80,7 @@ export function liveViewDOM(content?: string) {
   const div = document.createElement("div");
   div.setAttribute("data-phx-view", "User.Form");
   div.setAttribute("data-phx-session", "abc123");
+  div.setAttribute("data-phx-main", "");
   div.setAttribute("id", "container");
   div.setAttribute("class", "user-implemented-class");
   div.innerHTML =
