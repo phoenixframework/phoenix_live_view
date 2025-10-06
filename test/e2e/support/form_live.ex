@@ -133,23 +133,27 @@ for type <- [FormLive, FormLiveNested] do
       ~H"""
       <h1 :if={@params["portal"]}>Form</h1>
 
-      <.my_form :if={!@params["live-component"]} params={@params} />
-      <.live_component
-        :if={@params["live-component"]}
-        id="form-component"
-        module={__MODULE__.FormComponent}
-        params={@params}
-      />
+      <%= if @params["portal"] do %>
+        <.portal id="form-portal" target="body">
+          <.my_form :if={!@params["live-component"]} params={@params} />
+          <.live_component
+            :if={@params["live-component"]}
+            id="form-component"
+            module={__MODULE__.FormComponent}
+            params={@params}
+          />
+        </.portal>
+      <% else %>
+        <.my_form :if={!@params["live-component"]} params={@params} />
+        <.live_component
+          :if={@params["live-component"]}
+          id="form-component"
+          module={__MODULE__.FormComponent}
+          params={@params}
+        />
+      <% end %>
 
       <p :if={@submitted}>Form was submitted!</p>
-      """
-    end
-
-    def my_form(%{params: %{"portal" => _}} = assigns) do
-      ~H"""
-      <.portal id="form-portal" target="body">
-        <.my_form params={Map.delete(@params, "portal")} phx-target={assigns[:"phx-target"]} />
-      </.portal>
       """
     end
 
