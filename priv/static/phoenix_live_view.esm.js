@@ -4450,7 +4450,9 @@ var View = class _View {
     const template = document.createElement("template");
     template.innerHTML = html;
     dom_default.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
-      template.content.appendChild(portalTemplate.content);
+      template.content.firstElementChild.appendChild(
+        portalTemplate.content.firstElementChild
+      );
     });
     const rootEl = template.content.firstElementChild;
     rootEl.id = this.id;
