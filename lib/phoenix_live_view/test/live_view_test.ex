@@ -179,9 +179,6 @@ defmodule Phoenix.LiveViewTest do
 
   @flash_cookie "__phoenix_flash__"
 
-  require Phoenix.ConnTest
-  require Phoenix.ChannelTest
-
   alias Phoenix.LiveView.{Diff, Socket}
   alias Phoenix.LiveViewTest.{ClientProxy, DOM, TreeDOM, Element, View, Upload, UploadClient}
 
