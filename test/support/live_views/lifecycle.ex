@@ -239,14 +239,27 @@ defmodule Phoenix.LiveViewTest.Support.HooksEventComponent do
   alias Phoenix.LiveView
 
   def mount(socket) do
-    socket = assign(socket, :counter, 0)
-    {:ok, LiveView.attach_hook(socket, :live_component_hook, :handle_event, &__MODULE__.hook/3)}
+    {:ok, assign(socket, :counter, 0)}
+  end
+
+  def update(assigns, socket) do
+    socket = assign(socket, assigns)
+    hook = if assigns.reply?, do: &__MODULE__.hook_reply/3, else: &__MODULE__.hook/3
+    {:ok, LiveView.attach_hook(socket, :live_component_hook, :handle_event, hook)}
   end
 
   def hook("detach", _, socket),
     do: {:halt, LiveView.detach_hook(socket, :live_component_hook, :handle_event)}
 
   def hook(_, _, socket), do: {:halt, assign(socket, :counter, socket.assigns.counter + 1)}
+
+  def hook_reply("detach", _, socket),
+    do: {:halt, LiveView.detach_hook(socket, :live_component_hook, :handle_event)}
+
+  def hook_reply(_, _, socket) do
+    counter = socket.assigns.counter + 1
+    {:halt, %{counter: counter}, assign(socket, :counter, counter)}
+  end
 
   def render(assigns) do
     ~H"""
@@ -265,11 +278,13 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive.WithComponent do
 
   def mount(params, _session, socket) do
     type = String.to_existing_atom(params["type"])
+    reply? = Map.get(params, "reply", "false") |> String.to_existing_atom()
 
     {:ok,
      socket
      |> assign(:component, nil)
      |> assign(:type, type)
+     |> assign(:reply?, reply?)
      |> attach_hook(:live_view_hook, :handle_event, fn _, _, socket ->
        {:cont, socket}
      end)}
@@ -291,7 +306,7 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive.WithComponent do
     <button id="attach" phx-click="load" phx-value-val="attach">Load/Attach</button>
     <button id="detach" phx-click="load" phx-value-val="detach">Load/Detach</button>
     <%= if @component do %>
-      <.live_component module={@component} id={:hook} type={@type} />
+      <.live_component module={@component} id={:hook} type={@type} reply?={@reply?} />
     <% end %>
     """
   end
