@@ -148,7 +148,7 @@ for type <- [FormLive, FormLiveNested] do
     def my_form(%{params: %{"portal" => _}} = assigns) do
       ~H"""
       <.portal id="form-portal" target="body">
-        <.my_form params={Map.delete(@params, "portal")} />
+        <.my_form params={Map.delete(@params, "portal")} phx-target={assigns[:"phx-target"]} />
       </.portal>
       """
     end
