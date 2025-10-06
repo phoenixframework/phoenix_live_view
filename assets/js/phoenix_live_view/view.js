@@ -730,7 +730,9 @@ export default class View {
     // we special case <.portal> here and teleport it into our temporary DOM for recovery
     // as we'd otherwise not find teleported forms
     DOM.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
-      template.content.appendChild(portalTemplate.content);
+      template.content.firstElementChild.appendChild(
+        portalTemplate.content.firstElementChild,
+      );
     });
 
     // because we work with a template element, we must manually copy the attributes
