@@ -400,7 +400,7 @@ export default class View {
     this.log(type, () => ["", clone(rawDiff)]);
     const { diff, reply, events, title } = Rendered.extract(rawDiff);
     callback({ diff, reply, events });
-    if (typeof title === "string" || type == "mount") {
+    if (typeof title === "string" || (type == "mount" && this.isMain())) {
       window.requestAnimationFrame(() => DOM.putTitle(title));
     }
   }

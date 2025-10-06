@@ -91,6 +91,37 @@ describe("View + DOM", function () {
     expect(document.title).toBe("DEFAULT");
   });
 
+  test("applyDiff with empty title does not use default for non-main views", async () => {
+    appendTitle({}, "Foo");
+
+    const titleEl = document.querySelector("title");
+    liveSocket = new LiveSocket("/live", Socket);
+    const el = liveViewDOM();
+    const updateDiff = {
+      s: ["<h2>", "</h2>"],
+      fingerprint: 123,
+      t: "",
+    };
+
+    const view = simulateJoinedView(el, liveSocket);
+    view.el.removeAttribute("data-phx-main");
+    view.applyDiff("mount", updateDiff, ({ diff, events }) =>
+      view.update(diff, events),
+    );
+
+    expect(view.el.firstChild.tagName).toBe("H2");
+    expect(view.rendered.get()).toEqual(updateDiff);
+
+    await new Promise(requestAnimationFrame);
+    expect(document.title).toBe("Foo");
+    titleEl.setAttribute("data-default", "DEFAULT");
+    view.applyDiff("mount", updateDiff, ({ diff, events }) =>
+      view.update(diff, events),
+    );
+    await new Promise(requestAnimationFrame);
+    expect(document.title).toBe("Foo");
+  });
+
   test("pushWithReply", function () {
     expect.assertions(1);
 
