@@ -267,6 +267,19 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.14 (2025-10-07)
+
+### Bug fixes
+
+* Fix form recovery not working when form is teleported ([#4009](https://github.com/phoenixframework/phoenix_live_view/pull/4009))
+* Fix `handle_event` hook not being able to return `{:halt, reply, socket}` in LiveComponents ([#4006](https://github.com/phoenixframework/phoenix_live_view/pull/4006))
+* Only set title to default when it is set to empty by the main view, not by nested or sticky views ([#4003](https://github.com/phoenixframework/phoenix_live_view/issues/4003))
+
+### Enhancements
+
+* Automatically update esbuild version when using Igniter upgrader from 1.0 to 1.1 ([#4011](https://github.com/phoenixframework/phoenix_live_view/pull/4011))
+* Fix unused require warnings on Elixir 1.19
+
 ## v1.1.13 (2025-09-18)
 
 ### Bug fixes
