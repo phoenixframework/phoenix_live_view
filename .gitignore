@@ -28,3 +28,4 @@ node_modules
 /playwright-report/
 /coverage/
 /assets/js/types/
+priv/static/
