@@ -1350,7 +1350,8 @@ export default class View {
       const disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
-          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent); 
+          // Replaced innerText with textContent to prevent changing HTML element
         }
         if (disableText !== "") {
           el.textContent = disableText;
