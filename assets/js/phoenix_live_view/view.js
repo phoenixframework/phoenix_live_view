@@ -1350,10 +1350,10 @@ export default class View {
       const disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
-          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText);
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
         }
         if (disableText !== "") {
-          el.innerText = disableText;
+          el.textContent = disableText;
         }
         // PHX_DISABLED could have already been set in disableForm
         el.setAttribute(
