@@ -5071,10 +5071,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         const disableText = el.getAttribute(disableWith);
         if (disableText !== null) {
           if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
-            el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText);
+            el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
           }
           if (disableText !== "") {
-            el.innerText = disableText;
+            el.textContent = disableText;
           }
           el.setAttribute(
             PHX_DISABLED,
