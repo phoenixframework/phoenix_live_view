@@ -4478,9 +4478,7 @@ var View = class _View {
     const template = document.createElement("template");
     template.innerHTML = html;
     dom_default.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
-      template.content.firstElementChild.appendChild(
-        portalTemplate.content.firstElementChild
-      );
+      template.content.appendChild(portalTemplate.content);
     });
     const rootEl = template.content.firstElementChild;
     rootEl.id = this.id;
@@ -5052,10 +5050,10 @@ var View = class _View {
       const disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
-          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText);
         }
         if (disableText !== "") {
-          el.textContent = disableText;
+          el.innerText = disableText;
         }
         el.setAttribute(
           PHX_DISABLED,
