@@ -1350,6 +1350,7 @@ export default class View {
       const disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
+          // we use textContent to preserve the original text casing
           el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
         }
         if (disableText !== "") {
