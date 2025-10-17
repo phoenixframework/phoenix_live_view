@@ -50,7 +50,7 @@ to render a file input for the upload:
 ```heex
 <%!-- lib/my_app_web/live/upload_live.html.heex --%>
 
-<form id="upload-form" phx-submit="save" phx-change="validate">
+<form id="upload-form" phx-change="validate" phx-submit="save">
   <.live_file_input upload={@uploads.avatar} />
   <button type="submit">Upload</button>
 </form>

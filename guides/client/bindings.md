@@ -192,7 +192,7 @@ For example, to avoid validating an email until the field is blurred, while vali
 the username at most every 2 seconds after a user changes the field:
 
 ```heex
-<form phx-change="validate" phx-submit="save">
+<form id="my-form" phx-change="validate" phx-submit="save">
   <input type="text" name="user[email]" phx-debounce="blur"/>
   <input type="text" name="user[username]" phx-debounce="2000"/>
 </form>

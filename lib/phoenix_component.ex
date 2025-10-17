@@ -772,7 +772,7 @@ defmodule Phoenix.Component do
   caller. For an example, see how `form/1` works:
 
   ```heex
-  <.form :let={f} for={@form} phx-change="validate" phx-submit="save">
+  <.form :let={f} for={@form} id="my-form" phx-change="validate" phx-submit="save">
     <.input field={f[:username]} type="text" />
     ...
   </.form>
@@ -2285,6 +2285,7 @@ defmodule Phoenix.Component do
   ```heex
   <.form
     for={@form}
+    id="my-form"
     phx-change="change_name"
   >
     <.input field={@form[:email]} />
@@ -2308,9 +2309,10 @@ defmodule Phoenix.Component do
   ```heex
   <.form
     for={@form}
-    multipart
+    id="my-form"
     phx-change="change_user"
     phx-submit="save_user"
+    multipart
   >
     ...
     <input type="submit" value="Save" />
@@ -2333,6 +2335,7 @@ defmodule Phoenix.Component do
   <.form
     :let={form}
     for={@changeset}
+    id="my-form"
     phx-change="change_user"
   >
   ```
@@ -2557,6 +2560,7 @@ defmodule Phoenix.Component do
   ```heex
   <.form
     for={@form}
+    id="my-form"
     phx-change="change_name"
   >
     <.inputs_for :let={f_nested} field={@form[:nested]}>
