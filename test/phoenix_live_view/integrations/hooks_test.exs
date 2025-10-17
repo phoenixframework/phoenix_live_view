@@ -359,6 +359,21 @@ defmodule Phoenix.LiveView.HooksTest do
            end) =~ "lifecycle hooks are not supported on stateful components."
   end
 
+  test "attach/detach_hook with a handle_async live component socket", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/components/handle_async")
+    lv |> element("#attach") |> render_click()
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task: o"
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task: oo"
+
+    lv |> element("#detach-component-hook") |> render_click()
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task: oo."
+  end
+
   test "stage_info", %{conn: conn} do
     alias Phoenix.LiveView.Lifecycle
     {:ok, lv, _html} = live(conn, "/lifecycle")
