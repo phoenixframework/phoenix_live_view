@@ -448,7 +448,7 @@ Hooks.CustomFormSubmission = {
 This hook can be set on your form as such:
 
 ```heex
-<form phx-hook="CustomFormSubmission">
+<form id="my-form" phx-hook="CustomFormSubmission">
   <input type="text" name="text" value={@text}>
 </form>
 ```
