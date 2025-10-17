@@ -271,10 +271,55 @@ defmodule Phoenix.LiveViewTest.Support.HooksEventComponent do
   end
 end
 
+defmodule Phoenix.LiveViewTest.Support.HooksAsyncComponent do
+  use Phoenix.LiveComponent
+  alias Phoenix.LiveView
+
+  def mount(socket) do
+    {:ok, assign(socket, :task, "")}
+  end
+
+  def update(assigns, socket) do
+    socket = assign(socket, assigns)
+    hook = &__MODULE__.hook/3
+    {:ok, LiveView.attach_hook(socket, :live_component_hook, :handle_async, hook)}
+  end
+
+  def handle_event("detach", _, socket) do
+    {:noreply, LiveView.detach_hook(socket, :live_component_hook, :handle_async)}
+  end
+
+  def handle_event("async", _, socket) do
+    {:noreply, start_async(socket, :task, fn -> true end)}
+  end
+
+  def handle_async(:task, {:ok, true}, socket) do
+    {:noreply, assign(socket, :task, socket.assigns.task <> ".")}
+  end
+
+  def hook("detach", _, socket) do
+    {:halt, LiveView.detach_hook(socket, :live_component_hook, :handle_async)}
+  end
+
+  def hook(_, _, socket) do
+    {:halt, assign(socket, :task, socket.assigns.task <> "o")}
+  end
+
+  def render(assigns) do
+    ~H"""
+    <div>
+      <div id="detach-component-hook" phx-click="detach" phx-target={@myself}>Detach</div>
+      <div id="async" phx-click="async" phx-target={@myself}>task: {@task}</div>
+    </div>
+    """
+  end
+end
+
 defmodule Phoenix.LiveViewTest.Support.HooksLive.WithComponent do
   use Phoenix.LiveView, namespace: Phoenix.LiveViewTest
   alias Phoenix.LiveViewTest.Support.{HooksAttachInfoComponent, HooksDetachInfoComponent}
   alias Phoenix.LiveViewTest.Support.HooksEventComponent
+  alias Phoenix.LiveViewTest.Support.HooksAsyncComponent
 
   def mount(params, _session, socket) do
     type = String.to_existing_atom(params["type"])
@@ -296,6 +341,7 @@ defmodule Phoenix.LiveViewTest.Support.HooksLive.WithComponent do
         {"attach", :handle_info} -> HooksAttachInfoComponent
         {"detach", :handle_info} -> HooksDetachInfoComponent
         {"attach", :handle_event} -> HooksEventComponent
+        {"attach", :handle_async} -> HooksAsyncComponent
       end
 
     {:noreply, assign(socket, :component, component)}
