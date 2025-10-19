@@ -264,8 +264,8 @@ a comprehension are only sent once, regardless of the number of items.
 Furthermore, LiveView tracks changes within the collection given to the
 comprehension. In the ideal case, if only a single entry in `@posts`
 changes, only this entry is sent again. By default, the index is used
-to track changes. This means that if an entry is appended, most items
-will be considered changed and sent again. To optimize this, you can
+to track changes. This means that if an entry is inserted, any entries after
+that index will be considered changed and sent again. To optimize this, you can
 also pass a `:key` on tags in HEEx:
 
 ```heex
