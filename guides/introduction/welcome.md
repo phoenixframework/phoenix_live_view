@@ -130,7 +130,7 @@ let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToke
 liveSocket.connect()
 ```
 
-With this code, the JavaScript client will connect over WebSockets and `mount/3`
+Because of this, the JavaScript client will connect over WebSockets and `mount/3`
 will be invoked inside a spawned LiveView process.
 
 ## Parameters and session
