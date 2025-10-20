@@ -28,6 +28,7 @@ import {
   PHX_REF_SRC,
   PHX_RELOAD_STATUS,
   PHX_RUNTIME_HOOK,
+  PHX_DROPZONE_CLASS,
 } from "./constants";
 
 import {
@@ -678,7 +679,7 @@ export default class LiveSocket {
       }
 
       if (eventContainsFiles(e)) {
-        dropzone.classList.add("phx-files-dropzone");
+        dropzone.classList.add(PHX_DROPZONE_CLASS);
       }
     });
     this.on("dragleave", (e) => {
@@ -700,7 +701,7 @@ export default class LiveSocket {
         e.clientY <= rect.top ||
         e.clientY >= rect.bottom
       ) {
-        dropzone.classList.remove("phx-files-dropzone");
+        dropzone.classList.remove(PHX_DROPZONE_CLASS);
       }
     });
     this.on("drop", (e) => {
@@ -713,7 +714,7 @@ export default class LiveSocket {
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
       }
-      dropzone.classList.remove("phx-files-dropzone");
+      dropzone.classList.remove(PHX_DROPZONE_CLASS);
 
       const dropTargetId = dropzone.getAttribute(this.binding(PHX_DROP_TARGET));
       const dropTarget = dropTargetId && document.getElementById(dropTargetId);
