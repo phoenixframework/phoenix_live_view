@@ -77,7 +77,7 @@ Attribute values can be:
 #### lib/hello_web/live/hello_live.html.heex
 
 ```heex
-<form phx-change="validate" phx-submit="save">
+<form id="my-form" phx-change="validate" phx-submit="save">
   <input type="text" name="name" phx-debounce="500" phx-throttle="500" />
   <button type="submit" phx-disable-with="Saving...">Save</button>
 </form>
