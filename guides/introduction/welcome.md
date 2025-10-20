@@ -118,7 +118,7 @@ end
 ```
 
 Once the LiveView is rendered, a regular HTML response is sent. When you
-generated your LiveView app with `mix`, it created `./assets/js/app.js` with the
+generate your Phoenix app with `mix phx.new`, the installer also creates an `./assets/js/app.js` file with the
 following code:
 
 ```javascript
