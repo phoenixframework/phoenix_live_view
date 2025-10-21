@@ -5669,19 +5669,24 @@ var View = class _View {
       morphdom_esm_default(clonedForm, form, {
         onBeforeElUpdated: (fromEl, toEl) => {
           dom_default.copyPrivates(fromEl, toEl);
+          if (fromEl.getAttribute("form") === form.id) {
+            fromEl.parentNode.removeChild(fromEl);
+            return false;
+          }
           return true;
         }
       });
       const externalElements = document.querySelectorAll(
-        `[form="${form.id}"]`
+        `[form="${CSS.escape(form.id)}"]`
       );
       Array.from(externalElements).forEach((el) => {
-        if (form.contains(el)) {
-          return;
-        }
-        const clonedEl = el.cloneNode(true);
+        const clonedEl = (
+          /** @type {HTMLElement} */
+          el.cloneNode(true)
+        );
         morphdom_esm_default(clonedEl, el);
         dom_default.copyPrivates(clonedEl, el);
+        clonedEl.removeAttribute("form");
         clonedForm.appendChild(clonedEl);
       });
       return clonedForm;
