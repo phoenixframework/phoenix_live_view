@@ -2157,10 +2157,12 @@ export default class View {
               return false;
             }
             return true;
-          }
+          },
         });
         // next up, we also need to clone any elements with form="id" parameter
-        const externalElements = document.querySelectorAll(`[form="${CSS.escape(form.id)}"]`);
+        const externalElements = document.querySelectorAll(
+          `[form="${CSS.escape(form.id)}"]`,
+        );
         Array.from(externalElements).forEach((el) => {
           const clonedEl = /** @type {HTMLElement} */ (el.cloneNode(true));
           morphdom(clonedEl, el);

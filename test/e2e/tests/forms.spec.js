@@ -171,7 +171,7 @@ for (const path of ["/form/nested", "/form"]) {
             c: "hello world",
             d: "bar",
             e: "inside",
-            f: "outside"
+            f: "outside",
           });
         });
 
@@ -346,7 +346,7 @@ for (const path of ["/form/nested", "/form"]) {
             _unused_e: "",
             e: "",
             _unused_f: "",
-            f: ""
+            f: "",
           });
         });
 
@@ -887,7 +887,9 @@ test("phx-no-usage-tracking on an input is applied correctly and no unused field
 });
 
 function formPayload(events) {
-  const event = events.find((e) => e.type === "sent" && e.payload.includes('"event":"validate"'));
+  const event = events.find(
+    (e) => e.type === "sent" && e.payload.includes('"event":"validate"'),
+  );
   const parsed = JSON.parse(event.payload);
   return querystring.parse(parsed[4].value);
 }

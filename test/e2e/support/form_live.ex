@@ -181,7 +181,7 @@ for type <- [FormLive, FormLiveNested] do
         <select name="d">
           {Phoenix.HTML.Form.options_for_select(["foo", "bar", "baz"], @params["d"])}
         </select>
-        <input :if={@params["id"]} type="text" name="e" form={@params["id"]} value={@params["e"] } />
+        <input :if={@params["id"]} type="text" name="e" form={@params["id"]} value={@params["e"]} />
         <button type="submit" phx-disable-with="Submitting" phx-click={JS.dispatch("test")}>
           Submit with JS
         </button>
@@ -191,7 +191,7 @@ for type <- [FormLive, FormLiveNested] do
         </button>
       </form>
 
-      <input :if={@params["id"]} type="text" name="f" form={@params["id"]} value={@params["f"] } />
+      <input :if={@params["id"]} type="text" name="f" form={@params["id"]} value={@params["f"]} />
       """
     end
   end
