@@ -804,3 +804,11 @@ test("phx-no-feedback is applied correctly for backwards-compatible-shims", asyn
   await syncLV(page);
   await expect(page.locator("[data-feedback-container]")).toBeHidden();
 });
+
+function formPayload(events) {
+  const event = events.find(
+    (e) => e.type === "sent" && e.payload.includes('"event":"validate"'),
+  );
+  const parsed = JSON.parse(event.payload);
+  return querystring.parse(parsed[4].value);
+}
