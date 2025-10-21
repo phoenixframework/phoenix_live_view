@@ -1,5 +1,6 @@
 import { test, expect } from "../test-fixtures";
 import { syncLV, evalLV, evalPlug, attributeMutations } from "../utils";
+import querystring from "node:querystring";
 
 for (const path of ["/form/nested", "/form"]) {
   // see also https://github.com/phoenixframework/phoenix_live_view/issues/1759
@@ -112,6 +113,8 @@ for (const path of ["/form/nested", "/form"]) {
           await syncLV(page);
 
           await page.locator("input[name=b]").fill("test");
+          await page.locator("input[name=e]").fill("inside");
+          await page.locator("input[name=f]").fill("outside");
           await page.locator("input[name=c]").fill("hello world");
           await page.locator("select[name=d]").selectOption("bar");
           await expect(page.locator("input[name=c]")).toBeFocused();
@@ -156,12 +159,20 @@ for (const path of ["/form/nested", "/form"]) {
               },
               {
                 type: "sent",
-                payload: expect.stringMatching(
-                  /event.*_unused_a=&a=foo&b=test/,
-                ),
+                payload: expect.stringContaining("validate"),
               },
             ]),
           );
+
+          expect(formPayload(webSocketEvents)).toEqual({
+            _unused_a: "",
+            a: "foo",
+            b: "test",
+            c: "hello world",
+            d: "bar",
+            e: "inside",
+            f: "outside",
+          });
         });
 
         test("JS command in phx-change works during recovery", async ({
@@ -316,6 +327,8 @@ for (const path of ["/form/nested", "/form"]) {
           await expect(page.locator("input[name=c]")).toBeFocused();
           await syncLV(page);
 
+          await page.pause();
+
           await page.evaluate(
             () =>
               new Promise((resolve) => window.liveSocket.disconnect(resolve)),
@@ -327,19 +340,14 @@ for (const path of ["/form/nested", "/form"]) {
           await syncLV(page);
           await expect(page.locator(".phx-loading")).toHaveCount(0);
 
-          expect(webSocketEvents).toEqual(
-            expect.arrayContaining([
-              { type: "sent", payload: expect.stringContaining("phx_join") },
-              {
-                type: "received",
-                payload: expect.stringContaining("phx_reply"),
-              },
-              {
-                type: "sent",
-                payload: expect.stringMatching(/event.*"c=hello\+world&d=bar"/),
-              },
-            ]),
-          );
+          expect(formPayload(webSocketEvents)).toEqual({
+            c: "hello world",
+            d: "bar",
+            _unused_e: "",
+            e: "",
+            _unused_f: "",
+            f: "",
+          });
         });
 
         // nested LiveViews don't support handle_params
@@ -877,3 +885,11 @@ test("phx-no-usage-tracking on an input is applied correctly and no unused field
   expect(formDataEvent.payload).not.toMatch(/_unused_b=/);
   expect(formDataEvent.payload).not.toMatch(/_unused_c=/);
 });
+
+function formPayload(events) {
+  const event = events.find(
+    (e) => e.type === "sent" && e.payload.includes('"event":"validate"'),
+  );
+  const parsed = JSON.parse(event.payload);
+  return querystring.parse(parsed[4].value);
+}
