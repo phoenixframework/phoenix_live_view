@@ -267,6 +267,18 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.15 (2025-10-21)
+
+### Bug fixes
+
+* Fix form recovery not sending elements with `form="..."` attribute when using Firefox ([#4021](https://github.com/phoenixframework/phoenix_live_view/issues/4021))
+* Fix keyed comprehension merging in LiveComponents ([#4027](https://github.com/phoenixframework/phoenix_live_view/issues/4027))
+* Use `textContent` instead of `innerText` when restoring `phx-disable-with` text to avoid issues with CSS transforms ([#4015](https://github.com/phoenixframework/phoenix_live_view/issues/4015))
+
+### Enhancements
+
+* Allow attaching `handle_async` hooks on LiveComponents ([#4018](https://github.com/phoenixframework/phoenix_live_view/pull/4018))
+
 ## v1.1.14 (2025-10-07)
 
 ### Bug fixes

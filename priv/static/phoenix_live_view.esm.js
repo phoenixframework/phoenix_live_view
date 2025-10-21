@@ -5786,7 +5786,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.1.14";
+    return "1.1.15";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
