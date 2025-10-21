@@ -37,7 +37,7 @@
     "@babel/preset-env": "7.27.2",
     "@babel/preset-typescript": "^7.27.1",
     "@eslint/js": "^9.29.0",
-    "@playwright/test": "^1.53.0",
+    "@playwright/test": "^1.56.1",
     "@types/jest": "^30.0.0",
     "@types/phoenix": "^1.6.6",
     "css.escape": "^1.5.1",
