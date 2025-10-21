@@ -3035,14 +3035,20 @@ var Rendered = class {
   // (effectively forcing the new version to be rendered instead of skipped)
   //
   cloneMerge(target, source, pruneMagicId) {
-    const merged = { ...target, ...source };
-    for (const key in merged) {
-      const val = source[key];
-      const targetVal = target[key];
-      if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
-        merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
-      } else if (val === void 0 && isObject(targetVal)) {
-        merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId);
+    let merged;
+    if (source[KEYED]) {
+      merged = this.clone(target);
+      this.mergeKeyed(merged, source);
+    } else {
+      merged = { ...target, ...source };
+      for (const key in merged) {
+        const val = source[key];
+        const targetVal = target[key];
+        if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
+          merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
+        } else if (val === void 0 && isObject(targetVal)) {
+          merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId);
+        }
       }
     }
     if (pruneMagicId) {
@@ -5113,10 +5119,10 @@ var View = class _View {
       const disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
-          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText);
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
         }
         if (disableText !== "") {
-          el.innerText = disableText;
+          el.textContent = disableText;
         }
         el.setAttribute(
           PHX_DISABLED,
@@ -5653,19 +5659,24 @@ var View = class _View {
       morphdom_esm_default(clonedForm, form, {
         onBeforeElUpdated: (fromEl, toEl) => {
           dom_default.copyPrivates(fromEl, toEl);
+          if (fromEl.getAttribute("form") === form.id) {
+            fromEl.parentNode.removeChild(fromEl);
+            return false;
+          }
           return true;
         }
       });
       const externalElements = document.querySelectorAll(
-        `[form="${form.id}"]`
+        `[form="${CSS.escape(form.id)}"]`
       );
       Array.from(externalElements).forEach((el) => {
-        if (form.contains(el)) {
-          return;
-        }
-        const clonedEl = el.cloneNode(true);
+        const clonedEl = (
+          /** @type {HTMLElement} */
+          el.cloneNode(true)
+        );
         morphdom_esm_default(clonedEl, el);
         dom_default.copyPrivates(clonedEl, el);
+        clonedEl.removeAttribute("form");
         clonedForm.appendChild(clonedEl);
       });
       return clonedForm;
