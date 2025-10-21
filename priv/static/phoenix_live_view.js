@@ -3055,14 +3055,20 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     // (effectively forcing the new version to be rendered instead of skipped)
     //
     cloneMerge(target, source, pruneMagicId) {
-      const merged = __spreadValues(__spreadValues({}, target), source);
-      for (const key in merged) {
-        const val = source[key];
-        const targetVal = target[key];
-        if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
-          merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
-        } else if (val === void 0 && isObject(targetVal)) {
-          merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId);
+      let merged;
+      if (source[KEYED]) {
+        merged = this.clone(target);
+        this.mergeKeyed(merged, source);
+      } else {
+        merged = __spreadValues(__spreadValues({}, target), source);
+        for (const key in merged) {
+          const val = source[key];
+          const targetVal = target[key];
+          if (isObject(val) && val[STATIC] === void 0 && isObject(targetVal)) {
+            merged[key] = this.cloneMerge(targetVal, val, pruneMagicId);
+          } else if (val === void 0 && isObject(targetVal)) {
+            merged[key] = this.cloneMerge(targetVal, {}, pruneMagicId);
+          }
         }
       }
       if (pruneMagicId) {
