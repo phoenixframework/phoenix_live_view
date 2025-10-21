@@ -340,8 +340,8 @@ export default class Rendered {
   cloneMerge(target, source, pruneMagicId) {
     let merged;
     if (source[KEYED]) {
-      this.mergeKeyed(target, source);
-      merged = target;
+      merged = this.clone(target);
+      this.mergeKeyed(merged, source);
     } else {
       merged = { ...target, ...source };
       for (const key in merged) {
