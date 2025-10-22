@@ -1548,7 +1548,7 @@ var ElementRef = class {
       }
       const disableRestore = this.el.getAttribute(PHX_DISABLE_WITH_RESTORE);
       if (disableRestore !== null) {
-        this.el.innerText = disableRestore;
+        this.el.textContent = disableRestore;
         this.el.removeAttribute(PHX_DISABLE_WITH_RESTORE);
       }
       const opts = {
