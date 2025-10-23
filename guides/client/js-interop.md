@@ -246,6 +246,28 @@ let liveSocket = new LiveSocket("/live", Socket, {
 
 In the example above, all attributes starting with `data-js-` won't be replaced when the DOM is patched by LiveView.
 
+While above option is useful for application-wide handling, the same behavior can be implemented at the hook level when you only need the logic to apply to a specific hook. To do this, add a `beforeUpdate(from, to)` callback to your hook object or class. This callback receives the `from` and `to` same as `onBeforeElUpdated` on the `dom` option.
+
+For example, the hook below performs the same attribute-preservation logic as the example above, but scoped to the individual hook.
+
+```javascript
+class MyHook {
+  mounted() {
+    // ...
+  },
+
+  beforeUpdate(from, to) {
+    for (const attr of from.attributes) {
+      if (attr.name.startsWith("data-js-")) {
+        to.setAttribute(attr.name, attr.value);
+      }
+    }
+  },
+}
+```
+
+Using `beforeUpdate` on the hook level is often preferable when you want to scope DOM update handling to a specific component or hook, avoiding the need to add a global `dom.onBeforeElUpdated` handler that runs for every DOM patch.
+
 A hook can also be defined as a subclass of `ViewHook`:
 
 ```javascript
