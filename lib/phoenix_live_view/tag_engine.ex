@@ -1549,10 +1549,21 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp validate_phx_attrs!([], meta, state, attr, false)
-       when attr in ["phx-update", "phx-hook"] do
+       when attr == "phx-update" do
     message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
 
     raise_syntax_error!(message, meta, state)
+  end
+
+  defp validate_phx_attrs!([], meta, state, attr, false)
+       when attr == "phx-hook" do
+    message = "attribute \"#{attr}\" requires the \"id\" attribute to be set"
+    line = meta[:line] || state.caller.line
+
+    IO.warn(
+      message,
+      Macro.Env.stacktrace(%{state.caller | line: line})
+    )
   end
 
   defp validate_phx_attrs!([], _meta, _state, _attr, _id?), do: :ok
