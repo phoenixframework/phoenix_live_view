@@ -231,6 +231,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
     live "/form/feedback", FormFeedbackLive
     live "/errors", ErrorLive
     live "/colocated", ColocatedLive
+    live "/beforeupdate", HookBeforeupdateLive
 
     scope "/issues" do
       live "/2965", Issue2965Live
