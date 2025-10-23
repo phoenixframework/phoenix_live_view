@@ -339,7 +339,7 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
 
   // Default lifecycle methods
   mounted(): void {}
-  beforeUpdate(fromEl: E, toEl: E): void {}
+  beforeUpdate(_from: E, _to: E): void {}
   updated(): void {}
   destroyed(): void {}
   disconnected(): void {}
