@@ -29,6 +29,7 @@
   ],
   "types": "./assets/js/types/index.d.ts",
   "dependencies": {
+    "esbuild": "^0.10.2",
     "morphdom": "2.7.7"
   },
   "devDependencies": {

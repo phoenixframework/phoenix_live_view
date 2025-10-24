@@ -153,12 +153,28 @@ const isWithinViewport = (el, scrollContainer) => {
 };
 
 Hooks.InfiniteScroll = {
+  scrollToTop() {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    if (this.scrollContainer) {
+      this.scrollContainer.scrollTop = 0;
+    }
+  },
+
   mounted() {
     this.scrollContainer = findScrollContainer(this.el);
     let scrollBefore = scrollTop(this.scrollContainer);
     let topOverran = false;
     const throttleInterval = 500;
     let pendingOp = null;
+
+    // Only scroll to top once on initial page load
+    window.requestAnimationFrame(() => {
+      if (document.readyState === "complete") {
+        this.scrollToTop();
+      }
+    });
 
     const onTopOverrun = this.throttle(
       throttleInterval,
