@@ -66,7 +66,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   reconnected?: () => void;
 
   /**
-   * Returns an object with methods to manipluate the DOM and execute JavaScript.
+   * Returns an object with methods to manipulate the DOM and execute JavaScript.
    * The applied changes integrate with server DOM patching.
    */
   js(): HookJSCommands;
