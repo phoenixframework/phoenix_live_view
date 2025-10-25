@@ -5920,7 +5920,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.owner(el, (view) => js_default.exec(e, eventType, encodedJS, view, el));
     }
     /**
-     * Returns an object with methods to manipluate the DOM and execute JavaScript.
+     * Returns an object with methods to manipulate the DOM and execute JavaScript.
      * The applied changes integrate with server DOM patching.
      *
      * @returns {import("./js_commands").LiveSocketJSCommands}
