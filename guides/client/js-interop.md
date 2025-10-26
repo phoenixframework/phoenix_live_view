@@ -35,7 +35,7 @@ The `liveSocket` instance exposes the following methods:
 - `enableLatencySim(milliseconds)` - turns on latency simulation, see [Simulating latency](#simulating-latency)
 - `disableLatencySim()` - turns off latency simulation
 - `execJS(el, encodedJS)` - executes encoded JavaScript in the context of the element
-- `js()` - returns an object with methods to manipluate the DOM and execute JavaScript. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
+- `js()` - returns an object with methods to manipulate the DOM and execute JavaScript. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
 
 ## Debugging client events
 
@@ -184,7 +184,7 @@ The above life-cycle callbacks have in-scope access to the following attributes:
     on the server-side. Dispatching new uploads triggers an input change event which will be sent to the
     LiveComponent or LiveView the `selectorOrTarget` is defined in, where its value can be either a query selector or an
     actual DOM element. If the query selector returns more than one live file input, an error will be logged.
-  * `js()` - returns an object with methods to manipluate the DOM and execute JavaScript. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
+  * `js()` - returns an object with methods to manipulate the DOM and execute JavaScript. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
 
 For example, the markup for a controlled input for phone-number formatting could be written
 like this:

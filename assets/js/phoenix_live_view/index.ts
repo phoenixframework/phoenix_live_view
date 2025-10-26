@@ -246,7 +246,7 @@ export interface LiveSocketInstanceInterface {
    */
   execJS(el: HTMLElement, encodedJS: string, eventType?: string | null): void;
   /**
-   * Returns an object with methods to manipluate the DOM and execute JavaScript.
+   * Returns an object with methods to manipulate the DOM and execute JavaScript.
    * The applied changes integrate with server DOM patching.
    *
    * See [JavaScript interoperability](https://hexdocs.pm/phoenix_live_view/js-interop.html) for more information.
