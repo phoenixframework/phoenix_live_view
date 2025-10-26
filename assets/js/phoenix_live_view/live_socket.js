@@ -28,6 +28,7 @@ import {
   PHX_REF_SRC,
   PHX_RELOAD_STATUS,
   PHX_RUNTIME_HOOK,
+  PHX_DROPZONE_CLASS,
 } from "./constants";
 
 import {
@@ -37,6 +38,7 @@ import {
   debug,
   maybe,
   logError,
+  eventContainsFiles,
 } from "./utils";
 
 import Browser from "./browser";
@@ -666,14 +668,55 @@ export default class LiveSocket {
       },
     );
     this.on("dragover", (e) => e.preventDefault());
+    this.on("dragenter", (e) => {
+      const dropzone = closestPhxBinding(
+        e.target,
+        this.binding(PHX_DROP_TARGET),
+      );
+
+      if (!dropzone || !(dropzone instanceof HTMLElement)) {
+        return;
+      }
+
+      if (eventContainsFiles(e)) {
+        dropzone.classList.add(PHX_DROPZONE_CLASS);
+      }
+    });
+    this.on("dragleave", (e) => {
+      const dropzone = closestPhxBinding(
+        e.target,
+        this.binding(PHX_DROP_TARGET),
+      );
+
+      if (!dropzone || !(dropzone instanceof HTMLElement)) {
+        return;
+      }
+
+      // Avoid add/remove jitter in the case that we drag into a new child and that child would
+      // resolve their closest drop target to the current dropzone element
+      const rect = dropzone.getBoundingClientRect();
+      if (
+        e.clientX <= rect.left ||
+        e.clientX >= rect.right ||
+        e.clientY <= rect.top ||
+        e.clientY >= rect.bottom
+      ) {
+        dropzone.classList.remove(PHX_DROPZONE_CLASS);
+      }
+    });
     this.on("drop", (e) => {
       e.preventDefault();
-      const dropTargetId = maybe(
-        closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)),
-        (trueTarget) => {
-          return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET));
-        },
+
+      const dropzone = closestPhxBinding(
+        e.target,
+        this.binding(PHX_DROP_TARGET),
       );
+      if (!dropzone || !(dropzone instanceof HTMLElement)) {
+        return;
+      }
+      dropzone.classList.remove(PHX_DROPZONE_CLASS);
+
+      const dropTargetId = dropzone.getAttribute(this.binding(PHX_DROP_TARGET));
       const dropTarget = dropTargetId && document.getElementById(dropTargetId);
       const files = Array.from(e.dataTransfer.files || []);
       if (
