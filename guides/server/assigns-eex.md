@@ -240,7 +240,7 @@ and instead let LiveView figure out the best way to track changes.
 
 ### Modifying the `assigns` variable
 
-Never modify the `assigns` variable in a function component through generic functions like `Map.put/3` or `Map.merge/2`. Instead use `Phoenix.Component.assign/2`, `Phoenix.Component.assign/3`, `Phoenix.Component.assign_new/3`, or `Phoenix.Component.update/3`. If you modify the `assigns` variable with e.g. `Map.put/3`, the assigns inside your `HEEx` template will not update after the initial render. Using `assign/2`, `assign/3`, `assign_new/3`, or `update/3` is required for change tracking to work. While direct map manipulation may have worked in the past, it is no longer supported.
+Never modify the `assigns` variable in a function component through generic functions like `Map.put/3` or `Map.merge/2`. Instead, use `Phoenix.Component.assign/2`, `Phoenix.Component.assign/3`, `Phoenix.Component.assign_new/3`, or `Phoenix.Component.update/3`. If you modify the `assigns` variable with e.g. `Map.put/3`, those assigns inside your `HEEx` template will not update after the initial render. Using the LiveView specific assign functions is required for change tracking to work.
 
 So, **never do this**:
 
