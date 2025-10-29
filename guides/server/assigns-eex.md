@@ -238,6 +238,36 @@ is passed to each child component, only re-rendering what is necessary.
 However, generally speaking, it is best to avoid passing `assigns` altogether
 and instead let LiveView figure out the best way to track changes.
 
+### Modifying the `assigns` variable
+
+Never modify the `assigns` variable in a function component through generic functions like `Map.put/3` or `Map.merge/2`. Instead use `Phoenix.Component.assign/2`, `Phoenix.Component.assign/3`, `Phoenix.Component.assign_new/3`, or `Phoenix.Component.update/3`. If you modify the `assigns` variable with e.g. `Map.put/3`, the assigns inside your `HEEx` template will not update after the initial render. Using `assign/2`, `assign/3`, `assign_new/3`, or `update/3` is required for change tracking to work. While direct map manipulation may have worked in the past, it is no longer supported.
+
+So, **never do this**:
+
+```elixir
+def card(assigns) do
+  assigns = Map.put(assigns, :sum, Enum.sum(assigns.values))
+
+  ~H"""
+  <p>{@sum}</p>
+  """
+end
+```
+
+But instead do this:
+
+```elixir
+def card(assigns) do
+  assigns = assign(assigns, :sum, Enum.sum(assigns.values))
+
+  ~H"""
+  <p>{@sum}</p>
+  """
+end
+```
+
+If you use `Map.put/3` instead of `assign/3` here, the `sum` assign will not update if you change the `values` after the initial render of the `HEEx` template.
+
 ### Comprehensions
 
 HEEx supports comprehensions in templates, which is a way to traverse lists
