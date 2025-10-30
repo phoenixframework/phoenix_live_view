@@ -318,3 +318,5 @@ To sum up:
   1. Avoid defining local variables inside HEEx templates, except within Elixir's constructs
 
   2. Avoid passing or accessing the `assigns` variable inside HEEx templates
+
+  3. Only use LiveView specific assign functions to modify the `assigns` variable
