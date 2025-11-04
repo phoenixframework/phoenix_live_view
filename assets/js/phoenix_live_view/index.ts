@@ -147,6 +147,25 @@ export interface LiveSocketOptions {
       defaultQuery: () => Element[],
     ) => Element[];
     /**
+     * When defined, called with a start callback that needs to be called
+     * to perform the actual patch. Failing to call the start callback causes
+     * the page to become stuck.
+     *
+     * This can be used to delay patches in order to perform view transitions,
+     * for example:
+     *
+     * ```javascript
+     * let liveSocket = new LiveSocket("/live", Socket, {
+     *   dom: {
+     *     beforePatch(start) {
+     *       document.startViewTransition(start);
+     *     }
+     *   }
+     * })
+     * ```
+     */
+    beforePatch?: (start: () => void) => void;
+    /**
      * Called immediately before a DOM patch is applied.
      */
     onPatchStart?: (container: HTMLElement) => void;
