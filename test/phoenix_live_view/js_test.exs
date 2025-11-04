@@ -66,7 +66,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.push("inc", value: %{one: 1, two: 2})) ==
-               "[[&quot;push&quot;,{&quot;event&quot;:&quot;inc&quot;,&quot;value&quot;:{&quot;one&quot;:1,&quot;two&quot;:2}}]]"
+               ~S<[["push",{"event":"inc","value":{"one":1,"two":2}}]]>
     end
   end
 
@@ -183,7 +183,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.add_class("show")) ==
-               "[[&quot;add_class&quot;,{&quot;names&quot;:[&quot;show&quot;]}]]"
+               ~S<[["add_class",{"names":["show"]}]]>
     end
   end
 
@@ -302,7 +302,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.remove_class("show")) ==
-               "[[&quot;remove_class&quot;,{&quot;names&quot;:[&quot;show&quot;]}]]"
+               ~S<[["remove_class",{"names":["show"]}]]>
     end
   end
 
@@ -421,7 +421,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.toggle_class("show")) ==
-               "[[&quot;toggle_class&quot;,{&quot;names&quot;:[&quot;show&quot;]}]]"
+               ~S<[["toggle_class",{"names":["show"]}]]>
     end
   end
 
@@ -475,7 +475,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.dispatch("click", to: ".foo")) ==
-               "[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;click&quot;,&quot;to&quot;:&quot;.foo&quot;}]]"
+               ~S<[["dispatch",{"event":"click","to":".foo"}]]>
     end
 
     test "raises when done is a details key and blocking is true" do
@@ -588,7 +588,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.toggle(to: "#modal")) ==
-               "[[&quot;toggle&quot;,{&quot;to&quot;:&quot;#modal&quot;}]]"
+               ~S<[["toggle",{"to":"#modal"}]]>
     end
   end
 
@@ -676,7 +676,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.show(to: "#modal")) ==
-               "[[&quot;show&quot;,{&quot;to&quot;:&quot;#modal&quot;}]]"
+               ~S<[["show",{"to":"#modal"}]]>
     end
   end
 
@@ -756,7 +756,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.hide(to: "#modal")) ==
-               "[[&quot;hide&quot;,{&quot;to&quot;:&quot;#modal&quot;}]]"
+               ~S<[["hide",{"to":"#modal"}]]>
     end
   end
 
@@ -825,7 +825,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.transition("shake", to: "#modal")) ==
-               "[[&quot;transition&quot;,{&quot;to&quot;:&quot;#modal&quot;,&quot;transition&quot;:[[&quot;shake&quot;],[],[]]}]]"
+               ~S<[["transition",{"to":"#modal","transition":[["shake"],[],[]]}]]>
     end
   end
 
@@ -877,7 +877,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.set_attribute({"disabled", "true"})) ==
-               "[[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;]}]]"
+               ~S<[["set_attr",{"attr":["disabled","true"]}]]>
     end
   end
 
@@ -919,7 +919,7 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.remove_attribute("disabled")) ==
-               "[[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;disabled&quot;}]]"
+               ~S<[["remove_attr",{"attr":"disabled"}]]>
     end
   end
 
@@ -982,10 +982,10 @@ defmodule Phoenix.LiveView.JSTest do
 
     test "encoding" do
       assert js_to_string(JS.toggle_attribute({"disabled", "true"})) ==
-               "[[&quot;toggle_attr&quot;,{&quot;attr&quot;:[&quot;disabled&quot;,&quot;true&quot;]}]]"
+               ~S<[["toggle_attr",{"attr":["disabled","true"]}]]>
 
       assert js_to_string(JS.toggle_attribute({"aria-expanded", "true", "false"})) ==
-               "[[&quot;toggle_attr&quot;,{&quot;attr&quot;:[&quot;aria-expanded&quot;,&quot;true&quot;,&quot;false&quot;]}]]"
+               ~S<[["toggle_attr",{"attr":["aria-expanded","true","false"]}]]>
     end
   end
 
@@ -1017,7 +1017,7 @@ defmodule Phoenix.LiveView.JSTest do
     end
 
     test "encoding" do
-      assert js_to_string(JS.focus()) == "[[&quot;focus&quot;,{}]]"
+      assert js_to_string(JS.focus()) == ~S<[["focus",{}]]>
     end
   end
 
@@ -1055,7 +1055,7 @@ defmodule Phoenix.LiveView.JSTest do
     end
 
     test "encoding" do
-      assert js_to_string(JS.focus_first()) == "[[&quot;focus_first&quot;,{}]]"
+      assert js_to_string(JS.focus_first()) == ~S<[["focus_first",{}]]>
     end
   end
 
@@ -1093,7 +1093,7 @@ defmodule Phoenix.LiveView.JSTest do
     end
 
     test "encoding" do
-      assert js_to_string(JS.push_focus()) == "[[&quot;push_focus&quot;,{}]]"
+      assert js_to_string(JS.push_focus()) == ~S<[["push_focus",{}]]>
     end
   end
 
@@ -1113,7 +1113,7 @@ defmodule Phoenix.LiveView.JSTest do
     end
 
     test "encoding" do
-      assert js_to_string(JS.pop_focus()) == "[[&quot;pop_focus&quot;,{}]]"
+      assert js_to_string(JS.pop_focus()) == ~S<[["pop_focus",{}]]>
     end
   end
 
@@ -1136,8 +1136,7 @@ defmodule Phoenix.LiveView.JSTest do
   defp js_to_string(%JS{} = js) do
     js
     |> Map.update!(:ops, &order_ops_map_keys/1)
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
+    |> to_string()
   end
 
   defp order_ops_map_keys(ops) when is_list(ops) do

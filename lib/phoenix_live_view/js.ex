@@ -218,7 +218,15 @@ defmodule Phoenix.LiveView.JS do
 
   defimpl Phoenix.HTML.Safe, for: Phoenix.LiveView.JS do
     def to_iodata(%Phoenix.LiveView.JS{} = js) do
-      Phoenix.HTML.Engine.html_escape(Phoenix.json_library().encode!(js.ops))
+      js
+      |> to_string()
+      |> Phoenix.HTML.Engine.html_escape()
+    end
+  end
+
+  defimpl String.Chars, for: Phoenix.LiveView.JS do
+    def to_string(%Phoenix.LiveView.JS{} = js) do
+      Phoenix.json_library().encode!(js.ops)
     end
   end
 
