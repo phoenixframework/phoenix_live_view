@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.MixProject do
   use Mix.Project
 
-  @version "1.1.16"
+  @version "1.1.17"
 
   def project do
     [

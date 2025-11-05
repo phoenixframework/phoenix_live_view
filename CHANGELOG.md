@@ -267,6 +267,11 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.17 (2025-11-04)
+
+### Bug fixes
+* noop in empty live reloader config
+
 ## v1.1.16 (2025-10-22)
 
 ### Bug fixes
