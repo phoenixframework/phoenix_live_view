@@ -170,6 +170,124 @@ defmodule Phoenix.ComponentUnitTest do
     end
   end
 
+  describe "assign_new with dependencies" do
+    test "recomputes value when dependencies change" do
+      socket =
+        @socket
+        |> assign(user_id: 123)
+        |> assign_new(:user, [:user_id], fn %{user_id: user_id} -> "User #{user_id}" end)
+
+      assert socket.assigns.user == "User 123"
+
+      # Change a dependency
+      socket =
+        socket
+        |> Utils.clear_changed()
+        |> assign(user_id: 456)
+        |> assign_new(:user, [:user_id], fn %{user_id: user_id} -> "User #{user_id}" end)
+
+      assert socket.assigns.user == "User 456"
+      assert changed?(socket, :user)
+    end
+
+    test "doesn't recompute when dependencies don't change" do
+      socket =
+        @socket
+        |> assign(user_id: 123, counter: 0)
+        |> assign_new(:user, [:user_id], fn %{user_id: user_id} -> "User #{user_id}" end)
+
+      assert socket.assigns.user == "User 123"
+
+      # Change an unrelated assign
+      socket =
+        socket
+        |> Utils.clear_changed()
+        |> assign(counter: 1)
+        |> assign_new(:user, [:user_id], fn %{user_id: user_id} -> "User #{user_id}" end)
+
+      assert socket.assigns.user == "User 123"
+      refute changed?(socket, :user)
+    end
+
+    test "works with zero-arity functions" do
+      socket =
+        @socket
+        |> assign(user_id: 123)
+        |> assign_new(:random_value, [:user_id], fn -> :rand.uniform(100) end)
+
+      assert is_integer(socket.assigns.random_value)
+      assert socket.assigns.random_value > 0 && socket.assigns.random_value <= 100
+
+      # Change a dependency
+      socket =
+        socket
+        |> Utils.clear_changed()
+        |> assign(user_id: 456)
+        |> assign_new(:random_value, [:user_id], fn -> :rand.uniform(100) end)
+
+      # Value should be recomputed
+      assert is_integer(socket.assigns.random_value)
+      assert socket.assigns.random_value > 0 && socket.assigns.random_value <= 100
+      # It's theoretically possible but extremely unlikely that we'd get the same random number
+      assert changed?(socket, :random_value)
+    end
+
+    test "works with multiple dependencies" do
+      socket =
+        @socket
+        |> assign(first_name: "John", last_name: "Doe")
+        |> assign_new(:full_name, [:first_name, :last_name], fn %{first_name: first, last_name: last} -> 
+          "#{first} #{last}" 
+        end)
+
+      assert socket.assigns.full_name == "John Doe"
+
+      # Change first dependency
+      socket =
+        socket
+        |> Utils.clear_changed()
+        |> assign(first_name: "Jane")
+        |> assign_new(:full_name, [:first_name, :last_name], fn %{first_name: first, last_name: last} -> 
+          "#{first} #{last}" 
+        end)
+
+      assert socket.assigns.full_name == "Jane Doe"
+      assert changed?(socket, :full_name)
+
+      # Change second dependency
+      socket =
+        socket
+        |> Utils.clear_changed()
+        |> assign(last_name: "Smith")
+        |> assign_new(:full_name, [:first_name, :last_name], fn %{first_name: first, last_name: last} -> 
+          "#{first} #{last}" 
+        end)
+
+      assert socket.assigns.full_name == "Jane Smith"
+      assert changed?(socket, :full_name)
+    end
+
+    test "behaves like assign_new when key doesn't exist" do
+      socket =
+        @socket
+        |> assign(user_id: 123)
+        |> assign_new(:user, [:user_id], fn %{user_id: user_id} -> "User #{user_id}" end)
+
+      assert socket.assigns.user == "User 123"
+      assert changed?(socket, :user)
+    end
+
+    test "uses parent assigns when present" do
+      socket =
+        put_in(@socket.private[:assign_new], {%{user_id: 999}, []})
+        |> assign(user_id: 123)
+        |> assign_new(:user, [:user_id], fn %{user_id: user_id} -> "User #{user_id}" end)
+
+      assert socket.assigns.user == "User 123"
+      assert changed?(socket, :user)
+    end
+  end
+
   describe "assign_new with assigns" do
     test "tracks changes" do
       assigns = assign_new(@assigns_changes, :key, fn -> raise "won't be invoked" end)
