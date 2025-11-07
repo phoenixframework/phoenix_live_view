@@ -125,6 +125,14 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       Last one wins
     </button>
 
+    <%!-- navigation to urls featuring multiple query params --%>
+    <.link navigate="/example?fooo=bar&baz=qux" id="live-redirect-params">Live redirect with params</.link>
+    <.link patch="/elements?fooo=bar&baz=qux" id="live-patch-params">Live patch with params</.link>
+    <.link
+      patch="/elements?repatch=true&to=%2Felements%3Ffooo%3Dbar%26baz%3Dqux"
+      id="live-double-patch"
+    >Live double patch</.link>
+
     <%!-- hooks --%>
     <section phx-hook="Example" id="hook-section" phx-value-foo="ignore">Section</section>
     <section phx-hook="Example" id="hook-section-2" class="idless-hook">Section</section>
@@ -284,6 +292,11 @@ defmodule Phoenix.LiveViewTest.Support.ElementsLive do
       |> assign(:multiline_text, "This is a test.\nIt has multiple\nlines of text.")
 
     {:ok, socket}
+  end
+
+  def handle_params(%{"repatch" => "true"} = params, _uri, socket) do
+    {:noreply,
+     socket |> assign(:event, "handle_params: #{inspect(params)}") |> push_patch(to: params["to"])}
   end
 
   def handle_params(params, _uri, socket) do

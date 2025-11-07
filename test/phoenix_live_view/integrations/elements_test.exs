@@ -208,6 +208,72 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
   end
 
+  describe "navigation assertions" do
+    test "assert_redirect/3 ignores query param order", %{live: view} do
+      actual_url = "/example?fooo=bar&baz=qux"
+      tested_url = "/example?baz=qux&fooo=bar"
+
+      assert {:error, {:live_redirect, %{to: ^actual_url, kind: :push}}} =
+               view |> element("a#live-redirect-params") |> render_click()
+
+      assert_redirect(view, tested_url, 0)
+    end
+
+    test "assert_redirect/2 returns actual url", %{live: view} do
+      actual_url = "/example?fooo=bar&baz=qux"
+
+      assert {:error, {:live_redirect, %{to: ^actual_url, kind: :push}}} =
+               view |> element("a#live-redirect-params") |> render_click()
+
+      assert {^actual_url, _flash} = assert_redirect(view, 0)
+    end
+
+    test "assert_patch/3 ignores query param order", %{live: view} do
+      actual_url = "/elements?fooo=bar&baz=qux"
+      tested_url = "/elements?baz=qux&fooo=bar"
+
+      assert has_element?(view, "a#live-patch-params[href='#{actual_url}']")
+      view |> element("a#live-patch-params") |> render_click()
+
+      assert_patch(view, tested_url, 0)
+    end
+
+    test "assert_patch/3 can deal with redirection chains", %{live: view} do
+      primary_patch_with_reordered_params =
+        "/elements?to=%2Felements%3Ffooo%3Dbar%26baz%3Dqux&repatch=true"
+
+      secondary_patch_with_reordered_params = "/elements?baz=qux&fooo=bar"
+
+      # the click first does a patch to the liveview and handle_params repatches again
+      view |> element("a#live-double-patch") |> render_click()
+      # that's the second patch
+      assert_patch(view, secondary_patch_with_reordered_params, 0)
+      # but I can still find the first patch
+      assert_patch(view, primary_patch_with_reordered_params, 0)
+    end
+
+    test "assert_patch/2 returns actual url", %{live: view} do
+      actual_url = "/elements?fooo=bar&baz=qux"
+
+      assert has_element?(view, "a#live-patch-params[href='#{actual_url}']")
+      view |> element("a#live-patch-params") |> render_click()
+
+      assert actual_url == assert_patch(view, 0)
+    end
+
+    test "assert_patch/2 works with redirection chains", %{live: view} do
+      primary_patch = "/elements?repatch=true&to=%2Felements%3Ffooo%3Dbar%26baz%3Dqux"
+      secondary_patch = "/elements?fooo=bar&baz=qux"
+
+      # the click first does a patch to the liveview and handle_params repatches again
+      view |> element("a#live-double-patch") |> render_click()
+      # that's the first patch
+      assert primary_patch == assert_patch(view, 0)
+      # and that's the second patch
+      assert secondary_patch == assert_patch(view, 0)
+    end
+  end
+
   describe "render_hook" do
     test "hooks the given element", %{live: view} do
       assert view |> element("section#hook-section") |> render_hook("custom-event") |> is_binary()

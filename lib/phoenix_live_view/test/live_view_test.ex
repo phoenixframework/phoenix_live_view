@@ -1451,12 +1451,20 @@ defmodule Phoenix.LiveViewTest do
     assert_redirect(view, to, 0)
   end
 
-  defp assert_navigation(view, kind, to, timeout) do
+  defp assert_navigation(view, kind, to, timeout, prev_messages \\ []) do
     %{proxy: {ref, topic, _}, endpoint: endpoint} = view
 
     receive do
-      {^ref, {^kind, ^topic, %{to: new_to} = opts}} when new_to == to or to == nil ->
-        {new_to, Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])}
+      {^ref, {received_kind, ^topic, %{to: new_to} = opts}} = message ->
+        if received_kind == kind && (to == nil || uri_equal?(to, new_to)) do
+          {new_to, Phoenix.LiveView.Utils.verify_flash(endpoint, opts[:flash])}
+        else
+          # let's recurse first to look for some other match
+          assert_navigation(view, kind, to, timeout, [message | prev_messages])
+          # then put this message back in the mailbox,
+          # which lets assertions deal with redirection chains
+          send(self(), message)
+        end
     after
       timeout ->
         message =
@@ -1466,11 +1474,11 @@ defmodule Phoenix.LiveViewTest do
             "expected #{inspect(view.module)} to #{kind}, "
           end
 
-        case flush_navigation(ref, topic, nil) do
-          {new_kind, new_to} when new_to != to ->
+        case prev_messages do
+          [{^ref, {new_kind, ^topic, %{to: new_to}}} | _] ->
             raise ArgumentError, message <> "but got a #{new_kind} to #{inspect(new_to)}"
 
-          _ ->
+          [] ->
             raise ArgumentError, message <> "but got none"
         end
     end
@@ -1519,6 +1527,22 @@ defmodule Phoenix.LiveViewTest do
     after
       0 -> last
     end
+  end
+
+  defp uri_equal?(nil, nil), do: true
+  defp uri_equal?(nil, _), do: false
+  defp uri_equal?(_, nil), do: false
+
+  defp uri_equal?(uri1, uri2) when is_binary(uri1) and is_binary(uri2) do
+    # by parsing the uris and converting query strings into maps
+    # we can compare the uris directly
+    [uri1, uri2] =
+      [uri1, uri2]
+      |> Enum.map(&URI.parse/1)
+      |> Enum.map(&Map.from_struct/1)
+      |> Enum.map(&%{&1 | query: URI.decode_query(&1.query || "")})
+
+    uri1 == uri2
   end
 
   @doc """
