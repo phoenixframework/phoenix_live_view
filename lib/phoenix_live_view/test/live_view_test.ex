@@ -1520,15 +1520,6 @@ defmodule Phoenix.LiveViewTest do
     end
   end
 
-  defp flush_navigation(ref, topic, last) do
-    receive do
-      {^ref, {kind, ^topic, %{to: to}}} when kind in [:patch, :redirect] ->
-        flush_navigation(ref, topic, {kind, to})
-    after
-      0 -> last
-    end
-  end
-
   defp uri_equal?(nil, nil), do: true
   defp uri_equal?(nil, _), do: false
   defp uri_equal?(_, nil), do: false
