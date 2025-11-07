@@ -1506,15 +1506,24 @@ defmodule Phoenix.LiveViewTest do
 
   defp refute_navigation(view = %{proxy: {ref, topic, _}}, kind, to) do
     receive do
-      {^ref, {^kind, ^topic, %{to: new_to}}} when new_to == to or to == nil ->
-        message =
-          if to do
-            "expected #{inspect(view.module)} not to #{kind} to #{inspect(to)}, "
-          else
-            "expected #{inspect(view.module)} not to #{kind}, "
-          end
+      {^ref, {^kind, ^topic, %{to: new_to}}} = message ->
+        if to == nil || uri_equal?(to, new_to) do
+          message =
+            if to do
+              "expected #{inspect(view.module)} not to #{kind} to #{inspect(to)}, "
+            else
+              "expected #{inspect(view.module)} not to #{kind}, "
+            end
 
-        raise ArgumentError, message <> "but got a #{kind} to #{inspect(new_to)}"
+          raise ArgumentError, message <> "but got a #{kind} to #{inspect(new_to)}"
+        else
+          # existing test code calling assert_navigation right after refute_navigation
+          # would rely on the previous behaviour which didn't dequeue the message from
+          # the mailbox if urls didn't match.
+          # So let's re-enqeue to keep any such code working.
+          send(self(), message)
+          :ok
+        end
     after
       0 -> :ok
     end

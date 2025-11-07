@@ -272,6 +272,103 @@ defmodule Phoenix.LiveView.ElementsTest do
       # and that's the second patch
       assert secondary_patch == assert_patch(view, 0)
     end
+
+    test "refute_redirected/2 will fail if only query string param order is changed", %{
+      live: view
+    } do
+      actual_url = "/example?fooo=bar&baz=qux"
+      tested_url = "/example?baz=qux&fooo=bar"
+
+      view |> element("a#live-redirect-params") |> render_click()
+
+      error_message =
+        "expected Phoenix.LiveViewTest.Support.ElementsLive not to redirect to \"#{tested_url}\", but got a redirect to \"#{actual_url}\""
+
+      assert_raise ArgumentError, error_message, fn -> refute_redirected(view, tested_url) end
+    end
+
+    test "refute_redirected/2 will not fail if kind does not match", %{live: view} do
+      actual_url = "/elements?fooo=bar&baz=qux"
+      tested_url = "/elements?baz=qux&fooo=bar"
+
+      assert has_element?(view, "a#live-patch-params[href='#{actual_url}']")
+      # triggers a patch
+      view |> element("a#live-patch-params") |> render_click()
+
+      # but testing for non-redirection should pass
+      refute_redirected(view, actual_url)
+      refute_redirected(view, tested_url)
+    end
+
+    test "assert_redirect/3 after refute_patched/2 should work", %{live: view} do
+      actual_url = "/example?fooo=bar&baz=qux"
+      tested_url = "/example?baz=qux&fooo=bar"
+
+      view |> element("a#live-redirect-params") |> render_click()
+
+      refute_patched(view, actual_url)
+      refute_patched(view, tested_url)
+      assert_redirect(view, tested_url, 0)
+    end
+
+    test "refute_patched/2 will fail if only query string param order is changed", %{live: view} do
+      actual_url = "/elements?fooo=bar&baz=qux"
+      tested_url = "/elements?baz=qux&fooo=bar"
+
+      assert has_element?(view, "a#live-patch-params[href='#{actual_url}']")
+      view |> element("a#live-patch-params") |> render_click()
+
+      error_message =
+        "expected Phoenix.LiveViewTest.Support.ElementsLive not to patch to \"#{tested_url}\", but got a patch to \"#{actual_url}\""
+
+      assert_raise ArgumentError, error_message, fn -> refute_patched(view, tested_url) end
+    end
+
+    test "refute_patched/2 will not fail if kind does not match", %{live: view} do
+      actual_url = "/example?fooo=bar&baz=qux"
+      tested_url = "/example?baz=qux&fooo=bar"
+
+      # trigger a redirect
+      view |> element("a#live-redirect-params") |> render_click()
+
+      # but testing for non-patching should pass
+      refute_patched(view, actual_url)
+      refute_patched(view, tested_url)
+    end
+
+    test "assert_patch/3 after refute_redirected/2 should work", %{live: view} do
+      actual_url = "/elements?fooo=bar&baz=qux"
+      tested_url = "/elements?baz=qux&fooo=bar"
+
+      assert has_element?(view, "a#live-patch-params[href='#{actual_url}']")
+      view |> element("a#live-patch-params") |> render_click()
+
+      refute_redirected(view, actual_url)
+      refute_redirected(view, tested_url)
+      assert_patch(view, tested_url, 0)
+    end
+
+    test "refute_redirected/1 will fail if any redirection happens", %{live: view} do
+      actual_url = "/example?fooo=bar&baz=qux"
+
+      view |> element("a#live-redirect-params") |> render_click()
+
+      error_message =
+        "expected Phoenix.LiveViewTest.Support.ElementsLive not to redirect, but got a redirect to \"#{actual_url}\""
+
+      assert_raise ArgumentError, error_message, fn -> refute_redirected(view) end
+    end
+
+    test "refute_patched/1 will fail if any patching happens", %{live: view} do
+      actual_url = "/elements?fooo=bar&baz=qux"
+
+      view |> element("a#live-patch-params") |> render_click()
+
+      error_message =
+        "expected Phoenix.LiveViewTest.Support.ElementsLive not to patch, but got a patch to \"#{actual_url}\""
+
+      assert_raise ArgumentError, error_message, fn -> refute_patched(view) end
+    end
   end
 
   describe "render_hook" do
