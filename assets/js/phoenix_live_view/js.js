@@ -329,7 +329,26 @@ const JS = {
   ignoreAttrs(el, attrs) {
     DOM.putPrivate(el, "JS:ignore_attrs", {
       apply: (fromEl, toEl) => {
-        Array.from(fromEl.attributes).forEach((attr) => {
+        let fromAttributes = Array.from(fromEl.attributes);
+        let fromAttributeNames = fromAttributes.map((attr) => attr.name);
+        Array.from(toEl.attributes)
+          .filter((attr) => {
+            return !fromAttributeNames.includes(attr.name);
+          })
+          .forEach((attr) => {
+            console.log(attr.name);
+            if (
+              attrs.some(
+                (toIgnore) =>
+                  attr.name == toIgnore ||
+                  toIgnore === "*" ||
+                  (toIgnore.includes("*") && attr.name.match(toIgnore) != null),
+              )
+            ) {
+              toEl.removeAttribute(attr.name);
+            }
+          });
+        fromAttributes.forEach((attr) => {
           if (
             attrs.some(
               (toIgnore) =>
