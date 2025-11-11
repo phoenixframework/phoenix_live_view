@@ -336,7 +336,6 @@ const JS = {
             return !fromAttributeNames.includes(attr.name);
           })
           .forEach((attr) => {
-            console.log(attr.name);
             if (
               attrs.some(
                 (toIgnore) =>
