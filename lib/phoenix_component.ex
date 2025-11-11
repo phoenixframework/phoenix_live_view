@@ -1433,12 +1433,15 @@ defmodule Phoenix.Component do
 
   The first argument is either a LiveView `socket` or an `assigns` map from function components.
 
-  A keyword list or a map of assigns must be given as argument to be merged into existing assigns.
+  When a keyword list or map is provided as the second argument, it will be merged into the existing assigns.
+  If a function is given, it takes the current assigns as an argument and its return
+  value will be merged into the current assigns.
 
   ## Examples
 
       iex> assign(socket, name: "Elixir", logo: "💧")
       iex> assign(socket, %{name: "Elixir"})
+      iex> assign(socket, fn %{name: name, logo: logo} -> %{title: Enum.join([name, logo], " | ")} end)
 
   """
   def assign(socket_or_assigns, keyword_or_map)
@@ -1446,6 +1449,16 @@ defmodule Phoenix.Component do
     Enum.reduce(keyword_or_map, socket_or_assigns, fn {key, value}, acc ->
       assign(acc, key, value)
     end)
+  end
+
+  def assign(socket_or_assigns, fun) when is_function(fun, 1) do
+    assigns =
+      case socket_or_assigns do
+        %Socket{assigns: assigns} -> assigns
+        assigns -> assigns
+      end
+
+    assign(socket_or_assigns, fun.(assigns))
   end
 
   defp validate_assign_key!(:flash) do
