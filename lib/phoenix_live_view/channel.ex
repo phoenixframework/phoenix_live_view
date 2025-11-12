@@ -545,20 +545,26 @@ defmodule Phoenix.LiveView.Channel do
   defp view_handle_info(msg, %{view: view} = socket) do
     exported? = exported?(view, :handle_info, 2)
 
-    case Lifecycle.handle_info(msg, socket) do
-      {:cont, %Socket{} = socket} when exported? ->
-        view.handle_info(msg, socket)
+    :telemetry.span(
+      [:phoenix, :live_view, :handle_info],
+      %{socket: socket, message: msg},
+      fn ->
+        case Lifecycle.handle_info(msg, socket) do
+          {:cont, %Socket{} = socket} when exported? ->
+            {view.handle_info(msg, socket), %{socket: socket, message: msg}}
 
-      {:cont, %Socket{} = socket} when not exported? ->
-        Logger.debug(
-          "warning: undefined handle_info in #{inspect(view)}. Unhandled message: #{inspect(msg)}"
-        )
+          {:cont, %Socket{} = socket} when not exported? ->
+            Logger.debug(
+              "warning: undefined handle_info in #{inspect(view)}. Unhandled message: #{inspect(msg)}"
+            )
 
-        {:noreply, socket}
+            {{:noreply, socket}, %{socket: socket, message: msg}}
 
-      {_, %Socket{} = socket} ->
-        {:noreply, socket}
-    end
+          {_, %Socket{} = socket} ->
+            {{:noreply, socket}, %{socket: socket, message: msg}}
+        end
+      end
+    )
   end
 
   defp exported?(m, f, a) do

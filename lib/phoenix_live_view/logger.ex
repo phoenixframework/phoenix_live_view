@@ -27,6 +27,8 @@ defmodule Phoenix.LiveView.Logger do
     - `[:phoenix, :live_view, :handle_params, :stop]`
     - `[:phoenix, :live_view, :handle_event, :start]`
     - `[:phoenix, :live_view, :handle_event, :stop]`
+    - `[:phoenix, :live_view, :handle_info, :start]`
+    - `[:phoenix, :live_view, :handle_info, :stop]`
     - `[:phoenix, :live_component, :handle_event, :start]`
     - `[:phoenix, :live_component, :handle_event, :stop]`
 
@@ -53,7 +55,9 @@ defmodule Phoenix.LiveView.Logger do
       [:phoenix, :live_view, :handle_event, :start] => &__MODULE__.lv_handle_event_start/4,
       [:phoenix, :live_view, :handle_event, :stop] => &__MODULE__.lv_handle_event_stop/4,
       [:phoenix, :live_component, :handle_event, :start] => &__MODULE__.lc_handle_event_start/4,
-      [:phoenix, :live_component, :handle_event, :stop] => &__MODULE__.lc_handle_event_stop/4
+      [:phoenix, :live_component, :handle_event, :stop] => &__MODULE__.lc_handle_event_stop/4,
+      [:phoenix, :live_view, :handle_info, :start] => &__MODULE__.lv_handle_info_start/4,
+      [:phoenix, :live_view, :handle_info, :stop] => &__MODULE__.lv_handle_info_stop/4
     }
 
     for {key, fun} <- handlers do
@@ -214,6 +218,44 @@ defmodule Phoenix.LiveView.Logger do
   @doc false
   def lc_handle_event_stop(_event, measurement, metadata, _config) do
     %{socket: socket, component: _component, event: _event, params: _params} = metadata
+    %{duration: duration} = measurement
+    level = log_level(socket)
+
+    if level do
+      Logger.log(level, fn ->
+        [
+          "Replied in ",
+          duration(duration)
+        ]
+      end)
+    end
+
+    :ok
+  end
+
+  @doc false
+  def lv_handle_info_start(_event, measurement, metadata, _config) do
+    %{socket: socket, message: message} = metadata
+    %{system_time: _system_time} = measurement
+    level = log_level(socket)
+
+    if level do
+      Logger.log(level, fn ->
+        [
+          "HANDLE INFO ",
+          inspect(message),
+          " in ",
+          inspect(socket.view)
+        ]
+      end)
+    end
+
+    :ok
+  end
+
+  @doc false
+  def lv_handle_info_stop(_event, measurement, metadata, _config) do
+    %{socket: socket, message: _message} = metadata
     %{duration: duration} = measurement
     level = log_level(socket)
 
