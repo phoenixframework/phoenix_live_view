@@ -218,7 +218,9 @@ Hooks.InfiniteScroll = {
         scrollBefore = scrollNow;
         return pendingOp();
       }
-      const rect = this.el.getBoundingClientRect();
+      const rect = this.scrollContainer
+        ? this.scrollContainer.firstElementChild.getBoundingClientRect()
+        : this.el.getBoundingClientRect();
       const topEvent = this.el.getAttribute(
         this.liveSocket.binding("viewport-top"),
       );
