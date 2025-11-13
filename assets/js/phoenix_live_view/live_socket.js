@@ -679,7 +679,7 @@ export default class LiveSocket {
       }
 
       if (eventContainsFiles(e)) {
-        dropzone.classList.add(PHX_DROPZONE_CLASS);
+        this.js().addClass(dropzone, PHX_DROPZONE_CLASS);
         
         dropzone.addEventListener("dragleave", () => {
           dropzone.classList.remove(PHX_DROPZONE_CLASS);
