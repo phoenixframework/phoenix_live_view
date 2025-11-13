@@ -1699,15 +1699,16 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
   };
 
-  // ../node_modules/morphdom/dist/morphdom-esm.js
+  // js/vendor/morphdom/morphAttrs.js
   var DOCUMENT_FRAGMENT_NODE = 11;
-  function morphAttrs(fromNode, toNode) {
+  function morphAttrs(fromNode, toNode, proxyFromEl = (el) => el) {
     var toNodeAttrs = toNode.attributes;
     var attr;
     var attrName;
     var attrNamespaceURI;
     var attrValue;
     var fromValue;
+    const proxiedFromNode = proxyFromEl(fromNode);
     if (toNode.nodeType === DOCUMENT_FRAGMENT_NODE || fromNode.nodeType === DOCUMENT_FRAGMENT_NODE) {
       return;
     }
@@ -1718,21 +1719,27 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       attrValue = attr.value;
       if (attrNamespaceURI) {
         attrName = attr.localName || attrName;
-        fromValue = fromNode.getAttributeNS(attrNamespaceURI, attrName);
+        fromValue = proxiedFromNode.getAttributeNS(attrNamespaceURI, attrName);
         if (fromValue !== attrValue) {
           if (attr.prefix === "xmlns") {
             attrName = attr.name;
           }
           fromNode.setAttributeNS(attrNamespaceURI, attrName, attrValue);
+          if (!proxiedFromNode.isSameNode(fromNode)) {
+            proxiedFromNode.setAttributeNS(attrNamespaceURI, attrName, attrValue);
+          }
         }
       } else {
-        fromValue = fromNode.getAttribute(attrName);
+        fromValue = proxiedFromNode.getAttribute(attrName);
         if (fromValue !== attrValue) {
           fromNode.setAttribute(attrName, attrValue);
+          if (!proxiedFromNode.isSameNode(fromNode)) {
+            proxiedFromNode.setAttribute(attrName, attrValue);
+          }
         }
       }
     }
-    var fromNodeAttrs = fromNode.attributes;
+    var fromNodeAttrs = proxiedFromNode.attributes;
     for (var d = fromNodeAttrs.length - 1; d >= 0; d--) {
       attr = fromNodeAttrs[d];
       attrName = attr.name;
@@ -1741,14 +1748,22 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         attrName = attr.localName || attrName;
         if (!toNode.hasAttributeNS(attrNamespaceURI, attrName)) {
           fromNode.removeAttributeNS(attrNamespaceURI, attrName);
+          if (!proxiedFromNode.isSameNode(fromNode)) {
+            proxiedFromNode.removeAttributeNS(attrNamespaceURI, attrName);
+          }
         }
       } else {
         if (!toNode.hasAttribute(attrName)) {
           fromNode.removeAttribute(attrName);
+          if (!proxiedFromNode.isSameNode(fromNode)) {
+            proxiedFromNode.removeAttribute(attrName);
+          }
         }
       }
     }
   }
+
+  // js/vendor/morphdom/util.js
   var range;
   var NS_XHTML = "http://www.w3.org/1999/xhtml";
   var doc = typeof document === "undefined" ? void 0 : document;
@@ -1810,6 +1825,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     return toEl;
   }
+
+  // js/vendor/morphdom/specialElHandlers.js
   function syncBooleanAttrProp(fromEl, toEl, name) {
     if (fromEl[name] !== toEl[name]) {
       fromEl[name] = toEl[name];
@@ -1820,7 +1837,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
   }
-  var specialElHandlers = {
+  var specialElHandlers_default = {
     OPTION: function(fromEl, toEl) {
       var parentNode = fromEl.parentNode;
       if (parentNode) {
@@ -1904,8 +1921,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     }
   };
+
+  // js/vendor/morphdom/morphdom.js
   var ELEMENT_NODE = 1;
-  var DOCUMENT_FRAGMENT_NODE$1 = 11;
+  var DOCUMENT_FRAGMENT_NODE2 = 11;
   var TEXT_NODE = 3;
   var COMMENT_NODE = 8;
   function noop() {
@@ -1921,14 +1940,22 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         options = {};
       }
       if (typeof toNode === "string") {
-        if (fromNode.nodeName === "#document" || fromNode.nodeName === "HTML" || fromNode.nodeName === "BODY") {
+        if (fromNode.nodeName === "#document" || fromNode.nodeName === "HTML") {
           var toNodeHtml = toNode;
           toNode = doc.createElement("html");
           toNode.innerHTML = toNodeHtml;
+        } else if (fromNode.nodeName === "BODY") {
+          var toNodeBody = toNode;
+          toNode = doc.createElement("html");
+          toNode.innerHTML = toNodeBody;
+          var bodyElement = toNode.querySelector("body");
+          if (bodyElement) {
+            toNode = bodyElement;
+          }
         } else {
           toNode = toElement(toNode);
         }
-      } else if (toNode.nodeType === DOCUMENT_FRAGMENT_NODE$1) {
+      } else if (toNode.nodeType === DOCUMENT_FRAGMENT_NODE2) {
         toNode = toNode.firstElementChild;
       }
       var getNodeKey = options.getNodeKey || defaultGetNodeKey;
@@ -1944,6 +1971,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return parent.appendChild(child);
       };
       var childrenOnly = options.childrenOnly === true;
+      var proxyFromEl = options.proxyFromEl || ((el) => el);
       var fromNodesLookup = /* @__PURE__ */ Object.create(null);
       var keyedRemovalList = [];
       function addKeyedRemoval(key) {
@@ -1977,7 +2005,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         walkDiscardedChildNodes(node, skipKeyedNodes);
       }
       function indexTree(node) {
-        if (node.nodeType === ELEMENT_NODE || node.nodeType === DOCUMENT_FRAGMENT_NODE$1) {
+        if (node.nodeType === ELEMENT_NODE || node.nodeType === DOCUMENT_FRAGMENT_NODE2) {
           var curChild = node.firstChild;
           while (curChild) {
             var key = getNodeKey(curChild);
@@ -2039,7 +2067,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             fromEl = beforeUpdateResult;
             indexTree(fromEl);
           }
-          morphAttrs2(fromEl, toEl);
+          morphAttrs2(fromEl, toEl, proxyFromEl);
           onElUpdated(fromEl);
           if (onBeforeElChildrenUpdated(fromEl, toEl) === false) {
             return;
@@ -2048,7 +2076,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         if (fromEl.nodeName !== "TEXTAREA") {
           morphChildren(fromEl, toEl);
         } else {
-          specialElHandlers.TEXTAREA(fromEl, toEl);
+          specialElHandlers_default.TEXTAREA(fromEl, toEl);
         }
       }
       function morphChildren(fromEl, toEl) {
@@ -2153,7 +2181,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             curFromNodeChild = fromNextSibling;
           }
         cleanupFromEl(fromEl, curFromNodeChild, curFromNodeKey);
-        var specialElHandler = specialElHandlers[fromEl.nodeName];
+        var specialElHandler = specialElHandlers_default[fromEl.nodeName];
         if (specialElHandler) {
           specialElHandler(fromEl, toEl);
         }
@@ -2207,8 +2235,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return morphedNode;
     };
   }
+
+  // js/vendor/morphdom/index.js
   var morphdom = morphdomFactory(morphAttrs);
-  var morphdom_esm_default = morphdom;
+  var morphdom_default = morphdom;
 
   // js/phoenix_live_view/dom_patch.js
   var DOMPatch = class {
@@ -2285,11 +2315,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
       const phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
       const phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
+      const phxTrackAttributes = liveSocket.binding("track-attributes");
       const added = [];
       const updates = [];
       const appendPrependUpdates = [];
       const portalCallbacks = [];
       let externalFormTriggered = null;
+      let trackAttributes = false;
       const morph = (targetContainer2, source, withChildren = this.withChildren) => {
         const morphCallbacks = {
           // normally, we are running with childrenOnly, as the patch HTML for a LV
@@ -2370,6 +2402,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
               this.handleRuntimeHook(el, source);
             }
+            if (trackAttributes || el.hasAttribute && el.hasAttribute(phxTrackAttributes)) {
+              dom_default.putPrivate(el, "phxAttrCopy", el.cloneNode(false));
+            }
             added.push(el);
           },
           onNodeDiscarded: (el) => this.onNodeDiscarded(el),
@@ -2411,8 +2446,19 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             updates.push(el);
             this.maybeReOrderStream(el, false);
+            if (trackAttributes || el.hasAttribute && el.hasAttribute(phxTrackAttributes)) {
+              if (!dom_default.private(el, "phxAttrCopy")) {
+                dom_default.putPrivate(el, "phxAttrCopy", el.cloneNode(false));
+              }
+            }
           },
           onBeforeElUpdated: (fromEl, toEl) => {
+            if (!trackAttributes && dom_default.isPhxUpdate(fromEl, phxUpdate, "track-attributes")) {
+              trackAttributes = true;
+              morph(fromEl, toEl, true);
+              trackAttributes = false;
+              return false;
+            }
             if (fromEl.id && fromEl.isSameNode(targetContainer2) && fromEl.id !== toEl.id) {
               morphCallbacks.onNodeDiscarded(fromEl);
               fromEl.replaceWith(toEl);
@@ -2522,9 +2568,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               this.trackBefore("updated", fromEl, toEl);
               return fromEl;
             }
+          },
+          proxyFromEl: (el) => {
+            if (trackAttributes || el.hasAttribute && el.hasAttribute(phxTrackAttributes)) {
+              return dom_default.private(el, "phxAttrCopy") || el;
+            }
+            return el;
           }
         };
-        morphdom_esm_default(targetContainer2, source, morphCallbacks);
+        morphdom_default(targetContainer2, source, morphCallbacks);
       };
       this.trackBefore("added", container);
       this.trackBefore("updated", container, container);
@@ -5682,7 +5734,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         (form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore"
       ).map((form) => {
         const clonedForm = form.cloneNode(true);
-        morphdom_esm_default(clonedForm, form, {
+        morphdom_default(clonedForm, form, {
           onBeforeElUpdated: (fromEl, toEl) => {
             dom_default.copyPrivates(fromEl, toEl);
             if (fromEl.getAttribute("form") === form.id) {
@@ -5700,7 +5752,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             /** @type {HTMLElement} */
             el.cloneNode(true)
           );
-          morphdom_esm_default(clonedEl, el);
+          morphdom_default(clonedEl, el);
           dom_default.copyPrivates(clonedEl, el);
           clonedEl.removeAttribute("form");
           clonedForm.appendChild(clonedEl);
