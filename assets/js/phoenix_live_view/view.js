@@ -62,7 +62,7 @@ import Rendered from "./rendered";
 import { ViewHook } from "./view_hook";
 import JS from "./js";
 
-import morphdom from "morphdom";
+import morphdom from "../vendor/morphdom";
 
 export const prependFormDataKey = (key, prefix) => {
   const isArray = key.endsWith("[]");
