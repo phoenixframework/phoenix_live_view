@@ -3291,31 +3291,7 @@ defmodule Phoenix.Component do
   </label>
   ```
 
-  ### Styling the drop target
-
-  Phoenix LiveView listens for drag events in the browser,
-  and will annotate the drop target element with the `phx-drop-target-active` class
-  when a user is dragging an element over the drop target.
-
-  When using TailwindCSS, one may create a custom variant that can be used in conjunction
-  with this class to allow styling things specifically when the user is dragging something over the drop target.
-
-  ```css
-  @custom-variant phx-files-dropzone (.phx-drop-target-active&, .phx-drop-target-active &);
-  ```
-
-  This variant can be used in HeEx templates like so:
-
-  ```heex
-  <label for={@uploads.avatar.ref} phx-drop-target={@uploads.avatar.ref} class="phx-drop-target-active:scale-105">
-    <.live_file_input upload={@uploads.avatar} />
-  </label>
-  ```
-
-  This variant can also be used alongside [Tailwind's arbitrary state selectors](https://tailwindcss.com/docs/hover-focus-and-other-states),
-  which can allow one to not only style the element itself, but the entire page, sibling elements, parent elements, and more.
-
-
+The drop target receives the `phx-drop-target-active` class when it is active. For more information, see the [uploads guide](guides/server/uploads.md).
   ## Examples
 
   Rendering a file input:
