@@ -680,14 +680,28 @@ export default class LiveSocket {
 
       if (eventContainsFiles(e)) {
         this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+      }
+    });
+    this.on("dragleave", (e) => {
+      const dropzone = closestPhxBinding(
+        e.target,
+        this.binding(PHX_DROP_TARGET),
+      );
 
-        dropzone.addEventListener(
-          "dragleave",
-          () => {
-            this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
-          },
-          { once: true },
-        );
+      if (!dropzone || !(dropzone instanceof HTMLElement)) {
+        return;
+      }
+
+      // Avoid add/remove jitter in the case that we drag into a new child and that child would
+      // resolve their closest drop target to the current dropzone element
+      const rect = dropzone.getBoundingClientRect();
+      if (
+        e.clientX <= rect.left ||
+        e.clientX >= rect.right ||
+        e.clientY <= rect.top ||
+        e.clientY >= rect.bottom
+      ) {
+        this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
       }
     });
     this.on("drop", (e) => {
