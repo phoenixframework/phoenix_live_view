@@ -127,7 +127,7 @@ with this class to allow styling things specifically when the user is dragging s
 ```css
 <%!-- assets/app.css --%>
 
-@custom-variant phx-files-dropzone (.phx-drop-target-active&, .phx-drop-target-active &);
+@custom-variant phx-drop-target-active (.phx-drop-target-active&, .phx-drop-target-active &);
 ```
 
 This variant can be used in HeEx templates like so:
