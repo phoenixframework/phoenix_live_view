@@ -28,7 +28,7 @@ import {
   PHX_REF_SRC,
   PHX_RELOAD_STATUS,
   PHX_RUNTIME_HOOK,
-  PHX_DROPZONE_CLASS,
+  PHX_DROP_TARGET_ACTIVE_CLASS,
 } from "./constants";
 
 import {
@@ -679,11 +679,15 @@ export default class LiveSocket {
       }
 
       if (eventContainsFiles(e)) {
-        this.js().addClass(dropzone, PHX_DROPZONE_CLASS);
-        
-        dropzone.addEventListener("dragleave", () => {
-          dropzone.classList.remove(PHX_DROPZONE_CLASS);
-        }, { once: true });
+        this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+
+        dropzone.addEventListener(
+          "dragleave",
+          () => {
+            this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+          },
+          { once: true },
+        );
       }
     });
     this.on("drop", (e) => {
@@ -696,7 +700,7 @@ export default class LiveSocket {
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
       }
-      dropzone.classList.remove(PHX_DROPZONE_CLASS);
+      this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
 
       const dropTargetId = dropzone.getAttribute(this.binding(PHX_DROP_TARGET));
       const dropTarget = dropTargetId && document.getElementById(dropTargetId);
