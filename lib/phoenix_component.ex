@@ -3291,7 +3291,7 @@ defmodule Phoenix.Component do
   </label>
   ```
 
-The drop target receives the `phx-drop-target-active` class when it is active. For more information, see the [uploads guide](guides/server/uploads.md).
+  The drop target receives the `phx-drop-target-active` class when it is active. For more information, see the [uploads guide](guides/server/uploads.md).
   ## Examples
 
   Rendering a file input:
