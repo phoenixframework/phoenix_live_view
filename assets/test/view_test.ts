@@ -996,6 +996,40 @@ describe("View + DOM", function () {
       expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
     });
 
+    test("ignore_attributes skips boolean attributes on update when not set", () => {
+      let liveSocket = new LiveSocket("/live", Socket);
+      let el = liveViewDOM();
+      let updateDiff = {
+        "0": ' phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;]}]]"',
+        "1": "0",
+        s: [
+          "<details open",
+          ">\n    <summary>A</summary>\n    <span>",
+          "</span></details>",
+        ],
+      };
+
+      let view = simulateJoinedView(el, liveSocket);
+      view.applyDiff("update", updateDiff, ({ diff, events }) =>
+        view.update(diff, events),
+      );
+
+      expect(view.el.firstChild.tagName).toBe("DETAILS");
+      expect(view.el.firstChild.open).toBe(true);
+      view.el.firstChild.open = false;
+      view.el.firstChild.setAttribute("data-foo", "bar");
+
+      // now update, the HTML patch would normally reset the open attribute
+      view.applyDiff("update", { "1": "1" }, ({ diff, events }) =>
+        view.update(diff, events),
+      );
+      // open is ignored, so it is kept as is
+      expect(view.el.firstChild.open).toBe(false);
+      // foo is not ignored, so it is reset
+      expect(view.el.firstChild.getAttribute("data-foo")).toBe(null);
+      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+    });
+
     test("ignore_attributes wildcard", () => {
       let liveSocket = new LiveSocket("/live", Socket);
       let el = liveViewDOM();
@@ -1031,8 +1065,10 @@ describe("View + DOM", function () {
       expect(view.el.firstChild.getAttribute("data-foo")).toBe("bar");
       expect(view.el.firstChild.getAttribute("data-bar")).toBe("bar");
       expect(view.el.firstChild.getAttribute("data-other")).toBe("also kept");
-      expect(view.el.firstChild.getAttribute("data-new")).toBe("new");
       expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+
+      // Not added for being ignored
+      expect(view.el.firstChild.getAttribute("data-new")).toBe(null);
     });
 
     test("ignore_attributes *", () => {
@@ -1072,8 +1108,10 @@ describe("View + DOM", function () {
       expect(view.el.firstChild.getAttribute("data-bar")).toBe("bar");
       expect(view.el.firstChild.getAttribute("something")).toBe("else");
       expect(view.el.firstChild.getAttribute("data-other")).toBe("also kept");
-      expect(view.el.firstChild.getAttribute("data-new")).toBe("new");
       expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+
+      // Not added for being ignored
+      expect(view.el.firstChild.getAttribute("data-new")).toBe(null);
     });
   });
 });
