@@ -1065,8 +1065,10 @@ describe("View + DOM", function () {
       expect(view.el.firstChild.getAttribute("data-foo")).toBe("bar");
       expect(view.el.firstChild.getAttribute("data-bar")).toBe("bar");
       expect(view.el.firstChild.getAttribute("data-other")).toBe("also kept");
-      expect(view.el.firstChild.getAttribute("data-new")).toBe("new");
       expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+
+      // Not added for being ignored
+      expect(view.el.firstChild.getAttribute("data-new")).toBe(null);
     });
 
     test("ignore_attributes *", () => {
@@ -1106,8 +1108,10 @@ describe("View + DOM", function () {
       expect(view.el.firstChild.getAttribute("data-bar")).toBe("bar");
       expect(view.el.firstChild.getAttribute("something")).toBe("else");
       expect(view.el.firstChild.getAttribute("data-other")).toBe("also kept");
-      expect(view.el.firstChild.getAttribute("data-new")).toBe("new");
       expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+
+      // Not added for being ignored
+      expect(view.el.firstChild.getAttribute("data-new")).toBe(null);
     });
   });
 });
