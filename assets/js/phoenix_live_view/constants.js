@@ -13,6 +13,7 @@ export const PHX_EVENT_CLASSES = [
   "phx-focus-loading",
   "phx-hook-loading",
 ];
+export const PHX_DROP_TARGET_ACTIVE_CLASS = "phx-drop-target-active";
 export const PHX_COMPONENT = "data-phx-component";
 export const PHX_VIEW_REF = "data-phx-view";
 export const PHX_LIVE_LINK = "data-phx-link";
