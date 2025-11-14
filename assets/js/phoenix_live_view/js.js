@@ -336,26 +336,12 @@ const JS = {
             return !fromAttributeNames.includes(attr.name);
           })
           .forEach((attr) => {
-            if (
-              attrs.some(
-                (toIgnore) =>
-                  attr.name == toIgnore ||
-                  toIgnore === "*" ||
-                  (toIgnore.includes("*") && attr.name.match(toIgnore) != null),
-              )
-            ) {
+            if (DOM.attributeIgnored(attr, attrs)) {
               toEl.removeAttribute(attr.name);
             }
           });
         fromAttributes.forEach((attr) => {
-          if (
-            attrs.some(
-              (toIgnore) =>
-                attr.name == toIgnore ||
-                toIgnore === "*" ||
-                (toIgnore.includes("*") && attr.name.match(toIgnore) != null),
-            )
-          ) {
+          if (DOM.attributeIgnored(attr, attrs)) {
             toEl.setAttribute(attr.name, attr.value);
           }
         });
