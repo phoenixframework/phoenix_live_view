@@ -42,6 +42,7 @@ var PHX_EVENT_CLASSES = [
   "phx-focus-loading",
   "phx-hook-loading"
 ];
+var PHX_DROP_TARGET_ACTIVE_CLASS = "phx-drop-target-active";
 var PHX_COMPONENT = "data-phx-component";
 var PHX_VIEW_REF = "data-phx-view";
 var PHX_LIVE_LINK = "data-phx-link";
@@ -279,6 +280,16 @@ var channelUploader = function(entries, onError, resp, liveSocket) {
     const entryUploader = new EntryUploader(entry, resp.config, liveSocket);
     entryUploader.upload();
   });
+};
+var eventContainsFiles = (e) => {
+  if (e.dataTransfer.types) {
+    for (let i = 0; i < e.dataTransfer.types.length; i++) {
+      if (e.dataTransfer.types[i] === "Files") {
+        return true;
+      }
+    }
+  }
+  return false;
 };
 
 // js/phoenix_live_view/browser.js
@@ -6279,14 +6290,42 @@ var LiveSocket = class {
       }
     );
     this.on("dragover", (e) => e.preventDefault());
+    this.on("dragenter", (e) => {
+      const dropzone = closestPhxBinding(
+        e.target,
+        this.binding(PHX_DROP_TARGET)
+      );
+      if (!dropzone || !(dropzone instanceof HTMLElement)) {
+        return;
+      }
+      if (eventContainsFiles(e)) {
+        this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+      }
+    });
+    this.on("dragleave", (e) => {
+      const dropzone = closestPhxBinding(
+        e.target,
+        this.binding(PHX_DROP_TARGET)
+      );
+      if (!dropzone || !(dropzone instanceof HTMLElement)) {
+        return;
+      }
+      const rect = dropzone.getBoundingClientRect();
+      if (e.clientX <= rect.left || e.clientX >= rect.right || e.clientY <= rect.top || e.clientY >= rect.bottom) {
+        this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+      }
+    });
     this.on("drop", (e) => {
       e.preventDefault();
-      const dropTargetId = maybe(
-        closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)),
-        (trueTarget) => {
-          return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET));
-        }
+      const dropzone = closestPhxBinding(
+        e.target,
+        this.binding(PHX_DROP_TARGET)
       );
+      if (!dropzone || !(dropzone instanceof HTMLElement)) {
+        return;
+      }
+      this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+      const dropTargetId = dropzone.getAttribute(this.binding(PHX_DROP_TARGET));
       const dropTarget = dropTargetId && document.getElementById(dropTargetId);
       const files = Array.from(e.dataTransfer.files || []);
       if (!dropTarget || !(dropTarget instanceof HTMLInputElement) || dropTarget.disabled || files.length === 0 || !(dropTarget.files instanceof FileList)) {
