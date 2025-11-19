@@ -71,6 +71,7 @@ var PHX_MAIN = "data-phx-main";
 var PHX_ROOT_ID = "data-phx-root-id";
 var PHX_VIEWPORT_TOP = "viewport-top";
 var PHX_VIEWPORT_BOTTOM = "viewport-bottom";
+var PHX_VIEWPORT_OVERRUN_TARGET = "viewport-overrun-target";
 var PHX_TRIGGER_ACTION = "trigger-action";
 var PHX_HAS_FOCUSED = "phx-has-focused";
 var FOCUSABLE_INPUTS = [
@@ -1408,7 +1409,7 @@ Hooks.InfiniteScroll = {
         scrollBefore = scrollNow;
         return pendingOp();
       }
-      const rect = this.el.getBoundingClientRect();
+      const rect = this.findOverrunTarget();
       const topEvent = this.el.getAttribute(
         this.liveSocket.binding("viewport-top")
       );
@@ -1466,6 +1467,23 @@ Hooks.InfiniteScroll = {
         }, remainingTime);
       }
     };
+  },
+  findOverrunTarget() {
+    let rect;
+    const overrunTarget = this.el.getAttribute(
+      this.liveSocket.binding(PHX_VIEWPORT_OVERRUN_TARGET)
+    );
+    if (overrunTarget) {
+      const overrunEl = document.getElementById(overrunTarget);
+      if (overrunEl) {
+        rect = overrunEl.getBoundingClientRect();
+      } else {
+        throw new Error("did not find element with id " + overrunTarget);
+      }
+    } else {
+      rect = this.el.getBoundingClientRect();
+    }
+    return rect;
   }
 };
 var hooks_default = Hooks;
