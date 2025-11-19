@@ -4238,9 +4238,28 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     applyDiff(type, rawDiff, callback) {
       this.log(type, () => ["", clone(rawDiff)]);
       const { diff, reply, events, title } = Rendered.extract(rawDiff);
-      callback({ diff, reply, events });
-      if (typeof title === "string" || type == "mount" && this.isMain()) {
-        window.requestAnimationFrame(() => dom_default.putTitle(title));
+      const ev = events.reduce(
+        (acc, args) => {
+          if (args.length === 3 && args[2] == true) {
+            acc.pre.push(args.slice(0, -1));
+          } else {
+            acc.post.push(args);
+          }
+          return acc;
+        },
+        { pre: [], post: [] }
+      );
+      this.liveSocket.dispatchEvents(ev.pre);
+      const update = () => {
+        callback({ diff, reply, events: ev.post });
+        if (typeof title === "string" || type == "mount" && this.isMain()) {
+          window.requestAnimationFrame(() => dom_default.putTitle(title));
+        }
+      };
+      if ("onDocumentPatch" in this.liveSocket.domCallbacks) {
+        this.liveSocket.triggerDOM("onDocumentPatch", [update]);
+      } else {
+        update();
       }
     }
     onJoin(resp) {
