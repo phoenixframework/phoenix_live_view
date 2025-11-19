@@ -163,7 +163,7 @@ export interface LiveSocketOptions {
      *   }
      * })
      * ```
-     * 
+     *
      * It is strongly advised to call start as quickly as possible.
      */
     onDocumentPatch?: (start: () => void) => void;
