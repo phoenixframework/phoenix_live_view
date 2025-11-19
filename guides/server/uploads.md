@@ -115,6 +115,36 @@ Upload entries are created when a file is added to the form
 input and each will exist until it has been consumed,
 following a successfully completed upload.
 
+### Styling the drop target
+
+Phoenix LiveView listens for drag events in the browser,
+and will annotate the drop target element with the `phx-drop-target-active` class
+when a user is dragging an element over the drop target.
+
+When using TailwindCSS, one may create a custom variant that can be used in conjunction
+with this class to allow styling things specifically when the user is dragging something over the drop target.
+
+```css
+<%!-- assets/app.css --%>
+
+@custom-variant phx-drop-target-active (.phx-drop-target-active&, .phx-drop-target-active &);
+```
+
+This variant can be used in HeEx templates like so:
+
+```heex
+<%!-- lib/my_app_web/live/upload_live.html.heex --%>
+
+<section phx-drop-target={@uploads.avatar.ref} class="phx-drop-target-active:scale-105">
+<!-- ... -->
+</section>
+```
+
+In this example, when a file is dragged over the dropzone element, the element grows in size.
+
+This variant can also be used alongside [Tailwind's arbitrary state selectors](https://tailwindcss.com/docs/hover-focus-and-other-states),
+which can allow one to not only style the element itself, but the entire page, sibling elements, parent elements, and more.
+
 ### Entry validation
 
 Validation occurs automatically based on any conditions
