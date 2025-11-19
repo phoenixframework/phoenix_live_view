@@ -157,14 +157,16 @@ export interface LiveSocketOptions {
      * ```javascript
      * let liveSocket = new LiveSocket("/live", Socket, {
      *   dom: {
-     *     beforePatch(start) {
+     *     onDocumentPatch(start) {
      *       document.startViewTransition(start);
      *     }
      *   }
      * })
      * ```
+     * 
+     * It is strongly advised to call start as quickly as possible.
      */
-    beforePatch?: (start: () => void) => void;
+    onDocumentPatch?: (start: () => void) => void;
     /**
      * Called immediately before a DOM patch is applied.
      */

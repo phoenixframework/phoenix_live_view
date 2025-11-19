@@ -320,7 +320,7 @@ export default class View {
     // Events are either [event, payload] or [event, payload, true]
     // where the optional third element (true) indicates that the event should
     // be dispatched before the DOM patch. This is useful in combination with
-    // the beforePatch dom callback.
+    // the onDocumentPatch dom callback.
     const ev = events.reduce(
       (acc, args) => {
         if (args.length === 3 && args[2] == true) {
@@ -342,8 +342,8 @@ export default class View {
       }
     };
 
-    if ("beforePatch" in this.liveSocket.domCallbacks) {
-      this.liveSocket.triggerDOM("beforePatch", [update]);
+    if ("onDocumentPatch" in this.liveSocket.domCallbacks) {
+      this.liveSocket.triggerDOM("onDocumentPatch", [update]);
     } else {
       update();
     }
