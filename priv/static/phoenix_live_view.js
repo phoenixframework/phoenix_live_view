@@ -6901,6 +6901,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     if (existingHook) {
       return existingHook;
     }
+    if (!el.hasAttribute("id")) {
+      logError(
+        "Elements passed to createHook need to have a unique id attribute",
+        el
+      );
+    }
     let hook = new ViewHook(View.closestView(el), el, callbacks);
     dom_default.putCustomElHook(el, hook);
     return hook;
