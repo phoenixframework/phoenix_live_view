@@ -398,11 +398,11 @@ defmodule Phoenix.LiveView.ColocatedJS do
     case Keyword.get(settings, :node_modules_path, {:fallback, "assets/node_modules"}) do
       {:fallback, rel_path} ->
         location = Path.absname(rel_path)
-        do_symlink(location)
+        do_symlink(location, true)
 
       path when is_binary(path) ->
         location = Path.absname(path)
-        do_symlink(location)
+        do_symlink(location, false)
     end
   end
 
@@ -414,14 +414,26 @@ defmodule Phoenix.LiveView.ColocatedJS do
     end
   end
 
-  defp do_symlink(node_modules_path) do
+  defp do_symlink(node_modules_path, is_fallback) do
     relative_node_modules_path = relative_to_target(node_modules_path)
 
     with {:error, reason} when reason != :eexist <-
-           File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")) do
-      IO.warn(
-        "Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}"
-      )
+           File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")),
+         false <- Keyword.get(global_settings(), :disable_symlink_warning, false) do
+      disable_hint = """
+      If you don't use colocated hooks / js or you don't need to import files from "assets/node_modules"
+      in your hooks, you can simply disable this warning by setting
+
+          config :phoenix_live_view, :colocated_js,
+            disable_symlink_warning: true
+      """
+
+      IO.warn("""
+      Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}
+
+      On Windows, you can address this issue by starting your Windows terminal at least once
+      with "Run as Administrator" and then running your Phoenix application.#{is_fallback && "\n\n" <> disable_hint}
+      """)
     end
   end
 
