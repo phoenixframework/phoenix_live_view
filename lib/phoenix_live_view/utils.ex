@@ -267,12 +267,22 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Annotates the changes with the event to be pushed.
 
-  Events are dispatched on the JavaScript side only after
+  By default, events are dispatched on the JavaScript side only after
   the current patch is invoked. Therefore, if the LiveView
-  redirects, the events won't be invoked.
+  redirects, the events won't be invoked. If the `dispatch: :before` option
+  is passed, this event will be dispatched before patching the DOM.
   """
-  def push_event(%Socket{} = socket, event, %{} = payload) do
-    update_in(socket.private.live_temp[:push_events], &[[event, payload] | &1 || []])
+  def push_event(%Socket{} = socket, event, %{} = payload, opts) do
+    opts = Keyword.validate!(opts, [:dispatch])
+    dispatch_phase = Keyword.get(opts, :dispatch, :after)
+
+    case dispatch_phase do
+      :after ->
+        update_in(socket.private.live_temp[:push_events], &[[event, payload] | &1 || []])
+
+      :before ->
+        update_in(socket.private.live_temp[:push_events], &[[event, payload, true] | &1 || []])
+    end
   end
 
   @doc """

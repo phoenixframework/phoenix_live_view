@@ -316,9 +316,36 @@ export default class View {
   applyDiff(type, rawDiff, callback) {
     this.log(type, () => ["", clone(rawDiff)]);
     const { diff, reply, events, title } = Rendered.extract(rawDiff);
-    callback({ diff, reply, events });
-    if (typeof title === "string" || (type == "mount" && this.isMain())) {
-      window.requestAnimationFrame(() => DOM.putTitle(title));
+
+    // Events are either [event, payload] or [event, payload, true]
+    // where the optional third element (true) indicates that the event should
+    // be dispatched before the DOM patch. This is useful in combination with
+    // the onDocumentPatch dom callback.
+    const ev = events.reduce(
+      (acc, args) => {
+        if (args.length === 3 && args[2] == true) {
+          acc.pre.push(args.slice(0, -1));
+        } else {
+          acc.post.push(args);
+        }
+        return acc;
+      },
+      { pre: [], post: [] },
+    );
+
+    this.liveSocket.dispatchEvents(ev.pre);
+
+    const update = () => {
+      callback({ diff, reply, events: ev.post });
+      if (typeof title === "string" || (type == "mount" && this.isMain())) {
+        window.requestAnimationFrame(() => DOM.putTitle(title));
+      }
+    };
+
+    if ("onDocumentPatch" in this.liveSocket.domCallbacks) {
+      this.liveSocket.triggerDOM("onDocumentPatch", [update]);
+    } else {
+      update();
     }
   }
 
