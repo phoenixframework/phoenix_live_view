@@ -779,8 +779,17 @@ defmodule Phoenix.LiveView do
   )
   ```
 
+  ## Specifying the dispatch phase
+
+  By default, events pushed with `push_event/3` are only dispatched after
+  the LiveView is patched. In some cases, handling an event before the LiveView
+  is patched can be useful though. To do this, the `dispatch` option can be passed
+  as fourth argument:
+
+      {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"}, dispatch: :before)}
+
   """
-  defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
+  defdelegate push_event(socket, event, payload, opts \\ []), to: Phoenix.LiveView.Utils
 
   @doc ~S"""
   Allows an upload for the provided name.
