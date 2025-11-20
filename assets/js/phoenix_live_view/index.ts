@@ -10,6 +10,7 @@ import OriginalLiveSocket, { isUsedInput } from "./live_socket";
 import DOM from "./dom";
 import { ViewHook } from "./view_hook";
 import View from "./view";
+import { logError } from "./utils";
 
 import type { LiveSocketJSCommands } from "./js_commands";
 import type { Hook, HooksOptions } from "./view_hook";
@@ -327,6 +328,13 @@ function createHook(el: HTMLElement, callbacks: Hook): ViewHook {
   let existingHook = DOM.getCustomElHook(el);
   if (existingHook) {
     return existingHook;
+  }
+
+  if (!el.hasAttribute("id")) {
+    logError(
+      "Elements passed to createHook need to have a unique id attribute",
+      el,
+    );
   }
 
   let hook = new ViewHook(View.closestView(el), el, callbacks);
