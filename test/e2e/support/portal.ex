@@ -101,6 +101,8 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
     |> assign(:param_current, nil)
     |> assign(:count, 0)
     |> assign(:render_modal, true)
+    |> assign(:render_nested_portals, true)
+    |> assign(:nested_portal_count, 0)
     |> then(&{:ok, &1, layout: {__MODULE__, :live}})
   end
 
@@ -126,6 +128,14 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
 
   def handle_event("toggle_modal", _params, socket) do
     {:noreply, assign(socket, :render_modal, !socket.assigns.render_modal)}
+  end
+
+  def handle_event("toggle_nested_portals", _params, socket) do
+    {:noreply, assign(socket, :render_nested_portals, !socket.assigns.render_nested_portals)}
+  end
+
+  def handle_event("nested_portal_click", _params, socket) do
+    {:noreply, assign(socket, :nested_portal_count, socket.assigns.nested_portal_count + 1)}
   end
 
   @impl Phoenix.LiveView
@@ -180,6 +190,24 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         </:activator>
         Hey there! {@count}
       </Phoenix.LiveViewTest.E2E.PortalTooltip.tooltip>
+    </div>
+
+    <div class="border border-purple-600 mt-8 p-4">
+      <h2>Nested Portal Test</h2>
+      <.button phx-click="toggle_nested_portals">Toggle nested portals</.button>
+      <p>Nested portal count: <span id="nested-portal-count">{@nested_portal_count}</span></p>
+      <.portal :if={@render_nested_portals} id="nested-portal-source" target="#root-portal">
+        <div id="outer-portal" class="border border-blue-400 p-4 m-2">
+          <h3>Outer Portal</h3>
+          <.portal id="inner-portal-source" target="body">
+            <div id="inner-portal" class="border border-green-400 p-2 m-2">
+              <h4>Inner Portal (nested inside outer)</h4>
+              <p id="nested-portal-content">Tick count: {@count}</p>
+              <.button phx-click="nested_portal_click">Click nested portal button</.button>
+            </div>
+          </.portal>
+        </div>
+      </.portal>
     </div>
     """
   end

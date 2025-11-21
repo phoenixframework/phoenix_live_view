@@ -121,7 +121,7 @@ export default class DOMPatch {
     // as the portal target itself could be at the end of the DOM,
     // it may not be present while morphing previous parts;
     // therefore we apply all teleports after the morphing is done+
-    const portalCallbacks = [];
+    let portalCallbacks = [];
 
     let externalFormTriggered = null;
 
@@ -488,8 +488,17 @@ export default class DOMPatch {
       }
 
       morph(targetContainer, html);
+
       // normal patch complete, teleport elements now
-      portalCallbacks.forEach((callback) => callback());
+      // and handle nested teleportation up to depth 5
+      let teleportCount = 0;
+      while (portalCallbacks.length > 0 && teleportCount < 5) {
+        const copy = portalCallbacks.slice();
+        portalCallbacks = [];
+        copy.forEach((callback) => callback());
+        teleportCount++;
+      }
+
       // check for any teleported elements that are not in the view any more
       // and remove them
       this.view.portalElementIds.forEach((id) => {
