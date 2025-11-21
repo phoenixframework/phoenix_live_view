@@ -3,6 +3,7 @@ import {
   PHX_LIVE_FILE_UPDATED,
   PHX_PREFLIGHTED_REFS,
   PHX_UPLOAD_REF,
+  PHX_VIEWPORT_OVERRUN_TARGET,
 } from "./constants";
 
 import LiveUploader from "./live_uploader";
@@ -218,7 +219,8 @@ Hooks.InfiniteScroll = {
         scrollBefore = scrollNow;
         return pendingOp();
       }
-      const rect = this.el.getBoundingClientRect();
+
+      const rect = this.findOverrunTarget();
       const topEvent = this.el.getAttribute(
         this.liveSocket.binding("viewport-top"),
       );
@@ -292,6 +294,24 @@ Hooks.InfiniteScroll = {
         }, remainingTime);
       }
     };
+  },
+
+  findOverrunTarget() {
+    let rect;
+    const overrunTarget = this.el.getAttribute(
+      this.liveSocket.binding(PHX_VIEWPORT_OVERRUN_TARGET),
+    );
+    if (overrunTarget) {
+      const overrunEl = document.getElementById(overrunTarget);
+      if (overrunEl) {
+        rect = overrunEl.getBoundingClientRect();
+      } else {
+        throw new Error("did not find element with id " + overrunTarget);
+      }
+    } else {
+      rect = this.el.getBoundingClientRect();
+    }
+    return rect;
   },
 };
 export default Hooks;

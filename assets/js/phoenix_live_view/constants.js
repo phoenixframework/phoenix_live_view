@@ -43,6 +43,7 @@ export const PHX_MAIN = "data-phx-main";
 export const PHX_ROOT_ID = "data-phx-root-id";
 export const PHX_VIEWPORT_TOP = "viewport-top";
 export const PHX_VIEWPORT_BOTTOM = "viewport-bottom";
+export const PHX_VIEWPORT_OVERRUN_TARGET = "viewport-overrun-target";
 export const PHX_TRIGGER_ACTION = "trigger-action";
 export const PHX_HAS_FOCUSED = "phx-has-focused";
 export const FOCUSABLE_INPUTS = [
