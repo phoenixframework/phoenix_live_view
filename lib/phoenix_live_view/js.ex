@@ -225,15 +225,35 @@ defmodule Phoenix.LiveView.JS do
     end
   end
 
+  if Code.ensure_loaded?(Jason.Encoder) do
+    defimpl Jason.Encoder, for: Phoenix.LiveView.JS do
+      def encode(%Phoenix.LiveView.JS{} = js, opts) do
+        Jason.Encode.list(JS.to_encodable(js), opts)
+      end
+    end
+  end
+
+  if Code.ensure_loaded?(JSON.Encoder) do
+    defimpl JSON.Encoder, for: Phoenix.LiveView.JS do
+      def encode(%Phoenix.LiveView.JS{} = js, encoder) do
+        JSON.Encoder.encode(JS.to_encodable(js), encoder)
+      end
+    end
+  end
+
   @doc ~S"""
   Returns a JSON-encodable opaque intermediate representation of the JS command.
 
-  Most of the time you will not need to call this function directly. JS commands
-  are typically rendered in [HEEx templates](assigns-eex.md), in which they are
-  encoded automatically.
+  Most of the time you will not need to call this function directly, as
+  JS commands are automatically encoded where they are typically used: in
+  [HEEx templates](assigns-eex.md) or within the payload of
+  `Phoenix.LiveView.push_event/3`.
 
-  This function is useful when constructing JS commands dynamically on the
-  server and pushing them to the client via `Phoenix.LiveView.push_event/3`.
+  This function is useful when you use a custom JSON encoder.
+  [`Jason`](https://hexdocs.pm/jason) and
+  [`JSON`](https://hexdocs.pm/elixir/JSON.html) are both supported, such that
+  JS commands are automatically encoded by implementing the `Jason.Encoder` and
+  `JSON.Encoder` protocols.
 
   ## Examples
 
@@ -247,6 +267,19 @@ defmodule Phoenix.LiveView.JS do
     js: js_commands_for(item) |> JS.to_encodable()
   })
   ```
+
+  > #### Automatic encoding {: .tip}
+  >
+  > Note that you don't need to call `to_encodable/1` if you are using `Jason` or
+  > `JSON`, instead you can pass the JS commands directly:
+  >
+  > ```elixir
+  > socket
+  > |> push_event("myapp:exec_js", %{
+  >   to: "#items-#{item.id}",
+  >   js: JS.show()
+  > })
+  > ```
 
   On the client, handle the event and execute the commands:
 
