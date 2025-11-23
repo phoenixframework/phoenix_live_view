@@ -249,11 +249,9 @@ defmodule Phoenix.LiveView.JS do
   [HEEx templates](assigns-eex.md) or within the payload of
   `Phoenix.LiveView.push_event/3`.
 
-  This function is useful when you use a custom JSON encoder.
-  [`Jason`](https://hexdocs.pm/jason) and
-  [`JSON`](https://hexdocs.pm/elixir/JSON.html) are both supported, such that
-  JS commands are automatically encoded by implementing the `Jason.Encoder` and
-  `JSON.Encoder` protocols.
+  This function is useful when you use a custom JSON library. JS commands
+  implement the `Jason.Encoder` and `JSON.Encoder` protocols, such that they
+  are automatically encoded when you use either of those JSON libraries.
 
   ## Examples
 
