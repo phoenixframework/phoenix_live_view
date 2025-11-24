@@ -3,6 +3,31 @@ defmodule Phoenix.LiveView.JSTest do
 
   alias Phoenix.LiveView.JS
 
+  describe "%JS{}" do
+    test "implements Jason.Encoder" do
+      js = JS.push("inc", value: %{one: 1})
+      encodedJS = Jason.encode!(js)
+
+      assert String.starts_with?(encodedJS, ~S<[["push",{>)
+
+      assert Jason.decode!(encodedJS) == [
+               ["push", %{"event" => "inc", "value" => %{"one" => 1}}]
+             ]
+    end
+
+    @tag skip: if(!Code.ensure_loaded?(JSON.Encoder), do: "JSON module is not available")
+    test "implements JSON.Encoder" do
+      js = JS.push("inc", value: %{one: 1})
+      encodedJS = JSON.encode!(js)
+
+      assert String.starts_with?(encodedJS, ~S<[["push",{>)
+
+      assert JSON.decode!(encodedJS) == [
+               ["push", %{"event" => "inc", "value" => %{"one" => 1}}]
+             ]
+    end
+  end
+
   describe "to_encodable/1" do
     test "returns the ops list" do
       js = JS.push("inc", value: %{one: 1})
