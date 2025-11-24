@@ -3,6 +3,26 @@ defmodule Phoenix.LiveView.JSTest do
 
   alias Phoenix.LiveView.JS
 
+  describe "to_encodable/1" do
+    test "returns the ops list" do
+      js = JS.push("inc", value: %{one: 1})
+      assert JS.to_encodable(js) == [["push", %{event: "inc", value: %{one: 1}}]]
+    end
+
+    test "with multiple ops" do
+      js =
+        JS.push("inc", value: %{one: 1, two: 2})
+        |> JS.add_class("show", to: "#modal", time: 100)
+        |> JS.remove_class("hidden")
+
+      assert JS.to_encodable(js) == [
+               ["push", %{event: "inc", value: %{one: 1, two: 2}}],
+               ["add_class", %{names: ["show"], to: "#modal", time: 100}],
+               ["remove_class", %{names: ["hidden"]}]
+             ]
+    end
+  end
+
   describe "exec" do
     test "with defaults" do
       assert JS.exec("phx-remove") == %JS{ops: [["exec", %{attr: "phx-remove"}]]}
