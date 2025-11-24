@@ -15,16 +15,20 @@ defmodule Phoenix.LiveView.JSTest do
              ]
     end
 
-    @tag skip: if(!Code.ensure_loaded?(JSON.Encoder), do: "JSON module is not available")
-    test "implements JSON.Encoder" do
-      js = JS.push("inc", value: %{one: 1})
-      encodedJS = JSON.encode!(js)
+    if Code.ensure_loaded?(JSON.Encoder) do
+      test "implements JSON.Encoder" do
+        js = JS.push("inc", value: %{one: 1})
+        encodedJS = JSON.encode!(js)
 
-      assert String.starts_with?(encodedJS, ~S<[["push",{>)
+        assert String.starts_with?(encodedJS, ~S<[["push",{>)
 
-      assert JSON.decode!(encodedJS) == [
-               ["push", %{"event" => "inc", "value" => %{"one" => 1}}]
-             ]
+        assert JSON.decode!(encodedJS) == [
+                 ["push", %{"event" => "inc", "value" => %{"one" => 1}}]
+               ]
+      end
+    else
+      @tag skip: "JSON module is not available"
+      test "implements JSON.Encoder", do: flunk("should not run")
     end
   end
 
