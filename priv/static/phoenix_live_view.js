@@ -59,6 +59,7 @@ var LiveView = (() => {
     "phx-focus-loading",
     "phx-hook-loading"
   ];
+  var PHX_DROP_TARGET_ACTIVE_CLASS = "phx-drop-target-active";
   var PHX_COMPONENT = "data-phx-component";
   var PHX_VIEW_REF = "data-phx-view";
   var PHX_LIVE_LINK = "data-phx-link";
@@ -88,6 +89,7 @@ var LiveView = (() => {
   var PHX_ROOT_ID = "data-phx-root-id";
   var PHX_VIEWPORT_TOP = "viewport-top";
   var PHX_VIEWPORT_BOTTOM = "viewport-bottom";
+  var PHX_VIEWPORT_OVERRUN_TARGET = "viewport-overrun-target";
   var PHX_TRIGGER_ACTION = "trigger-action";
   var PHX_HAS_FOCUSED = "phx-has-focused";
   var FOCUSABLE_INPUTS = [
@@ -295,6 +297,16 @@ var LiveView = (() => {
       const entryUploader = new EntryUploader(entry, resp.config, liveSocket);
       entryUploader.upload();
     });
+  };
+  var eventContainsFiles = (e) => {
+    if (e.dataTransfer.types) {
+      for (let i = 0; i < e.dataTransfer.types.length; i++) {
+        if (e.dataTransfer.types[i] === "Files") {
+          return true;
+        }
+      }
+    }
+    return false;
   };
 
   // js/phoenix_live_view/browser.js
@@ -921,6 +933,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     },
     isLocked(el) {
       return el.hasAttribute && el.hasAttribute(PHX_REF_LOCK);
+    },
+    attributeIgnored(attribute, ignoredAttributes) {
+      return ignoredAttributes.some(
+        (toIgnore) => attribute.name == toIgnore || toIgnore === "*" || toIgnore.includes("*") && attribute.name.match(toIgnore) != null
+      );
     }
   };
   var dom_default = DOM;
@@ -1425,7 +1442,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           scrollBefore = scrollNow;
           return pendingOp();
         }
-        const rect = this.el.getBoundingClientRect();
+        const rect = this.findOverrunTarget();
         const topEvent = this.el.getAttribute(
           this.liveSocket.binding("viewport-top")
         );
@@ -1483,6 +1500,23 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           }, remainingTime);
         }
       };
+    },
+    findOverrunTarget() {
+      let rect;
+      const overrunTarget = this.el.getAttribute(
+        this.liveSocket.binding(PHX_VIEWPORT_OVERRUN_TARGET)
+      );
+      if (overrunTarget) {
+        const overrunEl = document.getElementById(overrunTarget);
+        if (overrunEl) {
+          rect = overrunEl.getBoundingClientRect();
+        } else {
+          throw new Error("did not find element with id " + overrunTarget);
+        }
+      } else {
+        rect = this.el.getBoundingClientRect();
+      }
+      return rect;
     }
   };
   var hooks_default = Hooks;
@@ -2287,7 +2321,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const added = [];
       const updates = [];
       const appendPrependUpdates = [];
-      const portalCallbacks = [];
+      let portalCallbacks = [];
       let externalFormTriggered = null;
       const morph = (targetContainer2, source, withChildren = this.withChildren) => {
         const morphCallbacks = {
@@ -2552,7 +2586,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           });
         }
         morph(targetContainer, html);
-        portalCallbacks.forEach((callback) => callback());
+        let teleportCount = 0;
+        while (portalCallbacks.length > 0 && teleportCount < 5) {
+          const copy = portalCallbacks.slice();
+          portalCallbacks = [];
+          copy.forEach((callback) => callback());
+          teleportCount++;
+        }
         this.view.portalElementIds.forEach((id) => {
           const el = document.getElementById(id);
           if (el) {
@@ -3421,10 +3461,17 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     ignoreAttrs(el, attrs) {
       dom_default.putPrivate(el, "JS:ignore_attrs", {
         apply: (fromEl, toEl) => {
-          Array.from(fromEl.attributes).forEach((attr) => {
-            if (attrs.some(
-              (toIgnore) => attr.name == toIgnore || toIgnore === "*" || toIgnore.includes("*") && attr.name.match(toIgnore) != null
-            )) {
+          let fromAttributes = Array.from(fromEl.attributes);
+          let fromAttributeNames = fromAttributes.map((attr) => attr.name);
+          Array.from(toEl.attributes).filter((attr) => {
+            return !fromAttributeNames.includes(attr.name);
+          }).forEach((attr) => {
+            if (dom_default.attributeIgnored(attr, attrs)) {
+              toEl.removeAttribute(attr.name);
+            }
+          });
+          fromAttributes.forEach((attr) => {
+            if (dom_default.attributeIgnored(attr, attrs)) {
               toEl.setAttribute(attr.name, attr.value);
             }
           });
@@ -4299,9 +4346,28 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     applyDiff(type, rawDiff, callback) {
       this.log(type, () => ["", clone(rawDiff)]);
       const { diff, reply, events, title } = Rendered.extract(rawDiff);
-      callback({ diff, reply, events });
-      if (typeof title === "string" || type == "mount" && this.isMain()) {
-        window.requestAnimationFrame(() => dom_default.putTitle(title));
+      const ev = events.reduce(
+        (acc, args) => {
+          if (args.length === 3 && args[2] == true) {
+            acc.pre.push(args.slice(0, -1));
+          } else {
+            acc.post.push(args);
+          }
+          return acc;
+        },
+        { pre: [], post: [] }
+      );
+      this.liveSocket.dispatchEvents(ev.pre);
+      const update = () => {
+        callback({ diff, reply, events: ev.post });
+        if (typeof title === "string" || type == "mount" && this.isMain()) {
+          window.requestAnimationFrame(() => dom_default.putTitle(title));
+        }
+      };
+      if ("onDocumentPatch" in this.liveSocket.domCallbacks) {
+        this.liveSocket.triggerDOM("onDocumentPatch", [update]);
+      } else {
+        update();
       }
     }
     onJoin(resp) {
@@ -5910,7 +5976,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.owner(el, (view) => js_default.exec(e, eventType, encodedJS, view, el));
     }
     /**
-     * Returns an object with methods to manipluate the DOM and execute JavaScript.
+     * Returns an object with methods to manipulate the DOM and execute JavaScript.
      * The applied changes integrate with server DOM patching.
      *
      * @returns {import("./js_commands").LiveSocketJSCommands}
@@ -6274,14 +6340,42 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       );
       this.on("dragover", (e) => e.preventDefault());
+      this.on("dragenter", (e) => {
+        const dropzone = closestPhxBinding(
+          e.target,
+          this.binding(PHX_DROP_TARGET)
+        );
+        if (!dropzone || !(dropzone instanceof HTMLElement)) {
+          return;
+        }
+        if (eventContainsFiles(e)) {
+          this.js().addClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        }
+      });
+      this.on("dragleave", (e) => {
+        const dropzone = closestPhxBinding(
+          e.target,
+          this.binding(PHX_DROP_TARGET)
+        );
+        if (!dropzone || !(dropzone instanceof HTMLElement)) {
+          return;
+        }
+        const rect = dropzone.getBoundingClientRect();
+        if (e.clientX <= rect.left || e.clientX >= rect.right || e.clientY <= rect.top || e.clientY >= rect.bottom) {
+          this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        }
+      });
       this.on("drop", (e) => {
         e.preventDefault();
-        const dropTargetId = maybe(
-          closestPhxBinding(e.target, this.binding(PHX_DROP_TARGET)),
-          (trueTarget) => {
-            return trueTarget.getAttribute(this.binding(PHX_DROP_TARGET));
-          }
+        const dropzone = closestPhxBinding(
+          e.target,
+          this.binding(PHX_DROP_TARGET)
         );
+        if (!dropzone || !(dropzone instanceof HTMLElement)) {
+          return;
+        }
+        this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        const dropTargetId = dropzone.getAttribute(this.binding(PHX_DROP_TARGET));
         const dropTarget = dropTargetId && document.getElementById(dropTargetId);
         const files = Array.from(e.dataTransfer.files || []);
         if (!dropTarget || !(dropTarget instanceof HTMLInputElement) || dropTarget.disabled || files.length === 0 || !(dropTarget.files instanceof FileList)) {
@@ -6820,6 +6914,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     let existingHook = dom_default.getCustomElHook(el);
     if (existingHook) {
       return existingHook;
+    }
+    if (!el.hasAttribute("id")) {
+      logError(
+        "Elements passed to createHook need to have a unique id attribute",
+        el
+      );
     }
     let hook = new ViewHook(View.closestView(el), el, callbacks);
     dom_default.putCustomElHook(el, hook);
