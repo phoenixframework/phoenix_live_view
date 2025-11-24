@@ -267,6 +267,24 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.18 (Unreleased)
+
+### Bug fixes
+
+* Fix boolean attributes not being properly ignored when using `JS.ignore_attributes` ([#4049](https://github.com/phoenixframework/phoenix_live_view/pull/4049))
+
+### Enhancements
+
+* [Phoenix.Component.assign/2] allow passing a function as second argument assign(socket, fn _existing_assigns -> %{this_gets: "merged"} end) ([#4051](https://github.com/phoenixframework/phoenix_live_view/pull/4051))
+* Annotate `phx-drop-target` elements with the `phx-drop-target-active` class when items are being dropped ([#4012](https://github.com/phoenixframework/phoenix_live_view/pull/4012))
+* Add `onDocumentPatch` dom callback and allow specifying the event dispatch phase ([#4043](https://github.com/phoenixframework/phoenix_live_view/pull/4043))
+  This allows users to use view transitions, see [the linked gist in the PR](https://gist.github.com/SteffenDE/cf7cdb91ba037b08cdc583763e4ffc69).
+* Warn in `createHook` if passed element has no ID ([#4010](
+  https://github.com/phoenixframework/phoenix_live_view/pull/4010))
+* Allow `Phoenix.Component.portal/1` to be nested ([#4048](https://github.com/phoenixframework/phoenix_live_view/pull/4048))
+* Add `phx-viewport-overrun-target` to make infinitely scrolled tables easier to implement ([#4053](https://github.com/phoenixframework/phoenix_live_view/pull/4053)) ([Example](https://gist.github.com/SteffenDE/613125993362e30443e58558aa3c8ba0))
+* Allow to disable the symlink warning for colocated js ([#4057](https://github.com/phoenixframework/phoenix_live_view/pull/4057))
+
 ## v1.1.17 (2025-11-04)
 
 ### Bug fixes
