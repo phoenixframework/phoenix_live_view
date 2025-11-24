@@ -38,13 +38,12 @@ describe("JS", () => {
       js = hook.js();
     });
 
-    test("exec", (done) => {
+    test("exec", () => {
       simulateVisibility(modal);
       expect(modal.style.display).toBe("");
       js.exec('[["toggle", {"to": "#modal"}]]');
-      jest.advanceTimersByTime(100);
+      jest.runAllTimers();
       expect(modal.style.display).toBe("none");
-      done();
     });
 
     test("show and hide", (done) => {
