@@ -241,6 +241,58 @@ describe("LiveSocket", () => {
     // liveSocket constructor reads nav history position from sessionStorage
     expect(getItemCalls).toEqual(2);
   });
+
+  describe("execJS", () => {
+    let view, liveSocket;
+
+    beforeEach(() => {
+      global.document.body.innerHTML = "";
+      prepareLiveViewDOM(global.document);
+      jest.useFakeTimers();
+
+      liveSocket = new LiveSocket("/live", Socket);
+      view = simulateJoinedView(
+        document.getElementById("container1"),
+        liveSocket,
+      );
+    });
+
+    afterEach(() => {
+      liveSocket && liveSocket.destroyAllViews();
+      liveSocket = null;
+      jest.useRealTimers();
+    });
+
+    afterAll(() => {
+      global.document.body.innerHTML = "";
+    });
+
+    test("accepts JSON-encoded command string", () => {
+      const el = document.createElement("div");
+      el.setAttribute("id", "test-exec");
+      el.setAttribute(
+        "data-test",
+        '[["toggle_attr", {"attr": ["open", "true"]}]]',
+      );
+      view.el.appendChild(el);
+
+      expect(el.getAttribute("open")).toBeNull();
+      liveSocket.execJS(el, el.getAttribute("data-test"));
+      jest.runAllTimers();
+      expect(el.getAttribute("open")).toEqual("true");
+    });
+
+    test("accepts command array", () => {
+      const el = document.createElement("div");
+      el.setAttribute("id", "test-exec-array");
+      view.el.appendChild(el);
+
+      expect(el.getAttribute("open")).toBeNull();
+      liveSocket.execJS(el, [["toggle_attr", { attr: ["open", "true"] }]]);
+      jest.runAllTimers();
+      expect(el.getAttribute("open")).toEqual("true");
+    });
+  });
 });
 
 describe("liveSocket.js()", () => {
@@ -280,6 +332,17 @@ describe("liveSocket.js()", () => {
 
     expect(el.getAttribute("open")).toBeNull();
     js.exec(el, el.getAttribute("data-test"));
+    jest.runAllTimers();
+    expect(el.getAttribute("open")).toEqual("true");
+  });
+
+  test("exec with command array", () => {
+    const el = document.createElement("div");
+    el.setAttribute("id", "test-exec-array");
+    view.el.appendChild(el);
+
+    expect(el.getAttribute("open")).toBeNull();
+    js.exec(el, [["toggle_attr", { attr: ["open", "true"] }]]);
     jest.runAllTimers();
     expect(el.getAttribute("open")).toEqual("true");
   });
