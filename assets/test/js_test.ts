@@ -46,6 +46,14 @@ describe("JS", () => {
       expect(modal.style.display).toBe("none");
     });
 
+    test("exec with command array", () => {
+      simulateVisibility(modal);
+      expect(modal.style.display).toBe("");
+      js.exec([["toggle", { to: "#modal" }]]);
+      jest.runAllTimers();
+      expect(modal.style.display).toBe("none");
+    });
+
     test("show and hide", (done) => {
       simulateVisibility(modal);
       expect(modal.style.display).toBe("");
@@ -1144,6 +1152,19 @@ describe("JS", () => {
         done();
       };
       JS.exec(event, "exec", click.getAttribute("phx-click"), view, click);
+    });
+
+    test("with command array", (done) => {
+      const view = setupView(`
+      <div id="modal" phx-remove='[["push", {"event": "clicked"}]]'>modal</div>
+      `);
+      const modal = document.querySelector("#modal")!;
+      view.pushEvent = (eventType, sourceEl, targetCtx, event, _meta) => {
+        expect(eventType).toBe("exec");
+        expect(event).toBe("clicked");
+        done();
+      };
+      JS.exec(event, "exec", [["exec", { attr: "phx-remove" }]], view, modal);
     });
 
     test("with no selector", () => {
