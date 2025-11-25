@@ -323,7 +323,7 @@ defmodule Phoenix.LiveViewTest.Support.ErrorsLive do
   def mount(_params, _session, socket), do: {:ok, socket}
 
   def handle_params(%{"crash_on" => "disconnected_handle_params"}, _, %Socket{transport_pid: nil}),
-    do: raise("boom disconnected handle_params")
+      do: raise("boom disconnected handle_params")
 
   def handle_params(%{"crash_on" => "connected_handle_params"}, _, %Socket{transport_pid: pid})
       when is_pid(pid),
