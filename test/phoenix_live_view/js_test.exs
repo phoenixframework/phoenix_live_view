@@ -483,6 +483,12 @@ defmodule Phoenix.LiveView.JSTest do
         JS.dispatch("foo", detail: %{done: true}, blocking: true)
       end
     end
+
+    test "raises when detail is not a map" do
+      assert_raise ArgumentError, ~r/the detail option to JS.dispatch must be a map/, fn ->
+        JS.dispatch("foo", detail: "not-a-map")
+      end
+    end
   end
 
   describe "toggle" do

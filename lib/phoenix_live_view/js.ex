@@ -366,8 +366,13 @@ defmodule Phoenix.LiveView.JS do
               })
           """
 
-        {_, {:ok, detail}} ->
+        {_, {:ok, detail}} when is_map(detail) ->
           Keyword.put(args, :detail, detail)
+
+        {_, {:ok, detail}} ->
+          raise ArgumentError, """
+          the detail option to JS.dispatch must be a map, got: #{inspect(detail)}
+          """
 
         {_, :error} ->
           args
