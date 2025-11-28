@@ -1,4 +1,4 @@
-# `phx-` HTML attributes
+# phx-* HTML attributes
 
 A summary of special HTML attributes used in Phoenix LiveView templates.
 Each attribute is linked to its documentation for more details.
@@ -58,13 +58,13 @@ Attribute values can be:
 
 ### On `<form>` elements
 
-| Attribute                                             | Value                                                                      |
-|-------------------------------------------------------|----------------------------------------------------------------------------|
-| [`phx-change`](../client/form-bindings.md)            | Event name or [JS commands](../client/bindings.md#js-commands)             |
-| [`phx-submit`](../client/form-bindings.md)            | Event name or [JS commands](../client/bindings.md#js-commands)             |
-| [`phx-auto-recover`](../client/form-bindings.md)      | Event name, [JS commands](../client/bindings.md#js-commands) or `"ignore"` |
-| [`phx-trigger-action`](../client/form-bindings.md)    | `true` or `false`                                                          |
-| [`phx-no-usage-tracking`](../client/form-bindings.md) | `true` or `false`                                                          |
+| Attribute                                                                                  | Value                                                                      |
+|--------------------------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| [`phx-change`](../client/form-bindings.md#form-events)                                     | Event name or [JS commands](../client/bindings.md#js-commands)             |
+| [`phx-submit`](../client/form-bindings.md#form-events)                                     | Event name or [JS commands](../client/bindings.md#js-commands)             |
+| [`phx-auto-recover`](../client/form-bindings.md#recovery-following-crashes-or-disconnects) | Event name, [JS commands](../client/bindings.md#js-commands) or `"ignore"` |
+| [`phx-trigger-action`](../client/form-bindings.md#submitting-the-form-action-over-http)    | Presence (or `true`) disconnects the LiveView and submits the form         |
+| [`phx-no-usage-tracking`](../client/form-bindings.md#error-feedback)                       | Presence (or `true`) opts-out of reporting unused form fields              |
 
 ### On `<button>` elements
 
@@ -175,3 +175,10 @@ let liveSocket = new LiveSocket("/live", Socket, {hooks: Hooks})
 <link phx-track-static rel="stylesheet" href={~p"/assets/app.css"} />
 <script defer phx-track-static type="text/javascript" src={~p"/assets/app.js"}></script>
 ```
+
+## Formatting & Syntax
+
+| Attribute                                                                             | Value                                                                                                 |
+|---------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|
+| [`phx-no-format`](Phoenix.LiveView.HTMLFormatter.html#module-skip-formatting)         | Presence (or `true`) skips automatic HEEx formatting for the element block                            |
+| [`phx-no-curly-interpolation`](Phoenix.Component.html#sigil_H/2-interpolating-blocks) | Presence (or `true`) disables `{...}` interpolation inside the element, requiring `<%= ... %>` syntax |
