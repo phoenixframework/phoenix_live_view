@@ -1080,7 +1080,10 @@ export default class View {
         `failed mount with ${resp.status}. Falling back to page reload`,
         resp,
       ]);
-      this.onRedirect({ to: this.liveSocket.main.href, reloadToken: resp.token });
+      this.onRedirect({
+        to: this.liveSocket.main.href,
+        reloadToken: resp.token,
+      });
       return;
     } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
       this.log("error", () => [
