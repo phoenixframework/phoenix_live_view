@@ -1053,8 +1053,12 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `navigate/1`."
   def navigate(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
-    opts = validate_keys(opts, :navigate, [:replace])
-    put_op(js, "navigate", href: href, replace: !!opts[:replace])
+    opts =
+      opts
+      |> validate_keys(:navigate, [:replace, :query])
+      |> put_query()
+
+    put_op(js, "navigate", href: href, replace: !!opts[:replace], query: opts[:query])
   end
 
   @doc """
@@ -1083,8 +1087,12 @@ defmodule Phoenix.LiveView.JS do
 
   @doc "See `patch/1`."
   def patch(%JS{} = js, href, opts) when is_binary(href) and is_list(opts) do
-    opts = validate_keys(opts, :patch, [:replace])
-    put_op(js, "patch", href: href, replace: !!opts[:replace])
+    opts =
+      opts
+      |> validate_keys(:patch, [:replace, :query])
+      |> put_query()
+
+    put_op(js, "patch", href: href, replace: !!opts[:replace], query: opts[:query])
   end
 
   @doc """
@@ -1197,6 +1205,81 @@ defmodule Phoenix.LiveView.JS do
       {:ok, %Phoenix.LiveComponent.CID{cid: cid}} -> Keyword.put(opts, :target, cid)
       {:ok, selector} -> Keyword.put(opts, :target, selector)
       :error -> opts
+    end
+  end
+
+  defp put_query(opts) do
+    case Keyword.fetch(opts, :query) do
+      {:ok, query} when is_list(query) ->
+        Keyword.put(opts, :query, parse_query(query)) |> IO.inspect()
+
+      {:ok, query} ->
+        raise ArgumentError, "patch :query expected to be a keyword list, got: #{inspect(query)}"
+
+      :error ->
+        opts
+    end
+  end
+
+  defp parse_query(query) when is_list(query) do
+    Enum.map(query, fn {op, comp} ->
+      case op do
+        :set -> ["set", parse_query_component(:set, comp)]
+        :merge -> ["merge", parse_query_component(:merge, comp)]
+        :toggle -> ["toggle", parse_query_component(:toggle, comp)]
+        :add -> ["add", parse_query_component(:add, comp)]
+        :remove -> ["remove", parse_query_component(:remove, comp)]
+      end
+    end)
+  end
+
+  defp parse_query_component(op, comp) do
+    case comp do
+      val when is_list(val) -> Enum.map(val, &parse_query_key_value(op, &1))
+      val when is_map(val) -> Map.to_list(val) |> Enum.map(&parse_query_key_value(op, &1))
+    end
+  end
+
+  defp parse_query_key(op, el) do
+    case op do
+      :remove ->
+        case el do
+          k when is_atom(k) ->
+            Atom.to_string(k)
+
+          k when not is_atom(k) ->
+            raise ArgumentError, ":query keys must be atoms, got: #{inspect(k)}"
+        end
+
+      bad_op ->
+        raise ArgumentError, "#{bad_op} must be a keyword list or map, got: #{inspect(el)}"
+    end
+  end
+
+  defp parse_query_key_value(op, el) do
+    case el do
+      {k, v} when is_atom(k) and is_binary(v) ->
+        [Atom.to_string(k), v]
+
+      {k, v} when is_atom(k) and is_list(v) ->
+        mapped_values =
+          Enum.map(v, fn val ->
+            case val do
+              str_value when is_binary(str_value) -> str_value
+              _ -> raise ArgumentError, ":query values must be strings, got: #{inspect(val)}"
+            end
+          end)
+
+        [Atom.to_string(k), mapped_values]
+
+      {k, _v} when not is_atom(k) ->
+        raise ArgumentError, ":query keys must be atoms or lists of atoms, got: #{inspect(k)}"
+
+      {_k, v} when not is_binary(v) and not is_list(v) ->
+        raise ArgumentError, ":query values must be strings, got: #{inspect(v)}"
+
+      k ->
+        parse_query_key(op, k)
     end
   end
 end

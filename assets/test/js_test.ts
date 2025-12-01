@@ -164,7 +164,7 @@ describe("JS", () => {
       js.navigate("/test-url");
       expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
         expect.any(CustomEvent),
-        "/test-url",
+        "http://localhost/test-url",
         "push",
         null,
         null,
@@ -173,7 +173,269 @@ describe("JS", () => {
       js.navigate("/test-url", { replace: true });
       expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
         expect.any(CustomEvent),
-        "/test-url",
+        "http://localhost/test-url",
+        "replace",
+        null,
+        null,
+      );
+
+      // Query Patching
+      js.navigate("?key1=val1", { replace: true });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/?key1=val1",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url", {
+        replace: true,
+        query: [["set", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("?key1=val1", {
+        replace: true,
+        query: [["set", [["key1", "val2"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/?key1=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1", {
+        replace: true,
+        query: [["set", [["key1", "val2"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url", {
+        replace: true,
+        query: [
+          [
+            "set",
+            [
+              ["key1", "val1"],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key2=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url", {
+        replace: true,
+        query: [
+          [
+            "set",
+            [
+              ["key1", "val1"],
+              ["key1", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url", {
+        replace: true,
+        query: [["set", [["key1", ["val1", "val2"]]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1", {
+        replace: true,
+        query: [
+          [
+            "merge",
+            [
+              ["key1", "val3"],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val3&key2=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1", {
+        replace: true,
+        query: [
+          [
+            "merge",
+            [
+              ["key1", ["val1", "val3"]],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val3&key2=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1", {
+        replace: true,
+        query: [["toggle", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url", {
+        replace: true,
+        query: [["toggle", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1", {
+        replace: true,
+        query: [["toggle", [["key1", ["val1", "val2"]]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1", {
+        replace: true,
+        query: [["toggle", [["key1", "val2"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1&key1=val2", {
+        replace: true,
+        query: [["toggle", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1", {
+        replace: true,
+        query: [
+          [
+            "add",
+            [
+              ["key1", "val3"],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val3&key2=val2",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?key1=val1&key2=val2&key3=val3", {
+        replace: true,
+        query: [["remove", ["key1", ["key2", "val2"], ["key3", "val4"]]]],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key3=val3",
+        "replace",
+        null,
+        null,
+      );
+
+      js.navigate("/test-url?foo=bar", {
+        replace: true,
+        query: [
+          ["set", [["foo", "bar"]]],
+          [
+            "merge",
+            [
+              ["foo", "baz"],
+              ["lorem", "ipsum"],
+            ],
+          ],
+          [
+            "merge",
+            [
+              ["lorem", "ipsum"],
+              ["dolor", "sit"],
+            ],
+          ],
+          ["add", [["foo", "bar"]]],
+          ["add", [["foo", "baz"]]],
+          ["add", [["lorem", ["amet", "quid", "novi"]]]],
+          ["remove", ["foo", "lorem"]],
+        ],
+      });
+      expect(view.liveSocket.historyRedirect).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?dolor=sit",
         "replace",
         null,
         null,
@@ -190,7 +452,7 @@ describe("JS", () => {
       js.patch("/test-url");
       expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
         expect.any(CustomEvent),
-        "/test-url",
+        "http://localhost/test-url",
         "push",
         null,
       );
@@ -198,7 +460,252 @@ describe("JS", () => {
       js.patch("/test-url", { replace: true });
       expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
         expect.any(CustomEvent),
-        "/test-url",
+        "http://localhost/test-url",
+        "replace",
+        null,
+      );
+
+      // Query Patching
+      js.patch("?key1=val1", { replace: true });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/?key1=val1",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url", {
+        replace: true,
+        query: [["set", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1",
+        "replace",
+        null,
+      );
+
+      js.patch("?key1=val1", {
+        replace: true,
+        query: [["set", [["key1", "val2"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/?key1=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1", {
+        replace: true,
+        query: [["set", [["key1", "val2"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url", {
+        replace: true,
+        query: [
+          [
+            "set",
+            [
+              ["key1", "val1"],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key2=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url", {
+        replace: true,
+        query: [
+          [
+            "set",
+            [
+              ["key1", "val1"],
+              ["key1", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url", {
+        replace: true,
+        query: [["set", [["key1", ["val1", "val2"]]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1", {
+        replace: true,
+        query: [
+          [
+            "merge",
+            [
+              ["key1", "val3"],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val3&key2=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1", {
+        replace: true,
+        query: [
+          [
+            "merge",
+            [
+              ["key1", ["val1", "val3"]],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val3&key2=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1", {
+        replace: true,
+        query: [["toggle", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url", {
+        replace: true,
+        query: [["toggle", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1", {
+        replace: true,
+        query: [["toggle", [["key1", ["val1", "val2"]]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1", {
+        replace: true,
+        query: [["toggle", [["key1", "val2"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1&key1=val2", {
+        replace: true,
+        query: [["toggle", [["key1", "val1"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1", {
+        replace: true,
+        query: [
+          [
+            "add",
+            [
+              ["key1", "val3"],
+              ["key2", "val2"],
+            ],
+          ],
+        ],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key1=val1&key1=val3&key2=val2",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?key1=val1&key2=val2&key3=val3", {
+        replace: true,
+        query: [["remove", ["key1", ["key2", "val2"], ["key3", "val4"]]]],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?key3=val3",
+        "replace",
+        null,
+      );
+
+      js.patch("/test-url?foo=bar", {
+        replace: true,
+        query: [
+          ["set", [["foo", "bar"]]],
+          [
+            "merge",
+            [
+              ["foo", "baz"],
+              ["lorem", "ipsum"],
+            ],
+          ],
+          [
+            "merge",
+            [
+              ["lorem", "ipsum"],
+              ["dolor", "sit"],
+            ],
+          ],
+          ["add", [["foo", "bar"]]],
+          ["add", [["foo", "baz"]]],
+          ["add", [["lorem", ["amet", "quid", "novi"]]]],
+          ["remove", ["foo", "lorem"]],
+        ],
+      });
+      expect(view.liveSocket.pushHistoryPatch).toHaveBeenCalledWith(
+        expect.any(CustomEvent),
+        "http://localhost/test-url?dolor=sit",
         "replace",
         null,
       );

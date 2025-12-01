@@ -1,5 +1,6 @@
 import DOM from "./dom";
 import ARIA from "./aria";
+import { parseQueryOps } from "./utils";
 
 const focusStack = [];
 const default_transition_time = 200;
@@ -156,20 +157,21 @@ const JS = {
     }
   },
 
-  exec_navigate(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+  exec_navigate(e, eventType, phxEvent, view, sourceEl, el, { href, replace, query }) {
     view.liveSocket.historyRedirect(
       e,
-      href,
+      parseQueryOps(href, query ?? []),
       replace ? "replace" : "push",
       null,
       sourceEl,
     );
   },
 
-  exec_patch(e, eventType, phxEvent, view, sourceEl, el, { href, replace }) {
+  exec_patch(e, eventType, phxEvent, view, sourceEl, el, { href, replace, query }) {
+    console.log("JS().patch() called")
     view.liveSocket.pushHistoryPatch(
       e,
-      href,
+      parseQueryOps(href, query ?? []),
       replace ? "replace" : "push",
       sourceEl,
     );
