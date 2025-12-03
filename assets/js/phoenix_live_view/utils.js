@@ -105,3 +105,113 @@ export const eventContainsFiles = (e) => {
   }
   return false;
 };
+
+/** Warning: Mutates the `params` argument in-place
+  * Private function intended only to limit duplicatation.
+  * Do not export.
+  * @param {URLSearchParams} params
+  * @param {import("./js_commands").QueryKV[]} instructions
+  */
+const addQueryOp = (params, instructions) => {
+  for (const [k, v] of instructions) {
+    if (Array.isArray(v)) {
+      for (const val of v) {
+        params.append(k, val);
+      }
+    } else {
+      params.append(k, v)
+    }
+  }
+};
+
+/**
+  * Normalize an href string to a full URL.
+  * @param {string} href
+  */
+export const normalizeHref = (href) => {
+  if (href.startsWith("/")) {
+    return `${location.protocol}//${location.host}${href}`;
+  } else if (href.startsWith("?")) {
+    return `${location.protocol}//${location.host}${location.pathname}${href}`;
+  }
+};
+
+/**
+  * Parse the `query` patches from an encoded JS command.
+  * @param {string} href
+  * @param {import("./js_commands").QueryOperation[]} queryOps
+  */
+export const parseQueryOps = (href, queryOps) => {
+  // Note:
+  // If-else is used intentionally in this function instead of switch-case
+  // because switch-case in javascript is very error-prone due to its
+  // fallthrough and scoping rules.
+
+  const baseParams = href.includes("?") ? href.split("?")[1] : location.search;
+  const baseUrl = normalizeHref(href);
+
+  // Warning: This variable is mutated in-place in the following for loops.
+  const params = new URLSearchParams(baseParams);
+
+  for (const [op, instructions] of queryOps) {
+    if (op === "set") {
+      params.forEach((_v, k) => params.delete(k));
+      addQueryOp(params, instructions);
+    } else if (op === "merge") {
+      for (const [k, v] of instructions) {
+        if (Array.isArray(v)) {
+          const [first, ...rest] = v;
+          params.set(k, first);
+          for (const val of rest) {
+            params.append(k, val);
+          }
+        } else {
+          params.set(k, v)
+        }
+      }
+    } else if (op === "toggle") {
+      for (const [k, v] of instructions) {
+        if (Array.isArray(v)) {
+          for (const val of v) {
+            if (params.has(k, val)) {
+              params.delete(k, val);
+            } else {
+              params.append(k, val);
+            }
+          }
+        } else {
+          if (params.has(k, v)) {
+            params.delete(k, v);
+          } else {
+            params.append(k, v);
+          }
+        }
+      }
+    } else if (op === "add") {
+      addQueryOp(params, instructions);
+    } else if (op === "remove") {
+      for (const args of instructions) {
+        if (Array.isArray(args)) {
+          const [k, v] = args;
+          if (Array.isArray(v)) {
+            for (const val of v) {
+              params.delete(k, val);
+            }
+          } else {
+            params.delete(k, v)
+          }
+        } else {
+          params.delete(args)
+        }
+      }
+    }
+  }
+
+  const paramStr = params.toString();
+  const hrefStr = baseUrl.split("?")[0];
+  if (paramStr === "") {
+    return hrefStr;
+  } else {
+    return [hrefStr, paramStr].join("?");
+  }
+};

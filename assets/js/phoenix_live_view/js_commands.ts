@@ -1,5 +1,6 @@
 import JS from "./js";
 import LiveSocket from "./live_socket";
+import { parseQueryOps } from "./utils";
 
 type Transition = string | string[];
 
@@ -65,9 +66,19 @@ type PushOpts = {
   [key: string]: any; // Allow other properties like 'cid', 'redirect', etc.
 };
 
+export type QueryKV = [string, string | string[]]
+export type QuerySetOperation = ['set', Array<QueryKV>];
+export type QueryMergeOperation = ['merge', Array<QueryKV>];
+export type QueryToggleOperation = ['toggle', Array<QueryKV>];
+export type QueryAddOperation = ['add', Array<QueryKV>];
+export type QueryRemoveOperation = ['remove', Array<QueryKV | string>];
+export type QueryOperation = QuerySetOperation | QueryMergeOperation | QueryToggleOperation | QueryAddOperation | QueryRemoveOperation;
+
 type NavigationOpts = {
   /** Whether to replace the current history entry instead of pushing a new one. */
   replace?: boolean;
+  /** URL query param manipulation operations. */
+  query?: QueryOperation[];
 };
 
 /**
@@ -209,7 +220,7 @@ interface AllJSCommands {
    *
    * @param href - The URL to navigate to.
    * @param [opts={}] - Optional settings.
-   *   Accepts: `replace`.
+   *   Accepts: `replace`, `query`.
    */
   navigate(href: string, opts?: NavigationOpts): void;
 
@@ -218,7 +229,7 @@ interface AllJSCommands {
    *
    * @param href - The URL to patch to.
    * @param [opts={}] - Optional settings.
-   *   Accepts: `replace`.
+   *   Accepts: `replace`, `query`.
    */
   patch(href: string, opts?: NavigationOpts): void;
 
@@ -349,7 +360,7 @@ export default (
       const customEvent = new CustomEvent("phx:exec");
       liveSocket.historyRedirect(
         customEvent,
-        href,
+        parseQueryOps(href, opts.query ?? []),
         opts.replace ? "replace" : "push",
         null,
         null,
@@ -359,7 +370,7 @@ export default (
       const customEvent = new CustomEvent("phx:exec");
       liveSocket.pushHistoryPatch(
         customEvent,
-        href,
+        parseQueryOps(href, opts.query ?? []),
         opts.replace ? "replace" : "push",
         null,
       );
