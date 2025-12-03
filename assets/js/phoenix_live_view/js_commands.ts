@@ -1,6 +1,15 @@
 import JS from "./js";
 import LiveSocket from "./live_socket";
 
+/**
+ * An encoded JS command. Use functions in the `Phoenix.LiveView.JS` module on
+ * the server to create and compose JS commands.
+ *
+ * The underlying primitive type is considered opaque, and may change in future
+ * versions.
+ */
+export type EncodedJS = string | Array<any>;
+
 type Transition = string | string[];
 
 // Base options for commands involving transitions and timing
@@ -76,13 +85,13 @@ type NavigationOpts = {
  */
 interface AllJSCommands {
   /**
-   * Executes encoded JavaScript in the context of the element.
+   * Executes an encoded JS command in the context of an element.
    * This version is for general use via liveSocket.js().
    *
-   * @param el - The element in whose context to execute the JavaScript.
-   * @param encodedJS - The encoded JavaScript string to execute.
+   * @param el - The element in whose context to execute the JS command.
+   * @param encodedJS - The encoded JS command with operations to execute.
    */
-  exec(el: HTMLElement, encodedJS: string): void;
+  exec(el: HTMLElement, encodedJS: EncodedJS): void;
 
   /**
    * Shows an element.
@@ -382,9 +391,9 @@ export type LiveSocketJSCommands = AllJSCommands;
  */
 export interface HookJSCommands extends Omit<AllJSCommands, "exec"> {
   /**
-   * Executes encoded JavaScript in the context of the hook's element.
+   * Executes a JS command in the context of the hook's element.
    *
-   * @param {string} encodedJS - The encoded JavaScript string to execute.
+   * @param encodedJS - The encoded JS command with operations to execute.
    */
-  exec(encodedJS: string): void;
+  exec(encodedJS: EncodedJS): void;
 }
