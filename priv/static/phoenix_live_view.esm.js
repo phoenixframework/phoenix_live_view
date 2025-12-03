@@ -4831,14 +4831,17 @@ var View = class _View {
         `failed mount with ${resp.status}. Falling back to page reload`,
         resp
       ]);
-      this.onRedirect({ to: this.root.href, reloadToken: resp.token });
+      this.onRedirect({
+        to: this.liveSocket.main.href,
+        reloadToken: resp.token
+      });
       return;
     } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
       this.log("error", () => [
         "unauthorized live_redirect. Falling back to page request",
         resp
       ]);
-      this.onRedirect({ to: this.root.href, flash: this.flash });
+      this.onRedirect({ to: this.liveSocket.main.href, flash: this.flash });
       return;
     }
     if (resp.redirect || resp.live_redirect) {
