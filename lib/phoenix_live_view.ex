@@ -615,6 +615,19 @@ defmodule Phoenix.LiveView do
 
   To do so, you must simply invoke `render_with(socket, &some_function_component/1)`,
   configuring your socket with a new rendering function.
+
+  ## Examples
+
+      @impl true
+      def mount(_params, _session, socket) do
+        {:ok, render_with(socket, &hello_world/1)}
+      end
+
+      def hello_world(assigns) do
+        ~H\"""
+        Hello world!
+        \"""
+      end
   """
   def render_with(%Socket{} = socket, component) when is_function(component, 1) do
     put_in(socket.private[:render_with], component)
