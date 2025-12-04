@@ -129,6 +129,18 @@ defmodule Phoenix.LiveView.Channel do
     {:stop, {:shutdown, :draining}, state}
   end
 
+  def handle_info(
+        %Message{topic: topic, join_ref: message_join_ref} = msg,
+        %{topic: topic, join_ref: state_join_ref} = state
+      )
+      when message_join_ref != state_join_ref do
+    Logger.debug(
+      "Ignoring message with stale join_ref: #{message_join_ref} != expected #{state_join_ref}"
+    )
+
+    {:noreply, reply(state, msg.ref, :error, %{reason: "stale"})}
+  end
+
   def handle_info(%Message{topic: topic, event: "phx_leave"} = msg, %{topic: topic} = state) do
     send(state.socket.transport_pid, {:socket_close, self(), {:shutdown, :left}})
     reply(state, msg.ref, :ok, %{})
