@@ -20,9 +20,12 @@ jobs:
           - elixir: 1.16.3
             otp: 26.2
 
-          # update coverage report as well
           - elixir: 1.18.4
             otp: 27.3
+
+          # update coverage report as well
+          - elixir: 1.19.1
+            otp: 28.1
             lint: lint
 
           # run against latest Elixir to catch warnings early
@@ -100,8 +103,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.18.4
-            otp: 27.3
+          - elixir: 1.19.1
+            otp: 28.1
 
     runs-on: ubuntu-latest
     steps:
@@ -165,12 +168,12 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.18.4
-            otp: 27.3
+          - elixir: 1.19.1
+            otp: 28.1
 
     runs-on: ubuntu-latest
     container:
-      image: mcr.microsoft.com/playwright:v1.53.0-jammy
+      image: mcr.microsoft.com/playwright:v1.56.1-jammy
     env:
       ImageOS: ubuntu22
       HOME: /root
@@ -244,8 +247,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - elixir: 1.18.4
-            otp: 27.3
+          - elixir: 1.19.1
+            otp: 28.1
 
     steps:
       - name: Checkout

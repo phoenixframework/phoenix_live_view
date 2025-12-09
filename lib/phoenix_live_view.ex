@@ -121,8 +121,8 @@ defmodule Phoenix.LiveView do
   >
   > See: https://hexdocs.pm/elixir/process-anti-patterns.html#sending-unnecessary-data
 
-  The state of the async operation is stored in the socket assigns within an
-  `Phoenix.LiveView.AsyncResult`. It carries the loading and failed states, as
+  The state of the async operation is stored as a `Phoenix.LiveView.AsyncResult`
+  in the socket assigns. It carries the loading and failed states, as
   well as the result. For example, if we wanted to show the loading states in
   the UI for the `:org`, our template could conditionally render the states:
 
@@ -779,8 +779,17 @@ defmodule Phoenix.LiveView do
   )
   ```
 
+  ## Specifying the dispatch phase
+
+  By default, events pushed with `push_event/3` are only dispatched after
+  the LiveView is patched. In some cases, handling an event before the LiveView
+  is patched can be useful though. To do this, the `dispatch` option can be passed
+  as fourth argument:
+
+      {:noreply, push_event(socket, "scores", %{points: 100, user: "josé"}, dispatch: :before)}
+
   """
-  defdelegate push_event(socket, event, payload), to: Phoenix.LiveView.Utils
+  defdelegate push_event(socket, event, payload, opts \\ []), to: Phoenix.LiveView.Utils
 
   @doc ~S"""
   Allows an upload for the provided name.
@@ -1502,7 +1511,7 @@ defmodule Phoenix.LiveView do
   lifecycle stages: `:handle_params`, `:handle_event`, `:handle_info`, `:handle_async`, and
   `:after_render`. To attach a hook to the `:mount` stage, use `on_mount/1`.
 
-  > Note: only `:after_render` and `:handle_event` hooks are currently supported in
+  > Note: only `:after_render`, `:handle_event` and `:handle_async` hooks are currently supported in
   > LiveComponents.
 
   ## Return Values

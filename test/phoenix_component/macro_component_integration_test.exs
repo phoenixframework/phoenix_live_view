@@ -1,6 +1,8 @@
 defmodule Phoenix.Component.MacroComponentIntegrationTest do
   use ExUnit.Case, async: true
 
+  use Phoenix.Component
+
   import Phoenix.LiveViewTest
   import Phoenix.LiveViewTest.TreeDOM, only: [sigil_X: 2]
 
@@ -345,8 +347,6 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   defp eval_heex(source) do
-    require Phoenix.Component
-
     EEx.compile_string(source,
       engine: Phoenix.LiveView.TagEngine,
       line: 1,

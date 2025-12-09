@@ -39,6 +39,8 @@ import {
   MAX_CHILD_JOIN_ATTEMPTS,
   PHX_LV_PID,
   PHX_NO_USAGE_TRACKING,
+  PHX_PORTAL,
+  PHX_TELEPORTED_REF,
 } from "./constants";
 
 import {
@@ -314,9 +316,36 @@ export default class View {
   applyDiff(type, rawDiff, callback) {
     this.log(type, () => ["", clone(rawDiff)]);
     const { diff, reply, events, title } = Rendered.extract(rawDiff);
-    callback({ diff, reply, events });
-    if (typeof title === "string" || type == "mount") {
-      window.requestAnimationFrame(() => DOM.putTitle(title));
+
+    // Events are either [event, payload] or [event, payload, true]
+    // where the optional third element (true) indicates that the event should
+    // be dispatched before the DOM patch. This is useful in combination with
+    // the onDocumentPatch dom callback.
+    const ev = events.reduce(
+      (acc, args) => {
+        if (args.length === 3 && args[2] == true) {
+          acc.pre.push(args.slice(0, -1));
+        } else {
+          acc.post.push(args);
+        }
+        return acc;
+      },
+      { pre: [], post: [] },
+    );
+
+    this.liveSocket.dispatchEvents(ev.pre);
+
+    const update = () => {
+      callback({ diff, reply, events: ev.post });
+      if (typeof title === "string" || (type == "mount" && this.isMain())) {
+        window.requestAnimationFrame(() => DOM.putTitle(title));
+      }
+    };
+
+    if ("onDocumentPatch" in this.liveSocket.domCallbacks) {
+      this.liveSocket.triggerDOM("onDocumentPatch", [update]);
+    } else {
+      update();
     }
   }
 
@@ -641,6 +670,15 @@ export default class View {
     // recovery events are done.
     const template = document.createElement("template");
     template.innerHTML = html;
+
+    // we special case <.portal> here and teleport it into our temporary DOM for recovery
+    // as we'd otherwise not find teleported forms
+    DOM.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
+      template.content.firstElementChild.appendChild(
+        portalTemplate.content.firstElementChild,
+      );
+    });
+
     // because we work with a template element, we must manually copy the attributes
     // otherwise the owner / target helpers don't work properly
     const rootEl = template.content.firstElementChild;
@@ -1042,14 +1080,17 @@ export default class View {
         `failed mount with ${resp.status}. Falling back to page reload`,
         resp,
       ]);
-      this.onRedirect({ to: this.root.href, reloadToken: resp.token });
+      this.onRedirect({
+        to: this.liveSocket.main.href,
+        reloadToken: resp.token,
+      });
       return;
     } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
       this.log("error", () => [
         "unauthorized live_redirect. Falling back to page request",
         resp,
       ]);
-      this.onRedirect({ to: this.root.href, flash: this.flash });
+      this.onRedirect({ to: this.liveSocket.main.href, flash: this.flash });
       return;
     }
     if (resp.redirect || resp.live_redirect) {
@@ -1339,10 +1380,10 @@ export default class View {
       const disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
-          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.innerText);
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
         }
         if (disableText !== "") {
-          el.innerText = disableText;
+          el.textContent = disableText;
         }
         // PHX_DISABLED could have already been set in disableForm
         el.setAttribute(
@@ -2109,7 +2150,10 @@ export default class View {
 
     const phxChange = this.binding("change");
 
-    return DOM.all(this.el, `form[${phxChange}]`)
+    return DOM.all(
+      document,
+      `#${CSS.escape(this.id)} form[${phxChange}], [${PHX_TELEPORTED_REF}="${CSS.escape(this.id)}"] form[${phxChange}]`,
+    )
       .filter((form) => form.id)
       .filter((form) => form.elements.length > 0)
       .filter(
@@ -2132,20 +2176,29 @@ export default class View {
         morphdom(clonedForm, form, {
           onBeforeElUpdated: (fromEl, toEl) => {
             DOM.copyPrivates(fromEl, toEl);
+            if (fromEl.getAttribute("form") === form.id) {
+              // In case the form contains an element with form="id" pointing
+              // to the form itself, firefox still associates the element with the
+              // original form element. This is not fixed by removing the parameter,
+              // instead we remove the element from the form and add it again without
+              // form parameter below.
+              // See: https://github.com/phoenixframework/phoenix_live_view/issues/4021
+              fromEl.parentNode.removeChild(fromEl);
+              return false;
+            }
             return true;
           },
         });
         // next up, we also need to clone any elements with form="id" parameter
         const externalElements = document.querySelectorAll(
-          `[form="${form.id}"]`,
+          `[form="${CSS.escape(form.id)}"]`,
         );
         Array.from(externalElements).forEach((el) => {
-          if (form.contains(el)) {
-            return;
-          }
-          const clonedEl = el.cloneNode(true);
+          const clonedEl = /** @type {HTMLElement} */ (el.cloneNode(true));
           morphdom(clonedEl, el);
           DOM.copyPrivates(clonedEl, el);
+          // See https://github.com/phoenixframework/phoenix_live_view/issues/4021
+          clonedEl.removeAttribute("form");
           clonedForm.appendChild(clonedEl);
         });
         return clonedForm;

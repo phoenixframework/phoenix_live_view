@@ -45,8 +45,6 @@ defmodule Phoenix.LiveView.Socket do
   """
   use Phoenix.Socket
 
-  require Logger
-
   @derive {Inspect,
            only: [
              :id,

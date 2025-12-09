@@ -67,6 +67,15 @@ defmodule Phoenix.ComponentUnitTest do
       assert socket.assigns.existing == [:foo, :bam]
       assert socket.assigns.__changed__.existing == [:foo, :bar]
     end
+
+    test "allows functions" do
+      socket = assign(@socket, fn _ -> [existing: [:foo, :bar]] end)
+      socket = Utils.clear_changed(socket)
+
+      socket = assign(socket, fn %{existing: [:foo, :bar]} -> %{existing: [:foo, :baz]} end)
+      assert socket.assigns.existing == [:foo, :baz]
+      assert socket.assigns.__changed__.existing == [:foo, :bar]
+    end
   end
 
   describe "assign with assigns" do
@@ -101,6 +110,16 @@ defmodule Phoenix.ComponentUnitTest do
       assert assigns.__changed__[:map] == %{foo: :bar}
 
       assigns = assign(@assigns_nil_changes, map: %{foo: :baz})
+      assert assigns.map == %{foo: :baz}
+      assert assigns.__changed__ == nil
+    end
+
+    test "allows functions" do
+      assigns = assign(@assigns_changes, fn _ -> %{map: %{foo: :baz}} end)
+      assert assigns.map == %{foo: :baz}
+      assert assigns.__changed__[:map] == %{foo: :bar}
+
+      assigns = assign(@assigns_nil_changes, fn _ -> [map: %{foo: :baz}] end)
       assert assigns.map == %{foo: :baz}
       assert assigns.__changed__ == nil
     end

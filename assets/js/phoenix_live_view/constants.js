@@ -13,6 +13,7 @@ export const PHX_EVENT_CLASSES = [
   "phx-focus-loading",
   "phx-hook-loading",
 ];
+export const PHX_DROP_TARGET_ACTIVE_CLASS = "phx-drop-target-active";
 export const PHX_COMPONENT = "data-phx-component";
 export const PHX_VIEW_REF = "data-phx-view";
 export const PHX_LIVE_LINK = "data-phx-link";
@@ -42,6 +43,7 @@ export const PHX_MAIN = "data-phx-main";
 export const PHX_ROOT_ID = "data-phx-root-id";
 export const PHX_VIEWPORT_TOP = "viewport-top";
 export const PHX_VIEWPORT_BOTTOM = "viewport-bottom";
+export const PHX_VIEWPORT_OVERRUN_TARGET = "viewport-overrun-target";
 export const PHX_TRIGGER_ACTION = "trigger-action";
 export const PHX_HAS_FOCUSED = "phx-has-focused";
 export const FOCUSABLE_INPUTS = [

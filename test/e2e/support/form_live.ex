@@ -131,13 +131,27 @@ for type <- [FormLive, FormLiveNested] do
     @impl Phoenix.LiveView
     def render(assigns) do
       ~H"""
-      <.my_form :if={!@params["live-component"]} params={@params} />
-      <.live_component
-        :if={@params["live-component"]}
-        id="form-component"
-        module={__MODULE__.FormComponent}
-        params={@params}
-      />
+      <h1 :if={@params["portal"]}>Form</h1>
+
+      <%= if @params["portal"] do %>
+        <.portal id="form-portal" target="body">
+          <.my_form :if={!@params["live-component"]} params={@params} />
+          <.live_component
+            :if={@params["live-component"]}
+            id="form-component"
+            module={__MODULE__.FormComponent}
+            params={@params}
+          />
+        </.portal>
+      <% else %>
+        <.my_form :if={!@params["live-component"]} params={@params} />
+        <.live_component
+          :if={@params["live-component"]}
+          id="form-component"
+          module={__MODULE__.FormComponent}
+          params={@params}
+        />
+      <% end %>
 
       <p :if={@submitted}>Form was submitted!</p>
       """
@@ -167,6 +181,7 @@ for type <- [FormLive, FormLiveNested] do
         <select name="d">
           {Phoenix.HTML.Form.options_for_select(["foo", "bar", "baz"], @params["d"])}
         </select>
+        <input :if={@params["id"]} type="text" name="e" form={@params["id"]} value={@params["e"]} />
         <button type="submit" phx-disable-with="Submitting" phx-click={JS.dispatch("test")}>
           Submit with JS
         </button>
@@ -175,6 +190,8 @@ for type <- [FormLive, FormLiveNested] do
           Non-form Button
         </button>
       </form>
+
+      <input :if={@params["id"]} type="text" name="f" form={@params["id"]} value={@params["f"]} />
       """
     end
   end

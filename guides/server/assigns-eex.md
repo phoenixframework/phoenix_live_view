@@ -238,6 +238,36 @@ is passed to each child component, only re-rendering what is necessary.
 However, generally speaking, it is best to avoid passing `assigns` altogether
 and instead let LiveView figure out the best way to track changes.
 
+### Modifying the `assigns` variable
+
+Never modify the `assigns` variable in a function component through generic functions like `Map.put/3` or `Map.merge/2`. Instead, use `Phoenix.Component.assign/2`, `Phoenix.Component.assign/3`, `Phoenix.Component.assign_new/3`, or `Phoenix.Component.update/3`. If you modify the `assigns` variable with e.g. `Map.put/3`, those assigns inside your `HEEx` template will not update after the initial render. Using the LiveView specific assign functions is required for change tracking to work.
+
+So, **never do this**:
+
+```elixir
+def card(assigns) do
+  assigns = Map.put(assigns, :sum, Enum.sum(assigns.values))
+
+  ~H"""
+  <p>{@sum}</p>
+  """
+end
+```
+
+But instead do this:
+
+```elixir
+def card(assigns) do
+  assigns = assign(assigns, :sum, Enum.sum(assigns.values))
+
+  ~H"""
+  <p>{@sum}</p>
+  """
+end
+```
+
+If you use `Map.put/3` instead of `assign/3` here, the `sum` assign will not update if you change the `values` after the initial render of the `HEEx` template.
+
 ### Comprehensions
 
 HEEx supports comprehensions in templates, which is a way to traverse lists
@@ -264,8 +294,8 @@ a comprehension are only sent once, regardless of the number of items.
 Furthermore, LiveView tracks changes within the collection given to the
 comprehension. In the ideal case, if only a single entry in `@posts`
 changes, only this entry is sent again. By default, the index is used
-to track changes. This means that if an entry is appended, most items
-will be considered changed and sent again. To optimize this, you can
+to track changes. This means that if an entry is inserted, any entries after
+that index will be considered changed and sent again. To optimize this, you can
 also pass a `:key` on tags in HEEx:
 
 ```heex
@@ -288,3 +318,5 @@ To sum up:
   1. Avoid defining local variables inside HEEx templates, except within Elixir's constructs
 
   2. Avoid passing or accessing the `assigns` variable inside HEEx templates
+
+  3. Only use LiveView specific assign functions to modify the `assigns` variable

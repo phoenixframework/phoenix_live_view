@@ -747,6 +747,15 @@ const DOM = {
   isLocked(el) {
     return el.hasAttribute && el.hasAttribute(PHX_REF_LOCK);
   },
+
+  attributeIgnored(attribute, ignoredAttributes) {
+    return ignoredAttributes.some(
+      (toIgnore) =>
+        attribute.name == toIgnore ||
+        toIgnore === "*" ||
+        (toIgnore.includes("*") && attribute.name.match(toIgnore) != null),
+    );
+  },
 };
 
 export default DOM;

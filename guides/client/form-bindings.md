@@ -10,7 +10,7 @@ saving, your form would use both `phx-change` and `phx-submit` bindings.
 Let's get started with an example:
 
 ```heex
-<.form for={@form} phx-change="validate" phx-submit="save">
+<.form for={@form} id="my-form" phx-change="validate" phx-submit="save">
   <.input type="text" field={@form[:username]} />
   <.input type="email" field={@form[:email]} />
   <button>Save</button>
@@ -87,9 +87,9 @@ a different component. This can be accomplished by annotating the input itself
 with `phx-change`, for example:
 
 ```heex
-<.form for={@form} phx-change="validate" phx-submit="save">
+<.form for={@form} id="my-form" phx-change="validate" phx-submit="save">
   ...
-  <.input field={@form[:email]}  phx-change="email_changed" phx-target={@myself} />
+  <.input field={@form[:email]} phx-change="email_changed" phx-target={@myself} />
 </.form>
 ```
 
@@ -276,7 +276,7 @@ After the form is reset, a `phx-change` event is emitted with the `_target` para
 containing the reset `name`. For example, the following element:
 
 ```heex
-<form phx-change="changed">
+<form id="my-form" phx-change="changed">
   ...
   <button type="reset" name="reset">Reset</button>
 </form>
@@ -377,7 +377,7 @@ with the following rules in your `app.css`:
 You can show and hide content with the following markup:
 
 ```heex
-<form phx-change="update">
+<form id="my-form" phx-change="update">
   <div class="while-submitting">Please wait while we save our content...</div>
   <div class="inputs">
     <input type="text" name="text" value={@text}>
@@ -448,7 +448,7 @@ Hooks.CustomFormSubmission = {
 This hook can be set on your form as such:
 
 ```heex
-<form phx-hook="CustomFormSubmission">
+<form id="my-form" phx-hook="CustomFormSubmission">
   <input type="text" name="text" value={@text}>
 </form>
 ```

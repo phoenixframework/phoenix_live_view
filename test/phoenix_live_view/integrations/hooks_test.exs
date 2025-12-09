@@ -317,6 +317,32 @@ defmodule Phoenix.LiveView.HooksTest do
              "** (UndefinedFunctionError) function Phoenix.LiveViewTest.Support.HooksEventComponent.handle_event/3 is undefined"
   end
 
+  test "attach_hook with reply and detach_hook with a handle_event live component socket", %{
+    conn: conn
+  } do
+    {:ok, lv, _html} = live(conn, "/lifecycle/components/handle_event?reply=true")
+    lv |> element("#attach") |> render_click()
+    lv |> element("#hook") |> render_click()
+    assert_reply(lv, %{counter: 1})
+    assert render_async(lv) =~ "counter: 1"
+
+    lv |> element("#hook") |> render_click()
+    assert_reply(lv, %{counter: 2})
+    assert render_async(lv) =~ "counter: 2"
+
+    lv |> element("#detach-component-hook") |> render_click()
+    Process.flag(:trap_exit, true)
+
+    assert ExUnit.CaptureLog.capture_log(fn ->
+             try do
+               lv |> element("#hook") |> render_click()
+             catch
+               :exit, _ -> :ok
+             end
+           end) =~
+             "** (UndefinedFunctionError) function Phoenix.LiveViewTest.Support.HooksEventComponent.handle_event/3 is undefined"
+  end
+
   test "attach_hook raises when given a live component socket", %{conn: conn} do
     {:ok, lv, _html} = live(conn, "/lifecycle/components/handle_info")
 
@@ -331,6 +357,21 @@ defmodule Phoenix.LiveView.HooksTest do
     assert HooksLive.exits_with(lv, ArgumentError, fn ->
              lv |> element("#detach") |> render_click()
            end) =~ "lifecycle hooks are not supported on stateful components."
+  end
+
+  test "attach/detach_hook with a handle_async live component socket", %{conn: conn} do
+    {:ok, lv, _html} = live(conn, "/lifecycle/components/handle_async")
+    lv |> element("#attach") |> render_click()
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task: o"
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task: oo"
+
+    lv |> element("#detach-component-hook") |> render_click()
+
+    lv |> element("#async") |> render_click()
+    assert render_async(lv) =~ "task: oo."
   end
 
   test "stage_info", %{conn: conn} do

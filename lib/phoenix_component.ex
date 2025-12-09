@@ -772,7 +772,7 @@ defmodule Phoenix.Component do
   caller. For an example, see how `form/1` works:
 
   ```heex
-  <.form :let={f} for={@form} phx-change="validate" phx-submit="save">
+  <.form :let={f} for={@form} id="my-form" phx-change="validate" phx-submit="save">
     <.input field={f[:username]} type="text" />
     ...
   </.form>
@@ -1433,12 +1433,15 @@ defmodule Phoenix.Component do
 
   The first argument is either a LiveView `socket` or an `assigns` map from function components.
 
-  A keyword list or a map of assigns must be given as argument to be merged into existing assigns.
+  When a keyword list or map is provided as the second argument, it will be merged into the existing assigns.
+  If a function is given, it takes the current assigns as an argument and its return
+  value will be merged into the current assigns.
 
   ## Examples
 
       iex> assign(socket, name: "Elixir", logo: "💧")
       iex> assign(socket, %{name: "Elixir"})
+      iex> assign(socket, fn %{name: name, logo: logo} -> %{title: Enum.join([name, logo], " | ")} end)
 
   """
   def assign(socket_or_assigns, keyword_or_map)
@@ -1446,6 +1449,16 @@ defmodule Phoenix.Component do
     Enum.reduce(keyword_or_map, socket_or_assigns, fn {key, value}, acc ->
       assign(acc, key, value)
     end)
+  end
+
+  def assign(socket_or_assigns, fun) when is_function(fun, 1) do
+    assigns =
+      case socket_or_assigns do
+        %Socket{assigns: assigns} -> assigns
+        assigns -> assigns
+      end
+
+    assign(socket_or_assigns, fun.(assigns))
   end
 
   defp validate_assign_key!(:flash) do
@@ -2285,6 +2298,7 @@ defmodule Phoenix.Component do
   ```heex
   <.form
     for={@form}
+    id="my-form"
     phx-change="change_name"
   >
     <.input field={@form[:email]} />
@@ -2308,9 +2322,10 @@ defmodule Phoenix.Component do
   ```heex
   <.form
     for={@form}
-    multipart
+    id="my-form"
     phx-change="change_user"
     phx-submit="save_user"
+    multipart
   >
     ...
     <input type="submit" value="Save" />
@@ -2333,6 +2348,7 @@ defmodule Phoenix.Component do
   <.form
     :let={form}
     for={@changeset}
+    id="my-form"
     phx-change="change_user"
   >
   ```
@@ -2557,6 +2573,7 @@ defmodule Phoenix.Component do
   ```heex
   <.form
     for={@form}
+    id="my-form"
     phx-change="change_name"
   >
     <.inputs_for :let={f_nested} field={@form[:nested]}>
@@ -3291,6 +3308,7 @@ defmodule Phoenix.Component do
   </label>
   ```
 
+  The drop target receives the `phx-drop-target-active` class when it is active. For more information, see the [uploads guide](guides/server/uploads.md).
   ## Examples
 
   Rendering a file input:
@@ -3559,7 +3577,7 @@ defmodule Phoenix.Component do
     doc: "A CSS selector that identifies the target. The target must be unique."
   )
 
-  attr.(:class, :string, default: nil, doc: "The class to apply to the portal wrapper.")
+  attr.(:class, :any, default: nil, doc: "The class to apply to the portal wrapper.")
   attr.(:container, :string, default: "div", doc: "The HTML tag to use as the portal wrapper.")
   slot.(:inner_block, required: true)
 

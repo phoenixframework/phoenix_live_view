@@ -39,7 +39,8 @@ to get started.
 
 The behaviour of a LiveView is outlined by a module which implements
 a series of functions as callbacks. Let's see an example. Write the
-file below to `lib/my_app_web/live/thermostat_live.ex`:
+file below to `lib/my_app_web/live/thermostat_live.ex`. Remember to replace the
+directory `my_app_web` and the module `MyAppWeb` with your app's name:
 
 ```elixir
 defmodule MyAppWeb.ThermostatLive do
@@ -116,8 +117,9 @@ defmodule MyAppWeb.Router do
 end
 ```
 
-Once the LiveView is rendered, a regular HTML response is sent. In your
-app.js file, you should find the following:
+Once the LiveView is rendered, a regular HTML response is sent. When you
+generate your Phoenix app with `mix phx.new`, the installer also creates an `./assets/js/app.js` file with the
+following code:
 
 ```javascript
 import {Socket} from "phoenix"
@@ -128,8 +130,8 @@ let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToke
 liveSocket.connect()
 ```
 
-Now the JavaScript client will connect over WebSockets and `mount/3` will be invoked
-inside a spawned LiveView process.
+Because of this, the JavaScript client will connect over WebSockets and `mount/3`
+will be invoked inside a spawned LiveView process.
 
 ## Parameters and session
 
@@ -214,7 +216,7 @@ You can either *patch* the current LiveView, updating its URL, or
 
 Phoenix v1.6 and later includes code generators for LiveView. If you want to see
 an example of how to structure your application, from the database all the way up
-to LiveViews, run the following:
+to LiveViews, run the following within a LiveView project:
 
 ```shell
 $ mix phx.gen.live Blog Post posts title:string body:text

@@ -95,7 +95,7 @@ defmodule Phoenix.LiveView.Lifecycle do
   end
 
   defp lifecycle(socket, stage) do
-    if Utils.cid(socket) && stage not in [:after_render, :handle_event] do
+    if Utils.cid(socket) && stage not in [:after_render, :handle_event, :handle_async] do
       raise ArgumentError, "lifecycle hooks are not supported on stateful components."
     end
 
