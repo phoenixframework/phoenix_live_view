@@ -531,6 +531,11 @@ export default class LiveSocket {
       // in that case we DO NOT want to fallback to the main element
       view = this.getViewByEl(viewEl);
     } else {
+      if (!childEl.isConnected) {
+        // if the element is not part of the DOM any more
+        // there's no owner and we should not do fall back
+        return null;
+      }
       view = this.main;
     }
     return view && callback ? callback(view) : view;
