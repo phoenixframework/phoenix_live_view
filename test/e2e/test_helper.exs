@@ -42,6 +42,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     {assigns[:pre_script]}
     <script type="module">
       import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
+      import {hooks as colocatedHooks} from "/assets/colocated/index.js";
 
       let Hooks = {}
       Hooks.FormHook = {
@@ -57,7 +58,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
       let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
         params: {_csrf_token: csrfToken},
-        hooks: {...Hooks, ...window.hooks}
+        hooks: {...Hooks, ...window.hooks, ...colocatedHooks}
       })
       liveSocket.connect()
       window.liveSocket = liveSocket
@@ -201,6 +202,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3953", Issue3953Live
       live "/3979", Issue3979Live
       live "/4027", Issue4027Live
+      live "/4066", Issue4066Live
     end
   end
 
