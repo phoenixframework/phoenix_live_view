@@ -6237,6 +6237,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (viewEl) {
         view = this.getViewByEl(viewEl);
       } else {
+        if (!childEl.isConnected) {
+          return null;
+        }
         view = this.main;
       }
       return view && callback ? callback(view) : view;
