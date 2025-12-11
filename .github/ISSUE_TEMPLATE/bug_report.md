@@ -26,10 +26,6 @@ assignees: ''
 ```
 
 ```
-* Does the problem persist after removing "assets/node_modules" and trying again?
-- [ ] Yes
-- [ ] No
-- [ ] Not applicable
 
 ### Actual behavior
 
