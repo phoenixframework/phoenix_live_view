@@ -4920,14 +4920,17 @@ var View = class _View {
         `failed mount with ${resp.status}. Falling back to page reload`,
         resp
       ]);
-      this.onRedirect({ to: this.root.href, reloadToken: resp.token });
+      this.onRedirect({
+        to: this.liveSocket.main.href,
+        reloadToken: resp.token
+      });
       return;
     } else if (resp.reason === "unauthorized" || resp.reason === "stale") {
       this.log("error", () => [
         "unauthorized live_redirect. Falling back to page request",
         resp
       ]);
-      this.onRedirect({ to: this.root.href, flash: this.flash });
+      this.onRedirect({ to: this.liveSocket.main.href, flash: this.flash });
       return;
     }
     if (resp.redirect || resp.live_redirect) {
@@ -6207,6 +6210,9 @@ var LiveSocket = class {
     if (viewEl) {
       view = this.getViewByEl(viewEl);
     } else {
+      if (!childEl.isConnected) {
+        return null;
+      }
       view = this.main;
     }
     return view && callback ? callback(view) : view;
@@ -6479,7 +6485,11 @@ var LiveSocket = class {
   dispatchClickAway(e, clickStartedAt) {
     const phxClickAway = this.binding("click-away");
     dom_default.all(document, `[${phxClickAway}]`, (el) => {
-      if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))) {
+      if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt) || // When clicking a link with custom method,
+      // phoenix_html triggers a click on a submit button
+      // of a hidden form appended to the body. For such cases
+      // where the clicked target is hidden, we skip click-away.
+      !js_default.isVisible(clickStartedAt))) {
         this.withinOwners(el, (view) => {
           const phxEvent = el.getAttribute(phxClickAway);
           if (js_default.isVisible(el) && js_default.isInViewport(el)) {
