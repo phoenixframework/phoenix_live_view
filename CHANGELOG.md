@@ -267,6 +267,18 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.19 (2025-12-12)
+
+### Bug fixes
+
+* Ensure stale token redirect uses the correct URL ([#4068](https://github.com/phoenixframework/phoenix_live_view/issues/4068))
+* Ignore events from elements that are not connected to the DOM ([#4066](https://github.com/phoenixframework/phoenix_live_view/issues/4066))
+* Skip `phx-click-away` if clicked element is hidden ([#4070](https://github.com/phoenixframework/phoenix_live_view/issues/4070))
+
+### Enhancements
+
+* Allow disabling symlink warning for colocated js ([#4057](https://github.com/phoenixframework/phoenix_live_view/pull/4057))
+
 ## v1.1.18 (2025-11-25)
 
 ### Bug fixes
