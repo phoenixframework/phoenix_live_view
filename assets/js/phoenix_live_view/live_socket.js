@@ -868,7 +868,17 @@ export default class LiveSocket {
   dispatchClickAway(e, clickStartedAt) {
     const phxClickAway = this.binding("click-away");
     DOM.all(document, `[${phxClickAway}]`, (el) => {
-      if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))) {
+      if (
+        !(
+          el.isSameNode(clickStartedAt) ||
+          el.contains(clickStartedAt) ||
+          // When clicking a link with custom method,
+          // phoenix_html triggers a click on a submit button
+          // of a hidden form appended to the body. For such cases
+          // where the clicked target is hidden, we skip click-away.
+          !JS.isVisible(clickStartedAt)
+        )
+      ) {
         this.withinOwners(el, (view) => {
           const phxEvent = el.getAttribute(phxClickAway);
           if (JS.isVisible(el) && JS.isInViewport(el)) {
