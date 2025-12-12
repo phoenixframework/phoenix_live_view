@@ -1,4 +1,4 @@
-import jsCommands, { HookJSCommands } from "./js_commands";
+import jsCommands, { EncodedJS, HookJSCommands } from "./js_commands";
 import DOM from "./dom";
 import LiveSocket from "./live_socket";
 import View from "./view";
@@ -380,7 +380,7 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   js(): HookJSCommands {
     return {
       ...jsCommands(this.__view().liveSocket, "hook"),
-      exec: (encodedJS: string) => {
+      exec: (encodedJS: EncodedJS) => {
         this.__view().liveSocket.execJS(this.el, encodedJS, "hook");
       },
     };
