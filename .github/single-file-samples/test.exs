@@ -1,5 +1,6 @@
 Application.put_env(:phoenix, Example.Endpoint,
   http: [ip: {127, 0, 0, 1}, port: 5001],
+  adapter: Bandit.PhoenixAdapter,
   server: true,
   live_view: [signing_salt: "aaaaaaaa"],
   secret_key_base: String.duplicate("a", 64)
@@ -7,9 +8,9 @@ Application.put_env(:phoenix, Example.Endpoint,
 
 Mix.install(
   [
-    {:plug_cowboy, "~> 2.5"},
+    {:bandit, "~> 1.8"},
     {:jason, "~> 1.0"},
-    {:phoenix, "~> 1.7"},
+    {:phoenix, "~> 1.8"},
     # please test your issue using the latest version of LV from GitHub!
     {:phoenix_live_view,
      github: "phoenixframework/phoenix_live_view", branch: "main", override: true},
@@ -36,6 +37,8 @@ defmodule Example.HomeLive do
     <script src="/assets/phoenix/phoenix.js">
     </script>
     <script src="/assets/phoenix_live_view/phoenix_live_view.js">
+    </script>
+    <script src="/assets/phoenix_html/phoenix_html.js">
     </script>
     <script>
       let liveSocket = new window.LiveView.LiveSocket("/live", window.Phoenix.Socket)
@@ -75,6 +78,7 @@ defmodule Example.Endpoint do
   socket("/live", Phoenix.LiveView.Socket)
   plug Plug.Static, from: {:phoenix, "priv/static"}, at: "/assets/phoenix"
   plug Plug.Static, from: {:phoenix_live_view, "priv/static"}, at: "/assets/phoenix_live_view"
+  plug Plug.Static, from: {:phoenix_html, "priv/static"}, at: "/assets/phoenix_html"
   plug(Example.Router)
 end
 
