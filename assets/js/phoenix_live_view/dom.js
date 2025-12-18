@@ -520,18 +520,23 @@ const DOM = {
   // merge attributes from source to target
   // if an element is ignored, we only merge data attributes
   // including removing data attributes that are no longer in the source
+  // for upload inputs, we merge all attributes except value to preserve file selection
   mergeAttrs(target, source, opts = {}) {
     const exclude = new Set(opts.exclude || []);
     const isIgnored = opts.isIgnored;
+    const isUploadInput = opts.isUploadInput;
     const sourceAttrs = source.attributes;
     for (let i = sourceAttrs.length - 1; i >= 0; i--) {
       const name = sourceAttrs[i].name;
       if (!exclude.has(name)) {
         const sourceValue = source.getAttribute(name);
-        if (
-          target.getAttribute(name) !== sourceValue &&
-          (!isIgnored || (isIgnored && name.startsWith("data-")))
-        ) {
+        // For upload inputs: sync all attrs except value (to preserve file selection)
+        // For regular ignored elements: only sync data-* attrs
+        const shouldSync =
+          !isIgnored ||
+          name.startsWith("data-") ||
+          (isUploadInput && name !== "value");
+        if (target.getAttribute(name) !== sourceValue && shouldSync) {
           target.setAttribute(name, sourceValue);
         }
       } else {
@@ -556,7 +561,16 @@ const DOM = {
     for (let i = targetAttrs.length - 1; i >= 0; i--) {
       const name = targetAttrs[i].name;
       if (isIgnored) {
-        if (
+        if (isUploadInput) {
+          // For upload inputs: remove attrs not in source (except value and pending attrs)
+          if (
+            !source.hasAttribute(name) &&
+            !PHX_PENDING_ATTRS.includes(name) &&
+            name !== "value"
+          ) {
+            target.removeAttribute(name);
+          }
+        } else if (
           name.startsWith("data-") &&
           !source.hasAttribute(name) &&
           !PHX_PENDING_ATTRS.includes(name)
