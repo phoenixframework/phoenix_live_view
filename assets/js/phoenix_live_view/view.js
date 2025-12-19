@@ -371,7 +371,7 @@ export default class View {
     }
 
     if (liveview_version !== this.liveSocket.version()) {
-      console.error(
+      console.warn(
         `LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`,
       );
     }
