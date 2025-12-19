@@ -903,6 +903,34 @@ defmodule Phoenix.LiveView.JS do
     show
   </button>
   ```
+
+  > #### A note on properties {: .warning}
+  >
+  > `JS.set_attribute/1` cannot be used to set DOM properties such as the [`value` of an input](https://jakearchibald.com/2024/attributes-vs-properties/#value-on-input-fields).
+  > So if you find yourself wanting to do `JS.set_attribute({"value", "..."})` on an input, and
+  > see that updated value reflected in a form event, you should use `JS.dispatch/2`
+  > instead:
+  >
+  > Instead of
+  >
+  > ```heex
+  > <.button phx-click={JS.set_attribute({"value", ""}, to: "#my_input")}>...</.button>
+  > ```
+  >
+  > do
+  >
+  > ```heex
+  > <script :type={Phoenix.LiveView.ColocatedJS} name="clear_input">
+  >   window.addEventListener("input:clear", (e) => {
+  >     e.target.value = ""
+  >     e.target.dispatchEvent(new Event("input", {bubbles: true}))
+  >   })
+  > </script>
+  > <.button phx-click={JS.dispatch("input:clear", to: "#my_input")}>...</.button>
+  > ```
+  >
+  > Note: this uses `Phoenix.LiveView.ColocatedJS`, but you can also define the event listener directly inside
+  > your `app.js` instead.
   """
   def set_attribute({attr, val}), do: set_attribute(%JS{}, {attr, val}, [])
 
