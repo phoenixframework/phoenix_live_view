@@ -1025,7 +1025,11 @@ export default class LiveSocket {
 
     this.withPageLoading({ to: href, kind: "patch" }, (done) => {
       this.main.pushLinkPatch(e, href, targetEl, (linkRef) => {
-        this.historyPatch(href, linkState, linkRef);
+        if (!this.isConnected() || !this.main.isMain()) {
+          return Browser.redirect(href);
+        } else {
+          this.historyPatch(href, linkState, linkRef);
+        }
         done();
       });
     });
