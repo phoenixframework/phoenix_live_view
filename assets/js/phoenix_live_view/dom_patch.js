@@ -750,7 +750,16 @@ export default class DOMPatch {
     // the case here
     const toTeleport = el.content.firstElementChild;
     // the PHX_SKIP optimization can also apply inside of the <template> elements
-    if (this.skipCIDSibling(toTeleport)) {
+    const isSkipped = this.skipCIDSibling(toTeleport);
+    // Check if all children have skip - if so, we should preserve existing DOM
+    const allChildrenSkipped =
+      !isSkipped &&
+      toTeleport.children.length > 0 &&
+      Array.from(toTeleport.children).every((child) =>
+        this.skipCIDSibling(child),
+      );
+
+    if (isSkipped || allChildrenSkipped) {
       return;
     }
     if (!toTeleport?.id) {
