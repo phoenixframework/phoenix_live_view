@@ -203,6 +203,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3979", Issue3979Live
       live "/4027", Issue4027Live
       live "/4066", Issue4066Live
+      live "/4093", Issue4093Live
     end
   end
 

@@ -2121,8 +2121,8 @@ export default class View {
             if (this.liveSocket.commitPendingLink(linkRef)) {
               this.href = href;
             }
-            this.applyPendingUpdates();
             callback && callback(linkRef);
+            this.applyPendingUpdates();
           }
         });
       },
