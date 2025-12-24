@@ -4329,7 +4329,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       }
       if (liveview_version !== this.liveSocket.version()) {
-	// See https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1 for tips to address this
+        // See https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1 for tips to address this
         console.warn(
           `LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`
         );
