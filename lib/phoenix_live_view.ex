@@ -1271,6 +1271,8 @@ defmodule Phoenix.LiveView do
   version of the marked static files. It works by comparing the static paths
   sent by the client with the one on the server.
 
+  Browser console logs will have messages starting with "LiveView asset version mismatch."
+
   **Note:** this functionality requires Phoenix v1.5.2 or later.
 
   To use this functionality, the first step is to annotate which static files
@@ -1303,8 +1305,23 @@ defmodule Phoenix.LiveView do
   </div>
   ```
 
+  Larger projects are suggested to use an `on_mount` approach by creating a new
+  CheckStaticChanges module containing:
+
+      def on_mount(:default, _params, _session, socket) do
+        {:cont, assign(socket, static_changed?: static_changed?(socket))}
+      end
+
+  And then add it to the existing `live_view` macro in your web file:
+
+      def live_view do
+        quote do
+          use Phoenix.LiveView
+
+          on_mount MyAppWeb.CheckStaticChanges
+
   If you prefer, you can also send a JavaScript script that immediately
-  reloads the page.
+  reloads the page, but this will cause the client-side to lose all work in progress.
 
   **Note:** only set `phx-track-static` on your own assets. For example, do
   not set it in external JavaScript files:
