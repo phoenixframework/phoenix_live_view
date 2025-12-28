@@ -1305,21 +1305,15 @@ defmodule Phoenix.LiveView do
   </div>
   ```
 
-  Larger projects are suggested to use an `on_mount` approach by creating a new
-  CheckStaticChanges module containing:
+  For larger projects, you can extract this into [a hook](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#on_mount/1):
 
+      # MyAppWeb.CheckStaticChanged
       def on_mount(:default, _params, _session, socket) do
         {:cont, assign(socket, static_changed?: static_changed?(socket))}
       end
 
-  And then add it to the existing `live_view` macro in your web file:
-
-      def live_view do
-        quote do
-          use Phoenix.LiveView
-
-          on_mount MyAppWeb.CheckStaticChanges
-
+  And then add it to the existing `live_view` macro in your `my_app_web.ex` file or add it as part
+  of your `live_session` hooks.
   If you prefer, you can also send a JavaScript script that immediately
   reloads the page, but this will cause the client-side to lose all work in progress.
 
