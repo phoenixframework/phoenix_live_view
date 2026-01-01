@@ -464,6 +464,6 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   }
 }
 
-export type HooksOptions = Record<string, typeof ViewHook | Hook>;
+export type HooksOptions = Record<string, typeof ViewHook | Hook<any, any>>;
 
 export default ViewHook;
