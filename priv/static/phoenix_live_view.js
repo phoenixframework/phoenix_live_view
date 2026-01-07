@@ -5727,6 +5727,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           this.liveSocket.requestDOMUpdate(() => {
             if (resp.link_redirect) {
               this.liveSocket.replaceMain(href, null, callback, linkRef);
+            } else if (resp.redirect) {
+              return;
             } else {
               if (this.liveSocket.commitPendingLink(linkRef)) {
                 this.href = href;
