@@ -408,6 +408,9 @@ export default class DOMPatch {
           // phx-portal handling
           if (DOM.isPortalTemplate(toEl)) {
             portalCallbacks.push(() => this.teleport(toEl, morph));
+            // for the magicId optimization we need to ensure that the template contents
+            // are properly updated as they are used when restoring a cloned tree
+            fromEl.innerHTML = toEl.innerHTML;
             return false;
           }
 
