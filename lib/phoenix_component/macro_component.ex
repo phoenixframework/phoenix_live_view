@@ -70,7 +70,7 @@ defmodule Phoenix.Component.MacroComponent do
   #
   #     @impl true
   #     def transform({"pre", attrs, children}, _meta) do
-  #       markdown = Phoenix.Component.MacroComponent.to_string(children)
+  #       markdown = Phoenix.Component.MacroComponent.ast_to_string(children)
   #       html_doc = MDEx.to_html!(markdown)
   #
   #       {:ok, {"div", attrs, [html_doc]}}
