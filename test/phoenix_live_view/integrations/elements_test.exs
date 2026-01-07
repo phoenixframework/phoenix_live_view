@@ -892,19 +892,25 @@ defmodule Phoenix.LiveView.ElementsTest do
     end
 
     test "fill in calendar types", %{live: view} do
+      year = Date.utc_today().year
+
       assert_raise ArgumentError,
                    ~r/could not find non-disabled input, select or textarea with name "hello\[unknown\]"/,
                    fn ->
-                     view |> form("#form", hello: [unknown: ~D"2020-04-17"]) |> render_change()
+                     view
+                     |> form("#form", hello: [unknown: Date.new!(year, 4, 17)])
+                     |> render_change()
                    end
 
-      assert view |> form("#form", hello: [date_text: "2020-04-17"]) |> render_change()
-      assert last_event(view) =~ ~s|"date_text" => "2020-04-17"|
+      assert view |> form("#form", hello: [date_text: "#{year}-04-17"]) |> render_change()
+      assert last_event(view) =~ ~s|"date_text" => "#{year}-04-17"|
 
-      assert view |> form("#form", hello: [date_select: ~D"2020-04-17"]) |> render_change()
+      assert view
+             |> form("#form", hello: [date_select: Date.new!(year, 4, 17)])
+             |> render_change()
 
       assert last_event(view) =~
-               ~s|"date_select" => %{"day" => "17", "month" => "4", "year" => "2020"}|
+               ~s|"date_select" => %{"day" => "17", "month" => "4", "year" => "#{year}"}|
 
       assert view |> form("#form", hello: [time_text: "14:15:16"]) |> render_change()
       assert last_event(view) =~ ~s|"time_text" => "14:15:16"|
@@ -912,27 +918,35 @@ defmodule Phoenix.LiveView.ElementsTest do
       assert view |> form("#form", hello: [time_select: ~T"14:15:16"]) |> render_change()
       assert last_event(view) =~ ~s|"time_select" => %{"hour" => "14", "minute" => "15"}|
 
-      assert view |> form("#form", hello: [naive_text: "2020-04-17 14:15:16"]) |> render_change()
-      assert last_event(view) =~ ~s|"naive_text" => "2020-04-17 14:15:16"|
+      assert view
+             |> form("#form", hello: [naive_text: "#{year}-04-17 14:15:16"])
+             |> render_change()
+
+      assert last_event(view) =~ ~s|"naive_text" => "#{year}-04-17 14:15:16"|
+
+      naive = NaiveDateTime.new!(Date.new!(year, 4, 17), ~T[14:15:16])
 
       assert view
-             |> form("#form", hello: [naive_select: ~N"2020-04-17 14:15:16"])
+             |> form("#form", hello: [naive_select: naive])
              |> render_change()
 
       assert last_event(view) =~
-               ~s|"naive_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "year" => "2020"}|
+               ~s|"naive_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "year" => "#{year}"}|
 
-      assert view |> form("#form", hello: [utc_text: "2020-04-17 14:15:16Z"]) |> render_change()
-      assert last_event(view) =~ ~s|"utc_text" => "2020-04-17 14:15:16Z"|
+      assert view
+             |> form("#form", hello: [utc_text: "#{year}-04-17 14:15:16Z"])
+             |> render_change()
+
+      assert last_event(view) =~ ~s|"utc_text" => "#{year}-04-17 14:15:16Z"|
 
       assert view
              |> form("#form",
-               hello: [utc_select: DateTime.from_naive!(~N"2020-04-17 14:15:16Z", "Etc/UTC")]
+               hello: [utc_select: DateTime.from_naive!(naive, "Etc/UTC")]
              )
              |> render_change()
 
       assert last_event(view) =~
-               ~s|"utc_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "second" => "16", "year" => "2020"}|
+               ~s|"utc_select" => %{"day" => "17", "hour" => "14", "minute" => "15", "month" => "4", "second" => "16", "year" => "#{year}"}|
     end
   end
 
