@@ -94,9 +94,12 @@ describe("LiveSocket", () => {
     liveSocket = new LiveSocket("/live", Socket);
 
     liveSocket.connect();
-    const channel = liveSocket.channel("lv:def456", function (this: { getSession(): string }) {
-      return { session: this.getSession() };
-    });
+    const channel = liveSocket.channel(
+      "lv:def456",
+      function (this: { getSession(): string }) {
+        return { session: this.getSession() };
+      },
+    );
 
     expect(channel).toBeDefined();
   });

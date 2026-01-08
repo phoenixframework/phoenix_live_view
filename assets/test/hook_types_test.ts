@@ -102,18 +102,22 @@ export { hooks, hooksWithRequiredProps };
 // https://github.com/phoenixframework/phoenix_live_view/issues/3913
 // Checks that custom methods and properties are allowed for a basic Hook.
 const InfiniteScroll: Hook = {
-  page() { return this.el.dataset.page },
-  mounted(){
-    this.pending = this.page()
-    window.addEventListener("scroll", e => {
-      if(this.pending == this.page() && 80 > 90){
-        this.pending = this.page() + 1
-        this.pushEvent("load-more", {})
-      }
-    })
+  page() {
+    return this.el.dataset.page;
   },
-  updated(){ this.pending = this.page() }
-}
+  mounted() {
+    this.pending = this.page();
+    window.addEventListener("scroll", () => {
+      if (this.pending == this.page() && 80 > 90) {
+        this.pending = this.page() + 1;
+        this.pushEvent("load-more", {});
+      }
+    });
+  },
+  updated() {
+    this.pending = this.page();
+  },
+};
 
 export { InfiniteScroll };
 

@@ -1620,7 +1620,9 @@ describe("View Hooks", function () {
     const Hooks = <HooksOptions>{
       Upcase: {
         mounted() {
-          this.handleEvent = jest.fn().mockImplementation(() => customHandleEventCalled = true);
+          this.handleEvent = jest
+            .fn()
+            .mockImplementation(() => (customHandleEventCalled = true));
           this.el.innerHTML = this.el.innerHTML.toUpperCase();
         },
         updated() {

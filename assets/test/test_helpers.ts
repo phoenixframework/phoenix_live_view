@@ -60,6 +60,7 @@ export const simulateVisibility = (el) => {
 export const stubChannel = (view: View) => {
   const fakePush = {
     receives: [] as [string, Function][],
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
     receive(kind: string, cb: Function) {
       this.receives.push([kind, cb]);
       return this;

@@ -396,7 +396,11 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
 
   pushEvent(event: string, payload: any, onReply: OnReply): void;
   pushEvent(event: string, payload?: any): Promise<any>;
-  pushEvent(event: string, payload?: any, onReply?: OnReply): Promise<any> | void {
+  pushEvent(
+    event: string,
+    payload?: any,
+    onReply?: OnReply,
+  ): Promise<any> | void {
     const promise = this.__view().pushHookEvent(
       this.el,
       null,
@@ -406,7 +410,11 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     if (onReply === undefined) {
       return promise.then(({ reply }: { reply: any }) => reply);
     }
-    promise.then(({ reply, ref }: { reply: any; ref: number }) => onReply(reply, ref)).catch(() => {});
+    promise
+      .then(({ reply, ref }: { reply: any; ref: number }) =>
+        onReply(reply, ref),
+      )
+      .catch(() => {});
   }
 
   pushEventTo(
@@ -428,20 +436,28 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]> | void {
     if (onReply === undefined) {
       const targetPair: { view: View; targetCtx: any }[] = [];
-      this.__view().withinTargets(selectorOrTarget, (view: View, targetCtx: any) => {
-        targetPair.push({ view, targetCtx });
-      });
+      this.__view().withinTargets(
+        selectorOrTarget,
+        (view: View, targetCtx: any) => {
+          targetPair.push({ view, targetCtx });
+        },
+      );
       const promises = targetPair.map(({ view, targetCtx }) => {
         return view.pushHookEvent(this.el, targetCtx, event, payload || {});
       });
       return Promise.allSettled(promises);
     }
-    this.__view().withinTargets(selectorOrTarget, (view: View, targetCtx: any) => {
-      view
-        .pushHookEvent(this.el, targetCtx, event, payload || {})
-        .then(({ reply, ref }: { reply: any; ref: number }) => onReply(reply, ref))
-        .catch(() => {});
-    });
+    this.__view().withinTargets(
+      selectorOrTarget,
+      (view: View, targetCtx: any) => {
+        view
+          .pushHookEvent(this.el, targetCtx, event, payload || {})
+          .then(({ reply, ref }: { reply: any; ref: number }) =>
+            onReply(reply, ref),
+          )
+          .catch(() => {});
+      },
+    );
   }
 
   handleEvent(event: string, callback: (payload: any) => any): CallbackRef {
@@ -470,9 +486,12 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   }
 
   uploadTo(selectorOrTarget: PhxTarget, name: string, files: FileList): any {
-    return this.__view().withinTargets(selectorOrTarget, (view: View, targetCtx: any) => {
-      view.dispatchUploads(targetCtx, name, files);
-    });
+    return this.__view().withinTargets(
+      selectorOrTarget,
+      (view: View, targetCtx: any) => {
+        view.dispatchUploads(targetCtx, name, files);
+      },
+    );
   }
 
   /** @internal */
