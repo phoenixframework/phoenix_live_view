@@ -159,7 +159,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
 
 // based on https://github.com/DefinitelyTyped/DefinitelyTyped/blob/fac1aa75acdddbf4f1a95e98ee2297b54ce4b4c9/types/phoenix_live_view/hooks.d.ts#L26
 // licensed under MIT
-export interface Hook<out T = object, E extends HTMLElement = HTMLElement> {
+export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
   /**
    * The mounted callback.
    *
@@ -240,11 +240,15 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   implements HookInterface<E>
 {
   el: E;
-  liveSocket: LiveSocket;
 
   private __listeners: Set<CallbackRef>;
   private __isDisconnected: boolean;
-  private __view: () => View;
+  private __view!: () => View;
+  private __liveSocket!: () => LiveSocket;
+
+  get liveSocket(): LiveSocket {
+    return this.__liveSocket();
+  }
 
   static makeID() {
     return viewHookID++;
@@ -326,14 +330,18 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   __attachView(view: View | null) {
     if (view) {
       this.__view = () => view;
-      this.liveSocket = view.liveSocket;
+      this.__liveSocket = () => view.liveSocket;
     } else {
       this.__view = () => {
         throw new Error(
           `hook not yet attached to a live view: ${this.el.outerHTML}`,
         );
       };
-      this.liveSocket = null;
+      this.__liveSocket = () => {
+        throw new Error(
+          `hook not yet attached to a live view: ${this.el.outerHTML}`,
+        );
+      };
     }
   }
 
@@ -386,7 +394,13 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     };
   }
 
-  pushEvent(event: string, payload?: any, onReply?: OnReply) {
+  pushEvent(event: string, payload: any, onReply: OnReply): void;
+  pushEvent(event: string, payload?: any): Promise<any>;
+  pushEvent(
+    event: string,
+    payload?: any,
+    onReply?: OnReply,
+  ): Promise<any> | void {
     const promise = this.__view().pushHookEvent(
       this.el,
       null,
@@ -394,35 +408,56 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
       payload || {},
     );
     if (onReply === undefined) {
-      return promise.then(({ reply }) => reply);
+      return promise.then(({ reply }: { reply: any }) => reply);
     }
-    promise.then(({ reply, ref }) => onReply(reply, ref)).catch(() => {});
-    return;
+    promise
+      .then(({ reply, ref }: { reply: any; ref: number }) =>
+        onReply(reply, ref),
+      )
+      .catch(() => {});
   }
 
   pushEventTo(
     selectorOrTarget: PhxTarget,
     event: string,
+    payload: object,
+    onReply: OnReply,
+  ): void;
+  pushEventTo(
+    selectorOrTarget: PhxTarget,
+    event: string,
+    payload?: object,
+  ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]>;
+  pushEventTo(
+    selectorOrTarget: PhxTarget,
+    event: string,
     payload?: object,
     onReply?: OnReply,
-  ) {
+  ): Promise<PromiseSettledResult<{ reply: any; ref: number }>[]> | void {
     if (onReply === undefined) {
       const targetPair: { view: View; targetCtx: any }[] = [];
-      this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-        targetPair.push({ view, targetCtx });
-      });
+      this.__view().withinTargets(
+        selectorOrTarget,
+        (view: View, targetCtx: any) => {
+          targetPair.push({ view, targetCtx });
+        },
+      );
       const promises = targetPair.map(({ view, targetCtx }) => {
         return view.pushHookEvent(this.el, targetCtx, event, payload || {});
       });
       return Promise.allSettled(promises);
     }
-    this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-      view
-        .pushHookEvent(this.el, targetCtx, event, payload || {})
-        .then(({ reply, ref }) => onReply(reply, ref))
-        .catch(() => {});
-    });
-    return;
+    this.__view().withinTargets(
+      selectorOrTarget,
+      (view: View, targetCtx: any) => {
+        view
+          .pushHookEvent(this.el, targetCtx, event, payload || {})
+          .then(({ reply, ref }: { reply: any; ref: number }) =>
+            onReply(reply, ref),
+          )
+          .catch(() => {});
+      },
+    );
   }
 
   handleEvent(event: string, callback: (payload: any) => any): CallbackRef {
@@ -451,9 +486,12 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   }
 
   uploadTo(selectorOrTarget: PhxTarget, name: string, files: FileList): any {
-    return this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-      view.dispatchUploads(targetCtx, name, files);
-    });
+    return this.__view().withinTargets(
+      selectorOrTarget,
+      (view: View, targetCtx: any) => {
+        view.dispatchUploads(targetCtx, name, files);
+      },
+    );
   }
 
   /** @internal */
@@ -464,6 +502,6 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   }
 }
 
-export type HooksOptions = Record<string, typeof ViewHook | Hook>;
+export type HooksOptions = Record<string, typeof ViewHook | Hook<any, any>>;
 
 export default ViewHook;

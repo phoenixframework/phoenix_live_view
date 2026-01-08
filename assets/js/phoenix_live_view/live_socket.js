@@ -221,6 +221,11 @@ export default class LiveSocket {
     this.connect();
   }
 
+  /**
+   * @param {HTMLElement} el
+   * @param {import("./js_commands").EncodedJS} encodedJS
+   * @param {string | null} [eventType]
+   */
   execJS(el, encodedJS, eventType = null) {
     const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
     this.owner(el, (view) => JS.exec(e, eventType, encodedJS, view, el));
