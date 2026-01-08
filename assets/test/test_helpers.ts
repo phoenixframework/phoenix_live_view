@@ -57,10 +57,10 @@ export const simulateVisibility = (el) => {
   return el;
 };
 
-export const stubChannel = (view) => {
+export const stubChannel = (view: View) => {
   const fakePush = {
-    receives: [],
-    receive(kind, cb) {
+    receives: [] as [string, Function][],
+    receive(kind: string, cb: Function) {
       this.receives.push([kind, cb]);
       return this;
     },

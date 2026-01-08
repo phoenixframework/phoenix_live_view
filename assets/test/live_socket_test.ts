@@ -94,7 +94,7 @@ describe("LiveSocket", () => {
     liveSocket = new LiveSocket("/live", Socket);
 
     liveSocket.connect();
-    const channel = liveSocket.channel("lv:def456", function () {
+    const channel = liveSocket.channel("lv:def456", function (this: { getSession(): string }) {
       return { session: this.getSession() };
     });
 
@@ -171,7 +171,7 @@ describe("LiveSocket", () => {
   test("getActiveElement default before LiveSocket activeElement is set", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
 
     expect(liveSocket.getActiveElement()).toEqual(input);
@@ -180,7 +180,7 @@ describe("LiveSocket", () => {
   test("blurActiveElement", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
 
     expect(liveSocket.prevActive).toBeNull();
@@ -194,7 +194,7 @@ describe("LiveSocket", () => {
   test("restorePreviouslyActiveFocus", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
 
     liveSocket.blurActiveElement();
@@ -213,7 +213,7 @@ describe("LiveSocket", () => {
 
     liveSocket.connect();
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
     liveSocket.blurActiveElement();
     expect(liveSocket.prevActive).toEqual(input);
