@@ -79,13 +79,24 @@ test("streams work in teleported LiveComponent", async ({ page }) => {
       () => document.querySelector("#stream-in-lc").children.length,
     ),
   ).toEqual(2);
-  await page.getByRole("button", { name: "Prepend item" }).click();
+  await page.getByRole("button", { name: "Prepend item", exact: true }).click();
   await syncLV(page);
   expect(
     await page.evaluate(
       () => document.querySelector("#stream-in-lc").children.length,
     ),
   ).toEqual(3);
+  // https://github.com/phoenixframework/phoenix_live_view/issues/4101
+  // teleporting outside of live component works too
+  await page
+    .getByRole("button", { name: "Prepend item (teleported)", exact: true })
+    .click();
+  await syncLV(page);
+  expect(
+    await page.evaluate(
+      () => document.querySelector("#stream-in-lc").children.length,
+    ),
+  ).toEqual(4);
 });
 
 test("tooltip example", async ({ page }) => {

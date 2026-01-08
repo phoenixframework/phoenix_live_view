@@ -41,6 +41,7 @@ import {
   PHX_NO_USAGE_TRACKING,
   PHX_PORTAL,
   PHX_TELEPORTED_REF,
+  PHX_TELEPORTED_SRC,
 } from "./constants";
 
 import {
@@ -1483,8 +1484,22 @@ export default class View {
       return targetCtx;
     } else if (targetCtx) {
       return maybe(
-        targetCtx.closest(`[${PHX_COMPONENT}]`),
-        (el) => this.ownsElement(el) && this.componentID(el),
+        // We either use the closest data-phx-component binding, or -
+        // in case of portals - continue with the portal source.
+        // This is necessary if teleporting an element outside of its LiveComponent.
+        targetCtx.closest(`[${PHX_COMPONENT}],[${PHX_TELEPORTED_SRC}]`),
+        (el) => {
+          // Default case, direct component.
+          if (el.hasAttribute(PHX_COMPONENT)) {
+            return this.ownsElement(el) && this.componentID(el);
+          }
+          // Teleported, search for the closest live component starting
+          // at the portal source.
+          if (el.hasAttribute(PHX_TELEPORTED_SRC)) {
+            const portalParent = DOM.byId(el.getAttribute(PHX_TELEPORTED_SRC));
+            return this.closestComponentID(portalParent);
+          }
+        },
       );
     } else {
       return null;
