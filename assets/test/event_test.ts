@@ -3,6 +3,7 @@ import LiveSocket from "phoenix_live_view/live_socket";
 import View from "phoenix_live_view/view";
 
 import { version as liveview_version } from "../../package.json";
+import { HooksOptions } from "phoenix_live_viewview_hook";
 
 let containerId = 0;
 
@@ -60,7 +61,7 @@ describe("events", () => {
 
   test("events on join", () => {
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Map: {
           mounted() {
             this.handleEvent("points", (data) =>
@@ -86,7 +87,7 @@ describe("events", () => {
 
   test("events on update", () => {
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Game: {
           mounted() {
             this.handleEvent("scores", (data) =>
@@ -114,9 +115,9 @@ describe("events", () => {
   });
 
   test("events handlers are cleaned up on destroy", () => {
-    let destroyed = [];
+    let destroyed: Array<string> = [];
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Handler: {
           mounted() {
             this.handleEvent("my-event", (data) =>
@@ -164,7 +165,7 @@ describe("events", () => {
 
   test("removeHandleEvent", () => {
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Remove: {
           mounted() {
             let ref = this.handleEvent("remove", (data) => {
@@ -202,7 +203,7 @@ describe("pushEvent replies", () => {
   test("reply", (done) => {
     let view;
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Gateway: {
           mounted() {
             stubNextChannelReply(view, { transactionID: "1001" });
@@ -240,7 +241,7 @@ describe("pushEvent replies", () => {
   test("promise", (done) => {
     let view;
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Gateway: {
           mounted() {
             stubNextChannelReply(view, { transactionID: "1001" });
@@ -276,7 +277,7 @@ describe("pushEvent replies", () => {
   test("rejects with error", (done) => {
     let view;
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Gateway: {
           mounted() {
             stubNextChannelReplyWithError(view, "error");
@@ -305,7 +306,7 @@ describe("pushEvent replies", () => {
   test("pushEventTo - promise with multiple targets", (done) => {
     let view;
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Gateway: {
           mounted() {
             stubNextChannelReply(view, { transactionID: "1001" });
@@ -350,7 +351,7 @@ describe("pushEvent replies", () => {
     let view;
     const spy = jest.fn();
     let liveSocket = new LiveSocket("/live", Socket, {
-      hooks: {
+      hooks: <HooksOptions>{
         Gateway: {
           mounted() {
             stubNextChannelReply(view, { transactionID: "1001" });

@@ -3,7 +3,7 @@ import { createHook } from "phoenix_live_view/index";
 import LiveSocket from "phoenix_live_view/live_socket";
 import DOM from "phoenix_live_view/dom";
 import View from "phoenix_live_view/view";
-import ViewHook from "phoenix_live_view/view_hook";
+import ViewHook, { HooksOptions } from "phoenix_live_view/view_hook";
 
 import { version as liveview_version } from "../../package.json";
 
@@ -58,13 +58,13 @@ describe("View + DOM", function () {
     view.update(updateDiff, []);
 
     expect(view.el.firstChild.tagName).toBe("H2");
-    expect(view.rendered.get()).toEqual(updateDiff);
+    expect(view.rendered!.get()).toEqual(updateDiff);
   });
 
   test("applyDiff with empty title uses default if present", async () => {
     appendTitle({}, "Foo");
 
-    const titleEl = document.querySelector("title");
+    const titleEl = document.querySelector("title")!;
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const updateDiff = {
@@ -79,7 +79,7 @@ describe("View + DOM", function () {
     );
 
     expect(view.el.firstChild.tagName).toBe("H2");
-    expect(view.rendered.get()).toEqual(updateDiff);
+    expect(view.rendered!.get()).toEqual(updateDiff);
 
     await new Promise(requestAnimationFrame);
     expect(document.title).toBe("Foo");
@@ -94,7 +94,7 @@ describe("View + DOM", function () {
   test("applyDiff with empty title does not use default for non-main views", async () => {
     appendTitle({}, "Foo");
 
-    const titleEl = document.querySelector("title");
+    const titleEl = document.querySelector("title")!;
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
     const updateDiff = {
@@ -110,7 +110,7 @@ describe("View + DOM", function () {
     );
 
     expect(view.el.firstChild.tagName).toBe("H2");
-    expect(view.rendered.get()).toEqual(updateDiff);
+    expect(view.rendered!.get()).toEqual(updateDiff);
 
     await new Promise(requestAnimationFrame);
     expect(document.title).toBe("Foo");
@@ -260,7 +260,7 @@ describe("View + DOM", function () {
 
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
-    const input: HTMLInputElement = el.querySelector('input[type="checkbox"]');
+    const input: HTMLInputElement = el.querySelector('input[type="checkbox"]')!;
     const view = simulateJoinedView(el, liveSocket);
 
     input.checked = true;
@@ -292,7 +292,7 @@ describe("View + DOM", function () {
 
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
-    const input: HTMLInputElement = el.querySelector('input[type="checkbox"]');
+    const input: HTMLInputElement = el.querySelector('input[type="checkbox"]')!;
     const view = simulateJoinedView(el, liveSocket);
 
     input.value = "1";
@@ -325,7 +325,7 @@ describe("View + DOM", function () {
 
     const liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
-    const input = el.querySelector("input");
+    const input = el.querySelector("input")!;
     simulateUsedInput(input);
     const view = simulateJoinedView(el, liveSocket);
     const channelStub = {
@@ -366,7 +366,7 @@ describe("View + DOM", function () {
         <button phx-click="inc_temperature">Inc Temperature</button>
       </form>
     `);
-    const input = el.querySelector("input");
+    const input = el.querySelector("input")!;
     simulateUsedInput(input);
     const view = simulateJoinedView(el, liveSocket);
     const channelStub = {
@@ -402,7 +402,7 @@ describe("View + DOM", function () {
 
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
-    const input = el.querySelector("input");
+    const input = el.querySelector("input")!;
     input.removeAttribute("name");
     simulateUsedInput(input);
     const view = simulateJoinedView(el, liveSocket);
@@ -576,7 +576,7 @@ describe("View + DOM", function () {
     ) {
       const liveSocket = new LiveSocket("/live", Socket);
       const el = liveViewDOM();
-      const form = el.querySelector("form");
+      const form = el.querySelector("form")!;
       if (appendTo) {
         appendTo.appendChild(btn);
       } else {
@@ -604,7 +604,7 @@ describe("View + DOM", function () {
     test("disables elements after submission", function () {
       const liveSocket = new LiveSocket("/live", Socket);
       const el = liveViewDOM();
-      const form = el.querySelector("form");
+      const form = el.querySelector("form")!;
 
       const view = simulateJoinedView(el, liveSocket);
       stubChannel(view);
@@ -615,9 +615,9 @@ describe("View + DOM", function () {
         expect(DOM.private(input, "phx-has-submitted")).toBeTruthy();
       });
       expect(form.classList.contains("phx-submit-loading")).toBeTruthy();
-      expect(form.querySelector("button").dataset.phxDisabled).toBeTruthy();
-      expect(form.querySelector("input").dataset.phxReadonly).toBeTruthy();
-      expect(form.querySelector("textarea").dataset.phxReadonly).toBeTruthy();
+      expect(form.querySelector("button")!.dataset.phxDisabled).toBeTruthy();
+      expect(form.querySelector("input")!.dataset.phxReadonly).toBeTruthy();
+      expect(form.querySelector("textarea")!.dataset.phxReadonly).toBeTruthy();
     });
 
     test("disables elements outside form", function () {
@@ -631,7 +631,7 @@ describe("View + DOM", function () {
       <input type="checkbox" phx-click="toggle_me" form="my-form"/>
       <button phx-click="inc_temperature" form="my-form">Inc Temperature</button>
       `);
-      const form = el.querySelector("form");
+      const form = el.querySelector("form")!;
 
       const view = simulateJoinedView(el, liveSocket);
       stubChannel(view);
@@ -639,9 +639,9 @@ describe("View + DOM", function () {
       view.submitForm(form, form, { target: form });
       expect(DOM.private(form, "phx-has-submitted")).toBeTruthy();
       expect(form.classList.contains("phx-submit-loading")).toBeTruthy();
-      expect(el.querySelector("button").dataset.phxDisabled).toBeTruthy();
-      expect(el.querySelector("input").dataset.phxReadonly).toBeTruthy();
-      expect(el.querySelector("textarea").dataset.phxReadonly).toBeTruthy();
+      expect(el.querySelector("button")!.dataset.phxDisabled).toBeTruthy();
+      expect(el.querySelector("input")!.dataset.phxReadonly).toBeTruthy();
+      expect(el.querySelector("textarea")!.dataset.phxReadonly).toBeTruthy();
     });
 
     test("disables elements", function () {
@@ -649,7 +649,7 @@ describe("View + DOM", function () {
       const el = liveViewDOM(`
       <button phx-click="inc" phx-disable-with>+</button>
       `);
-      const button = el.querySelector("button");
+      const button = el.querySelector("button")!;
 
       const view = simulateJoinedView(el, liveSocket);
       stubChannel(view);
@@ -714,11 +714,11 @@ describe("View + DOM", function () {
 
   describe("phx-update", function () {
     const childIds = () =>
-      Array.from(document.getElementById("list").children).map((child) =>
+      Array.from(document.getElementById("list")!.children).map((child) =>
         parseInt(child.id),
       );
     const countChildNodes = () =>
-      document.getElementById("list").childNodes.length;
+      document.getElementById("list")!.childNodes.length;
 
     const createView = (updateType, initialEntries) => {
       const liveSocket = new LiveSocket("/live", Socket);
@@ -1178,7 +1178,7 @@ describe("View", function () {
 
   test("showLoader and hideLoader", async () => {
     liveSocket = new LiveSocket("/live", Socket);
-    const el = document.querySelector("[data-phx-session]");
+    const el = document.querySelector("[data-phx-session]")!;
 
     const view = simulateJoinedView(el, liveSocket);
     view.showLoader();
@@ -1195,10 +1195,10 @@ describe("View", function () {
     jest.useFakeTimers();
     liveSocket = new LiveSocket("/live", Socket);
     const loader = document.createElement("span");
-    const phxView = document.querySelector("[data-phx-session]");
-    phxView.parentNode.insertBefore(loader, phxView.nextSibling);
-    const el = document.querySelector("[data-phx-session]");
-    const status: HTMLElement = el.querySelector("#status");
+    const phxView = document.querySelector("[data-phx-session]")!;
+    phxView.parentNode!.insertBefore(loader, phxView.nextSibling);
+    const el = document.querySelector("[data-phx-session]")!;
+    const status: HTMLElement = el.querySelector("#status")!;
 
     const view = simulateJoinedView(el, liveSocket);
 
@@ -1306,7 +1306,7 @@ describe("View Hooks", function () {
       liveview_version,
     });
     window.requestAnimationFrame(() => {
-      expect(document.getElementById("test").getAttribute("class")).toBe(
+      expect(document.getElementById("test")!.getAttribute("class")).toBe(
         "new-class",
       );
       view.update(
@@ -1320,10 +1320,10 @@ describe("View Hooks", function () {
         [],
       );
       window.requestAnimationFrame(() => {
-        expect(document.getElementById("test").getAttribute("class")).toBe(
+        expect(document.getElementById("test")!.getAttribute("class")).toBe(
           "new-class",
         );
-        expect(document.getElementById("test2").getAttribute("class")).toBe(
+        expect(document.getElementById("test2")!.getAttribute("class")).toBe(
           "new-class2",
         );
         done();
@@ -1335,7 +1335,7 @@ describe("View Hooks", function () {
     let upcaseWasDestroyed = false;
     let upcaseBeforeUpdate = false;
     let hookLiveSocket;
-    const Hooks = {
+    const Hooks = <HooksOptions>{
       Upcase: {
         mounted() {
           hookLiveSocket = this.liveSocket;
@@ -1465,7 +1465,7 @@ describe("View Hooks", function () {
     customElements.define(
       "custom-el",
       class extends HTMLElement {
-        hook: ViewHook;
+        hook!: ViewHook;
         connectedCallback() {
           this.hook = createHook(this, {
             mounted: () => {
@@ -1473,7 +1473,8 @@ describe("View Hooks", function () {
               done();
             },
           });
-          expect(this.hook.liveSocket).toBe(null);
+          // Before mounting, accessing liveSocket throws (hook not yet attached to a live view)
+          expect(() => this.hook.liveSocket).toThrow();
         }
       },
     );
@@ -1483,8 +1484,8 @@ describe("View Hooks", function () {
   });
 
   test("view destroyed", async () => {
-    const values = [];
-    const Hooks = {
+    const values: Array<string> = [];
+    const Hooks = <HooksOptions>{
       Check: {
         destroyed() {
           values.push("destroyed");
@@ -1511,9 +1512,9 @@ describe("View Hooks", function () {
   });
 
   test("view reconnected", async () => {
-    const values = [];
+    const values: Array<string> = [];
     const Hooks = {
-      Check: {
+      Check: <HooksOptions>{
         mounted() {
           values.push("mounted");
         },
@@ -1616,16 +1617,16 @@ describe("View Hooks", function () {
 
   test("can overwrite property", async () => {
     let customHandleEventCalled = false;
-    const Hooks = {
+    const Hooks = <HooksOptions>{
       Upcase: {
         mounted() {
-          this.handleEvent = () => {
-            customHandleEventCalled = true;
-          };
+          this.handleEvent = jest
+            .fn()
+            .mockImplementation(() => (customHandleEventCalled = true));
           this.el.innerHTML = this.el.innerHTML.toUpperCase();
         },
         updated() {
-          this.handleEvent();
+          this.handleEvent("foo", () => {});
         },
       },
     };
@@ -1784,6 +1785,7 @@ describe("View + Component", function () {
     );
     const channelStub = {
       validate: "",
+      meta: null,
       nextValidate(payload, meta) {
         this.meta = meta;
         this.validate = Object.entries(payload)
@@ -2031,11 +2033,11 @@ describe("View + Component", function () {
 
       view.undoRefs(1);
 
-      expect(el.querySelector("#myhook").outerHTML).toBe(
+      expect(el.querySelector("#myhook")!.outerHTML).toBe(
         '<span id="myhook" phx-hook="MyHook" data-phx-ref-src="container" data-phx-ref-lock="2" data-phx-ref-loading="1">Hello</span>',
       );
       view.undoRefs(2);
-      expect(el.querySelector("#myhook").outerHTML).toBe(
+      expect(el.querySelector("#myhook")!.outerHTML).toBe(
         '<span id="myhook" phx-hook="MyHook">world</span>',
       );
       expect(beforeUpdate).toBe(true);
