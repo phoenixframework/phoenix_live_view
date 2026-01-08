@@ -2482,6 +2482,7 @@ var DOMPatch = class {
           dom_default.copyPrivates(toEl, fromEl);
           if (dom_default.isPortalTemplate(toEl)) {
             portalCallbacks.push(() => this.teleport(toEl, morph));
+            fromEl.innerHTML = toEl.innerHTML;
             return false;
           }
           if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
@@ -3835,6 +3836,9 @@ var js_commands_default = (liveSocket, eventType) => {
 var HOOK_ID = "hookId";
 var viewHookID = 1;
 var ViewHook = class _ViewHook {
+  get liveSocket() {
+    return this.__liveSocket();
+  }
   static makeID() {
     return viewHookID++;
   }
@@ -3902,14 +3906,18 @@ var ViewHook = class _ViewHook {
   __attachView(view) {
     if (view) {
       this.__view = () => view;
-      this.liveSocket = view.liveSocket;
+      this.__liveSocket = () => view.liveSocket;
     } else {
       this.__view = () => {
         throw new Error(
           `hook not yet attached to a live view: ${this.el.outerHTML}`
         );
       };
-      this.liveSocket = null;
+      this.__liveSocket = () => {
+        throw new Error(
+          `hook not yet attached to a live view: ${this.el.outerHTML}`
+        );
+      };
     }
   }
   // Default lifecycle methods
@@ -3973,26 +3981,34 @@ var ViewHook = class _ViewHook {
     if (onReply === void 0) {
       return promise.then(({ reply }) => reply);
     }
-    promise.then(({ reply, ref }) => onReply(reply, ref)).catch(() => {
+    promise.then(
+      ({ reply, ref }) => onReply(reply, ref)
+    ).catch(() => {
     });
-    return;
   }
   pushEventTo(selectorOrTarget, event, payload, onReply) {
     if (onReply === void 0) {
       const targetPair = [];
-      this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-        targetPair.push({ view, targetCtx });
-      });
+      this.__view().withinTargets(
+        selectorOrTarget,
+        (view, targetCtx) => {
+          targetPair.push({ view, targetCtx });
+        }
+      );
       const promises = targetPair.map(({ view, targetCtx }) => {
         return view.pushHookEvent(this.el, targetCtx, event, payload || {});
       });
       return Promise.allSettled(promises);
     }
-    this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-      view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(({ reply, ref }) => onReply(reply, ref)).catch(() => {
-      });
-    });
-    return;
+    this.__view().withinTargets(
+      selectorOrTarget,
+      (view, targetCtx) => {
+        view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(
+          ({ reply, ref }) => onReply(reply, ref)
+        ).catch(() => {
+        });
+      }
+    );
   }
   handleEvent(event, callback) {
     const callbackRef = {
@@ -4017,9 +4033,12 @@ var ViewHook = class _ViewHook {
     return this.__view().dispatchUploads(null, name, files);
   }
   uploadTo(selectorOrTarget, name, files) {
-    return this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-      view.dispatchUploads(targetCtx, name, files);
-    });
+    return this.__view().withinTargets(
+      selectorOrTarget,
+      (view, targetCtx) => {
+        view.dispatchUploads(targetCtx, name, files);
+      }
+    );
   }
   /** @internal */
   __cleanup__() {
@@ -5192,8 +5211,19 @@ var View = class _View {
       return targetCtx;
     } else if (targetCtx) {
       return maybe(
-        targetCtx.closest(`[${PHX_COMPONENT}]`),
-        (el) => this.ownsElement(el) && this.componentID(el)
+        // We either use the closest data-phx-component binding, or -
+        // in case of portals - continue with the portal source.
+        // This is necessary if teleporting an element outside of its LiveComponent.
+        targetCtx.closest(`[${PHX_COMPONENT}],[${PHX_TELEPORTED_SRC}]`),
+        (el) => {
+          if (el.hasAttribute(PHX_COMPONENT)) {
+            return this.ownsElement(el) && this.componentID(el);
+          }
+          if (el.hasAttribute(PHX_TELEPORTED_SRC)) {
+            const portalParent = dom_default.byId(el.getAttribute(PHX_TELEPORTED_SRC));
+            return this.closestComponentID(portalParent);
+          }
+        }
       );
     } else {
       return null;
@@ -5942,6 +5972,11 @@ var LiveSocket = class {
     this.socket.replaceTransport(transport);
     this.connect();
   }
+  /**
+   * @param {HTMLElement} el
+   * @param {import("./js_commands").EncodedJS} encodedJS
+   * @param {string | null} [eventType]
+   */
   execJS(el, encodedJS, eventType = null) {
     const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
     this.owner(el, (view) => js_default.exec(e, eventType, encodedJS, view, el));
