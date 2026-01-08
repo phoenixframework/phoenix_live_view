@@ -17,55 +17,12 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       </style>
       <script type="module">
         import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
-        import { computePosition, autoUpdate, offset } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.0/+esm';
+        import {hooks as colocatedHooks} from "/assets/colocated/index.js";
         let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
         let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
           params: {_csrf_token: csrfToken},
           hooks: {
-            PortalTooltip: {
-              mounted() {
-                this.tooltipEl = document.getElementById(this.el.dataset.id);
-                this.activatorEl = this.el.querySelector(`#${this.el.dataset.id}-activator`);
-                this.activatorEl.addEventListener("focusin", () => this.queueShow());
-                this.activatorEl.addEventListener("mouseover", () => this.queueShow());
-                this.activatorEl.addEventListener("focusout", () => this.queueHide());
-                this.activatorEl.addEventListener("mouseout", () => this.queueHide());
-                this.el.addEventListener("phx:hide-tooltip", () => this.hide());
-              },
-              destroyed() {
-                this.cleanup && this.cleanup();
-              },
-              queueShow() {
-                clearTimeout(this.hideTimeout);
-                this.showTimeout = setTimeout(() => this.show(), 200);
-              },
-              queueHide() {
-                clearTimeout(this.showTimeout);
-                this.hideTimeout = setTimeout(() => this.hide(), 50);
-              },
-              show() {
-                this.cleanup && this.cleanup();
-                this.cleanup = autoUpdate(this.activatorEl, this.tooltipEl, () => {
-                  computePosition(this.activatorEl, this.tooltipEl, {
-                    placement: this.el.dataset.position,
-                    middleware: [offset(10)]
-                  }).then(({ x, y }) => {
-                    this.tooltipEl.style.left = `${x}px`;
-                    this.tooltipEl.style.top = `${y}px`;
-                  });
-                });
-                this.liveSocket.execJS(this.el, this.el.dataset.show);
-              },
-              hide() {
-                this.liveSocket.execJS(this.el, this.el.dataset.hide);
-                this.cleanup && this.cleanup();
-              },
-            },
-            InsidePortal: {
-              mounted() {
-                this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
-              }
-            }
+            ...colocatedHooks,
           }
         })
         liveSocket.connect()
@@ -161,7 +118,14 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         <.button phx-click={JS.patch("/portal?param=#{@param_next}")}>Patch this LiveView</.button>
       </.modal>
 
-      <div id="hook-test" phx-hook="InsidePortal">This should get a data attribute</div>
+      <div id="hook-test" phx-hook=".InsidePortal">This should get a data attribute</div>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".InsidePortal">
+        export default {
+          mounted() {
+            this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
+          }
+        }
+      </script>
     </.portal>
 
     <.portal id="portal-source-2" target="#app-portal">
@@ -411,6 +375,20 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive.LC do
       </ul>
 
       <button phx-click="prepend" phx-target={@myself}>Prepend item</button>
+
+      <.portal id="teleported-from-lc-button" target="body">
+        <button id="lcbtn" phx-hook=".TeleportedLCButton">Prepend item (teleported)</button>
+      </.portal>
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".TeleportedLCButton">
+        export default {
+          mounted() {
+            this.el.addEventListener("click", () => {
+              this.pushEventTo(this.el, "prepend");
+            });
+          }
+        }
+      </script>
     </div>
     """
   end
@@ -431,7 +409,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalTooltip do
     <div
       id={"#{@id}-wrapper"}
       class="relative inline-block w-fit"
-      phx-hook="PortalTooltip"
+      phx-hook=".PortalTooltip"
       data-id={@id}
       data-show={show_tooltip(@id)}
       data-hide={hide_tooltip(@id)}
@@ -462,6 +440,50 @@ defmodule Phoenix.LiveViewTest.E2E.PortalTooltip do
         {render_slot(@inner_block)}
       </div>
     </div>
+
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".PortalTooltip">
+      import { computePosition, autoUpdate, offset } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.0/+esm';
+
+      export default {
+        mounted() {
+          this.tooltipEl = document.getElementById(this.el.dataset.id);
+          this.activatorEl = this.el.querySelector(`#${this.el.dataset.id}-activator`);
+          this.activatorEl.addEventListener("focusin", () => this.queueShow());
+          this.activatorEl.addEventListener("mouseover", () => this.queueShow());
+          this.activatorEl.addEventListener("focusout", () => this.queueHide());
+          this.activatorEl.addEventListener("mouseout", () => this.queueHide());
+          this.el.addEventListener("phx:hide-tooltip", () => this.hide());
+        },
+        destroyed() {
+          this.cleanup && this.cleanup();
+        },
+        queueShow() {
+          clearTimeout(this.hideTimeout);
+          this.showTimeout = setTimeout(() => this.show(), 200);
+        },
+        queueHide() {
+          clearTimeout(this.showTimeout);
+          this.hideTimeout = setTimeout(() => this.hide(), 50);
+        },
+        show() {
+          this.cleanup && this.cleanup();
+          this.cleanup = autoUpdate(this.activatorEl, this.tooltipEl, () => {
+            computePosition(this.activatorEl, this.tooltipEl, {
+              placement: this.el.dataset.position,
+              middleware: [offset(10)]
+            }).then(({ x, y }) => {
+              this.tooltipEl.style.left = `${x}px`;
+              this.tooltipEl.style.top = `${y}px`;
+            });
+          });
+          this.liveSocket.execJS(this.el, this.el.dataset.show);
+        },
+        hide() {
+          this.liveSocket.execJS(this.el, this.el.dataset.hide);
+          this.cleanup && this.cleanup();
+        },
+      }
+    </script>
     """
   end
 
