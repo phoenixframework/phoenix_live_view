@@ -5822,12 +5822,14 @@ var View = class _View {
     this.portalElementIds.delete(id);
   }
   destroyPortalElements() {
-    this.portalElementIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.remove();
-      }
-    });
+    if (!this.liveSocket.unloaded) {
+      this.portalElementIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.remove();
+        }
+      });
+    }
   }
 };
 
