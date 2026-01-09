@@ -2282,11 +2282,18 @@ export default class View {
   }
 
   destroyPortalElements() {
-    this.portalElementIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.remove();
-      }
-    });
+    // We only unload the socket if we navigate away
+    // (for example for a form submit or external navigation)
+    // so there's no need to remove portal elements.
+    // In fact, we actually need to keep the portal elements in
+    // case this is an external form submission from a teleported form.
+    if (!this.liveSocket.unloaded) {
+      this.portalElementIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.remove();
+        }
+      });
+    }
   }
 }
