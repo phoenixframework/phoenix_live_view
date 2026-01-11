@@ -69,6 +69,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
       // initialize js exec handler from colocated js
       colocated.js_exec(liveSocket)
     </script>
+    <link rel="stylesheet" href="/assets/colocated_css/colocated.css" />
 
     {@inner_content}
     """
@@ -113,6 +114,15 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
     <button phx-click="push-js">Push JS from server</button>
     <h1 id="hello">Hello!</h1>
+
+    <hr />
+
+    <div class="test-colocated-css"></div>
+    <style :type={Phoenix.LiveView.ColocatedCSS}>
+      .test-colocated-css {
+        background-color: rgb(102, 51, 153);
+      }
+    </style>
 
     <hr />
 

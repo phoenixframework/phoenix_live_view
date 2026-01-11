@@ -30,6 +30,16 @@ test("colocated JS works", async ({ page }) => {
   await expect(page.locator("#hello")).toBeVisible();
 });
 
+test("colocated CSS works", async ({ page }) => {
+  await page.goto("/colocated");
+  await syncLV(page);
+
+  await expect(page.locator(".test-colocated-css")).toHaveCSS(
+    "background-color",
+    "rgb(102, 51, 153)",
+  );
+});
+
 test("custom macro component works (syntax highlighting)", async ({ page }) => {
   await page.goto("/colocated");
   await syncLV(page);
