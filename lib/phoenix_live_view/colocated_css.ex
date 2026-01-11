@@ -21,6 +21,41 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   > inside the `phoenix-colocated` folder. This allows to have clear separation between
   > styles of dependencies, but also applications inside umbrella projects.
 
+  ## Scoped CSS
+
+  By default, Colocated CSS styles are scoped at compile time to the template in which they are defined.
+  This provides style encapsulation preventing CSS rules within a component from unintentionally applying
+  to elements in other nested components. Scoping is performed via the use of the `@scope` CSS at-rule.
+  For more information, see [the docs on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@scope).
+
+  To prevent Colocated CSS styles from being scoped to the current template you can provide the `global`
+  attribute, for example:
+
+  ```heex
+  <style :type={Phoenix.LiveView.ColocatedCSS} global">
+    .sample-class {
+        background-color: #FFFFFF;
+    }
+  </style>
+  ```
+
+  > #### Warning! {: .warning}
+  >
+  > The `@scope` CSS at-rule is Baseline available as of the end of 2025. To ensure that Scoped CSS will
+  > work on the browsers you need, be sure to check [Can I Use?](https://caniuse.com/css-cascade-scope) for
+  > browser compatibility.
+
+  > #### Tip {: .info}
+  >
+  > When Colocated CSS is scoped via the `@scope` rule, the scoping root is set to the outermost elements
+  > of the given template. For selectors in your Colocated CSS to target the scoping root, you will need to
+  > specify the scoping root in the selector via the use of the `:scope` pseudo-selector. You can also use
+  > `:where(:scope)` instead to not increase specificity.
+  >
+  > For example, the use of the `.sample-class` selector in Scoped Colocated CSS will only style descendant
+  > elements with the `.sample-class` class, not the scoping root elements. You can use multiple selectors such as
+  > `.sample_class, .sample-class:where(:scope)` to target all elements with the `.sample-class` class in the template.
+
   ## Internals
 
   While compiling the template, colocated CSS is extracted into a special folder inside the
@@ -93,6 +128,15 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   > LiveView assumes full ownership over the configured `:target_directory`. When
   > compiling, it will **delete** any files and folders inside the `:target_directory`,
   > that it does not associate with a colocated CSS file.
+
+  ## Options
+
+  Colocated CSS can be configured through the attributes of the `<style>` tag.
+  The supported attributes are:
+
+    * `global` - If provided, the Colocated CSS rules contained within the `<style>` tag
+      will not be scoped to the template within which it is defined, and will instead act
+      as global CSS rules.
   '''
 
   @behaviour Phoenix.Component.MacroComponent
@@ -100,10 +144,11 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   alias Phoenix.Component.MacroComponent
 
   @impl true
-  def transform({"style", _attributes, [text_content], _tag_meta} = _ast, meta) do
+  def transform({"style", attributes, [text_content], _tag_meta} = _ast, meta) do
     validate_phx_version!()
 
-    data = extract(text_content, meta)
+    opts = Map.new(attributes)
+    data = extract(opts, text_content, meta)
 
     # we always drop colocated CSS from the rendered output
     {:ok, "", data}
@@ -123,11 +168,18 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   end
 
   @doc false
-  def extract(text_content, meta) do
+  def extract(opts, text_content, meta) do
     # _build/dev/phoenix-colocated-css/otp_app/MyApp.MyComponent/line_no.css
     target_path =
       target_dir()
       |> Path.join(inspect(meta.env.module))
+
+    text_content =
+      if Map.has_key?(opts, "global") do
+        text_content
+      else
+        "@scope ([data-phx-css=\"#{meta.scope}\"]) to ([data-phx-css]) { #{text_content}  }"
+      end
 
     hashed_name =
       text_content

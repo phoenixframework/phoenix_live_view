@@ -30,13 +30,37 @@ test("colocated JS works", async ({ page }) => {
   await expect(page.locator("#hello")).toBeVisible();
 });
 
-test("colocated CSS works", async ({ page }) => {
+test("global colocated CSS works", async ({ page }) => {
   await page.goto("/colocated");
   await syncLV(page);
 
-  await expect(page.locator(".test-colocated-css")).toHaveCSS(
+  // the colocated CSS should apply to both elements regardless of the fact
+  // that they are not in the sample template
+  await expect(page.locator(".test-in-page.test-colocated-css")).toHaveCSS(
     "background-color",
     "rgb(102, 51, 153)",
+  );
+
+  await expect(page.locator(".test-in-component.test-colocated-css")).toHaveCSS(
+    "background-color",
+    "rgb(102, 51, 153)",
+  );
+});
+
+test("scoped colocated CSS works", async ({ page }) => {
+  await page.goto("/colocated");
+  await syncLV(page);
+
+  // the colocated CSS should only to the element in the component it is
+  // scoped to
+  await expect(page.locator(".test-in-page.test-colocated-css")).not.toHaveCSS(
+    "width",
+    "175px",
+  );
+
+  await expect(page.locator(".test-in-component.test-colocated-css")).toHaveCSS(
+    "width",
+    "175px",
   );
 });
 

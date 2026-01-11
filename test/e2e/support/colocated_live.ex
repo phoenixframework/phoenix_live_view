@@ -117,12 +117,14 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
     <hr />
 
-    <div class="test-colocated-css"></div>
-    <style :type={Phoenix.LiveView.ColocatedCSS}>
-      .test-colocated-css {
+    <div class="test-in-page test-colocated-css">Global CSS Div</div>
+    <style :type={Phoenix.LiveView.ColocatedCSS} global>
+      .test-colocated-css, .test-colocated-css:where(:scope) {
         background-color: rgb(102, 51, 153);
       }
     </style>
+
+    <.scoped_css_component />
 
     <hr />
 
@@ -167,6 +169,17 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   def push_js_cmd(socket, %JS{ops: ops}) do
     push_event(socket, "js:exec", %{cmd: Phoenix.json_library().encode!(ops)})
+  end
+
+  defp scoped_css_component(assigns) do
+    ~H"""
+    <style :type={Phoenix.LiveView.ColocatedCSS}>
+      .test-colocated-css, .test-colocated-css:where(:scope) {
+        width: 175px;
+      }
+    </style>
+    <div class="test-in-component test-colocated-css">Scoped CSS Div</div>
+    """
   end
 
   defp lv_code_sample(assigns) do
