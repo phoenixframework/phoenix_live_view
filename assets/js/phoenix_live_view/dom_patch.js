@@ -421,7 +421,9 @@ export default class DOMPatch {
             !focusedSelectChanged
           ) {
             this.trackBefore("updated", fromEl, toEl);
-            DOM.mergeFocusedInput(fromEl, toEl);
+            DOM.mergeFocusedInput(fromEl, toEl, {
+              debug: this.liveSocket.isDebugEnabled(),
+            });
             DOM.syncAttrsToProps(fromEl);
             updates.push(fromEl);
             DOM.applyStickyOperations(fromEl);

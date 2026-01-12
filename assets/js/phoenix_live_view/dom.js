@@ -551,6 +551,13 @@ const DOM = {
           if (target.value === sourceValue) {
             // actually set the value attribute to sync it with the value property
             target.setAttribute("value", source.getAttribute(name));
+          } else if (opts.debug) {
+            console.log(
+              "Skipped value update of focused input. " +
+                "LiveView never updates the value of focused inputs, see " +
+                "https://hexdocs.pm/phoenix_live_view/form-bindings.html#javascript-client-specifics.",
+              target,
+            );
           }
         }
       }
@@ -575,10 +582,10 @@ const DOM = {
     }
   },
 
-  mergeFocusedInput(target, source) {
+  mergeFocusedInput(target, source, opts = {}) {
     // skip selects because FF will reset highlighted index for any setAttribute
     if (!(target instanceof HTMLSelectElement)) {
-      DOM.mergeAttrs(target, source, { exclude: ["value"] });
+      DOM.mergeAttrs(target, source, { exclude: ["value"], debug: opts.debug });
     }
 
     if (source.readOnly) {
