@@ -1254,8 +1254,6 @@ defmodule Phoenix.LiveView.JS do
     |> Map.new()
   end
 
-  defp class_names(nil), do: []
-
   defp class_names(names) do
     String.split(names, " ", trim: true)
   end

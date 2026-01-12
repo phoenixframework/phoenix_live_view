@@ -41,6 +41,7 @@ import {
   PHX_NO_USAGE_TRACKING,
   PHX_PORTAL,
   PHX_TELEPORTED_REF,
+  PHX_TELEPORTED_SRC,
 } from "./constants";
 
 import {
@@ -1483,8 +1484,22 @@ export default class View {
       return targetCtx;
     } else if (targetCtx) {
       return maybe(
-        targetCtx.closest(`[${PHX_COMPONENT}]`),
-        (el) => this.ownsElement(el) && this.componentID(el),
+        // We either use the closest data-phx-component binding, or -
+        // in case of portals - continue with the portal source.
+        // This is necessary if teleporting an element outside of its LiveComponent.
+        targetCtx.closest(`[${PHX_COMPONENT}],[${PHX_TELEPORTED_SRC}]`),
+        (el) => {
+          // Default case, direct component.
+          if (el.hasAttribute(PHX_COMPONENT)) {
+            return this.ownsElement(el) && this.componentID(el);
+          }
+          // Teleported, search for the closest live component starting
+          // at the portal source.
+          if (el.hasAttribute(PHX_TELEPORTED_SRC)) {
+            const portalParent = DOM.byId(el.getAttribute(PHX_TELEPORTED_SRC));
+            return this.closestComponentID(portalParent);
+          }
+        },
       );
     } else {
       return null;
@@ -2117,6 +2132,9 @@ export default class View {
         this.liveSocket.requestDOMUpdate(() => {
           if (resp.link_redirect) {
             this.liveSocket.replaceMain(href, null, callback, linkRef);
+          } else if (resp.redirect) {
+            // handled by bindChannel
+            return;
           } else {
             if (this.liveSocket.commitPendingLink(linkRef)) {
               this.href = href;
@@ -2284,11 +2302,18 @@ export default class View {
   }
 
   destroyPortalElements() {
-    this.portalElementIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) {
-        el.remove();
-      }
-    });
+    // We only unload the socket if we navigate away
+    // (for example for a form submit or external navigation)
+    // so there's no need to remove portal elements.
+    // In fact, we actually need to keep the portal elements in
+    // case this is an external form submission from a teleported form.
+    if (!this.liveSocket.unloaded) {
+      this.portalElementIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) {
+          el.remove();
+        }
+      });
+    }
   }
 }

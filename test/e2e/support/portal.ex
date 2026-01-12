@@ -18,10 +18,12 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       <script type="module">
         import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
         import { computePosition, autoUpdate, offset } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.0/+esm';
+        import {hooks as colocatedHooks} from "/assets/colocated/index.js";
         let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
         let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
           params: {_csrf_token: csrfToken},
           hooks: {
+            ...colocatedHooks,
             PortalTooltip: {
               mounted() {
                 this.tooltipEl = document.getElementById(this.el.dataset.id);
@@ -60,11 +62,6 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
                 this.liveSocket.execJS(this.el, this.el.dataset.hide);
                 this.cleanup && this.cleanup();
               },
-            },
-            InsidePortal: {
-              mounted() {
-                this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
-              }
             }
           }
         })
@@ -161,7 +158,14 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         <.button phx-click={JS.patch("/portal?param=#{@param_next}")}>Patch this LiveView</.button>
       </.modal>
 
-      <div id="hook-test" phx-hook="InsidePortal">This should get a data attribute</div>
+      <div id="hook-test" phx-hook=".InsidePortal">This should get a data attribute</div>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".InsidePortal">
+        export default {
+          mounted() {
+            this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
+          }
+        }
+      </script>
     </.portal>
 
     <.portal id="portal-source-2" target="#app-portal">
@@ -411,6 +415,20 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive.LC do
       </ul>
 
       <button phx-click="prepend" phx-target={@myself}>Prepend item</button>
+
+      <.portal id="teleported-from-lc-button" target="body">
+        <button id="lcbtn" phx-hook=".TeleportedLCButton">Prepend item (teleported)</button>
+      </.portal>
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".TeleportedLCButton">
+        export default {
+          mounted() {
+            this.el.addEventListener("click", () => {
+              this.pushEventTo(this.el, "prepend");
+            });
+          }
+        }
+      </script>
     </div>
     """
   end

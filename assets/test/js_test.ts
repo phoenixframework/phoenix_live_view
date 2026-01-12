@@ -222,7 +222,7 @@ describe("JS", () => {
       <div id="click" phx-click='[["toggle", {"to": "#modal"}]]'></div>
       `);
       const modal = simulateVisibility(document.querySelector("#modal"));
-      const click = document.querySelector("#click");
+      const click = document.querySelector("#click")!;
       let showEndCalled = false;
       let hideEndCalled = false;
       let showStartCalled = false;
@@ -256,7 +256,7 @@ describe("JS", () => {
       <div id="click" phx-click='[["toggle", {"to": "#modal", "display": "inline-block"}]]'></div>
       `);
       const modal = simulateVisibility(document.querySelector("#modal"));
-      const click = document.querySelector("#click");
+      const click = document.querySelector("#click")!;
       let showEndCalled = false;
       let hideEndCalled = false;
       let showStartCalled = false;
@@ -289,7 +289,7 @@ describe("JS", () => {
       <div id="click" phx-click='[["toggle", {"to": "#modal", "ins": [["fade-in"],["fade-in-start"],["fade-in-end"]], "outs": [["fade-out"],["fade-out-start"],["fade-out-end"]]}]]'></div>
       `);
       const modal = simulateVisibility(document.querySelector("#modal"));
-      const click = document.querySelector("#click");
+      const click = document.querySelector("#click")!;
       let showEndCalled = false;
       let hideEndCalled = false;
       let showStartCalled = false;
@@ -482,7 +482,7 @@ describe("JS", () => {
       <div id="close" phx-click='[["dispatch", {"to": ".modal", "event": "close", "detail": {"id": 123}}]]'></div>
       `);
       let modal1Clicked = false;
-      const modal1 = document.querySelector("#modal1");
+      const modal1 = document.querySelector("#modal1")!;
       const modal2 = document.querySelector("#modal2")!;
       const close = document.querySelector("#close")!;
 
@@ -506,7 +506,7 @@ describe("JS", () => {
       <div id="click" phx-click='[["dispatch", {"to": "#modal", "event": "custom", "blocking": true}]]'></div>
       `);
       let modal = simulateVisibility(document.querySelector("#modal"));
-      let click = document.querySelector("#click");
+      let click = document.querySelector("#click")!;
       let doneCalled = false;
 
       modal.addEventListener("custom", (e) => {
@@ -1008,7 +1008,7 @@ describe("JS", () => {
       `);
       const click = document.querySelector("#click")!;
       view.pushEvent = (eventType, sourceEl, targetCtx, event, meta, opts) => {
-        expect(opts.page_loading).toBe(true);
+        expect(opts!.page_loading).toBe(true);
         done();
       };
       JS.exec(event, "click", click.getAttribute("phx-click"), view, click);
