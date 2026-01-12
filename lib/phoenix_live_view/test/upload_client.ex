@@ -295,7 +295,7 @@ defmodule Phoenix.LiveViewTest.UploadClient do
     {:noreply, state}
   end
 
-  def handle_info({:socket_close, _pid, _reason}, state) do
-    {:stop, :normal, state}
+  def handle_info({:socket_close, _pid, reason}, state) do
+    {:stop, reason, state}
   end
 end
