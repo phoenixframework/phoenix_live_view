@@ -334,7 +334,6 @@ export default class DOMPatch {
             this.trackBefore("updated", fromEl, toEl);
             DOM.mergeAttrs(fromEl, toEl, {
               isIgnored: DOM.isIgnored(fromEl, phxUpdate),
-              isUploadInput: DOM.isUploadInput(fromEl),
             });
             updates.push(fromEl);
             DOM.applyStickyOperations(fromEl);
@@ -364,14 +363,6 @@ export default class DOMPatch {
               ref.lockRef &&
               (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))
             ) {
-              if (DOM.isUploadInput(fromEl)) {
-                DOM.mergeAttrs(fromEl, toEl, {
-                  isIgnored: true,
-                  isUploadInput: true,
-                });
-                this.trackBefore("updated", fromEl, toEl);
-                updates.push(fromEl);
-              }
               DOM.applyStickyOperations(fromEl);
               const isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
               const clone = isLocked
