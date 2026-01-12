@@ -3973,7 +3973,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     // Default lifecycle methods
     mounted() {
     }
-    beforeUpdate() {
+    beforeUpdate(_fromEl, _toEl) {
     }
     updated() {
     }
@@ -3993,8 +3993,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.updated();
     }
     /** @internal */
-    __beforeUpdate() {
-      this.beforeUpdate();
+    __beforeUpdate(fromEl, toEl) {
+      this.beforeUpdate(fromEl, toEl);
     }
     /** @internal */
     __destroyed() {
@@ -4489,7 +4489,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const hook = this.getHook(fromEl);
       const isIgnored = hook && dom_default.isIgnored(fromEl, this.binding(PHX_UPDATE));
       if (hook && !fromEl.isEqualNode(toEl) && !(isIgnored && isEqualObj(fromEl.dataset, toEl.dataset))) {
-        hook.__beforeUpdate();
+        hook.__beforeUpdate(fromEl, toEl);
         return hook;
       }
     }
