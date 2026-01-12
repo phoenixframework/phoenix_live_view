@@ -594,7 +594,7 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
-  @doc ~S"""
+  @doc ~S'''
   Configures which function to use to render a LiveView/LiveComponent.
 
   By default, LiveView invokes the `render/1` function in the same module
@@ -638,7 +638,7 @@ defmodule Phoenix.LiveView do
         """
       end
 
-  """
+  '''
   def render_with(%Socket{} = socket, component) when is_function(component, 1) do
     put_in(socket.private[:render_with], component)
   end
