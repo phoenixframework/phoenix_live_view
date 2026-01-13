@@ -18,7 +18,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   > #### A note on dependencies and umbrella projects {: .info}
   >
   > For each application that uses colocated CSS, a separate directory is created
-  > inside the `phoenix-colocated` folder. This allows to have clear separation between
+  > inside the `phoenix-colocated-css` folder. This allows to have clear separation between
   > styles of dependencies, but also applications inside umbrella projects.
 
   ## Scoped CSS
@@ -32,11 +32,35 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   attribute, for example:
 
   ```heex
-  <style :type={Phoenix.LiveView.ColocatedCSS} global">
+  <style :type={Phoenix.LiveView.ColocatedCSS} global>
     .sample-class {
         background-color: #FFFFFF;
     }
   </style>
+  ```
+
+  **Note:** When using Scoped Colocated CSS with implicit `inner_block` slots or named slots, the content
+  provided will be scoped to the parent template which is providing the content, not the component which
+  defines the slot. For example, in the following snippet the elements within [`intersperse/1`](`Phoenix.Component.intersperse/1`)'s
+  `inner_block` and `separator` slots will both be styled by the `.sample-class` rule, not any rules defined within the
+  [`intersperse/1`](`Phoenix.Component.intersperse/1`) component itself:
+
+  ```heex
+  <style :type={Phoenix.LiveView.ColocatedCSS}>
+    .sample-class {
+        background-color: #FFFFFF;
+    }
+  </style>
+  <div class="sample-class">
+    <.intersperse :let={item} enum={[1, 2, 3]}>
+      <:separator>
+        <span class="sample-class">|</span>
+      </:separator>
+      <div class="sample-class">
+        <p>Item {item}</p>
+      </div>
+    </.intersperse>
+  </div>
   ```
 
   > #### Warning! {: .warning}
@@ -49,12 +73,8 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   >
   > When Colocated CSS is scoped via the `@scope` rule, the scoping root is set to the outermost elements
   > of the given template. For selectors in your Colocated CSS to target the scoping root, you will need to
-  > specify the scoping root in the selector via the use of the `:scope` pseudo-selector. You can also use
-  > `:where(:scope)` instead to not increase specificity.
-  >
-  > For example, the use of the `.sample-class` selector in Scoped Colocated CSS will only style descendant
-  > elements with the `.sample-class` class, not the scoping root elements. You can use multiple selectors such as
-  > `.sample_class, .sample-class:where(:scope)` to target all elements with the `.sample-class` class in the template.
+  > specify the scoping root in the selector via the use of the `:scope` pseudo-selector. For more details,
+  > see [the docs on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@scope#scope_pseudo-class_within_scope_blocks).
 
   ## Internals
 
@@ -102,7 +122,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
   ```elixir
   config :phoenix_live_view, :colocated_css,
-    target_directory: Path.expand("../assets/css/phoenix-colocated", __DIR__)
+    target_directory: Path.expand("../assets/css/phoenix-colocated-css", __DIR__)
   ```
 
   To bundle and use colocated CSS with esbuild, you can import it like this in your `app.js` file:
