@@ -614,7 +614,7 @@ defmodule Phoenix.LiveViewTest do
     %{form | meta: Map.put(form.meta, :submitter, submitter)}
   end
 
-  @doc """
+  @doc ~S'''
   Sends a form submit event given by `element` and returns the rendered result.
 
   The `element` is created with `element/3` and must point to a single
@@ -699,7 +699,7 @@ defmodule Phoenix.LiveViewTest do
   > Only use the `value` parameter to pass values for hidden input fields or submit events from a hook
   > that cannot be passed to `form/3`. The same applies to `render_change/2`.
 
-  """
+  '''
   def render_submit(element, value \\ %{})
   def render_submit(%Element{} = element, value), do: render_event(element, :submit, value)
   def render_submit(view, event), do: render_submit(view, event, %{})
