@@ -1,4 +1,6 @@
 defmodule Phoenix.LiveView.HTMLEngineTest do
+  # async: false due to manipulation of the Application
+  # env for :apply_css_scope_attribute
   use ExUnit.Case, async: true
 
   import ExUnit.CaptureIO
@@ -2289,5 +2291,438 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert meta[:line] == __ENV__.line - 12
       assert meta[:column] == 10
     end
+  end
+
+  describe "data-phx-css attribute" do
+    test "is correctly applied to a single self-closing tag" do
+      enable_apply_css_scope_attribute()
+
+      source = "<div />"
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      expected = ~s(<div data-phx-css="#{scope}"></div>)
+
+      assert rendered == normalize_whitespace(expected)
+    after
+      disable_apply_css_scope_attribute()
+    end
+
+    test "is correctly applied to a single tag with body" do
+      enable_apply_css_scope_attribute()
+
+      source = "<div>Test</div>"
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      expected = ~s(<div data-phx-css="#{scope}">Test</div>)
+
+      assert rendered == normalize_whitespace(expected)
+    after
+      disable_apply_css_scope_attribute()
+    end
+
+    test "is correctly applied to multiple self-closing tags" do
+      enable_apply_css_scope_attribute()
+
+      source = """
+      <div/>
+      <div/>
+      <div/>
+      """
+
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      expected = """
+      <div data-phx-css=\"#{scope}\"></div>
+      <div data-phx-css=\"#{scope}\"></div>
+      <div data-phx-css=\"#{scope}\"></div>
+      """
+
+      assert rendered == normalize_whitespace(expected)
+    after
+      disable_apply_css_scope_attribute()
+    end
+
+    test "is correctly applied to multiple tags with bodies" do
+      enable_apply_css_scope_attribute()
+
+      source = """
+      <div>Test1</div>
+      <div>Test2</div>
+      <div>Test3</div>
+      """
+
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      expected = """
+      <div data-phx-css=\"#{scope}\">Test1</div>
+      <div data-phx-css=\"#{scope}\">Test2</div>
+      <div data-phx-css=\"#{scope}\">Test3</div>
+      """
+
+      assert rendered == normalize_whitespace(expected)
+    after
+      disable_apply_css_scope_attribute()
+    end
+
+    test "is correctly applied to all outermost tags, but not nested tags" do
+      enable_apply_css_scope_attribute()
+
+      source = """
+      <div>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div>
+          </div>
+        </div>
+      </div>
+      <div>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div>
+          </div>
+        </div>
+      </div>
+      """
+
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      expected = """
+      <div data-phx-css=\"#{scope}\">
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      <div data-phx-css=\"#{scope}\">
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      """
+
+      assert rendered == normalize_whitespace(expected)
+    after
+      disable_apply_css_scope_attribute()
+    end
+
+    test "is correctly applied to contents of component inner_blocks" do
+      enable_apply_css_scope_attribute()
+
+      source = """
+      <div>
+        <div>
+          <Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+            <div>
+              <div>
+                Inner Block 1
+              </div>
+            </div>
+          </Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+          <Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+            <div>
+              <div>
+                Inner Block 2
+              </div>
+            </div>
+          </Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+        </div>
+      </div>
+      """
+
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      pattern =
+        """
+        <div data-phx-css=\"#{scope}\">
+          <div>
+            <section data-phx-css=\"(\\w+)\">
+              <div data-phx-css=\"#{scope}\">
+                <div>
+                  Inner Block 1
+                </div>
+              </div>
+            </section>
+            <section data-phx-css=\"(\\w+)\">
+              <div data-phx-css=\"#{scope}\">
+                <div>
+                  Inner Block 2
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        """
+        |> normalize_whitespace()
+        |> Regex.compile!()
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      [inner_block_and_slot_scope, inner_block_and_slot_scope] =
+        Regex.run(pattern, rendered, capture: :all_but_first)
+
+      refute scope == inner_block_and_slot_scope
+    after
+      disable_apply_css_scope_attribute()
+    end
+
+    test "is correctly applied to contents of component named slots" do
+      enable_apply_css_scope_attribute()
+
+      source = """
+      <div>
+        <div>
+          <Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+            <:test>
+              <div>
+                <div>
+                  Inner Block 1
+                </div>
+              </div>
+            </:test>
+          </Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+          <Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+            <:test>
+              <div>
+                <div>
+                  Inner Block 2
+                </div>
+              </div>
+            </:test>
+          </Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+        </div>
+      </div>
+      """
+
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      pattern =
+        """
+        <div data-phx-css=\"#{scope}\">
+          <div>
+            <section data-phx-css=\"(\\w+)\">
+              <aside>
+                <div data-phx-css=\"#{scope}\">
+                  <div>
+                    Inner Block 1
+                  </div>
+                </div>
+              </aside>
+            </section>
+            <section data-phx-css=\"(\\w+)\">
+              <aside>
+                <div data-phx-css=\"#{scope}\">
+                  <div>
+                    Inner Block 2
+                  </div>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+        |> normalize_whitespace()
+        |> Regex.compile!()
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      assert Regex.match?(pattern, rendered)
+
+      [inner_block_and_slot_scope, inner_block_and_slot_scope] =
+        Regex.run(pattern, rendered, capture: :all_but_first)
+
+      refute scope == inner_block_and_slot_scope
+    after
+      disable_apply_css_scope_attribute()
+    end
+
+    test "is correctly applied to nested component calls with inner_blocks and slots" do
+      enable_apply_css_scope_attribute()
+
+      source = """
+      <div>
+        <div>
+          <Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+              <div>
+                <Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+                  <div>
+                    <Phoenix.LiveView.HTMLEngineTest.CSSScope.simple/>
+                  </div>
+                  <:test>
+                    <div>
+                      <Phoenix.LiveView.HTMLEngineTest.CSSScope.simple/>
+                    </div>
+                  </:test>
+                </Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+              </div>
+            <:test>
+              <div>
+                <Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+                  <div>
+                    <Phoenix.LiveView.HTMLEngineTest.CSSScope.simple/>
+                  </div>
+                  <:test>
+                    <div>
+                      <Phoenix.LiveView.HTMLEngineTest.CSSScope.simple/>
+                    </div>
+                  </:test>
+                </Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+              </div>
+            </:test>
+          </Phoenix.LiveView.HTMLEngineTest.CSSScope.inner_block_and_slot>
+        </div>
+      </div>
+      """
+
+      scope = Phoenix.LiveView.TagEngine.generate_scope(source)
+
+      pattern =
+        """
+        <div data-phx-css=\"#{scope}\">
+          <div>
+            <section data-phx-css=\"(\\w+)\">
+                <div data-phx-css=\"#{scope}\">
+                  <section data-phx-css=\"(\\w+)\">
+                    <div data-phx-css=\"#{scope}\">
+                      <p data-phx-css=\"(\\w+)\">Simple</p>
+                    </div>
+                    <aside>
+                      <div data-phx-css=\"#{scope}\">
+                        <p data-phx-css=\"(\\w+)\">Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              <aside>
+                <div data-phx-css=\"#{scope}\">
+                  <section data-phx-css=\"(\\w+)\">
+                    <div data-phx-css=\"#{scope}\">
+                      <p data-phx-css=\"(\\w+)\">Simple</p>
+                    </div>
+                    <aside>
+                      <div data-phx-css=\"#{scope}\">
+                        <p data-phx-css=\"(\\w+)\">Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+        |> normalize_whitespace()
+        |> Regex.compile!()
+
+      rendered =
+        source
+        |> render()
+        |> normalize_whitespace()
+
+      assert Regex.match?(pattern, rendered)
+
+      [
+        inner_block_and_slot_scope,
+        inner_block_and_slot_scope,
+        simple_scope,
+        simple_scope,
+        inner_block_and_slot_scope,
+        simple_scope,
+        simple_scope
+      ] = Regex.run(pattern, rendered, capture: :all_but_first)
+
+      refute scope == inner_block_and_slot_scope
+      refute scope == simple_scope
+      refute inner_block_and_slot_scope == simple_scope
+    after
+      disable_apply_css_scope_attribute()
+    end
+  end
+
+  defp normalize_whitespace(string) do
+    # Eliminate all newlines and space between tags to make
+    # assertions more resilient against irrelevant whitespace differences
+    string
+    |> String.replace("\n", "")
+    |> String.replace(~r/> +</, "><")
+  end
+
+  defp enable_apply_css_scope_attribute() do
+    Application.put_env(:phoenix_live_view, :apply_css_scope_attribute, true)
+
+    # Important that this happens after the Application env
+    # is updated so that the contents of this file are also
+    # scoped
+    # Code.require_file("test/support/live_views/css_scope.exs")
+
+    defmodule CSSScope do
+      use Phoenix.Component
+
+      slot :inner_block, required: true
+      slot :test
+
+      def inner_block_and_slot(assigns) do
+        ~H"""
+        <section>
+          {render_slot(@inner_block)}
+          <aside :for={test <- @test}>
+            {render_slot(@test)}
+          </aside>
+        </section>
+        """
+      end
+
+      def simple(assigns) do
+        ~H"""
+        <p>Simple</p>
+        """
+      end
+    end
+  end
+
+  defp disable_apply_css_scope_attribute() do
+    Application.put_env(:phoenix_live_view, :apply_css_scope_attribute, false)
+
+    :code.delete(__MODULE__.CSSScope)
+    :code.purge(__MODULE__.CSSScope)
   end
 end
