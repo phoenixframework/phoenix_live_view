@@ -2,7 +2,9 @@ import { test, expect } from "../../test-fixtures";
 import { syncLV } from "../../utils";
 
 // https://github.com/phoenixframework/phoenix_live_view/issues/4107
-test("debounce works for inputs outside of the form", async ({ page }) => {
+test("external form submission from teleported form is successful", async ({
+  page,
+}) => {
   await page.goto("/issues/4107");
   await syncLV(page);
 
