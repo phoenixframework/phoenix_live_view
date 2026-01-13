@@ -648,6 +648,57 @@ defmodule Phoenix.LiveViewTest do
              |> put_submitter("button[name=example_action]")
              |> render_submit() =~ "Action taken"
 
+  > #### Code smell: bypassing LiveViewTest's form validation unnecessarily {: .warning}
+  >
+  > **DO NOT** use the value parameter to pass data that you expect to be filled
+  > by regular input fields in the form, otherwise you bypass the validation that the
+  > rendered inputs actually match your expectations.
+  >
+  > Imagine you have this code:
+  >
+  > ```elixir
+  > def render(assigns) do
+  >   ~H"""
+  >   <form phx-submit="save">
+  >     <input name="name" value="" />
+  >     <button type="submit">Submit</button>
+  >   </form>
+  >   """
+  > end
+  >
+  > def handle_event("save", %{"name" => name}, socket) do
+  >   ...
+  > end
+  > ```
+  > 
+  > And you test it with:
+  >
+  > ```elixir
+  > view |> form("form") |> render_submit(%{name: "hello"})
+  > ```
+  >
+  > If you then refactor your form to have fields under a sub-key (for example,
+  > by using `to_form(..., as: :user)`) and you forget to update your `handle_event`
+  > clause accordingly, your test will still pass, even though the form
+  > no longer works as expected. Instead, you should always pass values that are
+  > part of visible input fields as part of the `form/3` call:
+  >
+  > ```elixir
+  > view |> form("form", %{name: "hello"}) |> render_submit()
+  > ```
+  >
+  > This way, if you run the tests and your input field is called `<input name="user[name]">`,
+  > you will get an error:
+  >
+  > ```text
+  > ** (ArgumentError) could not find non-disabled input, select or textarea with name "name" within:
+  >
+  > <input name="user[name]" value=""/>
+  > ```
+  >
+  > Only use the `value` parameter to pass values for hidden input fields or submit events from a hook
+  > that cannot be passed to `form/3`. The same applies to `render_change/2`.
+
   """
   def render_submit(element, value \\ %{})
   def render_submit(%Element{} = element, value), do: render_event(element, :submit, value)
