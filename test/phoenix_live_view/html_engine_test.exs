@@ -2565,8 +2565,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         |> render()
         |> normalize_whitespace()
 
-      assert Regex.match?(pattern, rendered)
-
       [inner_block_and_slot_scope, inner_block_and_slot_scope] =
         Regex.run(pattern, rendered, capture: :all_but_first)
 
@@ -2658,8 +2656,6 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         |> render()
         |> normalize_whitespace()
 
-      assert Regex.match?(pattern, rendered)
-
       [
         inner_block_and_slot_scope,
         inner_block_and_slot_scope,
@@ -2689,11 +2685,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   defp enable_apply_css_scope_attribute() do
     Application.put_env(:phoenix_live_view, :apply_css_scope_attribute, true)
 
-    # Important that this happens after the Application env
-    # is updated so that the contents of this file are also
-    # scoped
-    # Code.require_file("test/support/live_views/css_scope.exs")
-
+    # It is mportant that this module is defined and compiled
+    # after the Application env is updated so that the contents
+    # of this module are also scoped
     defmodule CSSScope do
       use Phoenix.Component
 
