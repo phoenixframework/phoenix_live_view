@@ -215,16 +215,11 @@ defmodule Phoenix.LiveView.TagEngine do
   def handle_body(state) do
     %{tokens: tokens, file: file, cont: cont, source: source, caller: caller} = state
 
-    hash =
-      :md5
-      |> :crypto.hash(source)
-      |> Base.encode32(case: :lower, padding: false)
-
     tokens = Tokenizer.finalize(tokens, file, cont, source)
 
     token_state =
       state
-      |> token_state(nil, hash)
+      |> token_state(nil, generate_scope(source))
       |> continue(tokens)
       |> validate_unclosed_tags!("template")
 
@@ -243,6 +238,13 @@ defmodule Phoenix.LiveView.TagEngine do
       require Phoenix.LiveView.TagEngine
       unquote(ast)
     end
+  end
+
+  @doc false
+  def generate_scope(source) do
+    :md5
+    |> :crypto.hash(source)
+    |> Base.encode32(case: :lower, padding: false)
   end
 
   defp has_tags?([{:text, _, _} | tokens]), do: has_tags?(tokens)
@@ -1064,31 +1066,36 @@ defmodule Phoenix.LiveView.TagEngine do
   ## handle_tag_and_attrs
 
   defp handle_tag_and_attrs(state, name, attrs, suffix, meta, previous_tag) do
-    scope_root? =
-      case previous_tag do
-        {:macro_tag, _tag} -> false
-        {:tag, _name, _attrs, _meta} -> false
-        _tag -> true
-      end
-
     text =
-      if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
-        "<#{name} data-phx-loc=\"#{meta[:line]}\""
-      else
-        "<#{name}"
-      end
-
-    text =
-      if state.scope && scope_root? do
-        "#{text} data-phx-css=\"#{state.scope}\""
-      else
-        text
-      end
+      name
+      |> maybe_add_debug_loc_text(meta)
+      |> maybe_add_scope_text(state.scope, previous_tag)
 
     state
     |> update_subengine(:handle_text, [meta, text])
     |> handle_tag_attrs(meta, attrs)
     |> update_subengine(:handle_text, [meta, suffix])
+  end
+
+  defp maybe_add_debug_loc_text(text, meta) do
+    if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
+      "<#{text} data-phx-loc=\"#{meta[:line]}\""
+    else
+      "<#{text}"
+    end
+  end
+
+  defp maybe_add_scope_text(text, scope, previous_tag) do
+    scope_root? = not match?({:tag, _, _, _}, previous_tag)
+
+    apply_css_scope_attribute? =
+      Application.get_env(:phoenix_live_view, :apply_css_scope_attribute, true)
+
+    if scope && apply_css_scope_attribute? && scope_root? do
+      "#{text} data-phx-css=\"#{scope}\""
+    else
+      text
+    end
   end
 
   defp handle_tag_attrs(state, meta, attrs) do
