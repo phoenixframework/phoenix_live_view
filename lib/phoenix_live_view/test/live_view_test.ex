@@ -614,7 +614,7 @@ defmodule Phoenix.LiveViewTest do
     %{form | meta: Map.put(form.meta, :submitter, submitter)}
   end
 
-  @doc """
+  @doc ~S'''
   Sends a form submit event given by `element` and returns the rendered result.
 
   The `element` is created with `element/3` and must point to a single
@@ -648,7 +648,57 @@ defmodule Phoenix.LiveViewTest do
              |> put_submitter("button[name=example_action]")
              |> render_submit() =~ "Action taken"
 
-  """
+  > #### Anti-pattern: bypassing LiveViewTest's form validation unnecessarily {: .warning}
+  >
+  > **DO NOT** use the value parameter to pass data that you expect to be filled
+  > by regular input fields in the form. Values given directly to `render_submit`
+  > are not checked against the inputs rendered as part of the form.
+  >
+  > Imagine you have this code:
+  >
+  > ```elixir
+  > def render(assigns) do
+  >   ~H"""
+  >   <form phx-submit="save">
+  >     <input name="name" value="" />
+  >     <button type="submit">Submit</button>
+  >   </form>
+  >   """
+  > end
+  >
+  > def handle_event("save", %{"name" => name}, socket) do
+  >   ...
+  > end
+  > ```
+  > 
+  > And you test it with:
+  >
+  > ```elixir
+  > view |> form("form") |> render_submit(%{name: "hello"})
+  > ```
+  >
+  > Because the values given to `render_submit` are not checked against the
+  > form, if you later change the input name to something, the test will not fail.
+  > Instead, you should always pass values that are part of visible input fields
+  > as part of the `form/3` call:
+  >
+  > ```elixir
+  > view |> form("form", %{name: "hello"}) |> render_submit()
+  > ```
+  >
+  > This way, if you run the tests and your input field is called `<input name="other_name">`,
+  > you will get an error:
+  >
+  > ```text
+  > ** (ArgumentError) could not find non-disabled input, select or textarea with name "name" within:
+  >
+  > <input name="other_name" value=""/>
+  > ```
+  >
+  > Only use the `value` parameter to pass values for hidden input fields or submit events from a hook
+  > that cannot be passed to `form/3`. The same applies to `render_change/2`.
+
+  '''
   def render_submit(element, value \\ %{})
   def render_submit(%Element{} = element, value), do: render_event(element, :submit, value)
   def render_submit(view, event), do: render_submit(view, event, %{})
