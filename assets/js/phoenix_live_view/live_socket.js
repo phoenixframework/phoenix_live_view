@@ -223,7 +223,7 @@ export default class LiveSocket {
 
   /**
    * @param {HTMLElement} el
-   * @param {import("./js_commands").EncodedJS} encodedJS
+   * @param {string} encodedJS
    * @param {string | null} [eventType]
    */
   execJS(el, encodedJS, eventType = null) {

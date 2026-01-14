@@ -29,7 +29,7 @@
   ],
   "types": "./assets/js/types/index.d.ts",
   "dependencies": {
-    "morphdom": "2.7.7"
+    "morphdom": "2.7.8"
   },
   "devDependencies": {
     "@babel/cli": "7.27.2",

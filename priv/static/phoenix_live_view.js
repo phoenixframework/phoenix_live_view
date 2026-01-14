@@ -640,9 +640,12 @@ var LiveView = (() => {
           if (form && this.once(form, "bind-debounce")) {
             form.addEventListener("submit", () => {
               Array.from(new FormData(form).entries(), ([name]) => {
-                const input = form.querySelector(`[name="${name}"]`);
-                this.incCycle(input, DEBOUNCE_TRIGGER);
-                this.deletePrivate(input, THROTTLED);
+                const namedItem = form.elements.namedItem(name);
+                const input = namedItem instanceof RadioNodeList ? namedItem[0] : namedItem;
+                if (input) {
+                  this.incCycle(input, DEBOUNCE_TRIGGER);
+                  this.deletePrivate(input, THROTTLED);
+                }
               });
             });
           }
@@ -1283,6 +1286,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
       },
       mounted() {
+        this.js().ignoreAttributes(this.el, ["value"]);
         this.preflightedWas = this.preflightedRefs();
       },
       updated() {
@@ -2492,11 +2496,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (fromEl.hasAttribute(PHX_REF_SRC)) {
               const ref = new ElementRef(fromEl);
               if (ref.lockRef && (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))) {
-                if (dom_default.isUploadInput(fromEl)) {
-                  dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
-                  this.trackBefore("updated", fromEl, toEl);
-                  updates.push(fromEl);
-                }
                 dom_default.applyStickyOperations(fromEl);
                 const isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
                 const clone2 = isLocked ? dom_default.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null;
@@ -2528,6 +2527,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             dom_default.copyPrivates(toEl, fromEl);
             if (dom_default.isPortalTemplate(toEl)) {
               portalCallbacks.push(() => this.teleport(toEl, morph));
+              fromEl.innerHTML = toEl.innerHTML;
               return false;
             }
             if (isFocusedFormEl && fromEl.type !== "hidden" && !focusedSelectChanged) {
@@ -3881,6 +3881,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   var HOOK_ID = "hookId";
   var viewHookID = 1;
   var ViewHook = class _ViewHook {
+    get liveSocket() {
+      return this.__liveSocket();
+    }
     static makeID() {
       return viewHookID++;
     }
@@ -3948,14 +3951,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     __attachView(view) {
       if (view) {
         this.__view = () => view;
-        this.liveSocket = view.liveSocket;
+        this.__liveSocket = () => view.liveSocket;
       } else {
         this.__view = () => {
           throw new Error(
             `hook not yet attached to a live view: ${this.el.outerHTML}`
           );
         };
-        this.liveSocket = null;
+        this.__liveSocket = () => {
+          throw new Error(
+            `hook not yet attached to a live view: ${this.el.outerHTML}`
+          );
+        };
       }
     }
     // Default lifecycle methods
@@ -4018,26 +4025,34 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (onReply === void 0) {
         return promise.then(({ reply }) => reply);
       }
-      promise.then(({ reply, ref }) => onReply(reply, ref)).catch(() => {
+      promise.then(
+        ({ reply, ref }) => onReply(reply, ref)
+      ).catch(() => {
       });
-      return;
     }
     pushEventTo(selectorOrTarget, event, payload, onReply) {
       if (onReply === void 0) {
         const targetPair = [];
-        this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-          targetPair.push({ view, targetCtx });
-        });
+        this.__view().withinTargets(
+          selectorOrTarget,
+          (view, targetCtx) => {
+            targetPair.push({ view, targetCtx });
+          }
+        );
         const promises = targetPair.map(({ view, targetCtx }) => {
           return view.pushHookEvent(this.el, targetCtx, event, payload || {});
         });
         return Promise.allSettled(promises);
       }
-      this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-        view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(({ reply, ref }) => onReply(reply, ref)).catch(() => {
-        });
-      });
-      return;
+      this.__view().withinTargets(
+        selectorOrTarget,
+        (view, targetCtx) => {
+          view.pushHookEvent(this.el, targetCtx, event, payload || {}).then(
+            ({ reply, ref }) => onReply(reply, ref)
+          ).catch(() => {
+          });
+        }
+      );
     }
     handleEvent(event, callback) {
       const callbackRef = {
@@ -4062,9 +4077,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return this.__view().dispatchUploads(null, name, files);
     }
     uploadTo(selectorOrTarget, name, files) {
-      return this.__view().withinTargets(selectorOrTarget, (view, targetCtx) => {
-        view.dispatchUploads(targetCtx, name, files);
-      });
+      return this.__view().withinTargets(
+        selectorOrTarget,
+        (view, targetCtx) => {
+          view.dispatchUploads(targetCtx, name, files);
+        }
+      );
     }
     /** @internal */
     __cleanup__() {
@@ -4390,11 +4408,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       }
       if (liveview_version !== this.liveSocket.version()) {
-        // Either the user has a mismatched version - for example using LiveView from npm instead of
-        // the bundled version from the hex package - or, more likely, the assets are stale because of a
-        // deployment. In that case, see
-        // https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#static_changed?/1
-        // for tips to address this.
         console.warn(
           `LiveView asset version mismatch. JavaScript version ${this.liveSocket.version()} vs. server ${liveview_version}. To avoid issues, please ensure that your assets use the same version as the server.`
         );
@@ -5305,8 +5318,19 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return targetCtx;
       } else if (targetCtx) {
         return maybe(
-          targetCtx.closest(`[${PHX_COMPONENT}]`),
-          (el) => this.ownsElement(el) && this.componentID(el)
+          // We either use the closest data-phx-component binding, or -
+          // in case of portals - continue with the portal source.
+          // This is necessary if teleporting an element outside of its LiveComponent.
+          targetCtx.closest(`[${PHX_COMPONENT}],[${PHX_TELEPORTED_SRC}]`),
+          (el) => {
+            if (el.hasAttribute(PHX_COMPONENT)) {
+              return this.ownsElement(el) && this.componentID(el);
+            }
+            if (el.hasAttribute(PHX_TELEPORTED_SRC)) {
+              const portalParent = dom_default.byId(el.getAttribute(PHX_TELEPORTED_SRC));
+              return this.closestComponentID(portalParent);
+            }
+          }
         );
       } else {
         return null;
@@ -5722,6 +5746,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           this.liveSocket.requestDOMUpdate(() => {
             if (resp.link_redirect) {
               this.liveSocket.replaceMain(href, null, callback, linkRef);
+            } else if (resp.redirect) {
+              return;
             } else {
               if (this.liveSocket.commitPendingLink(linkRef)) {
                 this.href = href;
@@ -5826,12 +5852,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.portalElementIds.delete(id);
     }
     destroyPortalElements() {
-      this.portalElementIds.forEach((id) => {
-        const el = document.getElementById(id);
-        if (el) {
-          el.remove();
-        }
-      });
+      if (!this.liveSocket.unloaded) {
+        this.portalElementIds.forEach((id) => {
+          const el = document.getElementById(id);
+          if (el) {
+            el.remove();
+          }
+        });
+      }
     }
   };
 
@@ -5979,6 +6007,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.socket.replaceTransport(transport);
       this.connect();
     }
+    /**
+     * @param {HTMLElement} el
+     * @param {string} encodedJS
+     * @param {string | null} [eventType]
+     */
     execJS(el, encodedJS, eventType = null) {
       const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
       this.owner(el, (view) => js_default.exec(e, eventType, encodedJS, view, el));
