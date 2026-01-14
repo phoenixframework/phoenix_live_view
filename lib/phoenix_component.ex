@@ -3348,7 +3348,6 @@ defmodule Phoenix.Component do
       name={@upload.name}
       accept={@accept}
       data-phx-hook="Phoenix.LiveFileUpload"
-      data-phx-update="ignore"
       data-phx-upload-ref={@upload.ref}
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}
