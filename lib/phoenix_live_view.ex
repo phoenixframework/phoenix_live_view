@@ -1294,8 +1294,6 @@ defmodule Phoenix.LiveView do
   version of the marked static files. It works by comparing the static paths
   sent by the client with the one on the server.
 
-  Browser console logs will have messages starting with "LiveView asset version mismatch."
-
   **Note:** this functionality requires Phoenix v1.5.2 or later.
 
   To use this functionality, the first step is to annotate which static files
