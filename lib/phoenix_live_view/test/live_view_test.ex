@@ -648,11 +648,11 @@ defmodule Phoenix.LiveViewTest do
              |> put_submitter("button[name=example_action]")
              |> render_submit() =~ "Action taken"
 
-  > #### Code smell: bypassing LiveViewTest's form validation unnecessarily {: .warning}
+  > #### Anti-pattern: bypassing LiveViewTest's form validation unnecessarily {: .warning}
   >
   > **DO NOT** use the value parameter to pass data that you expect to be filled
-  > by regular input fields in the form, otherwise you bypass the validation that the
-  > rendered inputs actually match your expectations.
+  > by regular input fields in the form. Values given directly to `render_submit`
+  > are not checked against the inputs rendered as part of the form.
   >
   > Imagine you have this code:
   >
@@ -677,23 +677,22 @@ defmodule Phoenix.LiveViewTest do
   > view |> form("form") |> render_submit(%{name: "hello"})
   > ```
   >
-  > If you then refactor your form to have fields under a sub-key (for example,
-  > by using `to_form(..., as: :user)`) and you forget to update your `handle_event`
-  > clause accordingly, your test will still pass, even though the form
-  > no longer works as expected. Instead, you should always pass values that are
-  > part of visible input fields as part of the `form/3` call:
+  > Because the values given to `render_submit` are not checked against the
+  > form, if later change the input name to something, the test will not fail.
+  > Instead, you should always pass values that are part of visible input fields
+  > as part of the `form/3` call:
   >
   > ```elixir
   > view |> form("form", %{name: "hello"}) |> render_submit()
   > ```
   >
-  > This way, if you run the tests and your input field is called `<input name="user[name]">`,
+  > This way, if you run the tests and your input field is called `<input name="other_name">`,
   > you will get an error:
   >
   > ```text
   > ** (ArgumentError) could not find non-disabled input, select or textarea with name "name" within:
   >
-  > <input name="user[name]" value=""/>
+  > <input name="other_name" value=""/>
   > ```
   >
   > Only use the `value` parameter to pass values for hidden input fields or submit events from a hook
