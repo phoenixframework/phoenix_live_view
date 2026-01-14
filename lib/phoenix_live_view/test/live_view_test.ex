@@ -678,7 +678,7 @@ defmodule Phoenix.LiveViewTest do
   > ```
   >
   > Because the values given to `render_submit` are not checked against the
-  > form, if later change the input name to something, the test will not fail.
+  > form, if you later change the input name to something, the test will not fail.
   > Instead, you should always pass values that are part of visible input fields
   > as part of the `form/3` call:
   >
