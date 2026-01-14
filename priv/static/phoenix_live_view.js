@@ -1958,10 +1958,18 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         options = {};
       }
       if (typeof toNode === "string") {
-        if (fromNode.nodeName === "#document" || fromNode.nodeName === "HTML" || fromNode.nodeName === "BODY") {
+        if (fromNode.nodeName === "#document" || fromNode.nodeName === "HTML") {
           var toNodeHtml = toNode;
           toNode = doc.createElement("html");
           toNode.innerHTML = toNodeHtml;
+        } else if (fromNode.nodeName === "BODY") {
+          var toNodeBody = toNode;
+          toNode = doc.createElement("html");
+          toNode.innerHTML = toNodeBody;
+          var bodyElement = toNode.querySelector("body");
+          if (bodyElement) {
+            toNode = bodyElement;
+          }
         } else {
           toNode = toElement(toNode);
         }
