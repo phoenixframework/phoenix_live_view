@@ -1241,6 +1241,7 @@ var Hooks = {
       return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
     },
     mounted() {
+      this.js().ignoreAttributes(this.el, ["value"]);
       this.preflightedWas = this.preflightedRefs();
     },
     updated() {
@@ -2449,11 +2450,6 @@ var DOMPatch = class {
           if (fromEl.hasAttribute(PHX_REF_SRC)) {
             const ref = new ElementRef(fromEl);
             if (ref.lockRef && (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))) {
-              if (dom_default.isUploadInput(fromEl)) {
-                dom_default.mergeAttrs(fromEl, toEl, { isIgnored: true });
-                this.trackBefore("updated", fromEl, toEl);
-                updates.push(fromEl);
-              }
               dom_default.applyStickyOperations(fromEl);
               const isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
               const clone2 = isLocked ? dom_default.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null;
