@@ -363,11 +363,6 @@ export default class DOMPatch {
               ref.lockRef &&
               (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))
             ) {
-              if (DOM.isUploadInput(fromEl)) {
-                DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
-                this.trackBefore("updated", fromEl, toEl);
-                updates.push(fromEl);
-              }
               DOM.applyStickyOperations(fromEl);
               const isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
               const clone = isLocked
