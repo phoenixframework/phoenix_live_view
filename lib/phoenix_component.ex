@@ -554,6 +554,97 @@ defmodule Phoenix.Component do
 
   Changing this configuration will require `mix clean` and a full recompile.
 
+  ## Root tag annotations
+
+  HEEx templates support adding root tag annotations to the rendered page.
+  These can be useful for debugging or as selectors for things such as CSS.
+
+  Note that root tag annotations are applied to all root tags in the given
+  template, not just the outermost root tags. This means that tags at the root
+  of the template itself, at the root of any component inner blocks, or at
+  the root of any component slots will all be annotated.
+
+  For example, imagine the following component definition:
+
+  ```elixir
+  defmodule MyAppWeb.MyModule do
+    slot :inner_block, required: true
+    slot :named_slot, required: true
+
+    def my_function(assigns) do
+      ~H"""
+      <section>
+        <div>
+          {render_slot(@inner_block)}
+        </div>
+      </section>
+      <aside>
+        <div>
+          {render_slot(@named_slot)}
+        </div>
+      </aside>
+      """
+    end
+  end
+  ```
+
+  And the following HEEx template:
+
+  ```heex
+  <div>
+    <div>
+      <.my_function>
+        <p>
+          <span>
+            Inner Block
+          </span>
+        </p>
+        <:named_slot>
+        <p>
+          <span>
+            Named Slot
+          </span>
+        </p>
+        </:named_slot>
+      </.my_function>
+    </div>
+  </div>
+  ```
+
+  By setting `root_tag_annotation` to "phx-r", the rendered HTML would look as follows:
+
+  ```html
+  <div phx-r>
+    <div>
+      <section phx-r>
+        <div>
+          <p phx-r>
+            <span>
+              Inner Block
+            </span>
+          </p>
+        </div>
+      </section>
+      <aside phx-r>
+        <div>
+          <p phx-r>
+            <span>
+              Named Slot
+            </span>
+          </p>
+        </div>
+      </aside>
+    </div>
+  </div>
+  ```
+
+  This feature works on any `~H` or `.html.heex` template. They can be enabled
+  globally with the following configuration in your `config/config.exs` file:
+
+      config :phoenix_live_view, root_tag_annotation: "phx-r"
+
+  Changing this configuration will require `mix clean` and a full recompile.
+
   ## Dynamic Component Rendering
 
   Sometimes you might need to decide at runtime which component to render.

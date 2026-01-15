@@ -218,7 +218,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     token_state =
       state
-      |> token_state(nil)
+      |> template_token_state()
       |> continue(tokens)
       |> validate_unclosed_tags!("template")
 
@@ -269,24 +269,21 @@ defmodule Phoenix.LiveView.TagEngine do
   @impl true
   def handle_end(state) do
     state
-    |> token_state(false)
+    |> nesting_token_state()
     |> continue(Enum.reverse(state.tokens))
     |> validate_unclosed_tags!("do-block")
     |> invoke_subengine(:handle_end, [])
   end
 
-  defp token_state(
-         %{
-           subengine: subengine,
-           substate: substate,
-           file: file,
-           caller: caller,
-           source: source,
-           indentation: indentation,
-           tag_handler: tag_handler
-         },
-         root
-       ) do
+  defp template_token_state(%{
+         subengine: subengine,
+         substate: substate,
+         file: file,
+         caller: caller,
+         source: source,
+         indentation: indentation,
+         tag_handler: tag_handler
+       }) do
     %{
       subengine: subengine,
       substate: substate,
@@ -296,9 +293,35 @@ defmodule Phoenix.LiveView.TagEngine do
       tags: [],
       slots: [],
       caller: caller,
-      root: root,
+      root: nil,
       indentation: indentation,
-      tag_handler: tag_handler
+      tag_handler: tag_handler,
+      root_tag_annotations: []
+    }
+  end
+
+  defp nesting_token_state(%{
+         subengine: subengine,
+         substate: substate,
+         file: file,
+         caller: caller,
+         source: source,
+         indentation: indentation,
+         tag_handler: tag_handler
+       }) do
+    %{
+      subengine: subengine,
+      substate: substate,
+      source: source,
+      file: file,
+      stack: [],
+      tags: [],
+      slots: [],
+      caller: caller,
+      root: false,
+      indentation: indentation,
+      tag_handler: tag_handler,
+      root_tag_annotations: false
     }
   end
 
@@ -786,12 +809,13 @@ defmodule Phoenix.LiveView.TagEngine do
     attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
+    previous_tag = List.first(state.tags)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
         state
         |> set_root_on_tag()
-        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta), previous_tag)
         |> continue(tokens)
 
       {true, new_meta, new_attrs} ->
@@ -799,7 +823,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
-        |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta))
+        |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta), previous_tag)
         |> handle_special_expr(new_meta)
         |> continue(tokens)
     end
@@ -811,6 +835,7 @@ defmodule Phoenix.LiveView.TagEngine do
     attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
+    previous_tag = List.first(state.tags)
 
     case List.keytake(attrs, ":type", 0) do
       {{":type", {:expr, code, _}, _meta}, attrs} ->
@@ -823,7 +848,7 @@ defmodule Phoenix.LiveView.TagEngine do
             state
             |> set_root_on_tag()
             |> push_tag(token)
-            |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+            |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta), previous_tag)
             |> continue(tokens)
 
           {true, new_meta, new_attrs} ->
@@ -832,7 +857,7 @@ defmodule Phoenix.LiveView.TagEngine do
             |> update_subengine(:handle_begin, [])
             |> set_root_on_not_tag()
             |> push_tag({:tag, name, new_attrs, new_meta})
-            |> handle_tag_and_attrs(name, new_attrs, ">", to_location(new_meta))
+            |> handle_tag_and_attrs(name, new_attrs, ">", to_location(new_meta), previous_tag)
             |> continue(tokens)
         end
     end
@@ -896,10 +921,77 @@ defmodule Phoenix.LiveView.TagEngine do
         |> handle_ast(new_ast, tag_meta)
         |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
 
+      {{:ok, new_ast, data, directives}, rest} ->
+        Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
+
+        # This is effectively a check for this macro component
+        # being at the very beginning of the root of the template
+        if Enum.any?(directives) and not is_nil(state.root) do
+          raise_syntax_error!(
+            "macro component #{module} specified directives and therefore must appear at the very beginning of the template",
+            tag_meta,
+            state
+          )
+        end
+
+        state =
+          Enum.reduce(directives, state, fn directive, state ->
+            apply_macro_component_directive!(directive, module, tag_meta, state)
+          end)
+
+        state
+        |> handle_ast(new_ast, tag_meta)
+        |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
+
       {other, _rest} ->
         raise ArgumentError,
-              "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}"
+              "a macro component must return {:ok, ast}, {:ok, ast, data}, or {:ok, ast, data, directives}, got: #{inspect(other)}"
     end
+  end
+
+  defp apply_macro_component_directive!({:root_tag_annotation, value}, module, tag_meta, state) do
+    case Application.get_env(:phoenix_live_view, :root_tag_annotation) do
+      anno when is_binary(anno) ->
+        :ok
+
+      anno ->
+        message = """
+        no root tag annotation is configured for macro component :root_tag_annotation directive
+
+        Macro Component: #{module}
+
+        Expected a string root tag annotation to be configured, got: #{inspect(anno)}
+
+        You can configure a root tag annotation like so:
+
+            config :phoenix_live_view, root_tag_annotation: "phx-r"
+        """
+
+        raise_syntax_error!(message, tag_meta, state)
+    end
+
+    cond do
+      !state.root_tag_annotations ->
+        state
+
+      is_binary(value) ->
+        %{state | root_tag_annotations: [value | state.root_tag_annotations]}
+
+      true ->
+        raise_syntax_error!(
+          "expected string value for :root_tag_annotation directive from macro component #{module}, got: #{inspect(value)}",
+          tag_meta,
+          state
+        )
+    end
+  end
+
+  defp apply_macro_component_directive!(directive, module, tag_meta, state) do
+    raise_syntax_error!(
+      "unknown directive #{inspect(directive)} provided by macro component #{module}",
+      tag_meta,
+      state
+    )
   end
 
   # self closing / void tags cannot have children
@@ -1053,18 +1145,50 @@ defmodule Phoenix.LiveView.TagEngine do
 
   ## handle_tag_and_attrs
 
-  defp handle_tag_and_attrs(state, name, attrs, suffix, meta) do
+  defp handle_tag_and_attrs(state, name, attrs, suffix, meta, previous_tag) do
     text =
-      if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
-        "<#{name} data-phx-loc=\"#{meta[:line]}\""
-      else
-        "<#{name}"
-      end
+      "<#{name}"
+      |> maybe_add_phx_loc(meta)
+      |> maybe_add_root_tag_annotations(state, previous_tag)
 
     state
     |> update_subengine(:handle_text, [meta, text])
     |> handle_tag_attrs(meta, attrs)
     |> update_subengine(:handle_text, [meta, suffix])
+  end
+
+  defp maybe_add_phx_loc(text, meta) do
+    if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
+      "#{text} data-phx-loc=\"#{meta[:line]}\""
+    else
+      "#{text}"
+    end
+  end
+
+  defp maybe_add_root_tag_annotations(text, state, previous_tag) do
+    case Application.get_env(:phoenix_live_view, :root_tag_annotation) do
+      anno when is_binary(anno) ->
+        # By checking if the previous tag that was pushed was a normal html tag,
+        # we effectively check if the tag we are dealing with is a "local" root
+        # (root tag of the whole template, a component's inner block, or a slot)
+        # or not.
+        if not match?({:tag, _, _, _}, previous_tag) do
+          annos = Enum.map(state.root_tag_annotations, fn val -> {anno, val} end)
+
+          attrs =
+            [{anno, true} | annos]
+            |> Phoenix.HTML.attributes_escape()
+            |> Phoenix.HTML.safe_to_string()
+
+          # Phoenix.HTML.attributes_escape/1 adds a leading space automatically
+          "#{text}#{attrs}"
+        else
+          text
+        end
+
+      _ ->
+        text
+    end
   end
 
   defp handle_tag_attrs(state, meta, attrs) do

@@ -1,5 +1,7 @@
 defmodule Phoenix.Component.MacroComponentIntegrationTest do
-  use ExUnit.Case, async: true
+  # async: false due to manipulating the Application env
+  # for :root_tag_annotation
+  use ExUnit.Case, async: false
 
   use Phoenix.Component
 
@@ -16,6 +18,33 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     def transform(ast, meta) do
       send(self(), {:ast, ast, meta})
       {:ok, Process.get(:new_ast, ast)}
+    end
+  end
+
+  defmodule DirectiveMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{}, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+    end
+  end
+
+  defmodule BadRootTagAnnoDirectiveMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{}, [root_tag_annotation: false]}
+    end
+  end
+
+  defmodule UnknownDirectiveMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{}, [unknown: true]}
     end
   end
 
@@ -237,6 +266,246 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                      end
                    end
                  end
+  end
+
+  test "raises if :root_tag_annotation is not configured and the root_tag_annotation directive is provided" do
+    message = ~r"""
+    no root tag annotation is configured for macro component :root_tag_annotation directive
+
+    Macro Component: #{__MODULE__}\.DirectiveMacroComponent
+
+    Expected a string root tag annotation to be configured, got: nil
+
+    You can configure a root tag annotation like so:
+
+        config :phoenix_live_view, root_tag_annotation: \"phx-r\"
+    """
+
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 message,
+                 fn ->
+                   defmodule TestRootTagAnnotationNotConfig do
+                     use Phoenix.Component
+
+                     def render(assigns) do
+                       ~H"""
+                       <div :type={DirectiveMacroComponent}></div>
+                       """
+                     end
+                   end
+                 end
+  end
+
+  test "raises if root_tag_annotation directive is provided with a non-string value" do
+    message =
+      ~r/unknown directive {:unknown, true} provided by macro component #{__MODULE__}\.UnknownDirectiveMacroComponent/
+
+    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                 message,
+                 fn ->
+                   defmodule TestUnknownDirective do
+                     use Phoenix.Component
+
+                     def render(assigns) do
+                       ~H"""
+                       <div :type={UnknownDirectiveMacroComponent}></div>
+                       """
+                     end
+                   end
+                 end
+  end
+
+  describe "macro components with directives" do
+    setup do
+      # Need to set a :root_tag_annotation as the only directive supported
+      # by macro components currently is [root_tag_annotation: "value"] which
+      # requires a :root_tag_annotation to be configured
+      Application.put_env(:phoenix_live_view, :root_tag_annotation, "phx-r")
+      on_exit(fn -> Application.delete_env(:phoenix_live_view, :root_tag_annotation) end)
+    end
+
+    test "raises if root_tag_annotation directive is provided with a non-string value" do
+      message =
+        ~r/expected string value for :root_tag_annotation directive from macro component #{__MODULE__}\.BadRootTagAnnoDirectiveMacroComponent, got: false/
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestBadRootTagAnnoDirective do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div :type={BadRootTagAnnoDirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+    end
+
+    test "raises if macro components with directives are not defined at the beginning of the template" do
+      message =
+        ~r/macro component #{__MODULE__}\.DirectiveMacroComponent specified directives and therefore must appear at the very beginning of the template/
+
+      defmodule TestComponentDirectiveAtBeginning1 do
+        use Phoenix.Component
+
+        def render(assigns) do
+          ~H"""
+          <div :type={DirectiveMacroComponent}></div>
+          """
+        end
+      end
+
+      defmodule TestComponentDirectiveAtBeginning2 do
+        use Phoenix.Component
+
+        def render(assigns) do
+          ~H"""
+          <div :type={DirectiveMacroComponent}></div>
+          """
+        end
+      end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning3 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div />
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning4 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div></div>
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning5 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <.link>Link</.link>
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning6 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <Phoenix.Component.link>Link</Phoenix.Component.link>
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning7 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         {if true, do: "Test"}
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning8 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <%= if true do %>
+                           <div :type={DirectiveMacroComponent}></div>
+                         <% end %>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning9 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div>
+                           <div :type={DirectiveMacroComponent}></div>
+                         </div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning10 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <.link>
+                           <div :type={DirectiveMacroComponent}></div>
+                         </.link>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning11 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <Phoenix.Component.link>
+                           <div :type={DirectiveMacroComponent}></div>
+                         </Phoenix.Component.link>
+                         """
+                       end
+                     end
+                   end
+    end
   end
 
   test "handles quotes" do

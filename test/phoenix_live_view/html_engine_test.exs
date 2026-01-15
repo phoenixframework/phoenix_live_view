@@ -7,6 +7,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   alias Phoenix.LiveView.Tokenizer.ParseError
 
+  defp normalize_whitespace(string) do
+    # Eliminate all newlines and space between tags to make
+    # assertions more resilient against irrelevant whitespace differences
+    string
+    |> String.replace("\n", "")
+    |> String.replace(~r/> +</, "><")
+  end
+
   defp eval(string, assigns \\ %{}, opts \\ []) do
     {env, opts} = Keyword.pop(opts, :env, __ENV__)
 
@@ -456,6 +464,217 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                  <div data-phx-loc=\"43\">2</div>
                <!-- </:inner_block> --><!-- </Phoenix.LiveViewTest.Support.DebugAnno.slot_with_tags> -->\
                """
+    end
+  end
+
+  describe "root tag annotations" do
+    alias Phoenix.LiveViewTest.Support.RootTagAnno
+
+    test "single self-closing tag" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.single_self_close/>")
+
+      expected = "<div phx-r></div>"
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "single tag with body" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.single_with_body/>")
+
+      expected = "<div phx-r>Test</div>"
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "multiple self-closing tags" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.multiple_self_close/>")
+
+      expected = """
+      <div phx-r></div>
+      <div phx-r></div>
+      <div phx-r></div>
+      """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "multiple tags with bodies" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.multiple_with_bodies/>")
+
+      expected = """
+      <div phx-r>Test1</div>
+      <div phx-r>Test2</div>
+      <div phx-r>Test3</div>
+      """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "tags root tags of nested tags" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.nested_tags/>")
+
+      expected = """
+      <div phx-r>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      <div phx-r>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "tags root tags of component inner_blocks" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.component_inner_blocks/>")
+
+      expected =
+        """
+        <div phx-r>
+          <div>
+            <section phx-r>
+              <div phx-r>
+                <div>
+                  Inner Block 1
+                </div>
+              </div>
+            </section>
+            <section phx-r>
+              <div phx-r>
+                <div>
+                  Inner Block 2
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "tags root tags of component named slots" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.component_named_slots/>")
+
+      expected =
+        """
+        <div phx-r>
+          <div>
+            <section phx-r>
+              <aside>
+                <div phx-r>
+                  <div>
+                    Inner Block 1
+                  </div>
+                </div>
+              </aside>
+            </section>
+            <section phx-r>
+              <aside>
+                <div phx-r>
+                  <div>
+                    Inner Block 2
+                  </div>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "tags root tags correctly for complex nestings of tags, components, and slots" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.nested_tags_components_slots/>")
+
+      expected =
+        """
+        <div phx-r>
+          <div>
+            <section phx-r>
+                <div phx-r>
+                  <section phx-r>
+                    <div phx-r>
+                      <p phx-r>Simple</p>
+                    </div>
+                    <aside>
+                      <div phx-r>
+                        <p phx-r>Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              <aside>
+                <div phx-r>
+                  <section phx-r>
+                    <div phx-r>
+                      <p phx-r>Simple</p>
+                    </div>
+                    <aside>
+                      <div phx-r>
+                        <p phx-r>Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "extra annotations provided by macro component directives" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.macro_component_annos/>")
+
+      expected =
+        """
+        <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+          <div>
+            <section phx-r>
+              <div phx-r phx-r=\"test2\" phx-r=\"test1\">Inner Block</div>
+              <aside>
+                <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+                  Named Slot
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
     end
   end
 
