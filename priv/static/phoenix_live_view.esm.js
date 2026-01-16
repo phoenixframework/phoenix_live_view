@@ -86,7 +86,7 @@ var PHX_LV_PID = "data-phx-pid";
 var PHX_KEY = "key";
 var PHX_PRIVATE = "phxPrivate";
 var PHX_AUTO_RECOVER = "auto-recover";
-var PHX_NO_USAGE_TRACKING = "no-usage-tracking";
+var PHX_NO_UNUSED_FIELD = "no-unused-field";
 var PHX_LV_DEBUG = "phx:live-socket:debug";
 var PHX_LV_PROFILE = "phx:live-socket:profiling";
 var PHX_LV_LATENCY_SIM = "phx:live-socket:latency-sim";
@@ -5326,7 +5326,7 @@ var View = class _View {
           onlyHiddenInputs2[key] = true;
         }
         const inputSkipUnusedField = input.hasAttribute(
-          this.binding(PHX_NO_USAGE_TRACKING)
+          this.binding(PHX_NO_UNUSED_FIELD)
         );
         const isUsed = dom_default.private(input, PHX_HAS_FOCUSED) || dom_default.private(input, PHX_HAS_SUBMITTED) || inputSkipUnusedField;
         const isHidden = input.type === "hidden";
@@ -5337,7 +5337,7 @@ var View = class _View {
       { inputsUnused: {}, onlyHiddenInputs: {} }
     );
     const formSkipUnusedFields = form.hasAttribute(
-      this.binding(PHX_NO_USAGE_TRACKING)
+      this.binding(PHX_NO_UNUSED_FIELD)
     );
     for (const [key, val] of formData.entries()) {
       if (onlyNames.length === 0 || onlyNames.indexOf(key) >= 0) {
