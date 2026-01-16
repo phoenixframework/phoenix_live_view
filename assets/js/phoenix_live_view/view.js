@@ -38,7 +38,7 @@ import {
   PHX_VIEWPORT_BOTTOM,
   MAX_CHILD_JOIN_ATTEMPTS,
   PHX_LV_PID,
-  PHX_NO_USAGE_TRACKING,
+  PHX_NO_UNUSED_FIELD,
   PHX_PORTAL,
   PHX_TELEPORTED_REF,
   PHX_TELEPORTED_SRC,
@@ -1619,7 +1619,7 @@ export default class View {
         }
 
         const inputSkipUnusedField = input.hasAttribute(
-          this.binding(PHX_NO_USAGE_TRACKING),
+          this.binding(PHX_NO_UNUSED_FIELD),
         );
 
         const isUsed =
@@ -1637,7 +1637,7 @@ export default class View {
     );
 
     const formSkipUnusedFields = form.hasAttribute(
-      this.binding(PHX_NO_USAGE_TRACKING),
+      this.binding(PHX_NO_UNUSED_FIELD),
     );
 
     for (const [key, val] of formData.entries()) {
