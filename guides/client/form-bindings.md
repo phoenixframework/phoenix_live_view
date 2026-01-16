@@ -128,7 +128,7 @@ def input(%{field: %Phoenix.HTML.FormField{} = field} = assigns) do
 Now only errors for fields that were interacted with are shown.
 
 To disable sending of `_unused` parameters, you can annotate individual inputs or the whole form with
-`phx-no-usage-tracking`.
+`phx-no-unused-field`.
 
 ## Number inputs
 

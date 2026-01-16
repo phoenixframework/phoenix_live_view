@@ -805,7 +805,7 @@ test("phx-no-feedback is applied correctly for backwards-compatible-shims", asyn
   await expect(page.locator("[data-feedback-container]")).toBeHidden();
 });
 
-test("phx-no-usage-tracking on a form is applied correctly and no unused fields are sent", async ({
+test("phx-no-unused-field on a form is applied correctly and no unused fields are sent", async ({
   page,
 }) => {
   const webSocketEvents = [];
@@ -816,7 +816,7 @@ test("phx-no-usage-tracking on a form is applied correctly and no unused fields 
     );
   });
 
-  await page.goto("/form?phx-no-usage-tracking-form");
+  await page.goto("/form?phx-no-unused-field-form");
   await syncLV(page);
 
   await page.locator("input[name=b]").fill("test");
@@ -824,7 +824,7 @@ test("phx-no-usage-tracking on a form is applied correctly and no unused fields 
   await page.locator("input[name=b]").blur();
   await syncLV(page);
 
-  // With phx-no-usage-tracking on the form, no _unused_ parameters should be sent
+  // With phx-no-unused-field on the form, no _unused_ parameters should be sent
   expect(webSocketEvents).toEqual(
     expect.arrayContaining([
       {
@@ -841,7 +841,7 @@ test("phx-no-usage-tracking on a form is applied correctly and no unused fields 
   });
 });
 
-test("phx-no-usage-tracking on an input is applied correctly and no unused fields are sent for that specific input", async ({
+test("phx-no-unused-field on an input is applied correctly and no unused field is sent for that specific input", async ({
   page,
 }) => {
   const webSocketEvents = [];
@@ -852,7 +852,7 @@ test("phx-no-usage-tracking on an input is applied correctly and no unused field
     );
   });
 
-  await page.goto("/form?phx-no-usage-tracking-input");
+  await page.goto("/form?phx-no-unused-field-input");
   await syncLV(page);
 
   await page.locator("input[name=b]").fill("test");
@@ -878,10 +878,10 @@ test("phx-no-usage-tracking on an input is applied correctly and no unused field
     event.payload.includes("a=foo"),
   );
 
-  // a and d should have _unused_ parameters (untouched, no phx-no-usage-tracking)
+  // a and d should have _unused_ parameters (untouched, no phx-no-unused-field)
   expect(formDataEvent.payload).toMatch(/_unused_a=/);
   expect(formDataEvent.payload).toMatch(/_unused_d=/);
-  // b and c should NOT have _unused_ parameters (b touched, c has phx-no-usage-tracking)
+  // b and c should NOT have _unused_ parameters (b touched, c has phx-no-unused-field)
   expect(formDataEvent.payload).not.toMatch(/_unused_b=/);
   expect(formDataEvent.payload).not.toMatch(/_unused_c=/);
 });
