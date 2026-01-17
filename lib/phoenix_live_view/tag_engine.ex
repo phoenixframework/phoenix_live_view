@@ -430,12 +430,18 @@ defmodule Phoenix.LiveView.TagEngine do
     end
 
     case attribute do
-      {name, value} when is_binary(name) and is_binary(value) ->
+      {name, value} when (is_binary(name) and is_binary(value)) or value == true ->
         %{state | root_tag_attributes: [{name, value} | state.root_tag_attributes]}
 
       attribute ->
+        message = """
+        expected {name, value} for :root_tag_attribute directive from macro component #{module}, got: #{inspect(attribute)}
+
+        name must be a compile-time string, and value must be a compile-time string or true
+        """
+
         raise_syntax_error!(
-          "expected {name, value} compile-time strings for :root_tag_attribute directive from macro component #{module}, got: #{inspect(attribute)}",
+          message,
           tag_meta,
           state
         )

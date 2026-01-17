@@ -349,8 +349,11 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     end
 
     test "raises if :root_tag_attribute directive is provided with an invalid value" do
-      message =
-        ~r/expected {name, value} compile-time strings for :root_tag_attribute directive from macro component #{__MODULE__}\.BadRootTagAttrDirectiveMacroComponent, got: false/
+      message = ~r"""
+      expected {name, value} for :root_tag_attribute directive from macro component #{__MODULE__}\.BadRootTagAttrDirectiveMacroComponent, got: false
+
+      name must be a compile-time string, and value must be a compile-time string or true
+      """
 
       assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                    message,

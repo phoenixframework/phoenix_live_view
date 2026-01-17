@@ -3,7 +3,7 @@
 defmodule Phoenix.LiveViewTest.Support.RootTagAttr do
   use Phoenix.Component
 
-  defmodule RootTagMacroComponent do
+  defmodule RootTagsWithValuesMacroComponent do
     @behaviour Phoenix.Component.MacroComponent
 
     @impl true
@@ -21,9 +21,27 @@ defmodule Phoenix.LiveViewTest.Support.RootTagAttr do
     end
   end
 
-  def macro_component_attrs_within_nestings(assigns) do
+  defmodule RootTagsWithoutValuesMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def directives(_ast, _meta) do
+      {:ok,
+       [
+         root_tag_attribute: {"phx-sample-one", true},
+         root_tag_attribute: {"phx-sample-two", true}
+       ]}
+    end
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{}}
+    end
+  end
+
+  def macro_component_attrs_with_values_within_nestings(assigns) do
     ~H"""
-    <div :type={Phoenix.LiveViewTest.Support.RootTagAttr.RootTagMacroComponent}></div>
+    <div :type={Phoenix.LiveViewTest.Support.RootTagAttr.RootTagsWithValuesMacroComponent}></div>
     <%= if true do %>
       <div>
         <div>
@@ -70,9 +88,27 @@ defmodule Phoenix.LiveViewTest.Support.RootTagAttr do
     """
   end
 
-  def macro_component_attrs(assigns) do
+  def macro_component_attrs_with_values(assigns) do
     ~H"""
-    <div :type={Phoenix.LiveViewTest.Support.RootTagAttr.RootTagMacroComponent}></div>
+    <div :type={Phoenix.LiveViewTest.Support.RootTagAttr.RootTagsWithValuesMacroComponent}></div>
+    <div>
+      <div>
+        <.inner_block_and_slot>
+          <div>Inner Block</div>
+          <:test>
+            <div>
+              Named Slot
+            </div>
+          </:test>
+        </.inner_block_and_slot>
+      </div>
+    </div>
+    """
+  end
+
+  def macro_component_attrs_without_values(assigns) do
+    ~H"""
+    <div :type={Phoenix.LiveViewTest.Support.RootTagAttr.RootTagsWithoutValuesMacroComponent}></div>
     <div>
       <div>
         <.inner_block_and_slot>

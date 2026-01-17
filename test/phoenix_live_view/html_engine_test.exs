@@ -689,10 +689,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
     end
 
-    test "extra attributes provided by macro component directives" do
+    test "extra attributes with values provided by macro component directives" do
       assigns = %{}
 
-      compiled = compile("<RootTagAttr.macro_component_attrs/>")
+      compiled = compile("<RootTagAttr.macro_component_attrs_with_values/>")
 
       expected =
         """
@@ -713,10 +713,35 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
     end
 
-    test "extra attributes provided by macro component directives within nestings" do
+    test "extra attributes without values provided by macro component directives" do
       assigns = %{}
 
-      compiled = compile("<RootTagAttr.macro_component_attrs_within_nestings bool={true}/>")
+      compiled = compile("<RootTagAttr.macro_component_attrs_without_values/>")
+
+      expected =
+        """
+        <div phx-r phx-sample-two phx-sample-one>
+          <div>
+            <section phx-r>
+              <div phx-r phx-sample-two phx-sample-one>Inner Block</div>
+              <aside>
+                <div phx-r phx-sample-two phx-sample-one>
+                  Named Slot
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "extra attributes with values provided by macro component directives within nestings" do
+      assigns = %{}
+
+      compiled =
+        compile("<RootTagAttr.macro_component_attrs_with_values_within_nestings bool={true}/>")
 
       expected = """
         <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
@@ -732,7 +757,8 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
 
-      compiled = compile("<RootTagAttr.macro_component_attrs_within_nestings bool={false}/>")
+      compiled =
+        compile("<RootTagAttr.macro_component_attrs_with_values_within_nestings bool={false}/>")
 
       expected = """
         <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
