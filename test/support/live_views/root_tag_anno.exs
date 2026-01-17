@@ -7,9 +7,63 @@ defmodule Phoenix.LiveViewTest.Support.RootTagAnno do
     @behaviour Phoenix.Component.MacroComponent
 
     @impl true
-    def transform(_ast, _meta) do
-      {:ok, "", %{}, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+    def directives(_ast, _meta) do
+      {:ok, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
     end
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{}}
+    end
+  end
+
+  def macro_component_annos_within_nestings(assigns) do
+    ~H"""
+    <div :type={Phoenix.LiveViewTest.Support.RootTagAnno.RootTagMacroComponent}></div>
+    <%= if true do %>
+      <div>
+        <div>
+          <%= if @bool do %>
+            <.inner_block_and_slot>
+              <p>
+                <span>True</span>
+              </p>
+            </.inner_block_and_slot>
+          <% else %>
+            <.inner_block_and_slot>
+              <p>
+                <span>False</span>
+              </p>
+            </.inner_block_and_slot>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+
+  def within_nestings(assigns) do
+    ~H"""
+    <%= if true do %>
+      <div>
+        <div>
+          <%= if @bool do %>
+            <.inner_block_and_slot>
+              <p>
+                <span>True</span>
+              </p>
+            </.inner_block_and_slot>
+          <% else %>
+            <.inner_block_and_slot>
+              <p>
+                <span>False</span>
+              </p>
+            </.inner_block_and_slot>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    """
   end
 
   def macro_component_annos(assigns) do

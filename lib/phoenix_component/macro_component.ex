@@ -123,16 +123,22 @@ defmodule Phoenix.Component.MacroComponent do
   #
   #   ## Directives
   #
-  #   Macro components may return directives from `transform/2` which can be used to influence
-  #   other elements in the template outside of the macro component at compile-time. For example:
+  #   Macro components may return directives from the module's optional `c:directives/2` callback
+  #   which can be used to influence other elements in the template outside of the macro component at compile-time.
+  #   For example:
   #
   #   ```elixir
   #   defmodule MyAppWeb.TagRootSampleComponent do
   #     @behaviour Phoenix.Component.MacroComponent
   #
   #     @impl true
+  #     def directives(_ast, _meta) do
+  #       {:ok, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+  #     end
+  #
+  #     @impl true
   #     def transform(_ast, _meta) do
-  #       {:ok, "", %{}, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+  #       {:ok, "", %{}}
   #     end
   #   end
   #   ```
@@ -151,9 +157,14 @@ defmodule Phoenix.Component.MacroComponent do
   @type children :: [heex_ast()]
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
+  @type directives_meta :: %{env: Macro.Env.t()}
   @type transform_meta :: %{env: Macro.Env.t()}
   @type directive :: {:root_tag_annotation, String.t()}
   @type directives :: [directive]
+
+  @optional_callbacks [directives: 2]
+
+  @callback directives(heex_ast :: heex_ast(), meta :: directives_meta()) :: {:ok, directives}
 
   @callback transform(heex_ast :: heex_ast(), meta :: transform_meta()) ::
               {:ok, heex_ast()}

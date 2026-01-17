@@ -205,7 +205,9 @@ defmodule Phoenix.LiveView.TagEngine do
       indentation: Keyword.get(opts, :indentation, 0),
       caller: Keyword.fetch!(opts, :caller),
       source: Keyword.fetch!(opts, :source),
-      tag_handler: tag_handler
+      tag_handler: tag_handler,
+      root_tag_annotations: [],
+      collecting_directives?: true
     }
   end
 
@@ -218,7 +220,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
     token_state =
       state
-      |> template_token_state()
+      |> token_state(nil)
       |> continue(tokens)
       |> validate_unclosed_tags!("template")
 
@@ -269,21 +271,26 @@ defmodule Phoenix.LiveView.TagEngine do
   @impl true
   def handle_end(state) do
     state
-    |> nesting_token_state()
+    |> token_state(false)
     |> continue(Enum.reverse(state.tokens))
     |> validate_unclosed_tags!("do-block")
     |> invoke_subengine(:handle_end, [])
   end
 
-  defp template_token_state(%{
-         subengine: subengine,
-         substate: substate,
-         file: file,
-         caller: caller,
-         source: source,
-         indentation: indentation,
-         tag_handler: tag_handler
-       }) do
+  defp token_state(
+         %{
+           subengine: subengine,
+           substate: substate,
+           file: file,
+           caller: caller,
+           source: source,
+           indentation: indentation,
+           tag_handler: tag_handler,
+           root_tag_annotations: root_tag_annotations,
+           collecting_directives?: collecting_directives?
+         },
+         root
+       ) do
     %{
       subengine: subengine,
       substate: substate,
@@ -293,35 +300,11 @@ defmodule Phoenix.LiveView.TagEngine do
       tags: [],
       slots: [],
       caller: caller,
-      root: nil,
+      root: root,
       indentation: indentation,
       tag_handler: tag_handler,
-      root_tag_annotations: []
-    }
-  end
-
-  defp nesting_token_state(%{
-         subengine: subengine,
-         substate: substate,
-         file: file,
-         caller: caller,
-         source: source,
-         indentation: indentation,
-         tag_handler: tag_handler
-       }) do
-    %{
-      subengine: subengine,
-      substate: substate,
-      source: source,
-      file: file,
-      stack: [],
-      tags: [],
-      slots: [],
-      caller: caller,
-      root: false,
-      indentation: indentation,
-      tag_handler: tag_handler,
-      root_tag_annotations: false
+      root_tag_annotations: root_tag_annotations,
+      collecting_directives?: collecting_directives?
     }
   end
 
@@ -333,7 +316,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   @impl true
   def handle_begin(state) do
-    update_subengine(%{state | tokens: []}, :handle_begin, [])
+    update_subengine(%{state | tokens: [], collecting_directives?: false}, :handle_begin, [])
   end
 
   @impl true
@@ -342,12 +325,120 @@ defmodule Phoenix.LiveView.TagEngine do
     tokenizer_state = Tokenizer.init(indentation, file, source, state.tag_handler)
     {tokens, cont} = Tokenizer.tokenize(text, meta, tokens, cont, tokenizer_state)
 
+    state = collect_directives(state, Enum.reverse(tokens))
+
     %{
       state
       | tokens: tokens,
         cont: cont,
         source: state.source
     }
+  end
+
+  defp collect_directives(state, []), do: state
+
+  defp collect_directives(state, tokens) do
+    # Allow for leading whitespace
+    stripped_tokens = Tokenizer.strip_text_token_fully(tokens)
+
+    case stripped_tokens do
+      [] ->
+        state
+
+      [{:tag, _name, _attrs, tag_meta} = token | rest] ->
+        case check_and_validate_macro_component(token, state) do
+          {:macro_component, module, _attrs} ->
+            # Use build_ast to consume all of the tokens in this MacroComponent
+            try do
+              {ast, rest} =
+                case Phoenix.Component.MacroComponent.build_ast(stripped_tokens, state.caller) do
+                  {:ok, ast, rest} -> {ast, rest}
+                  {:error, message, meta} -> raise_syntax_error!(message, meta, state)
+                end
+
+              cond do
+                state.collecting_directives? and function_exported?(module, :directives, 2) ->
+                  state =
+                    case module.directives(ast, %{env: state.caller}) do
+                      {:ok, directives} when is_list(directives) ->
+                        Enum.reduce(directives, state, fn directive, state ->
+                          apply_macro_component_directive!(directive, module, tag_meta, state)
+                        end)
+
+                      other ->
+                        raise ArgumentError,
+                              "a macro component must return {:ok, directives}, got: #{inspect(other)}"
+                    end
+
+                  collect_directives(state, rest)
+
+                not state.collecting_directives? and function_exported?(module, :directives, 2) ->
+                  raise_syntax_error!(
+                    "macro component #{module} specified directives and therefore must appear at the very beginning of the template",
+                    tag_meta,
+                    state
+                  )
+
+                true ->
+                  collect_directives(state, rest)
+              end
+            rescue
+              e in ArgumentError ->
+                raise_syntax_error!(
+                  Exception.message(e),
+                  tag_meta,
+                  state
+                )
+            end
+
+          :tag ->
+            collect_directives(%{state | collecting_directives?: false}, rest)
+        end
+
+      [_ | rest] ->
+        # We encountered something other than whitespace or a macrocomponent, so stop collecting.
+        collect_directives(%{state | collecting_directives?: false}, rest)
+    end
+  end
+
+  defp apply_macro_component_directive!({:root_tag_annotation, value}, module, tag_meta, state) do
+    case Application.get_env(:phoenix_live_view, :root_tag_annotation) do
+      anno when is_binary(anno) ->
+        :ok
+
+      anno ->
+        message = """
+        no root tag annotation is configured for macro component :root_tag_annotation directive
+
+        Macro Component: #{module}
+
+        Expected a string root tag annotation to be configured, got: #{inspect(anno)}
+
+        You can configure a root tag annotation like so:
+
+            config :phoenix_live_view, root_tag_annotation: "phx-r"
+        """
+
+        raise_syntax_error!(message, tag_meta, state)
+    end
+
+    if is_binary(value) do
+      %{state | root_tag_annotations: [value | state.root_tag_annotations]}
+    else
+      raise_syntax_error!(
+        "expected string value for :root_tag_annotation directive from macro component #{module}, got: #{inspect(value)}",
+        tag_meta,
+        state
+      )
+    end
+  end
+
+  defp apply_macro_component_directive!(directive, module, tag_meta, state) do
+    raise_syntax_error!(
+      "unknown directive #{inspect(directive)} provided by macro component #{module}",
+      tag_meta,
+      state
+    )
   end
 
   @impl true
@@ -837,12 +928,11 @@ defmodule Phoenix.LiveView.TagEngine do
     validate_tag_attrs!(attrs, tag_meta, state)
     previous_tag = List.first(state.tags)
 
-    case List.keytake(attrs, ":type", 0) do
-      {{":type", {:expr, code, _}, _meta}, attrs} ->
-        # validate_phx_attrs! already ensured that if :type is present, it is an expression
-        handle_macro_component([{:tag, name, attrs, tag_meta} | tokens], code, state)
+    case check_and_validate_macro_component(token, state) do
+      {:macro_component, module, attrs} ->
+        handle_macro_component([{:tag, name, attrs, tag_meta} | tokens], module, state)
 
-      nil ->
+      :tag ->
         case pop_special_attrs!(attrs, tag_meta, state) do
           {false, tag_meta, attrs} ->
             state
@@ -876,7 +966,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   defp handle_macro_component(
          [{:tag, _name, _attrs, tag_meta} | _] = tokens,
-         module_string,
+         module,
          state
        ) do
     # Macro components work by converting the HEEx tokens into an AST
@@ -886,13 +976,6 @@ defmodule Phoenix.LiveView.TagEngine do
     #
     # The AST is limited in functionality and we handle it separately in
     # the handle_ast function.
-
-    Macro.Env.required?(state.caller, Phoenix.Component) ||
-      raise ArgumentError,
-            "macro components are only supported in modules that `use Phoenix.Component`"
-
-    module = validate_module!(module_string, tag_meta, state)
-
     try do
       {ast, rest} =
         case Phoenix.Component.MacroComponent.build_ast(tokens, state.caller) do
@@ -921,77 +1004,10 @@ defmodule Phoenix.LiveView.TagEngine do
         |> handle_ast(new_ast, tag_meta)
         |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
 
-      {{:ok, new_ast, data, directives}, rest} ->
-        Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
-
-        # This is effectively a check for this macro component
-        # being at the very beginning of the root of the template
-        if Enum.any?(directives) and not is_nil(state.root) do
-          raise_syntax_error!(
-            "macro component #{module} specified directives and therefore must appear at the very beginning of the template",
-            tag_meta,
-            state
-          )
-        end
-
-        state =
-          Enum.reduce(directives, state, fn directive, state ->
-            apply_macro_component_directive!(directive, module, tag_meta, state)
-          end)
-
-        state
-        |> handle_ast(new_ast, tag_meta)
-        |> continue(maybe_prune_text_after_macro_component(new_ast, rest))
-
       {other, _rest} ->
         raise ArgumentError,
-              "a macro component must return {:ok, ast}, {:ok, ast, data}, or {:ok, ast, data, directives}, got: #{inspect(other)}"
+              "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}"
     end
-  end
-
-  defp apply_macro_component_directive!({:root_tag_annotation, value}, module, tag_meta, state) do
-    case Application.get_env(:phoenix_live_view, :root_tag_annotation) do
-      anno when is_binary(anno) ->
-        :ok
-
-      anno ->
-        message = """
-        no root tag annotation is configured for macro component :root_tag_annotation directive
-
-        Macro Component: #{module}
-
-        Expected a string root tag annotation to be configured, got: #{inspect(anno)}
-
-        You can configure a root tag annotation like so:
-
-            config :phoenix_live_view, root_tag_annotation: "phx-r"
-        """
-
-        raise_syntax_error!(message, tag_meta, state)
-    end
-
-    cond do
-      !state.root_tag_annotations ->
-        state
-
-      is_binary(value) ->
-        %{state | root_tag_annotations: [value | state.root_tag_annotations]}
-
-      true ->
-        raise_syntax_error!(
-          "expected string value for :root_tag_annotation directive from macro component #{module}, got: #{inspect(value)}",
-          tag_meta,
-          state
-        )
-    end
-  end
-
-  defp apply_macro_component_directive!(directive, module, tag_meta, state) do
-    raise_syntax_error!(
-      "unknown directive #{inspect(directive)} provided by macro component #{module}",
-      tag_meta,
-      state
-    )
   end
 
   # self closing / void tags cannot have children
@@ -1047,7 +1063,26 @@ defmodule Phoenix.LiveView.TagEngine do
     end)
   end
 
-  defp validate_module!(module_string, tag_meta, state) do
+  defp check_and_validate_macro_component({:tag, _name, attrs, tag_meta}, state) do
+    validate_phx_attrs!(attrs, tag_meta, state)
+
+    # validate_phx_attrs! already ensured that if :type is present, it is an expression
+    case List.keytake(attrs, ":type", 0) do
+      {{":type", {:expr, module_string, _}, _meta}, attrs} ->
+        Macro.Env.required?(state.caller, Phoenix.Component) ||
+          raise ArgumentError,
+                "macro components are only supported in modules that `use Phoenix.Component`"
+
+        module = validate_macro_component_module!(module_string, tag_meta, state)
+
+        {:macro_component, module, attrs}
+
+      nil ->
+        :tag
+    end
+  end
+
+  defp validate_macro_component_module!(module_string, tag_meta, state) do
     module =
       Code.string_to_quoted!(module_string,
         file: state.file,

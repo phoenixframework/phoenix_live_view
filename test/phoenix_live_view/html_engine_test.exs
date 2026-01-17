@@ -653,6 +653,42 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
     end
 
+    test "within nestings" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.within_nestings bool={true}/>")
+
+      expected = """
+        <div phx-r>
+          <div>
+              <section phx-r>
+                <p phx-r>
+                  <span>True</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+
+      compiled = compile("<RootTagAnno.within_nestings bool={false}/>")
+
+      expected = """
+        <div phx-r>
+          <div>
+              <section phx-r>
+                <p phx-r>
+                  <span>False</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
     test "extra annotations provided by macro component directives" do
       assigns = %{}
 
@@ -673,6 +709,42 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
           </div>
         </div>
         """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+    end
+
+    test "extra annotations provided by macro component directives within nestings" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAnno.macro_component_annos_within_nestings bool={true}/>")
+
+      expected = """
+        <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+          <div>
+              <section phx-r>
+                <p phx-r phx-r=\"test2\" phx-r=\"test1\">
+                  <span>True</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert normalize_whitespace(compiled) == normalize_whitespace(expected)
+
+      compiled = compile("<RootTagAnno.macro_component_annos_within_nestings bool={false}/>")
+
+      expected = """
+        <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+          <div>
+              <section phx-r>
+                <p phx-r phx-r=\"test2\" phx-r=\"test1\">
+                  <span>False</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
 
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
     end

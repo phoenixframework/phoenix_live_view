@@ -25,8 +25,13 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     @behaviour Phoenix.Component.MacroComponent
 
     @impl true
+    def directives(_ast, _meta) do
+      {:ok, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+    end
+
+    @impl true
     def transform(_ast, _meta) do
-      {:ok, "", %{}, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+      {:ok, "", %{}}
     end
   end
 
@@ -34,8 +39,13 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     @behaviour Phoenix.Component.MacroComponent
 
     @impl true
+    def directives(_ast, _meta) do
+      {:ok, [root_tag_annotation: false]}
+    end
+
+    @impl true
     def transform(_ast, _meta) do
-      {:ok, "", %{}, [root_tag_annotation: false]}
+      {:ok, "", %{}}
     end
   end
 
@@ -43,8 +53,13 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     @behaviour Phoenix.Component.MacroComponent
 
     @impl true
+    def directives(_ast, _meta) do
+      {:ok, [unknown: true]}
+    end
+
+    @impl true
     def transform(_ast, _meta) do
-      {:ok, "", %{}, [unknown: true]}
+      {:ok, "", %{}}
     end
   end
 
