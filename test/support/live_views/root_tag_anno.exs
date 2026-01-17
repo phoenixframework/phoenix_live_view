@@ -1,5 +1,5 @@
 # Note this file is intentionally a .exs file because it is loaded
-# in the test helper with root_tag_annotation turned on.
+# in the test helper with :root_tag_attribute turned on.
 defmodule Phoenix.LiveViewTest.Support.RootTagAnno do
   use Phoenix.Component
 
@@ -8,7 +8,11 @@ defmodule Phoenix.LiveViewTest.Support.RootTagAnno do
 
     @impl true
     def directives(_ast, _meta) do
-      {:ok, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+      {:ok,
+       [
+         root_tag_attribute: {"phx-sample-one", "test"},
+         root_tag_attribute: {"phx-sample-two", "test"}
+       ]}
     end
 
     @impl true

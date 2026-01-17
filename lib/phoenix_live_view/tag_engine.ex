@@ -206,7 +206,7 @@ defmodule Phoenix.LiveView.TagEngine do
       caller: Keyword.fetch!(opts, :caller),
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler,
-      root_tag_annotations: [],
+      root_tag_attributes: [],
       collecting_directives?: true
     }
   end
@@ -286,7 +286,7 @@ defmodule Phoenix.LiveView.TagEngine do
            source: source,
            indentation: indentation,
            tag_handler: tag_handler,
-           root_tag_annotations: root_tag_annotations,
+           root_tag_attributes: root_tag_attributes,
            collecting_directives?: collecting_directives?
          },
          root
@@ -303,7 +303,7 @@ defmodule Phoenix.LiveView.TagEngine do
       root: root,
       indentation: indentation,
       tag_handler: tag_handler,
-      root_tag_annotations: root_tag_annotations,
+      root_tag_attributes: root_tag_attributes,
       collecting_directives?: collecting_directives?
     }
   end
@@ -401,35 +401,37 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp apply_macro_component_directive!({:root_tag_annotation, value}, module, tag_meta, state) do
-    case Application.get_env(:phoenix_live_view, :root_tag_annotation) do
-      anno when is_binary(anno) ->
+  defp apply_macro_component_directive!({:root_tag_attribute, attribute}, module, tag_meta, state) do
+    case Application.get_env(:phoenix_live_view, :root_tag_attribute) do
+      root_tag_attribute when is_binary(root_tag_attribute) ->
         :ok
 
-      anno ->
+      root_tag_attribute ->
         message = """
-        no root tag annotation is configured for macro component :root_tag_annotation directive
+        a global :root_tag_attribute must be configured for macro components to use the :root_tag_attribute directive
 
         Macro Component: #{module}
 
-        Expected a string root tag annotation to be configured, got: #{inspect(anno)}
+        Expected global :root_tag_attribute to be a string, got: #{inspect(root_tag_attribute)}
 
-        You can configure a root tag annotation like so:
+        You can configure a global root tag attribute like so:
 
-            config :phoenix_live_view, root_tag_annotation: "phx-r"
+            config :phoenix_live_view, root_tag_attribute: "phx-r"
         """
 
         raise_syntax_error!(message, tag_meta, state)
     end
 
-    if is_binary(value) do
-      %{state | root_tag_annotations: [value | state.root_tag_annotations]}
-    else
-      raise_syntax_error!(
-        "expected string value for :root_tag_annotation directive from macro component #{module}, got: #{inspect(value)}",
-        tag_meta,
-        state
-      )
+    case attribute do
+      {name, value} when is_binary(name) and is_binary(value) ->
+        %{state | root_tag_attributes: [{name, value} | state.root_tag_attributes]}
+
+      attribute ->
+        raise_syntax_error!(
+          "expected {name, value} compile-time strings for :root_tag_attribute directive from macro component #{module}, got: #{inspect(attribute)}",
+          tag_meta,
+          state
+        )
     end
   end
 
@@ -1184,7 +1186,7 @@ defmodule Phoenix.LiveView.TagEngine do
     text =
       "<#{name}"
       |> maybe_add_phx_loc(meta)
-      |> maybe_add_root_tag_annotations(state, previous_tag)
+      |> maybe_add_root_tag_attributes(state, previous_tag)
 
     state
     |> update_subengine(:handle_text, [meta, text])
@@ -1200,18 +1202,16 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  defp maybe_add_root_tag_annotations(text, state, previous_tag) do
-    case Application.get_env(:phoenix_live_view, :root_tag_annotation) do
-      anno when is_binary(anno) ->
+  defp maybe_add_root_tag_attributes(text, state, previous_tag) do
+    case Application.get_env(:phoenix_live_view, :root_tag_attribute) do
+      root_tag_attribute when is_binary(root_tag_attribute) ->
         # By checking if the previous tag that was pushed was a normal html tag,
         # we effectively check if the tag we are dealing with is a "local" root
         # (root tag of the whole template, a component's inner block, or a slot)
         # or not.
         if not match?({:tag, _, _, _}, previous_tag) do
-          annos = Enum.map(state.root_tag_annotations, fn val -> {anno, val} end)
-
           attrs =
-            [{anno, true} | annos]
+            [{root_tag_attribute, true} | state.root_tag_attributes]
             |> Phoenix.HTML.attributes_escape()
             |> Phoenix.HTML.safe_to_string()
 

@@ -696,12 +696,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       expected =
         """
-        <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+        <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
           <div>
             <section phx-r>
-              <div phx-r phx-r=\"test2\" phx-r=\"test1\">Inner Block</div>
+              <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">Inner Block</div>
               <aside>
-                <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+                <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
                   Named Slot
                 </div>
               </aside>
@@ -719,10 +719,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       compiled = compile("<RootTagAnno.macro_component_annos_within_nestings bool={true}/>")
 
       expected = """
-        <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+        <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
           <div>
               <section phx-r>
-                <p phx-r phx-r=\"test2\" phx-r=\"test1\">
+                <p phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
                   <span>True</span>
                 </p>
               </section>
@@ -735,10 +735,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       compiled = compile("<RootTagAnno.macro_component_annos_within_nestings bool={false}/>")
 
       expected = """
-        <div phx-r phx-r=\"test2\" phx-r=\"test1\">
+        <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
           <div>
               <section phx-r>
-                <p phx-r phx-r=\"test2\" phx-r=\"test1\">
+                <p phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
                   <span>False</span>
                 </p>
               </section>

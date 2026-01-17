@@ -1,6 +1,6 @@
 defmodule Phoenix.Component.MacroComponentIntegrationTest do
   # async: false due to manipulating the Application env
-  # for :root_tag_annotation
+  # for :root_tag_attribute
   use ExUnit.Case, async: false
 
   use Phoenix.Component
@@ -26,7 +26,11 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     @impl true
     def directives(_ast, _meta) do
-      {:ok, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+      {:ok,
+       [
+         root_tag_attribute: {"phx-sample-one", "test"},
+         root_tag_attribute: {"phx-sample-two", "test"}
+       ]}
     end
 
     @impl true
@@ -40,7 +44,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     @impl true
     def directives(_ast, _meta) do
-      {:ok, [root_tag_annotation: false]}
+      {:ok, [root_tag_attribute: false]}
     end
 
     @impl true
@@ -283,17 +287,17 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                  end
   end
 
-  test "raises if :root_tag_annotation is not configured and the root_tag_annotation directive is provided" do
+  test "raises if :root_tag_attribute is not configured and the :root_tag_attribute directive is provided" do
     message = ~r"""
-    no root tag annotation is configured for macro component :root_tag_annotation directive
+    a global :root_tag_attribute must be configured for macro components to use the :root_tag_attribute directive
 
     Macro Component: #{__MODULE__}\.DirectiveMacroComponent
 
-    Expected a string root tag annotation to be configured, got: nil
+    Expected global :root_tag_attribute to be a string, got: nil
 
-    You can configure a root tag annotation like so:
+    You can configure a global root tag attribute like so:
 
-        config :phoenix_live_view, root_tag_annotation: \"phx-r\"
+        config :phoenix_live_view, root_tag_attribute: \"phx-r\"
     """
 
     assert_raise Phoenix.LiveView.Tokenizer.ParseError,
@@ -311,7 +315,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                  end
   end
 
-  test "raises if root_tag_annotation directive is provided with a non-string value" do
+  test "raises if an unknown directive is provided" do
     message =
       ~r/unknown directive {:unknown, true} provided by macro component #{__MODULE__}\.UnknownDirectiveMacroComponent/
 
@@ -332,16 +336,16 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
   describe "macro components with directives" do
     setup do
-      # Need to set a :root_tag_annotation as the only directive supported
-      # by macro components currently is [root_tag_annotation: "value"] which
-      # requires a :root_tag_annotation to be configured
-      Application.put_env(:phoenix_live_view, :root_tag_annotation, "phx-r")
-      on_exit(fn -> Application.delete_env(:phoenix_live_view, :root_tag_annotation) end)
+      # Need to set a :root_tag_attribute as the only directive supported
+      # by macro components currently is [root_tag_attribute: {name, value}] which
+      # requires a :root_tag_attribute to be configured
+      Application.put_env(:phoenix_live_view, :root_tag_attribute, "phx-r")
+      on_exit(fn -> Application.delete_env(:phoenix_live_view, :root_tag_attribute) end)
     end
 
-    test "raises if root_tag_annotation directive is provided with a non-string value" do
+    test "raises if :root_tag_attribute directive is provided with an invalid value" do
       message =
-        ~r/expected string value for :root_tag_annotation directive from macro component #{__MODULE__}\.BadRootTagAnnoDirectiveMacroComponent, got: false/
+        ~r/expected {name, value} compile-time strings for :root_tag_attribute directive from macro component #{__MODULE__}\.BadRootTagAnnoDirectiveMacroComponent, got: false/
 
       assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                    message,

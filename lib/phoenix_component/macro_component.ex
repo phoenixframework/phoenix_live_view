@@ -121,6 +121,100 @@ defmodule Phoenix.Component.MacroComponent do
   #   [syntax highlighting at compile time](https://github.com/phoenixframework/phoenix_live_view/blob/38851d943f3280c5982d75679291dccb8c442534/test/e2e/support/colocated_live.ex#L4-L35)
   #   using the [Makeup](https://hexdocs.pm/makeup/Makeup.html) library.
   #
+  #   ## Root tag attributes
+  #
+  #   HEEx templates support adding a root tag attributes to the rendered page.
+  #   These can be useful for debugging or as selectors for things such as CSS.
+  #
+  #   Note that root tag attributes are applied to all root tags in the given
+  #   template, not just the outermost root tags. This means that tags at the root
+  #   of the template itself, at the root of any component inner blocks, or at
+  #   the root of any component slots will all have root tag attributes applied.
+  #
+  #   For example, imagine the following component definition:
+  #
+  #  ```elixir
+  #   defmodule MyAppWeb.MyModule do
+  #     slot :inner_block, required: true
+  #     slot :named_slot, required: true
+  #
+  #     def my_function(assigns) do
+  #       ~H"""
+  #       <section>
+  #         <div>
+  #           {render_slot(@inner_block)}
+  #         </div>
+  #       </section>
+  #       <aside>
+  #         <div>
+  #           {render_slot(@named_slot)}
+  #         </div>
+  #       </aside>
+  #       """
+  #     end
+  #   end
+  #   ```
+  #
+  #   And the following HEEx template:
+  #
+  #   ```heex
+  #   <div>
+  #     <div>
+  #       <.my_function>
+  #         <p>
+  #           <span>
+  #             Inner Block
+  #           </span>
+  #         </p>
+  #         <:named_slot>
+  #         <p>
+  #           <span>
+  #             Named Slot
+  #           </span>
+  #         </p>
+  #         </:named_slot>
+  #       </.my_function>
+  #     </div>
+  #   </div>
+  #   ```
+  #
+  #   By setting the global `root_tag_attribute` to "phx-r", the rendered HTML would look as follows:
+  #
+  #   ```html
+  #   <div phx-r>
+  #     <div>
+  #       <section phx-r>
+  #         <div>
+  #           <p phx-r>
+  #             <span>
+  #               Inner Block
+  #             </span>
+  #           </p>
+  #         </div>
+  #       </section>
+  #       <aside phx-r>
+  #         <div>
+  #           <p phx-r>
+  #             <span>
+  #               Named Slot
+  #             </span>
+  #           </p>
+  #         </div>
+  #       </aside>
+  #     </div>
+  #   </div>
+  #   ```
+  #
+  #   This feature works on any `~H` or `.html.heex` template. They can be enabled
+  #   globally with the following configuration in your `config/config.exs` file:
+  #
+  #       config :phoenix_live_view, root_tag_attribute: "phx-r"
+  #
+  #   Changing this configuration will require `mix clean` and a full recompile.
+  #
+  #   Additional root tag attributes can also be applied by MacroComponents. See the `Directives` section
+  #   below for details.
+  #
   #   ## Directives
   #
   #   Macro components may return directives from the module's optional `c:directives/2` callback
@@ -133,7 +227,7 @@ defmodule Phoenix.Component.MacroComponent do
   #
   #     @impl true
   #     def directives(_ast, _meta) do
-  #       {:ok, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+  #       {:ok, [root_tag_attribute: {"phx-sample-one", "test"}, root_tag_attribute: {"phx-sample-two", "test"}]}
   #     end
   #
   #     @impl true
@@ -146,10 +240,9 @@ defmodule Phoenix.Component.MacroComponent do
   #
   #   ### Options
   #
-  #   * `:root_tag_annotation` - A value to apply as an annotation to all root tags during template compilation.
-  #   Requires that a `:root_tag_annotation` be configured for the application. Value must be a string. May be
-  #   provided multiple times to apply multiple annotations. See the docs for `Phoenix.Component` for details on
-  #   root tag annotations and how to configure them.
+  #   * `:root_tag_attribute` - `{attribute_name, attribute_value}` to apply as an attribute to all root tags during template compilation.
+  #   Requires that a global `:root_tag_attribute` be configured for the application. Both name and value must be compile-time strings. May be
+  #   provided multiple times to apply multiple attributes. See the `Root tag attributes` above for more details.
 
   @type tag :: binary()
   @type attribute :: {binary(), Macro.t()}
@@ -159,7 +252,7 @@ defmodule Phoenix.Component.MacroComponent do
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
   @type directives_meta :: %{env: Macro.Env.t()}
   @type transform_meta :: %{env: Macro.Env.t()}
-  @type directive :: {:root_tag_annotation, String.t()}
+  @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t()}}
   @type directives :: [directive]
 
   @optional_callbacks [directives: 2]
