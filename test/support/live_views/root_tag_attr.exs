@@ -1,6 +1,6 @@
 # Note this file is intentionally a .exs file because it is loaded
 # in the test helper with :root_tag_attribute turned on.
-defmodule Phoenix.LiveViewTest.Support.RootTagAnno do
+defmodule Phoenix.LiveViewTest.Support.RootTagAttr do
   use Phoenix.Component
 
   defmodule RootTagMacroComponent do
@@ -21,9 +21,9 @@ defmodule Phoenix.LiveViewTest.Support.RootTagAnno do
     end
   end
 
-  def macro_component_annos_within_nestings(assigns) do
+  def macro_component_attrs_within_nestings(assigns) do
     ~H"""
-    <div :type={Phoenix.LiveViewTest.Support.RootTagAnno.RootTagMacroComponent}></div>
+    <div :type={Phoenix.LiveViewTest.Support.RootTagAttr.RootTagMacroComponent}></div>
     <%= if true do %>
       <div>
         <div>
@@ -70,9 +70,9 @@ defmodule Phoenix.LiveViewTest.Support.RootTagAnno do
     """
   end
 
-  def macro_component_annos(assigns) do
+  def macro_component_attrs(assigns) do
     ~H"""
-    <div :type={Phoenix.LiveViewTest.Support.RootTagAnno.RootTagMacroComponent}></div>
+    <div :type={Phoenix.LiveViewTest.Support.RootTagAttr.RootTagMacroComponent}></div>
     <div>
       <div>
         <.inner_block_and_slot>

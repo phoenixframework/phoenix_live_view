@@ -467,13 +467,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
-  describe "root tag annotations" do
-    alias Phoenix.LiveViewTest.Support.RootTagAnno
+  describe "root tag attributes" do
+    alias Phoenix.LiveViewTest.Support.RootTagAttr
 
     test "single self-closing tag" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.single_self_close/>")
+      compiled = compile("<RootTagAttr.single_self_close/>")
 
       expected = "<div phx-r></div>"
 
@@ -483,7 +483,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "single tag with body" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.single_with_body/>")
+      compiled = compile("<RootTagAttr.single_with_body/>")
 
       expected = "<div phx-r>Test</div>"
 
@@ -493,7 +493,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "multiple self-closing tags" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.multiple_self_close/>")
+      compiled = compile("<RootTagAttr.multiple_self_close/>")
 
       expected = """
       <div phx-r></div>
@@ -507,7 +507,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "multiple tags with bodies" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.multiple_with_bodies/>")
+      compiled = compile("<RootTagAttr.multiple_with_bodies/>")
 
       expected = """
       <div phx-r>Test1</div>
@@ -521,7 +521,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "tags root tags of nested tags" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.nested_tags/>")
+      compiled = compile("<RootTagAttr.nested_tags/>")
 
       expected = """
       <div phx-r>
@@ -548,7 +548,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "tags root tags of component inner_blocks" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.component_inner_blocks/>")
+      compiled = compile("<RootTagAttr.component_inner_blocks/>")
 
       expected =
         """
@@ -578,7 +578,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "tags root tags of component named slots" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.component_named_slots/>")
+      compiled = compile("<RootTagAttr.component_named_slots/>")
 
       expected =
         """
@@ -612,7 +612,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "tags root tags correctly for complex nestings of tags, components, and slots" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.nested_tags_components_slots/>")
+      compiled = compile("<RootTagAttr.nested_tags_components_slots/>")
 
       expected =
         """
@@ -656,7 +656,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     test "within nestings" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.within_nestings bool={true}/>")
+      compiled = compile("<RootTagAttr.within_nestings bool={true}/>")
 
       expected = """
         <div phx-r>
@@ -672,7 +672,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
 
-      compiled = compile("<RootTagAnno.within_nestings bool={false}/>")
+      compiled = compile("<RootTagAttr.within_nestings bool={false}/>")
 
       expected = """
         <div phx-r>
@@ -689,10 +689,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
     end
 
-    test "extra annotations provided by macro component directives" do
+    test "extra attributes provided by macro component directives" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.macro_component_annos/>")
+      compiled = compile("<RootTagAttr.macro_component_attrs/>")
 
       expected =
         """
@@ -713,10 +713,10 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
     end
 
-    test "extra annotations provided by macro component directives within nestings" do
+    test "extra attributes provided by macro component directives within nestings" do
       assigns = %{}
 
-      compiled = compile("<RootTagAnno.macro_component_annos_within_nestings bool={true}/>")
+      compiled = compile("<RootTagAttr.macro_component_attrs_within_nestings bool={true}/>")
 
       expected = """
         <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">
@@ -732,7 +732,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert normalize_whitespace(compiled) == normalize_whitespace(expected)
 
-      compiled = compile("<RootTagAnno.macro_component_annos_within_nestings bool={false}/>")
+      compiled = compile("<RootTagAttr.macro_component_attrs_within_nestings bool={false}/>")
 
       expected = """
         <div phx-r phx-sample-two=\"test\" phx-sample-one=\"test\">

@@ -39,7 +39,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     end
   end
 
-  defmodule BadRootTagAnnoDirectiveMacroComponent do
+  defmodule BadRootTagAttrDirectiveMacroComponent do
     @behaviour Phoenix.Component.MacroComponent
 
     @impl true
@@ -308,7 +308,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                  message,
                  fn ->
-                   defmodule TestRootTagAnnotationNotConfig do
+                   defmodule TestRootTagAttrNotConfig do
                      use Phoenix.Component
 
                      def render(assigns) do
@@ -350,17 +350,17 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     test "raises if :root_tag_attribute directive is provided with an invalid value" do
       message =
-        ~r/expected {name, value} compile-time strings for :root_tag_attribute directive from macro component #{__MODULE__}\.BadRootTagAnnoDirectiveMacroComponent, got: false/
+        ~r/expected {name, value} compile-time strings for :root_tag_attribute directive from macro component #{__MODULE__}\.BadRootTagAttrDirectiveMacroComponent, got: false/
 
       assert_raise Phoenix.LiveView.Tokenizer.ParseError,
                    message,
                    fn ->
-                     defmodule TestBadRootTagAnnoDirective do
+                     defmodule TestBadRootTagAttrDirective do
                        use Phoenix.Component
 
                        def render(assigns) do
                          ~H"""
-                         <div :type={BadRootTagAnnoDirectiveMacroComponent}></div>
+                         <div :type={BadRootTagAttrDirectiveMacroComponent}></div>
                          """
                        end
                      end
