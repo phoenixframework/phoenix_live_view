@@ -20,6 +20,8 @@ defmodule Phoenix.LiveView.TagEngine do
   Where `:tag_handler` implements the behaviour defined by this module.
   """
 
+  @default_root_tag_attribute "phx-r"
+
   @doc """
   Classify the tag type from the given binary.
 
@@ -402,7 +404,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp apply_macro_component_directive!({:root_tag_attribute, attribute}, module, tag_meta, state) do
-    case Application.get_env(:phoenix_live_view, :root_tag_attribute) do
+    case get_root_tag_attribute() do
       root_tag_attribute when is_binary(root_tag_attribute) ->
         :ok
 
@@ -414,9 +416,14 @@ defmodule Phoenix.LiveView.TagEngine do
 
         Expected global :root_tag_attribute to be a string, got: #{inspect(root_tag_attribute)}
 
-        You can configure a global root tag attribute like so:
+        The global :root_tag_attribute defaults to "#{@default_root_tag_attribute}". If you are getting this warning, the global
+        :root_tag_attribute has been explicitly disabled in your application's config. You will be unable
+        to use this macro component until the global `:root_tag_attribute` is re-enabled.
 
-            config :phoenix_live_view, root_tag_attribute: "phx-r"
+        If you wish to use a global :root_tag_attribute other than "#{@default_root_tag_attribute}", you can configure a
+        custom attribute like so:
+
+            config :phoenix_live_view, root_tag_attribute: "your-attribute-here"
         """
 
         raise_syntax_error!(message, tag_meta, state)
@@ -1203,7 +1210,7 @@ defmodule Phoenix.LiveView.TagEngine do
   end
 
   defp maybe_add_root_tag_attributes(text, state, previous_tag) do
-    case Application.get_env(:phoenix_live_view, :root_tag_attribute) do
+    case get_root_tag_attribute() do
       root_tag_attribute when is_binary(root_tag_attribute) ->
         # By checking if the previous tag that was pushed was a normal html tag,
         # we effectively check if the tag we are dealing with is a "local" root
@@ -1645,6 +1652,10 @@ defmodule Phoenix.LiveView.TagEngine do
   defp attr_type(_value), do: :any
 
   ## Helpers
+
+  defp get_root_tag_attribute() do
+    Application.get_env(:phoenix_live_view, :root_tag_attribute, @default_root_tag_attribute)
+  end
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
 

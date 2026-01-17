@@ -242,7 +242,8 @@ defmodule Phoenix.Component.MacroComponent do
   #
   #   * `:root_tag_attribute` - `{attribute_name, attribute_value}` to apply as an attribute to all root tags during template compilation.
   #   Requires that a global `:root_tag_attribute` be configured for the application. Both name and value must be compile-time strings. May be
-  #   provided multiple times to apply multiple attributes. See the `Root tag attributes` above for more details.
+  #   provided multiple times to apply multiple attributes. Requires that a global `:root_tag_attribute` be configured. See the `Root tag attributes`
+  #   section above for more details.
 
   @type tag :: binary()
   @type attribute :: {binary(), Macro.t()}

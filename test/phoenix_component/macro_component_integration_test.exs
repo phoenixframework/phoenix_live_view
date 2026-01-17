@@ -295,9 +295,14 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     Expected global :root_tag_attribute to be a string, got: nil
 
-    You can configure a global root tag attribute like so:
+    The global :root_tag_attribute defaults to "phx-r". If you are getting this warning, the global
+    :root_tag_attribute has been explicitly disabled in your application's config. You will be unable
+    to use this macro component until the global `:root_tag_attribute` is re-enabled.
 
-        config :phoenix_live_view, root_tag_attribute: \"phx-r\"
+    If you wish to use a global :root_tag_attribute other than "phx-r", you can configure a
+    custom attribute like so:
+
+        config :phoenix_live_view, root_tag_attribute: "your-attribute-here"
     """
 
     assert_raise Phoenix.LiveView.Tokenizer.ParseError,
@@ -340,7 +345,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
       # by macro components currently is [root_tag_attribute: {name, value}] which
       # requires a :root_tag_attribute to be configured
       Application.put_env(:phoenix_live_view, :root_tag_attribute, "phx-r")
-      on_exit(fn -> Application.delete_env(:phoenix_live_view, :root_tag_attribute) end)
+      on_exit(fn -> Application.put_env(:phoenix_live_view, :root_tag_attribute, nil) end)
     end
 
     test "raises if :root_tag_attribute directive is provided with an invalid value" do

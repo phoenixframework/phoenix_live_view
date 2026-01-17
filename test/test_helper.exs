@@ -6,7 +6,7 @@ Application.put_env(:phoenix_live_view, :debug_heex_annotations, false)
 
 Application.put_env(:phoenix_live_view, :root_tag_attribute, "phx-r")
 Code.require_file("test/support/live_views/root_tag_anno.exs")
-Application.delete_env(:phoenix_live_view, :root_tag_attribute)
+Application.put_env(:phoenix_live_view, :root_tag_attribute, nil)
 
 {:ok, _} = Phoenix.LiveViewTest.Support.Endpoint.start_link()
 ExUnit.start()
