@@ -251,19 +251,17 @@ defmodule Phoenix.Component.MacroComponent do
   @type children :: [heex_ast()]
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
-  @type directives_meta :: %{env: Macro.Env.t()}
   @type transform_meta :: %{env: Macro.Env.t()}
+  @type directives_meta :: %{env: Macro.Env.t()}
   @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t()}}
   @type directives :: [directive]
 
   @optional_callbacks [directives: 2]
 
-  @callback directives(heex_ast :: heex_ast(), meta :: directives_meta()) :: {:ok, directives}
+  @callback directives(heex_ast :: heex_ast(), meta :: directives_meta()) :: {:ok, directives()}
 
   @callback transform(heex_ast :: heex_ast(), meta :: transform_meta()) ::
-              {:ok, heex_ast()}
-              | {:ok, heex_ast(), data :: term()}
-              | {:ok, heex_ast(), data :: term(), directives :: directives()}
+              {:ok, heex_ast()} | {:ok, heex_ast(), data :: term()}
 
   @doc """
   Returns the stored data from macro components that returned `{:ok, ast, data}`.
