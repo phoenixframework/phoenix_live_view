@@ -214,11 +214,12 @@ defmodule Phoenix.LiveView.TagEngine do
   @impl true
   def handle_body(state) do
     %{tokens: tokens, file: file, cont: cont, source: source, caller: caller} = state
+
     tokens = Tokenizer.finalize(tokens, file, cont, source)
 
     token_state =
       state
-      |> token_state(nil)
+      |> token_state(nil, generate_scope(source))
       |> continue(tokens)
       |> validate_unclosed_tags!("template")
 
@@ -237,6 +238,13 @@ defmodule Phoenix.LiveView.TagEngine do
       require Phoenix.LiveView.TagEngine
       unquote(ast)
     end
+  end
+
+  @doc false
+  def generate_scope(source) do
+    :md5
+    |> :crypto.hash(source)
+    |> Base.encode32(case: :lower, padding: false)
   end
 
   defp has_tags?([{:text, _, _} | tokens]), do: has_tags?(tokens)
@@ -269,7 +277,7 @@ defmodule Phoenix.LiveView.TagEngine do
   @impl true
   def handle_end(state) do
     state
-    |> token_state(false)
+    |> token_state(false, nil)
     |> continue(Enum.reverse(state.tokens))
     |> validate_unclosed_tags!("do-block")
     |> invoke_subengine(:handle_end, [])
@@ -285,7 +293,8 @@ defmodule Phoenix.LiveView.TagEngine do
            indentation: indentation,
            tag_handler: tag_handler
          },
-         root
+         root,
+         scope
        ) do
     %{
       subengine: subengine,
@@ -298,7 +307,8 @@ defmodule Phoenix.LiveView.TagEngine do
       caller: caller,
       root: root,
       indentation: indentation,
-      tag_handler: tag_handler
+      tag_handler: tag_handler,
+      scope: scope
     }
   end
 
@@ -786,12 +796,13 @@ defmodule Phoenix.LiveView.TagEngine do
     attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
+    previous_tag = List.first(state.tags)
 
     case pop_special_attrs!(attrs, tag_meta, state) do
       {false, tag_meta, attrs} ->
         state
         |> set_root_on_tag()
-        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta))
+        |> handle_tag_and_attrs(name, attrs, suffix, to_location(tag_meta), previous_tag)
         |> continue(tokens)
 
       {true, new_meta, new_attrs} ->
@@ -799,7 +810,7 @@ defmodule Phoenix.LiveView.TagEngine do
         |> push_substate_to_stack()
         |> update_subengine(:handle_begin, [])
         |> set_root_on_not_tag()
-        |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta))
+        |> handle_tag_and_attrs(name, new_attrs, suffix, to_location(new_meta), previous_tag)
         |> handle_special_expr(new_meta)
         |> continue(tokens)
     end
@@ -811,6 +822,7 @@ defmodule Phoenix.LiveView.TagEngine do
     attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, tag_meta, state)
     validate_tag_attrs!(attrs, tag_meta, state)
+    previous_tag = List.first(state.tags)
 
     case List.keytake(attrs, ":type", 0) do
       {{":type", {:expr, code, _}, _meta}, attrs} ->
@@ -823,7 +835,7 @@ defmodule Phoenix.LiveView.TagEngine do
             state
             |> set_root_on_tag()
             |> push_tag(token)
-            |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta))
+            |> handle_tag_and_attrs(name, attrs, ">", to_location(tag_meta), previous_tag)
             |> continue(tokens)
 
           {true, new_meta, new_attrs} ->
@@ -832,7 +844,7 @@ defmodule Phoenix.LiveView.TagEngine do
             |> update_subengine(:handle_begin, [])
             |> set_root_on_not_tag()
             |> push_tag({:tag, name, new_attrs, new_meta})
-            |> handle_tag_and_attrs(name, new_attrs, ">", to_location(new_meta))
+            |> handle_tag_and_attrs(name, new_attrs, ">", to_location(new_meta), previous_tag)
             |> continue(tokens)
         end
     end
@@ -875,7 +887,7 @@ defmodule Phoenix.LiveView.TagEngine do
           {:error, message, meta} -> raise_syntax_error!(message, meta, state)
         end
 
-      {module.transform(ast, %{env: state.caller}), rest}
+      {module.transform(ast, %{scope: state.scope, env: state.caller}), rest}
     rescue
       e in ArgumentError ->
         raise_syntax_error!(
@@ -1053,18 +1065,37 @@ defmodule Phoenix.LiveView.TagEngine do
 
   ## handle_tag_and_attrs
 
-  defp handle_tag_and_attrs(state, name, attrs, suffix, meta) do
+  defp handle_tag_and_attrs(state, name, attrs, suffix, meta, previous_tag) do
     text =
-      if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
-        "<#{name} data-phx-loc=\"#{meta[:line]}\""
-      else
-        "<#{name}"
-      end
+      name
+      |> maybe_add_debug_loc_text(meta)
+      |> maybe_add_scope_text(state.scope, previous_tag)
 
     state
     |> update_subengine(:handle_text, [meta, text])
     |> handle_tag_attrs(meta, attrs)
     |> update_subengine(:handle_text, [meta, suffix])
+  end
+
+  defp maybe_add_debug_loc_text(text, meta) do
+    if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
+      "<#{text} data-phx-loc=\"#{meta[:line]}\""
+    else
+      "<#{text}"
+    end
+  end
+
+  defp maybe_add_scope_text(text, scope, previous_tag) do
+    scope_root? = not match?({:tag, _, _, _}, previous_tag)
+
+    apply_css_scope_attribute? =
+      Application.get_env(:phoenix_live_view, :apply_css_scope_attribute, true)
+
+    if scope && apply_css_scope_attribute? && scope_root? do
+      "#{text} data-phx-css=\"#{scope}\""
+    else
+      text
+    end
   end
 
   defp handle_tag_attrs(state, meta, attrs) do

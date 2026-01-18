@@ -127,7 +127,7 @@ defmodule Phoenix.Component.MacroComponent do
   @type children :: [heex_ast()]
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
-  @type transform_meta :: %{env: Macro.Env.t()}
+  @type transform_meta :: %{scope: String.t(), env: Macro.Env.t()}
 
   @callback transform(heex_ast :: heex_ast(), meta :: transform_meta()) ::
               {:ok, heex_ast()} | {:ok, heex_ast(), data :: term()}
