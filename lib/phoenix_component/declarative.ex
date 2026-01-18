@@ -685,14 +685,17 @@ defmodule Phoenix.Component.Declarative do
             end
           end
 
-        merge =
+        # Generated function definitions do not emit unused warnings,
+        # but in this case, as we are simply overriding the user function,
+        # so we delete the context so it still warns.
+        {remote, meta, [call, args]} =
           quote line: line do
             Kernel.unquote(kind)(unquote(name)(assigns)) do
               unquote(def_body)
             end
           end
 
-        {{name, 1}, merge}
+        {{name, 1}, {remote, meta, [delete_context(call), args]}}
       end
 
     {names, defs} = Enum.unzip(names_and_defs)
@@ -740,6 +743,10 @@ defmodule Phoenix.Component.Declarative do
 
     {:__block__, [],
      [def_components_ast, def_components_calls_ast, macro_components_ast, overridable | defs]}
+  end
+
+  defp delete_context(node) do
+    Macro.update_meta(node, &Keyword.delete(&1, :context))
   end
 
   defp register_component!(kind, env, name, check_if_defined?) do
