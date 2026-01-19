@@ -253,7 +253,7 @@ defmodule Phoenix.Component.MacroComponent do
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
   @type transform_meta :: %{env: Macro.Env.t()}
   @type directives_meta :: %{env: Macro.Env.t()}
-  @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t()}}
+  @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t() | true}}
   @type directives :: [directive]
 
   @optional_callbacks [directives: 2]
