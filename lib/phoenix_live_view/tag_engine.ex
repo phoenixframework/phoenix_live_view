@@ -337,8 +337,6 @@ defmodule Phoenix.LiveView.TagEngine do
     }
   end
 
-  defp collect_directives(state, []), do: state
-
   defp collect_directives(state, tokens) do
     # Allow for leading whitespace
     stripped_tokens = Tokenizer.strip_text_token_fully(tokens)
