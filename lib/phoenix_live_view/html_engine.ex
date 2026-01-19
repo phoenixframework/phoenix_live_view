@@ -221,7 +221,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   @impl true
   def annotate_body(%Macro.Env{} = caller) do
-    if Application.get_env(:phoenix_live_view, :debug_heex_annotations, false) do
+    if debug_annotations?(caller) do
       %Macro.Env{module: mod, function: {fun, _}, file: file, line: line} = caller
       name = "#{inspect(mod)}.#{fun}"
       annotate_source(name, file, line)
@@ -229,8 +229,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   @impl true
-  def annotate_slot(name, %{line: line}, _close_meta, %{file: file}) do
-    if Application.get_env(:phoenix_live_view, :debug_heex_annotations, false) do
+  def annotate_slot(name, %{line: line}, _close_meta, %{file: file} = caller) do
+    if debug_annotations?(caller) do
       annotate_source(":#{name}", file, line)
     end
   end
@@ -242,8 +242,13 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   @impl true
-  def annotate_caller(file, line) do
-    if Application.get_env(:phoenix_live_view, :debug_heex_annotations, false) do
+  def annotate_caller(_file, _line) do
+    raise "should not be called"
+  end
+
+  @impl true
+  def annotate_caller(file, line, caller) do
+    if debug_annotations?(caller) do
       line = if line == 0, do: 1, else: line
       file = Path.relative_to_cwd(file)
 
@@ -253,5 +258,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
 
   defp current_otp_app do
     Application.get_env(:logger, :compile_time_application)
+  end
+
+  defp debug_annotations?(caller) do
+    if Module.open?(caller.module) do
+      case Module.get_attribute(caller.module, :debug_heex_annotations) do
+        false -> false
+        _ -> Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
+      end
+    else
+      Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
+    end
   end
 end

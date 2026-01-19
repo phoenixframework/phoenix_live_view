@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
 
   defp handle_tag_and_attrs(name, attrs, suffix, meta, substate, state) do
     text =
-      if Application.get_env(:phoenix_live_view, :debug_attributes, false) do
+      if debug_attributes?(state.caller) do
         "<#{name} data-phx-loc=\"#{meta[:line]}\""
       else
         "<#{name}"
@@ -1239,7 +1239,14 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   end
 
   defp maybe_anno_caller(substate, meta, file, line, state) do
-    if anno = state.tag_handler.annotate_caller(file, line) do
+    annotate =
+      if function_exported?(state.tag_handler, :annotate_caller, 3) do
+        fn file, line -> state.tag_handler.annotate_caller(file, line, state.caller) end
+      else
+        fn file, line -> state.tag_handler.annotate_caller(file, line) end
+      end
+
+    if anno = annotate.(file, line) do
       state.engine.handle_text(substate, meta, anno)
     else
       substate
@@ -1267,4 +1274,15 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   # Tags and components count as having tags
   defp has_tags?([{:self_close, _type, _, _, _} | _]), do: true
   defp has_tags?([{:block, _type, _, _, _, _, _} | _]), do: true
+
+  defp debug_attributes?(caller) do
+    if Module.open?(caller.module) do
+      case Module.get_attribute(caller.module, :debug_attributes) do
+        false -> false
+        _ -> Application.get_env(:phoenix_live_view, :debug_attributes, false)
+      end
+    else
+      Application.get_env(:phoenix_live_view, :debug_attributes, false)
+    end
+  end
 end
