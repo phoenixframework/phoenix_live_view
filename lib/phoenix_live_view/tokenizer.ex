@@ -735,7 +735,8 @@ defmodule Phoenix.LiveView.Tokenizer do
     [{type, name, attrs, meta} | acc]
   end
 
-  defp strip_text_token_fully(tokens) do
+  @doc false
+  def strip_text_token_fully(tokens) do
     with [{:text, text, _} | rest] <- tokens,
          "" <- String.trim_leading(text) do
       strip_text_token_fully(rest)
