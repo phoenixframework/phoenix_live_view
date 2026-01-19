@@ -219,6 +219,7 @@ defmodule Phoenix.Component.MacroComponent do
   #
   #   Macro components may return directives from the module's optional `c:directives/2` callback
   #   which can be used to influence other elements in the template outside of the macro component at compile-time.
+  #   Macro components which specify directives **must** be placed at the beginning of the template in which they are used.
   #   For example:
   #
   #   ```elixir
