@@ -345,13 +345,16 @@ defmodule Phoenix.LiveView.TagEngine do
       [] ->
         state
 
-      [{:tag, _name, _attrs, tag_meta} = token | rest] ->
+      [{:tag, name, _attrs, tag_meta} = token | rest] ->
         case check_and_validate_macro_component(token, state) do
-          {:macro_component, module, _attrs} ->
+          {:macro_component, module, attrs} ->
             # Use build_ast to consume all of the tokens in this MacroComponent
             try do
               {ast, rest} =
-                case Phoenix.Component.MacroComponent.build_ast(stripped_tokens, state.caller) do
+                case Phoenix.Component.MacroComponent.build_ast(
+                       [{:tag, name, attrs, tag_meta} | rest],
+                       state.caller
+                     ) do
                   {:ok, ast, rest} -> {ast, rest}
                   {:error, message, meta} -> raise_syntax_error!(message, meta, state)
                 end
