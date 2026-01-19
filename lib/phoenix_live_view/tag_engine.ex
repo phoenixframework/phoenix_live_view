@@ -430,7 +430,7 @@ defmodule Phoenix.LiveView.TagEngine do
     end
 
     case attribute do
-      {name, value} when (is_binary(name) and is_binary(value)) or value == true ->
+      {name, value} when is_binary(name) and (is_binary(value) or value == true) ->
         %{state | root_tag_attributes: [{name, value} | state.root_tag_attributes]}
 
       attribute ->
