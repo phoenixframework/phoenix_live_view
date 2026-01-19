@@ -361,19 +361,19 @@ defmodule Phoenix.LiveView.TagEngine do
 
               cond do
                 state.collecting_directives? and function_exported?(module, :directives, 2) ->
-                  state =
-                    case module.directives(ast, %{env: state.caller}) do
-                      {:ok, directives} when is_list(directives) ->
+                  case module.directives(ast, %{env: state.caller}) do
+                    {:ok, directives} when is_list(directives) ->
+                      state =
                         Enum.reduce(directives, state, fn directive, state ->
                           apply_macro_component_directive!(directive, module, tag_meta, state)
                         end)
 
-                      other ->
-                        raise ArgumentError,
-                              "a macro component must return {:ok, directives}, got: #{inspect(other)}"
-                    end
+                      collect_directives(state, rest)
 
-                  collect_directives(state, rest)
+                    other ->
+                      raise ArgumentError,
+                            "a macro component must return {:ok, directives}, got: #{inspect(other)}"
+                  end
 
                 not state.collecting_directives? and function_exported?(module, :directives, 2) ->
                   raise_syntax_error!(
@@ -399,7 +399,6 @@ defmodule Phoenix.LiveView.TagEngine do
         end
 
       [_ | rest] ->
-        # We encountered something other than whitespace or a macrocomponent, so stop collecting.
         collect_directives(%{state | collecting_directives?: false}, rest)
     end
   end
