@@ -242,11 +242,6 @@ defmodule Phoenix.LiveView.HTMLEngine do
   end
 
   @impl true
-  def annotate_caller(_file, _line) do
-    raise "should not be called"
-  end
-
-  @impl true
   def annotate_caller(file, line, caller) do
     if debug_annotations?(caller) do
       line = if line == 0, do: 1, else: line
