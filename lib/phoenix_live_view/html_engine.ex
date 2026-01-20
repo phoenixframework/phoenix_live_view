@@ -264,5 +264,7 @@ defmodule Phoenix.LiveView.HTMLEngine do
     else
       Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
     end
+  rescue
+    _ -> Application.get_env(:phoenix_live_view, :debug_heex_annotations, false)
   end
 end

@@ -1284,5 +1284,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     else
       Application.get_env(:phoenix_live_view, :debug_attributes, false)
     end
+  rescue
+    _ -> Application.get_env(:phoenix_live_view, :debug_attributes, false)
   end
 end
