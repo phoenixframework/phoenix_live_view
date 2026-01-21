@@ -13,14 +13,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     opts =
       Keyword.merge(opts,
         file: env.file,
-        engine: Phoenix.LiveView.TagEngine,
-        subengine: Phoenix.LiveView.Engine,
         caller: env,
-        source: string,
         tag_handler: Phoenix.LiveView.HTMLEngine
       )
 
-    quoted = EEx.compile_string(string, opts)
+    quoted = Phoenix.LiveView.TagEngine.compile(string, opts)
 
     {result, _} = Code.eval_quoted(quoted, [assigns: assigns], env)
     result
@@ -36,12 +33,9 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   defmacrop compile(string) do
     quote do
       unquote(
-        EEx.compile_string(string,
+        Phoenix.LiveView.TagEngine.compile(string,
           file: __ENV__.file,
-          engine: Phoenix.LiveView.TagEngine,
-          module: __MODULE__,
           caller: __CALLER__,
-          source: string,
           tag_handler: Phoenix.LiveView.HTMLEngine
         )
       )
