@@ -2576,12 +2576,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             this.streamInserts[key] = { ref, streamAt, limit, reset, updateOnly };
           });
           if (reset !== void 0) {
-            dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
+            dom_default.all(document, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
               this.removeStreamChildElement(child);
             });
           }
           deleteIds.forEach((id) => {
-            const child = container.querySelector(`[id="${id}"]`);
+            const child = document.getElementById(id);
             if (child) {
               this.removeStreamChildElement(child);
             }
