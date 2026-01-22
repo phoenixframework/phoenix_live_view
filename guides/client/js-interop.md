@@ -151,7 +151,9 @@ or removed by the server, a hook object may be provided via `phx-hook`.
   * `beforeUpdate` - the element is about to be updated in the DOM.
     *Note*: any call here must be synchronous as the operation cannot
     be deferred or cancelled.
-  * `updated` - the element has been updated in the DOM by the server
+  * `updated` - the element has been updated in the DOM by the server.
+    *Note*: `window.location` may not reflect the current URL during this callback.
+    For navigation-aware logic, use the `phx:navigate` event instead.
   * `destroyed` - the element has been removed from the page, either
     by a parent update, or by the parent being removed entirely
   * `disconnected` - the element's parent LiveView has disconnected from the server
