@@ -456,12 +456,12 @@ export default class DOMPatch {
           this.streamInserts[key] = { ref, streamAt, limit, reset, updateOnly };
         });
         if (reset !== undefined) {
-          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
+          DOM.all(document, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
             this.removeStreamChildElement(child);
           });
         }
         deleteIds.forEach((id) => {
-          const child = container.querySelector(`[id="${id}"]`);
+          const child = document.getElementById(id);
           if (child) {
             this.removeStreamChildElement(child);
           }
