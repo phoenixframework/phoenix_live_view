@@ -2522,6 +2522,16 @@ defmodule Phoenix.Component do
       end
 
     attrs =
+      case assigns[:id] do
+        nil ->
+          IO.warn("No id given to form (form recovery won’t work)")
+          Keyword.put(attrs, :id, form.name <> "-form")
+
+        _id ->
+          attrs
+      end
+
+    attrs =
       case Keyword.pop(attrs, :multipart, false) do
         {false, attrs} -> attrs
         {true, attrs} -> Keyword.put(attrs, :enctype, "multipart/form-data")
