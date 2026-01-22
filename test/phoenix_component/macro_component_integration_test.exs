@@ -347,13 +347,9 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   defp eval_heex(source) do
-    EEx.compile_string(source,
-      engine: Phoenix.LiveView.TagEngine,
-      line: 1,
+    Phoenix.LiveView.TagEngine.compile(source,
       file: __ENV__.file,
-      trim: true,
       caller: __ENV__,
-      source: source,
       tag_handler: Phoenix.LiveView.HTMLEngine
     )
     |> Code.eval_quoted(assigns: %{})

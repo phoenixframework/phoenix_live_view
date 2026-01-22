@@ -1,15 +1,14 @@
 defmodule Phoenix.LiveView.TagEngine do
   @moduledoc """
-  An EEx engine that understands tags.
+  Building blocks for tag based `Phoenix.Template.Engine`s.
 
   This cannot be directly used by Phoenix applications.
-  Instead, it is the building block by engines such as
+  Instead, it is the building block for engines such as
   `Phoenix.LiveView.HTMLEngine`.
 
   It is typically invoked like this:
 
-      EEx.compile_string(source,
-        engine: Phoenix.LiveView.TagEngine,
+      Phoenix.LiveView.TagEngine.compile(source,
         line: 1,
         file: path,
         caller: __CALLER__,
@@ -19,6 +18,35 @@ defmodule Phoenix.LiveView.TagEngine do
 
   Where `:tag_handler` implements the behaviour defined by this module.
   """
+
+  @doc """
+  Compiles the given string into Elixir AST.
+
+  The accepted options are:
+
+    * `tag_handler` - Required. The module implementing the `Phoenix.LiveView.TagEngine` behavior.
+    * `caller` - Required. The `Macro.Env`.
+    * `line` - the starting line offset. Defaults to 1.
+    * `file` - the file of the template. Defaults to `"nofile"`.
+    * `indentation` - the indentation of the template. Defaults to 0.
+
+  """
+  def compile(source, options) do
+    options =
+      Keyword.validate!(options, [
+        :caller,
+        :tag_handler,
+        line: 1,
+        indentation: 0,
+        file: "nofile"
+      ])
+      |> Keyword.merge(
+        engine: Phoenix.LiveView.TagEngine,
+        source: source
+      )
+
+    EEx.compile_string(source, options)
+  end
 
   @doc """
   Classify the tag type from the given binary.
