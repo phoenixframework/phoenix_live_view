@@ -1,4 +1,4 @@
-defmodule Phoenix.LiveView.Tokenizer do
+defmodule Phoenix.LiveView.TagCompiler.Tokenizer do
   @moduledoc false
   @space_chars ~c"\s\t\f"
   @quote_chars ~c"\"'"

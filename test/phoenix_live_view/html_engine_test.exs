@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   import Phoenix.Component
 
-  alias Phoenix.LiveView.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     {env, opts} = Keyword.pop(opts, :env, __ENV__)

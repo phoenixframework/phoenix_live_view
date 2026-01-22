@@ -214,8 +214,8 @@ defmodule Phoenix.LiveView.TagEngine do
     end
   end
 
-  alias Phoenix.LiveView.Tokenizer
-  alias Phoenix.LiveView.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagCompiler.Tokenizer
+  alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
 
   @behaviour EEx.Engine
 

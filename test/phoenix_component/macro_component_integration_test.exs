@@ -8,6 +8,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
   alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.Component.MacroComponent
+  alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
 
   defmodule MyComponent do
     @behaviour Phoenix.Component.MacroComponent
@@ -120,7 +121,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when there is EEx inside" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/EEx is not currently supported in macro components/,
                  fn ->
                    defmodule TestComponentUnsupportedEEx do
@@ -140,7 +141,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when there is interpolation inside" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/interpolation is not currently supported in macro components/,
                  fn ->
                    defmodule TestComponentUnsupportedInterpolation do
@@ -158,7 +159,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when there are components inside" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/function components cannot be nested inside a macro component/,
                  fn ->
                    defmodule TestComponentUnsupportedComponents do
@@ -176,7 +177,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when trying to use :type on a component" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/unsupported attribute \":type\"/,
                  fn ->
                    defmodule TestUnsupportedComponent do
@@ -190,7 +191,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                    end
                  end
 
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/unsupported attribute \":type\"/,
                  fn ->
                    defmodule TestUnsupportedComponent do
@@ -208,7 +209,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises for dynamic attributes" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/dynamic attributes are not supported in macro components, got: @bar/,
                  fn ->
                    defmodule TestComponentUnsupportedDynamicAttributes1 do
@@ -222,7 +223,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                    end
                  end
 
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/dynamic attributes are not supported in macro components, got: @bar/,
                  fn ->
                    defmodule TestComponentUnsupportedDynamicAttributes2 do
