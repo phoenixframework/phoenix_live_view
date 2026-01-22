@@ -2,12 +2,24 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   @moduledoc false
 
   alias Phoenix.LiveView.TagCompiler.Tokenizer
+  alias Phoenix.Component.MacroComponent
 
   defguardp is_tag_open(tag_type) when tag_type not in [:close, :eex]
+
+  defguardp is_tag_block(node)
+            when is_tuple(node) and tuple_size(node) == 6 and elem(node, 0) == :block
+
+  defguardp is_self_close(node)
+            when is_tuple(node) and tuple_size(node) == 5 and elem(node, 0) == :self_close
+
+  defguardp is_macro_component(node)
+            when (is_tag_block(node) and is_map_key(elem(node, 5), :macro_component)) or
+                   (is_self_close(node) and is_map_key(elem(node, 4), :macro_component))
 
   def parse(source, opts \\ []) do
     tag_handler = Keyword.fetch!(opts, :tag_handler)
     caller = Keyword.get(opts, :caller)
+    skip_macro_components = Keyword.get(opts, :skip_macro_components, false)
     prune_text_after_slots = Keyword.get(opts, :prune_text_after_slots, true)
     process_buffer = Keyword.get(opts, :process_buffer)
 
@@ -16,6 +28,7 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
     |> to_tree([], [], %{
       tag_handler: tag_handler,
       caller: caller,
+      skip_macro_components: skip_macro_components,
       prune_text_after_slots: prune_text_after_slots,
       process_buffer: process_buffer
     })
@@ -241,8 +254,19 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
          state
        )
        when parent_type in [:local_component, :remote_component] do
+    meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
+
+    {tokens, buffer} =
+      maybe_process_macro_component(
+        {:self_close, :slot, name, attrs, meta},
+        tokens,
+        buffer,
+        state
+      )
+
     tokens = if state.prune_text_after_slots, do: prune_text(tokens), else: tokens
-    to_tree(tokens, [{:self_close, :slot, name, attrs, meta} | buffer], stack, state)
+
+    to_tree(tokens, buffer, stack, state)
   end
 
   # Self-closing slot - invalid context (not direct child of component)
@@ -265,6 +289,7 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
          state
        )
        when parent_type in [:local_component, :remote_component] do
+    meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
     to_tree(tokens, [], [{:slot, name, attrs, meta, buffer} | stack], state)
   end
 
@@ -292,12 +317,18 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   # Self-closing tag or component
   defp to_tree([{type, name, attrs, %{closing: _} = meta} | tokens], buffer, stack, state)
        when is_tag_open(type) do
-    to_tree(tokens, [{:self_close, type, name, attrs, meta} | buffer], stack, state)
+    meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
+
+    {tokens, buffer} =
+      maybe_process_macro_component({:self_close, type, name, attrs, meta}, tokens, buffer, state)
+
+    to_tree(tokens, buffer, stack, state)
   end
 
   # Opening tag or component
   defp to_tree([{type, name, attrs, meta} | tokens], buffer, stack, state)
        when is_tag_open(type) do
+    meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
     to_tree(tokens, [], [{type, name, attrs, meta, buffer} | stack], state)
   end
 
@@ -311,7 +342,16 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
     block = Enum.reverse(reversed_buffer)
     # Preserve close tag's inner_location for preserve mode content extraction
     open_meta = Map.put(open_meta, :close_inner_location, close_meta.inner_location)
-    to_tree(tokens, [{:block, type, name, attrs, block, open_meta} | upper_buffer], stack, state)
+
+    {tokens, buffer} =
+      maybe_process_macro_component(
+        {:block, type, name, attrs, block, open_meta},
+        tokens,
+        upper_buffer,
+        state
+      )
+
+    to_tree(tokens, buffer, stack, state)
   end
 
   # Mismatched close tag
@@ -416,6 +456,11 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
     to_tree(tokens, buffer, stack, state)
   end
 
+  @special_attrs ~w(:if :for :key)
+  defp extract_special_attrs(attrs) do
+    for {name, _, _} <- attrs, name in @special_attrs, do: name
+  end
+
   # Prune leading whitespace from the next text token (used after slots)
   defp prune_text([{:text, text, meta} | tokens]) do
     [{:text, String.trim_leading(text), meta} | tokens]
@@ -427,6 +472,21 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   defp process_buffer(buffer, %{process_buffer: fun}) when is_function(fun), do: fun.(buffer)
   defp process_buffer(buffer, _state), do: buffer
 
+  # Removes empty whitespace nodes at the start of the tokens (used after macro components)
+  defp strip_text([{:text, "", _meta} | tokens]), do: strip_text(tokens)
+
+  defp strip_text([{:text, text, meta} | tokens]) do
+    case String.trim_leading(text) do
+      "" ->
+        strip_text(tokens)
+
+      text ->
+        [{:text, text, meta} | tokens]
+    end
+  end
+
+  defp strip_text(tokens), do: tokens
+
   defp void_tag_note(name, state) do
     if state.tag_handler.void?(name) do
       " (note <#{name}> is a void tag and cannot have any content)"
@@ -434,4 +494,144 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
       ""
     end
   end
+
+  ## Macro component handling
+
+  defp maybe_macro_component(meta, attrs) do
+    case List.keyfind(attrs, ":type", 0) do
+      {":type", {:expr, code, _expr_meta}, _attr_meta} ->
+        Map.put(meta, :macro_component, code)
+
+      _ ->
+        meta
+    end
+  end
+
+  defguardp skip_macro_components(state)
+            when is_map_key(state, :skip_macro_components) and state.skip_macro_components == true
+
+  defp maybe_process_macro_component(tree_node, tokens, buffer, state)
+       when is_macro_component(tree_node) and not skip_macro_components(state) do
+    # Remove :type from attrs for the macro component AST
+    tree_node =
+      case tree_node do
+        {:self_close, :tag, name, attrs, meta} ->
+          {:self_close, :tag, name, List.keydelete(attrs, ":type", 0), meta}
+
+        {:block, :tag, name, attrs, children, meta} ->
+          {:block, :tag, name, List.keydelete(attrs, ":type", 0), children, meta}
+
+        # Macro components are currently only allowed on non-special tags
+        {:self_close, type, _name, _attrs, meta} ->
+          throw_syntax_error!(
+            "macro components are only supported on HTML tags, not #{format_type(type)}",
+            meta
+          )
+
+        {:block, type, _name, _attrs, _children, meta} ->
+          throw_syntax_error!(
+            "macro components are only supported on HTML tags, not #{format_type(type)}",
+            meta
+          )
+      end
+
+    case process_macro_component(tree_node, state) do
+      {:text, "", _} ->
+        {strip_text(tokens), buffer}
+
+      new_node ->
+        {strip_text(tokens), [new_node | buffer]}
+    end
+  end
+
+  defp maybe_process_macro_component(tree_node, tokens, buffer, _state) do
+    {tokens, [tree_node | buffer]}
+  end
+
+  # Process a macro component: call transform and convert result back to tree nodes
+  defp process_macro_component(tree_node, state) do
+    # Macro components work by converting the tree nodes into a macro AST
+    # (see Phoenix.Component.MacroComponent) and then calling the transform
+    # function on the macro component module, which can return a transformed
+    # AST.
+    caller = state.caller
+
+    if is_nil(caller) do
+      raise ArgumentError, "macro components require a caller environment"
+    end
+
+    Macro.Env.required?(caller, Phoenix.Component) ||
+      raise ArgumentError,
+            "macro components are only supported in modules that `use Phoenix.Component`"
+
+    meta = get_meta(tree_node)
+    module_string = meta.macro_component
+    module = validate_module!(module_string, meta, state)
+
+    # Build the macro component AST
+    case MacroComponent.build_ast(tree_node, caller) do
+      {:ok, macro_ast} ->
+        try do
+          # Call the transform function
+          case module.transform(macro_ast, %{env: caller}) do
+            {:ok, new_ast} ->
+              MacroComponent.ast_to_tree(new_ast, meta)
+
+            {:ok, new_ast, data} ->
+              Module.put_attribute(caller.module, :__macro_components__, {module, data})
+              MacroComponent.ast_to_tree(new_ast, meta)
+
+            other ->
+              throw_syntax_error!(
+                "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}",
+                meta
+              )
+          end
+        rescue
+          e in ArgumentError ->
+            throw_syntax_error!(Exception.message(e), meta)
+        end
+
+      {:error, message, error_meta} ->
+        throw_syntax_error!(message, error_meta)
+    end
+  end
+
+  defp get_meta({:self_close, _type, _name, _attrs, meta}), do: meta
+  defp get_meta({:block, _type, _name, _attrs, _children, meta}), do: meta
+
+  defp validate_module!(module_string, tag_meta, state) do
+    module =
+      Code.string_to_quoted!(module_string,
+        file: state.caller.file,
+        line: tag_meta.line,
+        column: tag_meta.column
+      )
+      |> Macro.expand(state.caller)
+
+    if not is_atom(module) do
+      throw_syntax_error!(
+        "the given macro component #{inspect(module_string)} is not a valid module",
+        tag_meta
+      )
+    end
+
+    _ = Code.ensure_compiled!(module)
+
+    if not function_exported?(module, :transform, 2) do
+      throw_syntax_error!(
+        "the given macro component #{inspect(module)} does not implement the `Phoenix.Component.MacroComponent` behaviour",
+        tag_meta
+      )
+    end
+
+    module
+  end
+
+  defp throw_syntax_error!(message, meta) do
+    throw({:syntax_error, meta.line, meta.column, message})
+  end
+
+  defp format_type(:slot), do: "slots"
+  defp format_type(_), do: "components"
 end

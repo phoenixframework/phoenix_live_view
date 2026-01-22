@@ -178,7 +178,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
   test "raises when trying to use :type on a component" do
     assert_raise ParseError,
-                 ~r/unsupported attribute \":type\"/,
+                 ~r/macro components are only supported on HTML tags/,
                  fn ->
                    defmodule TestUnsupportedComponent do
                      use Phoenix.Component
@@ -192,7 +192,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                  end
 
     assert_raise ParseError,
-                 ~r/unsupported attribute \":type\"/,
+                 ~r/macro components are only supported on HTML tags/,
                  fn ->
                    defmodule TestUnsupportedComponent do
                      use Phoenix.Component
@@ -267,7 +267,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
            """
 
     # mixed quotes are invalid
-    assert_raise ArgumentError,
+    assert_raise ParseError,
                  ~r/invalid attribute value for "class"/,
                  fn ->
                    Process.put(:new_ast, {:div, [{"class", ~s["'"]}], [], %{}})
@@ -337,6 +337,12 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     assert eval_heex("""
            <div :type={MyComponent}>Test</div><span>Another</span>
+           """).root
+
+    Process.put(:new_ast, "")
+
+    assert eval_heex("""
+           <div :type={MyComponent}>Test</div>\n<span>Another</span>
            """).root
 
     Process.put(:new_ast, "some text")

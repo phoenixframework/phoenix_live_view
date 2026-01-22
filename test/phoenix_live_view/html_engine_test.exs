@@ -16,6 +16,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
         caller: env,
         tag_handler: Phoenix.LiveView.HTMLEngine
       )
+      |> Keyword.put_new(:line, 1)
 
     quoted = Phoenix.LiveView.TagEngine.compile(string, opts)
 
@@ -2213,6 +2214,100 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                <Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block  :for={i <- @items} :if={rem(i, 2) == 0} value={i}><%= i %></Phoenix.LiveView.HTMLEngineTest.remote_function_component_with_inner_block>
              """) ==
                "REMOTE COMPONENT: Value: 2, Content: 2REMOTE COMPONENT: Value: 4, Content: 4"
+    end
+  end
+
+  describe "eex_block line/column positions" do
+    # Helper to extract `if` nodes that test @status or @other (user's conditionals)
+    # This filters out the internal `if` nodes generated for change tracking
+    # Note: @status is transformed to assigns.status in the AST
+    defp find_user_if_nodes(ast) do
+      {_ast, nodes} =
+        Macro.prewalk(ast, [], fn
+          {:if, meta, [condition | _]} = node, acc ->
+            # Check if the condition references assigns.status or assigns.other
+            if references_assigns_field?(condition, :status) or
+                 references_assigns_field?(condition, :other) do
+              {node, [{:if, meta, condition} | acc]}
+            else
+              {node, acc}
+            end
+
+          node, acc ->
+            {node, acc}
+        end)
+
+      Enum.reverse(nodes)
+    end
+
+    # @status becomes assigns.status which is {{:., _, [{:assigns, _, _}, :status]}, _, _}
+    defp references_assigns_field?(ast, field_name) do
+      {_ast, found} =
+        Macro.prewalk(ast, false, fn
+          {{:., _, [{:assigns, _, _}, ^field_name]}, _, _} = node, _acc -> {node, true}
+          node, acc -> {node, acc}
+        end)
+
+      found
+    end
+
+    test "if/else/end preserves column positions" do
+      template = """
+      <%= if @status do %>
+          <div>content</div>
+        <% else %>
+          <span>other</span>
+      <% end %>
+      """
+
+      opts = [file: "test.heex", caller: __ENV__, tag_handler: Phoenix.LiveView.HTMLEngine]
+      quoted = Phoenix.LiveView.TagEngine.compile(template, opts)
+
+      if_nodes = find_user_if_nodes(quoted)
+      assert length(if_nodes) == 1, "expected 1 user if node, got #{length(if_nodes)}"
+
+      [{:if, meta, _condition}] = if_nodes
+      # The `if` should be at line 1, column 5 (after `<%= `)
+      assert meta[:line] == 1, "if should be at line 1, got #{meta[:line]}"
+      # Column should be 5 (position after `<%= `)
+      assert meta[:column] == 5,
+             "if should be at column 5, got #{inspect(meta[:column])} (column tracking is broken)"
+    end
+
+    test "nested if blocks preserve line and column positions" do
+      # Template with nested if in else block
+      # Line 1: <%= if @status do %>
+      # Line 5:     <%= if @other do %>
+      template = """
+      <%= if @status do %>
+          <div>content</div>
+        <% else %>
+          <span>other</span>
+          <%=  if @other do %>
+             bar
+          <% end %>
+      <% end %>
+      """
+
+      opts = [file: "test.heex", caller: __ENV__, tag_handler: Phoenix.LiveView.HTMLEngine]
+      quoted = Phoenix.LiveView.TagEngine.compile(template, opts)
+
+      if_nodes = find_user_if_nodes(quoted)
+      assert length(if_nodes) == 2, "expected 2 user if nodes, got #{length(if_nodes)}"
+
+      [{:if, outer_meta, _}, {:if, inner_meta, _}] = if_nodes
+
+      # Outer if should be at line 1, column 5
+      assert outer_meta[:line] == 1, "outer if should be at line 1, got #{outer_meta[:line]}"
+
+      assert outer_meta[:column] == 5,
+             "outer if should be at column 5, got #{inspect(outer_meta[:column])}"
+
+      # Nested if should be at line 5, column 10
+      assert inner_meta[:line] == 5, "nested if should be at line 5, got #{inner_meta[:line]}"
+
+      assert inner_meta[:column] == 10,
+             "nested if should be at column 10, got #{inspect(inner_meta[:column])}"
     end
   end
 

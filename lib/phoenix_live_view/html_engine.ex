@@ -22,15 +22,16 @@ defmodule Phoenix.LiveView.HTMLEngine do
     trim = Application.get_env(:phoenix, :trim_on_html_eex_engine, true)
     source = File.read!(path)
 
-    EEx.compile_string(source,
-      engine: Phoenix.LiveView.TagEngine,
-      line: 1,
+    options = [
+      engine: Phoenix.LiveView.Engine,
       file: path,
-      trim: trim,
+      line: 1,
       caller: __CALLER__,
-      source: source,
-      tag_handler: __MODULE__
-    )
+      tag_handler: __MODULE__,
+      trim: trim
+    ]
+
+    Phoenix.LiveView.TagEngine.compile(source, options)
   end
 
   @behaviour Phoenix.LiveView.TagEngine
