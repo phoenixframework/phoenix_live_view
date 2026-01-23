@@ -358,7 +358,10 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   # In case the closing tag is immediately followed by non-whitespace text,
   # we want to set mode as preserve.
-  defp may_set_preserve_on_block([{:block, type, name, attrs, block, meta} | rest], text) do
+  defp may_set_preserve_on_block(
+         [{:block, type, name, attrs, block, meta, close_meta} | rest],
+         text
+       ) do
     mode =
       if String.trim_leading(text) != "" and :binary.first(text) not in ~c"\s\t\n\r" do
         :preserve
@@ -366,14 +369,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         Map.get(meta, :mode, :normal)
       end
 
-    [{:block, type, name, attrs, block, Map.put(meta, :mode, mode)} | rest]
+    [{:block, type, name, attrs, block, Map.put(meta, :mode, mode), close_meta} | rest]
   end
 
   defp may_set_preserve_on_block(buffer, _text), do: buffer
 
   # Set preserve on block when it is immediately followed by interpolation.
-  defp set_preserve_on_block([{:block, type, name, attrs, block, meta} | rest]) do
-    [{:block, type, name, attrs, block, Map.put(meta, :mode, :preserve)} | rest]
+  defp set_preserve_on_block([{:block, type, name, attrs, block, meta, close_meta} | rest]) do
+    [{:block, type, name, attrs, block, Map.put(meta, :mode, :preserve), close_meta} | rest]
   end
 
   defp set_preserve_on_block(buffer), do: buffer
@@ -461,14 +464,14 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   # Handle block tags - add mode and recursively augment children
-  defp augment_node({:block, type, name, attrs, children, meta}, state) do
+  defp augment_node({:block, type, name, attrs, children, meta, close_meta}, state) do
     tag_name = meta.tag_name
     mode = determine_mode(tag_name, attrs, meta)
 
     {children, meta} =
       if mode == :preserve do
         content =
-          content_from_source(state.source, meta.inner_location, meta.close_inner_location)
+          content_from_source(state.source, meta.inner_location, close_meta.inner_location)
 
         {[{:text, content, %{newlines_before_text: 0, newlines_after_text: 0}}],
          Map.put(meta, :mode, :preserve)}
@@ -476,7 +479,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         {augment_nodes(children, state), Map.put(meta, :mode, :normal)}
       end
 
-    {:block, type, name, attrs, children, meta}
+    {:block, type, name, attrs, children, meta, close_meta}
   end
 
   # Recursively augment eex_block children

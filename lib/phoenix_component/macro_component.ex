@@ -157,7 +157,7 @@ defmodule Phoenix.Component.MacroComponent do
         closing_meta = Map.take(meta, [:closing])
         {:ok, {name, attrs_to_ast(attrs, env), [], closing_meta}}
 
-      {:block, :tag, name, attrs, children, _meta} ->
+      {:block, :tag, name, attrs, children, _meta, _close_meta} ->
         children_ast = build_ast(children, env)
         {:ok, {name, attrs_to_ast(attrs, env), children_ast, %{}}}
     end
@@ -175,21 +175,21 @@ defmodule Phoenix.Component.MacroComponent do
         closing_meta = Map.take(meta, [:closing])
         {name, attrs_to_ast(attrs, env), [], closing_meta}
 
-      {:block, :tag, name, attrs, nested_children, _meta} ->
+      {:block, :tag, name, attrs, nested_children, _meta, _close_meta} ->
         {name, attrs_to_ast(attrs, env), build_ast(nested_children, env), %{}}
 
       {:self_close, type, _name, _attrs, meta}
       when type in [:local_component, :remote_component] ->
         throw({:ast_error, "function components cannot be nested inside a macro component", meta})
 
-      {:block, type, _name, _attrs, _children, meta}
+      {:block, type, _name, _attrs, _children, meta, _close_meta}
       when type in [:local_component, :remote_component] ->
         throw({:ast_error, "function components cannot be nested inside a macro component", meta})
 
       {:self_close, :slot, _name, _attrs, meta} ->
         throw({:ast_error, "slots cannot be nested inside a macro component", meta})
 
-      {:block, :slot, _name, _attrs, _children, meta} ->
+      {:block, :slot, _name, _attrs, _children, meta, _close_meta} ->
         throw({:ast_error, "slots cannot be nested inside a macro component", meta})
 
       {:body_expr, _expr, meta} ->
@@ -205,6 +205,7 @@ defmodule Phoenix.Component.MacroComponent do
 
   defp attrs_to_ast(attrs, env) do
     Enum.map(attrs, fn
+      # for now, we don't support root expressions (<div {@foo}>)
       {:root, value, attr_meta} ->
         format_attr = fn
           {:string, binary, _meta} -> binary
@@ -238,19 +239,20 @@ defmodule Phoenix.Component.MacroComponent do
 
   @doc false
   # Convert macro AST back to tree nodes (parser format)
-  def ast_to_tree({tag, attrs, [], %{closing: _closing} = meta}, parent_meta) do
-    tree_attrs = attrs_to_tree(attrs, parent_meta)
-    {:self_close, :tag, tag, tree_attrs, Map.merge(parent_meta, meta)}
+  # We keep reuse the original line + column metadata from the original tag
+  def ast_to_tree({tag, attrs, [], %{closing: _closing} = meta}, original_meta) do
+    tree_attrs = attrs_to_tree(attrs, original_meta)
+    {:self_close, :tag, tag, tree_attrs, Map.merge(original_meta, meta)}
   end
 
-  def ast_to_tree({tag, attrs, children, _meta}, parent_meta) do
-    tree_attrs = attrs_to_tree(attrs, parent_meta)
-    tree_children = Enum.map(children, &ast_to_tree(&1, parent_meta))
-    {:block, :tag, tag, tree_attrs, tree_children, parent_meta}
+  def ast_to_tree({tag, attrs, children, _meta}, original_meta) do
+    tree_attrs = attrs_to_tree(attrs, original_meta)
+    tree_children = Enum.map(children, &ast_to_tree(&1, original_meta))
+    {:block, :tag, tag, tree_attrs, tree_children, original_meta, %{}}
   end
 
-  def ast_to_tree(text, parent_meta) when is_binary(text) do
-    {:text, text, parent_meta}
+  def ast_to_tree(text, _original_meta) when is_binary(text) do
+    {:text, text, %{}}
   end
 
   defp attrs_to_tree(attrs, meta) do
@@ -259,24 +261,7 @@ defmodule Phoenix.Component.MacroComponent do
         {name, nil, meta}
 
       {name, value} when is_binary(value) ->
-        # Determine delimiter based on content (same logic as encode_binary_attribute)
-        delimiter =
-          case {:binary.match(value, ~s["]), :binary.match(value, "'")} do
-            {:nomatch, _} ->
-              ?"
-
-            {_, :nomatch} ->
-              ?'
-
-            _ ->
-              raise ArgumentError, """
-              invalid attribute value for "#{name}".
-              Attribute values must not contain single and double quotes at the same time.
-
-              You need to escape your attribute before using it in the MacroComponent AST. You can use `Phoenix.HTML.attributes_escape/1` to do so.
-              """
-          end
-
+        delimiter = attr_quotes(name, value)
         {name, {:string, value, Map.put(meta, :delimiter, delimiter)}, meta}
 
       {name, ast} ->
@@ -355,14 +340,23 @@ defmodule Phoenix.Component.MacroComponent do
     end)
   end
 
-  @doc false
-  def encode_binary_attribute(key, value) when is_binary(key) and is_binary(value) do
-    case {:binary.match(value, ~s["]), :binary.match(value, "'")} do
-      {:nomatch, _} ->
+  defp encode_binary_attribute(key, value) when is_binary(key) and is_binary(value) do
+    case attr_quotes(key, value) do
+      ?" ->
         ~s( #{key}="#{value}")
 
-      {_, :nomatch} ->
+      ?' ->
         ~s( #{key}='#{value}')
+    end
+  end
+
+  defp attr_quotes(key, value) do
+    case {:binary.match(value, ~s["]), :binary.match(value, "'")} do
+      {:nomatch, _} ->
+        ?"
+
+      {_, :nomatch} ->
+        ?'
 
       _ ->
         raise ArgumentError, """

@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   defguardp is_tag_open(tag_type) when tag_type not in [:close, :eex]
 
   defguardp is_tag_block(node)
-            when is_tuple(node) and tuple_size(node) == 6 and elem(node, 0) == :block
+            when is_tuple(node) and tuple_size(node) == 7 and elem(node, 0) == :block
 
   defguardp is_self_close(node)
             when is_tuple(node) and tuple_size(node) == 5 and elem(node, 0) == :self_close
@@ -181,8 +181,8 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   # Then, we start to populate the buffer again until a `{:close, :tag, ...} arrives:
   #
   #   ```
-  #   defp build([{:close, :tag, name, _meta} | tokens], buffer, [{name, attrs, open_meta, upper_buffer} | stack]) do
-  #     build(tokens, [{:block, :tag, name, attrs, Enum.reverse(buffer), open_meta} | upper_buffer], stack)
+  #   defp build([{:close, :tag, name, close_meta} | tokens], buffer, [{name, attrs, open_meta, upper_buffer} | stack]) do
+  #     build(tokens, [{:block, :tag, name, attrs, Enum.reverse(buffer), open_meta, close_meta} | upper_buffer], stack)
   #   end
   #   ```
   #
@@ -308,8 +308,7 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
          state
        ) do
     block = Enum.reverse(reversed_buffer)
-    open_meta = Map.put(open_meta, :close_inner_location, close_meta.inner_location)
-    tag_block = {:block, :slot, tag_name, attrs, block, open_meta}
+    tag_block = {:block, :slot, tag_name, attrs, block, open_meta, close_meta}
     tokens = if state.prune_text_after_slots, do: prune_text(tokens), else: tokens
     to_tree(tokens, [tag_block | upper_buffer], stack, state)
   end
@@ -340,12 +339,10 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
          state
        ) do
     block = Enum.reverse(reversed_buffer)
-    # Preserve close tag's inner_location for preserve mode content extraction
-    open_meta = Map.put(open_meta, :close_inner_location, close_meta.inner_location)
 
     {tokens, buffer} =
       maybe_process_macro_component(
-        {:block, type, name, attrs, block, open_meta},
+        {:block, type, name, attrs, block, open_meta, close_meta},
         tokens,
         upper_buffer,
         state
@@ -518,8 +515,8 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
         {:self_close, :tag, name, attrs, meta} ->
           {:self_close, :tag, name, List.keydelete(attrs, ":type", 0), meta}
 
-        {:block, :tag, name, attrs, children, meta} ->
-          {:block, :tag, name, List.keydelete(attrs, ":type", 0), children, meta}
+        {:block, :tag, name, attrs, children, meta, close_meta} ->
+          {:block, :tag, name, List.keydelete(attrs, ":type", 0), children, meta, close_meta}
 
         # Macro components are currently only allowed on non-special tags
         {:self_close, type, _name, _attrs, meta} ->
@@ -528,7 +525,7 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
             meta
           )
 
-        {:block, type, _name, _attrs, _children, meta} ->
+        {:block, type, _name, _attrs, _children, meta, _close_meta} ->
           throw_syntax_error!(
             "macro components are only supported on HTML tags, not #{format_type(type)}",
             meta
@@ -554,6 +551,9 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
     # (see Phoenix.Component.MacroComponent) and then calling the transform
     # function on the macro component module, which can return a transformed
     # AST.
+    #
+    # The AST is limited in functionality and we convert it back to the regular
+    # node format afterwards.
     caller = state.caller
 
     if is_nil(caller) do
@@ -598,7 +598,7 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   end
 
   defp get_meta({:self_close, _type, _name, _attrs, meta}), do: meta
-  defp get_meta({:block, _type, _name, _attrs, _children, meta}), do: meta
+  defp get_meta({:block, _type, _name, _attrs, _children, meta, _close_meta}), do: meta
 
   defp validate_module!(module_string, tag_meta, state) do
     module =

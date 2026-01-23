@@ -3,6 +3,18 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
 
   alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
 
+  @doc """
+  Compiles the node tag tree into Elixir code.
+
+  Under the hood, this uses the `Phoenix.LiveView.Engine`
+  to convert template parts into static and dynamic parts
+  and perform change tracking. See the Engine documentation
+  for more details.
+
+  This function is responsible for converting the nodes into
+  text and expression parts and properly invoking the engine
+  with the correct code for features like components and slots.
+  """
   def compile(nodes, opts) do
     {engine, opts} = Keyword.pop(opts, :engine, Phoenix.LiveView.Engine)
     tag_handler = Keyword.fetch!(opts, :tag_handler)
@@ -14,12 +26,24 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
       caller: Keyword.fetch!(opts, :caller),
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler,
+      # slots is the only key that is updated when traversing nodes
       slots: []
     }
 
+    # Live components require a single, static root tag.
+    # This is because they are patched independently on the client
+    # and morphdom requires a single DOM node as an entrypoint for patching.
+    # It needs to be static, because if it is not, we cannot guarantee
+    # that it might render multiple tags at runtime.
+    #
+    # Because the parser already resolves macro components and trims
+    # leading and trailing whitespace, the root check can be a simple
+    # pattern match.
     root =
       case nodes do
-        [{:block, :tag, _name, _attrs, _children, meta}]
+        # We do not allow any special attribute (:for, :if),
+        # because these violate the static requirement.
+        [{:block, :tag, _name, _attrs, _children, meta, _close_meta}]
         when is_map_key(meta, :special) and meta.special == [] ->
           true
 
@@ -100,7 +124,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
     # EEx block structure: expr is "case @status do", blocks are [{children, clause_expr}, ...]
     # For example: imagine this template
     #
-    # ```eex
+    # ```heex
     # <%= case @status do %>
     #   <% :connecting -> %>
     #     <.status status={@status} />
@@ -163,7 +187,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
             # This handles the case where the start expression is immediately followed
             # by a middle expression, since we don't want to generate
             # case @status do __EEX__(0); :connecting -> __EEX__(1) ...
-            # (we skip adding the first placeholder)
+            # (we nened to skip adding the first placeholder)
             # and instead generate
             # case @status do :connecting -> __EEX__(0); ...
             {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line}
@@ -180,7 +204,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
           end
       end)
 
-    # Calculate column offset: column points to '<', add length of '<%' + marker + ' '
+    # Calculate column offset: column points to '<', add length of '<%' + marker
     # opt is a charlist like ~c"=" for <%= or ~c"" for <%
     expr_column = column + 2 + length(opt)
 
@@ -297,7 +321,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
   end
 
   ## Regular HTML tag with content (<div>...</div>)
-  defp handle_node({:block, :tag, name, attrs, children, meta}, substate, state) do
+  defp handle_node({:block, :tag, name, attrs, children, meta, close_meta}, substate, state) do
     attrs = postprocess_attrs(attrs, state)
     validate_phx_attrs!(attrs, meta, state)
     validate_tag_attrs!(attrs, meta, state)
@@ -305,79 +329,61 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
     with_special_attrs(attrs, meta, substate, state, fn attrs, meta, substate, state ->
       substate = handle_tag_and_attrs(name, attrs, ">", to_location(meta), substate, state)
       {_child_state, substate} = handle_node(children, substate, state)
-      substate = state.engine.handle_text(substate, [], "</#{name}>")
+      substate = state.engine.handle_text(substate, [to_location(close_meta)], "</#{name}>")
       {state, substate}
     end)
   end
 
   ## Slot with content (<:slot>...</:slot>)
-  defp handle_node({:block, :slot, slot_name, attrs, children, meta}, substate, state) do
-    slot_name_atom = String.to_atom(slot_name)
+  defp handle_node({:block, :slot, slot_name, attrs, children, meta, close_meta}, substate, state) do
+    slot_name = String.to_atom(slot_name)
     attrs = postprocess_attrs(attrs, state)
     %{line: line} = meta
 
     {special, roots, attrs, attr_info} =
-      split_component_attrs({"slot", slot_name_atom}, attrs, state)
+      split_component_attrs({"slot", slot_name}, attrs, state)
 
-    # Process children to build inner_block
-    inner_substate = state.engine.handle_begin(substate)
-    has_tags? = has_tags?(children)
-    {_inner_state, inner_substate} = handle_node(children, inner_substate, state)
-
-    # Build clauses for inner_block
-    # Use the same meta for slot close
-    tag_close_meta = meta
-
-    clauses =
+    # The parser verifies that slots are direct component children,
+    # so can ignore slots here, as they are always empty.
+    {clauses, _slots} =
       build_component_clauses(
         special[":let"],
-        slot_name_atom,
-        Map.put(meta, :has_tags?, has_tags?),
-        tag_close_meta,
-        inner_substate,
+        slot_name,
+        children,
+        meta,
+        close_meta,
+        substate,
         state
       )
 
     ast =
       quote line: line do
-        Phoenix.LiveView.TagEngine.inner_block(unquote(slot_name_atom), do: unquote(clauses))
+        Phoenix.LiveView.TagEngine.inner_block(unquote(slot_name), do: unquote(clauses))
       end
 
-    attrs = [__slot__: slot_name_atom, inner_block: ast] ++ attrs
+    attrs = [__slot__: slot_name, inner_block: ast] ++ attrs
     assigns = wrap_special_slot(special, merge_component_attrs(roots, attrs, line))
     inner = add_inner_block(attr_info, ast, meta)
 
-    state = add_slot(state, slot_name_atom, assigns, inner, meta, special)
+    state = add_slot(state, slot_name, assigns, inner, meta, special)
     {state, substate}
   end
 
   ## Local component with content (<.some_component>...</.some_component>)
-  defp handle_node({:block, :local_component, name, attrs, children, meta}, substate, state) do
+  defp handle_node(
+         {:block, :local_component, name, attrs, children, meta, close_meta},
+         substate,
+         state
+       ) do
     fun = String.to_atom(name)
     %{line: line, column: column} = meta
     attrs = postprocess_attrs(attrs, state)
     mod = actual_component_module(state.caller, fun)
     ref = {"local component", fun}
-    has_tags? = has_tags?(children)
 
     with_special_attrs(attrs, meta, substate, state, fn attrs, meta, substate, state ->
-      # Process children in a new scope
-      inner_substate = state.engine.handle_begin(substate)
-      state = init_slots(state)
-      {inner_state, inner_substate} = handle_node(children, inner_substate, state)
-
-      tag_close_meta = meta
-
-      {assigns, attr_info, slot_info, inner_state} =
-        build_component_assigns(
-          ref,
-          attrs,
-          line,
-          Map.put(meta, :has_tags?, has_tags?),
-          tag_close_meta,
-          inner_substate,
-          inner_state
-        )
+      {assigns, attr_info, slot_info} =
+        build_component_assigns(ref, attrs, children, meta, close_meta, substate, state)
 
       store_component_call({mod, fun}, attr_info, slot_info, line, state)
       call_meta = [line: line, column: column]
@@ -395,37 +401,26 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
 
       substate = maybe_anno_caller(substate, call_meta, state.file, line, state)
       substate = state.engine.handle_expr(substate, "=", ast)
-      {%{inner_state | slots: state.slots}, substate}
+      {state, substate}
     end)
   end
 
   ## Remote component with content (<MyModule.some_component>...</MyModule.some_component>)
-  defp handle_node({:block, :remote_component, name, attrs, children, meta}, substate, state) do
+  defp handle_node(
+         {:block, :remote_component, name, attrs, children, meta, close_meta},
+         substate,
+         state
+       ) do
     {mod_ast, mod_size, fun} = decompose_remote_component_tag!(name, meta, state)
     %{line: line, column: column} = meta
     attrs = postprocess_attrs(attrs, state)
     mod = expand_with_line(mod_ast, line, state.caller)
     ref = {"remote component", name}
-    has_tags? = has_tags?(children)
 
     with_special_attrs(attrs, meta, substate, state, fn attrs, meta, substate, state ->
-      # Process children in a new scope
-      inner_substate = state.engine.handle_begin(substate)
-      state = init_slots(state)
-      {inner_state, inner_substate} = handle_node(children, inner_substate, state)
-
-      tag_close_meta = meta
-
-      {assigns, attr_info, slot_info, inner_state} =
-        build_component_assigns(
-          ref,
-          attrs,
-          line,
-          Map.put(meta, :has_tags?, has_tags?),
-          tag_close_meta,
-          inner_substate,
-          inner_state
-        )
+      # Process children in a new nesting
+      {assigns, attr_info, slot_info} =
+        build_component_assigns(ref, attrs, children, meta, close_meta, substate, state)
 
       store_component_call({mod, fun}, attr_info, slot_info, line, state)
       call_meta = [line: line, column: column + mod_size]
@@ -443,7 +438,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
 
       substate = maybe_anno_caller(substate, call_meta, state.file, line, state)
       substate = state.engine.handle_expr(substate, "=", ast)
-      {%{inner_state | slots: state.slots}, substate}
+      {state, substate}
     end)
   end
 
@@ -458,6 +453,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
   end
 
   # Replace __EEX__(key) placeholders with actual compiled content
+  # This is taken from EEx.Compiler
   defp insert_quoted({:__EEX__, _, [key]}, quoted) do
     {^key, value} = List.keyfind(quoted, key, 0)
     value
@@ -567,43 +563,6 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
   defp literal_keys?([]), do: true
   defp literal_keys?(_other), do: false
 
-  ## Special expressions (:if, :for, :key)
-
-  defp handle_special_expr(tag_meta, inner_ast, state) do
-    case tag_meta do
-      %{for: _for_expr, if: if_expr} ->
-        for_expr = maybe_keyed(tag_meta)
-
-        quote do
-          for unquote(for_expr), unquote(if_expr), do: unquote(inner_ast)
-        end
-
-      %{for: _for_expr} ->
-        for_expr = maybe_keyed(tag_meta)
-
-        quote do
-          for unquote(for_expr), do: unquote(inner_ast)
-        end
-
-      %{if: if_expr} ->
-        quote do
-          if unquote(if_expr), do: unquote(inner_ast)
-        end
-
-      %{key: _} ->
-        raise_syntax_error!("cannot use :key without :for", tag_meta, state)
-    end
-  end
-
-  defp maybe_keyed(%{key: key_expr, for: for_expr}) do
-    # we already validated that the for expression has the correct shape in
-    # validate_quoted_special_attr
-    {:<-, for_meta, [lhs, rhs]} = for_expr
-    {:<-, [keyed_comprehension: true, key_expr: key_expr] ++ for_meta, [lhs, rhs]}
-  end
-
-  defp maybe_keyed(%{for: for_expr}), do: for_expr
-
   ## Component assign helpers
 
   defp build_self_close_component_assigns(type_component, attrs, line, state) do
@@ -615,21 +574,23 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
   defp build_component_assigns(
          type_component,
          attrs,
-         line,
+         children,
          tag_meta,
          tag_close_meta,
-         inner_substate,
+         substate,
          state
        ) do
+    %{line: line} = tag_meta
     {special, roots, attrs, attr_info} = split_component_attrs(type_component, attrs, state)
 
-    clauses =
+    {clauses, slots} =
       build_component_clauses(
         special[":let"],
         :inner_block,
+        children,
         tag_meta,
         tag_close_meta,
-        inner_substate,
+        substate,
         state
       )
 
@@ -646,7 +607,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
         }
       end
 
-    {slot_assigns, slot_info, state} = pop_slots(state)
+    {slot_assigns, slot_info} = slots
 
     slot_info = [
       {:inner_block, [{tag_meta, add_inner_block({false, [], []}, inner_block, tag_meta)}]}
@@ -654,7 +615,7 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
     ]
 
     attrs = attrs ++ [{:inner_block, [inner_block_assigns]} | slot_assigns]
-    {merge_component_attrs(roots, attrs, line), attr_info, slot_info, state}
+    {merge_component_attrs(roots, attrs, line), attr_info, slot_info}
   end
 
   defp split_component_attrs(type_component, attrs, state) do
@@ -790,17 +751,38 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
     end
   end
 
+  # Given the child nodes, this function builds the clause AST for a component.
+  # If a component is defined as <.my_component>, this looks like this:
+  #
+  # _ -> ast
+  #
+  # If a component is defined as as <.my_component :let={%{foo: foo, bar: bar}}, we get:
+  #
+  # %{foo: foo, bar: bar} -> ast
+  # other -> Phoenix.LiveView.TagEngine.__unmatched_let__!("%{foo: foo, bar: bar}", other)
+  #
+  # Which is later wrapped by the inner_block macro.
+  #
+  # If there are any named slots that are part of the children,
+  # those are recursively converted into clauses (slots can also use :let)
+  # and returned as {slot_assigns, slot_info}.
   defp build_component_clauses(
          let,
          name,
+         children,
          tag_meta,
          tag_close_meta,
-         inner_substate,
+         substate,
          %{caller: caller} = state
        ) do
+    inner_substate = state.engine.handle_begin(substate)
+    state = init_slots(state)
+    {inner_state, inner_substate} = handle_node(children, inner_substate, state)
+    {slot_assigns, slot_info, _state} = pop_slots(inner_state)
+
     opts =
       if annotation =
-           caller && Map.get(tag_meta, :has_tags?, false) &&
+           caller && has_tags?(children) &&
              state.tag_handler.annotate_slot(name, tag_meta, tag_close_meta, caller) do
         [meta: [template_annotation: annotation]]
       else
@@ -809,30 +791,33 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
 
     ast = state.engine.handle_end(inner_substate, opts)
 
-    case let do
-      # If we have a var, we can skip the catch-all clause
-      {{var, _, ctx} = pattern, %{line: line}} when is_atom(var) and is_atom(ctx) ->
-        quote line: line do
-          unquote(pattern) -> unquote(ast)
-        end
-
-      {pattern, %{line: line}} ->
-        quote line: line do
-          unquote(pattern) -> unquote(ast)
-        end ++
-          quote generated: true do
-            other ->
-              Phoenix.LiveView.TagEngine.__unmatched_let__!(
-                unquote(Macro.to_string(pattern)),
-                other
-              )
+    clauses =
+      case let do
+        # If we have a var, we can skip the catch-all clause
+        {{var, _, ctx} = pattern, %{line: line}} when is_atom(var) and is_atom(ctx) ->
+          quote line: line do
+            unquote(pattern) -> unquote(ast)
           end
 
-      _ ->
-        quote do
-          _ -> unquote(ast)
-        end
-    end
+        {pattern, %{line: line}} ->
+          quote line: line do
+            unquote(pattern) -> unquote(ast)
+          end ++
+            quote generated: true do
+              other ->
+                Phoenix.LiveView.TagEngine.__unmatched_let__!(
+                  unquote(Macro.to_string(pattern)),
+                  other
+                )
+            end
+
+        _ ->
+          quote do
+            _ -> unquote(ast)
+          end
+      end
+
+    {clauses, {slot_assigns, slot_info}}
   end
 
   defp store_component_call(component, attr_info, slot_info, line, %{caller: caller} = state) do
@@ -988,9 +973,115 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
     {call, [slots: Keyword.keys(slot_info)] ++ meta, args}
   end
 
+  ## Special expressions (:if, :for, :key)
+
+  # Handles :for, :if wrapping by executing the given function
+  # in a new handle_begin / handle_end block, and building the
+  # correct wrapper AST.
+  defp with_special_attrs(attrs, meta, substate, state, fun) do
+    case pop_special_attrs!(attrs, meta, state) do
+      {false, meta, attrs} ->
+        fun.(attrs, meta, substate, state)
+
+      {true, new_meta, new_attrs} ->
+        inner_substate = state.engine.handle_begin(substate)
+        {state, inner_substate} = fun.(new_attrs, new_meta, inner_substate, state)
+        inner_ast = state.engine.handle_end(inner_substate)
+
+        ast = handle_special_expr(new_meta, inner_ast, state)
+        substate = state.engine.handle_expr(substate, "=", ast)
+        {state, substate}
+    end
+  end
+
+  # Pop the given attr from attrs. Raises if the given attr is duplicated within
+  # attrs.
+  #
+  # Examples:
+  #
+  #   attrs = [{":for", {...}}, {"class", {...}}]
+  #   pop_special_attrs!(state, ":for", attrs, %{}, state)
+  #   => {%{for: parsed_ast}}, {{":for", {...}}, [{"class", {...}]}}
+  #
+  #   attrs = [{"class", {...}}]
+  #   pop_special_attrs!(state, ":for", attrs, %{}, state)
+  #   => {%{}, []}
+  defp pop_special_attrs!(attrs, tag_meta, state) do
+    Enum.reduce([for: ":for", if: ":if", key: ":key"], {false, tag_meta, attrs}, fn
+      {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
+        attrs_acc
+        |> List.keytake(string_attr, 0)
+        |> raise_if_duplicated_special_attr!(state)
+        |> case do
+          {{^string_attr, {:expr, _, _} = expr, meta}, attrs} ->
+            parsed_expr = parse_expr!(expr, state.file)
+            validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
+            {true, Map.put(meta_acc, attr, parsed_expr), attrs}
+
+          {{^string_attr, _expr, meta}, _attrs} ->
+            message = "#{string_attr} must be an expression between {...}"
+            raise_syntax_error!(message, meta, state)
+
+          nil ->
+            {special_acc, meta_acc, attrs_acc}
+        end
+    end)
+  end
+
+  defp raise_if_duplicated_special_attr!({{attr, _expr, _meta}, attrs} = result, state) do
+    case List.keytake(attrs, attr, 0) do
+      {{attr, _expr, meta}, _attrs} ->
+        message =
+          "cannot define multiple #{inspect(attr)} attributes. Another #{inspect(attr)} has already been defined at line #{meta.line}"
+
+        raise_syntax_error!(message, meta, state)
+
+      nil ->
+        result
+    end
+  end
+
+  defp raise_if_duplicated_special_attr!(nil, _state), do: nil
+
+  defp handle_special_expr(tag_meta, inner_ast, state) do
+    case tag_meta do
+      %{for: _for_expr, if: if_expr} ->
+        for_expr = maybe_keyed(tag_meta)
+
+        quote do
+          for unquote(for_expr), unquote(if_expr), do: unquote(inner_ast)
+        end
+
+      %{for: _for_expr} ->
+        for_expr = maybe_keyed(tag_meta)
+
+        quote do
+          for unquote(for_expr), do: unquote(inner_ast)
+        end
+
+      %{if: if_expr} ->
+        quote do
+          if unquote(if_expr), do: unquote(inner_ast)
+        end
+
+      %{key: _} ->
+        raise_syntax_error!("cannot use :key without :for", tag_meta, state)
+    end
+  end
+
+  defp maybe_keyed(%{key: key_expr, for: for_expr}) do
+    # we already validated that the for expression has the correct shape in
+    # validate_quoted_special_attr
+    {:<-, for_meta, [lhs, rhs]} = for_expr
+    {:<-, [keyed_comprehension: true, key_expr: key_expr] ++ for_meta, [lhs, rhs]}
+  end
+
+  defp maybe_keyed(%{for: for_expr}), do: for_expr
+
   ## Generic helpers
 
   defp to_location(%{line: line, column: column}), do: [line: line, column: column]
+  defp to_location(_), do: []
 
   defp actual_component_module(env, fun) do
     case Macro.Env.lookup_import(env, {fun, 1}) do
@@ -1135,74 +1226,6 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
     end
   end
 
-  # Handles :for, :if wrapping by executing the given function
-  # in a new handle_begin / handle_end block, and building the
-  # correct wrapper AST.
-  defp with_special_attrs(attrs, meta, substate, state, fun) do
-    case pop_special_attrs!(attrs, meta, state) do
-      {false, meta, attrs} ->
-        fun.(attrs, meta, substate, state)
-
-      {true, new_meta, new_attrs} ->
-        inner_substate = state.engine.handle_begin(substate)
-        {state, inner_substate} = fun.(new_attrs, new_meta, inner_substate, state)
-        inner_ast = state.engine.handle_end(inner_substate)
-
-        ast = handle_special_expr(new_meta, inner_ast, state)
-        substate = state.engine.handle_expr(substate, "=", ast)
-        {state, substate}
-    end
-  end
-
-  # Pop the given attr from attrs. Raises if the given attr is duplicated within
-  # attrs.
-  #
-  # Examples:
-  #
-  #   attrs = [{":for", {...}}, {"class", {...}}]
-  #   pop_special_attrs!(state, ":for", attrs, %{}, state)
-  #   => {%{for: parsed_ast}}, {{":for", {...}}, [{"class", {...}]}}
-  #
-  #   attrs = [{"class", {...}}]
-  #   pop_special_attrs!(state, ":for", attrs, %{}, state)
-  #   => {%{}, []}
-  defp pop_special_attrs!(attrs, tag_meta, state) do
-    Enum.reduce([for: ":for", if: ":if", key: ":key"], {false, tag_meta, attrs}, fn
-      {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
-        attrs_acc
-        |> List.keytake(string_attr, 0)
-        |> raise_if_duplicated_special_attr!(state)
-        |> case do
-          {{^string_attr, {:expr, _, _} = expr, meta}, attrs} ->
-            parsed_expr = parse_expr!(expr, state.file)
-            validate_quoted_special_attr!(string_attr, parsed_expr, meta, state)
-            {true, Map.put(meta_acc, attr, parsed_expr), attrs}
-
-          {{^string_attr, _expr, meta}, _attrs} ->
-            message = "#{string_attr} must be an expression between {...}"
-            raise_syntax_error!(message, meta, state)
-
-          nil ->
-            {special_acc, meta_acc, attrs_acc}
-        end
-    end)
-  end
-
-  defp raise_if_duplicated_special_attr!({{attr, _expr, _meta}, attrs} = result, state) do
-    case List.keytake(attrs, attr, 0) do
-      {{attr, _expr, meta}, _attrs} ->
-        message =
-          "cannot define multiple #{inspect(attr)} attributes. Another #{inspect(attr)} has already been defined at line #{meta.line}"
-
-        raise_syntax_error!(message, meta, state)
-
-      nil ->
-        result
-    end
-  end
-
-  defp raise_if_duplicated_special_attr!(nil, _state), do: nil
-
   defp expand_with_line(ast, line, env) do
     Macro.expand(ast, %{env | line: line})
   end
@@ -1239,9 +1262,9 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
 
   # Skip slots
   defp has_tags?([{:self_close, :slot, _, _, _} | rest]), do: has_tags?(rest)
-  defp has_tags?([{:block, :slot, _, _, _, _} | rest]), do: has_tags?(rest)
+  defp has_tags?([{:block, :slot, _, _, _, _, _} | rest]), do: has_tags?(rest)
 
   # Tags and components count as having tags
   defp has_tags?([{:self_close, _type, _, _, _} | _]), do: true
-  defp has_tags?([{:block, _type, _, _, _, _} | _]), do: true
+  defp has_tags?([{:block, _type, _, _, _, _, _} | _]), do: true
 end
