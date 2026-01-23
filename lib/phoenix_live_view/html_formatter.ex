@@ -312,8 +312,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
           process_buffer: &process_buffer/1
         )
         |> case do
-          {:ok, nodes} ->
-            nodes
+          {:ok, result} ->
+            result.nodes
             |> transform_tree(source, newlines)
             |> HTMLAlgebra.build(opts)
             |> Inspect.Algebra.format(line_length)
