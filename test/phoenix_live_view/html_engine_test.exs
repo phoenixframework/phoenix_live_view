@@ -2388,4 +2388,315 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert meta[:column] == 10
     end
   end
+
+  describe "root tag attributes" do
+    alias Phoenix.LiveViewTest.Support.RootTagAttr
+    alias Phoenix.LiveViewTest.TreeDOM
+    import Phoenix.LiveViewTest.TreeDOM, only: [sigil_X: 2]
+
+    test "single self-closing tag" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.single_self_close/>")
+
+      expected = ~X"<div phx-r></div>"
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "single tag with body" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.single_with_body/>")
+
+      expected = ~X"<div phx-r>Test</div>"
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "multiple self-closing tags" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.multiple_self_close/>")
+
+      expected = ~X"""
+      <div phx-r></div>
+      <div phx-r></div>
+      <div phx-r></div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "multiple tags with bodies" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.multiple_with_bodies/>")
+
+      expected = ~X"""
+      <div phx-r>Test1</div>
+      <div phx-r>Test2</div>
+      <div phx-r>Test3</div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags of nested tags" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.nested_tags/>")
+
+      expected = ~X"""
+      <div phx-r>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      <div phx-r>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags of component inner_blocks" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.component_inner_blocks/>")
+
+      expected =
+        ~X"""
+        <div phx-r>
+          <div>
+            <section phx-r>
+              <div phx-r>
+                <div>
+                  Inner Block 1
+                </div>
+              </div>
+            </section>
+            <section phx-r>
+              <div phx-r>
+                <div>
+                  Inner Block 2
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags of component named slots" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.component_named_slots/>")
+
+      expected =
+        ~X"""
+        <div phx-r>
+          <div>
+            <section phx-r>
+              <aside>
+                <div phx-r>
+                  <div>
+                    Inner Block 1
+                  </div>
+                </div>
+              </aside>
+            </section>
+            <section phx-r>
+              <aside>
+                <div phx-r>
+                  <div>
+                    Inner Block 2
+                  </div>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags correctly for complex nestings of tags, components, and slots" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.nested_tags_components_slots/>")
+
+      expected =
+        ~X"""
+        <div phx-r>
+          <div>
+            <section phx-r>
+                <div phx-r>
+                  <section phx-r>
+                    <div phx-r>
+                      <p phx-r>Simple</p>
+                    </div>
+                    <aside>
+                      <div phx-r>
+                        <p phx-r>Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              <aside>
+                <div phx-r>
+                  <section phx-r>
+                    <div phx-r>
+                      <p phx-r>Simple</p>
+                    </div>
+                    <aside>
+                      <div phx-r>
+                        <p phx-r>Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "within nestings" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.within_nestings bool={true}/>")
+
+      expected = ~X"""
+        <div phx-r>
+          <div>
+              <section phx-r>
+                <p phx-r>
+                  <span>True</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+
+      compiled = compile("<RootTagAttr.within_nestings bool={false}/>")
+
+      expected = ~X"""
+        <div phx-r>
+          <div>
+              <section phx-r>
+                <p phx-r>
+                  <span>False</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "extra attributes with values provided by macro component directives" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.macro_component_attrs_with_values/>")
+
+      expected =
+        ~X"""
+        <div phx-r phx-sample-one="test" phx-sample-two="test">
+          <div>
+            <section phx-r>
+              <div phx-r phx-sample-two="test" phx-sample-one="test">Inner Block</div>
+              <aside>
+                <div phx-r phx-sample-two="test" phx-sample-one="test">
+                  Named Slot
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "extra attributes without values provided by macro component directives" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.macro_component_attrs_without_values/>")
+
+      expected =
+        ~X"""
+        <div phx-r phx-sample-two phx-sample-one>
+          <div>
+            <section phx-r>
+              <div phx-r phx-sample-two phx-sample-one>Inner Block</div>
+              <aside>
+                <div phx-r phx-sample-two phx-sample-one>
+                  Named Slot
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "extra attributes with values provided by macro component directives within nestings" do
+      assigns = %{}
+
+      compiled =
+        compile("<RootTagAttr.macro_component_attrs_with_values_within_nestings bool={true}/>")
+
+      expected = ~X"""
+        <div phx-r phx-sample-two="test" phx-sample-one="test">
+          <div>
+              <section phx-r>
+                <p phx-r phx-sample-two="test" phx-sample-one="test">
+                  <span>True</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+
+      compiled =
+        compile("<RootTagAttr.macro_component_attrs_with_values_within_nestings bool={false}/>")
+
+      expected = ~X"""
+        <div phx-r phx-sample-two="test" phx-sample-one="test">
+          <div>
+              <section phx-r>
+                <p phx-r phx-sample-two="test" phx-sample-one="test">
+                  <span>False</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+  end
 end
