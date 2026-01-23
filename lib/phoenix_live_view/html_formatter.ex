@@ -269,11 +269,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   require Logger
 
   alias Phoenix.LiveView.HTMLAlgebra
-  alias Phoenix.LiveView.Tokenizer
-  alias Phoenix.LiveView.Tokenizer.ParseError
-
-  defguard is_tag_open(tag_type)
-           when tag_type in [:slot, :remote_component, :local_component, :tag]
+  alias Phoenix.LiveView.TagEngine.Parser
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98
@@ -307,11 +304,17 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
       formatted =
         source
-        |> tokenize()
-        |> to_tree([], [], %{source: {source, newlines}})
+        |> Parser.parse(
+          tag_handler: Phoenix.LiveView.HTMLEngine,
+          file: "nofile",
+          skip_macro_components: true,
+          prune_text_after_slots: false,
+          process_buffer: &process_buffer/1
+        )
         |> case do
           {:ok, nodes} ->
             nodes
+            |> transform_tree(source, newlines)
             |> HTMLAlgebra.build(opts)
             |> Inspect.Algebra.format(line_length)
 
@@ -331,290 +334,52 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
-  # Tokenize contents using EEx.tokenize and Phoenix.Live.Tokenizer respectively.
-  #
-  # The following content:
-  #
-  # "<section>\n  <p><%= user.name ></p>\n  <%= if true do %> <p>this</p><% else %><p>that</p><% end %>\n</section>\n"
-  #
-  # Will be tokenized as:
-  #
-  # [
-  #   {:tag, "section", [], %{column: 1, line: 1}},
-  #   {:text, "\n  ", %{column_end: 3, line_end: 2}},
-  #   {:tag, "p", [], %{column: 3, line: 2}},
-  #   {:eex_tag_render, "<%= user.name ></p>\n  <%= if true do %>", %{block?: true, column: 6, line: 1}},
-  #   {:text, " ", %{column_end: 2, line_end: 1}},
-  #   {:tag, "p", [], %{column: 2, line: 1}},
-  #   {:text, "this", %{column_end: 12, line_end: 1}},
-  #   {::close, :tag, "p", %{column: 12, line: 1}},
-  #   {:eex_tag, "<% else %>", %{block?: false, column: 35, line: 2}},
-  #   {:tag, "p", [], %{column: 1, line: 1}},
-  #   {:text, "that", %{column_end: 14, line_end: 1}},
-  #   {::close, :tag, "p", %{column: 14, line: 1}},
-  #   {:eex_tag, "<% end %>", %{block?: false, column: 62, line: 2}},
-  #   {:text, "\n", %{column_end: 1, line_end: 2}},
-  #   {::close, :tag, "section", %{column: 1, line: 2}}
-  # ]
-  #
-  @eex_expr [:start_expr, :expr, :end_expr, :middle_expr]
+  # Buffer processing callback for Parser - handles preserve mode propagation and text metadata
+  defp process_buffer([{:text, text, meta} | rest]) do
+    rest = may_set_preserve_on_block(rest, text)
 
-  defp tokenize(source) do
-    {:ok, eex_nodes} = EEx.tokenize(source)
-    {tokens, cont} = Enum.reduce(eex_nodes, {[], {:text, :enabled}}, &do_tokenize(&1, &2, source))
-    Tokenizer.finalize(tokens, "nofile", cont, source)
+    meta =
+      meta
+      |> Map.put_new(:newlines_before_text, count_newlines_before_text(text))
+      |> Map.put_new(:newlines_after_text, count_newlines_after_text(text))
+
+    [{:text, text, meta} | rest]
   end
 
-  defp do_tokenize({:text, text, meta}, {tokens, cont}, source) do
-    text = List.to_string(text)
-    meta = [line: meta.line, column: meta.column]
-    state = Tokenizer.init(0, "nofile", source, Phoenix.LiveView.HTMLEngine)
-    Tokenizer.tokenize(text, meta, tokens, cont, state)
+  defp process_buffer([{:body_expr, _, _} = node | rest]) do
+    [node | set_preserve_on_block(rest)]
   end
 
-  defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents) do
-    {[{:eex_comment, List.to_string(text), meta} | tokens], cont}
+  defp process_buffer([{:eex, _, _} = node | rest]) do
+    [node | set_preserve_on_block(rest)]
   end
 
-  defp do_tokenize({type, opt, expr, %{column: column, line: line}}, {tokens, cont}, _contents)
-       when type in @eex_expr do
-    meta = %{opt: opt, line: line, column: column}
-    {[{:eex, type, expr |> List.to_string() |> String.trim(), meta} | tokens], cont}
-  end
+  defp process_buffer(buffer), do: buffer
 
-  defp do_tokenize(_node, acc, _contents) do
-    acc
-  end
-
-  # Build an HTML Tree according to the tokens from the EEx and HTML tokenizers.
-  #
-  # This is a recursive algorithm that will build an HTML tree from a flat list of
-  # tokens. For instance, given this input:
-  #
-  # [
-  #   {:tag, "div", [], %{column: 1, line: 1}},
-  #   {:tag, "h1", [], %{column: 6, line: 1}},
-  #   {:text, "Hello", %{column_end: 15, line_end: 1}},
-  #   {::close, :tag, "h1", %{column: 15, line: 1}},
-  #   {::close, :tag, "div", %{column: 20, line: 1}},
-  #   {:tag, "div", [], %{column: 1, line: 2}},
-  #   {:tag, "h1", [], %{column: 6, line: 2}},
-  #   {:text, "World", %{column_end: 15, line_end: 2}},
-  #   {::close, :tag, "h1", %{column: 15, line: 2}},
-  #   {::close, :tag, "div", %{column: 20, line: 2}}
-  # ]
-  #
-  # The output will be:
-  #
-  # [
-  #   {:tag_block, "div", [], [{:tag_block, "h1", [], [text: "Hello"]}]},
-  #   {:tag_block, "div", [], [{:tag_block, "h1", [], [text: "World"]}]}
-  # ]
-  #
-  # Note that a `tag_block` has been created so that its fourth argument is a list of
-  # its nested content.
-  #
-  # ### How does this algorithm work?
-  #
-  # As this is a recursive algorithm, it starts with an empty buffer and an empty
-  # stack. The buffer will be accumulated until it finds a `{:tag, ..., ...}`.
-  #
-  # As soon as the `tag_open` arrives, a new buffer will be started and we move
-  # the previous buffer to the stack along with the `tag_open`:
-  #
-  #   ```
-  #   defp build([{:tag, name, attrs, _meta} | tokens], buffer, stack) do
-  #     build(tokens, [], [{name, attrs, buffer} | stack])
-  #   end
-  #   ```
-  #
-  # Then, we start to populate the buffer again until a `{::close, :tag, ...} arrives:
-  #
-  #   ```
-  #   defp build([{::close, :tag, name, _meta} | tokens], buffer, [{name, attrs, upper_buffer} | stack]) do
-  #     build(tokens, [{:tag_block, name, attrs, Enum.reverse(buffer)} | upper_buffer], stack)
-  #   end
-  #   ```
-  #
-  # In the snippet above, we build the `tag_block` with the accumulated buffer,
-  # putting the buffer accumulated before the tag open (upper_buffer) on top.
-  #
-  # We apply the same logic for `eex` expressions but, instead of `tag_open` and
-  # `tag_close`, eex expressions use `start_expr`, `middle_expr` and `end_expr`.
-  # The only real difference is that also need to handle `middle_buffer`.
-  #
-  # So given this eex input:
-  #
-  # ```elixir
-  # [
-  #   {:eex, :start_expr, "if true do", %{column: 0, line: 0, opt: '='}},
-  #   {:text, "\n  ", %{column_end: 3, line_end: 2}},
-  #   {:eex, :expr, "\"Hello\"", %{column: 3, line: 1, opt: '='}},
-  #   {:text, "\n", %{column_end: 1, line_end: 2}},
-  #   {:eex, :middle_expr, "else", %{column: 1, line: 2, opt: []}},
-  #   {:text, "\n  ", %{column_end: 3, line_end: 2}},
-  #   {:eex, :expr, "\"World\"", %{column: 3, line: 3, opt: '='}},
-  #   {:text, "\n", %{column_end: 1, line_end: 2}},
-  #   {:eex, :end_expr, "end", %{column: 1, line: 4, opt: []}}
-  # ]
-  # ```
-  #
-  # The output will be:
-  #
-  # ```elixir
-  # [
-  #   {:eex_block, "if true do",
-  #    [
-  #      {[{:eex, "\"Hello\"", %{column: 3, line: 1, opt: '='}}], "else"},
-  #      {[{:eex, "\"World\"", %{column: 3, line: 3, opt: '='}}], "end"}
-  #    ]}
-  # ]
-  # ```
-  defp to_tree([], buffer, [], _opts) do
-    {:ok, Enum.reverse(buffer)}
-  end
-
-  defp to_tree([], _buffer, [{name, _, %{line: line, column: column}, _} | _], _opts) do
-    message = "end of template reached without closing tag for <#{name}>"
-    {:error, line, column, message}
-  end
-
-  defp to_tree([{:text, text, %{context: [:comment_start]}} | tokens], buffer, stack, opts) do
-    to_tree(tokens, [], [{:comment, text, buffer} | stack], opts)
-  end
-
-  defp to_tree(
-         [{:text, text, %{context: [:comment_end | _rest]}} | tokens],
-         buffer,
-         [{:comment, start_text, upper_buffer} | stack],
-         opts
+  # In case the closing tag is immediately followed by non-whitespace text,
+  # we want to set mode as preserve.
+  defp may_set_preserve_on_block(
+         [{:block, type, name, attrs, block, meta, close_meta} | rest],
+         text
        ) do
-    meta = %{
-      newlines_before_text: count_newlines_before_text(text),
-      newlines_after_text: count_newlines_after_text(text)
-    }
-
-    buffer = Enum.reverse([{:text, String.trim_trailing(text), meta} | buffer])
-    text = {:text, String.trim_leading(start_text), %{}}
-    to_tree(tokens, [{:html_comment, [text | buffer]} | upper_buffer], stack, opts)
-  end
-
-  defp to_tree(
-         [{:text, text, %{context: [:comment_start, :comment_end]}} | tokens],
-         buffer,
-         stack,
-         opts
-       ) do
-    meta = %{
-      newlines_before_text: count_newlines_before_text(text),
-      newlines_after_text: count_newlines_after_text(text)
-    }
-
-    to_tree(tokens, [{:html_comment, [{:text, String.trim(text), meta}]} | buffer], stack, opts)
-  end
-
-  defp to_tree([{:text, text, _meta} | tokens], buffer, stack, opts) do
-    buffer = may_set_preserve_on_block(buffer, text)
-
-    meta = %{
-      newlines_before_text: count_newlines_before_text(text),
-      newlines_after_text: count_newlines_after_text(text)
-    }
-
-    to_tree(tokens, [{:text, text, meta} | buffer], stack, opts)
-  end
-
-  defp to_tree([{:body_expr, value, meta} | tokens], buffer, stack, opts) do
-    buffer = set_preserve_on_block(buffer)
-    to_tree(tokens, [{:body_expr, value, meta} | buffer], stack, opts)
-  end
-
-  defp to_tree([{type, _name, attrs, %{closing: _} = meta} | tokens], buffer, stack, opts)
-       when is_tag_open(type) do
-    to_tree(tokens, [{:tag_self_close, meta.tag_name, attrs} | buffer], stack, opts)
-  end
-
-  defp to_tree([{type, _name, attrs, meta} | tokens], buffer, stack, opts)
-       when is_tag_open(type) do
-    to_tree(tokens, [], [{meta.tag_name, attrs, meta, buffer} | stack], opts)
-  end
-
-  defp to_tree(
-         [{:close, _type, _name, close_meta} | tokens],
-         reversed_buffer,
-         [{tag_name, attrs, open_meta, upper_buffer} | stack],
-         opts
-       ) do
-    {mode, block} =
-      if tag_name in ["pre", "textarea"] or contains_special_attrs?(attrs) do
-        content =
-          content_from_source(opts.source, open_meta.inner_location, close_meta.inner_location)
-
-        {:preserve, [{:text, content, %{newlines_before_text: 0, newlines_after_text: 0}}]}
+    mode =
+      if String.trim_leading(text) != "" and :binary.first(text) not in ~c"\s\t\n\r" do
+        :preserve
       else
-        {:normal, Enum.reverse(reversed_buffer)}
+        Map.get(meta, :mode, :normal)
       end
 
-    tag_block = {:tag_block, tag_name, attrs, block, %{mode: mode}}
-    to_tree(tokens, [tag_block | upper_buffer], stack, opts)
+    [{:block, type, name, attrs, block, Map.put(meta, :mode, mode), close_meta} | rest]
   end
 
-  # handle eex
+  defp may_set_preserve_on_block(buffer, _text), do: buffer
 
-  defp to_tree([{:eex_comment, text, _meta} | tokens], buffer, stack, opts) do
-    to_tree(tokens, [{:eex_comment, text} | buffer], stack, opts)
+  # Set preserve on block when it is immediately followed by interpolation.
+  defp set_preserve_on_block([{:block, type, name, attrs, block, meta, close_meta} | rest]) do
+    [{:block, type, name, attrs, block, Map.put(meta, :mode, :preserve), close_meta} | rest]
   end
 
-  defp to_tree([{:eex, :start_expr, expr, meta} | tokens], buffer, stack, opts) do
-    to_tree(tokens, [], [{:eex_block, expr, meta, buffer} | stack], opts)
-  end
-
-  defp to_tree(
-         [{:eex, :middle_expr, middle_expr, _meta} | tokens],
-         buffer,
-         [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
-         opts
-       ) do
-    middle_buffer = [{Enum.reverse(buffer), middle_expr} | middle_buffer]
-    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], opts)
-  end
-
-  defp to_tree(
-         [{:eex, :middle_expr, middle_expr, _meta} | tokens],
-         buffer,
-         [{:eex_block, expr, meta, upper_buffer} | stack],
-         opts
-       ) do
-    middle_buffer = [{Enum.reverse(buffer), middle_expr}]
-    to_tree(tokens, [], [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack], opts)
-  end
-
-  defp to_tree(
-         [{:eex, :end_expr, end_expr, _meta} | tokens],
-         buffer,
-         [{:eex_block, expr, meta, upper_buffer, middle_buffer} | stack],
-         opts
-       ) do
-    block = Enum.reverse([{Enum.reverse(buffer), end_expr} | middle_buffer])
-    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, opts)
-  end
-
-  defp to_tree(
-         [{:eex, :end_expr, end_expr, _meta} | tokens],
-         buffer,
-         [{:eex_block, expr, meta, upper_buffer} | stack],
-         opts
-       ) do
-    block = [{Enum.reverse(buffer), end_expr}]
-    to_tree(tokens, [{:eex_block, expr, block, meta} | upper_buffer], stack, opts)
-  end
-
-  defp to_tree([{:eex, _type, expr, meta} | tokens], buffer, stack, opts) do
-    buffer = set_preserve_on_block(buffer)
-    to_tree(tokens, [{:eex, expr, meta} | buffer], stack, opts)
-  end
-
-  # -- HELPERS
+  defp set_preserve_on_block(buffer), do: buffer
 
   defp count_newlines_before_text(binary),
     do: count_newlines_until_text(binary, 0, 0, 1)
@@ -634,27 +399,116 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
-  # In case the closing tag is immediatelly followed by non whitespace text,
-  # we want to set mode as preserve.
-  defp may_set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list], text) do
-    mode =
-      if String.trim_leading(text) != "" and :binary.first(text) not in ~c"\s\t\n\r" do
-        :preserve
+  # Tree transformation - augments Parser output with formatter metadata
+  defp transform_tree(nodes, source, newlines) do
+    state = %{source: {source, newlines}}
+    augment_nodes(nodes, state)
+  end
+
+  # Augment nodes with formatter-specific metadata
+  defp augment_nodes(nodes, state) when is_list(nodes) do
+    nodes
+    |> reduce_html_comments([])
+    |> Enum.map(&augment_node(&1, state))
+  end
+
+  # Group text nodes with :comment_start/:comment_end context into {:html_comment, block}
+  defp reduce_html_comments([], acc), do: Enum.reverse(acc)
+
+  # Single node that is both comment start and end
+  defp reduce_html_comments(
+         [{:text, text, %{context: [:comment_start, :comment_end]}} | rest],
+         acc
+       ) do
+    meta = %{
+      newlines_before_text: count_newlines_before_text(text),
+      newlines_after_text: count_newlines_after_text(text)
+    }
+
+    comment = {:html_comment, [{:text, String.trim(text), meta}]}
+    reduce_html_comments(rest, [comment | acc])
+  end
+
+  # Comment start - begin accumulating comment content
+  defp reduce_html_comments(
+         [{:text, text, %{context: [:comment_start]}} | rest],
+         acc
+       ) do
+    collect_comment(rest, [{:text, String.trim_leading(text), %{}}], acc)
+  end
+
+  # Regular node - pass through
+  defp reduce_html_comments([node | rest], acc) do
+    reduce_html_comments(rest, [node | acc])
+  end
+
+  # Collect comment content until we hit comment_end
+  defp collect_comment(
+         [{:text, text, %{context: [:comment_end | _rest]}} | rest],
+         comment_buffer,
+         acc
+       ) do
+    meta = %{
+      newlines_before_text: count_newlines_before_text(text),
+      newlines_after_text: count_newlines_after_text(text)
+    }
+
+    end_text = {:text, String.trim_trailing(text), meta}
+    block = Enum.reverse([end_text | comment_buffer])
+    comment = {:html_comment, block}
+    reduce_html_comments(rest, [comment | acc])
+  end
+
+  defp collect_comment([node | rest], comment_buffer, acc) do
+    collect_comment(rest, [node | comment_buffer], acc)
+  end
+
+  # Handle block tags - add mode and recursively augment children
+  defp augment_node({:block, type, name, attrs, children, meta, close_meta}, state) do
+    tag_name = meta.tag_name
+    mode = determine_mode(tag_name, attrs, meta)
+
+    {children, meta} =
+      if mode == :preserve do
+        content =
+          content_from_source(state.source, meta.inner_location, close_meta.inner_location)
+
+        {[{:text, content, %{newlines_before_text: 0, newlines_after_text: 0}}],
+         Map.put(meta, :mode, :preserve)}
       else
-        meta.mode
+        {augment_nodes(children, state), Map.put(meta, :mode, :normal)}
       end
 
-    [{:tag_block, name, attrs, block, %{meta | mode: mode}} | list]
+    {:block, type, name, attrs, children, meta, close_meta}
   end
 
-  defp may_set_preserve_on_block(buffer, _text), do: buffer
+  # Recursively augment eex_block children
+  defp augment_node({:eex_block, expr, blocks, meta}, state) do
+    blocks =
+      Enum.map(blocks, fn {children, clause, clause_meta} ->
+        {augment_nodes(children, state), clause, clause_meta}
+      end)
 
-  # Set preserve on block when it is immediately followed by interpolation.
-  defp set_preserve_on_block([{:tag_block, name, attrs, block, meta} | list]) do
-    [{:tag_block, name, attrs, block, %{meta | mode: :preserve}} | list]
+    {:eex_block, expr, blocks, meta}
   end
 
-  defp set_preserve_on_block(buffer), do: buffer
+  # html_comment - recursively augment block content
+  defp augment_node({:html_comment, block}, state) do
+    {:html_comment, augment_nodes(block, state)}
+  end
+
+  # Pass through other node types
+  defp augment_node(node, _state), do: node
+
+  # Determine mode based on tag name, attributes, and existing meta
+  defp determine_mode(tag_name, attrs, meta) do
+    cond do
+      Map.get(meta, :mode) == :preserve -> :preserve
+      tag_name in ["pre", "textarea"] -> :preserve
+      contains_special_attrs?(attrs) -> :preserve
+      true -> :normal
+    end
+  end
 
   defp contains_special_attrs?(attrs) do
     Enum.any?(attrs, fn
@@ -665,6 +519,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end)
   end
 
+  # Extract content from source between two locations
   defp content_from_source(
          {source, newlines},
          {line_start, column_start},

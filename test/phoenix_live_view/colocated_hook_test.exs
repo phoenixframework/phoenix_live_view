@@ -63,7 +63,7 @@ defmodule Phoenix.LiveView.ColocatedHookTest do
   end
 
   test "raises for invalid name" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise Phoenix.LiveView.TagEngine.Tokenizer.ParseError,
                  ~r/the name attribute of a colocated hook must be a compile-time string\. Got: @foo/,
                  fn ->
                    defmodule TestComponentInvalidName do

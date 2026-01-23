@@ -151,90 +151,123 @@ defmodule Phoenix.Component.MacroComponent do
   end
 
   @doc false
-  def build_ast([{:tag, name, attrs, tag_meta} | rest], env) do
-    if closing = tag_meta[:closing] do
-      # we assert here because we don't expect any other values
-      true = closing in [:self, :void]
+  def build_ast(node, env) when is_tuple(node) do
+    case node do
+      {:self_close, :tag, name, attrs, meta} ->
+        closing_meta = Map.take(meta, [:closing])
+        {:ok, {name, attrs_to_ast(attrs, env), [], closing_meta}}
+
+      {:block, :tag, name, attrs, children, _meta, _close_meta} ->
+        children_ast = build_ast(children, env)
+        {:ok, {name, attrs_to_ast(attrs, env), children_ast, %{}}}
     end
-
-    meta = Map.take(tag_meta, [:closing])
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), meta}], env)
+  catch
+    {:ast_error, message, error_meta} ->
+      {:error, message, error_meta}
   end
 
-  # recursive case: build_ast(tokens, acc, stack)
+  def build_ast(children, env) when is_list(children) do
+    Enum.map(children, fn
+      {:text, text, _meta} ->
+        text
 
-  # closing for final stack element -> done!
-  defp build_ast([{:close, :tag, _, _} | rest], acc, [{tag_name, attrs, meta}], _env) do
-    {:ok, {tag_name, attrs, Enum.reverse(acc), meta}, rest}
+      {:self_close, :tag, name, attrs, meta} ->
+        closing_meta = Map.take(meta, [:closing])
+        {name, attrs_to_ast(attrs, env), [], closing_meta}
+
+      {:block, :tag, name, attrs, nested_children, _meta, _close_meta} ->
+        {name, attrs_to_ast(attrs, env), build_ast(nested_children, env), %{}}
+
+      {:self_close, type, _name, _attrs, meta}
+      when type in [:local_component, :remote_component] ->
+        throw({:ast_error, "function components cannot be nested inside a macro component", meta})
+
+      {:block, type, _name, _attrs, _children, meta, _close_meta}
+      when type in [:local_component, :remote_component] ->
+        throw({:ast_error, "function components cannot be nested inside a macro component", meta})
+
+      {:self_close, :slot, _name, _attrs, meta} ->
+        throw({:ast_error, "slots cannot be nested inside a macro component", meta})
+
+      {:block, :slot, _name, _attrs, _children, meta, _close_meta} ->
+        throw({:ast_error, "slots cannot be nested inside a macro component", meta})
+
+      {:body_expr, _expr, meta} ->
+        throw({:ast_error, "interpolation is not currently supported in macro components", meta})
+
+      {:eex, _expr, meta} ->
+        throw({:ast_error, "EEx is not currently supported in macro components", meta})
+
+      {:eex_block, _expr, _blocks, meta} ->
+        throw({:ast_error, "EEx is not currently supported in macro components", meta})
+    end)
   end
 
-  # tag open (self closing or void)
-  defp build_ast([{:tag, name, attrs, %{closing: type}} | rest], acc, stack, env)
-       when type in [:self, :void] do
-    acc = [{name, token_attrs_to_ast(attrs, env), [], %{closing: type}} | acc]
-    build_ast(rest, acc, stack, env)
-  end
-
-  # tag open
-  defp build_ast([{:tag, name, attrs, _tag_meta} | rest], acc, stack, env) do
-    build_ast(rest, [], [{name, token_attrs_to_ast(attrs, env), %{}, acc} | stack], env)
-  end
-
-  # tag close
-  defp build_ast(
-         [{:close, :tag, name, _tag_meta} | tokens],
-         acc,
-         [{name, attrs, meta, prev_acc} | stack],
-         env
-       ) do
-    build_ast(tokens, [{name, attrs, Enum.reverse(acc), meta} | prev_acc], stack, env)
-  end
-
-  # text
-  defp build_ast([{:text, text, _meta} | rest], acc, stack, env) do
-    build_ast(rest, [text | acc], stack, env)
-  end
-
-  # unsupported token
-  defp build_ast([{type, _name, _attrs, meta} | _tokens], _acc, _stack, _env)
-       when type in [:local_component, :remote_component] do
-    {:error, "function components cannot be nested inside a macro component", meta}
-  end
-
-  defp build_ast([{:expr, _, _} | _], _acc, _stack, _env) do
-    # we raise here because we don't have a meta map (line + column) available
-    raise ArgumentError, "EEx is not currently supported in macro components"
-  end
-
-  defp build_ast([{:body_expr, _, meta} | _], _acc, _stack, _env) do
-    {:error, "interpolation is not currently supported in macro components", meta}
-  end
-
-  defp token_attrs_to_ast(attrs, env) do
-    Enum.map(attrs, fn {name, value, _meta} ->
+  defp attrs_to_ast(attrs, env) do
+    Enum.map(attrs, fn
       # for now, we don't support root expressions (<div {@foo}>)
-      if name == :root do
+      {:root, value, attr_meta} ->
         format_attr = fn
           {:string, binary, _meta} -> binary
           {:expr, code, _meta} -> code
           nil -> "nil"
         end
 
-        raise ArgumentError,
-              "dynamic attributes are not supported in macro components, got: #{format_attr.(value)}"
-      end
+        throw(
+          {:ast_error,
+           "dynamic attributes are not supported in macro components, got: #{format_attr.(value)}",
+           attr_meta}
+        )
 
-      case value do
-        {:string, binary, _meta} ->
-          {name, binary}
+      {name, {:string, binary, _meta}, _attr_meta} ->
+        {name, binary}
 
-        {:expr, code, meta} ->
-          ast = Code.string_to_quoted!(code, line: meta.line, column: meta.column, file: env.file)
-          {name, ast}
+      {name, {:expr, code, expr_meta}, _attr_meta} ->
+        ast =
+          Code.string_to_quoted!(code,
+            line: expr_meta.line,
+            column: expr_meta.column,
+            file: env.file
+          )
 
-        nil ->
-          {name, nil}
-      end
+        {name, ast}
+
+      {name, nil, _attr_meta} ->
+        {name, nil}
+    end)
+  end
+
+  @doc false
+  # Convert macro AST back to tree nodes (parser format)
+  # We keep reuse the original line + column metadata from the original tag
+  def ast_to_tree({tag, attrs, [], %{closing: _closing} = meta}, original_meta) do
+    tree_attrs = attrs_to_tree(attrs, original_meta)
+    {:self_close, :tag, tag, tree_attrs, Map.merge(original_meta, meta)}
+  end
+
+  def ast_to_tree({tag, attrs, children, _meta}, original_meta) do
+    tree_attrs = attrs_to_tree(attrs, original_meta)
+    tree_children = Enum.map(children, &ast_to_tree(&1, original_meta))
+    {:block, :tag, tag, tree_attrs, tree_children, original_meta, %{}}
+  end
+
+  def ast_to_tree(text, _original_meta) when is_binary(text) do
+    {:text, text, %{}}
+  end
+
+  defp attrs_to_tree(attrs, meta) do
+    Enum.map(attrs, fn
+      {name, nil} ->
+        {name, nil, meta}
+
+      {name, value} when is_binary(value) ->
+        delimiter = attr_quotes(name, value)
+        {name, {:string, value, Map.put(meta, :delimiter, delimiter)}, meta}
+
+      {name, ast} ->
+        # Convert quoted AST back to string for the tree node format
+        code = Macro.to_string(ast)
+        {name, {:expr, code, meta}, meta}
     end)
   end
 
@@ -307,14 +340,23 @@ defmodule Phoenix.Component.MacroComponent do
     end)
   end
 
-  @doc false
-  def encode_binary_attribute(key, value) when is_binary(key) and is_binary(value) do
-    case {:binary.match(value, ~s["]), :binary.match(value, "'")} do
-      {:nomatch, _} ->
+  defp encode_binary_attribute(key, value) when is_binary(key) and is_binary(value) do
+    case attr_quotes(key, value) do
+      ?" ->
         ~s( #{key}="#{value}")
 
-      {_, :nomatch} ->
+      ?' ->
         ~s( #{key}='#{value}')
+    end
+  end
+
+  defp attr_quotes(key, value) do
+    case {:binary.match(value, ~s["]), :binary.match(value, "'")} do
+      {:nomatch, _} ->
+        ?"
+
+      {_, :nomatch} ->
+        ?'
 
       _ ->
         raise ArgumentError, """

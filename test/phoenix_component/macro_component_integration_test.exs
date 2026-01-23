@@ -8,6 +8,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
   alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.Component.MacroComponent
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   defmodule MyComponent do
     @behaviour Phoenix.Component.MacroComponent
@@ -120,7 +121,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when there is EEx inside" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/EEx is not currently supported in macro components/,
                  fn ->
                    defmodule TestComponentUnsupportedEEx do
@@ -140,7 +141,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when there is interpolation inside" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/interpolation is not currently supported in macro components/,
                  fn ->
                    defmodule TestComponentUnsupportedInterpolation do
@@ -158,7 +159,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when there are components inside" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/function components cannot be nested inside a macro component/,
                  fn ->
                    defmodule TestComponentUnsupportedComponents do
@@ -176,8 +177,8 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises when trying to use :type on a component" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
-                 ~r/unsupported attribute \":type\"/,
+    assert_raise ParseError,
+                 ~r/macro components are only supported on HTML tags/,
                  fn ->
                    defmodule TestUnsupportedComponent do
                      use Phoenix.Component
@@ -190,8 +191,8 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                    end
                  end
 
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
-                 ~r/unsupported attribute \":type\"/,
+    assert_raise ParseError,
+                 ~r/macro components are only supported on HTML tags/,
                  fn ->
                    defmodule TestUnsupportedComponent do
                      use Phoenix.Component
@@ -208,7 +209,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   test "raises for dynamic attributes" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/dynamic attributes are not supported in macro components, got: @bar/,
                  fn ->
                    defmodule TestComponentUnsupportedDynamicAttributes1 do
@@ -222,7 +223,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
                    end
                  end
 
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise ParseError,
                  ~r/dynamic attributes are not supported in macro components, got: @bar/,
                  fn ->
                    defmodule TestComponentUnsupportedDynamicAttributes2 do
@@ -266,7 +267,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
            """
 
     # mixed quotes are invalid
-    assert_raise ArgumentError,
+    assert_raise ParseError,
                  ~r/invalid attribute value for "class"/,
                  fn ->
                    Process.put(:new_ast, {:div, [{"class", ~s["'"]}], [], %{}})
@@ -336,6 +337,12 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
     assert eval_heex("""
            <div :type={MyComponent}>Test</div><span>Another</span>
+           """).root
+
+    Process.put(:new_ast, "")
+
+    assert eval_heex("""
+           <div :type={MyComponent}>Test</div>\n<span>Another</span>
            """).root
 
     Process.put(:new_ast, "some text")
