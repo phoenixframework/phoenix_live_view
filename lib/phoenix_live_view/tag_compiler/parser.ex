@@ -157,12 +157,24 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   # The output will be:
   #
   # [
-  #   {:tag_block, "div", [], [{:tag_block, "h1", [], [text: "Hello"]}]},
-  #   {:tag_block, "div", [], [{:tag_block, "h1", [], [text: "World"]}]}
+  #   {:block, :tag, "div", [],
+  #    [{:block, :tag, "h1", [],
+  #      [{:text, "Hello", %{...}}],
+  #      %{line: 1, column: 6, ...},
+  #      %{line: 1, column: 15, ...}}],
+  #    %{line: 1, column: 1, ...},
+  #    %{line: 1, column: 20, ...}},
+  #   {:block, :tag, "div", [],
+  #    [{:block, :tag, "h1", [],
+  #      [{:text, "World", %{...}}],
+  #      %{line: 2, column: 6, ...},
+  #      %{line: 2, column: 15, ...}}],
+  #    %{line: 2, column: 1, ...},
+  #    %{line: 2, column: 20, ...}}
   # ]
   #
-  # Note that a `tag_block` has been created so that its fourth argument is a list of
-  # its nested content.
+  # Note that a `:block` has been created so that its fifth argument is a list of
+  # its nested content, followed by open_meta and close_meta.
   #
   # ### How does this algorithm work?
   #
@@ -173,20 +185,21 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   # the previous buffer to the stack along with the `tag_open`:
   #
   #   ```
-  #   defp build([{:tag, name, attrs, _meta} | tokens], buffer, stack) do
-  #     build(tokens, [], [{name, attrs, buffer} | stack])
+  #   defp to_tree([{type, name, attrs, meta} | tokens], buffer, stack, state)
+  #        when is_tag_open(type) do
+  #     to_tree(tokens, [], [{type, name, attrs, meta, buffer} | stack], state)
   #   end
   #   ```
   #
   # Then, we start to populate the buffer again until a `{:close, :tag, ...} arrives:
   #
   #   ```
-  #   defp build([{:close, :tag, name, close_meta} | tokens], buffer, [{name, attrs, open_meta, upper_buffer} | stack]) do
-  #     build(tokens, [{:block, :tag, name, attrs, Enum.reverse(buffer), open_meta, close_meta} | upper_buffer], stack)
+  #   defp to_tree([{:close, type, name, close_meta} | tokens], buffer, [{type, name, attrs, open_meta, upper_buffer} | stack], state) do
+  #     to_tree(tokens, [{:block, type, name, attrs, Enum.reverse(buffer), open_meta, close_meta} | upper_buffer], stack)
   #   end
   #   ```
   #
-  # In the snippet above, we build the `tag_block` with the accumulated buffer,
+  # In the snippet above, we build the `:block` tuple with the accumulated buffer,
   # putting the buffer accumulated before the tag open (upper_buffer) on top.
   #
   # We apply the same logic for `eex` expressions but, instead of `tag_open` and
@@ -215,9 +228,9 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
   # [
   #   {:eex_block, "if true do",
   #    [
-  #      {[{:eex, "\"Hello\"", %{column: 3, line: 1, opt: '='}}], "else"},
-  #      {[{:eex, "\"World\"", %{column: 3, line: 3, opt: '='}}], "end"}
-  #    ]}
+  #      {[{:eex, "\"Hello\"", %{column: 3, line: 1, opt: '='}}], "else", %{line: 2, column: 1}},
+  #      {[{:eex, "\"World\"", %{column: 3, line: 3, opt: '='}}], "end", %{line: 4, column: 1}}
+  #    ], %{line: 0, column: 0, opt: '='}}
   # ]
   # ```
   defp to_tree([], buffer, [], _state) do

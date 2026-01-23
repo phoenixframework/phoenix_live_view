@@ -994,18 +994,18 @@ defmodule Phoenix.LiveView.TagCompiler.Compiler do
     end
   end
 
-  # Pop the given attr from attrs. Raises if the given attr is duplicated within
+  # Pops all special attributes from attrs. Raises if any given attr is duplicated within
   # attrs.
   #
   # Examples:
   #
   #   attrs = [{":for", {...}}, {"class", {...}}]
-  #   pop_special_attrs!(state, ":for", attrs, %{}, state)
-  #   => {%{for: parsed_ast}}, {{":for", {...}}, [{"class", {...}]}}
+  #   pop_special_attrs!(attrs, %{}, state)
+  #   => {true, %{for: parsed_ast, ...}, [{"class", {...}]}}
   #
   #   attrs = [{"class", {...}}]
-  #   pop_special_attrs!(state, ":for", attrs, %{}, state)
-  #   => {%{}, []}
+  #   pop_special_attrs!(attrs, %{}, state)
+  #   => {false, %{}, [{"class", {...}}]}
   defp pop_special_attrs!(attrs, tag_meta, state) do
     Enum.reduce([for: ":for", if: ":if", key: ":key"], {false, tag_meta, attrs}, fn
       {attr, string_attr}, {special_acc, meta_acc, attrs_acc} ->
