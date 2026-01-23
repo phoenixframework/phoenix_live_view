@@ -1,7 +1,7 @@
-defmodule Phoenix.LiveView.TagCompiler.Parser do
+defmodule Phoenix.LiveView.TagEngine.Parser do
   @moduledoc false
 
-  alias Phoenix.LiveView.TagCompiler.Tokenizer
+  alias Phoenix.LiveView.TagEngine.Tokenizer
   alias Phoenix.Component.MacroComponent
 
   defguardp is_tag_open(tag_type) when tag_type not in [:close, :eex]
@@ -57,7 +57,7 @@ defmodule Phoenix.LiveView.TagCompiler.Parser do
     end
   end
 
-  # Tokenize contents using EEx.tokenize and Phoenix.LiveView.TagCompiler.Tokenizer respectively.
+  # Tokenize contents using EEx.tokenize and Phoenix.LiveView.TagEngine.Tokenizer respectively.
   #
   # The following content:
   #

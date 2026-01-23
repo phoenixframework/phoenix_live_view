@@ -1,7 +1,7 @@
-defmodule Phoenix.LiveView.TagCompiler.TokenizerTest do
+defmodule Phoenix.LiveView.TagEngine.TokenizerTest do
   use ExUnit.Case, async: true
-  alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
-  alias Phoenix.LiveView.TagCompiler.Tokenizer
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagEngine.Tokenizer
 
   defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Phoenix.LiveView.HTMLEngine)
 

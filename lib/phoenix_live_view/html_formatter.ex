@@ -269,8 +269,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   require Logger
 
   alias Phoenix.LiveView.HTMLAlgebra
-  alias Phoenix.LiveView.TagCompiler.Parser
-  alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagEngine.Parser
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   # Default line length to be used in case nothing is specified in the `.formatter.exs` options.
   @default_line_length 98

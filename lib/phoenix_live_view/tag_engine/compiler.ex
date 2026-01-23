@@ -1,7 +1,7 @@
-defmodule Phoenix.LiveView.TagCompiler.Compiler do
+defmodule Phoenix.LiveView.TagEngine.Compiler do
   @moduledoc false
 
-  alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   @doc """
   Compiles the node tag tree into Elixir code.

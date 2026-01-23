@@ -26,7 +26,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   end
 
   test "errors on invalid HTML" do
-    assert_raise Phoenix.LiveView.TagCompiler.Tokenizer.ParseError,
+    assert_raise Phoenix.LiveView.TagEngine.Tokenizer.ParseError,
                  ~r/end of template reached without closing tag for <style>/,
                  fn -> assert_formatter_doesnt_change("<style>foo") end
   end

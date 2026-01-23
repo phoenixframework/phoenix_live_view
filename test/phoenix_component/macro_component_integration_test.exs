@@ -8,7 +8,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
 
   alias Phoenix.LiveViewTest.TreeDOM
   alias Phoenix.Component.MacroComponent
-  alias Phoenix.LiveView.TagCompiler.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   defmodule MyComponent do
     @behaviour Phoenix.Component.MacroComponent

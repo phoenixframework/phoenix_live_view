@@ -19,7 +19,7 @@ defmodule Phoenix.LiveView.TagEngine do
   Where `:tag_handler` implements the behaviour defined by this module.
   """
 
-  alias Phoenix.LiveView.TagCompiler
+  alias Phoenix.LiveView.TagEngine
 
   @doc """
   Compiles the given string into Elixir AST.
@@ -47,8 +47,8 @@ defmodule Phoenix.LiveView.TagEngine do
       |> Keyword.merge(source: source, trim_eex: false)
 
     source
-    |> TagCompiler.Parser.parse!(options)
-    |> TagCompiler.Compiler.compile(options)
+    |> TagEngine.Parser.parse!(options)
+    |> TagEngine.Compiler.compile(options)
   end
 
   @doc """
@@ -262,7 +262,7 @@ defmodule Phoenix.LiveView.TagEngine do
 
   ## EEx.Engine callbacks
   ## These delegate to the subengine to satisfy EEx's expectations,
-  ## but handle_body ignores everything and reparses with TagCompiler.Parser + TagCompiler.Compiler.
+  ## but handle_body ignores everything and reparses with TagEngine.Parser + TagEngine.Compiler.
 
   @impl true
   def handle_body(state) do
