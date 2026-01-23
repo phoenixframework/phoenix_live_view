@@ -452,6 +452,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                <!-- </:inner_block> --><!-- </Phoenix.LiveViewTest.Support.DebugAnno.slot_with_tags> -->\
                """
     end
+
+    test "can opt out" do
+      alias Phoenix.LiveViewTest.Support.DebugAnnoOptOut
+
+      assigns = %{}
+
+      assert compile("<DebugAnnoOptOut.slot_with_tags />") ==
+               "\n  <div>1</div>\n<hr>\n  <div>2</div>\n"
+    end
   end
 
   describe "handle function components" do

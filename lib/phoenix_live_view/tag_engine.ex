@@ -105,7 +105,8 @@ defmodule Phoenix.LiveView.TagEngine do
   @doc """
   Callback invoked to add caller annotations before a function component is invoked.
   """
-  @callback annotate_caller(file :: String.t(), line :: integer()) :: String.t() | nil
+  @callback annotate_caller(file :: String.t(), line :: integer(), caller :: Macro.Env.t()) ::
+              String.t() | nil
 
   @doc """
   Renders a component defined by the given function.
