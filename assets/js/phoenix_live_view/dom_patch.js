@@ -24,7 +24,7 @@ import { detectDuplicateIds, detectInvalidStreamInserts, isCid } from "./utils";
 import ElementRef from "./element_ref";
 import DOM from "./dom";
 import DOMPostMorphRestorer from "./dom_post_morph_restorer";
-import morphdom from "morphdom";
+import morphdom from "../vendor/morphdom";
 
 export default class DOMPatch {
   constructor(view, container, id, html, streams, targetCID, opts = {}) {
@@ -114,6 +114,7 @@ export default class DOMPatch {
     const phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     const phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     const phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
+    const phxTrackAttributes = liveSocket.binding("track-attributes");
     const added = [];
     const updates = [];
     const appendPrependUpdates = [];
@@ -124,6 +125,10 @@ export default class DOMPatch {
     let portalCallbacks = [];
 
     let externalFormTriggered = null;
+
+    // if phx-update="track-attributes", we morph a subtree tracking clientside
+    // attribute changes
+    let trackAttributes = false;
 
     const morph = (
       targetContainer,
@@ -236,6 +241,13 @@ export default class DOMPatch {
             this.handleRuntimeHook(el, source);
           }
 
+          if (
+            trackAttributes ||
+            (el.hasAttribute && el.hasAttribute(phxTrackAttributes))
+          ) {
+            DOM.putPrivate(el, "phxAttrCopy", el.cloneNode(false));
+          }
+
           added.push(el);
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
@@ -286,8 +298,27 @@ export default class DOMPatch {
           }
           updates.push(el);
           this.maybeReOrderStream(el, false);
+          if (
+            trackAttributes ||
+            (el.hasAttribute && el.hasAttribute(phxTrackAttributes))
+          ) {
+            if (!DOM.private(el, "phxAttrCopy")) {
+              DOM.putPrivate(el, "phxAttrCopy", el.cloneNode(false));
+            }
+          }
         },
         onBeforeElUpdated: (fromEl, toEl) => {
+          // check if we switch to attribute tracking
+          if (
+            !trackAttributes &&
+            DOM.isPhxUpdate(fromEl, phxUpdate, "track-attributes")
+          ) {
+            trackAttributes = true;
+            morph(fromEl, toEl, true);
+            trackAttributes = false;
+            // the subtree was already morphed
+            return false;
+          }
           // if we are patching the root target container and the id has changed, treat it as a new node
           // by replacing the fromEl with the toEl, which ensures hooks are torn down and re-created
           if (
@@ -441,6 +472,15 @@ export default class DOMPatch {
             this.trackBefore("updated", fromEl, toEl);
             return fromEl;
           }
+        },
+        proxyFromEl: (el) => {
+          if (
+            trackAttributes ||
+            (el.hasAttribute && el.hasAttribute(phxTrackAttributes))
+          ) {
+            return DOM.private(el, "phxAttrCopy") || el;
+          }
+          return el;
         },
       };
 

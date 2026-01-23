@@ -24,6 +24,7 @@ export default tseslint.config([
     ignores: [
       "_build/",
       "assets/js/types/",
+      "assets/js/vendor/",
       "test/e2e/test-results/",
       "coverage/",
       "cover/",

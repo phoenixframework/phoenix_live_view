@@ -1601,7 +1601,7 @@ defmodule Phoenix.LiveView.TagEngine do
          id?
        ) do
     cond do
-      value in ~w(ignore stream replace) ->
+      value in ~w(ignore stream replace track-attributes) ->
         validate_phx_attrs!(t, meta, state, "phx-update", id?)
 
       value in ~w(append prepend) ->
