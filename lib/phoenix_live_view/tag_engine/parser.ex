@@ -611,7 +611,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
             other ->
               throw_syntax_error!(
-                "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}",
+                "a macro component must return {:ok, ast}, {:ok, ast, data}, or {:ok, ast, data, directives}, got: #{inspect(other)}",
                 meta
               )
           end

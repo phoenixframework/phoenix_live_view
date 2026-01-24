@@ -538,13 +538,17 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
         end
       end
 
+      # whitespace is allowed
       defmodule TestComponentDirectiveAtBeginning2 do
         use Phoenix.Component
 
         def render(assigns) do
           ~H"""
+
+
+
           <div :type={DirectiveMacroComponent}></div>
-          """
+          """noformat
         end
       end
 

@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.TagEngine.ParseResult do
 
   @type t :: %__MODULE__{
           nodes: list(tag_node()),
-          directives: keyword()
+          directives: Phoenix.Component.MacroComponent.directives()
         }
 
   @type tag_node() :: text() | comment() | block() | self_close() | expression()
