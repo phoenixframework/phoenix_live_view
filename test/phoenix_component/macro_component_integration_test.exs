@@ -444,7 +444,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
       # by macro components currently is [root_tag_attribute: {name, value}] which
       # requires a :root_tag_attribute to be configured
       Application.put_env(:phoenix_live_view, :root_tag_attribute, "phx-r")
-      on_exit(fn -> Application.put_env(:phoenix_live_view, :root_tag_attribute, nil) end)
+      on_exit(fn -> Application.delete_env(:phoenix_live_view, :root_tag_attribute) end)
     end
 
     test "happy path" do

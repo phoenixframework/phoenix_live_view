@@ -27,7 +27,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       caller: Keyword.fetch!(opts, :caller),
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler,
-      root_tag_attribute: Application.get_env(:phoenix_live_view, :root_tag_attribute, false),
+      root_tag_attribute: Application.get_env(:phoenix_live_view, :root_tag_attribute),
       root_tag_attributes: Keyword.get_values(directives, :root_tag_attribute),
       # The following keys are updated when traversing nodes
       slots: [],

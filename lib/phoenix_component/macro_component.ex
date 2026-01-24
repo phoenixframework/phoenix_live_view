@@ -132,16 +132,16 @@ defmodule Phoenix.Component.MacroComponent do
   #
   #     @impl true
   #     def transform(_ast, _meta) do
-  #       {:ok, "", %{}, [root_tag_annotation: "test1", root_tag_annotation: "test2"]}
+  #       {:ok, "", %{}, [root_tag_attribute: {"phx-sample-one", "test"}, root_tag_attribute: {"phx-sample-two", true}]}
   #     end
   #   end
   #   ```
   #
   #   The following directives are currently supported:
   #
-  #   * `:root_tag_annotation` - A value to apply as an annotation to all root tags during template compilation.
-  #     Requires that a `:root_tag_annotation` is configured for the application. The value must be a string.
-  #     May be provided multiple times to apply multiple annotations.
+  #   * `:root_tag_attribute` - A `{name, value}` tuple to apply as an attribute to all root tags during template compilation.
+  #     Requires that a global `:root_tag_attribute` is configured for the application. The attribute name must be a string and the attribute value must be a string or `true`.
+  #     May be provided multiple times to apply multiple attributes.
   #
 
   @type tag :: binary()
@@ -151,7 +151,7 @@ defmodule Phoenix.Component.MacroComponent do
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
   @type transform_meta :: %{env: Macro.Env.t()}
-  @type directive :: {:root_tag_annotation, String.t()}
+  @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t() | true}}
   @type directives :: [directive]
 
   @callback transform(heex_ast :: heex_ast(), meta :: transform_meta()) ::
