@@ -491,6 +491,10 @@ defmodule Phoenix.LiveView.TagEngine.Tokenizer do
 
   ## handle_attr_name
 
+  defp handle_attr_name(<<"}"::utf8, _rest::binary>>, column, _buffer) do
+    {:error, "expected attribute, but found end of interpolation: }", column}
+  end
+
   defp handle_attr_name(<<c::utf8, _rest::binary>>, column, _buffer)
        when c in @quote_chars do
     {:error, "invalid character in attribute name: #{<<c>>}", column}

@@ -443,6 +443,19 @@ defmodule Phoenix.LiveView.TagEngine.TokenizerTest do
         tokenize(~S(<div class={"test"}">))
       end
     end
+
+    test "raise on missing opening interpolation" do
+      message = """
+      nofile:1:29: expected attribute, but found end of interpolation: }
+        |
+      1 | <div class=\"image-container\"}>
+        |                             ^\
+      """
+
+      assert_raise ParseError, message, fn ->
+        tokenize(~S(<div class="image-container"}>))
+      end
+    end
   end
 
   describe "boolean attributes" do

@@ -738,14 +738,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       test/phoenix_live_view/html_engine_test.exs:2:38: unsupported attribute \":bar\" in local component: local_function_component
         |
       1 | <br>
-      2 | <.local_function_component value='1' :bar=\"1\"}
+      2 | <.local_function_component value='1' :bar=\"1\" />
         |                                      ^\
       """
 
       assert_raise(ParseError, message, fn ->
         eval("""
         <br>
-        <.local_function_component value='1' :bar="1"}
+        <.local_function_component value='1' :bar="1" />
         />
         """)
       end)
