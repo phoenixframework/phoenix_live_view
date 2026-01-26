@@ -1,6 +1,7 @@
 defmodule Phoenix.LiveView.TagEngine.Compiler do
   @moduledoc false
 
+  alias Phoenix.LiveView.TagEngine.Parser
   alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   @doc """
@@ -15,7 +16,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   text and expression parts and properly invoking the engine
   with the correct code for features like components and slots.
   """
-  def compile(nodes, opts) do
+  def compile(%Parser{nodes: nodes, directives: directives}, opts) do
     {engine, opts} = Keyword.pop(opts, :engine, Phoenix.LiveView.Engine)
     tag_handler = Keyword.fetch!(opts, :tag_handler)
 
@@ -26,8 +27,11 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       caller: Keyword.fetch!(opts, :caller),
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler,
-      # slots is the only key that is updated when traversing nodes
-      slots: []
+      root_tag_attribute: Application.get_env(:phoenix_live_view, :root_tag_attribute),
+      root_tag_attributes: Keyword.get_values(directives, :root_tag_attribute),
+      # The following keys are updated when traversing nodes
+      slots: [],
+      local_root?: true
     }
 
     # Live components require a single, static root tag.
@@ -328,7 +332,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
 
     with_special_attrs(attrs, meta, substate, state, fn attrs, meta, substate, state ->
       substate = handle_tag_and_attrs(name, attrs, ">", to_location(meta), substate, state)
-      {_child_state, substate} = handle_node(children, substate, state)
+      {_child_state, substate} = handle_node(children, substate, %{state | local_root?: false})
       substate = state.engine.handle_text(substate, [to_location(close_meta)], "</#{name}>")
       {state, substate}
     end)
@@ -353,7 +357,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
         meta,
         close_meta,
         substate,
-        state
+        %{state | local_root?: true}
       )
 
     ast =
@@ -383,7 +387,10 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
 
     with_special_attrs(attrs, meta, substate, state, fn attrs, meta, substate, state ->
       {assigns, attr_info, slot_info} =
-        build_component_assigns(ref, attrs, children, meta, close_meta, substate, state)
+        build_component_assigns(ref, attrs, children, meta, close_meta, substate, %{
+          state
+          | local_root?: true
+        })
 
       store_component_call({mod, fun}, attr_info, slot_info, line, state)
       call_meta = [line: line, column: column]
@@ -420,7 +427,10 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     with_special_attrs(attrs, meta, substate, state, fn attrs, meta, substate, state ->
       # Process children in a new nesting
       {assigns, attr_info, slot_info} =
-        build_component_assigns(ref, attrs, children, meta, close_meta, substate, state)
+        build_component_assigns(ref, attrs, children, meta, close_meta, substate, %{
+          state
+          | local_root?: true
+        })
 
       store_component_call({mod, fun}, attr_info, slot_info, line, state)
       call_meta = [line: line, column: column + mod_size]
@@ -479,16 +489,40 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
 
   defp handle_tag_and_attrs(name, attrs, suffix, meta, substate, state) do
     text =
-      if debug_attributes?(state.caller) do
-        "<#{name} data-phx-loc=\"#{meta[:line]}\""
-      else
-        "<#{name}"
-      end
+      "<#{name}"
+      |> maybe_add_phx_loc(state, meta)
+      |> maybe_add_root_tag_attributes(state, meta)
 
     substate = state.engine.handle_text(substate, meta, text)
     substate = handle_tag_attrs(meta, attrs, substate, state)
     state.engine.handle_text(substate, meta, suffix)
   end
+
+  defp maybe_add_phx_loc(text, %{caller: caller}, meta) do
+    if debug_attributes?(caller) do
+      "#{text} data-phx-loc=\"#{meta[:line]}\""
+    else
+      text
+    end
+  end
+
+  defp maybe_add_root_tag_attributes(text, %{local_root?: true} = state, _meta) do
+    case state do
+      %{root_tag_attribute: root_tag_attribute} when is_binary(root_tag_attribute) ->
+        attrs =
+          [{root_tag_attribute, true} | state.root_tag_attributes]
+          |> Phoenix.HTML.attributes_escape()
+          |> Phoenix.HTML.safe_to_string()
+
+        # Phoenix.HTML.attributes_escape/1 adds a leading space automatically
+        "#{text}#{attrs}"
+
+      %{root_tag_attribute: _} ->
+        text
+    end
+  end
+
+  defp maybe_add_root_tag_attributes(text, _state, _meta), do: text
 
   defp handle_tag_attrs(meta, attrs, substate, state) do
     Enum.reduce(attrs, substate, fn

@@ -1,5 +1,7 @@
 defmodule Phoenix.Component.MacroComponentIntegrationTest do
-  use ExUnit.Case, async: true
+  # async: false due to manipulating the Application env
+  # for :root_tag_attribute
+  use ExUnit.Case, async: false
 
   use Phoenix.Component
 
@@ -17,6 +19,37 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
     def transform(ast, meta) do
       send(self(), {:ast, ast, meta})
       {:ok, Process.get(:new_ast, ast)}
+    end
+  end
+
+  defmodule DirectiveMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{},
+       [
+         root_tag_attribute: {"phx-sample-one", "test"},
+         root_tag_attribute: {"phx-sample-two", "test"}
+       ]}
+    end
+  end
+
+  defmodule BadRootTagAttrDirectiveMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{}, [root_tag_attribute: false]}
+    end
+  end
+
+  defmodule UnknownDirectiveMacroComponent do
+    @behaviour Phoenix.Component.MacroComponent
+
+    @impl true
+    def transform(_ast, _meta) do
+      {:ok, "", %{}, [unknown: true]}
     end
   end
 
@@ -351,6 +384,282 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
            <div :type={MyComponent}>Test</div>
            <span>Another</span>
            """).root
+  end
+
+  describe "directives" do
+    test "raises if an unknown directive is provided" do
+      message =
+        ~r/unknown directive {:unknown, true} provided by macro component #{inspect(__MODULE__)}\.UnknownDirectiveMacroComponent/
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestUnknownDirective do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div :type={UnknownDirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+    end
+  end
+
+  describe "directives - root_tag_attribute" do
+    setup do
+      # Need to set a :root_tag_attribute as the only directive supported
+      # by macro components currently is [root_tag_attribute: {name, value}] which
+      # requires a :root_tag_attribute to be configured
+      Application.put_env(:phoenix_live_view, :root_tag_attribute, "phx-r")
+      on_exit(fn -> Application.delete_env(:phoenix_live_view, :root_tag_attribute) end)
+    end
+
+    test "happy path" do
+      defmodule TestComponentRootTagAttr do
+        use Phoenix.Component
+
+        def render(assigns) do
+          ~H"""
+          <div :type={DirectiveMacroComponent}></div>
+          <div id="hello">
+            <span class="inside">
+              <.my_link><p>I am in an inner block<b>non-root</b></p></.my_link>
+            </span>
+            <.my_component>
+              <span>Inner block</span>
+              <p>More inner block</p>
+              <:other_slot>
+                <div>Hey</div>
+              </:other_slot>
+            </.my_component>
+          </div>
+          """
+        end
+
+        defp my_link(assigns) do
+          ~H"""
+          <a href="#">{render_slot(@inner_block)}</a>
+          """
+        end
+
+        defp my_component(assigns) do
+          ~H"""
+          {render_slot(@inner_block)}
+          {render_slot(@other_slot)}
+
+          <p>Part of the component</p>
+          """
+        end
+      end
+
+      assert render_component(&TestComponentRootTagAttr.render/1)
+             |> TreeDOM.normalize_to_tree(sort_attributes: true) ==
+               ~X"""
+               <div phx-sample-one="test" phx-sample-two="test" phx-r id="hello">
+                 <span class="inside">
+                   <a href="#" phx-r><p phx-sample-one="test" phx-sample-two="test" phx-r>I am in an inner block<b>non-root</b></p></a>
+                 </span>
+
+                 <span phx-sample-one="test" phx-sample-two="test" phx-r>Inner block</span>
+                 <p phx-sample-one="test" phx-sample-two="test" phx-r>More inner block</p>
+                 <div phx-sample-one="test" phx-sample-two="test" phx-r>Hey</div>
+
+                 <p phx-r>Part of the component</p>
+               </div>
+               """
+    end
+
+    test "raises if :root_tag_attribute directive is provided with an invalid value" do
+      message = ~r"""
+      expected {name, value} for :root_tag_attribute directive from macro component #{inspect(__MODULE__)}\.BadRootTagAttrDirectiveMacroComponent, got: false
+
+      name must be a compile-time string, and value must be a compile-time string or true
+      """
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestBadRootTagAttrDirective do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div :type={BadRootTagAttrDirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+    end
+
+    test "raises if macro components with directives are not defined at the beginning of the template" do
+      message =
+        ~r/macro component #{inspect(__MODULE__)}\.DirectiveMacroComponent specified directives and therefore must appear at the very beginning of the template/
+
+      defmodule TestComponentDirectiveAtBeginning1 do
+        use Phoenix.Component
+
+        def render(assigns) do
+          ~H"""
+          <div :type={DirectiveMacroComponent}></div>
+          """
+        end
+      end
+
+      # whitespace is allowed
+      defmodule TestComponentDirectiveAtBeginning2 do
+        use Phoenix.Component
+
+        def render(assigns) do
+          ~H"""
+
+
+
+          <div :type={DirectiveMacroComponent}></div>
+          """noformat
+        end
+      end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning3 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div />
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning4 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div></div>
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning5 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <.link>Link</.link>
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning6 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <Phoenix.Component.link>Link</Phoenix.Component.link>
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning7 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         {if true, do: "Test"}
+                         <div :type={DirectiveMacroComponent}></div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning8 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <%= if true do %>
+                           <div :type={DirectiveMacroComponent}></div>
+                         <% end %>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning9 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <div>
+                           <div :type={DirectiveMacroComponent}></div>
+                         </div>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning10 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <.link>
+                           <div :type={DirectiveMacroComponent}></div>
+                         </.link>
+                         """
+                       end
+                     end
+                   end
+
+      assert_raise ParseError,
+                   message,
+                   fn ->
+                     defmodule TestComponentDirectiveAtBeginning11 do
+                       use Phoenix.Component
+
+                       def render(assigns) do
+                         ~H"""
+                         <Phoenix.Component.link>
+                           <div :type={DirectiveMacroComponent}></div>
+                         </Phoenix.Component.link>
+                         """
+                       end
+                     end
+                   end
+    end
   end
 
   defp eval_heex(source) do

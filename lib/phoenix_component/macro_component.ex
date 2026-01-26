@@ -120,6 +120,29 @@ defmodule Phoenix.Component.MacroComponent do
   #   LiveView's end to end tests: a macro component that performs
   #   [syntax highlighting at compile time](https://github.com/phoenixframework/phoenix_live_view/blob/38851d943f3280c5982d75679291dccb8c442534/test/e2e/support/colocated_live.ex#L4-L35)
   #   using the [Makeup](https://hexdocs.pm/makeup/Makeup.html) library.
+  #
+  #   ## Directives
+  #
+  #   Macro components may return directives from `transform/2` which can be used to influence
+  #   other elements in the template outside of the macro component at compile-time. For example:
+  #
+  #   ```elixir
+  #   defmodule MyAppWeb.TagRootSampleComponent do
+  #     @behaviour Phoenix.Component.MacroComponent
+  #
+  #     @impl true
+  #     def transform(_ast, _meta) do
+  #       {:ok, "", %{}, [root_tag_attribute: {"phx-sample-one", "test"}, root_tag_attribute: {"phx-sample-two", true}]}
+  #     end
+  #   end
+  #   ```
+  #
+  #   The following directives are currently supported:
+  #
+  #   * `:root_tag_attribute` - A `{name, value}` tuple to apply as an attribute to all root tags during template compilation.
+  #     Requires that a global `:root_tag_attribute` is configured for the application. The attribute name must be a string and the attribute value must be a string or `true`.
+  #     May be provided multiple times to apply multiple attributes.
+  #
 
   @type tag :: binary()
   @type attribute :: {binary(), Macro.t()}
@@ -128,9 +151,13 @@ defmodule Phoenix.Component.MacroComponent do
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
   @type transform_meta :: %{env: Macro.Env.t()}
+  @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t() | true}}
+  @type directives :: [directive]
 
   @callback transform(heex_ast :: heex_ast(), meta :: transform_meta()) ::
-              {:ok, heex_ast()} | {:ok, heex_ast(), data :: term()}
+              {:ok, heex_ast()}
+              | {:ok, heex_ast(), data :: term()}
+              | {:ok, heex_ast(), data :: term(), directives :: directives()}
 
   @doc """
   Returns the stored data from macro components that returned `{:ok, ast, data}`.

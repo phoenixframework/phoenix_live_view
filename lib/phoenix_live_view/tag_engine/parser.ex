@@ -1,6 +1,27 @@
 defmodule Phoenix.LiveView.TagEngine.Parser do
   @moduledoc false
 
+  defstruct [:nodes, :directives]
+
+  @type t :: %__MODULE__{
+          nodes: list(tag_node()),
+          directives: Phoenix.Component.MacroComponent.directives()
+        }
+
+  @type tag_node() :: text() | comment() | block() | self_close() | expression()
+  @type text() :: {:text, binary(), meta()}
+  @type comment() :: {:eex_comment, binary(), meta()}
+  @type block() :: {:block, atom(), binary(), list(attr()), list(tag_node()), meta(), meta()}
+  @type self_close() :: {:self_close, atom(), binary(), list(attr()), meta()}
+  @type expression() ::
+          {:body_expr, binary(), meta()}
+          | {:eex, binary(), meta()}
+          | {:eex_block, binary(), list(eex_clause()), meta()}
+  @type eex_clause() :: {list(tag_node()), binary(), meta()}
+  @type attr :: {:root | binary(), attr_value(), meta()}
+  @type attr_value :: {:expr, binary(), meta()} | {:string, binary(), meta()}
+  @type meta() :: map()
+
   alias Phoenix.LiveView.TagEngine.Tokenizer
   alias Phoenix.Component.MacroComponent
 
@@ -30,7 +51,8 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
       caller: caller,
       skip_macro_components: skip_macro_components,
       prune_text_after_slots: prune_text_after_slots,
-      process_buffer: process_buffer
+      process_buffer: process_buffer,
+      directives: []
     })
   catch
     {:syntax_error, line, column, message} ->
@@ -233,8 +255,8 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   #    ], %{line: 0, column: 0, opt: '='}}
   # ]
   # ```
-  defp to_tree([], buffer, [], _state) do
-    {:ok, Enum.reverse(buffer)}
+  defp to_tree([], buffer, [], state) do
+    {:ok, %__MODULE__{nodes: Enum.reverse(buffer), directives: state.directives}}
   end
 
   defp to_tree(
@@ -269,7 +291,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
        when parent_type in [:local_component, :remote_component] do
     meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
 
-    {tokens, buffer} =
+    {tokens, buffer, state} =
       maybe_process_macro_component(
         {:self_close, :slot, name, attrs, meta},
         tokens,
@@ -331,7 +353,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
        when is_tag_open(type) do
     meta = meta |> Map.put(:special, extract_special_attrs(attrs)) |> maybe_macro_component(attrs)
 
-    {tokens, buffer} =
+    {tokens, buffer, state} =
       maybe_process_macro_component({:self_close, type, name, attrs, meta}, tokens, buffer, state)
 
     to_tree(tokens, buffer, stack, state)
@@ -353,7 +375,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
        ) do
     block = Enum.reverse(reversed_buffer)
 
-    {tokens, buffer} =
+    {tokens, buffer, state} =
       maybe_process_macro_component(
         {:block, type, name, attrs, block, open_meta, close_meta},
         tokens,
@@ -522,9 +544,19 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
   defp maybe_process_macro_component(tree_node, tokens, buffer, state)
        when is_macro_component(tree_node) and not skip_macro_components(state) do
-    # Remove :type from attrs for the macro component AST
+    caller = state.caller
+
+    if is_nil(caller) do
+      raise ArgumentError, "macro components require a caller environment"
+    end
+
+    Macro.Env.required?(caller, Phoenix.Component) ||
+      raise ArgumentError,
+            "macro components are only supported in modules that `use Phoenix.Component`"
+
     tree_node =
       case tree_node do
+        # Remove :type from attrs for the macro component AST
         {:self_close, :tag, name, attrs, meta} ->
           {:self_close, :tag, name, List.keydelete(attrs, ":type", 0), meta}
 
@@ -545,21 +577,31 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
           )
       end
 
-    case process_macro_component(tree_node, state) do
-      {:text, "", _} ->
-        {strip_text(tokens), buffer}
+    meta = get_meta(tree_node)
+    module_string = meta.macro_component
+    module = validate_module!(module_string, meta, state)
 
-      new_node ->
-        {strip_text(tokens), [new_node | buffer]}
+    case process_macro_component(tree_node, module, state) do
+      {_new_node, directives} when directives != [] and buffer != [] ->
+        throw_syntax_error!(
+          "macro component #{inspect(module)} specified directives and therefore must appear at the very beginning of the template",
+          get_meta(tree_node)
+        )
+
+      {{:text, "", _}, directives} ->
+        {strip_text(tokens), buffer, %{state | directives: directives}}
+
+      {new_node, directives} ->
+        {strip_text(tokens), [new_node | buffer], %{state | directives: directives}}
     end
   end
 
-  defp maybe_process_macro_component(tree_node, tokens, buffer, _state) do
-    {tokens, [tree_node | buffer]}
+  defp maybe_process_macro_component(tree_node, tokens, buffer, state) do
+    {tokens, [tree_node | buffer], state}
   end
 
   # Process a macro component: call transform and convert result back to tree nodes
-  defp process_macro_component(tree_node, state) do
+  defp process_macro_component(tree_node, module, state) do
     # Macro components work by converting the tree nodes into a macro AST
     # (see Phoenix.Component.MacroComponent) and then calling the transform
     # function on the macro component module, which can return a transformed
@@ -567,36 +609,29 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     #
     # The AST is limited in functionality and we convert it back to the regular
     # node format afterwards.
-    caller = state.caller
-
-    if is_nil(caller) do
-      raise ArgumentError, "macro components require a caller environment"
-    end
-
-    Macro.Env.required?(caller, Phoenix.Component) ||
-      raise ArgumentError,
-            "macro components are only supported in modules that `use Phoenix.Component`"
-
     meta = get_meta(tree_node)
-    module_string = meta.macro_component
-    module = validate_module!(module_string, meta, state)
 
-    # Build the macro component AST
-    case MacroComponent.build_ast(tree_node, caller) do
+    case MacroComponent.build_ast(tree_node, state.caller) do
       {:ok, macro_ast} ->
         try do
           # Call the transform function
-          case module.transform(macro_ast, %{env: caller}) do
+          case module.transform(macro_ast, %{env: state.caller}) do
             {:ok, new_ast} ->
-              MacroComponent.ast_to_tree(new_ast, meta)
+              {MacroComponent.ast_to_tree(new_ast, meta), []}
 
             {:ok, new_ast, data} ->
-              Module.put_attribute(caller.module, :__macro_components__, {module, data})
-              MacroComponent.ast_to_tree(new_ast, meta)
+              Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
+              {MacroComponent.ast_to_tree(new_ast, meta), []}
+
+            {:ok, new_ast, data, directives} ->
+              Module.put_attribute(state.caller.module, :__macro_components__, {module, data})
+
+              {MacroComponent.ast_to_tree(new_ast, meta),
+               validate_directives!(module, directives, meta)}
 
             other ->
               throw_syntax_error!(
-                "a macro component must return {:ok, ast} or {:ok, ast, data}, got: #{inspect(other)}",
+                "a macro component must return {:ok, ast}, {:ok, ast, data}, or {:ok, ast, data, directives}, got: #{inspect(other)}",
                 meta
               )
           end
@@ -639,6 +674,39 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     end
 
     module
+  end
+
+  defp validate_directives!(module, directives, meta) do
+    Enum.each(directives, fn {key, value} ->
+      validate_directive!(module, key, value, meta)
+    end)
+
+    directives
+  end
+
+  defp validate_directive!(_module, :root_tag_attribute, nil, _), do: :ok
+
+  defp validate_directive!(_module, :root_tag_attribute, {name, value}, _meta)
+       when is_binary(name) and (is_binary(value) or value == true) do
+    :ok
+  end
+
+  defp validate_directive!(module, :root_tag_attribute, other, meta) do
+    throw_syntax_error!(
+      """
+      expected {name, value} for :root_tag_attribute directive from macro component #{inspect(module)}, got: #{inspect(other)}
+
+      name must be a compile-time string, and value must be a compile-time string or true
+      """,
+      meta
+    )
+  end
+
+  defp validate_directive!(module, directive, value, meta) do
+    throw_syntax_error!(
+      "unknown directive #{inspect({directive, value})} provided by macro component #{inspect(module)}",
+      meta
+    )
   end
 
   defp throw_syntax_error!(message, meta) do
