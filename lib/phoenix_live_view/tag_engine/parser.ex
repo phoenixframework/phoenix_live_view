@@ -1,8 +1,28 @@
 defmodule Phoenix.LiveView.TagEngine.Parser do
   @moduledoc false
 
+  defstruct [:nodes, :directives]
+
+  @type t :: %__MODULE__{
+          nodes: list(tag_node()),
+          directives: Phoenix.Component.MacroComponent.directives()
+        }
+
+  @type tag_node() :: text() | comment() | block() | self_close() | expression()
+  @type text() :: {:text, binary(), meta()}
+  @type comment() :: {:eex_comment, binary(), meta()}
+  @type block() :: {:block, atom(), binary(), list(attr()), list(tag_node()), meta(), meta()}
+  @type self_close() :: {:self_close, atom(), binary(), list(attr()), meta()}
+  @type expression() ::
+          {:body_expr, binary(), meta()}
+          | {:eex, binary(), meta()}
+          | {:eex_block, binary(), list(eex_clause()), meta()}
+  @type eex_clause() :: {list(tag_node()), binary(), meta()}
+  @type attr :: {:root | binary(), attr_value(), meta()}
+  @type attr_value :: {:expr, binary(), meta()} | {:string, binary(), meta()}
+  @type meta() :: map()
+
   alias Phoenix.LiveView.TagEngine.Tokenizer
-  alias Phoenix.LiveView.TagEngine.ParseResult
   alias Phoenix.Component.MacroComponent
 
   defguardp is_tag_open(tag_type) when tag_type not in [:close, :eex]
@@ -236,7 +256,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
   # ]
   # ```
   defp to_tree([], buffer, [], state) do
-    {:ok, %ParseResult{nodes: Enum.reverse(buffer), directives: state.directives}}
+    {:ok, %__MODULE__{nodes: Enum.reverse(buffer), directives: state.directives}}
   end
 
   defp to_tree(
@@ -666,30 +686,9 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
 
   defp validate_directive!(_module, :root_tag_attribute, nil, _), do: :ok
 
-  defp validate_directive!(module, :root_tag_attribute, {name, value}, meta)
+  defp validate_directive!(_module, :root_tag_attribute, {name, value}, _meta)
        when is_binary(name) and (is_binary(value) or value == true) do
-    configured_attribute = Application.get_env(:phoenix_live_view, :root_tag_attribute)
-
-    if !configured_attribute do
-      message = """
-      a global :root_tag_attribute must be configured for macro components to use the :root_tag_attribute directive
-
-      Macro Component: #{inspect(module)}
-
-      Expected global :root_tag_attribute to be a string, got: #{inspect(configured_attribute)}
-
-      The global :root_tag_attribute is typically used for `Phoenix.LiveView.ColocatedCSS` and
-      is usually configured to `"phx-r"`, but it needs to be explicitly enabled in your configuration:
-
-          config :phoenix_live_view, root_tag_attribute: "phx-r"
-
-      You can also use a different value than `"phx-r"`.
-      """
-
-      throw_syntax_error!(message, meta)
-    else
-      :ok
-    end
+    :ok
   end
 
   defp validate_directive!(module, :root_tag_attribute, other, meta) do

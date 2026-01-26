@@ -387,37 +387,6 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
   end
 
   describe "directives" do
-    test "raises if :root_tag_attribute is not configured and the :root_tag_attribute directive is provided" do
-      message = ~r"""
-      a global :root_tag_attribute must be configured for macro components to use the :root_tag_attribute directive
-
-      Macro Component: #{inspect(__MODULE__)}\.DirectiveMacroComponent
-
-      Expected global :root_tag_attribute to be a string, got: nil
-
-      The global :root_tag_attribute is typically used for `Phoenix.LiveView.ColocatedCSS` and
-      is usually configured to `"phx-r"`, but it needs to be explicitly enabled in your configuration:
-
-          config :phoenix_live_view, root_tag_attribute: "phx-r"
-
-      You can also use a different value than `"phx-r"`.
-      """
-
-      assert_raise ParseError,
-                   message,
-                   fn ->
-                     defmodule TestRootTagAttrNotConfig do
-                       use Phoenix.Component
-
-                       def render(assigns) do
-                         ~H"""
-                         <div :type={DirectiveMacroComponent}></div>
-                         """
-                       end
-                     end
-                   end
-    end
-
     test "raises if an unknown directive is provided" do
       message =
         ~r/unknown directive {:unknown, true} provided by macro component #{inspect(__MODULE__)}\.UnknownDirectiveMacroComponent/

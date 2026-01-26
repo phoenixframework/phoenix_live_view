@@ -1,7 +1,7 @@
 defmodule Phoenix.LiveView.TagEngine.Compiler do
   @moduledoc false
 
-  alias Phoenix.LiveView.TagEngine.ParseResult
+  alias Phoenix.LiveView.TagEngine.Parser
   alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   @doc """
@@ -16,7 +16,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   text and expression parts and properly invoking the engine
   with the correct code for features like components and slots.
   """
-  def compile(%ParseResult{nodes: nodes, directives: directives}, opts) do
+  def compile(%Parser{nodes: nodes, directives: directives}, opts) do
     {engine, opts} = Keyword.pop(opts, :engine, Phoenix.LiveView.Engine)
     tag_handler = Keyword.fetch!(opts, :tag_handler)
 
