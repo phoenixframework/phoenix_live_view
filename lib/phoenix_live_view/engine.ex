@@ -408,7 +408,7 @@ defmodule Phoenix.LiveView.Engine do
             end
           end
         else
-          quote do
+          quote generated: true do
             fn track_changes? ->
               changed = unquote(changed)
               vars_changed = if track_changes?, do: vars_changed
@@ -495,7 +495,7 @@ defmodule Phoenix.LiveView.Engine do
         end
 
       dynamic =
-        quote do
+        quote generated: true do
           fn local_vars_changed, track_changes? ->
             vars_changed =
               case local_vars_changed do
