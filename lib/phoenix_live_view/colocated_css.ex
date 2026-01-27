@@ -182,7 +182,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     {scope, data} = extract(opts, text_content, meta)
 
     # we always drop colocated CSS from the rendered output
-    {:ok, "", data, [root_tag_attribute: {"phx-css", scope}]}
+    {:ok, "", data, [root_tag_attribute: {"phx-css-#{scope}", true}]}
   end
 
   def transform(_ast, _meta) do
@@ -192,9 +192,8 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   defp validate_phx_version! do
     phoenix_version = to_string(Application.spec(:phoenix, :vsn))
 
-    if not Version.match?(phoenix_version, "~> 1.8.0-rc.4") do
-      # TODO: bump message to 1.8 once released to avoid confusion
-      raise ArgumentError, ~s|ColocatedCSS requires at least {:phoenix, "~> 1.8.0-rc.4"}|
+    if not Version.match?(phoenix_version, "~> 1.8.0") do
+      raise ArgumentError, ~s|ColocatedCSS requires at least {:phoenix, "~> 1.8.0"}|
     end
   end
 
@@ -234,10 +233,10 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     # _build/dev/phoenix-colocated-css/otp_app/MyApp.MyComponent/line_no.css
     target_path = Path.join(target_dir(), inspect(meta.env.module))
 
-    scope = scope(meta)
+    scope = scope(text_content, meta)
     root_tag_attribute = root_tag_attribute()
 
-    upper_bound_selector = ~s|[phx-css="#{scope}"]|
+    upper_bound_selector = ~s|[phx-css-#{scope}]|
     lower_bound_selector = ~s|[#{root_tag_attribute}]|
 
     lower_bound_selector =
@@ -266,11 +265,15 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     {scope, filename}
   end
 
-  defp scope(meta) do
-    hash("#{meta.env.module}_#{meta.env.line}")
+  defp scope(text_content, meta) do
+    hash("#{meta.env.module}_#{meta.env.line}: #{text_content}")
   end
 
   defp hash(string) do
+    # It is important that we do not pad
+    # the Base32 encoded value as we use it in
+    # an HTML attribute name and = (the padding character)
+    # is not valid.
     string
     |> then(&:crypto.hash(:md5, &1))
     |> Base.encode32(case: :lower, padding: false)
