@@ -203,7 +203,7 @@ defmodule Phoenix.LiveView.ColocatedJS do
     phoenix_version = to_string(Application.spec(:phoenix, :vsn))
 
     if not Version.match?(phoenix_version, "~> 1.8") do
-      raise ArgumentError, ~s|ColocatedJS requires at least {:phoenix, "~> 1.8.0"}|
+      raise ArgumentError, ~s|ColocatedJS requires at least {:phoenix, "~> 1.8"}|
     end
   end
 

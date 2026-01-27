@@ -197,7 +197,7 @@ defmodule Phoenix.LiveView.ColocatedHook do
     phoenix_version = to_string(Application.spec(:phoenix, :vsn))
 
     if not Version.match?(phoenix_version, "~> 1.8") do
-      raise ArgumentError, ~s|ColocatedHook requires at least {:phoenix, "~> 1.8.0"}|
+      raise ArgumentError, ~s|ColocatedHook requires at least {:phoenix, "~> 1.8"}|
     end
   end
 end
