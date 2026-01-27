@@ -2528,12 +2528,12 @@ var DOMPatch = class {
           this.streamInserts[key] = { ref, streamAt, limit, reset, updateOnly };
         });
         if (reset !== void 0) {
-          dom_default.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
+          dom_default.all(document, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
             this.removeStreamChildElement(child);
           });
         }
         deleteIds.forEach((id) => {
-          const child = container.querySelector(`[id="${id}"]`);
+          const child = document.getElementById(id);
           if (child) {
             this.removeStreamChildElement(child);
           }
@@ -5896,7 +5896,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.1.20";
+    return "1.1.21";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";

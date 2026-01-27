@@ -267,6 +267,18 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.21 (2026-01-27)
+
+### Bug fixes
+
+* Fix stream reset and deletes not working if stream is teleported using `Phoenix.Component.portal/1` ([#4121](https://github.com/phoenixframework/phoenix_live_view/issues/4121))
+
+### Enhancements
+
+* Mark LiveView template code as generated to prevent warnings on Elixir 1.20
+* Allow unused function warnings for function components to be emitted
+* Add `Phoenix.LiveView.TagEngine.compile/2` as an official entrypoint for compiling templates in favor of relying on the `EEx.Engine` behaviour
+
 ## v1.1.20 (2026-01-14)
 
 ### Bug fixes
