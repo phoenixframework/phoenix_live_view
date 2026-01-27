@@ -152,12 +152,12 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
       file_contents = File.read!(style)
 
       file_contents =
-        Regex.replace(~r/phx-css=".+?"/, file_contents, ~s|phx-css="SCOPE_HERE"|)
+        Regex.replace(~r/\[phx-css-.+?\]/, file_contents, ~s|[phx-css-SCOPE_HERE]|)
 
       # The scope is a generated value, so for testing reliability we just replace it with a known
       # value to assert against.
       assert file_contents ==
-               ~s|@scope ([phx-css="SCOPE_HERE"]) to ([phx-r]) { \n  .sample-class { background-color: #FFFFFF; }\n }|
+               ~s|@scope ([phx-css-SCOPE_HERE]) to ([phx-r]) { \n  .sample-class { background-color: #FFFFFF; }\n }|
 
       # now write the manifest manually as we are in a test
       Phoenix.LiveView.ColocatedCSS.compile()
@@ -217,12 +217,12 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
       file_contents = File.read!(style)
 
       file_contents =
-        Regex.replace(~r/phx-css=".+?"/, file_contents, ~s|phx-css="SCOPE_HERE"|)
+        Regex.replace(~r/\[phx-css-.+?\]/, file_contents, ~s|[phx-css-SCOPE_HERE]|)
 
       # The scope is a generated value, so for testing reliability we just replace it with a known
       # value to assert against.
       assert file_contents ==
-               ~s|@scope ([phx-css="SCOPE_HERE"]) to ([phx-r] > *) { \n  .sample-class { background-color: #FFFFFF; }\n }|
+               ~s|@scope ([phx-css-SCOPE_HERE]) to ([phx-r] > *) { \n  .sample-class { background-color: #FFFFFF; }\n }|
 
       # now write the manifest manually as we are in a test
       Phoenix.LiveView.ColocatedCSS.compile()
