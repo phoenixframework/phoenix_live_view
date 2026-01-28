@@ -267,6 +267,12 @@ When `:debug_heex_annotations` is enabled, LiveView will now annotate the beginn
 
 To enable this, a new callback called `annotate_slot/4` was added. Custom implementations of `Phoenix.LiveView.TagEngine` must implement it accordingly.
 
+## v1.1.22 (2026-01-28)
+
+### Bug fixes
+
+* Fix live component container patch throwing a JavaScript error when container is locked ([#4088](https://github.com/phoenixframework/phoenix_live_view/issues/4088))
+
 ## v1.1.21 (2026-01-27)
 
 ### Bug fixes
