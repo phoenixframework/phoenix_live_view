@@ -2270,7 +2270,7 @@ var DOMPatch = class {
     }
     if (this.isCIDPatch()) {
       const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
-      if (closestLock) {
+      if (closestLock && !closestLock.isSameNode(targetContainer)) {
         const clonedTree = dom_default.private(closestLock, PHX_REF_LOCK);
         if (clonedTree) {
           targetContainer = clonedTree.querySelector(
