@@ -15,6 +15,7 @@ test("stream teleported outside of LiveView can be reset", async ({ page }) => {
   ]);
 
   await page.locator("button").click();
+  await syncLV(page);
 
   expect(await streamElements(page, "stream-in-lv")).toHaveLength(1);
 });
