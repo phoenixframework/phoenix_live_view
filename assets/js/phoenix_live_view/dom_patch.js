@@ -96,7 +96,9 @@ export default class DOMPatch {
       // https://github.com/phoenixframework/phoenix_live_view/pull/3942
       // we need to ensure that no parent is locked
       const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
-      if (closestLock) {
+      // If the targetContainer itself is locked, that's okay.
+      // https://github.com/phoenixframework/phoenix_live_view/issues/4088
+      if (closestLock && !closestLock.isSameNode(targetContainer)) {
         const clonedTree = DOM.private(closestLock, PHX_REF_LOCK);
         if (clonedTree) {
           // if a parent is locked with a cloned tree, we need to patch the cloned tree instead
