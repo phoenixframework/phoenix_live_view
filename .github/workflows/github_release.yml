@@ -29,11 +29,14 @@ jobs:
           fi
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: ${{ steps.version.outputs.version }}
-          body_path: release_notes.md
-          draft: false
-          prerelease: ${{ contains(steps.version.outputs.version, '-rc') }}
+        run: |
+          PRERELEASE_FLAG=""
+          if [[ "${{ steps.version.outputs.version }}" == *-rc* ]]; then
+            PRERELEASE_FLAG="--prerelease"
+          fi
+          gh release create "${{ steps.version.outputs.version }}" \
+            --title "${{ steps.version.outputs.version }}" \
+            -F release_notes.md \
+            $PRERELEASE_FLAG
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
