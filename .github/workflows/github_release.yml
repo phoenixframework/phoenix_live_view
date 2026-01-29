@@ -36,7 +36,7 @@ jobs:
           fi
           gh release create "${{ steps.version.outputs.version }}" \
             --title "${{ steps.version.outputs.version }}" \
-            -F release_notes.md \
+            --notes-file release_notes.md \
             $PRERELEASE_FLAG
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
