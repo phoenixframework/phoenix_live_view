@@ -27,7 +27,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
       assert module_folders =
                File.ls!(
-                 Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view")
+                 Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view")
                )
 
       assert folder =
@@ -39,27 +39,27 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
                Path.wildcard(
                  Path.join(
                    Mix.Project.build_path(),
-                   "phoenix-colocated-css/phoenix_live_view/#{folder}/*.css"
+                   "phoenix-colocated/phoenix_live_view/#{folder}/*.css"
                  )
                )
 
       assert File.read!(style) == "\n  .sample-class { background-color: #FFFFFF; }\n"
 
       # now write the manifest manually as we are in a test
-      Phoenix.LiveView.ColocatedCSS.compile()
+      Phoenix.LiveView.ColocatedAssets.compile()
 
       assert manifest =
                File.read!(
                  Path.join(
                    Mix.Project.build_path(),
-                   "phoenix-colocated-css/phoenix_live_view/colocated.css"
+                   "phoenix-colocated/phoenix_live_view/colocated.css"
                  )
                )
 
       path =
         Path.relative_to(
           style,
-          Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view/")
+          Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/")
         )
 
       # style is in manifest
@@ -133,7 +133,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
       assert module_folders =
                File.ls!(
-                 Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view")
+                 Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view")
                )
 
       assert folder =
@@ -145,7 +145,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
                Path.wildcard(
                  Path.join(
                    Mix.Project.build_path(),
-                   "phoenix-colocated-css/phoenix_live_view/#{folder}/*.css"
+                   "phoenix-colocated/phoenix_live_view/#{folder}/*.css"
                  )
                )
 
@@ -160,20 +160,20 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
                ~s|@scope ([phx-css-SCOPE_HERE]) to ([phx-r]) { \n  .sample-class { background-color: #FFFFFF; }\n }|
 
       # now write the manifest manually as we are in a test
-      Phoenix.LiveView.ColocatedCSS.compile()
+      Phoenix.LiveView.ColocatedAssets.compile()
 
       assert manifest =
                File.read!(
                  Path.join(
                    Mix.Project.build_path(),
-                   "phoenix-colocated-css/phoenix_live_view/colocated.css"
+                   "phoenix-colocated/phoenix_live_view/colocated.css"
                  )
                )
 
       path =
         Path.relative_to(
           style,
-          Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view/")
+          Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/")
         )
 
       # style is in manifest
@@ -198,7 +198,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
       assert module_folders =
                File.ls!(
-                 Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view")
+                 Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view")
                )
 
       assert folder =
@@ -210,7 +210,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
                Path.wildcard(
                  Path.join(
                    Mix.Project.build_path(),
-                   "phoenix-colocated-css/phoenix_live_view/#{folder}/*.css"
+                   "phoenix-colocated/phoenix_live_view/#{folder}/*.css"
                  )
                )
 
@@ -225,20 +225,20 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
                ~s|@scope ([phx-css-SCOPE_HERE]) to ([phx-r] > *) { \n  .sample-class { background-color: #FFFFFF; }\n }|
 
       # now write the manifest manually as we are in a test
-      Phoenix.LiveView.ColocatedCSS.compile()
+      Phoenix.LiveView.ColocatedAssets.compile()
 
       assert manifest =
                File.read!(
                  Path.join(
                    Mix.Project.build_path(),
-                   "phoenix-colocated-css/phoenix_live_view/colocated.css"
+                   "phoenix-colocated/phoenix_live_view/colocated.css"
                  )
                )
 
       path =
         Path.relative_to(
           style,
-          Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view/")
+          Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/")
         )
 
       # style is in manifest
@@ -275,9 +275,9 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
   test "writes empty manifest when no colocated styles exist" do
     manifest =
-      Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view/colocated.css")
+      Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/colocated.css")
 
-    Phoenix.LiveView.ColocatedCSS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
     assert File.exists?(manifest)
     assert File.read!(manifest) == ""
   end

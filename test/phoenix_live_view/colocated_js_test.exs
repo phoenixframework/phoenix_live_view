@@ -43,7 +43,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
            """
 
     # now write the manifest manually as we are in a test
-    Phoenix.LiveView.ColocatedJS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
 
     assert manifest =
              File.read!(
@@ -104,7 +104,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
            """
 
     # now write the manifest manually as we are in a test
-    Phoenix.LiveView.ColocatedJS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
 
     relative_script_path =
       Path.relative_to(
@@ -168,7 +168,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
            """
 
     # now write the manifest manually as we are in a test
-    Phoenix.LiveView.ColocatedJS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
 
     relative_script_path =
       Path.relative_to(
@@ -214,7 +214,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
   test "writes empty index.js when no colocated scripts exist" do
     manifest = Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view/index.js")
-    Phoenix.LiveView.ColocatedJS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
     assert File.exists?(manifest)
     assert File.read!(manifest) == "export const hooks = {};\nexport default {};"
   end
@@ -227,7 +227,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
     end
 
     File.mkdir_p!(Path.join(node_path, "foo"))
-    Phoenix.LiveView.ColocatedJS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
 
     symlink =
       Path.join(
