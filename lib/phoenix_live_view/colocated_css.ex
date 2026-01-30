@@ -11,7 +11,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   ```heex
   <style :type={Phoenix.LiveView.ColocatedCSS}>
     .sample-class {
-        background-color: #FFFFFF;
+      background-color: #FFFFFF;
     }
   </style>
   ```
