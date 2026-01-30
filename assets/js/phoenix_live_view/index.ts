@@ -317,6 +317,10 @@ const LiveSocket = OriginalLiveSocket as unknown as LiveSocketConstructor;
  * which is triggered after the element has been added to the DOM. If you try
  * to call `createHook` from the constructor, an error will be logged.
  *
+ * Furthermore, you can only start using the hook's APIs after the `mounted`
+ * callback of the hook has been called. If you try to call them earlier,
+ * an error will be logged.
+ *
  * @example
  *
  * class MyComponent extends HTMLElement {
