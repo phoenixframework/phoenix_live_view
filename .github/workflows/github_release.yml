@@ -21,13 +21,7 @@ jobs:
         run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
       - name: Extract changelog for version
-        id: changelog
-        run: |
-          if CHANGELOG=$(bash .github/extract-changelog.sh "${{ steps.version.outputs.version }}" 2>/dev/null); then
-            echo "$CHANGELOG" > release_notes.md
-          else
-            echo "**[View changelog](https://github.com/${{ github.repository }}/blob/${{ steps.version.outputs.version }}/CHANGELOG.md)**" > release_notes.md
-          fi
+        run: bash .github/extract-changelog.sh "${{ steps.version.outputs.version }}" > release_notes.md
 
       - name: Create GitHub Release
         run: |
