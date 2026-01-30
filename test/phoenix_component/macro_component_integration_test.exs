@@ -340,7 +340,7 @@ defmodule Phoenix.Component.MacroComponentIntegrationTest do
       end
     end
 
-    assert data = MacroComponent.get_data(TestComponentWithData1, MyMacroComponent)
+    assert %{MyMacroComponent => data} = MacroComponent.get_data(TestComponentWithData1)
     assert length(data) == 2
 
     assert Enum.find(data, fn %{opts: opts} -> opts == %{"baz" => nil, "foo" => "bar"} end)

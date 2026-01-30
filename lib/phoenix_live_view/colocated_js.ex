@@ -180,10 +180,9 @@ defmodule Phoenix.LiveView.ColocatedJS do
   '''
 
   @behaviour Phoenix.Component.MacroComponent
+  @behaviour Phoenix.LiveView.ColocatedAssets
 
-  alias Phoenix.Component.MacroComponent
-
-  @impl true
+  @impl Phoenix.Component.MacroComponent
   def transform({"script", attributes, [text_content], _tag_meta} = _ast, meta) do
     validate_phx_version!()
 
@@ -227,11 +226,6 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
   @doc false
   def extract(opts, text_content, meta) do
-    # _build/dev/phoenix-colocated/otp_app/MyApp.MyComponent/line_no.js
-    target_path =
-      target_dir()
-      |> Path.join(inspect(meta.env.module))
-
     filename_opts =
       %{name: opts["name"]}
       |> maybe_put_opt(opts, "key", :key)
@@ -244,10 +238,13 @@ defmodule Phoenix.LiveView.ColocatedJS do
 
     filename = "#{meta.env.line}_#{hashed_name}.#{opts["extension"] || "js"}"
 
-    File.mkdir_p!(target_path)
-    File.write!(Path.join(target_path, filename), text_content)
-
-    {filename, filename_opts}
+    Phoenix.LiveView.ColocatedAssets.extract(
+      __MODULE__,
+      meta.env.module,
+      filename,
+      text_content,
+      filename_opts
+    )
   end
 
   defp maybe_put_opt(map, opts, opts_key, target_key) do
@@ -260,109 +257,41 @@ defmodule Phoenix.LiveView.ColocatedJS do
     end
   end
 
-  @doc false
-  def compile do
-    # this step runs after all modules have been compiled
-    # so we can write the final manifests and remove outdated hooks
-    clear_manifests!()
-    files = clear_outdated_and_get_files!()
-    write_new_manifests!(files)
-    maybe_link_node_modules!()
-  end
-
-  defp clear_manifests! do
-    target_dir = target_dir()
-
-    manifests =
-      Path.wildcard(Path.join(target_dir, "*"))
-      |> Enum.filter(&File.regular?(&1))
-
-    for manifest <- manifests, do: File.rm!(manifest)
-  end
-
-  defp clear_outdated_and_get_files! do
-    target_dir = target_dir()
-    modules = subdirectories(target_dir)
-
-    Enum.flat_map(modules, fn module_folder ->
-      module = Module.concat([Path.basename(module_folder)])
-      process_module(module_folder, module)
-    end)
-  end
-
-  defp process_module(module_folder, module) do
-    with true <- Code.ensure_loaded?(module),
-         data when data != [] <- get_data(module) do
-      expected_files = Enum.map(data, fn {filename, _opts} -> filename end)
-      files = File.ls!(module_folder)
-
-      outdated_files = files -- expected_files
-
-      for file <- outdated_files do
-        File.rm!(Path.join(module_folder, file))
-      end
-
-      Enum.map(data, fn {filename, config} ->
-        absolute_file_path = Path.join(module_folder, filename)
-        {absolute_file_path, config}
-      end)
-    else
-      _ ->
-        # either the module does not exist any more or
-        # does not have any colocated hooks / JS
-        File.rm_rf!(module_folder)
-        []
-    end
-  end
-
-  defp get_data(module) do
-    hooks_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedHook)
-    js_data = MacroComponent.get_data(module, Phoenix.LiveView.ColocatedJS)
-
-    hooks_data ++ js_data
-  end
-
-  defp write_new_manifests!(files) do
+  @impl Phoenix.LiveView.ColocatedAssets
+  def build_manifests(files) do
     if files == [] do
-      File.mkdir_p!(target_dir())
-
-      File.write!(
-        Path.join(target_dir(), "index.js"),
-        "export const hooks = {};\nexport default {};"
-      )
+      [{"index.js", "export const hooks = {};\nexport default {};"}]
     else
       files
-      |> Enum.group_by(fn {_file, config} ->
+      |> Enum.group_by(fn %Phoenix.LiveView.ColocatedAssets{data: config} ->
         config[:manifest] || "index.js"
       end)
-      |> Enum.each(fn {manifest, entries} ->
-        write_manifest(manifest, entries)
+      |> Enum.map(fn {manifest, entries} ->
+        build_manifest(manifest, entries)
       end)
     end
   end
 
-  defp write_manifest(manifest, entries) do
-    target_dir = target_dir()
-
+  defp build_manifest(manifest, entries) do
     content =
       entries
-      |> Enum.group_by(fn {_file, config} -> config[:key] || :default end)
+      |> Enum.group_by(fn %{data: config} -> config[:key] || :default end)
       |> Enum.reduce(["const js = {}; export default js;\n"], fn group, acc ->
         case group do
           {:default, entries} ->
             [
               acc,
               Enum.map(entries, fn
-                {file, %{name: nil}} ->
-                  ~s[import "./#{Path.relative_to(file, target_dir)}";\n]
+                %{relative_path: file, data: %{name: nil}} ->
+                  ~s[import "./#{file}";\n]
 
-                {file, %{name: name}} ->
+                %{relative_path: file, data: %{name: name}} ->
                   import_name =
                     "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
 
                   escaped_name = Phoenix.HTML.javascript_escape(name)
 
-                  ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; js["#{escaped_name}"] = #{import_name};\n>
+                  ~s<import #{import_name} from "./#{file}"; js["#{escaped_name}"] = #{import_name};\n>
               end)
             ]
 
@@ -373,89 +302,21 @@ defmodule Phoenix.LiveView.ColocatedJS do
               acc,
               ~s<const #{tmp_name} = {}; export { #{tmp_name} as #{key} };\n>,
               Enum.map(entries, fn
-                {file, %{name: nil}} ->
-                  ~s[import "./#{Path.relative_to(file, target_dir)}";\n]
+                %{relative_path: file, data: %{name: nil}} ->
+                  ~s[import "./#{file}";\n]
 
-                {file, %{name: name}} ->
+                %{relative_path: file, data: %{name: name}} ->
                   import_name =
                     "js_" <> Base.encode32(:crypto.hash(:md5, file), case: :lower, padding: false)
 
                   escaped_name = Phoenix.HTML.javascript_escape(name)
 
-                  ~s<import #{import_name} from "./#{Path.relative_to(file, target_dir)}"; #{tmp_name}["#{escaped_name}"] = #{import_name};\n>
+                  ~s<import #{import_name} from "./#{file}"; #{tmp_name}["#{escaped_name}"] = #{import_name};\n>
               end)
             ]
         end
       end)
 
-    File.write!(Path.join(target_dir, manifest), content)
-  end
-
-  defp maybe_link_node_modules! do
-    settings = project_settings()
-
-    case Keyword.get(settings, :node_modules_path, {:fallback, "assets/node_modules"}) do
-      {:fallback, rel_path} ->
-        location = Path.absname(rel_path)
-        do_symlink(location, true)
-
-      path when is_binary(path) ->
-        location = Path.absname(path)
-        do_symlink(location, false)
-    end
-  end
-
-  defp relative_to_target(location) do
-    if function_exported?(Path, :relative_to, 3) do
-      apply(Path, :relative_to, [location, target_dir(), [force: true]])
-    else
-      Path.relative_to(location, target_dir())
-    end
-  end
-
-  defp do_symlink(node_modules_path, is_fallback) do
-    relative_node_modules_path = relative_to_target(node_modules_path)
-
-    with {:error, reason} when reason != :eexist <-
-           File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")),
-         false <- Keyword.get(global_settings(), :disable_symlink_warning, false) do
-      disable_hint = """
-      If you don't use colocated hooks / js or you don't need to import files from "assets/node_modules"
-      in your hooks, you can simply disable this warning by setting
-
-          config :phoenix_live_view, :colocated_js,
-            disable_symlink_warning: true
-      """
-
-      IO.warn("""
-      Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}
-
-      On Windows, you can address this issue by starting your Windows terminal at least once
-      with "Run as Administrator" and then running your Phoenix application.#{is_fallback && "\n\n" <> disable_hint}
-      """)
-    end
-  end
-
-  defp global_settings do
-    Application.get_env(:phoenix_live_view, :colocated_js, [])
-  end
-
-  defp project_settings do
-    Mix.Project.config()
-    |> Keyword.get(:phoenix_live_view, [])
-    |> Keyword.get(:colocated_js, [])
-  end
-
-  defp target_dir do
-    default = Path.join(Mix.Project.build_path(), "phoenix-colocated")
-    app = to_string(Mix.Project.config()[:app])
-
-    global_settings()
-    |> Keyword.get(:target_directory, default)
-    |> Path.join(app)
-  end
-
-  defp subdirectories(path) do
-    Path.wildcard(Path.join(path, "*")) |> Enum.filter(&File.dir?(&1))
+    {manifest, content}
   end
 end

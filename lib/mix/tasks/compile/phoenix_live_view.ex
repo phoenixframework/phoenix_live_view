@@ -29,7 +29,6 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
   end
 
   defp compile do
-    Phoenix.LiveView.ColocatedJS.compile()
-    Phoenix.LiveView.ColocatedCSS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
   end
 end

@@ -63,19 +63,19 @@ defmodule Phoenix.Component.MacroComponentTest do
     end
   end
 
-  describe "get_data/2" do
-    test "returns an empty list if the component module does not exist" do
-      assert MacroComponent.get_data(IDoNotExist, MyMacroComponent) == []
+  describe "get_data/1" do
+    test "returns an empty map if the component module does not exist" do
+      assert MacroComponent.get_data(IDoNotExist) == %{}
     end
 
-    test "returns an empty list if the component does not define any macro components" do
+    test "returns an empty map if the component does not define any macro components" do
       defmodule MyComponent do
         use Phoenix.Component
 
         def render(assigns), do: ~H""
       end
 
-      assert MacroComponent.get_data(MyComponent, MyMacroComponent) == []
+      assert MacroComponent.get_data(MyComponent) == %{}
     end
   end
 end
