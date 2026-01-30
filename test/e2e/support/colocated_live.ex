@@ -69,7 +69,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
       // initialize js exec handler from colocated js
       colocated.js_exec(liveSocket)
     </script>
-    <link rel="stylesheet" href="/assets/colocated_css/colocated.css" />
+    <link rel="stylesheet" href="/assets/colocated/colocated.css" />
 
     {@inner_content}
     """

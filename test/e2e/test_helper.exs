@@ -278,10 +278,6 @@ defmodule Phoenix.LiveViewTest.E2E.Endpoint do
     from: Path.join(Mix.Project.build_path(), "phoenix-colocated/phoenix_live_view"),
     at: "/assets/colocated"
 
-  plug Plug.Static,
-    from: Path.join(Mix.Project.build_path(), "phoenix-colocated-css/phoenix_live_view"),
-    at: "/assets/colocated_css"
-
   plug Plug.Static, from: System.tmp_dir!(), at: "/tmp"
 
   plug :health_check
@@ -322,8 +318,7 @@ end
 IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
 
 # we need to manually compile the colocated hooks / js and css
-Phoenix.LiveView.ColocatedJS.compile()
-Phoenix.LiveView.ColocatedCSS.compile()
+Phoenix.LiveView.ColocatedAssets.compile()
 
 if not IEx.started?() do
   # when running the test server manually, we halt after
