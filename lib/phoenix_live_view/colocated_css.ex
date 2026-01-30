@@ -29,7 +29,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   ```heex
   <style :type={Phoenix.LiveView.ColocatedCSS} global>
     .sample-class {
-        background-color: #FFFFFF;
+      background-color: #FFFFFF;
     }
   </style>
   ```
@@ -43,7 +43,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   ```heex
   <style :type={Phoenix.LiveView.ColocatedCSS}>
     .sample-class {
-        background-color: #FFFFFF;
+      background-color: #FFFFFF;
     }
   </style>
   <div class="sample-class">
