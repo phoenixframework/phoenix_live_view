@@ -11,6 +11,7 @@
  */
 
 import type { Hook, HooksOptions } from "phoenix_live_view/view_hook";
+import { HookedWebComponent } from "phoenix_live_view";
 
 // Hook with custom state
 interface CounterState {
@@ -120,6 +121,45 @@ const InfiniteScroll: Hook = {
 };
 
 export { InfiniteScroll };
+
+// =============================================================================
+// Test for HookedWebComponent mixin
+// Verifies that web components can use hook functionality with proper typing
+// =============================================================================
+
+class MyCounter extends HookedWebComponent(HTMLElement) {
+  count = 0;
+
+  mounted() {
+    // this.hook should be typed as ViewHook with all its methods
+    this.hook.handleEvent("set_count", (payload: { count: number }) => {
+      this.count = payload.count;
+    });
+
+    // pushEvent should be available
+    this.hook.pushEvent("ready", { id: this.id });
+
+    // pushEventTo should be available
+    this.hook.pushEventTo("#target", "init", {});
+
+    // js() should be available
+    const js = this.hook.js();
+    js.show(this);
+
+    // liveSocket should be accessible
+    console.log(this.hook.liveSocket);
+  }
+
+  updated() {
+    // updated callback works
+    console.log("updated", this.count);
+  }
+}
+
+// Verify the class can be used as a custom element
+customElements.define("my-counter", MyCounter);
+
+export { MyCounter };
 
 // This file is primarily for compile-time type checking via `npm run typecheck:tests`.
 // The dummy test below satisfies Jest's requirement for at least one test.
