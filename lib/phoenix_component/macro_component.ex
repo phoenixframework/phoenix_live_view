@@ -162,18 +162,19 @@ defmodule Phoenix.Component.MacroComponent do
   @doc """
   Returns the stored data from macro components that returned `{:ok, ast, data}`.
 
-  As one macro component can be used multiple times in one module, the result is a list of all data values.
+  As one macro component can be used multiple times in one module, the result is a map of format
 
-  If the component module does not have any macro components defined, an empty list is returned.
+      %{module => list(data)}
+
+  If the component module does not have any macro components defined, an empty map is returned.
   """
-  @spec get_data(module(), module()) :: [term()] | nil
-  def get_data(component_module, macro_component) do
+  @spec get_data(module()) :: map()
+  def get_data(component_module) do
     if Code.ensure_loaded?(component_module) and
          function_exported?(component_module, :__phoenix_macro_components__, 0) do
       component_module.__phoenix_macro_components__()
-      |> Map.get(macro_component, [])
     else
-      []
+      %{}
     end
   end
 
