@@ -11,8 +11,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
       def fun(assigns) do
         ~H"""
         <script :type={Colo} name="my-script">
-          export default function() {
-            console.log("hey!")
+          export default function () {
+            console.log("hey!");
           }
         </script>
         """
@@ -72,8 +72,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
       def fun(assigns) do
         ~H"""
         <script :type={Colo} name="my-script" key="components">
-          export default function() {
-            console.log("hey!")
+          export default function () {
+            console.log("hey!");
           }
         </script>
         """
@@ -204,7 +204,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
                      def fun(assigns) do
                        ~H"""
                        <script :type={Colo} name={@foo}>
-                         1 + 1
+                         1 + 1;
                        </script>
                        """
                      end
