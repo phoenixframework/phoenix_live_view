@@ -96,7 +96,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
     <p id="phone">{@phone}</p>
 
-    <script :type={Pho > enix.LiveView.ColocatedJS} name="js_exec">
+    <script :type={Phoenix.LiveView.ColocatedJS} name="js_exec">
       export default function (liveSocket) {
         window.addEventListener("phx:js:exec", (e) =>
           liveSocket.execJS(liveSocket.main.el, e.detail.cmd),
