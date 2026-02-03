@@ -81,22 +81,26 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
       <script :type={Hook} name=".PhoneNumber">
         export default {
           mounted() {
-            this.el.addEventListener("input", e => {
-              let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
-              if(match) {
-                this.el.value = `${match[1]}-${match[2]}-${match[3]}`
+            this.el.addEventListener("input", (e) => {
+              let match = this.el.value
+                .replace(/\D/g, "")
+                .match(/^(\d{3})(\d{3})(\d{4})$/);
+              if (match) {
+                this.el.value = `${match[1]}-${match[2]}-${match[3]}`;
               }
-            })
-          }
-        }
+            });
+          },
+        };
       </script>
     </form>
 
     <p id="phone">{@phone}</p>
 
-    <script :type={Phoenix.LiveView.ColocatedJS} name="js_exec">
-      export default function(liveSocket) {
-        window.addEventListener("phx:js:exec", e => liveSocket.execJS(liveSocket.main.el, e.detail.cmd))
+    <script :type={Pho > enix.LiveView.ColocatedJS} name="js_exec">
+      export default function (liveSocket) {
+        window.addEventListener("phx:js:exec", (e) =>
+          liveSocket.execJS(liveSocket.main.el, e.detail.cmd),
+        );
       }
     </script>
 

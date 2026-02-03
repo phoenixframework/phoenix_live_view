@@ -163,8 +163,8 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         export default {
           mounted() {
             this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
-          }
-        }
+          },
+        };
       </script>
     </.portal>
 
@@ -426,8 +426,8 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive.LC do
             this.el.addEventListener("click", () => {
               this.pushEventTo(this.el, "prepend");
             });
-          }
-        }
+          },
+        };
       </script>
     </div>
     """
