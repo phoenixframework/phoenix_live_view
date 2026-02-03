@@ -7,19 +7,21 @@ defmodule Phoenix.LiveViewTest.E2E.Navigation.Layout do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
+        params: { _csrf_token: csrfToken },
         reloadJitterMin: 50,
-        reloadJitterMax: 500
-      })
-      liveSocket.connect()
-      window.liveSocket = liveSocket
+        reloadJitterMax: 500,
+      });
+      liveSocket.connect();
+      window.liveSocket = liveSocket;
 
       window.addEventListener("phx:navigate", (e) => {
-        console.log("navigate event", JSON.stringify(e.detail))
-      })
+        console.log("navigate event", JSON.stringify(e.detail));
+      });
     </script>
 
     <style>

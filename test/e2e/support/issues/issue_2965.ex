@@ -52,34 +52,37 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
       const QueuedUploaderHook = {
         async mounted() {
           const maxConcurrency = this.el.dataset.maxConcurrency || 3;
           let filesRemaining = [];
 
           this.el.addEventListener("input", async (event) => {
-            event.preventDefault()
+            event.preventDefault();
 
             if (event.target instanceof HTMLInputElement) {
               const files_html = event.target.files;
               if (files_html) {
-
                 const rawFiles = Array.from(files_html);
                 const fileNames = rawFiles.map((f) => {
                   return f.name;
                 });
 
-                this.pushEvent("upload_scrub_list", { file_names: fileNames }, ({ deduped_filenames }, ref) => {
-                  const files = rawFiles.filter((f) => {
-                    return deduped_filenames.includes(f.name);
-                  });
-                  filesRemaining = files;
-                  const firstFiles = files.slice(0, maxConcurrency);
-                  this.upload("files", firstFiles);
+                this.pushEvent(
+                  "upload_scrub_list",
+                  { file_names: fileNames },
+                  ({ deduped_filenames }, ref) => {
+                    const files = rawFiles.filter((f) => {
+                      return deduped_filenames.includes(f.name);
+                    });
+                    filesRemaining = files;
+                    const firstFiles = files.slice(0, maxConcurrency);
+                    this.upload("files", firstFiles);
 
-                  filesRemaining.splice(0, maxConcurrency);
-                });
+                    filesRemaining.splice(0, maxConcurrency);
+                  },
+                );
               }
             }
           });
@@ -94,14 +97,16 @@ defmodule Phoenix.LiveViewTest.E2E.Issue2965Live do
               console.log("Done uploading, noop!");
             }
           });
-        }
+        },
       };
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
-        hooks: {QueuedUploaderHook}
-      })
-      liveSocket.connect()
+        params: { _csrf_token: csrfToken },
+        hooks: { QueuedUploaderHook },
+      });
+      liveSocket.connect();
     </script>
 
     {@inner_content}
