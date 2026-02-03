@@ -55,19 +55,21 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      import {default as colocated, hooks} from "/assets/colocated/index.js";
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      import { default as colocated, hooks } from "/assets/colocated/index.js";
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
+        params: { _csrf_token: csrfToken },
         reloadJitterMin: 50,
         reloadJitterMax: 500,
-        hooks
-      })
-      liveSocket.connect()
-      window.liveSocket = liveSocket
+        hooks,
+      });
+      liveSocket.connect();
+      window.liveSocket = liveSocket;
       // initialize js exec handler from colocated js
-      colocated.js_exec(liveSocket)
+      colocated.js_exec(liveSocket);
     </script>
 
     {@inner_content}
