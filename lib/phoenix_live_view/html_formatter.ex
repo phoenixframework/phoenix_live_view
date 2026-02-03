@@ -314,7 +314,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         |> case do
           {:ok, result} ->
             result.nodes
-            |> transform_tree(source, newlines)
+            |> transform_tree(source, newlines, opts)
             |> HTMLAlgebra.build(opts)
             |> Inspect.Algebra.format(line_length)
 
@@ -400,8 +400,8 @@ defmodule Phoenix.LiveView.HTMLFormatter do
   end
 
   # Tree transformation - augments Parser output with formatter metadata
-  defp transform_tree(nodes, source, newlines) do
-    state = %{source: {source, newlines}}
+  defp transform_tree(nodes, source, newlines, opts) do
+    state = %{source: {source, newlines}, opts: opts}
     augment_nodes(nodes, state)
   end
 
@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         {augment_nodes(children, state), Map.put(meta, :mode, :normal)}
       end
 
-    {:block, type, name, attrs, children, meta, close_meta}
+    maybe_format_macro_component({:block, type, name, attrs, children, meta, close_meta}, state)
   end
 
   # Recursively augment eex_block children
@@ -546,4 +546,39 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
     line_offset + line_extra
   end
+
+  defp maybe_format_macro_component(
+         {:block, :tag, name, attrs, [{:text, content, _meta}] = children, meta, close_meta},
+         state
+       )
+       when is_map_key(meta, :macro_component) do
+    simple_attrs =
+      for {key, value, _attr_meta}
+          when (is_tuple(value) and elem(value, 0) == :string) or is_nil(value) <- attrs,
+          into: %{} do
+        case value do
+          {:string, value, _meta} -> {key, value}
+          nil -> {key, true}
+        end
+      end
+
+    children =
+      case Application.get_env(:phoenix_live_view, __MODULE__, [])[:macro_component_handler] do
+        {m, f, a} ->
+          case apply(m, f, [name, simple_attrs, meta.macro_component, content, state.opts | a]) do
+            :skip ->
+              children
+
+            {:ok, formatted_content} ->
+              [{:text, formatted_content, %{newlines_before_text: 0, newlines_after_text: 0}}]
+          end
+
+        _ ->
+          children
+      end
+
+    {:block, :tag, name, attrs, children, meta, close_meta}
+  end
+
+  defp maybe_format_macro_component(node, _state), do: node
 end
