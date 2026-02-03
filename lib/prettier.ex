@@ -1,13 +1,13 @@
 if Mix.env() == :dev do
-  defmodule Phoenix.LiveView.Prettier do
+  defmodule Prettier do
     @moduledoc false
 
-    @behaviour Phoenix.LiveView.MacroComponentFormatter
+    @behaviour Phoenix.LiveView.HTMLFormatter.TagFormatter
 
     require Logger
 
     @impl true
-    def format("script", attrs, _macro_component, content, _opts)
+    def format("script", attrs, content, _opts)
         when not is_map_key(attrs, "runtime") do
       manifest = Map.get(attrs, "manifest", "index.js")
 
@@ -30,7 +30,7 @@ if Mix.env() == :dev do
       end
     end
 
-    def format(_other, _attrs, _macro_component, _content, _opts) do
+    def format(_other, _attrs, _content, _opts) do
       :skip
     end
   end

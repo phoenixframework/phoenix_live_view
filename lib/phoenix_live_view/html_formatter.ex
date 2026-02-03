@@ -60,6 +60,17 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       ]
       ```
 
+    * `:tag_formatters` - Specify formatters for certain tags. Right now, only `style` and `script` are allowed.
+
+      ```elixir
+      [
+        plugins: [Phoenix.LiveView.HTMLFormatter],
+        tag_formatters: %{script: MyApp.PrettierFormatter}
+      ]
+      ```
+
+      See the documentation for `Phoenix.LiveView.HTMLFormatter.TagFormatter` for details.
+
     * `:inline_matcher` - a list of regular expressions to determine if a component
       should be treated as inline.
       Defaults to `["link", "button"]`, which treats any component with `link`
@@ -291,14 +302,16 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       newlines = :binary.matches(source, ["\r\n", "\n"])
 
       opts =
-        Keyword.update(opts, :attribute_formatters, %{}, fn formatters ->
-          Enum.reduce(formatters, %{}, fn {attr, formatter}, formatters ->
-            if Code.ensure_loaded?(formatter) do
-              Map.put(formatters, to_string(attr), formatter)
-            else
-              Logger.error("module #{inspect(formatter)} is not loaded and could not be found")
-              formatters
-            end
+        Enum.reduce([:attribute_formatters, :tag_formatters], opts, fn type, opts ->
+          Keyword.update(opts, type, %{}, fn formatters ->
+            Enum.reduce(formatters, %{}, fn {attr, formatter}, formatters ->
+              if Code.ensure_loaded?(formatter) do
+                Map.put(formatters, to_string(attr), formatter)
+              else
+                Logger.error("module #{inspect(formatter)} is not loaded and could not be found")
+                formatters
+              end
+            end)
           end)
         end)
 
@@ -401,7 +414,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
 
   # Tree transformation - augments Parser output with formatter metadata
   defp transform_tree(nodes, source, newlines, opts) do
-    state = %{source: {source, newlines}, opts: opts}
+    state = %{source: {source, newlines}, opts: opts, tag_formatters: opts[:tag_formatters]}
     augment_nodes(nodes, state)
   end
 
@@ -479,7 +492,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         {augment_nodes(children, state), Map.put(meta, :mode, :normal)}
       end
 
-    maybe_format_macro_component({:block, type, name, attrs, children, meta, close_meta}, state)
+    maybe_format_tag({:block, type, name, attrs, children, meta, close_meta}, state)
   end
 
   # Recursively augment eex_block children
@@ -547,11 +560,11 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     line_offset + line_extra
   end
 
-  defp maybe_format_macro_component(
+  defp maybe_format_tag(
          {:block, :tag, name, attrs, [{:text, content, _meta}] = children, meta, close_meta},
          state
        )
-       when is_map_key(meta, :macro_component) do
+       when is_map_key(state.tag_formatters, name) do
     simple_attrs =
       for {key, value, _attr_meta}
           when (is_tuple(value) and elem(value, 0) == :string) or is_nil(value) <- attrs,
@@ -562,23 +575,26 @@ defmodule Phoenix.LiveView.HTMLFormatter do
         end
       end
 
-    children =
-      case Application.get_env(:phoenix_live_view, __MODULE__, [])[:macro_component_handler] do
-        {m, f, a} ->
-          case apply(m, f, [name, simple_attrs, meta.macro_component, content, state.opts | a]) do
-            :skip ->
-              children
-
-            {:ok, formatted_content} ->
-              [{:text, formatted_content, %{newlines_before_text: 0, newlines_after_text: 0}}]
-          end
+    simple_attrs =
+      case meta do
+        %{macro_component: mc} ->
+          Map.put(simple_attrs, ":type", mc)
 
         _ ->
+          simple_attrs
+      end
+
+    children =
+      case state.tag_formatters[name].format(name, simple_attrs, content, state.opts) do
+        :skip ->
           children
+
+        {:ok, formatted_content} ->
+          [{:text, formatted_content, %{newlines_before_text: 0, newlines_after_text: 0}}]
       end
 
     {:block, :tag, name, attrs, children, meta, close_meta}
   end
 
-  defp maybe_format_macro_component(node, _state), do: node
+  defp maybe_format_tag(node, _state), do: node
 end
