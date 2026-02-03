@@ -79,6 +79,11 @@ defmodule Phoenix.LiveView.MacroComponentFormatter do
   end
   ```
 
+  Note that this example assumes that all `<script>` tags macro components
+  should be formatted with `prettier`. It checks the `manifest` attribute as that an
+  argument for `Phoenix.LiveView.ColocatedHook`. Depending on your usage of
+  macro components, you might need to add additional checks.
+
   """
   @callback format(
               tag_name :: String.t(),
