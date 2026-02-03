@@ -37,8 +37,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
     assert File.read!(script) == """
 
-             export default function() {
-               console.log("hey!")
+             export default function () {
+               console.log("hey!");
              }
            """
 
@@ -98,8 +98,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
     assert File.read!(script) == """
 
-             export default function() {
-               console.log("hey!")
+             export default function () {
+               console.log("hey!");
              }
            """
 
