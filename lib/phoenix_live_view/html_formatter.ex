@@ -399,6 +399,30 @@ defmodule Phoenix.LiveView.HTMLFormatter do
     end
   end
 
+  defp leading_whitespace(binary, len \\ 0) do
+    try do
+      :binary.at(binary, len)
+    rescue
+      _ -> binary_part(binary, 0, len)
+    else
+      char when char in [?\s, ?\t, ?\n, ?\r] -> leading_whitespace(binary, len + 1)
+      _ -> binary_part(binary, 0, len)
+    end
+  end
+
+  defp trailing_whitespace(binary), do: trailing_whitespace(binary, byte_size(binary) - 1, 0)
+
+  defp trailing_whitespace(binary, pos, len) do
+    try do
+      :binary.at(binary, pos)
+    rescue
+      _ -> binary_part(binary, byte_size(binary) - len, len)
+    else
+      char when char in [?\s, ?\t, ?\n, ?\r] -> trailing_whitespace(binary, pos - 1, len + 1)
+      _ -> binary_part(binary, byte_size(binary) - len, len)
+    end
+  end
+
   # Tree transformation - augments Parser output with formatter metadata
   defp transform_tree(nodes, source, newlines) do
     state = %{source: {source, newlines}}
@@ -420,13 +444,45 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          [{:text, text, %{context: [:comment_start, :comment_end]}} | rest],
          acc
        ) do
-    meta = %{
-      newlines_before_text: count_newlines_before_text(text),
-      newlines_after_text: count_newlines_after_text(text)
-    }
+    # Split leading/trailing whitespace into separate text nodes when they
+    # contain intentional blank lines (2+ newlines). This lets the normal
+    # blank line handling in block_to_algebra produce clean empty lines
+    # without trailing whitespace.
+    leading = leading_whitespace(text)
+    leading_newlines = count_newlines_before_text(leading)
 
-    comment = {:html_comment, [{:text, String.trim(text), meta}]}
-    reduce_html_comments(rest, [comment | acc])
+    acc =
+      if leading_newlines > 1 do
+        meta = %{
+          newlines_before_text: leading_newlines,
+          newlines_after_text: count_newlines_after_text(leading)
+        }
+
+        [{:text, leading, meta} | acc]
+      else
+        acc
+      end
+
+    comment_meta = %{newlines_before_text: 0, newlines_after_text: 0}
+    comment = {:html_comment, [{:text, String.trim(text), comment_meta}]}
+    acc = [comment | acc]
+
+    trailing = trailing_whitespace(text)
+    trailing_newlines = count_newlines_before_text(trailing)
+
+    acc =
+      if trailing_newlines > 1 do
+        meta = %{
+          newlines_before_text: trailing_newlines,
+          newlines_after_text: count_newlines_after_text(trailing)
+        }
+
+        [{:text, trailing, meta} | acc]
+      else
+        acc
+      end
+
+    reduce_html_comments(rest, acc)
   end
 
   # Comment start - begin accumulating comment content
