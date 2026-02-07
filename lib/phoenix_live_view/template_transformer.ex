@@ -17,7 +17,7 @@ defmodule Phoenix.LiveView.TemplateTransformer do
 
     * `{:ok, parser}` - transformed parser
     * `:noop` - no changes
-    * `{:error, reason}` - abort compilation with a compile error
+    * `{:error, reason}` - abort compilation with a compile error (`reason` can be any term)
 
   The `context` map includes:
 
@@ -37,5 +37,5 @@ defmodule Phoenix.LiveView.TemplateTransformer do
         }
 
   @callback transform(Phoenix.LiveView.TagEngine.Parser.t(), context()) ::
-              {:ok, Phoenix.LiveView.TagEngine.Parser.t()} | :noop | {:error, String.t()}
+              {:ok, Phoenix.LiveView.TagEngine.Parser.t()} | :noop | {:error, term()}
 end

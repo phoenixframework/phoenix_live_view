@@ -31,6 +31,9 @@ defmodule Phoenix.LiveView.TagEngine do
     * `template_transformers` - Optional list of modules implementing
       `Phoenix.LiveView.TemplateTransformer`. Overrides
       `config :phoenix_live_view, :template_transformers` for this compile call.
+      Transformer modules are loaded via `Code.ensure_compiled/1`; if a module
+      is unavailable at compile time (for example while compiling dependencies),
+      it is skipped.
     * `line` - the starting line offset. Defaults to 1.
     * `file` - the file of the template. Defaults to `"nofile"`.
     * `indentation` - the indentation of the template. Defaults to 0.
