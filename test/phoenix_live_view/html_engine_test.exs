@@ -74,6 +74,81 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     """
   end
 
+  defmodule RenameSpanTransformer do
+    @behaviour Phoenix.LiveView.TemplateTransformer
+
+    alias Phoenix.LiveView.TagEngine.Parser
+
+    @impl true
+    def transform(%Parser{} = parser, _context) do
+      {:ok, %{parser | nodes: rewrite_nodes(parser.nodes)}}
+    end
+
+    defp rewrite_nodes(nodes), do: Enum.map(nodes, &rewrite_node/1)
+
+    defp rewrite_node({:block, :tag, "span", attrs, children, meta, close_meta}) do
+      {:block, :tag, "strong", attrs, rewrite_nodes(children), meta, close_meta}
+    end
+
+    defp rewrite_node({:block, type, name, attrs, children, meta, close_meta}) do
+      {:block, type, name, attrs, rewrite_nodes(children), meta, close_meta}
+    end
+
+    defp rewrite_node({:self_close, :tag, "span", attrs, meta}) do
+      {:self_close, :tag, "strong", attrs, meta}
+    end
+
+    defp rewrite_node({:eex_block, expr, blocks, meta}) do
+      rewritten =
+        Enum.map(blocks, fn {children, clause_expr, clause_meta} ->
+          {rewrite_nodes(children), clause_expr, clause_meta}
+        end)
+
+      {:eex_block, expr, rewritten, meta}
+    end
+
+    defp rewrite_node(node), do: node
+  end
+
+  defmodule UppercaseTextTransformer do
+    @behaviour Phoenix.LiveView.TemplateTransformer
+
+    alias Phoenix.LiveView.TagEngine.Parser
+
+    @impl true
+    def transform(%Parser{} = parser, _context) do
+      {:ok, %{parser | nodes: rewrite_nodes(parser.nodes)}}
+    end
+
+    defp rewrite_nodes(nodes), do: Enum.map(nodes, &rewrite_node/1)
+
+    defp rewrite_node({:text, text, meta}) do
+      {:text, String.upcase(text), meta}
+    end
+
+    defp rewrite_node({:block, type, name, attrs, children, meta, close_meta}) do
+      {:block, type, name, attrs, rewrite_nodes(children), meta, close_meta}
+    end
+
+    defp rewrite_node({:eex_block, expr, blocks, meta}) do
+      rewritten =
+        Enum.map(blocks, fn {children, clause_expr, clause_meta} ->
+          {rewrite_nodes(children), clause_expr, clause_meta}
+        end)
+
+      {:eex_block, expr, rewritten, meta}
+    end
+
+    defp rewrite_node(node), do: node
+  end
+
+  defmodule ErrorTemplateTransformer do
+    @behaviour Phoenix.LiveView.TemplateTransformer
+
+    @impl true
+    def transform(_parser, _context), do: {:error, "boom"}
+  end
+
   defp local_function_component(assigns) do
     ~H"LOCAL COMPONENT: Value: {@value}"
   end
@@ -94,6 +169,26 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   test "handles text" do
     assert render("Hello") == "Hello"
+  end
+
+  test "applies template transformers in order" do
+    opts = [template_transformers: [RenameSpanTransformer, UppercaseTextTransformer]]
+
+    assert render("<span>Hello</span>", %{}, opts) == "<strong>HELLO</strong>"
+
+    assert %Phoenix.LiveView.Rendered{static: ["<strong>HELLO</strong>"]} =
+             eval("<span>Hello</span>", %{}, opts)
+  end
+
+  test "raises compile error when template transformer fails" do
+    assert_raise CompileError, ~r/template transformer .* failed: boom/, fn ->
+      eval("<div>Hello</div>", %{}, template_transformers: [ErrorTemplateTransformer])
+    end
+  end
+
+  test "skips unavailable template transformers" do
+    assert render("<div>Hello</div>", %{}, template_transformers: [Does.Not.Exist]) ==
+             "<div>Hello</div>"
   end
 
   test "handles regular blocks" do

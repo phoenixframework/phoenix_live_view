@@ -16,7 +16,9 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   text and expression parts and properly invoking the engine
   with the correct code for features like components and slots.
   """
-  def compile(%Parser{nodes: nodes, directives: directives}, opts) do
+  def compile(%Parser{} = parser, opts) do
+    %Parser{nodes: nodes, directives: directives} = apply_template_transformers(parser, opts)
+
     {engine, opts} = Keyword.pop(opts, :engine, Phoenix.LiveView.Engine)
     tag_handler = Keyword.fetch!(opts, :tag_handler)
 
@@ -78,6 +80,79 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       unquote(ast)
     end
   end
+
+  defp apply_template_transformers(%Parser{} = parser, opts) do
+    transformers =
+      Keyword.get(
+        opts,
+        :template_transformers,
+        Application.get_env(:phoenix_live_view, :template_transformers, [])
+      )
+      |> List.wrap()
+
+    context = %{
+      caller: Keyword.fetch!(opts, :caller),
+      file: Keyword.get(opts, :file, "nofile"),
+      line: Keyword.get(opts, :line, 1),
+      source: Keyword.fetch!(opts, :source),
+      tag_handler: Keyword.fetch!(opts, :tag_handler)
+    }
+
+    Enum.reduce(transformers, parser, fn transformer, parser ->
+      apply_template_transformer(transformer, parser, context)
+    end)
+  end
+
+  defp apply_template_transformer(transformer, %Parser{} = parser, context)
+       when is_atom(transformer) do
+    case Code.ensure_compiled(transformer) do
+      {:module, _} ->
+        if function_exported?(transformer, :transform, 2) do
+          case transformer.transform(parser, context) do
+            {:ok, %Parser{} = transformed} ->
+              transformed
+
+            :noop ->
+              parser
+
+            {:error, reason} ->
+              raise_template_transformer_error(transformer, reason, context)
+
+            other ->
+              reason =
+                "invalid return #{inspect(other)} (expected {:ok, parser}, :noop, or {:error, reason})"
+
+              raise_template_transformer_error(transformer, reason, context)
+          end
+        else
+          raise_template_transformer_error(
+            transformer,
+            "module does not implement transform/2",
+            context
+          )
+        end
+
+      {:error, _} ->
+        # Transformers can be configured at the app level and may not be available
+        # while compiling dependencies. Skip until the module becomes available.
+        parser
+    end
+  end
+
+  defp apply_template_transformer(transformer, _parser, context) do
+    raise_template_transformer_error(transformer, "expected a module name", context)
+  end
+
+  defp raise_template_transformer_error(transformer, reason, context) do
+    raise CompileError,
+      file: context.file,
+      line: context.line,
+      description:
+        "template transformer #{inspect(transformer)} failed: #{template_transformer_reason(reason)}"
+  end
+
+  defp template_transformer_reason(reason) when is_binary(reason), do: reason
+  defp template_transformer_reason(reason), do: inspect(reason)
 
   defp handle_node(nodes, substate, state) when is_list(nodes) do
     Enum.reduce(nodes, {state, substate}, fn node, {state, substate} ->

@@ -28,6 +28,9 @@ defmodule Phoenix.LiveView.TagEngine do
 
     * `tag_handler` - Required. The module implementing the `Phoenix.LiveView.TagEngine` behavior.
     * `caller` - Required. The `Macro.Env`.
+    * `template_transformers` - Optional list of modules implementing
+      `Phoenix.LiveView.TemplateTransformer`. Overrides
+      `config :phoenix_live_view, :template_transformers` for this compile call.
     * `line` - the starting line offset. Defaults to 1.
     * `file` - the file of the template. Defaults to `"nofile"`.
     * `indentation` - the indentation of the template. Defaults to 0.
@@ -39,6 +42,7 @@ defmodule Phoenix.LiveView.TagEngine do
         :caller,
         :tag_handler,
         :trim,
+        :template_transformers,
         line: 1,
         indentation: 0,
         file: "nofile",
