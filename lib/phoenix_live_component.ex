@@ -45,6 +45,16 @@ defmodule Phoenix.LiveComponent do
 
   ## Life-cycle
 
+  LiveComponents have a similar life-cycle to LiveViews:
+
+  * LiveViews: `mount/3` -> `handle_params/3` -> `render/1` 
+  * LiveComponents: `mount/1` -> `update/2` -> `render/1` 
+
+  Similarly, both may define a `handle_event/3` callback for
+  client events and use `handle_async/3` to deal with async
+  assigns. Over the next sections, we break down the life-cycle
+  of LiveComponents with examples and diagrams.
+
   ### Mount and update
 
   Live components are identified by the component module and their ID.
@@ -64,9 +74,8 @@ defmodule Phoenix.LiveComponent do
   Then `c:update/2` is invoked with all of the assigns passed to
   [`live_component/1`](`Phoenix.Component.live_component/1`). The assigns
   received as the first argument to `c:update/2` will only include those
-  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`),
-  and not any pre-existing assigns in `socket.assigns` such as those assigned
-  by `c:mount/1`.
+  assigns given to [`live_component/1`](`Phoenix.Component.live_component/1`)
+  and the `socket`as second argument.
 
   If `c:update/2` is not defined then all assigns given to
   [`live_component/1`](`Phoenix.Component.live_component/1`) will simply be
@@ -80,7 +89,8 @@ defmodule Phoenix.LiveComponent do
 
       mount(socket) -> update(assigns, socket) -> render(assigns)
 
-  On further rendering:
+  Now, whenever the parent changes, `mount/1` is no longer called, only update and
+  then render:
 
       update(assigns, socket) -> render(assigns)
 
@@ -153,7 +163,7 @@ defmodule Phoenix.LiveComponent do
 
   ### Update many
 
-  Live components also support an optional `c:update_many/1` callback
+  Live components support an optional `c:update_many/1` callback
   as an alternative to `c:update/2`. While `c:update/2` is called for
   each component individually, `c:update_many/1` is called with all
   LiveComponents of the same module being currently rendered/updated.
@@ -406,7 +416,7 @@ defmodule Phoenix.LiveComponent do
 
   ```elixir
   def handle_event("update_title", %{"title" => title}, socket) do
-    send self(), {:updated_card, %{socket.assigns.card | title: title}}
+    send(self(), {:updated_card, %{socket.assigns.card | title: title}})
     {:noreply, socket}
   end
   ```
@@ -449,27 +459,6 @@ defmodule Phoenix.LiveComponent do
 
   The major benefit in both cases is that the parent has explicit control
   over the messages it will receive.
-
-  ## Slots
-
-  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
-
-  ```heex
-  <.live_component module={MyComponent} id={@data.id} >
-    <div>Inner content here</div>
-  </.live_component>
-  ```
-
-  If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
-  includes the `:inner_block` assign it received.
-
-  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
-
-  ## Live patches and live redirects
-
-  A template rendered inside a component can use `<.link patch={...}>` and
-  `<.link navigate={...}>`. Patches are always handled by the parent LiveView,
-  as components do not provide `handle_params`.
 
   ## Cost of live components
 
@@ -537,6 +526,27 @@ defmodule Phoenix.LiveComponent do
   If you keep components mostly as an application concern with
   only the necessary assigns, it is unlikely you will run into
   issues related to live components.
+
+  ## Live patches and live redirects
+
+  A template rendered inside a component can use `<.link patch={...}>` and
+  `<.link navigate={...}>`. Patches are always handled by the parent LiveView,
+  as components do not provide `handle_params`.
+
+  ## Slots
+
+  LiveComponent can also receive slots, in the same way as a `Phoenix.Component`:
+
+  ```heex
+  <.live_component module={MyComponent} id={@data.id} >
+    <div>Inner content here</div>
+  </.live_component>
+  ```
+
+  If the LiveComponent defines an `c:update/2`, be sure that the socket it returns
+  includes the `:inner_block` assign it received.
+
+  See [the docs](Phoenix.Component.html#module-slots.md) for `Phoenix.Component` for more information.
 
   ## Limitations
 
