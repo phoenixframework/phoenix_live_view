@@ -527,7 +527,11 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
   defp handle_tag_attrs(meta, attrs, substate, state) do
     Enum.reduce(attrs, substate, fn
       {:root, {:expr, _, _} = expr, _attr_meta}, substate ->
-        ast = parse_expr!(expr, state.file)
+        ast =
+          case parse_expr!(expr, state.file) do
+            {:@, _, _} = ast -> ast
+            ast -> expand_with_line(ast, meta[:line], state.caller)
+          end
 
         # If we have a map of literal keys, we unpack it as a list
         # to simplify the downstream check.
