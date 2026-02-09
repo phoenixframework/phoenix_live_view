@@ -33,7 +33,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script>
-      window.hooks = {}
+      window.hooks = {};
     </script>
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
@@ -41,27 +41,29 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     </script>
     {assigns[:pre_script]}
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      import {hooks as colocatedHooks} from "/assets/colocated/index.js";
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      import { hooks as colocatedHooks } from "/assets/colocated/index.js";
 
-      let Hooks = {}
+      let Hooks = {};
       Hooks.FormHook = {
         mounted() {
-          this.pushEvent("ping", {}, () => this.el.innerText += "pong")
-        }
-      }
+          this.pushEvent("ping", {}, () => (this.el.innerText += "pong"));
+        },
+      };
       Hooks.FormStreamHook = {
         mounted() {
-          this.pushEvent("ping", {}, () => this.el.innerText += "pong")
-        }
-      }
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+          this.pushEvent("ping", {}, () => (this.el.innerText += "pong"));
+        },
+      };
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
-        hooks: {...Hooks, ...window.hooks, ...colocatedHooks}
-      })
-      liveSocket.connect()
-      window.liveSocket = liveSocket
+        params: { _csrf_token: csrfToken },
+        hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
+      });
+      liveSocket.connect();
+      window.liveSocket = liveSocket;
     </script>
     <style>
       * { font-size: 1.1rem; }

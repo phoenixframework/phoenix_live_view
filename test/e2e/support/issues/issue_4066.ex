@@ -30,12 +30,12 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4066Live.LiveComponent do
         mounted() {
           this.el.addEventListener("input", () => {
             setTimeout(() => {
-              this.pushEventTo(this.el, "do-something", { value: 100 })
+              this.pushEventTo(this.el, "do-something", { value: 100 });
               this.liveSocket.js().setAttribute(document.body, "data-pushed", "yes");
             }, parseInt(this.el.dataset.delay));
-          })
-        }
-      }
+          });
+        },
+      };
     </script>
     <input phx-hook=".MyHook" data-delay={@delay} target={@myself} id={@id} />
     """

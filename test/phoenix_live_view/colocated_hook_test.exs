@@ -14,8 +14,8 @@ defmodule Phoenix.LiveView.ColocatedHookTest do
           export default {
             mounted() {
               this.el.textContent = "Hello, world!";
-            }
-          }
+            },
+          };
         </script>
 
         <div id="hook" phx-hook=".fun"></div>
@@ -76,8 +76,8 @@ defmodule Phoenix.LiveView.ColocatedHookTest do
                          export default {
                            mounted() {
                              this.el.textContent = "Hello, world!";
-                           }
-                         }
+                           },
+                         };
                        </script>
 
                        <div id="hook" phx-hook=".fun"></div>
