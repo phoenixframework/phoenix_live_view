@@ -45,6 +45,13 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
+  defmacro test_attr_macro(a) do
+    case a do
+      :base -> quote do: [{"style", "display: flex;"}, {"other", "foo"}, {"another", @bar}]
+      _ -> quote do: a
+    end
+  end
+
   def assigns_component(assigns) do
     ~H"{inspect(Map.delete(assigns, :__changed__))}"
   end
@@ -217,6 +224,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     assert %Phoenix.LiveView.Rendered{static: ["<div", " d2=\"2\"", "></div>"]} =
              eval(template, assigns)
+
+    # macro is expanded
+    template = ~S|<div {test_attr_macro(:base)} />|
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div style=\"", "\" other=\"foo\"", "></div>"]} =
+             eval(template, %{bar: "baz"})
+
+    assert render(template, %{bar: "baz"}) ==
+             ~S|<div style="display: flex;" other="foo" another="baz"></div>|
   end
 
   test "optimizes attributes with literal string values" do
