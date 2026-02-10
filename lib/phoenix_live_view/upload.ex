@@ -87,12 +87,23 @@ defmodule Phoenix.LiveView.Upload do
   Cancels all uploads that exist.
 
   Returns the new socket with the cancelled upload configs.
+
+  You can optionally pass the uploads name to only cancel uploads for that name
   """
   def maybe_cancel_uploads(socket) do
+    maybe_cancel_uploads_with_custom_filter_fun(socket, & &1)
+  end
+
+  def maybe_cancel_uploads(socket, name) do
+    maybe_cancel_uploads_with_custom_filter_fun(socket, &Map.take(&1, [name]))
+  end
+
+  defp maybe_cancel_uploads_with_custom_filter_fun(socket, filter_fun) do
     uploads = socket.assigns[:uploads] || %{}
 
     uploads
     |> Map.delete(@refs_to_names)
+    |> filter_fun.()
     |> Enum.reduce({socket, []}, fn {name, conf}, {socket_acc, conf_acc} ->
       new_socket =
         Enum.reduce(conf.entries, socket_acc, fn entry, inner_acc ->
