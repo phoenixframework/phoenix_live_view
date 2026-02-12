@@ -1,7 +1,6 @@
 import { Socket } from "phoenix";
 import LiveSocket from "phoenix_live_view/live_socket";
 import ViewHook from "phoenix_live_view/view_hook";
-import DOM from "phoenix_live_view/dom";
 import { simulateJoinedView, liveViewDOM } from "./test_helpers";
 
 describe("phx-skip with JavaScript-set DOM IDs", () => {
