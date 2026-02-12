@@ -484,25 +484,16 @@ The command interface returned by `js()` above offers the following functions:
 
 ### Client-side ID manipulation
 
-When working with element IDs from client-side hooks, there are important limitations to be aware of:
-
-**Setting IDs via `setAttribute`**
-
-If you need to set or modify element IDs from client-side JavaScript (for example, to auto-generate IDs for accessibility), you **must** use the `js().setAttribute()` method:
+If you need to set element IDs from client-side JavaScript (for example, to auto-generate IDs for accessibility), you **must** use the `js().setAttribute()` method:
 
 ```javascript
 Hooks.MyHook = {
   mounted() {
-    // ✓ Correct - uses js().setAttribute()
     this.js().setAttribute(this.el, "id", "my-generated-id")
   }
 }
 ```
 
-**Important limitations:**
+Setting IDs directly via `node.id = "..."` or other direct DOM manipulation methods will cause DOM patching issues. Always use `js().setAttribute()` instead.
 
-- **Direct DOM manipulation is not supported**: Setting IDs directly via `node.id = "..."` or other direct DOM manipulation methods will cause DOM patching issues. Always use `js().setAttribute()` instead.
-
-- **Replacing server-assigned IDs is not supported**: If the server has already assigned an ID to an element, you cannot replace it with a different ID from the client side. Client-side IDs should only be set on elements that have no server-assigned ID.
-
-These limitations exist because LiveView's DOM patching relies on element IDs for efficient node matching. When you use `js().setAttribute()` to set an ID, LiveView marks the element internally so that DOM patching can handle it correctly.
+If the server has already assigned an ID to an element, you cannot replace it with a different ID from the client side. Client-side IDs should only be set on elements that have no server-assigned ID.
