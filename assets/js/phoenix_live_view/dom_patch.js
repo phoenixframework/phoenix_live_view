@@ -148,6 +148,18 @@ export default class DOMPatch {
           if (isJoinPatch) {
             return node.id;
           }
+
+          // If ID was set by JavaScript (via hooks), use PHX_MAGIC_ID for matching.
+          // This ensures morphdom can match elements even when JS modifies their IDs.
+          // Check sticky operations to detect JS-set IDs.
+          const stickyAttrs = DOM.getSticky(node, "attrs", [[], []]);
+          const [sets, _removes] = stickyAttrs;
+          const hasJsSetId = sets.some(([attr, _val]) => attr === "id");
+
+          if (hasJsSetId) {
+            return node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
+          }
+
           return (
             node.id || (node.getAttribute && node.getAttribute(PHX_MAGIC_ID))
           );
