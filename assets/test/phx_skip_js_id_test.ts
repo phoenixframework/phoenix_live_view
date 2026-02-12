@@ -4,7 +4,7 @@ import ViewHook from "phoenix_live_view/view_hook";
 import { simulateJoinedView, liveViewDOM } from "./test_helpers";
 
 describe("phx-skip with JavaScript-set DOM IDs", () => {
-  let liveSocket: LiveSocket;
+  let liveSocket: LiveSocket | null;
 
   beforeEach(() => {
     global.Phoenix = { Socket };
@@ -27,9 +27,10 @@ describe("phx-skip with JavaScript-set DOM IDs", () => {
 
     const view = simulateJoinedView(el, liveSocket);
     const targetEl = el.querySelector('[data-phx-magic-id="span-magic"]');
+    if (!targetEl) throw new Error("Target element not found");
 
-    const hook = new ViewHook(view, targetEl, {});
-    hook.js().setAttribute(targetEl, "id", "js-set-id");
+    const hook = new ViewHook(view, targetEl as HTMLElement, {});
+    hook.js().setAttribute(targetEl as HTMLElement, "id", "js-set-id");
 
     const updateDiff = {
       s: [
@@ -44,7 +45,7 @@ describe("phx-skip with JavaScript-set DOM IDs", () => {
 
     const afterUpdate = el.querySelector("#js-set-id");
     expect(afterUpdate).not.toBeNull();
-    expect(afterUpdate.id).toBe("js-set-id");
-    expect(afterUpdate.textContent).toBe("content");
+    expect(afterUpdate!.id).toBe("js-set-id");
+    expect(afterUpdate!.textContent).toBe("content");
   });
 });
