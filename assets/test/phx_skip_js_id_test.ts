@@ -1,6 +1,7 @@
 import { Socket } from "phoenix";
 import LiveSocket from "phoenix_live_view/live_socket";
 import ViewHook from "phoenix_live_view/view_hook";
+import DOM from "phoenix_live_view/dom";
 import { simulateJoinedView, liveViewDOM } from "./test_helpers";
 
 describe("phx-skip with JavaScript-set DOM IDs", () => {
@@ -27,7 +28,6 @@ describe("phx-skip with JavaScript-set DOM IDs", () => {
 
     const view = simulateJoinedView(el, liveSocket);
     const targetEl = el.querySelector('[data-phx-magic-id="span-magic"]');
-    if (!targetEl) throw new Error("Target element not found");
 
     const hook = new ViewHook(view, targetEl as HTMLElement, {});
     hook.js().setAttribute(targetEl as HTMLElement, "id", "js-set-id");
