@@ -481,3 +481,28 @@ The command interface returned by `js()` above offers the following functions:
 - `patch(href, opts = {})` - sends a patch event to the server and updates the browser's pushState history. Options: `replace`. For more details, see `Phoenix.LiveView.JS.patch/1`.
 - `exec(encodedJS)` - *only via Client hook `this.js()`*: executes encoded JS command in the context of the hook's root node. The encoded JS command should be constructed via `Phoenix.LiveView.JS` and is usually stored as an HTML attribute. Example: `this.js().exec(this.el.getAttribute('phx-remove'))`.
 - `exec(el, encodedJS)` - *only via `liveSocket.js()`*: executes encoded JS command in the context of any element.
+
+### Client-side ID manipulation
+
+When working with element IDs from client-side hooks, there are important limitations to be aware of:
+
+**Setting IDs via `setAttribute`**
+
+If you need to set or modify element IDs from client-side JavaScript (for example, to auto-generate IDs for accessibility), you **must** use the `js().setAttribute()` method:
+
+```javascript
+Hooks.MyHook = {
+  mounted() {
+    // ✓ Correct - uses js().setAttribute()
+    this.js().setAttribute(this.el, "id", "my-generated-id")
+  }
+}
+```
+
+**Important limitations:**
+
+- **Direct DOM manipulation is not supported**: Setting IDs directly via `node.id = "..."` or other direct DOM manipulation methods will cause DOM patching issues. Always use `js().setAttribute()` instead.
+
+- **Replacing server-assigned IDs is not supported**: If the server has already assigned an ID to an element, you cannot replace it with a different ID from the client side. Client-side IDs should only be set on elements that have no server-assigned ID.
+
+These limitations exist because LiveView's DOM patching relies on element IDs for efficient node matching. When you use `js().setAttribute()` to set an ID, LiveView marks the element internally so that DOM patching can handle it correctly.
