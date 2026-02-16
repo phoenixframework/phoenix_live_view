@@ -233,6 +233,11 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     assert render(template, %{bar: "baz"}) ==
              ~S|<div style="display: flex;" other="foo" another="baz"></div>|
+
+    # if assign map access was expanded, this would raise
+    expected = "<div qux=\"qux\"></div>"
+    assigns = %{foo: %{bar: %{baz: %{"qux" => "qux"}}}}
+    assert render(~S|<div {@foo.bar.baz} />|, assigns) == expected
   end
 
   test "optimizes attributes with literal string values" do
