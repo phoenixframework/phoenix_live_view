@@ -524,13 +524,20 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
 
   defp maybe_add_root_tag_attributes(text, _state, _meta), do: text
 
+  defp assign?({:@, _, [_]}), do: true
+  defp assign?({{:., _, [lhs, _rhs]}, _, []}), do: assign?(lhs)
+  defp assign?(_), do: false
+
   defp handle_tag_attrs(meta, attrs, substate, state) do
     Enum.reduce(attrs, substate, fn
       {:root, {:expr, _, _} = expr, _attr_meta}, substate ->
+        ast = parse_expr!(expr, state.file)
+
         ast =
-          case parse_expr!(expr, state.file) do
-            {:@, _, _} = ast -> ast
-            ast -> expand_with_line(ast, meta[:line], state.caller)
+          if assign?(ast) do
+            ast
+          else
+            expand_with_line(ast, meta[:line], state.caller)
           end
 
         # If we have a map of literal keys, we unpack it as a list
