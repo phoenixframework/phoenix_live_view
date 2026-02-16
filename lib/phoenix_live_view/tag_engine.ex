@@ -1095,13 +1095,20 @@ defmodule Phoenix.LiveView.TagEngine do
     |> update_subengine(:handle_text, [meta, suffix])
   end
 
+  defp assign?({:@, _, [_]}), do: true
+  defp assign?({{:., _, [lhs, _rhs]}, _, []}), do: assign?(lhs)
+  defp assign?(_), do: false
+
   defp handle_tag_attrs(state, meta, attrs) do
     Enum.reduce(attrs, state, fn
       {:root, {:expr, _, _} = expr, _attr_meta}, state ->
+        ast = parse_expr!(expr, state.file)
+
         ast =
-          case parse_expr!(expr, state.file) do
-            {:@, _, _} = ast -> ast
-            ast -> expand_with_line(ast, meta[:line], state.caller)
+          if assign?(ast) do
+            ast
+          else
+            expand_with_line(ast, meta[:line], state.caller)
           end
 
         # If we have a map of literal keys, we unpack it as a list
