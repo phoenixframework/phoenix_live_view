@@ -564,7 +564,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
          {:block, :tag, name, attrs, [{:text, content, _meta}] = children, meta, close_meta},
          state
        )
-       when is_map_key(state.tag_formatters, name) do
+       when is_map_key(state.tag_formatters, name) and name in ["style", "script"] do
     simple_attrs =
       for {key, value, _attr_meta}
           when (is_tuple(value) and elem(value, 0) == :string) or is_nil(value) <- attrs,
