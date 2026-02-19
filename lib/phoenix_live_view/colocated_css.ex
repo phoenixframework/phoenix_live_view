@@ -16,62 +16,6 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   </style>
   ```
 
-  ## Scoped CSS
-
-  By default, Colocated CSS styles are scoped at compile time to the template in which they are defined.
-  This provides style encapsulation preventing CSS rules within a component from unintentionally applying
-  to elements in other nested components. Scoping is performed via the use of the `@scope` CSS at-rule.
-  For more information, see [the docs on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@scope).
-
-  To prevent Colocated CSS styles from being scoped to the current template you can provide the `global`
-  attribute, for example:
-
-  ```heex
-  <style :type={Phoenix.LiveView.ColocatedCSS} global>
-    .sample-class {
-      background-color: #FFFFFF;
-    }
-  </style>
-  ```
-
-  **Note:** When using Scoped Colocated CSS with implicit `inner_block` slots or named slots, the content
-  provided will be scoped to the parent template which is providing the content, not the component which
-  defines the slot. For example, in the following snippet the elements within [`intersperse/1`](`Phoenix.Component.intersperse/1`)'s
-  `inner_block` and `separator` slots will both be styled by the `.sample-class` rule, not any rules defined within the
-  [`intersperse/1`](`Phoenix.Component.intersperse/1`) component itself:
-
-  ```heex
-  <style :type={Phoenix.LiveView.ColocatedCSS}>
-    .sample-class {
-      background-color: #FFFFFF;
-    }
-  </style>
-  <div class="sample-class">
-    <.intersperse :let={item} enum={[1, 2, 3]}>
-      <:separator>
-        <span class="sample-class">|</span>
-      </:separator>
-      <div class="sample-class">
-        <p>Item {item}</p>
-      </div>
-    </.intersperse>
-  </div>
-  ```
-
-  > #### Warning! {: .warning}
-  >
-  > The `@scope` CSS at-rule is Baseline available as of the end of 2025. To ensure that Scoped CSS will
-  > work on the browsers you need, be sure to check [Can I Use?](https://caniuse.com/css-cascade-scope) for
-  > browser compatibility.
-
-  > #### Tip {: .info}
-  >
-  > When Colocated CSS is scoped via the `@scope` rule, all "local root" elements in the given template serve as scoping roots.
-  > "Local root" elements are the outermost elements of the template itself and the outermost elements of any content passed to
-  > child components' slots. For selectors in your Colocated CSS to target the scoping root, you will need to
-  > specify the scoping root in the selector via the use of the `:scope` pseudo-selector. For more details,
-  > see [the docs on MDN](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@scope#scope_pseudo-class_within_scope_blocks).
-
   Colocated CSS uses the same folder structures as Colocated JS. See `Phoenix.LiveView.ColocatedJS` for more information.
 
   To bundle and use colocated CSS with esbuild, you can import it like this in your `app.js` file:
@@ -87,6 +31,134 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   <link phx-track-static rel="stylesheet" href={~p"/assets/js/app.css"} />
   ```
 
+  ## Scoped CSS
+
+  By default, Colocated CSS is not scoped. This means that the styles defined in a Colocated CSS block are extracted as is.
+  However, LiveView supports scoping Colocated CSS by defining a `:scoper` module implementing the `Phoenix.LiveView.ColocatedCSS.Scoper`
+  behaviour. When a `:scoper` is configured, Colocated CSS that is not defined with the `global` attribute will be scoped
+  according to the configured scoper.
+
+  An example scoper using CSS `@scope` can be implemented like this:
+
+  ```elixir
+  defmodule MyAppWeb.CSSScoper do
+    @behaviour Phoenix.LiveView.ColocatedCSS.Scoper
+
+    @impl true
+    def scope("style", attrs, css, meta) do
+      validate_opts!(attrs)
+
+      {scope, css} = do_scope(css, attrs, meta)
+
+      {:ok, css, [root_tag_attribute: {"phx-css-#{scope}", true}]}
+    end
+
+    defp validate_opts!(opts) do
+      Enum.each(opts, fn {key, val} -> validate_opt!({key, val}, Map.delete(opts, key)) end)
+    end
+
+    defp validate_opt!({"lower-bound", val}, _other_opts) when val in ["inclusive", "exclusive"] do
+      :ok
+    end
+
+    defp validate_opt!({"lower-bound", val}, _other_opts) do
+      raise ArgumentError,
+            ~s|expected "inclusive" or "exclusive" for the `lower-bound` attribute of colocated css, got: #{inspect(val)}|
+    end
+
+    defp validate_opt!(_opt, _other_opts), do: :ok
+
+    defp do_scope(css, opts, meta) do
+      scope = hash("#{meta.module}_#{meta.line}: #{css}")
+
+      root_tag_attribute = root_tag_attribute()
+
+      upper_bound_selector = ~s|[phx-css-#{scope}]|
+      lower_bound_selector = ~s|[#{root_tag_attribute}]|
+
+      lower_bound_selector =
+        case opts do
+          %{"lower-bound" => "inclusive"} -> lower_bound_selector <> " > *"
+          _ -> lower_bound_selector
+        end
+
+      css = "@scope (#{upper_bound_selector}) to (#{lower_bound_selector}) { #{css} }"
+
+      {scope, css}
+    end
+
+    defp hash(string) do
+      # It is important that we do not pad
+      # the Base32 encoded value as we use it in
+      # an HTML attribute name and = (the padding character)
+      # is not valid.
+      string
+      |> then(&:crypto.hash(:md5, &1))
+      |> Base.encode32(case: :lower, padding: false)
+    end
+
+    defp root_tag_attribute() do
+      case Application.get_env(:phoenix_live_view, :root_tag_attribute) do
+        configured_attribute when is_binary(configured_attribute) ->
+          configured_attribute
+
+        configured_attribute ->
+          message = """
+          a global :root_tag_attribute must be configured to use scoped css
+
+          Expected global :root_tag_attribute to be a string, got: #{inspect(configured_attribute)}
+
+          The global :root_tag_attribute is usually configured to `"phx-r"`, but it needs to be explicitly enabled in your configuration:
+
+              config :phoenix_live_view, root_tag_attribute: "phx-r"
+
+          You can also use a different value than `"phx-r"`.
+          """
+
+          raise ArgumentError, message
+      end
+    end
+  end
+  ```
+
+  To use this scoper, you would configure it in your `config.exs` like this:
+
+  ```elixir
+  config :phoenix_live_view, Phoenix.LiveView.ColocatedCSS, scoper: MyAppWeb.CSSScoper
+  ```
+
+  This scoper transforms a given style tag like
+
+  ```heex
+  <style :type={Phoenix.LiveView.ColocatedCSS}>
+    .my-class { color: red; }
+  </style>
+  ```
+
+  into
+
+  ```css
+  @scope ([phx-css-abc123]) to ([phx-r]) {
+    .my-class { color: red; }
+  }
+  ```
+
+  and if `lower-bound` is set to `inclusive`, it transforms it into
+
+  ```css
+  @scope ([phx-css-abc123]) to ([phx-r] > *) {
+    .my-class { color: red; }
+  }
+  ```
+
+  This uses [CSS donut scoping](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@scope) to
+  apply any styles defined in the colocated CSS block to any element between a local root and a component.
+  It relies on LiveView's global `:root_tag_attribute`, which is an attribute that LiveView adds to all root tags,
+  no matter if colocated CSS is used or not. When the browser encounters a `phx-r` attribute, which in this case
+  is assumed to be the configured global `:root_tag_attribute`, it stops the scoped CSS rule.
+
+  Another way to implement a scoper could be to use PostCSS and apply a tag to all tags in a template.
+
   ## Options
 
   Colocated CSS can be configured through the attributes of the `<style>` tag.
@@ -94,13 +166,8 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
     * `global` - If provided, the Colocated CSS rules contained within the `<style>` tag
       will not be scoped to the template within which it is defined, and will instead act
-      as global CSS rules.
+      as global CSS rules, even if a scoper is configured.
 
-    * `lower-bound` - Configure whether or not the the lower-bound of Scoped Colocated CSS is inclusive, that is,
-      root elements of child components can be styled by the parent component's Colocated CSS. This can be
-      useful for applying styles to the child component's root elements for layout purposes. Valid values are
-      `"inclusive"` and `"exclusive"`. Scoped Colocated CSS defaults to `"exclusive"`, so that styles are entirely
-      scoped to the parent unless otherwise specified.
   '''
 
   @behaviour Phoenix.Component.MacroComponent
@@ -114,10 +181,10 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
     validate_opts!(opts)
 
-    {scope, data} = extract(opts, text_content, meta)
+    {data, directives} = extract(opts, text_content, meta)
 
     # we always drop colocated CSS from the rendered output
-    {:ok, "", data, [root_tag_attribute: {"phx-css-#{scope}", true}]}
+    {:ok, "", data, directives}
   end
 
   def transform(_ast, _meta) do
@@ -136,15 +203,8 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     Enum.each(opts, fn {key, val} -> validate_opt!({key, val}, Map.delete(opts, key)) end)
   end
 
-  defp validate_opt!({"global", val}, other_opts) when val in [nil, true] do
-    case other_opts do
-      %{"lower-bound" => _} ->
-        raise ArgumentError,
-              "colocated css must be scoped to use the `lower-bound` attribute, but `global` attribute was provided"
-
-      _ ->
-        :ok
-    end
+  defp validate_opt!({"global", val}, _other_opts) when val in [nil, true] do
+    :ok
   end
 
   defp validate_opt!({"global", val}, _other_opts) do
@@ -152,38 +212,43 @@ defmodule Phoenix.LiveView.ColocatedCSS do
           "expected nil or true for the `global` attribute of colocated css, got: #{inspect(val)}"
   end
 
-  defp validate_opt!({"lower-bound", val}, _other_opts) when val in ["inclusive", "exclusive"] do
-    :ok
-  end
-
-  defp validate_opt!({"lower-bound", val}, _other_opts) do
-    raise ArgumentError,
-          ~s|expected "inclusive" or "exclusive" for the `lower-bound` attribute of colocated css, got: #{inspect(val)}|
-  end
-
   defp validate_opt!(_opt, _other_opts), do: :ok
 
   @doc false
   def extract(opts, text_content, meta) do
-    scope = scope(text_content, meta)
-    root_tag_attribute = root_tag_attribute()
-
-    upper_bound_selector = ~s|[phx-css-#{scope}]|
-    lower_bound_selector = ~s|[#{root_tag_attribute}]|
-
-    lower_bound_selector =
+    global =
       case opts do
-        %{"lower-bound" => "inclusive"} -> lower_bound_selector <> " > *"
-        _ -> lower_bound_selector
+        %{"global" => val} -> val in [true, nil]
+        _ -> false
       end
 
-    styles =
-      case opts do
-        %{"global" => _} ->
-          text_content
+    {styles, directives} =
+      case Application.get_env(:phoenix_live_view, Phoenix.LiveView.ColocatedCSS, [])[:scoper] do
+        nil ->
+          {text_content, []}
 
-        _ ->
-          "@scope (#{upper_bound_selector}) to (#{lower_bound_selector}) { #{text_content} }"
+        _scoper when global in [true, nil] ->
+          {text_content, []}
+
+        scoper ->
+          scope_meta = %{
+            module: meta.env.module,
+            file: meta.env.file,
+            line: meta.env.line
+          }
+
+          case scoper.scope("style", opts, text_content, scope_meta) do
+            {:ok, scoped_css, directives} when is_binary(scoped_css) and is_list(directives) ->
+              {scoped_css, directives}
+
+            {:error, reason} ->
+              raise ArgumentError,
+                    "the scoper returned an error: #{inspect(reason)}"
+
+            other ->
+              raise ArgumentError,
+                    "expected the ColocatedCSS scoper to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
+          end
       end
 
     filename = "#{meta.env.line}_#{hash(styles)}.css"
@@ -191,43 +256,13 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     data =
       Phoenix.LiveView.ColocatedAssets.extract(__MODULE__, meta.env.module, filename, styles, nil)
 
-    {scope, data}
-  end
-
-  defp scope(text_content, meta) do
-    hash("#{meta.env.module}_#{meta.env.line}: #{text_content}")
+    {data, directives}
   end
 
   defp hash(string) do
-    # It is important that we do not pad
-    # the Base32 encoded value as we use it in
-    # an HTML attribute name and = (the padding character)
-    # is not valid.
     string
     |> then(&:crypto.hash(:md5, &1))
     |> Base.encode32(case: :lower, padding: false)
-  end
-
-  defp root_tag_attribute() do
-    case Application.get_env(:phoenix_live_view, :root_tag_attribute) do
-      configured_attribute when is_binary(configured_attribute) ->
-        configured_attribute
-
-      configured_attribute ->
-        message = """
-        a global :root_tag_attribute must be configured to use colocated css
-
-        Expected global :root_tag_attribute to be a string, got: #{inspect(configured_attribute)}
-
-        The global :root_tag_attribute is usually configured to `"phx-r"`, but it needs to be explicitly enabled in your configuration:
-
-            config :phoenix_live_view, root_tag_attribute: "phx-r"
-
-        You can also use a different value than `"phx-r"`.
-        """
-
-        raise ArgumentError, message
-    end
   end
 
   @impl Phoenix.LiveView.ColocatedAssets

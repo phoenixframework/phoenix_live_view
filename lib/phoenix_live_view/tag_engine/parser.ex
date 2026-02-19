@@ -684,14 +684,17 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     directives
   end
 
-  defp validate_directive!(_module, :root_tag_attribute, nil, _), do: :ok
+  defp validate_directive!(_module, type, nil, _)
+       when type in [:tag_attribute, :root_tag_attribute], do: :ok
 
-  defp validate_directive!(_module, :root_tag_attribute, {name, value}, _meta)
-       when is_binary(name) and (is_binary(value) or value == true) do
+  defp validate_directive!(_module, type, {name, value}, _meta)
+       when type in [:tag_attribute, :root_tag_attribute] and
+              is_binary(name) and (is_binary(value) or value == true) do
     :ok
   end
 
-  defp validate_directive!(module, :root_tag_attribute, other, meta) do
+  defp validate_directive!(module, type, other, meta)
+       when type in [:tag_attribute, :root_tag_attribute] do
     throw_syntax_error!(
       """
       expected {name, value} for :root_tag_attribute directive from macro component #{inspect(module)}, got: #{inspect(other)}

@@ -91,33 +91,17 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
       :code.delete(__MODULE__.TestBadGlobalAttrComponent)
       :code.purge(__MODULE__.TestBadGlobalAttrComponent)
     end
-
-    test "raises if scoped css specific options are provided" do
-      message =
-        ~r/colocated css must be scoped to use the `lower-bound` attribute, but `global` attribute was provided/
-
-      assert_raise ParseError,
-                   message,
-                   fn ->
-                     defmodule TestScopedAttrWhileGlobalComponent do
-                       use Phoenix.Component
-
-                       def fun(assigns) do
-                         ~H"""
-                         <style :type={Phoenix.LiveView.ColocatedCSS} global lower-bound="inclusive">
-                           .sample-class { background-color: #FFFFFF; }
-                         </style>
-                         """
-                       end
-                     end
-                   end
-    after
-      :code.delete(__MODULE__.TestScopedAttrWhileGlobalComponent)
-      :code.purge(__MODULE__.TestScopedAttrWhileGlobalComponent)
-    end
   end
 
   describe "scoped styles" do
+    setup do
+      Application.put_env(:phoenix_live_view, Phoenix.LiveView.ColocatedCSS,
+        scoper: Phoenix.LiveViewTest.Support.CSSScoper
+      )
+
+      on_exit(fn -> Application.delete_env(:phoenix_live_view, Phoenix.LiveView.ColocatedCSS) end)
+    end
+
     test "with exclusive (default) lower-bound is extracted and available under manifest import" do
       defmodule TestScopedExclusiveComponent do
         use Phoenix.Component
