@@ -23,11 +23,11 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4088Live do
       <script :type={Phoenix.LiveView.ColocatedHook} name=".MyHook">
         export default {
           mounted() {
-            this.pushEventTo(this.el, 'my_update', {})
-            this.pushEventTo(this.el, 'my_update', {})
-            this.pushEventTo(this.el, 'my_update', {})
-          }
-        }
+            this.pushEventTo(this.el, "my_update", {});
+            this.pushEventTo(this.el, "my_update", {});
+            this.pushEventTo(this.el, "my_update", {});
+          },
+        };
       </script>
       <div id="foo" phx-hook=".MyHook" phx-target={@myself}>
         {@test}

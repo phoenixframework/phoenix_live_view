@@ -24,19 +24,21 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3941Live do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
+        params: { _csrf_token: csrfToken },
         hooks: {
           PagePositionNotifier: {
             mounted() {
               this.pushEvent("page_position_update", {});
             },
-          }
-        }
-      })
-      liveSocket.connect()
+          },
+        },
+      });
+      liveSocket.connect();
     </script>
 
     {@inner_content}

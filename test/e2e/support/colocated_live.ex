@@ -55,19 +55,21 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      import {default as colocated, hooks} from "/assets/colocated/index.js";
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      import { default as colocated, hooks } from "/assets/colocated/index.js";
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
+        params: { _csrf_token: csrfToken },
         reloadJitterMin: 50,
         reloadJitterMax: 500,
-        hooks
-      })
-      liveSocket.connect()
-      window.liveSocket = liveSocket
+        hooks,
+      });
+      liveSocket.connect();
+      window.liveSocket = liveSocket;
       // initialize js exec handler from colocated js
-      colocated.js_exec(liveSocket)
+      colocated.js_exec(liveSocket);
     </script>
 
     {@inner_content}
@@ -81,22 +83,26 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
       <script :type={Hook} name=".PhoneNumber">
         export default {
           mounted() {
-            this.el.addEventListener("input", e => {
-              let match = this.el.value.replace(/\D/g, "").match(/^(\d{3})(\d{3})(\d{4})$/)
-              if(match) {
-                this.el.value = `${match[1]}-${match[2]}-${match[3]}`
+            this.el.addEventListener("input", (e) => {
+              let match = this.el.value
+                .replace(/\D/g, "")
+                .match(/^(\d{3})(\d{3})(\d{4})$/);
+              if (match) {
+                this.el.value = `${match[1]}-${match[2]}-${match[3]}`;
               }
-            })
-          }
-        }
+            });
+          },
+        };
       </script>
     </form>
 
     <p id="phone">{@phone}</p>
 
     <script :type={Phoenix.LiveView.ColocatedJS} name="js_exec">
-      export default function(liveSocket) {
-        window.addEventListener("phx:js:exec", e => liveSocket.execJS(liveSocket.main.el, e.detail.cmd))
+      export default function (liveSocket) {
+        window.addEventListener("phx:js:exec", (e) =>
+          liveSocket.execJS(liveSocket.main.el, e.detail.cmd),
+        );
       }
     </script>
 
