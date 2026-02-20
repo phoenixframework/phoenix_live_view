@@ -350,4 +350,59 @@ function createHook(el: HTMLElement, callbacks: Hook): ViewHook {
   return hook;
 }
 
-export { LiveSocket, isUsedInput, createHook, ViewHook, Hook, HooksOptions };
+type HookCallbacks = Pick<
+  Hook,
+  | "mounted"
+  | "beforeUpdate"
+  | "updated"
+  | "destroyed"
+  | "disconnected"
+  | "reconnected"
+>;
+
+// Interface for elements with connectedCallback (web components)
+interface CustomElementLike extends HTMLElement {
+  connectedCallback?(): void;
+}
+
+function HookedWebComponent<
+  T extends new (...args: any[]) => CustomElementLike,
+>(Base: T) {
+  return class extends Base implements HookCallbacks {
+    hook!: ViewHook;
+
+    // Lifecycle callbacks - override in subclass
+    mounted?(): void;
+    beforeUpdate?(): void;
+    updated?(): void;
+    destroyed?(): void;
+    disconnected?(): void;
+    reconnected?(): void;
+
+    connectedCallback() {
+      super.connectedCallback?.();
+      // Only include callbacks that are actually defined, so ViewHook's
+      // default implementations aren't overwritten with undefined
+      const callbacks: Hook = {};
+      if (this.mounted) callbacks.mounted = this.mounted.bind(this);
+      if (this.beforeUpdate)
+        callbacks.beforeUpdate = this.beforeUpdate.bind(this);
+      if (this.updated) callbacks.updated = this.updated.bind(this);
+      if (this.destroyed) callbacks.destroyed = this.destroyed.bind(this);
+      if (this.disconnected)
+        callbacks.disconnected = this.disconnected.bind(this);
+      if (this.reconnected) callbacks.reconnected = this.reconnected.bind(this);
+      this.hook = createHook(this, callbacks);
+    }
+  };
+}
+
+export {
+  LiveSocket,
+  isUsedInput,
+  createHook,
+  HookedWebComponent,
+  ViewHook,
+  Hook,
+  HooksOptions,
+};
