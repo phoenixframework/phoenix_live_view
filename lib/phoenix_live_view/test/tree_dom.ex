@@ -288,6 +288,11 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
     if is_function(error_reporter, 1) do
       detect_duplicate_ids(new_html, error_reporter)
       detect_duplicate_components(new_html, cids_after, error_reporter)
+
+      if Application.get_env(:phoenix_live_view, Phoenix.LiveViewTest, [])
+         |> Keyword.get(:missing_form_id_as_error, true) do
+        detect_forms_without_id(new_html, error_reporter)
+      end
     end
 
     {new_html, cids_before -- cids_after}
@@ -342,6 +347,44 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
       end
     end)
   end
+
+  defp detect_forms_without_id([_ | _] = nodes, error_reporter) do
+    Enum.each(nodes, &detect_forms_without_id(&1, error_reporter))
+  end
+
+  defp detect_forms_without_id({"form", attrs, _children} = node, error_reporter) do
+    case {attribute(node, "id"), attribute(node, "phx-change"),
+          attribute(node, "phx-ignore-missing-id")} do
+      {nil, phx_change, nil} when is_binary(phx_change) ->
+        error_reporter.("""
+        Detected a form with phx-change but missing id:
+
+        #{inspect_html({"form", attrs, []})}
+
+        Without an id, LiveView will not be able to perform form recovery,
+        for more information see:
+
+        https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects
+
+        You can opt out if this check for this specific form by setting the phx-ignore-missing-id
+        attribute or opt out globally by setting
+
+        config :phoenix_live_view, Phoenix.LiveViewTest,
+          missing_form_id_as_error: false
+
+        in your test config.
+        """)
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp detect_forms_without_id({_tag_name, _attrs, children}, error_reporter) do
+    detect_forms_without_id(children, error_reporter)
+  end
+
+  defp detect_forms_without_id(_node, _error_reporter), do: :ok
 
   def component_ids(id, html_tree) do
     by_id!(html_tree, id)
