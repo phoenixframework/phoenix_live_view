@@ -148,6 +148,13 @@ export default class DOMPatch {
           if (isJoinPatch) {
             return node.id;
           }
+
+          // If ID was touched by JavaScript hook, use PHX_MAGIC_ID for matching.
+          // This ensures morphdom can match elements even when JS modifies their IDs.
+          if (DOM.private(node, "clientsideIdAttribute")) {
+            return node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
+          }
+
           return (
             node.id || (node.getAttribute && node.getAttribute(PHX_MAGIC_ID))
           );

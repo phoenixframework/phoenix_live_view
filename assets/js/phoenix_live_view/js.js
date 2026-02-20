@@ -600,6 +600,11 @@ const JS = {
       .filter((attr) => !alteredAttrs.includes(attr))
       .concat(removes);
 
+    // If element ID is touched via JavaScript, mark it for cheap lookup during morphdom
+    if (sets.some(([attr, _val]) => attr === "id")) {
+      DOM.putPrivate(el, "clientsideIdAttribute", true);
+    }
+
     DOM.putSticky(el, "attrs", (currentEl) => {
       newRemoves.forEach((attr) => currentEl.removeAttribute(attr));
       newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val));
