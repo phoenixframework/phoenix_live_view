@@ -42,7 +42,7 @@ defmodule Phoenix.LiveView.ColocatedHookTest do
     assert File.read!(script) =~ "Hello, world!"
 
     # now write the manifest manually as we are in a test
-    Phoenix.LiveView.ColocatedJS.compile()
+    Phoenix.LiveView.ColocatedAssets.compile()
 
     assert manifest =
              File.read!(

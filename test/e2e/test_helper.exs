@@ -317,8 +317,8 @@ end
 
 IO.puts("Starting e2e server on port #{Phoenix.LiveViewTest.E2E.Endpoint.config(:http)[:port]}")
 
-# we need to manually compile the colocated hooks / js
-Phoenix.LiveView.ColocatedJS.compile()
+# we need to manually compile the colocated hooks / js and css
+Phoenix.LiveView.ColocatedAssets.compile()
 
 if not IEx.started?() do
   # when running the test server manually, we halt after
