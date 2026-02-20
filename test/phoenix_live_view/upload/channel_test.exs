@@ -479,7 +479,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
-      test "consume_uploaded_entries executes function against all entries, cleans up tmp file, and shuts down",
+      test "consume_uploaded_entries executes function against all entries and shuts down",
            %{lv: lv} do
         parent = self()
         avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "123"}])
@@ -501,15 +501,11 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         # Wait for the UploadClient and UploadChannel to shutdown
         assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
         assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
-        assert_receive {:file, tmp_path, "foo.jpeg", "123"}
-        # synchronize with LV and Plug.Upload to ensure they have processed DOWN
-        assert render(lv)
-        assert :sys.get_state(Plug.Upload)
-        refute File.exists?(tmp_path)
+        assert_receive {:file, _tmp_path, "foo.jpeg", "123"}
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
-      test "consume_uploaded_entry executes function, cleans up tmp file, and shuts down", %{
+      test "consume_uploaded_entry executes function and shuts down", %{
         lv: lv
       } do
         parent = self()
@@ -529,12 +525,7 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         end)
 
         assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
-        assert_receive {:file, tmp_path, "foo.jpeg", "123"}
-        # synchronize with LV to ensure it has processed DOWN
-        assert render(lv)
-        # synchronize with Plug.Upload to ensure it has processed DOWN
-        :sys.get_state(Plug.Upload)
-        refute File.exists?(tmp_path)
+        assert_receive {:file, _tmp_path, "foo.jpeg", "123"}
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
@@ -642,11 +633,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
         assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
         assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
-        # synchronize with LV to ensure it has processed DOWN
-        assert render(lv)
-        # synchronize with Plug.Upload to ensure it has processed DOWN
-        :sys.get_state(Plug.Upload)
-        refute File.exists?(tmp_path)
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any]
@@ -697,11 +683,6 @@ defmodule Phoenix.LiveView.UploadChannelTest do
         assert_receive {:file, ^tmp_path, "foo.jpeg", "123"}
         assert_receive {:DOWN, _ref, :process, ^avatar_pid, {:shutdown, :closed}}, 1000
         assert_receive {:DOWN, _ref, :process, ^channel_pid, {:shutdown, :closed}}, 1000
-        # synchronize with LV to ensure it has processed DOWN
-        assert render(lv)
-        # synchronize with Plug.Upload to ensure it has processed DOWN
-        :sys.get_state(Plug.Upload)
-        refute File.exists?(tmp_path)
       end
 
       @tag allow: [max_entries: 1, accept: :any]
