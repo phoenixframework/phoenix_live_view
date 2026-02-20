@@ -3841,6 +3841,7 @@ var js_commands_default = (liveSocket, eventType) => {
 
 // js/phoenix_live_view/view_hook.ts
 var HOOK_ID = "hookId";
+var DEAD_HOOK = "deadHook";
 var viewHookID = 1;
 var ViewHook = class _ViewHook {
   get liveSocket() {
@@ -3852,12 +3853,18 @@ var ViewHook = class _ViewHook {
   static elementID(el) {
     return dom_default.private(el, HOOK_ID);
   }
+  static deadHook(el) {
+    return dom_default.private(el, DEAD_HOOK) === true;
+  }
   constructor(view, el, callbacks) {
     this.el = el;
     this.__attachView(view);
     this.__listeners = /* @__PURE__ */ new Set();
     this.__isDisconnected = false;
     dom_default.putPrivate(this.el, HOOK_ID, _ViewHook.makeID());
+    if (view && view.isDead) {
+      dom_default.putPrivate(this.el, DEAD_HOOK, true);
+    }
     if (callbacks) {
       const protectedProps = /* @__PURE__ */ new Set([
         "el",
@@ -4701,6 +4708,9 @@ var View = class _View {
       return;
     }
     if (hookElId && !this.viewHooks[hookElId]) {
+      if (ViewHook.deadHook(el)) {
+        return;
+      }
       const hook = dom_default.getCustomElHook(el) || logError(`no hook found for custom element: ${el.id}`);
       this.viewHooks[hookElId] = hook;
       hook.__attachView(this);
