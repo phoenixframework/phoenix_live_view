@@ -27,6 +27,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       caller: Keyword.fetch!(opts, :caller),
       source: Keyword.fetch!(opts, :source),
       tag_handler: tag_handler,
+      tag_attributes: Keyword.get_values(directives, :tag_attribute),
       root_tag_attribute: Application.get_env(:phoenix_live_view, :root_tag_attribute),
       root_tag_attributes: Keyword.get_values(directives, :root_tag_attribute),
       # The following keys are updated when traversing nodes
@@ -491,6 +492,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     text =
       "<#{name}"
       |> maybe_add_phx_loc(state, meta)
+      |> maybe_add_tag_attributes(state, meta)
       |> maybe_add_root_tag_attributes(state, meta)
 
     substate = state.engine.handle_text(substate, meta, text)
@@ -503,6 +505,22 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
       "#{text} data-phx-loc=\"#{meta[:line]}\""
     else
       text
+    end
+  end
+
+  defp maybe_add_tag_attributes(text, state, _meta) do
+    case state do
+      %{tag_attributes: [_ | _] = attributes} ->
+        attrs =
+          attributes
+          |> Phoenix.HTML.attributes_escape()
+          |> Phoenix.HTML.safe_to_string()
+
+        # Phoenix.HTML.attributes_escape/1 adds a leading space automatically
+        "#{text}#{attrs}"
+
+      _ ->
+        text
     end
   end
 
