@@ -112,13 +112,19 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     file = Keyword.get(opts, :file, "nofile")
     indentation = Keyword.get(opts, :indentation, 0)
     trim_eex = Keyword.get(opts, :trim_eex, true)
+    strip_eex_comments = Keyword.get(opts, :strip_eex_comments, false)
     {:ok, eex_nodes} = EEx.tokenize(source, opts)
 
     {tokens, cont} =
       Enum.reduce(
         eex_nodes,
         {[], {:text, :enabled}},
-        &do_tokenize(&1, &2, source, %{file: file, indentation: indentation, trim_eex: trim_eex})
+        &do_tokenize(&1, &2, source, %{
+          file: file,
+          indentation: indentation,
+          trim_eex: trim_eex,
+          strip_eex_comments: strip_eex_comments
+        })
       )
 
     Tokenizer.finalize(tokens, file, cont, source)
@@ -134,8 +140,12 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
     Tokenizer.tokenize(text, meta, tokens, cont, state)
   end
 
-  defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents, _opts) do
-    {[{:eex_comment, List.to_string(text), meta} | tokens], cont}
+  defp do_tokenize({:comment, text, meta}, {tokens, cont}, _contents, opts) do
+    if opts.strip_eex_comments do
+      {tokens, cont}
+    else
+      {[{:eex_comment, List.to_string(text), meta} | tokens], cont}
+    end
   end
 
   defp do_tokenize(
