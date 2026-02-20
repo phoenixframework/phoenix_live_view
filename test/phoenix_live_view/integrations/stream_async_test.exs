@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest.Support.AsyncSync
   alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
@@ -101,11 +102,7 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
       {:ok, lv, _html} = live(conn, "/stream_async?test=lv_exit")
       lv_ref = Process.monitor(lv.pid)
 
-      receive do
-        :async_ready -> :ok
-      end
-
-      async_ref = Process.monitor(Process.whereis(:stream_async_exit))
+      async_ref = wait_for_async_ready_and_monitor(:stream_async_exit)
       send(lv.pid, :boom)
 
       assert_receive {:DOWN, ^lv_ref, :process, _pid, :boom}, 1000
@@ -116,11 +113,7 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
       Process.register(self(), :stream_async_test_process)
       {:ok, lv, _html} = live(conn, "/stream_async?test=cancel")
 
-      receive do
-        :async_ready -> :ok
-      end
-
-      async_ref = Process.monitor(Process.whereis(:cancel_stream))
+      async_ref = wait_for_async_ready_and_monitor(:cancel_stream)
       send(lv.pid, :cancel)
       assert_receive {:DOWN, ^async_ref, :process, _pid, {:shutdown, :cancel}}, 1000
 
@@ -233,11 +226,7 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
       {:ok, lv, _html} = live(conn, "/stream_async?test=lc_lv_exit")
       lv_ref = Process.monitor(lv.pid)
 
-      receive do
-        :async_ready -> :ok
-      end
-
-      async_ref = Process.monitor(Process.whereis(:lc_stream_exit))
+      async_ref = wait_for_async_ready_and_monitor(:lc_stream_exit)
       send(lv.pid, :boom)
 
       assert_receive {:DOWN, ^lv_ref, :process, _pid, :boom}, 1000
@@ -248,11 +237,8 @@ defmodule Phoenix.LiveView.StreamAsyncTest do
       Process.register(self(), :stream_async_test_process)
       {:ok, lv, _html} = live(conn, "/stream_async?test=lc_cancel")
 
-      receive do
-        :async_ready -> :ok
-      end
+      async_ref = wait_for_async_ready_and_monitor(:lc_stream_cancel)
 
-      async_ref = Process.monitor(Process.whereis(:lc_stream_cancel))
       # Send cancel to the LiveView, which will forward to the component
       send(lv.pid, {:cancel_lc, "lc"})
 

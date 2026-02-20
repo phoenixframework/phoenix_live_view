@@ -3,6 +3,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
   import Phoenix.ConnTest
 
   import Phoenix.LiveViewTest
+  import Phoenix.LiveViewTest.Support.AsyncSync
   alias Phoenix.LiveViewTest.Support.Endpoint
 
   @endpoint Endpoint
@@ -38,11 +39,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       {:ok, lv, _html} = live(conn, "/start_async?test=lv_exit")
       lv_ref = Process.monitor(lv.pid)
 
-      receive do
-        :async_ready -> :ok
-      end
-
-      async_ref = Process.monitor(Process.whereis(:start_async_exit))
+      async_ref = wait_for_async_ready_and_monitor(:start_async_exit)
       send(lv.pid, :boom)
 
       assert_receive {:DOWN, ^lv_ref, :process, _pid, :boom}, 1000
@@ -53,11 +50,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=cancel")
 
-      receive do
-        :async_ready -> :ok
-      end
-
-      async_ref = Process.monitor(Process.whereis(:start_async_cancel))
+      async_ref = wait_for_async_ready_and_monitor(:start_async_cancel)
 
       assert render(lv) =~ "result: :loading"
 
@@ -139,11 +132,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_lv_exit")
       lv_ref = Process.monitor(lv.pid)
 
-      receive do
-        :async_ready -> :ok
-      end
-
-      async_ref = Process.monitor(Process.whereis(:start_async_exit))
+      async_ref = wait_for_async_ready_and_monitor(:start_async_exit)
       send(lv.pid, :boom)
 
       assert_receive {:DOWN, ^lv_ref, :process, _pid, :boom}, 1000
@@ -154,11 +143,7 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       Process.register(self(), :start_async_test_process)
       {:ok, lv, _html} = live(conn, "/start_async?test=lc_cancel")
 
-      receive do
-        :async_ready -> :ok
-      end
-
-      async_ref = Process.monitor(Process.whereis(:start_async_cancel))
+      async_ref = wait_for_async_ready_and_monitor(:start_async_cancel)
 
       Phoenix.LiveView.send_update(lv.pid, Phoenix.LiveViewTest.Support.StartAsyncLive.LC,
         id: "lc",
