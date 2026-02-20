@@ -2836,16 +2836,40 @@ defmodule Phoenix.Component do
     assigns = assign(assigns, :forms, forms)
 
     ~H"""
-    <%= for finner <- @forms do %>
-      <%= if !@skip_hidden do %>
-        <%= for {name, value_or_values} <- finner.hidden,
-                name = name_for_value_or_values(finner, name, value_or_values),
-                value <- List.wrap(value_or_values) do %>
-          <input type="hidden" name={name} value={value} />
-        <% end %>
-      <% end %>
-      {render_slot(@inner_block, finner)}
-    <% end %>
+    <.inputs_for_form :for={form <- @forms} :key={form.id} form={form} skip_hidden={@skip_hidden}>
+      {render_slot(@inner_block, form)}
+    </.inputs_for_form>
+    """
+  end
+
+  attr.(:skip_hidden, :boolean, required: true)
+  attr.(:form, Phoenix.HTML.Form, required: true)
+
+  slot.(:inner_block, required: true)
+
+  defp inputs_for_form(assigns) do
+    hidden_inputs =
+      if assigns.skip_hidden do
+        []
+      else
+        for {name, value_or_values} <- assigns.form.hidden,
+            name = name_for_value_or_values(assigns.form, name, value_or_values),
+            {value, index} <- value_or_values |> List.wrap() |> Enum.with_index() do
+          {name, value, index}
+        end
+      end
+
+    assigns = assign(assigns, :hidden_inputs, hidden_inputs)
+
+    ~H"""
+    <input
+      :for={{name, value, index} <- @hidden_inputs}
+      :key={"#{name}_#{index}"}
+      type="hidden"
+      name={name}
+      value={value}
+    />
+    {render_slot(@inner_block)}
     """
   end
 
