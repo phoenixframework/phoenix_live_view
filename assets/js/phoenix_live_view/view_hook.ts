@@ -4,6 +4,7 @@ import LiveSocket from "./live_socket";
 import View from "./view";
 
 const HOOK_ID = "hookId";
+const DEAD_HOOK = "deadHook";
 let viewHookID = 1;
 
 export type OnReply = (reply: any, ref: number) => any;
@@ -256,6 +257,9 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   static elementID(el: HTMLElement) {
     return DOM.private(el, HOOK_ID);
   }
+  static deadHook(el: HTMLElement) {
+    return DOM.private(el, DEAD_HOOK) === true;
+  }
 
   constructor(view: View | null, el: E, callbacks?: Hook) {
     this.el = el;
@@ -263,6 +267,9 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     this.__listeners = new Set();
     this.__isDisconnected = false;
     DOM.putPrivate(this.el, HOOK_ID, ViewHook.makeID());
+    if (view && view.isDead) {
+      DOM.putPrivate(this.el, DEAD_HOOK, true);
+    }
 
     if (callbacks) {
       // This instance is for an object-literal hook. Copy methods/properties.

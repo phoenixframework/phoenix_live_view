@@ -883,6 +883,15 @@ export default class View {
     }
 
     if (hookElId && !this.viewHooks[hookElId]) {
+      if (ViewHook.deadHook(el)) {
+        // If the hook is on an element outside of the LiveView,
+        // it is initially mounted by the dead view (view.isDead).
+        // As soon as the main LiveView is connected, it is considered
+        // to be owned by it though, but since the live view has a new
+        // viewHooks object, we don't find it. We mark hooks on "dead"
+        // elements as such and just ignore them here.
+        return;
+      }
       // hook created, but not attached (createHook for web component)
       const hook =
         DOM.getCustomElHook(el) ||
