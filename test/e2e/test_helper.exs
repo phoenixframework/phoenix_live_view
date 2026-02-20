@@ -25,7 +25,9 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
 
   def render("root.html", assigns) do
     ~H"""
-    <%!-- no doctype -> quirks mode --%> <!DOCTYPE html> {@inner_content}
+    <%!-- no doctype -> quirks mode --%>
+    <!DOCTYPE html> {assigns[:render_in_root] && assigns[:render_in_root].(assigns)}
+    {@inner_content}
     """
   end
 
@@ -209,6 +211,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/4102", Issue4102Live
       live "/4107", Issue4107Live
       live "/4121", Issue4121Live
+      live "/4147", Issue4147Live
     end
   end
 
