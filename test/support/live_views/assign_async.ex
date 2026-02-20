@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive do
   use Phoenix.LiveView
 
+  import Phoenix.LiveViewTest.Support.AsyncSync
+
   on_mount({__MODULE__, :defaults})
 
   def on_mount(:defaults, _params, _session, socket) do
@@ -66,18 +68,14 @@ defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive do
   def mount(%{"test" => "lv_exit"}, _session, socket) do
     {:ok,
      assign_async(socket, :data, fn ->
-       Process.register(self(), :lv_exit)
-       send(:assign_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:assign_async_test_process, :lv_exit)
      end)}
   end
 
   def mount(%{"test" => "cancel"}, _session, socket) do
     {:ok,
      assign_async(socket, :data, fn ->
-       Process.register(self(), :cancel)
-       send(:assign_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:assign_async_test_process, :cancel)
      end)}
   end
 
@@ -126,6 +124,8 @@ end
 defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive.LC do
   use Phoenix.LiveComponent
 
+  import Phoenix.LiveViewTest.Support.AsyncSync
+
   def render(assigns) do
     ~H"""
     <div>
@@ -168,18 +168,14 @@ defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive.LC do
   def update(%{test: "lv_exit"}, socket) do
     {:ok,
      assign_async(socket, [:lc_data, :other_data], fn ->
-       Process.register(self(), :lc_exit)
-       send(:assign_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:assign_async_test_process, :lc_exit)
      end)}
   end
 
   def update(%{test: "cancel"}, socket) do
     {:ok,
      assign_async(socket, [:lc_data, :other_data], fn ->
-       Process.register(self(), :lc_cancel)
-       send(:assign_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:assign_async_test_process, :lc_cancel)
      end)}
   end
 
