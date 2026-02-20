@@ -36,7 +36,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
    * Called when the element is about to be updated in the DOM.
    * Note: any call here must be synchronous as the operation cannot be deferred or cancelled.
    */
-  beforeUpdate?: () => void;
+  beforeUpdate?: (fromEl: E, toEl: E) => void;
 
   /**
    * The updated callback.
@@ -174,7 +174,7 @@ export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
    * Called when the element is about to be updated in the DOM.
    * Note: any call here must be synchronous as the operation cannot be deferred or cancelled.
    */
-  beforeUpdate?: (this: T & HookInterface<E>) => void;
+  beforeUpdate?: (this: T & HookInterface<E>, fromEl: E, toEl: E) => void;
 
   /**
    * The updated callback.
@@ -354,7 +354,7 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
 
   // Default lifecycle methods
   mounted(): void {}
-  beforeUpdate(): void {}
+  beforeUpdate(_fromEl: E, _toEl: E): void {}
   updated(): void {}
   destroyed(): void {}
   disconnected(): void {}
@@ -371,8 +371,8 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     this.updated();
   }
   /** @internal */
-  __beforeUpdate() {
-    this.beforeUpdate();
+  __beforeUpdate(fromEl, toEl) {
+    this.beforeUpdate(fromEl, toEl);
   }
   /** @internal */
   __destroyed() {
