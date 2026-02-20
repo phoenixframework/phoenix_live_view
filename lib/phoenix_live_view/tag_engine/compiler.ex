@@ -94,11 +94,6 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
     {state, substate}
   end
 
-  ## Skip EEx comments (<%!-- ... --%>)
-  defp handle_node({:eex_comment, _text}, substate, state) do
-    {state, substate}
-  end
-
   ## HEEx interpolation {...}
   defp handle_node({:body_expr, expr, %{line: line, column: column}}, substate, state) do
     ast = Code.string_to_quoted!(expr, line: line, column: column, file: state.file)

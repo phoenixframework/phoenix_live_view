@@ -1432,6 +1432,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert eval("  <foo></foo>  ").root == true
       assert eval("\n\n<foo></foo>\n").root == true
+      assert eval("<%!-- comment --%>\n\n<foo></foo>\n").root == true
     end
 
     test "invalid cases" do

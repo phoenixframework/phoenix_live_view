@@ -44,7 +44,7 @@ defmodule Phoenix.LiveView.TagEngine do
         file: "nofile",
         engine: Phoenix.LiveView.Engine
       ])
-      |> Keyword.merge(source: source, trim_eex: false)
+      |> Keyword.merge(source: source, trim_eex: false, strip_eex_comments: true)
 
     source
     |> TagEngine.Parser.parse!(options)
