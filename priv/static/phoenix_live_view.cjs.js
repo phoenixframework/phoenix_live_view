@@ -4504,6 +4504,7 @@ var View = class _View {
     const removedEls = [];
     let phxChildrenAdded = false;
     const updatedHookIds = /* @__PURE__ */ new Set();
+    const newHookIds = /* @__PURE__ */ new Set();
     this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
     patch.after("added", (el) => {
       this.liveSocket.triggerDOM("onNodeAdded", [el]);
@@ -4523,15 +4524,29 @@ var View = class _View {
       }
     });
     patch.before("updated", (fromEl, toEl) => {
+      const hookAttr = this.binding(PHX_HOOK);
       const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
-        updatedHookIds.add(fromEl.id);
+        if (fromEl.hasAttribute(hookAttr) && fromEl.getAttribute(hookAttr) !== toEl.getAttribute(hookAttr)) {
+          this.destroyHook(hook);
+          if (toEl.getAttribute(hookAttr)) {
+            newHookIds.add(toEl.id);
+          }
+        } else {
+          updatedHookIds.add(fromEl.id);
+        }
+      } else {
+        if (toEl.id && toEl.getAttribute && (toEl.getAttribute(hookAttr) || toEl.getAttribute(`data-phx-${PHX_HOOK}`))) {
+          newHookIds.add(toEl.id);
+        }
       }
       js_default.onBeforeElUpdated(fromEl, toEl);
     });
     patch.after("updated", (el) => {
       if (updatedHookIds.has(el.id)) {
         this.getHook(el).__updated();
+      } else if (newHookIds.has(el.id)) {
+        this.maybeAddNewHook(el);
       }
     });
     patch.after("discarded", (el) => {
