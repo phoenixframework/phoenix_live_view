@@ -1395,6 +1395,114 @@ describe("View Hooks", function () {
     expect(Object.keys(view.viewHooks)).toEqual([]);
   });
 
+  test("dynamically added phx-hook is mounted", async () => {
+    let mounted = false;
+    let updated = false;
+    const Hooks = <HooksOptions>{
+      DynHook: {
+        mounted() {
+          mounted = true;
+        },
+        updated() {
+          updated = true;
+        },
+      },
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    // initial render: element exists but has no phx-hook
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="dyn">no hook yet</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    expect(mounted).toBe(false);
+    expect(Object.keys(view.viewHooks)).toHaveLength(0);
+
+    // update: element gains phx-hook attribute dynamically
+    view.update(
+      {
+        s: ['<h2 id="dyn" phx-hook="DynHook">now with hook</h2>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+    expect(mounted).toBe(true);
+    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+    // mounted, not updated — this is the first time the hook is attached
+    expect(updated).toBe(false);
+  });
+
+  test("changing phx-hook", async () => {
+    let dynMounted = false;
+    let dynDestroyed = false;
+    let otherMounted = false;
+    let otherDestroyed = false;
+    const Hooks = <HooksOptions>{
+      DynHook: {
+        mounted() {
+          dynMounted = true;
+        },
+        destroyed() {
+          dynDestroyed = true;
+        },
+      },
+      OtherHook: {
+        mounted() {
+          otherMounted = true;
+        },
+        destroyed() {
+          otherDestroyed = true;
+        },
+      },
+    };
+    liveSocket = new LiveSocket("/live", Socket, { hooks: Hooks });
+    const el = liveViewDOM();
+
+    const view = simulateJoinedView(el, liveSocket);
+
+    // initial render: element exists but has no phx-hook
+    view.onJoin({
+      rendered: {
+        s: ['<h2 id="dyn" phx-hook="DynHook">initial</h2>'],
+        fingerprint: 123,
+      },
+      liveview_version,
+    });
+    expect(dynMounted).toBe(true);
+    expect(dynDestroyed).toBe(false);
+    expect(otherMounted).toBe(false);
+    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+
+    // update: element gains phx-hook attribute dynamically
+    view.update(
+      {
+        s: ['<h2 id="dyn" phx-hook="OtherHook">now with different hook</h2>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+    expect(dynDestroyed).toBe(true);
+    expect(otherMounted).toBe(true);
+    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+
+    // update: hook removed altogether
+    view.update(
+      {
+        s: ['<h2 id="dyn">no hook any more</h2>'],
+        fingerprint: 123,
+      },
+      [],
+    );
+    expect(otherDestroyed).toBe(true);
+    expect(Object.keys(view.viewHooks)).toHaveLength(0);
+  });
+
   test("class based hook", async () => {
     let upcaseWasDestroyed = false;
     let upcaseBeforeUpdate = false;
