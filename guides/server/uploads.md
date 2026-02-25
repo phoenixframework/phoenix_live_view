@@ -42,6 +42,10 @@ implement some form- and upload-related callbacks later, but
 most of the functionality around uploads takes place in the
 template.
 
+It is worth to check out the documentation for [`allow_upload/3`] and
+look at the available options, which also include `auto_upload` for
+automatic uploads, among others.
+
 ## Render reactive elements
 
 Use the `Phoenix.Component.live_file_input/1` component
