@@ -338,7 +338,7 @@ defmodule Phoenix.LiveViewTest do
     start_proxy(path, %{
       response: {:document, Phoenix.ConnTest.response(conn, 200)},
       connect_params: conn.private[:live_view_connect_params] || %{},
-      connect_info: conn.private[:live_view_connect_info] || prune_conn(conn) || %{},
+      connect_info: conn.private[:live_view_connect_info] || prune_conn(conn),
       live_module: live_module,
       router: router,
       endpoint: Phoenix.Controller.endpoint_module(conn),
@@ -670,7 +670,7 @@ defmodule Phoenix.LiveViewTest do
   >   ...
   > end
   > ```
-  > 
+  >
   > And you test it with:
   >
   > ```elixir
