@@ -568,6 +568,7 @@ export default class View {
     const removedEls = [];
     let phxChildrenAdded = false;
     const updatedHookIds = new Set();
+    const newHookIds = new Set();
 
     this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
 
@@ -591,9 +592,33 @@ export default class View {
     });
 
     patch.before("updated", (fromEl, toEl) => {
+      const hookAttr = this.binding(PHX_HOOK);
       const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
-        updatedHookIds.add(fromEl.id);
+        if (
+          fromEl.hasAttribute(hookAttr) &&
+          fromEl.getAttribute(hookAttr) !== toEl.getAttribute(hookAttr)
+        ) {
+          // dynamically removed hook
+          // (data-phx-hook from createHook or viewport bindings cannot be removed)
+          this.destroyHook(hook);
+          if (toEl.getAttribute(hookAttr)) {
+            // changed hook
+            newHookIds.add(toEl.id);
+          }
+        } else {
+          updatedHookIds.add(fromEl.id);
+        }
+      } else {
+        // dynamically added hook
+        if (
+          toEl.id &&
+          toEl.getAttribute &&
+          (toEl.getAttribute(hookAttr) ||
+            toEl.getAttribute(`data-phx-${PHX_HOOK}`))
+        ) {
+          newHookIds.add(toEl.id);
+        }
       }
       // trigger JS specific update logic (for example for JS.ignore_attributes)
       JS.onBeforeElUpdated(fromEl, toEl);
@@ -602,6 +627,8 @@ export default class View {
     patch.after("updated", (el) => {
       if (updatedHookIds.has(el.id)) {
         this.getHook(el).__updated();
+      } else if (newHookIds.has(el.id)) {
+        this.maybeAddNewHook(el);
       }
     });
 
