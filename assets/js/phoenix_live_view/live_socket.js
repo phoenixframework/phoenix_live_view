@@ -29,6 +29,7 @@ import {
   PHX_RELOAD_STATUS,
   PHX_RUNTIME_HOOK,
   PHX_DROP_TARGET_ACTIVE_CLASS,
+  PHX_TELEPORTED_REF,
 } from "./constants";
 
 import {
@@ -872,6 +873,11 @@ export default class LiveSocket {
 
   dispatchClickAway(e, clickStartedAt) {
     const phxClickAway = this.binding("click-away");
+    const portal = clickStartedAt.closest(`[${PHX_TELEPORTED_REF}]`);
+    if (portal) {
+      // If the click started in a portal, treat it as if it started at the portal's source instead
+      clickStartedAt = DOM.byId(portal);
+    }
     DOM.all(document, `[${phxClickAway}]`, (el) => {
       if (
         !(
