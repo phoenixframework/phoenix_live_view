@@ -189,3 +189,31 @@ test("nested portals cleanup and re-render correctly", async ({ page }) => {
   await expect(page.locator("#outer-portal")).toHaveCount(1);
   await expect(page.locator("#inner-portal")).toHaveCount(1);
 });
+
+test("click-away is portal aware", async ({ page }) => {
+  await page.goto("/portal?tick=false");
+  await syncLV(page);
+
+  await page.getByRole("button", { name: "Open non-teleported modal" }).click();
+  await expect(page.locator("#non-teleported-modal-content")).toBeVisible();
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.locator("#teleported-menu-content")).toBeVisible();
+  await page.getByRole("button", { name: "Close menu" }).click();
+  await expect(page.locator("#teleported-menu-content")).toBeHidden();
+
+  // Modal must still be visible, despite click away
+  await expect(page.locator("#non-teleported-modal-content")).toBeVisible();
+  // trigger click-away
+  await page
+    .locator("#non-teleported-modal .fixed[role='dialog']")
+    .click({ position: { x: 0, y: 0 } });
+  await expect(page.locator("#non-teleported-modal-content")).toBeHidden();
+
+  // Test that click-away also works properly for teleported modals
+  await page.getByRole("button", { name: "Open modal" }).click();
+  await expect(page.locator("#my-modal-content")).toBeVisible();
+  await page
+    .locator("#my-modal .fixed[role='dialog']")
+    .click({ position: { x: 0, y: 0 } });
+  await expect(page.locator("#my-modal-content")).toBeHidden();
+});
