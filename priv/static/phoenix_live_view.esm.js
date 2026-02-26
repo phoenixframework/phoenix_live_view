@@ -6522,12 +6522,18 @@ var LiveSocket = class {
   }
   dispatchClickAway(e, clickStartedAt) {
     const phxClickAway = this.binding("click-away");
+    const portal = clickStartedAt.closest(`[${PHX_TELEPORTED_SRC}]`);
+    const portalStartedAt = portal && dom_default.byId(portal.getAttribute(PHX_TELEPORTED_SRC));
     dom_default.all(document, `[${phxClickAway}]`, (el) => {
-      if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt) || // When clicking a link with custom method,
+      let startedAt = clickStartedAt;
+      if (portal && !portal.contains(el)) {
+        startedAt = portalStartedAt;
+      }
+      if (!(el.isSameNode(startedAt) || el.contains(startedAt) || // When clicking a link with custom method,
       // phoenix_html triggers a click on a submit button
       // of a hidden form appended to the body. For such cases
       // where the clicked target is hidden, we skip click-away.
-      !js_default.isVisible(clickStartedAt))) {
+      !js_default.isVisible(startedAt))) {
         this.withinOwners(el, (view) => {
           const phxEvent = el.getAttribute(phxClickAway);
           if (js_default.isVisible(el) && js_default.isInViewport(el)) {
