@@ -1479,6 +1479,7 @@ describe("View Hooks", function () {
       },
     );
     const customEl = document.createElement("custom-el");
+    customEl.id = "foo";
     el.appendChild(customEl);
     simulateJoinedView(el, liveSocket);
   });

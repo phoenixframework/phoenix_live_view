@@ -29,6 +29,7 @@ import {
   PHX_RELOAD_STATUS,
   PHX_RUNTIME_HOOK,
   PHX_DROP_TARGET_ACTIVE_CLASS,
+  PHX_TELEPORTED_SRC,
 } from "./constants";
 
 import {
@@ -872,16 +873,25 @@ export default class LiveSocket {
 
   dispatchClickAway(e, clickStartedAt) {
     const phxClickAway = this.binding("click-away");
+    const portal = clickStartedAt.closest(`[${PHX_TELEPORTED_SRC}]`);
+    const portalStartedAt =
+      portal && DOM.byId(portal.getAttribute(PHX_TELEPORTED_SRC));
     DOM.all(document, `[${phxClickAway}]`, (el) => {
+      let startedAt = clickStartedAt;
+      if (portal && !portal.contains(el)) {
+        // If we have a portal and the click-away element is not inside it,
+        // then treat the portal source as the starting point instead.
+        startedAt = portalStartedAt;
+      }
       if (
         !(
-          el.isSameNode(clickStartedAt) ||
-          el.contains(clickStartedAt) ||
+          el.isSameNode(startedAt) ||
+          el.contains(startedAt) ||
           // When clicking a link with custom method,
           // phoenix_html triggers a click on a submit button
           // of a hidden form appended to the body. For such cases
           // where the clicked target is hidden, we skip click-away.
-          !JS.isVisible(clickStartedAt)
+          !JS.isVisible(startedAt)
         )
       ) {
         this.withinOwners(el, (view) => {
