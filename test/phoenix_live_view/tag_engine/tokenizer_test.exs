@@ -3,6 +3,8 @@ defmodule Phoenix.LiveView.TagEngine.TokenizerTest do
   alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
   alias Phoenix.LiveView.TagEngine.Tokenizer
 
+  import ExUnit.CaptureIO
+
   defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Phoenix.LiveView.HTMLEngine)
 
   defp tokenize(text) do
@@ -991,6 +993,22 @@ defmodule Phoenix.LiveView.TagEngine.TokenizerTest do
              {:close, :tag, "div", %{line: 4, column: 1}},
              {:text, "\ntext after\n", %{line_end: 6, column_end: 1}}
            ] = tokens
+  end
+
+  test "warns when no space between attributes" do
+    warning =
+      capture_io(:stderr, fn ->
+        tokenize(~S(<div style=""id="123"/>))
+      end)
+
+    assert warning =~ "missing space before attribute"
+
+    warning =
+      capture_io(:stderr, fn ->
+        tokenize(~S(<div style={@s}id="123"/>))
+      end)
+
+    assert warning =~ "missing space before attribute"
   end
 
   defp tokenize_attrs(code) do
