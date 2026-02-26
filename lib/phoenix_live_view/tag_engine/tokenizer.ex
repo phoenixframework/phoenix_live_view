@@ -453,6 +453,7 @@ defmodule Phoenix.LiveView.TagEngine.Tokenizer do
         attr_meta = %{line: line, column: column}
         {text, line, column, value} = handle_maybe_attr_value(rest, line, new_column, state)
         acc = put_attr(acc, name, attr_meta, value)
+        maybe_warn_missing_attr_space(value, text, line, column, state)
 
         state =
           if name == "phx-no-curly-interpolation" and state.braces == :enabled and
@@ -469,6 +470,20 @@ defmodule Phoenix.LiveView.TagEngine.Tokenizer do
         raise_syntax_error!(message, meta, state)
     end
   end
+
+  defp maybe_warn_missing_attr_space(nil, _text, _line, _column, _state), do: :ok
+
+  defp maybe_warn_missing_attr_space(_value, <<c, _::binary>>, line, column, state)
+       when c not in @space_chars and c not in ~c">/\r\n" do
+    IO.warn(
+      "missing space before attribute",
+      line: line,
+      column: column,
+      file: state.file
+    )
+  end
+
+  defp maybe_warn_missing_attr_space(_value, _text, _line, _column, _state), do: :ok
 
   defp script_or_style?([{:tag, name, _, _} | _]) when name in ~w(script style), do: true
   defp script_or_style?(_), do: false
