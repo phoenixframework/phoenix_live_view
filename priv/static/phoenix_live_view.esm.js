@@ -3840,6 +3840,7 @@ var js_commands_default = (liveSocket, eventType) => {
 
 // js/phoenix_live_view/view_hook.ts
 var HOOK_ID = "hookId";
+var DEAD_HOOK = "deadHook";
 var viewHookID = 1;
 var ViewHook = class _ViewHook {
   get liveSocket() {
@@ -3851,12 +3852,18 @@ var ViewHook = class _ViewHook {
   static elementID(el) {
     return dom_default.private(el, HOOK_ID);
   }
+  static deadHook(el) {
+    return dom_default.private(el, DEAD_HOOK) === true;
+  }
   constructor(view, el, callbacks) {
     this.el = el;
     this.__attachView(view);
     this.__listeners = /* @__PURE__ */ new Set();
     this.__isDisconnected = false;
     dom_default.putPrivate(this.el, HOOK_ID, _ViewHook.makeID());
+    if (view && view.isDead) {
+      dom_default.putPrivate(this.el, DEAD_HOOK, true);
+    }
     if (callbacks) {
       const protectedProps = /* @__PURE__ */ new Set([
         "el",
@@ -4762,6 +4769,9 @@ var View = class _View {
       return;
     }
     if (hookElId && !this.viewHooks[hookElId]) {
+      if (ViewHook.deadHook(el)) {
+        return;
+      }
       const hook = dom_default.getCustomElHook(el) || logError(`no hook found for custom element: ${el.id}`);
       this.viewHooks[hookElId] = hook;
       hook.__attachView(this);
@@ -5896,7 +5906,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.1.24";
+    return "1.1.25";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
@@ -6502,12 +6512,18 @@ var LiveSocket = class {
   }
   dispatchClickAway(e, clickStartedAt) {
     const phxClickAway = this.binding("click-away");
+    const portal = clickStartedAt.closest(`[${PHX_TELEPORTED_SRC}]`);
+    const portalStartedAt = portal && dom_default.byId(portal.getAttribute(PHX_TELEPORTED_SRC));
     dom_default.all(document, `[${phxClickAway}]`, (el) => {
-      if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt) || // When clicking a link with custom method,
+      let startedAt = clickStartedAt;
+      if (portal && !portal.contains(el)) {
+        startedAt = portalStartedAt;
+      }
+      if (!(el.isSameNode(startedAt) || el.contains(startedAt) || // When clicking a link with custom method,
       // phoenix_html triggers a click on a submit button
       // of a hidden form appended to the body. For such cases
       // where the clicked target is hidden, we skip click-away.
-      !js_default.isVisible(clickStartedAt))) {
+      !js_default.isVisible(startedAt))) {
         this.withinOwners(el, (view) => {
           const phxEvent = el.getAttribute(phxClickAway);
           if (js_default.isVisible(el) && js_default.isInViewport(el)) {
