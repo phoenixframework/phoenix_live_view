@@ -213,6 +213,21 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         </div>
       </.portal>
     </div>
+
+    <.modal id="non-teleported-modal">
+      This is a non-teleported modal. Open the menu and click an item. The modal must not close.
+      <.button phx-click={JS.show(to: "#teleported-menu-content")}>Open menu</.button>
+      <.portal id="teleported-menu" target="body">
+        <div
+          id="teleported-menu-content"
+          class="hidden z-[100] fixed top-0 left-0 border border-red-500 p-4 bg-white"
+        >
+          <.button phx-click={JS.hide(to: "#teleported-menu-content")}>Close menu</.button>
+        </div>
+      </.portal>
+    </.modal>
+
+    <.button phx-click={show_modal("non-teleported-modal")}>Open non-teleported modal</.button>
     """
   end
 
