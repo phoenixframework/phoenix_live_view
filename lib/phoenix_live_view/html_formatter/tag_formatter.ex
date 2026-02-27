@@ -7,7 +7,7 @@ defmodule Phoenix.LiveView.HTMLFormatter.TagFormatter do
   Callback invoked to format each tag.
 
   The callback receives a tuple of `{tag_name, attrs, content}`
-  and the Mix [formatter options](https://hexdocs.pm/mix/Mix.Tasks.Format.html#module-formatting-options)
+  and the Mix [formatter options](https://hexdocs.pm/mix/Mix.Tasks.Format.html#module-formatting-options).
 
   Note: since the formatter does not compile code, the `:type` attribute of a
   macro component is given as a string as in the template.
