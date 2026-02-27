@@ -19,13 +19,13 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3651Live do
         <script>
           window.hooks.OuterHook = {
             mounted() {
-              this.pushEvent("lol")
+              this.pushEvent("lol");
             },
-          }
+          };
           window.hooks.InnerHook = {
             mounted() {
               console.log("MOUNTED", this.el);
-              this.handleEvent('myevent', this._handleEvent(this));
+              this.handleEvent("myevent", this._handleEvent(this));
             },
             destroyed() {
               document.getElementById("notice").innerHTML = "";
@@ -35,11 +35,11 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3651Live do
               return () => {
                 setTimeout(() => {
                   console.warn("reloading", self.el);
-                  self.pushEvent("reload", {})
-                }, 50)
-              }
-            }
-          }
+                  self.pushEvent("reload", {});
+                }, 50);
+              };
+            },
+          };
         </script>
         """
       )
