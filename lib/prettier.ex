@@ -7,7 +7,7 @@ if Mix.env() == :dev do
     require Logger
 
     @impl true
-    def format("script", attrs, content, _opts)
+    def render_tag({"script", attrs, content}, _opts)
         when not is_map_key(attrs, "runtime") do
       manifest = Map.get(attrs, "manifest", "index.js")
 
@@ -30,7 +30,7 @@ if Mix.env() == :dev do
       end
     end
 
-    def format(_other, _attrs, _content, _opts) do
+    def render_tag({_other, _attrs, _content}, _opts) do
       :skip
     end
   end

@@ -585,7 +585,7 @@ defmodule Phoenix.LiveView.HTMLFormatter do
       end
 
     children =
-      case state.tag_formatters[name].format(name, simple_attrs, content, state.opts) do
+      case state.tag_formatters[name].render_tag({name, simple_attrs, content}, state.opts) do
         :skip ->
           children
 

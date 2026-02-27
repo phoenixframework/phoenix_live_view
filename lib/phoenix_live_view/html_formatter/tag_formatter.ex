@@ -6,8 +6,8 @@ defmodule Phoenix.LiveView.HTMLFormatter.TagFormatter do
   @doc """
   Callback invoked to format each tag.
 
-  The callback receives the tag_name, string attributes as map, the string content,
-  and the formatter options of the `Phoenix.LiveView.HTMLFormatter` plugin.
+  The callback receives a tuple of `{tag_name, attrs, content}`
+  and the Mix [formatter options](https://hexdocs.pm/mix/Mix.Tasks.Format.html#module-formatting-options)
 
   Note: since the formatter does not compile code, the `:type` attribute of a
   macro component is given as a string as in the template.
@@ -26,12 +26,14 @@ defmodule Phoenix.LiveView.HTMLFormatter.TagFormatter do
 
   will invoke the callback with:
 
-      * tag_name: `"script"`
-      * attrs: `%{"manifest" => "foo.ts", ":type" => "ColocatedHook"}
-      * content: the string content inside the `<script>` tag
-      * opts: [file: "/path/to/template.html.heex", line: ...]
+    * `{tag_name, attrs, content}`
+      with `tag_name` being `"script"`,
+      attrs as `%{"manifest" => "foo.ts", ":type" => "ColocatedHook"}`
+      and `content` being the string content inside the `<script>` tag
+    * opts: `[file: "/path/to/template.html.heex", line: ...]`
+      the Mix [formatter options](https://hexdocs.pm/mix/Mix.Tasks.Format.html#module-formatting-options)
 
-  ### Example for formatting with `prettier`
+  ### Example for formatting with [`prettier`](https://prettier.io/)
 
   ```elixir
   defmodule Prettier do
@@ -42,7 +44,7 @@ defmodule Phoenix.LiveView.HTMLFormatter.TagFormatter do
     require Logger
 
     @impl true
-    def format("script", attrs, content, _opts) do
+    def render_tag({"script", attrs, content}, _opts) do
       suffix =
         case attrs do
           %{":type" => _} ->
@@ -86,10 +88,8 @@ defmodule Phoenix.LiveView.HTMLFormatter.TagFormatter do
   ```
 
   """
-  @callback format(
-              tag_name :: String.t(),
-              attrs :: map(),
-              content :: String.t(),
+  @callback render_tag(
+              tag :: {String.t(), map(), String.t()},
               opts :: keyword()
             ) :: {:ok, String.t()} | :skip
 end
