@@ -126,23 +126,27 @@ defmodule Phoenix.LiveView.Rendered do
         }
 
   defimpl Phoenix.HTML.Safe do
-    def to_iodata(%Phoenix.LiveView.Rendered{static: static, dynamic: dynamic}) do
-      to_iodata(static, dynamic.(false), [])
+    def to_iodata(data) do
+      recur_iodata(data)
     end
 
-    def to_iodata(%_{} = struct) do
+    defp recur_iodata(%Phoenix.LiveView.Rendered{static: static, dynamic: dynamic}) do
+      recur_iodata(static, dynamic.(false), [])
+    end
+
+    defp recur_iodata(%_{} = struct) do
       Phoenix.HTML.Safe.to_iodata(struct)
     end
 
-    def to_iodata(other) do
+    defp recur_iodata(other) do
       other
     end
 
-    defp to_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
-      to_iodata(static_tail, dynamic_tail, [to_iodata(dynamic_head), static_head | acc])
+    defp recur_iodata([static_head | static_tail], [dynamic_head | dynamic_tail], acc) do
+      recur_iodata(static_tail, dynamic_tail, [recur_iodata(dynamic_head), static_head | acc])
     end
 
-    defp to_iodata([static_head], [], acc) do
+    defp recur_iodata([static_head], [], acc) do
       Enum.reverse([static_head | acc])
     end
   end

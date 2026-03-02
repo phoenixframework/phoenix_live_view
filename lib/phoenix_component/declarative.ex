@@ -1022,10 +1022,6 @@ defmodule Phoenix.Component.Declarative do
     end
   end
 
-  defp build_attr_values_or_examples(_attr) do
-    []
-  end
-
   defp build_literals_list([literal], _condition) do
     [build_literal(literal)]
   end
