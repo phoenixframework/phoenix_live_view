@@ -891,7 +891,11 @@ export default class LiveSocket {
           // phoenix_html triggers a click on a submit button
           // of a hidden form appended to the body. For such cases
           // where the clicked target is hidden, we skip click-away.
-          !JS.isVisible(startedAt)
+          //
+          // Also, when we have a portal, we don't want to check the visibility
+          // of the portal source, as it's a <template> that is always not visible.
+          // Instead, check the visibility of the original click target.
+          !JS.isVisible(clickStartedAt)
         )
       ) {
         this.withinOwners(el, (view) => {

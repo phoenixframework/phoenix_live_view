@@ -10,8 +10,8 @@ defmodule Phoenix.LiveViewTest.E2E.Issue4147Live do
          export default {
            mounted() {
              console.log("HookOutside mounted");
-           }
-         }
+           },
+         };
        </script>
        """
      end)}

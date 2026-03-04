@@ -216,4 +216,10 @@ test("click-away is portal aware", async ({ page }) => {
     .locator("#my-modal .fixed[role='dialog']")
     .click({ position: { x: 0, y: 0 } });
   await expect(page.locator("#my-modal-content")).toBeHidden();
+
+  // Test that visibility of the <template> element doesn't interfere with click-away
+  await page.getByRole("button", { name: "Open second modal" }).click();
+  await expect(page.locator("#inner-red-box")).toBeVisible();
+  await page.locator("#my-modal-2 .bg-gray-300").click();
+  await expect(page.locator("#inner-red-box")).toBeHidden();
 });
