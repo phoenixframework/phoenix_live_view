@@ -5906,7 +5906,7 @@ var LiveSocket = class {
   }
   // public
   version() {
-    return "1.1.25";
+    return "1.1.26";
   }
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
@@ -6523,7 +6523,11 @@ var LiveSocket = class {
       // phoenix_html triggers a click on a submit button
       // of a hidden form appended to the body. For such cases
       // where the clicked target is hidden, we skip click-away.
-      !js_default.isVisible(startedAt))) {
+      //
+      // Also, when we have a portal, we don't want to check the visibility
+      // of the portal source, as it's a <template> that is always not visible.
+      // Instead, check the visibility of the original click target.
+      !js_default.isVisible(clickStartedAt))) {
         this.withinOwners(el, (view) => {
           const phxEvent = el.getAttribute(phxClickAway);
           if (js_default.isVisible(el) && js_default.isInViewport(el)) {
