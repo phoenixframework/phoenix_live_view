@@ -146,7 +146,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
 
     <.button phx-click={show_modal("my-modal")}>Open modal</.button>
     <.button phx-click="toggle_modal">Toggle modal render</.button>
-    <.button phx-click={show_modal("my-modal-2")}>Open second modal</.button>
+    <.button phx-click={show_modal("my-modal-2") |> JS.show(to: "#inner-red-box")}>Open second modal</.button>
     <.button phx-click={JS.push("tick")}>Tick</.button>
 
     <.button phx-click={JS.navigate("/form")}>Live navigate</.button>
@@ -171,6 +171,19 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
     <.portal id="portal-source-2" target="#app-portal">
       <.modal id="my-modal-2">
         This is a second modal.
+        <.portal id="modal-2-inner-portal" target="#my-modal-2-content" class="contents">
+          <div class="size-96 bg-gray-300 absolute top-0 right-0">
+            <.portal id="modal-2-inner-portal-2" target="#my-modal-2-content" class="contents">
+              <div
+                id="inner-red-box"
+                class="absolute top-0 right-0 bg-red-500 size-32"
+                phx-click-away={JS.hide()}
+              >
+                test
+              </div>
+            </.portal>
+          </div>
+        </.portal>
       </.modal>
     </.portal>
 
