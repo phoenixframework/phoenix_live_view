@@ -75,6 +75,15 @@ defmodule Phoenix.LiveView.StartAsyncTest do
       assert_receive {:exit, _pid, :boom}, 1000
     end
 
+    test "does not leak normal task exit to handle_info when trapping exits", %{conn: conn} do
+      {:ok, lv, _html} =
+        live_isolated(conn, Phoenix.LiveViewTest.Support.StartAsyncLive.TrapExitLeak)
+
+      # The LiveView deliberately does not handle exit messages,
+      # so we'd expect it to crash if the exit leaks
+      assert render_async(lv) =~ "complete"
+    end
+
     test "complex key task", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/start_async?test=complex_key")
 

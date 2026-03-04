@@ -186,6 +186,28 @@ defmodule Phoenix.LiveViewTest.Support.StartAsyncLive do
   end
 end
 
+defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.TrapExitLeak do
+  use Phoenix.LiveView
+
+  def render(assigns) do
+    ~H"<div>{@result}</div>"
+  end
+
+  def mount(_params, _session, socket) do
+    Process.flag(:trap_exit, true)
+    {:ok, socket |> assign(result: :loading) |> start_async(:task, fn -> :done end)}
+  end
+
+  def handle_async(:task, {:ok, _result}, socket) do
+    {:noreply, assign(socket, result: :complete)}
+  end
+
+  # handle_info that deliberately doesn't handle {:EXIT, _, _}
+  def handle_info(:noop, socket) do
+    {:noreply, socket}
+  end
+end
+
 defmodule Phoenix.LiveViewTest.Support.StartAsyncLive.LC do
   use Phoenix.LiveComponent
 
