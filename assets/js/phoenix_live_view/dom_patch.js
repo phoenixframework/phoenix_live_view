@@ -407,7 +407,10 @@ export default class DOMPatch {
             portalCallbacks.push(() => this.teleport(toEl, morph));
             // for the magicId optimization we need to ensure that the template contents
             // are properly updated as they are used when restoring a cloned tree
-            fromEl.innerHTML = toEl.innerHTML;
+            // Note: we can't write fromEl.innerHTML = toEl.innerHTML because in Chrome
+            // the HTML parser would drop nested forms, even when it should not.
+            // https://issues.chromium.org/issues/490290430
+            fromEl.content.replaceChildren(toEl.content.cloneNode(true));
             return false;
           }
 
