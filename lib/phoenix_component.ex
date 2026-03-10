@@ -1518,10 +1518,6 @@ defmodule Phoenix.Component do
     end
   end
 
-  def update(assigns, _key, fun) when is_function(fun, 1) or is_function(fun, 2) do
-    raise_bad_socket_or_assign!("update/3", assigns)
-  end
-
   @doc """
   Checks if the given key changed in `socket_or_assigns`.
 
