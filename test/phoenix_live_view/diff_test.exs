@@ -637,7 +637,7 @@ defmodule Phoenix.LiveView.DiffTest do
         render(rendered)
       rescue
         RuntimeError ->
-          [{__MODULE__, _anonymous_fun, _anonymous_arity, info} | rest] = __STACKTRACE__
+          assert [{__MODULE__, _anonymous_fun, _anonymous_arity, info} | rest] = __STACKTRACE__
           assert List.to_string(info[:file]) =~ "diff_test.exs"
           assert info[:line] == @raises_inside_rendered_line
 

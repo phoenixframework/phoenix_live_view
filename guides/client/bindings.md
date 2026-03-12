@@ -54,7 +54,9 @@ sent to the server will be chosen with the following priority:
         def handle_event("inc", %{"myvar1" => "val1", "myvar2" => "val2"}, socket) do
 
     If the `phx-value-` prefix is used, the server payload will also contain a `"value"`
-    if the element's value attribute exists.
+    if the element's value attribute exists. Note that if the element has a `value` property,
+    like the `<li>` element, it takes precedence over `phx-value-value`. If you need to overwrite
+    the `"value"` key in the payload, you can use `Phoenix.LiveView.JS.push/3` with its `value` option.
 
   * The payload will also include any additional user defined metadata of the client event.
     For example, the following `LiveSocket` client option would send the coordinates and

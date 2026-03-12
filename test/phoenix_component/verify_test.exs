@@ -3,6 +3,16 @@ defmodule Phoenix.ComponentVerifyTest do
 
   import ExUnit.CaptureIO
 
+  test "validate unused components" do
+    assert capture_io(:stderr, fn ->
+             defmodule UnusedComponent do
+               use Phoenix.Component
+               attr :name, :any, required: true
+               defp func(assigns), do: ~H[]
+             end
+           end) =~ "function func/1 is unused"
+  end
+
   test "validate required attributes" do
     warnings =
       capture_io(:stderr, fn ->

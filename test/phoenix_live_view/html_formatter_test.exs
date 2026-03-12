@@ -26,7 +26,7 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
   end
 
   test "errors on invalid HTML" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise Phoenix.LiveView.TagEngine.Tokenizer.ParseError,
                  ~r/end of template reached without closing tag for <style>/,
                  fn -> assert_formatter_doesnt_change("<style>foo") end
   end
@@ -2031,6 +2031,15 @@ defmodule Phoenix.LiveView.HTMLFormatterTest do
       <% end %>
       """
     )
+  end
+
+  test "keeps self-closing slots on separate lines" do
+    assert_formatter_doesnt_change("""
+    <.func>
+      <:slot />
+      <:slot attr="foo" />
+    </.func>
+    """)
   end
 
   test "keep intentional line breaks between slots" do

@@ -164,7 +164,7 @@ for type <- [FormLive, FormLiveNested] do
         phx-submit="save"
         phx-change={@params["phx-change"]}
         phx-auto-recover={@params["phx-auto-recover"]}
-        phx-no-usage-tracking={@params["phx-no-usage-tracking-form"]}
+        phx-no-unused-field={@params["phx-no-unused-field-form"]}
         phx-target={assigns[:"phx-target"]}
         class="myformclass"
       >
@@ -176,7 +176,7 @@ for type <- [FormLive, FormLiveNested] do
           type="text"
           name="c"
           value={@params["c"]}
-          phx-no-usage-tracking={@params["phx-no-usage-tracking-input"]}
+          phx-no-unused-field={@params["phx-no-unused-field-input"]}
         />
         <select name="d">
           {Phoenix.HTML.Form.options_for_select(["foo", "bar", "baz"], @params["d"])}

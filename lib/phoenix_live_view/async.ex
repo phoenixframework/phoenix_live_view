@@ -290,10 +290,11 @@ defmodule Phoenix.LiveView.Async do
           Channel.report_async_result(ref, async_kind, ref, cid, key, {:ok, result})
         catch
           catch_kind, reason ->
-            Process.unlink(lv_pid)
             caught_result = to_exit(catch_kind, reason, __STACKTRACE__)
             Channel.report_async_result(ref, async_kind, ref, cid, key, caught_result)
             :erlang.raise(catch_kind, reason, __STACKTRACE__)
+        after
+          Process.unlink(lv_pid)
         end
     end
   end

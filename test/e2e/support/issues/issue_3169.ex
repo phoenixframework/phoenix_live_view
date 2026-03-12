@@ -115,12 +115,14 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3169Live do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
-      })
-      liveSocket.connect()
+        params: { _csrf_token: csrfToken },
+      });
+      liveSocket.connect();
     </script>
     {@inner_content}
     """

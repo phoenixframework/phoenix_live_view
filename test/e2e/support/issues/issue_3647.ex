@@ -50,37 +50,44 @@ defmodule Phoenix.LiveViewTest.E2E.Issue3647Live do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
 
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
-      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {params: {_csrf_token: csrfToken}, hooks: {
-        JsUpload: {
-          mounted() {
-            this.el.addEventListener("click", () => {
-              const fillBefore = "before" in this.el.dataset
-              if (fillBefore) this.fill_input()
-              this.js_upload()
-              if (!fillBefore) this.fill_input()
-            })
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
+      let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
+        params: { _csrf_token: csrfToken },
+        hooks: {
+          JsUpload: {
+            mounted() {
+              this.el.addEventListener("click", () => {
+                const fillBefore = "before" in this.el.dataset;
+                if (fillBefore) this.fill_input();
+                this.js_upload();
+                if (!fillBefore) this.fill_input();
+              });
+            },
+
+            js_upload() {
+              const content = "x".repeat(1024).repeat(1024);
+              const file = new File([content], "1mb_of_x.txt", {
+                type: "text/plain",
+              });
+              const input = document.querySelector("input[type=file]");
+              this.uploadTo(input.form, input.name, [file]);
+            },
+
+            fill_input() {
+              const input = document.querySelector("input[type=text]");
+              input.value = input.value + input.value.length;
+              const event = new Event("input", { bubbles: true });
+              input.dispatchEvent(event);
+            },
           },
-
-          js_upload() {
-            const content = "x".repeat(1024).repeat(1024)
-            const file = new File([content], "1mb_of_x.txt", { type: "text/plain" })
-            const input = document.querySelector("input[type=file]")
-            this.uploadTo(input.form, input.name, [file])
-          },
-
-          fill_input() {
-            const input = document.querySelector("input[type=text]")
-            input.value = input.value + input.value.length
-            const event = new Event("input", { bubbles: true })
-            input.dispatchEvent(event)
-          }
-        }
-      }})
-      liveSocket.connect()
-      window.liveSocket = liveSocket
+        },
+      });
+      liveSocket.connect();
+      window.liveSocket = liveSocket;
     </script>
     <style>
       * { font-size: 1.1em; }

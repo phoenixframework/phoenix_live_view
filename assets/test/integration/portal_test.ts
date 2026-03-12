@@ -51,7 +51,7 @@ describe("Portal handling", () => {
   test("basic portal teleporting", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // Create HTML with portal template
     const html = `<div>${createHtmlWithPortal("portal1", "portal-target", "Hello from portal")}</div>`;
@@ -72,7 +72,7 @@ describe("Portal handling", () => {
   test("updating portal content", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // First patch to create portal
     const html1 = `<div>${createHtmlWithPortal("portal1", "portal-target", "Initial content")}</div>`;
@@ -90,7 +90,7 @@ describe("Portal handling", () => {
   test("removing portal template removes teleported content", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // First patch to create portal
     const html1 = `<div>${createHtmlWithPortal("portal1", "portal-target", "Portal content")}</div>`;
@@ -113,7 +113,7 @@ describe("Portal handling", () => {
   test("removing parent of portal template removes teleported content", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // First patch - create a parent container with portal inside
     const html1 = `
@@ -174,7 +174,7 @@ describe("Portal handling", () => {
   test("cleans up teleported elements when view is destroyed", () => {
     const { view, liveSocket } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // Create portal
     const html = `<div>${createHtmlWithPortal("portal1", "portal-target", "Content")}</div>`;
@@ -195,7 +195,7 @@ describe("Portal handling", () => {
   test("handles multiple portals to the same target", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // Create HTML with two portal templates
     const html = `
@@ -222,7 +222,7 @@ describe("Portal handling", () => {
   test("teleported elements are removed if source is removed", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // First patch to create portals
     const html1 = `
@@ -254,7 +254,7 @@ describe("Portal handling", () => {
   test("teleported elements with PHX_SKIP are ignored", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget = document.getElementById("portal-target");
+    const portalTarget = document.getElementById("portal-target")!;
 
     // Create template with skipped content
     const html = `
@@ -270,7 +270,7 @@ describe("Portal handling", () => {
 
     // Verify the portal was not teleported because of PHX_SKIP
     expect(
-      portalTarget.querySelector("#portal-content-skipped").innerHTML,
+      portalTarget.querySelector("#portal-content-skipped")!.innerHTML,
     ).toBe("Hello World!");
 
     const html2 = `
@@ -284,15 +284,15 @@ describe("Portal handling", () => {
     performPatch(view, content, html2);
     // PHX_SKIP nodes are skipped
     expect(
-      portalTarget.querySelector("#portal-content-skipped").innerHTML,
+      portalTarget.querySelector("#portal-content-skipped")!.innerHTML,
     ).toBe("Hello World!");
   });
 
   test("changing target of a portal moves content to new target", () => {
     const { view } = createViewWithPortal();
     const content = document.getElementById("content");
-    const portalTarget1 = document.getElementById("portal-target");
-    const portalTarget2 = document.getElementById("portal-target-2");
+    const portalTarget1 = document.getElementById("portal-target")!;
+    const portalTarget2 = document.getElementById("portal-target-2")!;
 
     // First patch to create portal with target1
     const html1 = `<div>${createHtmlWithPortal("portal1", "portal-target", "Portal content")}</div>`;

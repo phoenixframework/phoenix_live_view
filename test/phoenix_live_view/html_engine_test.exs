@@ -5,7 +5,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   import Phoenix.Component
 
-  alias Phoenix.LiveView.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
 
   defp eval(string, assigns \\ %{}, opts \\ []) do
     {env, opts} = Keyword.pop(opts, :env, __ENV__)
@@ -13,14 +13,12 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     opts =
       Keyword.merge(opts,
         file: env.file,
-        engine: Phoenix.LiveView.TagEngine,
-        subengine: Phoenix.LiveView.Engine,
         caller: env,
-        source: string,
         tag_handler: Phoenix.LiveView.HTMLEngine
       )
+      |> Keyword.put_new(:line, 1)
 
-    quoted = EEx.compile_string(string, opts)
+    quoted = Phoenix.LiveView.TagEngine.compile(string, opts)
 
     {result, _} = Code.eval_quoted(quoted, [assigns: assigns], env)
     result
@@ -36,17 +34,21 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
   defmacrop compile(string) do
     quote do
       unquote(
-        EEx.compile_string(string,
+        Phoenix.LiveView.TagEngine.compile(string,
           file: __ENV__.file,
-          engine: Phoenix.LiveView.TagEngine,
-          module: __MODULE__,
           caller: __CALLER__,
-          source: string,
           tag_handler: Phoenix.LiveView.HTMLEngine
         )
       )
       |> Phoenix.HTML.Safe.to_iodata()
       |> IO.iodata_to_binary()
+    end
+  end
+
+  defmacro test_attr_macro(a) do
+    case a do
+      :base -> quote do: [{"style", "display: flex;"}, {"other", "foo"}, {"another", @bar}]
+      _ -> quote do: a
     end
   end
 
@@ -222,6 +224,20 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
     assert %Phoenix.LiveView.Rendered{static: ["<div", " d2=\"2\"", "></div>"]} =
              eval(template, assigns)
+
+    # macro is expanded
+    template = ~S|<div {test_attr_macro(:base)} />|
+
+    assert %Phoenix.LiveView.Rendered{static: ["<div style=\"", "\" other=\"foo\"", "></div>"]} =
+             eval(template, %{bar: "baz"})
+
+    assert render(template, %{bar: "baz"}) ==
+             ~S|<div style="display: flex;" other="foo" another="baz"></div>|
+
+    # if assign map access was expanded, this would raise
+    expected = "<div qux=\"qux\"></div>"
+    assigns = %{foo: %{bar: %{baz: %{"qux" => "qux"}}}}
+    assert render(~S|<div {@foo.bar.baz} />|, assigns) == expected
   end
 
   test "optimizes attributes with literal string values" do
@@ -456,6 +472,15 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
                  <div data-phx-loc=\"43\">2</div>
                <!-- </:inner_block> --><!-- </Phoenix.LiveViewTest.Support.DebugAnno.slot_with_tags> -->\
                """
+    end
+
+    test "can opt out" do
+      alias Phoenix.LiveViewTest.Support.DebugAnnoOptOut
+
+      assigns = %{}
+
+      assert compile("<DebugAnnoOptOut.slot_with_tags />") ==
+               "\n  <div>1</div>\n<hr>\n  <div>2</div>\n"
     end
   end
 
@@ -734,14 +759,14 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       test/phoenix_live_view/html_engine_test.exs:2:38: unsupported attribute \":bar\" in local component: local_function_component
         |
       1 | <br>
-      2 | <.local_function_component value='1' :bar=\"1\"}
+      2 | <.local_function_component value='1' :bar=\"1\" />
         |                                      ^\
       """
 
       assert_raise(ParseError, message, fn ->
         eval("""
         <br>
-        <.local_function_component value='1' :bar="1"}
+        <.local_function_component value='1' :bar="1" />
         />
         """)
       end)
@@ -1407,6 +1432,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
       assert eval("  <foo></foo>  ").root == true
       assert eval("\n\n<foo></foo>\n").root == true
+      assert eval("<%!-- comment --%>\n\n<foo></foo>\n").root == true
     end
 
     test "invalid cases" do
@@ -2065,7 +2091,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
 
   describe ":if attr" do
     test "handle :if attr on HTML element" do
-      assigns = %{flag: true}
+      assigns = %{flag: Process.get(:flag, true)}
 
       assert compile("""
                <div :if={@flag} id="test">yes</div>
@@ -2077,7 +2103,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test "handle :if attr on self closed HTML element" do
-      assigns = %{flag: true}
+      assigns = %{flag: Process.get(:flag, true)}
 
       assert compile("""
                <div :if={@flag} id="test" />
@@ -2104,7 +2130,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test ":if in components" do
-      assigns = %{flag: true}
+      assigns = %{flag: Process.get(:flag, true)}
 
       assert compile("""
              <.local_function_component value="123" :if={@flag} />
@@ -2151,7 +2177,7 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
 
     test ":if in slots" do
-      assigns = %{flag: true}
+      assigns = %{flag: Process.get(:flag, true)}
 
       assert compile("""
              <Phoenix.LiveView.HTMLEngineTest.slot_if value={0}>
@@ -2222,6 +2248,100 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
     end
   end
 
+  describe "eex_block line/column positions" do
+    # Helper to extract `if` nodes that test @status or @other (user's conditionals)
+    # This filters out the internal `if` nodes generated for change tracking
+    # Note: @status is transformed to assigns.status in the AST
+    defp find_user_if_nodes(ast) do
+      {_ast, nodes} =
+        Macro.prewalk(ast, [], fn
+          {:if, meta, [condition | _]} = node, acc ->
+            # Check if the condition references assigns.status or assigns.other
+            if references_assigns_field?(condition, :status) or
+                 references_assigns_field?(condition, :other) do
+              {node, [{:if, meta, condition} | acc]}
+            else
+              {node, acc}
+            end
+
+          node, acc ->
+            {node, acc}
+        end)
+
+      Enum.reverse(nodes)
+    end
+
+    # @status becomes assigns.status which is {{:., _, [{:assigns, _, _}, :status]}, _, _}
+    defp references_assigns_field?(ast, field_name) do
+      {_ast, found} =
+        Macro.prewalk(ast, false, fn
+          {{:., _, [{:assigns, _, _}, ^field_name]}, _, _} = node, _acc -> {node, true}
+          node, acc -> {node, acc}
+        end)
+
+      found
+    end
+
+    test "if/else/end preserves column positions" do
+      template = """
+      <%= if @status do %>
+          <div>content</div>
+        <% else %>
+          <span>other</span>
+      <% end %>
+      """
+
+      opts = [file: "test.heex", caller: __ENV__, tag_handler: Phoenix.LiveView.HTMLEngine]
+      quoted = Phoenix.LiveView.TagEngine.compile(template, opts)
+
+      if_nodes = find_user_if_nodes(quoted)
+      assert length(if_nodes) == 1, "expected 1 user if node, got #{length(if_nodes)}"
+
+      [{:if, meta, _condition}] = if_nodes
+      # The `if` should be at line 1, column 5 (after `<%= `)
+      assert meta[:line] == 1, "if should be at line 1, got #{meta[:line]}"
+      # Column should be 5 (position after `<%= `)
+      assert meta[:column] == 5,
+             "if should be at column 5, got #{inspect(meta[:column])} (column tracking is broken)"
+    end
+
+    test "nested if blocks preserve line and column positions" do
+      # Template with nested if in else block
+      # Line 1: <%= if @status do %>
+      # Line 5:     <%= if @other do %>
+      template = """
+      <%= if @status do %>
+          <div>content</div>
+        <% else %>
+          <span>other</span>
+          <%=  if @other do %>
+             bar
+          <% end %>
+      <% end %>
+      """
+
+      opts = [file: "test.heex", caller: __ENV__, tag_handler: Phoenix.LiveView.HTMLEngine]
+      quoted = Phoenix.LiveView.TagEngine.compile(template, opts)
+
+      if_nodes = find_user_if_nodes(quoted)
+      assert length(if_nodes) == 2, "expected 2 user if nodes, got #{length(if_nodes)}"
+
+      [{:if, outer_meta, _}, {:if, inner_meta, _}] = if_nodes
+
+      # Outer if should be at line 1, column 5
+      assert outer_meta[:line] == 1, "outer if should be at line 1, got #{outer_meta[:line]}"
+
+      assert outer_meta[:column] == 5,
+             "outer if should be at column 5, got #{inspect(outer_meta[:column])}"
+
+      # Nested if should be at line 5, column 10
+      assert inner_meta[:line] == 5, "nested if should be at line 5, got #{inner_meta[:line]}"
+
+      assert inner_meta[:column] == 10,
+             "nested if should be at column 10, got #{inspect(inner_meta[:column])}"
+    end
+  end
+
   describe "compiler tracing" do
     alias Phoenix.Component, as: C, warn: false
 
@@ -2288,6 +2408,317 @@ defmodule Phoenix.LiveView.HTMLEngineTest do
       assert_receive {:remote_function, meta, Phoenix.Component, :focus_wrap, 1}
       assert meta[:line] == __ENV__.line - 12
       assert meta[:column] == 10
+    end
+  end
+
+  describe "root tag attributes" do
+    alias Phoenix.LiveViewTest.Support.RootTagAttr
+    alias Phoenix.LiveViewTest.TreeDOM
+    import Phoenix.LiveViewTest.TreeDOM, only: [sigil_X: 2]
+
+    test "single self-closing tag" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.single_self_close/>")
+
+      expected = ~X"<div phx-r></div>"
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "single tag with body" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.single_with_body/>")
+
+      expected = ~X"<div phx-r>Test</div>"
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "multiple self-closing tags" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.multiple_self_close/>")
+
+      expected = ~X"""
+      <div phx-r></div>
+      <div phx-r></div>
+      <div phx-r></div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "multiple tags with bodies" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.multiple_with_bodies/>")
+
+      expected = ~X"""
+      <div phx-r>Test1</div>
+      <div phx-r>Test2</div>
+      <div phx-r>Test3</div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags of nested tags" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.nested_tags/>")
+
+      expected = ~X"""
+      <div phx-r>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      <div phx-r>
+        <div>
+          <div></div>
+        </div>
+        <div>
+          <div></div>
+        </div>
+      </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags of component inner_blocks" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.component_inner_blocks/>")
+
+      expected =
+        ~X"""
+        <div phx-r>
+          <div>
+            <section phx-r>
+              <div phx-r>
+                <div>
+                  Inner Block 1
+                </div>
+              </div>
+            </section>
+            <section phx-r>
+              <div phx-r>
+                <div>
+                  Inner Block 2
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags of component named slots" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.component_named_slots/>")
+
+      expected =
+        ~X"""
+        <div phx-r>
+          <div>
+            <section phx-r>
+              <aside>
+                <div phx-r>
+                  <div>
+                    Inner Block 1
+                  </div>
+                </div>
+              </aside>
+            </section>
+            <section phx-r>
+              <aside>
+                <div phx-r>
+                  <div>
+                    Inner Block 2
+                  </div>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "tags root tags correctly for complex nestings of tags, components, and slots" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.nested_tags_components_slots/>")
+
+      expected =
+        ~X"""
+        <div phx-r>
+          <div>
+            <section phx-r>
+                <div phx-r>
+                  <section phx-r>
+                    <div phx-r>
+                      <p phx-r>Simple</p>
+                    </div>
+                    <aside>
+                      <div phx-r>
+                        <p phx-r>Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              <aside>
+                <div phx-r>
+                  <section phx-r>
+                    <div phx-r>
+                      <p phx-r>Simple</p>
+                    </div>
+                    <aside>
+                      <div phx-r>
+                        <p phx-r>Simple</p>
+                      </div>
+                    </aside>
+                  </section>
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "within nestings" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.within_nestings bool={true}/>")
+
+      expected = ~X"""
+        <div phx-r>
+          <div>
+              <section phx-r>
+                <p phx-r>
+                  <span>True</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+
+      compiled = compile("<RootTagAttr.within_nestings bool={false}/>")
+
+      expected = ~X"""
+        <div phx-r>
+          <div>
+              <section phx-r>
+                <p phx-r>
+                  <span>False</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "extra attributes with values provided by macro component directives" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.macro_component_attrs_with_values/>")
+
+      expected =
+        ~X"""
+        <div phx-r phx-sample-one="test" phx-sample-two="test">
+          <div>
+            <section phx-r>
+              <div phx-r phx-sample-two="test" phx-sample-one="test">Inner Block</div>
+              <aside>
+                <div phx-r phx-sample-two="test" phx-sample-one="test">
+                  Named Slot
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "extra attributes without values provided by macro component directives" do
+      assigns = %{}
+
+      compiled = compile("<RootTagAttr.macro_component_attrs_without_values/>")
+
+      expected =
+        ~X"""
+        <div phx-r phx-sample-two phx-sample-one>
+          <div>
+            <section phx-r>
+              <div phx-r phx-sample-two phx-sample-one>Inner Block</div>
+              <aside>
+                <div phx-r phx-sample-two phx-sample-one>
+                  Named Slot
+                </div>
+              </aside>
+            </section>
+          </div>
+        </div>
+        """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+    end
+
+    test "extra attributes with values provided by macro component directives within nestings" do
+      assigns = %{}
+
+      compiled =
+        compile("<RootTagAttr.macro_component_attrs_with_values_within_nestings bool={true}/>")
+
+      expected = ~X"""
+        <div phx-r phx-sample-two="test" phx-sample-one="test">
+          <div>
+              <section phx-r>
+                <p phx-r phx-sample-two="test" phx-sample-one="test">
+                  <span>True</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
+
+      compiled =
+        compile("<RootTagAttr.macro_component_attrs_with_values_within_nestings bool={false}/>")
+
+      expected = ~X"""
+        <div phx-r phx-sample-two="test" phx-sample-one="test">
+          <div>
+              <section phx-r>
+                <p phx-r phx-sample-two="test" phx-sample-one="test">
+                  <span>False</span>
+                </p>
+              </section>
+          </div>
+        </div>
+      """
+
+      assert TreeDOM.normalize_to_tree(compiled) == expected
     end
   end
 end

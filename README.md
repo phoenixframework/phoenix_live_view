@@ -193,6 +193,7 @@ $ mix test
 
 Running all JavaScript tests:
 ```bash
+$ npm install
 $ npm run setup
 $ npm run test
 ```
@@ -218,6 +219,13 @@ Checking test coverage:
 ```bash
 $ npm run cover
 $ npm run cover:report
+```
+
+Format the files:
+
+```bash
+$ mix format
+$ npm run js:format
 ```
 
 JS contributions are very welcome, but please do not include an updated `priv/static/phoenix_live_view.js` in pull requests. The maintainers will update it as part of the release process.

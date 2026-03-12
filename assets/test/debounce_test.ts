@@ -62,7 +62,7 @@ describe("debounce", function () {
     let calls = 0;
     const el: HTMLInputElement = container().querySelector(
       "input[name=debounce-200]",
-    );
+    )!;
 
     el.addEventListener("input", (e) => {
       DOM.debounce(
@@ -90,7 +90,7 @@ describe("debounce", function () {
     let calls = 0;
     const el: HTMLInputElement = container().querySelector(
       "input[name=debounce-200]",
-    );
+    )!;
 
     el.addEventListener("input", (e) => {
       DOM.debounce(
@@ -122,7 +122,7 @@ describe("debounce", function () {
     let calls = 0;
     const el: HTMLInputElement = container().querySelector(
       "input[name=debounce-200]",
-    );
+    )!;
 
     el.addEventListener("input", (e) => {
       DOM.debounce(
@@ -164,7 +164,7 @@ describe("debounce", function () {
     let calls = 0;
     const el: HTMLInputElement = container().querySelector(
       "input[name=debounce-200]",
-    );
+    )!;
     el.setAttribute("phx-debounce", "");
 
     el.addEventListener("input", (e) => {
@@ -201,7 +201,7 @@ describe("debounce", function () {
     const parent = container();
     const el: HTMLInputElement = parent.querySelector(
       "input[name=debounce-200]",
-    );
+    )!;
 
     el.addEventListener("input", (e) => {
       DOM.debounce(
@@ -215,7 +215,7 @@ describe("debounce", function () {
         () => calls++,
       );
     });
-    el.form.addEventListener("submit", () => {
+    el.form!.addEventListener("submit", () => {
       el.value = "submitted";
     });
     simulateInput(el, "changed");
@@ -236,7 +236,7 @@ describe("debounce", function () {
 describe("throttle", function () {
   test("triggers immediately, then on timeout", (done) => {
     let calls = 0;
-    const el: HTMLButtonElement = container().querySelector("#throttle-200");
+    const el: HTMLButtonElement = container().querySelector("#throttle-200")!;
 
     el.addEventListener("click", (e) => {
       DOM.debounce(
@@ -274,7 +274,7 @@ describe("throttle", function () {
 
   test("uses default when value is blank", (done) => {
     let calls = 0;
-    const el: HTMLButtonElement = container().querySelector("#throttle-200");
+    const el: HTMLButtonElement = container().querySelector("#throttle-200")!;
     el.setAttribute("phx-throttle", "");
 
     el.addEventListener("click", (e) => {
@@ -315,7 +315,7 @@ describe("throttle", function () {
     let calls = 0;
     const el: HTMLInputElement = container().querySelector(
       "input[name=throttle-200]",
-    );
+    )!;
 
     el.addEventListener("input", (e) => {
       DOM.debounce(
@@ -329,7 +329,7 @@ describe("throttle", function () {
         () => calls++,
       );
     });
-    el.form.addEventListener("submit", () => {
+    el.form!.addEventListener("submit", () => {
       el.value = "submitted";
     });
     simulateInput(el, "changed");
@@ -347,7 +347,7 @@ describe("throttle", function () {
 
   test("triggers only once when there is only one event", (done) => {
     let calls = 0;
-    const el: HTMLButtonElement = container().querySelector("#throttle-200");
+    const el: HTMLButtonElement = container().querySelector("#throttle-200")!;
 
     el.addEventListener("click", (e) => {
       DOM.debounce(
@@ -377,7 +377,7 @@ describe("throttle", function () {
     let calls = 0;
     const el: HTMLInputElement = container().querySelector(
       "input[name=throttle-range-with-blur]",
-    );
+    )!;
 
     el.addEventListener("input", (e) => {
       DOM.debounce(
@@ -422,7 +422,7 @@ describe("throttle", function () {
 describe("throttle keydown", function () {
   test("when the same key is pressed triggers immediately, then on timeout", (done) => {
     const keyPresses = {};
-    const el: HTMLDivElement = container().querySelector("#throttle-keydown");
+    const el: HTMLDivElement = container().querySelector("#throttle-keydown")!;
 
     el.addEventListener("keydown", (e) => {
       DOM.debounce(
@@ -457,7 +457,7 @@ describe("throttle keydown", function () {
 
   test("when different key is pressed triggers immediately", (done) => {
     const keyPresses = {};
-    const el: HTMLDivElement = container().querySelector("#throttle-keydown");
+    const el: HTMLDivElement = container().querySelector("#throttle-keydown")!;
 
     el.addEventListener("keydown", (e) => {
       DOM.debounce(

@@ -96,7 +96,9 @@ export default class DOMPatch {
       // https://github.com/phoenixframework/phoenix_live_view/pull/3942
       // we need to ensure that no parent is locked
       const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
-      if (closestLock) {
+      // If the targetContainer itself is locked, that's okay.
+      // https://github.com/phoenixframework/phoenix_live_view/issues/4088
+      if (closestLock && !closestLock.isSameNode(targetContainer)) {
         const clonedTree = DOM.private(closestLock, PHX_REF_LOCK);
         if (clonedTree) {
           // if a parent is locked with a cloned tree, we need to patch the cloned tree instead
@@ -363,11 +365,6 @@ export default class DOMPatch {
               ref.lockRef &&
               (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))
             ) {
-              if (DOM.isUploadInput(fromEl)) {
-                DOM.mergeAttrs(fromEl, toEl, { isIgnored: true });
-                this.trackBefore("updated", fromEl, toEl);
-                updates.push(fromEl);
-              }
               DOM.applyStickyOperations(fromEl);
               const isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
               const clone = isLocked
@@ -408,6 +405,12 @@ export default class DOMPatch {
           // phx-portal handling
           if (DOM.isPortalTemplate(toEl)) {
             portalCallbacks.push(() => this.teleport(toEl, morph));
+            // for the magicId optimization we need to ensure that the template contents
+            // are properly updated as they are used when restoring a cloned tree
+            // Note: we can't write fromEl.innerHTML = toEl.innerHTML because in Chrome
+            // the HTML parser would drop nested forms, even when it should not.
+            // https://issues.chromium.org/issues/490290430
+            fromEl.content.replaceChildren(toEl.content.cloneNode(true));
             return false;
           }
 
@@ -458,12 +461,12 @@ export default class DOMPatch {
           this.streamInserts[key] = { ref, streamAt, limit, reset, updateOnly };
         });
         if (reset !== undefined) {
-          DOM.all(container, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
+          DOM.all(document, `[${PHX_STREAM_REF}="${ref}"]`, (child) => {
             this.removeStreamChildElement(child);
           });
         }
         deleteIds.forEach((id) => {
-          const child = container.querySelector(`[id="${id}"]`);
+          const child = document.getElementById(id);
           if (child) {
             this.removeStreamChildElement(child);
           }

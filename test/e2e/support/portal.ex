@@ -17,15 +17,25 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
       </style>
       <script type="module">
         import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
-        import { computePosition, autoUpdate, offset } from 'https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.0/+esm';
-        let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+        import {
+          computePosition,
+          autoUpdate,
+          offset,
+        } from "https://cdn.jsdelivr.net/npm/@floating-ui/dom@1.7.0/+esm";
+        import { hooks as colocatedHooks } from "/assets/colocated/index.js";
+        let csrfToken = document
+          .querySelector("meta[name='csrf-token']")
+          .getAttribute("content");
         let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-          params: {_csrf_token: csrfToken},
+          params: { _csrf_token: csrfToken },
           hooks: {
+            ...colocatedHooks,
             PortalTooltip: {
               mounted() {
                 this.tooltipEl = document.getElementById(this.el.dataset.id);
-                this.activatorEl = this.el.querySelector(`#${this.el.dataset.id}-activator`);
+                this.activatorEl = this.el.querySelector(
+                  `#${this.el.dataset.id}-activator`,
+                );
                 this.activatorEl.addEventListener("focusin", () => this.queueShow());
                 this.activatorEl.addEventListener("mouseover", () => this.queueShow());
                 this.activatorEl.addEventListener("focusout", () => this.queueHide());
@@ -48,7 +58,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
                 this.cleanup = autoUpdate(this.activatorEl, this.tooltipEl, () => {
                   computePosition(this.activatorEl, this.tooltipEl, {
                     placement: this.el.dataset.position,
-                    middleware: [offset(10)]
+                    middleware: [offset(10)],
                   }).then(({ x, y }) => {
                     this.tooltipEl.style.left = `${x}px`;
                     this.tooltipEl.style.top = `${y}px`;
@@ -61,15 +71,10 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
                 this.cleanup && this.cleanup();
               },
             },
-            InsidePortal: {
-              mounted() {
-                this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
-              }
-            }
-          }
-        })
-        liveSocket.connect()
-        window.liveSocket = liveSocket
+          },
+        });
+        liveSocket.connect();
+        window.liveSocket = liveSocket;
       </script>
     </head>
 
@@ -149,7 +154,7 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
 
     <.button phx-click={show_modal("my-modal")}>Open modal</.button>
     <.button phx-click="toggle_modal">Toggle modal render</.button>
-    <.button phx-click={show_modal("my-modal-2")}>Open second modal</.button>
+    <.button phx-click={show_modal("my-modal-2") |> JS.show(to: "#inner-red-box")}>Open second modal</.button>
     <.button phx-click={JS.push("tick")}>Tick</.button>
 
     <.button phx-click={JS.navigate("/form")}>Live navigate</.button>
@@ -161,12 +166,32 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         <.button phx-click={JS.patch("/portal?param=#{@param_next}")}>Patch this LiveView</.button>
       </.modal>
 
-      <div id="hook-test" phx-hook="InsidePortal">This should get a data attribute</div>
+      <div id="hook-test" phx-hook=".InsidePortal">This should get a data attribute</div>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".InsidePortal">
+        export default {
+          mounted() {
+            this.js().setAttribute(this.el, "data-portalhook-mounted", "true");
+          },
+        };
+      </script>
     </.portal>
 
     <.portal id="portal-source-2" target="#app-portal">
       <.modal id="my-modal-2">
         This is a second modal.
+        <.portal id="modal-2-inner-portal" target="#my-modal-2-content" class="contents">
+          <div class="size-96 bg-gray-300 absolute top-0 right-0">
+            <.portal id="modal-2-inner-portal-2" target="#my-modal-2-content" class="contents">
+              <div
+                id="inner-red-box"
+                class="absolute top-0 right-0 bg-red-500 size-32"
+                phx-click-away={JS.hide()}
+              >
+                test
+              </div>
+            </.portal>
+          </div>
+        </.portal>
       </.modal>
     </.portal>
 
@@ -209,6 +234,21 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive do
         </div>
       </.portal>
     </div>
+
+    <.modal id="non-teleported-modal">
+      This is a non-teleported modal. Open the menu and click an item. The modal must not close.
+      <.button phx-click={JS.show(to: "#teleported-menu-content")}>Open menu</.button>
+      <.portal id="teleported-menu" target="body">
+        <div
+          id="teleported-menu-content"
+          class="hidden z-[100] fixed top-0 left-0 border border-red-500 p-4 bg-white"
+        >
+          <.button phx-click={JS.hide(to: "#teleported-menu-content")}>Close menu</.button>
+        </div>
+      </.portal>
+    </.modal>
+
+    <.button phx-click={show_modal("non-teleported-modal")}>Open non-teleported modal</.button>
     """
   end
 
@@ -411,6 +451,20 @@ defmodule Phoenix.LiveViewTest.E2E.PortalLive.LC do
       </ul>
 
       <button phx-click="prepend" phx-target={@myself}>Prepend item</button>
+
+      <.portal id="teleported-from-lc-button" target="body">
+        <button id="lcbtn" phx-hook=".TeleportedLCButton">Prepend item (teleported)</button>
+      </.portal>
+
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".TeleportedLCButton">
+        export default {
+          mounted() {
+            this.el.addEventListener("click", () => {
+              this.pushEventTo(this.el, "prepend");
+            });
+          },
+        };
+      </script>
     </div>
     """
   end

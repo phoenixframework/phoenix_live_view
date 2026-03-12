@@ -59,20 +59,22 @@ defmodule Phoenix.LiveViewTest.E2E.ErrorLive do
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
+        params: { _csrf_token: csrfToken },
         reloadJitterMax: 50,
         reloadJitterMin: 50,
         maxReloads: 5,
         failsafeJitter: 1000,
         maxChildJoinTries: 3,
         // override Phoenix.Socket channel join backoff
-        rejoinAfterMs: (_tries) => 50
-      })
-      liveSocket.connect()
-      window.liveSocket = liveSocket
+        rejoinAfterMs: (_tries) => 50,
+      });
+      liveSocket.connect();
+      window.liveSocket = liveSocket;
     </script>
 
     {@inner_content}

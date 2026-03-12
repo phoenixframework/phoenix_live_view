@@ -1,6 +1,8 @@
 defmodule Phoenix.LiveViewTest.Support.StreamAsyncLive do
   use Phoenix.LiveView
 
+  import Phoenix.LiveViewTest.Support.AsyncSync
+
   on_mount({__MODULE__, :defaults})
 
   def on_mount(:defaults, params, _session, socket) do
@@ -86,18 +88,14 @@ defmodule Phoenix.LiveViewTest.Support.StreamAsyncLive do
   def mount(%{"test" => "lv_exit"}, _session, socket) do
     {:ok,
      stream_async(socket, :my_stream, fn ->
-       Process.register(self(), :stream_async_exit)
-       send(:stream_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:stream_async_test_process, :stream_async_exit)
      end)}
   end
 
   def mount(%{"test" => "cancel"}, _session, socket) do
     {:ok,
      stream_async(socket, :my_stream, fn ->
-       Process.register(self(), :cancel_stream)
-       send(:stream_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:stream_async_test_process, :cancel_stream)
      end)}
   end
 
@@ -158,6 +156,8 @@ end
 defmodule Phoenix.LiveViewTest.Support.StreamAsyncLive.LC do
   use Phoenix.LiveComponent
 
+  import Phoenix.LiveViewTest.Support.AsyncSync
+
   def render(assigns) do
     ~H"""
     <div>
@@ -199,18 +199,14 @@ defmodule Phoenix.LiveViewTest.Support.StreamAsyncLive.LC do
   def update(%{test: "lv_exit"}, socket) do
     {:ok,
      stream_async(socket, :lc_stream, fn ->
-       Process.register(self(), :lc_stream_exit)
-       send(:stream_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:stream_async_test_process, :lc_stream_exit)
      end)}
   end
 
   def update(%{test: "cancel"}, socket) do
     {:ok,
      stream_async(socket, :lc_stream, fn ->
-       Process.register(self(), :lc_stream_cancel)
-       send(:stream_async_test_process, :async_ready)
-       Process.sleep(:infinity)
+       register_and_sleep(:stream_async_test_process, :lc_stream_cancel)
      end)}
   end
 

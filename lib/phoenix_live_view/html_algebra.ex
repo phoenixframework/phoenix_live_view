@@ -173,11 +173,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     end
   end
 
-  defp tag_block?({:tag_block, _, _, _, _}), do: true
+  defp tag_block?({:block, _, _, _, _, _, _}), do: true
   defp tag_block?(_node), do: false
 
-  defp tag?({:tag_block, _, _, _, _}), do: true
-  defp tag?({:tag_self_close, _, _}), do: true
+  defp tag?({:block, _, _, _, _, _, _}), do: true
+  defp tag?({:self_close, _, _, _, _}), do: true
   defp tag?(_node), do: false
 
   defp text?({:text, _, _}), do: true
@@ -195,7 +195,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   defp text_ends_with_space?(_node), do: false
 
-  defp block_preserve?({:tag_block, _, _, _, %{mode: :preserve}}), do: true
+  defp block_preserve?({:block, _, _, _, _, %{mode: :preserve}, _}), do: true
   defp block_preserve?({:body_expr, _, _}), do: true
   defp block_preserve?({:eex, _, _}), do: true
   defp block_preserve?(_node), do: false
@@ -208,7 +208,11 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group(nest(children, :reset))}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, meta}, context) when name in @languages do
+  defp to_algebra(
+         {:block, _type, _name, attrs, block, %{tag_name: name} = meta, _close_meta},
+         context
+       )
+       when name in @languages do
     children = block_to_algebra(block, %{context | mode: :preserve})
 
     # Convert the whole block to text as there are no
@@ -253,7 +257,10 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:block, group}
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, meta}, %{mode: :preserve} = context) do
+  defp to_algebra(
+         {:block, _type, _name, attrs, block, %{tag_name: name} = meta, _close_meta},
+         %{mode: :preserve} = context
+       ) do
     children = block_to_algebra(block, context)
 
     children =
@@ -270,11 +277,14 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     {:inline, tag}
   end
 
-  defp to_algebra({:tag_block, _name, _attrs, _block, %{mode: :preserve}} = doc, context) do
+  defp to_algebra(
+         {:block, _type, _name, _attrs, _block, %{mode: :preserve}, _close_meta} = doc,
+         context
+       ) do
     to_algebra(doc, %{context | mode: :preserve})
   end
 
-  defp to_algebra({:tag_block, name, attrs, block, _meta}, context) do
+  defp to_algebra({:block, _type, _name, attrs, block, %{tag_name: name}, _close_meta}, context) do
     inline? = inline?(name, context)
     {block, force_newline?} = trim_block_newlines(block, inline?)
     inline? = inline? and not force_newline?
@@ -304,7 +314,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
     end
   end
 
-  defp to_algebra({:tag_self_close, name, attrs}, context) do
+  defp to_algebra({:self_close, _type, _name, attrs, %{tag_name: name}}, context) do
     doc =
       concat([
         "<#{name}",
@@ -318,7 +328,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   # Handle EEX blocks within preserve tags
   defp to_algebra({:eex_block, expr, block, meta}, %{mode: :preserve} = context) do
     doc =
-      Enum.reduce(block, empty(), fn {block, expr}, doc ->
+      Enum.reduce(block, empty(), fn {block, expr, _clause_meta}, doc ->
         children = block_to_algebra(block, context)
         expr = "<% #{expr} %>"
         concat([doc, children, expr])
@@ -330,7 +340,7 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
   # Handle EEX blocks
   defp to_algebra({:eex_block, expr, block, meta}, context) do
     {doc, _stab} =
-      Enum.reduce(block, {empty(), false}, fn {block, expr}, {doc, stab?} ->
+      Enum.reduce(block, {empty(), false}, fn {block, expr, _clause_meta}, {doc, stab?} ->
         {block, _force_newline?} = trim_block_newlines(block, false)
         {next_doc, stab?} = eex_block_to_algebra(expr, block, stab?, context)
         {concat(doc, force_unfit(next_doc)), stab?}
@@ -529,8 +539,8 @@ defmodule Phoenix.LiveView.HTMLAlgebra do
 
   # Handle EEx clauses
   #
-  # {[], "something ->"}
-  # {[{:tag_block, "p", [], [text: "do something"]}], "else"}
+  # {[], "something ->", %{...}}
+  # {[{:block, :tag, "p", [], [...], %{...}, %{...}}], "else", %{...}}
   defp eex_block_to_algebra(expr, block, stab?, context) when is_list(block) do
     indent = if stab?, do: 4, else: 2
 

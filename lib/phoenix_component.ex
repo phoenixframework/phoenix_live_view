@@ -917,17 +917,13 @@ defmodule Phoenix.Component do
       raise "~H requires a variable named \"assigns\" to exist and be set to a map"
     end
 
-    options = [
-      engine: Phoenix.LiveView.TagEngine,
+    Phoenix.LiveView.TagEngine.compile(expr,
       file: __CALLER__.file,
       line: __CALLER__.line + 1,
       caller: __CALLER__,
       indentation: meta[:indentation] || 0,
-      source: expr,
       tag_handler: Phoenix.LiveView.HTMLEngine
-    ]
-
-    EEx.compile_string(expr, options)
+    )
   end
 
   @doc ~S'''
@@ -1520,10 +1516,6 @@ defmodule Phoenix.Component do
       %{^key => val} -> assign(assigns, key, fun.(val))
       %{} -> raise KeyError, key: key, term: assigns
     end
-  end
-
-  def update(assigns, _key, fun) when is_function(fun, 1) or is_function(fun, 2) do
-    raise_bad_socket_or_assign!("update/3", assigns)
   end
 
   @doc """
@@ -3348,7 +3340,6 @@ defmodule Phoenix.Component do
       name={@upload.name}
       accept={@accept}
       data-phx-hook="Phoenix.LiveFileUpload"
-      data-phx-update="ignore"
       data-phx-upload-ref={@upload.ref}
       data-phx-active-refs={join_refs(for(entry <- @upload.entries, do: entry.ref))}
       data-phx-done-refs={join_refs(for(entry <- @upload.entries, entry.done?, do: entry.ref))}

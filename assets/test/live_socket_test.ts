@@ -94,9 +94,12 @@ describe("LiveSocket", () => {
     liveSocket = new LiveSocket("/live", Socket);
 
     liveSocket.connect();
-    const channel = liveSocket.channel("lv:def456", function () {
-      return { session: this.getSession() };
-    });
+    const channel = liveSocket.channel(
+      "lv:def456",
+      function (this: { getSession(): string }) {
+        return { session: this.getSession() };
+      },
+    );
 
     expect(channel).toBeDefined();
   });
@@ -171,7 +174,7 @@ describe("LiveSocket", () => {
   test("getActiveElement default before LiveSocket activeElement is set", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
 
     expect(liveSocket.getActiveElement()).toEqual(input);
@@ -180,7 +183,7 @@ describe("LiveSocket", () => {
   test("blurActiveElement", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
 
     expect(liveSocket.prevActive).toBeNull();
@@ -194,7 +197,7 @@ describe("LiveSocket", () => {
   test("restorePreviouslyActiveFocus", async () => {
     liveSocket = new LiveSocket("/live", Socket);
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
 
     liveSocket.blurActiveElement();
@@ -213,7 +216,7 @@ describe("LiveSocket", () => {
 
     liveSocket.connect();
 
-    const input = document.querySelector("input");
+    const input = document.querySelector("input")!;
     input.focus();
     liveSocket.blurActiveElement();
     expect(liveSocket.prevActive).toEqual(input);
@@ -240,6 +243,58 @@ describe("LiveSocket", () => {
 
     // liveSocket constructor reads nav history position from sessionStorage
     expect(getItemCalls).toEqual(2);
+  });
+
+  describe("execJS", () => {
+    let view, liveSocket;
+
+    beforeEach(() => {
+      global.document.body.innerHTML = "";
+      prepareLiveViewDOM(global.document);
+      jest.useFakeTimers();
+
+      liveSocket = new LiveSocket("/live", Socket);
+      view = simulateJoinedView(
+        document.getElementById("container1"),
+        liveSocket,
+      );
+    });
+
+    afterEach(() => {
+      liveSocket && liveSocket.destroyAllViews();
+      liveSocket = null;
+      jest.useRealTimers();
+    });
+
+    afterAll(() => {
+      global.document.body.innerHTML = "";
+    });
+
+    test("accepts JSON-encoded command string", () => {
+      const el = document.createElement("div");
+      el.setAttribute("id", "test-exec");
+      el.setAttribute(
+        "data-test",
+        '[["toggle_attr", {"attr": ["open", "true"]}]]',
+      );
+      view.el.appendChild(el);
+
+      expect(el.getAttribute("open")).toBeNull();
+      liveSocket.execJS(el, el.getAttribute("data-test"));
+      jest.runAllTimers();
+      expect(el.getAttribute("open")).toEqual("true");
+    });
+
+    test("accepts command array", () => {
+      const el = document.createElement("div");
+      el.setAttribute("id", "test-exec-array");
+      view.el.appendChild(el);
+
+      expect(el.getAttribute("open")).toBeNull();
+      liveSocket.execJS(el, [["toggle_attr", { attr: ["open", "true"] }]]);
+      jest.runAllTimers();
+      expect(el.getAttribute("open")).toEqual("true");
+    });
   });
 });
 
@@ -280,6 +335,17 @@ describe("liveSocket.js()", () => {
 
     expect(el.getAttribute("open")).toBeNull();
     js.exec(el, el.getAttribute("data-test"));
+    jest.runAllTimers();
+    expect(el.getAttribute("open")).toEqual("true");
+  });
+
+  test("exec with command array", () => {
+    const el = document.createElement("div");
+    el.setAttribute("id", "test-exec-array");
+    view.el.appendChild(el);
+
+    expect(el.getAttribute("open")).toBeNull();
+    js.exec(el, [["toggle_attr", { attr: ["open", "true"] }]]);
     jest.runAllTimers();
     expect(el.getAttribute("open")).toEqual("true");
   });

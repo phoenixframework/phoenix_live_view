@@ -9,12 +9,23 @@ assignees: ''
 
 ### Environment
 
-* Elixir version (elixir -v):
-* Phoenix version (mix deps):
-* Phoenix LiveView version (mix deps):
+* Elixir version (please paste the output of `elixir -v`):
+```
+
+```
+* Phoenix and LiveView versions (`mix deps | grep -w 'phoenix\|phoenix_live_view'`):
+```
+
+```
 * Operating system:
-* Browsers you attempted to reproduce this bug on (the more the merrier): 
-* Does the problem persist after removing "assets/node_modules" and trying again? Yes/no:
+- [ ] Windows
+- [ ] MacOS
+- [ ] Linux
+- [ ] Other (please specify): 
+* Browsers (including version) you attempted to reproduce this bug on (the more the merrier):
+```
+
+```
 
 ### Actual behavior
 

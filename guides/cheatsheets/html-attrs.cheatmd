@@ -64,7 +64,7 @@ Attribute values can be:
 | [`phx-submit`](../client/form-bindings.md#form-events)                                     | Event name or [JS commands](../client/bindings.md#js-commands)             |
 | [`phx-auto-recover`](../client/form-bindings.md#recovery-following-crashes-or-disconnects) | Event name, [JS commands](../client/bindings.md#js-commands) or `"ignore"` |
 | [`phx-trigger-action`](../client/form-bindings.md#submitting-the-form-action-over-http)    | Presence (or `true`) disconnects the LiveView and submits the form         |
-| [`phx-no-usage-tracking`](../client/form-bindings.md#error-feedback)                       | Presence (or `true`) opts-out of reporting unused form fields              |
+| [`phx-no-unused-field`](../client/form-bindings.md#error-feedback)                         | Presence (or `true`) opts out of reporting unused form fields              |
 
 ### On `<button>` elements
 

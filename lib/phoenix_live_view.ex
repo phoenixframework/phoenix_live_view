@@ -594,7 +594,7 @@ defmodule Phoenix.LiveView do
   """
   def connected?(%Socket{transport_pid: transport_pid}), do: transport_pid != nil
 
-  @doc """
+  @doc ~S'''
   Configures which function to use to render a LiveView/LiveComponent.
 
   By default, LiveView invokes the `render/1` function in the same module
@@ -615,7 +615,30 @@ defmodule Phoenix.LiveView do
 
   To do so, you must simply invoke `render_with(socket, &some_function_component/1)`,
   configuring your socket with a new rendering function.
-  """
+
+  ## Examples
+
+      @impl true
+      def mount(_params, _session, socket) do
+        if connected?(socket) do
+          {:ok,
+           socket
+           |> assign(:foos, Context.list_foos())
+           |> assign(:bars, Context.list_bars())}
+        else
+          {:ok, render_with(socket, &loading/1)}
+        end
+      end
+
+      defp loading(assigns) do
+        ~H"""
+        <div class="...">
+          Loading...
+        </div>
+        """
+      end
+
+  '''
   def render_with(%Socket{} = socket, component) when is_function(component, 1) do
     put_in(socket.private[:render_with], component)
   end
@@ -1303,8 +1326,17 @@ defmodule Phoenix.LiveView do
   </div>
   ```
 
+  For larger projects, you can extract this into [a hook](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.html#on_mount/1):
+
+      # MyAppWeb.CheckStaticChanged
+      def on_mount(:default, _params, _session, socket) do
+        {:cont, assign(socket, static_changed?: static_changed?(socket))}
+      end
+
+  And then add it to the existing `live_view` macro in your `my_app_web.ex` file or add it as part
+  of your `live_session` hooks.
   If you prefer, you can also send a JavaScript script that immediately
-  reloads the page.
+  reloads the page, but this will cause the client-side to lose all work in progress.
 
   **Note:** only set `phx-track-static` on your own assets. For example, do
   not set it in external JavaScript files:

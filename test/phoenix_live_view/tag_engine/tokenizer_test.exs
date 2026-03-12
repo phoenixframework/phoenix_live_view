@@ -1,7 +1,9 @@
-defmodule Phoenix.LiveView.TokenizerTest do
+defmodule Phoenix.LiveView.TagEngine.TokenizerTest do
   use ExUnit.Case, async: true
-  alias Phoenix.LiveView.Tokenizer.ParseError
-  alias Phoenix.LiveView.Tokenizer
+  alias Phoenix.LiveView.TagEngine.Tokenizer.ParseError
+  alias Phoenix.LiveView.TagEngine.Tokenizer
+
+  import ExUnit.CaptureIO
 
   defp tokenizer_state(text), do: Tokenizer.init(0, "nofile", text, Phoenix.LiveView.HTMLEngine)
 
@@ -441,6 +443,19 @@ defmodule Phoenix.LiveView.TokenizerTest do
 
       assert_raise ParseError, message, fn ->
         tokenize(~S(<div class={"test"}">))
+      end
+    end
+
+    test "raise on missing opening interpolation" do
+      message = """
+      nofile:1:29: expected attribute, but found end of interpolation: }
+        |
+      1 | <div class=\"image-container\"}>
+        |                             ^\
+      """
+
+      assert_raise ParseError, message, fn ->
+        tokenize(~S(<div class="image-container"}>))
       end
     end
   end
@@ -978,6 +993,22 @@ defmodule Phoenix.LiveView.TokenizerTest do
              {:close, :tag, "div", %{line: 4, column: 1}},
              {:text, "\ntext after\n", %{line_end: 6, column_end: 1}}
            ] = tokens
+  end
+
+  test "warns when no space between attributes" do
+    warning =
+      capture_io(:stderr, fn ->
+        tokenize(~S(<div style=""id="123"/>))
+      end)
+
+    assert warning =~ "missing space before attribute"
+
+    warning =
+      capture_io(:stderr, fn ->
+        tokenize(~S(<div style={@s}id="123"/>))
+      end)
+
+    assert warning =~ "missing space before attribute"
   end
 
   defp tokenize_attrs(code) do

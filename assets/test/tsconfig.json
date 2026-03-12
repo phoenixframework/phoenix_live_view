@@ -6,6 +6,8 @@
     "checkJs": false,
     "resolveJsonModule": true,
     "baseUrl": ".",
+    "strict": true,
+    "noImplicitAny": false,
     "paths": {
       "phoenix_live_view": ["../js/phoenix_live_view/index.ts"],
       "phoenix_live_view*": ["../js/phoenix_live_view/*"]

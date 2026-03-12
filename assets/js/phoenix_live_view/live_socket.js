@@ -29,6 +29,7 @@ import {
   PHX_RELOAD_STATUS,
   PHX_RUNTIME_HOOK,
   PHX_DROP_TARGET_ACTIVE_CLASS,
+  PHX_TELEPORTED_SRC,
 } from "./constants";
 
 import {
@@ -221,6 +222,11 @@ export default class LiveSocket {
     this.connect();
   }
 
+  /**
+   * @param {HTMLElement} el
+   * @param {import("./js_commands").EncodedJS} encodedJS
+   * @param {string | null} [eventType]
+   */
   execJS(el, encodedJS, eventType = null) {
     const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
     this.owner(el, (view) => JS.exec(e, eventType, encodedJS, view, el));
@@ -531,6 +537,11 @@ export default class LiveSocket {
       // in that case we DO NOT want to fallback to the main element
       view = this.getViewByEl(viewEl);
     } else {
+      if (!childEl.isConnected) {
+        // if the element is not part of the DOM any more
+        // there's no owner and we should not do fall back
+        return null;
+      }
       view = this.main;
     }
     return view && callback ? callback(view) : view;
@@ -862,8 +873,31 @@ export default class LiveSocket {
 
   dispatchClickAway(e, clickStartedAt) {
     const phxClickAway = this.binding("click-away");
+    const portal = clickStartedAt.closest(`[${PHX_TELEPORTED_SRC}]`);
+    const portalStartedAt =
+      portal && DOM.byId(portal.getAttribute(PHX_TELEPORTED_SRC));
     DOM.all(document, `[${phxClickAway}]`, (el) => {
-      if (!(el.isSameNode(clickStartedAt) || el.contains(clickStartedAt))) {
+      let startedAt = clickStartedAt;
+      if (portal && !portal.contains(el)) {
+        // If we have a portal and the click-away element is not inside it,
+        // then treat the portal source as the starting point instead.
+        startedAt = portalStartedAt;
+      }
+      if (
+        !(
+          el.isSameNode(startedAt) ||
+          el.contains(startedAt) ||
+          // When clicking a link with custom method,
+          // phoenix_html triggers a click on a submit button
+          // of a hidden form appended to the body. For such cases
+          // where the clicked target is hidden, we skip click-away.
+          //
+          // Also, when we have a portal, we don't want to check the visibility
+          // of the portal source, as it's a <template> that is always not visible.
+          // Instead, check the visibility of the original click target.
+          !JS.isVisible(clickStartedAt)
+        )
+      ) {
         this.withinOwners(el, (view) => {
           const phxEvent = el.getAttribute(phxClickAway);
           if (JS.isVisible(el) && JS.isInViewport(el)) {

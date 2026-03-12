@@ -34,8 +34,8 @@ The `liveSocket` instance exposes the following methods:
 - `disableDebug()` -  turns off debug logging
 - `enableLatencySim(milliseconds)` - turns on latency simulation, see [Simulating latency](#simulating-latency)
 - `disableLatencySim()` - turns off latency simulation
-- `execJS(el, encodedJS)` - executes encoded JavaScript in the context of the element
-- `js()` - returns an object with methods to manipulate the DOM and execute JavaScript. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
+- `execJS(el, encodedJS)` - executes encoded JS command in the context of the element
+- `js()` - returns an object with methods to manipulate the DOM and execute JS commands. The applied changes integrate with server DOM patching. See [JS commands](#js-commands).
 
 ## Debugging client events
 
@@ -151,7 +151,9 @@ or removed by the server, a hook object may be provided via `phx-hook`.
   * `beforeUpdate` - the element is about to be updated in the DOM.
     *Note*: any call here must be synchronous as the operation cannot
     be deferred or cancelled.
-  * `updated` - the element has been updated in the DOM by the server
+  * `updated` - the element has been updated in the DOM by the server.
+    *Note*: `window.location` may not reflect the current URL during this callback.
+    For navigation-aware logic, use the `phx:navigate` event instead.
   * `destroyed` - the element has been removed from the page, either
     by a parent update, or by the parent being removed entirely
   * `disconnected` - the element's parent LiveView has disconnected from the server
@@ -477,5 +479,5 @@ The command interface returned by `js()` above offers the following functions:
 - `push(el, type, opts = {})` - pushes an event to the server. To target a LiveComponent by its ID, pass a separate `target` in the options. Options: `target`, `loading`, `page_loading`, `value`. For more details, see `Phoenix.LiveView.JS.push/1`.
 - `navigate(href, opts = {})` - sends a navigation event to the server and updates the browser's pushState history. Options: `replace`. For more details, see `Phoenix.LiveView.JS.navigate/1`.
 - `patch(href, opts = {})` - sends a patch event to the server and updates the browser's pushState history. Options: `replace`. For more details, see `Phoenix.LiveView.JS.patch/1`.
-- `exec(encodedJS)` - *only via Client hook `this.js()`*: executes encoded JavaScript in the context of the hook's root node. The encoded JS command should be constructed via `Phoenix.LiveView.JS` and is usually stored as an HTML attribute. Example: `this.js().exec(this.el.getAttribute('phx-remove'))`.
-- `exec(el, encodedJS)` - *only via `liveSocket.js()`*: executes encoded JavaScript in the context of any element.
+- `exec(encodedJS)` - *only via Client hook `this.js()`*: executes encoded JS command in the context of the hook's root node. The encoded JS command should be constructed via `Phoenix.LiveView.JS` and is usually stored as an HTML attribute. Example: `this.js().exec(this.el.getAttribute('phx-remove'))`.
+- `exec(el, encodedJS)` - *only via `liveSocket.js()`*: executes encoded JS command in the context of any element.

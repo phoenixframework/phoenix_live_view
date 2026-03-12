@@ -20,6 +20,7 @@ const Hooks = {
     },
 
     mounted() {
+      this.js().ignoreAttributes(this.el, ["value"]);
       this.preflightedWas = this.preflightedRefs();
     },
 

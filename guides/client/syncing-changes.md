@@ -221,3 +221,6 @@ A lower level `phx:navigate` event is also triggered any time the browser's URL 
   - `"patch"` - the boolean flag indicating this was a patch navigation.
   - `"pop"` - the boolean flag indication this was a navigation via `popstate`
     from a user navigation forward or back in history.
+
+For navigation-aware logic, prefer `phx:navigate` over hook callbacks like `updated()`,
+as hooks may fire before `window.location` is updated.

@@ -11,8 +11,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
       def fun(assigns) do
         ~H"""
         <script :type={Colo} name="my-script">
-          export default function() {
-            console.log("hey!")
+          export default function () {
+            console.log("hey!");
           }
         </script>
         """
@@ -37,8 +37,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
     assert File.read!(script) == """
 
-             export default function() {
-               console.log("hey!")
+             export default function () {
+               console.log("hey!");
              }
            """
 
@@ -72,8 +72,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
       def fun(assigns) do
         ~H"""
         <script :type={Colo} name="my-script" key="components">
-          export default function() {
-            console.log("hey!")
+          export default function () {
+            console.log("hey!");
           }
         </script>
         """
@@ -98,8 +98,8 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
 
     assert File.read!(script) == """
 
-             export default function() {
-               console.log("hey!")
+             export default function () {
+               console.log("hey!");
              }
            """
 
@@ -194,7 +194,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
   end
 
   test "raises for invalid name" do
-    assert_raise Phoenix.LiveView.Tokenizer.ParseError,
+    assert_raise Phoenix.LiveView.TagEngine.Tokenizer.ParseError,
                  ~r/the name attribute of a colocated script must be a compile-time string\. Got: @foo/,
                  fn ->
                    defmodule TestComponentInvalidName do
@@ -204,7 +204,7 @@ defmodule Phoenix.LiveView.ColocatedJSTest do
                      def fun(assigns) do
                        ~H"""
                        <script :type={Colo} name={@foo}>
-                         1 + 1
+                         1 + 1;
                        </script>
                        """
                      end

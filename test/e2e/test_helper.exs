@@ -25,7 +25,9 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
 
   def render("root.html", assigns) do
     ~H"""
-    <%!-- no doctype -> quirks mode --%> <!DOCTYPE html> {@inner_content}
+    <%!-- no doctype -> quirks mode --%>
+    <!DOCTYPE html> {assigns[:render_in_root] && assigns[:render_in_root].(assigns)}
+    {@inner_content}
     """
   end
 
@@ -33,7 +35,7 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     ~H"""
     <meta name="csrf-token" content={Plug.CSRFProtection.get_csrf_token()} />
     <script>
-      window.hooks = {}
+      window.hooks = {};
     </script>
     <script src="/assets/phoenix/phoenix.min.js">
     </script>
@@ -41,26 +43,29 @@ defmodule Phoenix.LiveViewTest.E2E.Layout do
     </script>
     {assigns[:pre_script]}
     <script type="module">
-      import {LiveSocket} from "/assets/phoenix_live_view/phoenix_live_view.esm.js"
+      import { LiveSocket } from "/assets/phoenix_live_view/phoenix_live_view.esm.js";
+      import { hooks as colocatedHooks } from "/assets/colocated/index.js";
 
-      let Hooks = {}
+      let Hooks = {};
       Hooks.FormHook = {
         mounted() {
-          this.pushEvent("ping", {}, () => this.el.innerText += "pong")
-        }
-      }
+          this.pushEvent("ping", {}, () => (this.el.innerText += "pong"));
+        },
+      };
       Hooks.FormStreamHook = {
         mounted() {
-          this.pushEvent("ping", {}, () => this.el.innerText += "pong")
-        }
-      }
-      let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content");
+          this.pushEvent("ping", {}, () => (this.el.innerText += "pong"));
+        },
+      };
+      let csrfToken = document
+        .querySelector("meta[name='csrf-token']")
+        .getAttribute("content");
       let liveSocket = new LiveSocket("/live", window.Phoenix.Socket, {
-        params: {_csrf_token: csrfToken},
-        hooks: {...Hooks, ...window.hooks}
-      })
-      liveSocket.connect()
-      window.liveSocket = liveSocket
+        params: { _csrf_token: csrfToken },
+        hooks: { ...Hooks, ...window.hooks, ...colocatedHooks },
+      });
+      liveSocket.connect();
+      window.liveSocket = liveSocket;
     </script>
     <style>
       * { font-size: 1.1rem; }
@@ -201,6 +206,14 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3953", Issue3953Live
       live "/3979", Issue3979Live
       live "/4027", Issue4027Live
+      live "/4066", Issue4066Live
+      live "/4088", Issue4088Live
+      live "/4094", Issue4094Live
+      live "/4095", Issue4095Live
+      live "/4102", Issue4102Live
+      live "/4107", Issue4107Live
+      live "/4121", Issue4121Live
+      live "/4147", Issue4147Live
     end
   end
 
@@ -242,6 +255,7 @@ defmodule Phoenix.LiveViewTest.E2E.Router do
       live "/3681", Issue3681Live
       live "/3681/away", Issue3681.AwayLive
       live "/3941", Issue3941Live
+      live "/4078", Issue4078Live
     end
 
     post "/submit", SubmitController, :submit

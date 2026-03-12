@@ -12,7 +12,7 @@ import { ViewHook } from "./view_hook";
 import View from "./view";
 import { logError } from "./utils";
 
-import type { LiveSocketJSCommands } from "./js_commands";
+import type { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import type { Hook, HooksOptions } from "./view_hook";
 import type { Socket as PhoenixSocket } from "phoenix";
 
@@ -266,7 +266,11 @@ export interface LiveSocketInstanceInterface {
    *
    * See [`Phoenix.LiveView.JS`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.JS.html) for more information.
    */
-  execJS(el: HTMLElement, encodedJS: string, eventType?: string | null): void;
+  execJS(
+    el: HTMLElement,
+    encodedJS: EncodedJS,
+    eventType?: string | null,
+  ): void;
   /**
    * Returns an object with methods to manipulate the DOM and execute JavaScript.
    * The applied changes integrate with server DOM patching.
@@ -312,6 +316,10 @@ const LiveSocket = OriginalLiveSocket as unknown as LiveSocketConstructor;
  * *Note*: `createHook` must be called from the `connectedCallback` lifecycle
  * which is triggered after the element has been added to the DOM. If you try
  * to call `createHook` from the constructor, an error will be logged.
+ *
+ * Furthermore, you can only start using the hook's APIs after the `mounted`
+ * callback of the hook has been called. If you try to call them earlier,
+ * an error will be logged.
  *
  * @example
  *

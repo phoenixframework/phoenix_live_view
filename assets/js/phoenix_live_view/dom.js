@@ -354,9 +354,13 @@ const DOM = {
         if (form && this.once(form, "bind-debounce")) {
           form.addEventListener("submit", () => {
             Array.from(new FormData(form).entries(), ([name]) => {
-              const input = form.querySelector(`[name="${name}"]`);
-              this.incCycle(input, DEBOUNCE_TRIGGER);
-              this.deletePrivate(input, THROTTLED);
+              const namedItem = form.elements.namedItem(name);
+              const input =
+                namedItem instanceof RadioNodeList ? namedItem[0] : namedItem;
+              if (input) {
+                this.incCycle(input, DEBOUNCE_TRIGGER);
+                this.deletePrivate(input, THROTTLED);
+              }
             });
           });
         }

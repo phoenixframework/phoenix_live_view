@@ -218,9 +218,119 @@ defmodule Phoenix.LiveView.JS do
 
   defimpl Phoenix.HTML.Safe, for: Phoenix.LiveView.JS do
     def to_iodata(%Phoenix.LiveView.JS{} = js) do
-      Phoenix.HTML.Engine.html_escape(Phoenix.json_library().encode!(js.ops))
+      js
+      |> JS.to_encodable()
+      |> Phoenix.json_library().encode!()
+      |> Phoenix.HTML.Engine.html_escape()
     end
   end
+
+  if Code.ensure_loaded?(Jason.Encoder) do
+    defimpl Jason.Encoder, for: Phoenix.LiveView.JS do
+      def encode(%Phoenix.LiveView.JS{} = js, opts) do
+        Jason.Encode.list(JS.to_encodable(js), opts)
+      end
+    end
+  end
+
+  if Code.ensure_loaded?(JSON.Encoder) do
+    defimpl JSON.Encoder, for: Phoenix.LiveView.JS do
+      def encode(%Phoenix.LiveView.JS{} = js, encoder) do
+        JSON.Encoder.encode(JS.to_encodable(js), encoder)
+      end
+    end
+  end
+
+  @doc ~S"""
+  Returns a JSON-encodable opaque intermediate representation of the JS command.
+
+  Most of the time you will not need to call this function directly, as
+  JS commands are automatically encoded where they are typically used: in
+  [HEEx templates](assigns-eex.md) or within the payload of
+  `Phoenix.LiveView.push_event/3`.
+
+  This function is useful when you use a custom JSON library. JS commands
+  implement the `Jason.Encoder` and `JSON.Encoder` protocols, such that they
+  are automatically encoded when you use either of those JSON libraries.
+
+  ## Examples
+
+  On the server, dynamically compute some JS commands and push them to the
+  client:
+
+  ```elixir
+  socket
+  |> push_event("myapp:exec_js", %{
+    to: "#items-#{item.id}",
+    js: js_commands_for(item) |> JS.to_encodable()
+  })
+  ```
+
+  > #### Automatic encoding {: .tip}
+  >
+  > Note that you don't need to call `to_encodable/1` if you are using `Jason` or
+  > `JSON`, instead you can pass the JS commands directly:
+  >
+  > ```elixir
+  > socket
+  > |> push_event("myapp:exec_js", %{
+  >   to: "#items-#{item.id}",
+  >   js: JS.show()
+  > })
+  > ```
+
+  On the client, handle the event and execute the commands:
+
+  ```javascript
+  window.addEventListener("phx:myapp:exec_js", e => {
+    const {to, js} = e.detail;
+    const el = document.querySelector(to);
+    if (el && js) {
+      window.liveSocket.execJS(el, js);
+    }
+  });
+  ```
+
+  The common case, though, is having the JS commands stored in an HTML attribute
+  (`phx-*` or `data-*`), such that client-side JavaScript can refer to them
+  later. For example, in a LiveView template:
+
+  ```heex
+  <div id={"items-#{item.id}"} data-js={JS.show()}>
+    Hello!
+  </div>
+  ```
+
+  Now the server can push an event that refers to the `data-js` attribute:
+
+  ```elixir
+  socket
+  |> push_event("myapp:exec_attr", %{
+    to: "#items-#{item.id}",
+    attr: "data-js"
+  })
+  ```
+
+  Finally, on the client, you can read and execute the commands:
+
+  ```javascript
+  window.addEventListener("phx:myapp:exec_attr", e => {
+    const {to, attr} = e.detail;
+    const el = document.querySelector(to);
+    const js = el && attr && el.getAttribute(attr);
+    if (el && js) {
+      window.liveSocket.execJS(el, js);
+    }
+  });
+  ```
+
+  Note how in the code above we didn't need to encode JS commands explicitly,
+  nor to pass them in the event payload, thanks to rendering them in the
+  template.
+
+  """
+  @spec to_encodable(js :: JS.t()) :: internal()
+  def to_encodable(%JS{} = js), do: js.ops
 
   @doc """
   Pushes an event to the server.
@@ -793,6 +903,34 @@ defmodule Phoenix.LiveView.JS do
     show
   </button>
   ```
+
+  > #### A note on properties {: .warning}
+  >
+  > `JS.set_attribute/1` cannot be used to set DOM properties such as the [`value` of an input](https://jakearchibald.com/2024/attributes-vs-properties/#value-on-input-fields).
+  > So if you find yourself wanting to do `JS.set_attribute({"value", "..."})` on an input, and
+  > see that updated value reflected in a form event, you should use `JS.dispatch/2`
+  > instead:
+  >
+  > Instead of
+  >
+  > ```heex
+  > <.button phx-click={JS.set_attribute({"value", ""}, to: "#my_input")}>...</.button>
+  > ```
+  >
+  > do
+  >
+  > ```heex
+  > <script :type={Phoenix.LiveView.ColocatedJS} name="clear_input">
+  >   window.addEventListener("input:clear", (e) => {
+  >     e.target.value = ""
+  >     e.target.dispatchEvent(new Event("input", {bubbles: true}))
+  >   })
+  > </script>
+  > <.button phx-click={JS.dispatch("input:clear", to: "#my_input")}>...</.button>
+  > ```
+  >
+  > Note: this uses `Phoenix.LiveView.ColocatedJS`, but you can also define the event listener directly inside
+  > your `app.js` instead.
   """
   def set_attribute({attr, val}), do: set_attribute(%JS{}, {attr, val}, [])
 
@@ -1143,8 +1281,6 @@ defmodule Phoenix.LiveView.JS do
     Enum.reject(args, fn {_k, v} -> is_nil(v) end)
     |> Map.new()
   end
-
-  defp class_names(nil), do: []
 
   defp class_names(names) do
     String.split(names, " ", trim: true)

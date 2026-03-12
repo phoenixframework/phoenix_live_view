@@ -65,7 +65,7 @@ defmodule Phoenix.LiveViewTest.Support.LayoutView do
           body { background-color: #eee; }
         </style>
         <script>
-          console.log("script")
+          console.log("script");
         </script>
       </head>
       <body>

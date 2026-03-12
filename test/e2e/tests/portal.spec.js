@@ -79,13 +79,24 @@ test("streams work in teleported LiveComponent", async ({ page }) => {
       () => document.querySelector("#stream-in-lc").children.length,
     ),
   ).toEqual(2);
-  await page.getByRole("button", { name: "Prepend item" }).click();
+  await page.getByRole("button", { name: "Prepend item", exact: true }).click();
   await syncLV(page);
   expect(
     await page.evaluate(
       () => document.querySelector("#stream-in-lc").children.length,
     ),
   ).toEqual(3);
+  // https://github.com/phoenixframework/phoenix_live_view/issues/4101
+  // teleporting outside of live component works too
+  await page
+    .getByRole("button", { name: "Prepend item (teleported)", exact: true })
+    .click();
+  await syncLV(page);
+  expect(
+    await page.evaluate(
+      () => document.querySelector("#stream-in-lc").children.length,
+    ),
+  ).toEqual(4);
 });
 
 test("tooltip example", async ({ page }) => {
@@ -177,4 +188,38 @@ test("nested portals cleanup and re-render correctly", async ({ page }) => {
   ).toHaveCount(1);
   await expect(page.locator("#outer-portal")).toHaveCount(1);
   await expect(page.locator("#inner-portal")).toHaveCount(1);
+});
+
+test("click-away is portal aware", async ({ page }) => {
+  await page.goto("/portal?tick=false");
+  await syncLV(page);
+
+  await page.getByRole("button", { name: "Open non-teleported modal" }).click();
+  await expect(page.locator("#non-teleported-modal-content")).toBeVisible();
+  await page.getByRole("button", { name: "Open menu" }).click();
+  await expect(page.locator("#teleported-menu-content")).toBeVisible();
+  await page.getByRole("button", { name: "Close menu" }).click();
+  await expect(page.locator("#teleported-menu-content")).toBeHidden();
+
+  // Modal must still be visible, despite click away
+  await expect(page.locator("#non-teleported-modal-content")).toBeVisible();
+  // trigger click-away
+  await page
+    .locator("#non-teleported-modal .fixed[role='dialog']")
+    .click({ position: { x: 0, y: 0 } });
+  await expect(page.locator("#non-teleported-modal-content")).toBeHidden();
+
+  // Test that click-away also works properly for teleported modals
+  await page.getByRole("button", { name: "Open modal" }).click();
+  await expect(page.locator("#my-modal-content")).toBeVisible();
+  await page
+    .locator("#my-modal .fixed[role='dialog']")
+    .click({ position: { x: 0, y: 0 } });
+  await expect(page.locator("#my-modal-content")).toBeHidden();
+
+  // Test that visibility of the <template> element doesn't interfere with click-away
+  await page.getByRole("button", { name: "Open second modal" }).click();
+  await expect(page.locator("#inner-red-box")).toBeVisible();
+  await page.locator("#my-modal-2 .bg-gray-300").click();
+  await expect(page.locator("#inner-red-box")).toBeHidden();
 });
