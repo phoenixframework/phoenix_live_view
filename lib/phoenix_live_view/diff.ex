@@ -4,6 +4,8 @@ defmodule Phoenix.LiveView.Diff do
   # handled here.
   @moduledoc false
 
+  require Logger
+
   alias Phoenix.LiveView.{
     Component,
     Comprehension,
@@ -76,10 +78,16 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp to_iodata(cid, components, _template, mapper) when is_integer(cid) do
-    # Resolve component pointers and update the component entries
     components = resolve_components_xrefs(cid, components)
-    {iodata, components} = to_iodata(Map.fetch!(components, cid), components, nil, mapper)
-    {mapper.(cid, iodata), components}
+
+    case components do
+      %{^cid => component_diff} ->
+        {iodata, components} = to_iodata(component_diff, components, nil, mapper)
+        {mapper.(cid, iodata), components}
+
+      %{} ->
+        {[], components}
+    end
   end
 
   defp to_iodata(binary, components, _template, _mapper) when is_binary(binary) do
@@ -102,10 +110,35 @@ defmodule Phoenix.LiveView.Diff do
     case components[cid] do
       %{@static => static} = diff when is_integer(static) ->
         static = abs(static)
-        components = resolve_components_xrefs(static, components)
-        Map.put(components, cid, deep_merge(components[static], Map.delete(diff, @static)))
+
+        case components[static] do
+          nil ->
+            Logger.debug(
+              "Dropping component CID #{cid}: cross-reference target CID #{static} missing"
+            )
+
+            Map.delete(components, cid)
+
+          _ ->
+            components = resolve_components_xrefs(static, components)
+
+            case components[static] do
+              nil ->
+                Logger.debug(
+                  "Dropping component CID #{cid}: cross-reference target CID #{static} removed during resolution"
+                )
+
+                Map.delete(components, cid)
+
+              resolved ->
+                Map.put(components, cid, deep_merge(resolved, Map.delete(diff, @static)))
+            end
+        end
 
       %{} ->
+        components
+
+      nil ->
         components
     end
   end

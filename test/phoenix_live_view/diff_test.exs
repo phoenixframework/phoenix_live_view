@@ -83,6 +83,43 @@ defmodule Phoenix.LiveView.DiffTest do
     map |> Diff.to_iodata() |> IO.iodata_to_binary()
   end
 
+  describe "to_iodata - resolve_components_xrefs" do
+    test "handles missing component CID referenced by cross-reference" do
+      rendered = %{
+        0 => 1,
+        :c => %{
+          1 => %{0 => "hello", :s => -2}
+        },
+        :s => ["<div>", "</div>"]
+      }
+
+      assert rendered_to_binary(rendered) == "<div></div>"
+    end
+
+    test "handles chain of cross-references where leaf target is missing" do
+      rendered = %{
+        0 => 3,
+        :c => %{
+          3 => %{0 => "content", :s => -2},
+          2 => %{0 => "inner", :s => -1}
+        },
+        :s => ["<div>", "</div>"]
+      }
+
+      assert rendered_to_binary(rendered) == "<div></div>"
+    end
+
+    test "handles CID referenced in template but missing from components" do
+      rendered = %{
+        0 => 42,
+        :c => %{},
+        :s => ["<div>", "</div>"]
+      }
+
+      assert rendered_to_binary(rendered) == "<div></div>"
+    end
+  end
+
   describe "to_iodata" do
     test "with subtrees chain" do
       assert rendered_to_binary(%{
