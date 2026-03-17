@@ -388,9 +388,9 @@ defmodule Phoenix.LiveViewTest do
          [
            {Process, :info, 2, _},
            {Phoenix.LiveViewTest, :connect_from_static_token, _, _},
-           {_user_module, test_name, 1, meta} | _
+           {_user_module, _test_name, 1, meta} | _
          ]} ->
-          Keyword.put(meta, :test, test_name)
+          meta
 
         _ ->
           []
@@ -1948,9 +1948,9 @@ defmodule Phoenix.LiveViewTest do
          [
            {Process, :info, 2, _},
            {Phoenix.LiveViewTest, :__live_redirect__, _, _},
-           {_user_module, test_name, 1, meta} | _
+           {_user_module, _test_name, 1, meta} | _
          ]} ->
-          Keyword.put(meta, :test, test_name)
+          meta
 
         _ ->
           []
