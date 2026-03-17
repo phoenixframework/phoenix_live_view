@@ -182,9 +182,7 @@ defmodule Phoenix.LiveView.Utils do
   Returns a random ID with valid DOM tokens
   """
   def random_id do
-    "phx-"
-    |> Kernel.<>(random_encoded_bytes())
-    |> String.replace(["/", "+"], "-")
+    "phx-" <> random_encoded_bytes()
   end
 
   @doc """
