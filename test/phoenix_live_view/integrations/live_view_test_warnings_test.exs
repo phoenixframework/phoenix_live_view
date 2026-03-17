@@ -94,4 +94,28 @@ defmodule Phoenix.LiveView.LiveViewTestWarningsTest do
       refute_receive {:EXIT, _, _}
     end
   end
+
+  describe "missing form id" do
+    test "warns for form with missing id" do
+      orig = Application.get_env(:phoenix_live_view, Phoenix.LiveViewTest)
+
+      Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest,
+        warnings: [
+          missing_form_id: :warn
+        ]
+      )
+
+      on_exit(fn ->
+        Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest, orig)
+      end)
+
+      warning =
+        capture_io(:stderr, fn ->
+          {:ok, view, _html} = live(Phoenix.ConnTest.build_conn(), "/form-missing-id")
+          render(view)
+        end)
+
+      assert warning =~ "Detected a form with phx-change but missing id"
+    end
+  end
 end

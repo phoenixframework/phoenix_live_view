@@ -11,10 +11,10 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                  <div id="foo"></div>
                </div>
                """,
-               fn msg -> send(self(), {:error, msg}) end
+               fn type, msg -> send(self(), {:error, type, msg}) end
              )
 
-      assert_receive {:error, msg}
+      assert_receive {:error, :duplicate_id, msg}
       assert msg =~ "Duplicate id found while testing LiveView"
     end
 
@@ -25,10 +25,10 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                  <?xml version="1.0" standalone="yes"?>
                </div>
                """,
-               fn msg -> send(self(), {:error, msg}) end
+               fn type, msg -> send(self(), {:error, type, msg}) end
              )
 
-      refute_receive {:error, _}
+      refute_receive {:error, _, _}
     end
   end
 
@@ -44,10 +44,10 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                 </body>
                </html>
                """,
-               fn msg -> send(self(), {:error, msg}) end
+               fn type, msg -> send(self(), {:error, type, msg}) end
              )
 
-      assert_receive {:error, msg}
+      assert_receive {:error, :duplicate_id, msg}
       assert msg =~ "Duplicate id found while testing LiveView"
     end
 
@@ -62,10 +62,10 @@ defmodule Phoenix.LiveViewTest.DOMTest do
                 </body>
                </html>
                """,
-               fn msg -> send(self(), {:error, msg}) end
+               fn type, msg -> send(self(), {:error, type, msg}) end
              )
 
-      refute_receive {:error, _}
+      refute_receive {:error, _, _}
     end
   end
 end

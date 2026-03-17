@@ -6,6 +6,8 @@ defmodule Phoenix.LiveViewTest.DOM do
   alias Phoenix.LiveViewTest.TreeDOM, as: Tree
   alias Plug.Conn.Query
 
+  import Phoenix.LiveViewTest, only: [configured_test_warning: 1]
+
   defguardp is_lazy(html) when is_struct(html, LazyHTML)
 
   def ensure_loaded! do
@@ -23,10 +25,7 @@ defmodule Phoenix.LiveViewTest.DOM do
   def parse_document(html, error_reporter \\ nil) do
     lazydoc = LazyHTML.from_document(html)
     tree = LazyHTML.to_tree(lazydoc)
-
-    if is_function(error_reporter, 1) do
-      detect_duplicate_ids(lazydoc, error_reporter)
-    end
+    run_checks(lazydoc, error_reporter)
 
     {lazydoc, tree}
   end
@@ -35,12 +34,19 @@ defmodule Phoenix.LiveViewTest.DOM do
   def parse_fragment(html, error_reporter \\ nil) do
     lazydoc = LazyHTML.from_fragment(html)
     tree = LazyHTML.to_tree(lazydoc)
-
-    if is_function(error_reporter, 1) do
-      detect_duplicate_ids(lazydoc, error_reporter)
-    end
+    run_checks(lazydoc, error_reporter)
 
     {lazydoc, tree}
+  end
+
+  defp run_checks(lazydoc, error_reporter) do
+    if is_function(error_reporter, 2) do
+      if configured_test_warning(:duplicate_id) != :ignore,
+        do: detect_duplicate_ids(lazydoc, error_reporter)
+
+      if configured_test_warning(:missing_form_id) != :ignore,
+        do: detect_forms_without_id(lazydoc, error_reporter)
+    end
   end
 
   defp detect_duplicate_ids(lazydoc, error_reporter) do
@@ -50,7 +56,7 @@ defmodule Phoenix.LiveViewTest.DOM do
     |> Enum.frequencies()
     |> Enum.each(fn {id, count} ->
       if count > 1 do
-        error_reporter.("""
+        error_reporter.(:duplicate_id, """
         Duplicate id found while testing LiveView: #{id}
 
         #{lazydoc |> by_id!(id) |> to_tree() |> Tree.inspect_html()}
@@ -60,6 +66,23 @@ defmodule Phoenix.LiveViewTest.DOM do
         elements.
         """)
       end
+    end)
+  end
+
+  defp detect_forms_without_id(lazydoc, error_reporter) do
+    lazydoc
+    |> LazyHTML.query("form:not([id])")
+    |> Enum.each(fn el ->
+      error_reporter.(:missing_form_id, """
+      Detected a form with phx-change but missing id:
+
+      #{el |> to_tree() |> Tree.inspect_html()}
+
+      Without an id, LiveView will not be able to perform form recovery,
+      for more information see:
+
+      https://hexdocs.pm/phoenix_live_view/form-bindings.html#recovery-following-crashes-or-disconnects
+      """)
     end)
   end
 

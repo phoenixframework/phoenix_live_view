@@ -5,4 +5,7 @@ config :logger, :default_handler, false
 
 config :phoenix_live_view, enable_expensive_runtime_checks: true
 
-config :phoenix_live_view, Phoenix.LiveViewTest, missing_form_id_as_error: false
+config :phoenix_live_view, Phoenix.LiveViewTest,
+  warnings: [
+    missing_form_id: :ignore
+  ]

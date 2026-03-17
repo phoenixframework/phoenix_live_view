@@ -175,6 +175,51 @@ defmodule Phoenix.LiveViewTest do
   ID=user-13 and retrieve its `phx-target`. If `phx-target` points
   to a component, that will be the component used, otherwise it will
   fallback to the view.
+
+  ### Optional test warnings
+
+  During LiveView tests (using `live/3` or `live_isolated/3`), LiveView performs
+  some additional checks by default. Those include detection of duplicate DOM IDs
+  and LiveComponents. When LiveViewTest detects such an issue, it is either raised
+  as an exception or as a warning.
+
+  You can configure this behavior in two ways:
+
+    1. Application environment config
+
+        You can configure specific issue types in your application config:
+
+        ```elixir
+        config :phoenix_live_view, Phoenix.LiveViewTest,
+          warnings: [
+            duplicate_id: :warn, # one of :warn, :raise, :ignore
+            ...
+          ]
+        ```
+
+        The supported keys are:
+
+          - `:duplicate_id` - when LiveViewTest detects a duplicate DOM ID
+          - `:duplicate_live_component` - when LiveViewTest detects a LiveComponent being rendered multiple times with the same ID
+          - `:missing_form_id` - when LiveViewTest detects a form without an ID attribute (this prevents [form recovery](form-bindings.html#recovery-following-crashes-or-disconnects))
+
+        The supported values are:
+
+          - `:raise` - crashes the test, default
+          - `:warn` - only emits a warning (will still fail tests if combined with `--warnings-as-errors`)
+          - `:ignore` - ignores the check
+
+    2. `on_error` option on `live/3` or `live_isolated/3`:
+
+        By writing `live(conn, "/path", on_error: :warn)`, the default for this specific test
+        can be changed. This example sets all detection types to `:warn`. You can also override
+        specific types only:
+
+        ```elixir
+        {:ok, view, html} = live(conn, "/path", on_error: [duplicate_id: :ignore])
+        ```
+
+        which will be merged with the global configuration.
   '''
 
   @flash_cookie "__phoenix_flash__"
@@ -335,6 +380,20 @@ defmodule Phoenix.LiveViewTest do
         KeyError -> nil
       end
 
+    start_location =
+      case Process.info(self(), :current_stacktrace) do
+        {:current_stacktrace,
+         [
+           {Process, :info, 2, _},
+           {Phoenix.LiveViewTest, :connect_from_static_token, _, _},
+           {_user_module, test_name, 1, meta} | _
+         ]} ->
+          Keyword.put(meta, :test, test_name)
+
+        _ ->
+          []
+      end
+
     start_proxy(path, %{
       response: {:document, Phoenix.ConnTest.response(conn, 200)},
       connect_params: conn.private[:live_view_connect_params] || %{},
@@ -344,7 +403,8 @@ defmodule Phoenix.LiveViewTest do
       endpoint: Phoenix.Controller.endpoint_module(conn),
       session: maybe_get_session(conn),
       url: Plug.Conn.request_url(conn),
-      on_error: opts[:on_error] || :raise
+      on_error: opts[:on_error],
+      start_location: start_location
     })
   end
 
@@ -1880,6 +1940,20 @@ defmodule Phoenix.LiveViewTest do
     root_token = token_func.(root.session_token)
     static_token = token_func.(root.static_token)
 
+    start_location =
+      case Process.info(self(), :current_stacktrace) do
+        {:current_stacktrace,
+         [
+           {Process, :info, 2, _},
+           {Phoenix.LiveViewTest, :__live_redirect__, _, _},
+           {_user_module, test_name, 1, meta} | _
+         ]} ->
+          Keyword.put(meta, :test, test_name)
+
+        _ ->
+          []
+      end
+
     start_proxy(url, %{
       response: {:fragment, html},
       live_redirect: {root.id, root_token, static_token},
@@ -1890,7 +1964,8 @@ defmodule Phoenix.LiveViewTest do
       router: root.router,
       session: session,
       url: url,
-      on_error: root.on_error
+      on_error: root.on_error,
+      start_location: start_location
     })
   end
 
@@ -2151,5 +2226,24 @@ defmodule Phoenix.LiveViewTest do
     pid = proxy_pid(view)
     proxy_topic = proxy_topic(view)
     GenServer.call(pid, {:sync_with_root, proxy_topic})
+  end
+
+  @doc false
+  def configured_test_warning(type) do
+    warnings =
+      Application.get_env(:phoenix_live_view, Phoenix.LiveViewTest, [])
+      |> Keyword.get(:warnings, [])
+
+    case warnings do
+      atom when atom in [:warn, :raise, :ignore] ->
+        atom
+
+      keyword when is_list(keyword) ->
+        Keyword.get(keyword, type)
+
+      other ->
+        raise ArgumentError,
+              "Phoenix.LiveViewTest :warnings configuration must be one of :warn, :raise, :ignore, or a keyword list. Got: #{inspect(other)}"
+    end
   end
 end
