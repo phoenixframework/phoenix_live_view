@@ -536,7 +536,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
         raise """
         #{String.trim(message)}
 
-        You can configure this error by configuring
+        You can change this error by setting
 
             config :phoenix_live_view, Phoenix.LiveViewTest,
               warnings: [
@@ -551,7 +551,7 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
           """
           #{String.trim(message)}
 
-          You can configure this warning by configuring
+          You can change this warning by setting
 
               config :phoenix_live_view, Phoenix.LiveViewTest,
                 warnings: [
