@@ -220,6 +220,8 @@ defmodule Phoenix.LiveViewTest do
         ```
 
         which will be merged with the global configuration.
+
+  Note that if a check is marked as `:ignore` in the config, it cannot be re-enabled in `on_error`.
   '''
 
   @flash_cookie "__phoenix_flash__"
