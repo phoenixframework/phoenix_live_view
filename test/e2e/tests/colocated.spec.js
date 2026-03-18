@@ -52,7 +52,13 @@ test("global colocated css works", async ({ page }) => {
   );
 });
 
-test("scoped colocated css works", async ({ page }) => {
+test("scoped colocated css works", async ({ page, browserName }) => {
+  // TODO: revisit when
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=1980526
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=1914188
+  // are fixed.
+  test.skip(browserName === "firefox", "Currently broken");
+
   await page.goto("/colocated");
   await syncLV(page);
 
