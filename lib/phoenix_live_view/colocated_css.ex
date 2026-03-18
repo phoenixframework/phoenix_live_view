@@ -42,12 +42,11 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
   ## Scoped CSS
 
-  By default, Colocated CSS is not scoped. This means that the styles defined in a Colocated CSS block are extracted as is.
-  However, LiveView supports scoping Colocated CSS by defining a `:scoper` module implementing the `Phoenix.LiveView.ColocatedCSS.Scoper`
-  behaviour. When a `:scoper` is configured, Colocated CSS that is not defined with the `global` attribute will be scoped
-  according to the configured scoper.
+  The idea behind scoped CSS is to restrict the elements that CSS rules apply to
+  to only the elements of the current template / component.
 
-  An example scoper using CSS `@scope` can be implemented like this:
+  One way to scope CSS is to use [CSS `@scope` rules](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@scope).
+  A scoped `ColocatedCSS` module using CSS `@scope` can be implemented like this:
 
   ```elixir
   defmodule MyAppWeb.ColocatedScopedCSS do
@@ -155,13 +154,12 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   }
   ```
 
-  This uses [CSS donut scoping](https://developer.mozilla.org/en-US/docs/Web/CSS/Reference/At-rules/@scope) to
-  apply any styles defined in the colocated CSS block to any element between a local root and a component.
+  This applies any styles defined in the colocated CSS block to any element between a local root and a component.
   It relies on LiveView's global `:root_tag_attribute`, which is an attribute that LiveView adds to all root tags,
   no matter if colocated CSS is used or not. When the browser encounters a `phx-r` attribute, which in this case
   is assumed to be the configured global `:root_tag_attribute`, it stops the scoped CSS rule.
 
-  Another way to implement a scoper could be to use PostCSS and apply a tag to all tags in a template.
+  Another way to implement scoped CSS could be to use PostCSS and apply an attribute to all tags in a template.
   '''
 
   @doc """
