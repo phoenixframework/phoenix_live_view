@@ -271,18 +271,19 @@ defmodule Phoenix.LiveView.ColocatedCSS do
       line: meta.env.line
     }
 
-    {styles, directives} = case module.transform("style", opts, text_content, transform_meta) do
-      {:ok, scoped_css, directives} when is_binary(scoped_css) and is_list(directives) ->
-        {scoped_css, directives}
+    {styles, directives} =
+      case module.transform("style", opts, text_content, transform_meta) do
+        {:ok, scoped_css, directives} when is_binary(scoped_css) and is_list(directives) ->
+          {scoped_css, directives}
 
-      {:error, reason} ->
-        raise ArgumentError,
-              "the scoper returned an error: #{inspect(reason)}"
+        {:error, reason} ->
+          raise ArgumentError,
+                "the scoper returned an error: #{inspect(reason)}"
 
-      other ->
-        raise ArgumentError,
-              "expected the ColocatedCSS scoper to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
-    end
+        other ->
+          raise ArgumentError,
+                "expected the ColocatedCSS scoper to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
+      end
 
     filename = "#{meta.env.line}_#{hash(styles)}.css"
 
