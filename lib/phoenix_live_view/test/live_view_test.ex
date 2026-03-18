@@ -190,11 +190,9 @@ defmodule Phoenix.LiveViewTest do
         You can configure specific issue types in your application config:
 
         ```elixir
-        config :phoenix_live_view, Phoenix.LiveViewTest,
-          warnings: [
-            duplicate_id: :warn, # one of :warn, :raise, :ignore
-            ...
-          ]
+        config :phoenix_live_view, :test_warnings,
+          duplicate_id: :warn, # one of :warn, :raise, :ignore
+          ...
         ```
 
         The supported keys are:
@@ -2232,9 +2230,7 @@ defmodule Phoenix.LiveViewTest do
 
   @doc false
   def configured_test_warning(type) do
-    warnings =
-      Application.get_env(:phoenix_live_view, Phoenix.LiveViewTest, [])
-      |> Keyword.get(:warnings, [])
+    warnings = Application.get_env(:phoenix_live_view, :test_warnings, [])
 
     case warnings do
       atom when atom in [:warn, :raise, :ignore] ->

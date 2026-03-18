@@ -97,16 +97,12 @@ defmodule Phoenix.LiveView.LiveViewTestWarningsTest do
 
   describe "missing form id" do
     test "warns for form with missing id" do
-      orig = Application.get_env(:phoenix_live_view, Phoenix.LiveViewTest)
+      orig = Application.get_env(:phoenix_live_view, :test_warnings)
 
-      Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest,
-        warnings: [
-          missing_form_id: :warn
-        ]
-      )
+      Application.put_env(:phoenix_live_view, :test_warnings, missing_form_id: :warn)
 
       on_exit(fn ->
-        Application.put_env(:phoenix_live_view, Phoenix.LiveViewTest, orig)
+        Application.put_env(:phoenix_live_view, :test_warnings, orig)
       end)
 
       warning =

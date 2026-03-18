@@ -538,10 +538,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
         You can change this error by setting
 
-            config :phoenix_live_view, Phoenix.LiveViewTest,
-              warnings: [
-                #{inspect(type)}: :warn # can be one of :warn, :raise, or :ignore
-              ]
+            config :phoenix_live_view, :test_warnings,
+              #{inspect(type)}: :warn # can be one of :warn, :raise, or :ignore
 
         See the `Phoenix.LiveViewTest` documentation for more details.
         """
@@ -553,10 +551,8 @@ defmodule Phoenix.LiveViewTest.ClientProxy do
 
           You can change this warning by setting
 
-              config :phoenix_live_view, Phoenix.LiveViewTest,
-                warnings: [
-                  #{inspect(type)}: :warn # can be one of :warn, :raise, or :ignore
-                ]
+              config :phoenix_live_view, :test_warnings,
+                #{inspect(type)}: :raise # can be one of :warn, :raise, or :ignore
 
           See the `Phoenix.LiveViewTest` documentation for more details.
           """,
