@@ -129,7 +129,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   end
   ```
 
-  This scoper transforms a given style tag like
+  This module transforms a given style tag like
 
   ```heex
   <%!-- Note that :type accepts aliases as well! --%>
@@ -250,7 +250,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     {:ok, "", data, directives}
   end
 
-  def transform(_ast, _meta) do
+  def __transform__(_ast, _meta) do
     raise ArgumentError, "ColocatedCSS can only be used on style tags"
   end
 
@@ -276,11 +276,11 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
         {:error, reason} ->
           raise ArgumentError,
-                "the scoper returned an error: #{inspect(reason)}"
+                "#{inspect(module)} returned an error: #{inspect(reason)}"
 
         other ->
           raise ArgumentError,
-                "expected the ColocatedCSS scoper to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
+                "expected the ColocatedCSS implementation to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
       end
 
     filename = "#{meta.env.line}_#{hash(styles)}.css"
