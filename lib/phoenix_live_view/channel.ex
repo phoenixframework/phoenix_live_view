@@ -707,10 +707,9 @@ defmodule Phoenix.LiveView.Channel do
       conf = Upload.get_upload_by_ref!(socket, ref)
 
       new_state =
-        if Enum.count(conf.entries) == 1 do
-          drop_upload_name(state, conf.name)
-        else
-          state
+        case conf.entries do
+          [_] -> drop_upload_name(state, conf.name)
+          _ -> state
         end
 
       {Upload.unregister_completed_entry_upload(socket, conf, entry_ref), {:ok, nil, new_state}}
