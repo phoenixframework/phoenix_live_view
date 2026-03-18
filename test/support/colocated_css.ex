@@ -1,8 +1,8 @@
-defmodule Phoenix.LiveViewTest.Support.CSSScoper do
-  @behaviour Phoenix.LiveView.ColocatedCSS.Scoper
+defmodule Phoenix.LiveViewTest.Support.ColocatedScopedCSS do
+  use Phoenix.LiveView.ColocatedCSS
 
   @impl true
-  def scope("style", attrs, css, meta) do
+  def transform("style", attrs, css, meta) do
     validate_opts!(attrs)
 
     {scope, css} = do_scope(css, attrs, meta)
@@ -74,5 +74,14 @@ defmodule Phoenix.LiveViewTest.Support.CSSScoper do
 
         raise ArgumentError, message
     end
+  end
+end
+
+defmodule Phoenix.LiveViewTest.Support.ColocatedGlobalCSS do
+  use Phoenix.LiveView.ColocatedCSS
+
+  @impl true
+  def transform("style", _attrs, css, _meta) do
+    {:ok, css, []}
   end
 end

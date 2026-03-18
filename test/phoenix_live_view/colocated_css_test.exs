@@ -18,7 +18,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
         def fun(assigns) do
           ~H"""
-          <style :type={Phoenix.LiveView.ColocatedCSS} global>
+          <style :type={Phoenix.LiveViewTest.Support.ColocatedGlobalCSS}>
             .sample-class { background-color: #FFFFFF; }
           </style>
           """
@@ -68,47 +68,16 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
       :code.delete(__MODULE__.TestGlobalComponent)
       :code.purge(__MODULE__.TestGlobalComponent)
     end
-
-    test "raises for invalid global attribute value" do
-      message = ~r/expected nil or true for the `global` attribute of colocated css, got: "bad"/
-
-      assert_raise ParseError,
-                   message,
-                   fn ->
-                     defmodule TestBadGlobalAttrComponent do
-                       use Phoenix.Component
-
-                       def fun(assigns) do
-                         ~H"""
-                         <style :type={Phoenix.LiveView.ColocatedCSS} global="bad">
-                           .sample-class { background-color: #FFFFFF; }
-                         </style>
-                         """
-                       end
-                     end
-                   end
-    after
-      :code.delete(__MODULE__.TestBadGlobalAttrComponent)
-      :code.purge(__MODULE__.TestBadGlobalAttrComponent)
-    end
   end
 
   describe "scoped styles" do
-    setup do
-      Application.put_env(:phoenix_live_view, Phoenix.LiveView.ColocatedCSS,
-        scoper: Phoenix.LiveViewTest.Support.CSSScoper
-      )
-
-      on_exit(fn -> Application.delete_env(:phoenix_live_view, Phoenix.LiveView.ColocatedCSS) end)
-    end
-
     test "with exclusive (default) lower-bound is extracted and available under manifest import" do
       defmodule TestScopedExclusiveComponent do
         use Phoenix.Component
 
         def fun(assigns) do
           ~H"""
-          <style :type={Phoenix.LiveView.ColocatedCSS}>
+          <style :type={Phoenix.LiveViewTest.Support.ColocatedScopedCSS}>
             .sample-class { background-color: #FFFFFF; }
           </style>
           """
@@ -173,7 +142,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
         def fun(assigns) do
           ~H"""
-          <style :type={Phoenix.LiveView.ColocatedCSS} lower-bound="inclusive">
+          <style :type={Phoenix.LiveViewTest.Support.ColocatedScopedCSS} lower-bound="inclusive">
             .sample-class { background-color: #FFFFFF; }
           </style>
           """
@@ -244,7 +213,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
                        def fun(assigns) do
                          ~H"""
-                         <style :type={Phoenix.LiveView.ColocatedCSS} lower-bound="unknown">
+                         <style :type={Phoenix.LiveViewTest.Support.ColocatedScopedCSS} lower-bound="unknown">
                            .sample-class { background-color: #FFFFFF; }
                          </style>
                          """

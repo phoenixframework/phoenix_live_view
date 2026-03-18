@@ -1,20 +1,14 @@
 defmodule Phoenix.LiveView.ColocatedCSS do
   @moduledoc ~S'''
-  A special HEEx `:type` that extracts any CSS styles from a colocated `<style>` tag at compile time.
+  Building blocks for a special HEEx `:type` that extracts any CSS styles
+  from a colocated `<style>` tag at compile time.
+
+  To actually use `ColocatedCSS`, you must define a module including `use Phoenix.LiveView.ColocatedCSS`
+  and implement the `ColocatedCSS` behaviour.
 
   Note: To use `ColocatedCSS`, you need to run Phoenix 1.8+.
 
   Note: `ColocatedCSS` **must** be defined at the very beginning of the template in which it is used.
-
-  You can use `ColocatedCSS` to define any CSS styles directly in your components, for example:
-
-  ```heex
-  <style :type={Phoenix.LiveView.ColocatedCSS}>
-    .sample-class {
-      background-color: #FFFFFF;
-    }
-  </style>
-  ```
 
   Colocated CSS uses the same folder structures as Colocated JS. See `Phoenix.LiveView.ColocatedJS` for more information.
 
@@ -31,6 +25,21 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   <link phx-track-static rel="stylesheet" href={~p"/assets/js/app.css"} />
   ```
 
+  ## Global CSS
+
+  If all you need is global CSS, which is extracted as is, you can define your ColocatedCSS module like this:
+
+  ```elixir
+  defmodule MyAppWeb.ColocatedCSS do
+    use Phoenix.LiveView.ColocatedCSS
+
+    @impl true
+    def transform("style", _attrs, css, _meta) do
+      {:ok, css, []}
+    end
+  end
+  ```
+
   ## Scoped CSS
 
   By default, Colocated CSS is not scoped. This means that the styles defined in a Colocated CSS block are extracted as is.
@@ -41,11 +50,11 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   An example scoper using CSS `@scope` can be implemented like this:
 
   ```elixir
-  defmodule MyAppWeb.CSSScoper do
-    @behaviour Phoenix.LiveView.ColocatedCSS.Scoper
+  defmodule MyAppWeb.ColocatedScopedCSS do
+    use Phoenix.LiveView.ColocatedCSS
 
     @impl true
-    def scope("style", attrs, css, meta) do
+    def transform("style", attrs, css, meta) do
       validate_opts!(attrs)
 
       {scope, css} = do_scope(css, attrs, meta)
@@ -121,16 +130,11 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   end
   ```
 
-  To use this scoper, you would configure it in your `config.exs` like this:
-
-  ```elixir
-  config :phoenix_live_view, Phoenix.LiveView.ColocatedCSS, scoper: MyAppWeb.CSSScoper
-  ```
-
   This scoper transforms a given style tag like
 
   ```heex
-  <style :type={Phoenix.LiveView.ColocatedCSS}>
+  <%!-- Note that :type accepts aliases as well! --%>
+  <style :type={MyAppWeb.ColocatedScopedCSS}>
     .my-class { color: red; }
   </style>
   ```
@@ -158,30 +162,91 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   is assumed to be the configured global `:root_tag_attribute`, it stops the scoped CSS rule.
 
   Another way to implement a scoper could be to use PostCSS and apply a tag to all tags in a template.
-
-  ## Options
-
-  Colocated CSS can be configured through the attributes of the `<style>` tag.
-  The supported attributes are:
-
-    * `global` - If provided, the Colocated CSS rules contained within the `<style>` tag
-      will not be scoped to the template within which it is defined, and will instead act
-      as global CSS rules, even if a scoper is configured.
-
   '''
 
-  @behaviour Phoenix.Component.MacroComponent
+  @doc """
+  Callback invoked for each colocated CSS tag.
+
+  The callback receives the tag name, the string attributes and a map of metadata.
+
+  For example, for the following tag:
+
+  ```heex
+  <style :type={MyAppWeb.ColocatedCSS} data-scope="my-scope" foo={@bar}>
+    .my-class { color: red; }
+  </style>
+  ```
+
+  The callback would receive the following arguments:
+
+    * tag_name: `"style"`
+    * attrs: %{"data-scope" => "my-scope"}
+    * meta: `%{file: "path/to/file.ex", module: MyApp.MyModule, line: 10}`
+
+  The callback must return either `{:ok, scoped_css, directives}` or `{:error, reason}`.
+  If an error is returned, it will be logged and the CSS will not be extracted.
+
+  The `directives` needs to be a keyword list that supports the following options:
+
+    * `root_tag_attribute`: A `{key, value}` tuple that will be added a
+       an attribute to all "root tags" of the template defining the scoped CSS tag.
+       See the section on root tags below for more information.
+    * `tag_attribute`: A `{key, value}` tuple that will be added as an attribute to
+       all HTML tags in the template defining the scoped CSS tag.
+
+  ## Root tags
+
+  In a HEEx template, all outermost tags are considered "root tags" and are
+  affected by the `root_tag_attribute` directive. If a template uses components,
+  the slots of those components are considered as root tags as well.
+
+  Here's an example showing which elements would be considered root tags:
+
+  ```heex
+  <div>                              <---- root tag
+    <span>Hello</span>               <---- not a root tag
+
+    <.my_component>
+      <p>World</p>                   <---- root tag
+    </.my_component>
+  </div>
+
+  <.my_component>
+    <span>World</span>               <---- root tag
+
+    <:a_named_slot>
+      <div>                          <---- root tag
+        Foo
+        <p>Bar</p>                   <---- not a root tag
+      </div>
+    </:a_named_slot>
+  </.my_component>
+  ```
+  """
+  @callback transform(tag_name :: binary(), attrs :: map(), css :: binary(), meta :: keyword()) ::
+              {:ok, binary(), keyword()} | {:error, term()}
+
+  defmacro __using__(_) do
+    # implements the MacroComponent behaviour
+    # but we don't add @behaviour to prevent users to need to differentiate
+    # @impl true for the ColocatedCSS behaviour itself
+    quote do
+      @behaviour unquote(__MODULE__)
+
+      def transform(ast, meta) do
+        Phoenix.LiveView.ColocatedCSS.__transform__(ast, meta, __MODULE__)
+      end
+    end
+  end
+
   @behaviour Phoenix.LiveView.ColocatedAssets
 
-  @impl true
-  def transform({"style", attributes, [text_content], _tag_meta} = _ast, meta) do
+  @doc false
+  def __transform__({"style", attributes, [text_content], _tag_meta} = _ast, meta, module) do
     validate_phx_version!()
 
     opts = Map.new(attributes)
-
-    validate_opts!(opts)
-
-    {data, directives} = extract(opts, text_content, meta)
+    {data, directives} = extract(opts, text_content, meta, module)
 
     # we always drop colocated CSS from the rendered output
     {:ok, "", data, directives}
@@ -199,57 +264,25 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     end
   end
 
-  defp validate_opts!(opts) do
-    Enum.each(opts, fn {key, val} -> validate_opt!({key, val}, Map.delete(opts, key)) end)
-  end
+  defp extract(opts, text_content, meta, module) do
+    transform_meta = %{
+      module: meta.env.module,
+      file: meta.env.file,
+      line: meta.env.line
+    }
 
-  defp validate_opt!({"global", val}, _other_opts) when val in [nil, true] do
-    :ok
-  end
+    {styles, directives} = case module.transform("style", opts, text_content, transform_meta) do
+      {:ok, scoped_css, directives} when is_binary(scoped_css) and is_list(directives) ->
+        {scoped_css, directives}
 
-  defp validate_opt!({"global", val}, _other_opts) do
-    raise ArgumentError,
-          "expected nil or true for the `global` attribute of colocated css, got: #{inspect(val)}"
-  end
+      {:error, reason} ->
+        raise ArgumentError,
+              "the scoper returned an error: #{inspect(reason)}"
 
-  defp validate_opt!(_opt, _other_opts), do: :ok
-
-  @doc false
-  def extract(opts, text_content, meta) do
-    global =
-      case opts do
-        %{"global" => val} -> val in [true, nil]
-        _ -> false
-      end
-
-    {styles, directives} =
-      case Application.get_env(:phoenix_live_view, Phoenix.LiveView.ColocatedCSS, [])[:scoper] do
-        nil ->
-          {text_content, []}
-
-        _scoper when global in [true, nil] ->
-          {text_content, []}
-
-        scoper ->
-          scope_meta = %{
-            module: meta.env.module,
-            file: meta.env.file,
-            line: meta.env.line
-          }
-
-          case scoper.scope("style", opts, text_content, scope_meta) do
-            {:ok, scoped_css, directives} when is_binary(scoped_css) and is_list(directives) ->
-              {scoped_css, directives}
-
-            {:error, reason} ->
-              raise ArgumentError,
-                    "the scoper returned an error: #{inspect(reason)}"
-
-            other ->
-              raise ArgumentError,
-                    "expected the ColocatedCSS scoper to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
-          end
-      end
+      other ->
+        raise ArgumentError,
+              "expected the ColocatedCSS scoper to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
+    end
 
     filename = "#{meta.env.line}_#{hash(styles)}.css"
 
