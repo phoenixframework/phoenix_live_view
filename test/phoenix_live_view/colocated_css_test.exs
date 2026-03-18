@@ -18,7 +18,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
         def fun(assigns) do
           ~H"""
-          <style :type={Phoenix.LiveView.ColocatedCSS} global>
+          <style :type={Phoenix.LiveViewTest.Support.ColocatedGlobalCSS}>
             .sample-class { background-color: #FFFFFF; }
           </style>
           """
@@ -68,53 +68,6 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
       :code.delete(__MODULE__.TestGlobalComponent)
       :code.purge(__MODULE__.TestGlobalComponent)
     end
-
-    test "raises for invalid global attribute value" do
-      message = ~r/expected nil or true for the `global` attribute of colocated css, got: "bad"/
-
-      assert_raise ParseError,
-                   message,
-                   fn ->
-                     defmodule TestBadGlobalAttrComponent do
-                       use Phoenix.Component
-
-                       def fun(assigns) do
-                         ~H"""
-                         <style :type={Phoenix.LiveView.ColocatedCSS} global="bad">
-                           .sample-class { background-color: #FFFFFF; }
-                         </style>
-                         """
-                       end
-                     end
-                   end
-    after
-      :code.delete(__MODULE__.TestBadGlobalAttrComponent)
-      :code.purge(__MODULE__.TestBadGlobalAttrComponent)
-    end
-
-    test "raises if scoped css specific options are provided" do
-      message =
-        ~r/colocated css must be scoped to use the `lower-bound` attribute, but `global` attribute was provided/
-
-      assert_raise ParseError,
-                   message,
-                   fn ->
-                     defmodule TestScopedAttrWhileGlobalComponent do
-                       use Phoenix.Component
-
-                       def fun(assigns) do
-                         ~H"""
-                         <style :type={Phoenix.LiveView.ColocatedCSS} global lower-bound="inclusive">
-                           .sample-class { background-color: #FFFFFF; }
-                         </style>
-                         """
-                       end
-                     end
-                   end
-    after
-      :code.delete(__MODULE__.TestScopedAttrWhileGlobalComponent)
-      :code.purge(__MODULE__.TestScopedAttrWhileGlobalComponent)
-    end
   end
 
   describe "scoped styles" do
@@ -124,7 +77,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
         def fun(assigns) do
           ~H"""
-          <style :type={Phoenix.LiveView.ColocatedCSS}>
+          <style :type={Phoenix.LiveViewTest.Support.ColocatedScopedCSS}>
             .sample-class { background-color: #FFFFFF; }
           </style>
           """
@@ -189,7 +142,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
         def fun(assigns) do
           ~H"""
-          <style :type={Phoenix.LiveView.ColocatedCSS} lower-bound="inclusive">
+          <style :type={Phoenix.LiveViewTest.Support.ColocatedScopedCSS} lower-bound="inclusive">
             .sample-class { background-color: #FFFFFF; }
           </style>
           """
@@ -260,7 +213,7 @@ defmodule Phoenix.LiveView.ColocatedCSSTest do
 
                        def fun(assigns) do
                          ~H"""
-                         <style :type={Phoenix.LiveView.ColocatedCSS} lower-bound="unknown">
+                         <style :type={Phoenix.LiveViewTest.Support.ColocatedScopedCSS} lower-bound="unknown">
                            .sample-class { background-color: #FFFFFF; }
                          </style>
                          """

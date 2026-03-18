@@ -35,6 +35,8 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
   end
 
   alias Phoenix.LiveView.ColocatedHook, as: Hook
+  alias Phoenix.LiveViewTest.Support.ColocatedScopedCSS, as: ScopedCSS
+  alias Phoenix.LiveViewTest.Support.ColocatedGlobalCSS, as: GlobalCSS
   alias Phoenix.LiveView.JS
 
   def mount(_params, _session, socket) do
@@ -201,7 +203,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   defp global_colocated_css(assigns) do
     ~H"""
-    <style :type={Phoenix.LiveView.ColocatedCSS} global>
+    <style :type={GlobalCSS}>
       .test-global-css { background-color: rgb(255, 0, 0); }
     </style>
     """
@@ -209,7 +211,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   defp scoped_colocated_css(assigns) do
     ~H"""
-    <style :type={Phoenix.LiveView.ColocatedCSS}>
+    <style :type={ScopedCSS}>
       .test-scoped-css { background-color: rgb(0, 0, 255); }
     </style>
     <div>
@@ -274,7 +276,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   defp scoped_css_inner_block_two(assigns) do
     ~H"""
-    <style :type={Phoenix.LiveView.ColocatedCSS}>
+    <style :type={ScopedCSS}>
       .test-scoped-css { background-color: rgb(255, 255, 0); }
     </style>
     <div>
@@ -296,7 +298,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   defp scoped_css_slot_two(assigns) do
     ~H"""
-    <style :type={Phoenix.LiveView.ColocatedCSS}>
+    <style :type={ScopedCSS}>
       .test-scoped-css { background-color: rgb(0, 255, 0); }
     </style>
     <div>
@@ -308,7 +310,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   defp scoped_exclusive_lower_bound_colocated_css(assigns) do
     ~H"""
-    <style :type={Phoenix.LiveView.ColocatedCSS}>
+    <style :type={ScopedCSS}>
       .container:where(:scope) {
         display: flex;
 
@@ -325,7 +327,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   defp scoped_inclusive_lower_bound_colocated_css(assigns) do
     ~H"""
-    <style :type={Phoenix.LiveView.ColocatedCSS} lower-bound="inclusive">
+    <style :type={ScopedCSS} lower-bound="inclusive">
       .container:where(:scope) {
         display: flex;
 
