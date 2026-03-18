@@ -36,6 +36,7 @@ defmodule Phoenix.LiveViewTest.E2E.ColocatedLive do
 
   alias Phoenix.LiveView.ColocatedHook, as: Hook
   alias Phoenix.LiveViewTest.Support.ColocatedScopedCSS, as: ScopedCSS
+  alias Phoenix.LiveViewTest.Support.ColocatedGlobalCSS, as: GlobalCSS
   alias Phoenix.LiveView.JS
 
   def mount(_params, _session, socket) do
