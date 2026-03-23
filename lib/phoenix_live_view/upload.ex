@@ -327,10 +327,11 @@ defmodule Phoenix.LiveView.Upload do
 
       Enum.map(results, fn {_ref, result} -> result end)
     else
-      entries
-      |> Enum.map(fn entry -> {entry, UploadConfig.entry_pid(conf, entry)} end)
-      |> Enum.filter(fn {_entry, pid} -> is_pid(pid) end)
-      |> Enum.map(fn {entry, pid} -> Phoenix.LiveView.UploadChannel.consume(pid, entry, func) end)
+      for entry <- entries,
+          pid = UploadConfig.entry_pid(conf, entry),
+          is_pid(pid) do
+        Phoenix.LiveView.UploadChannel.consume(pid, entry, func)
+      end
     end
   end
 
