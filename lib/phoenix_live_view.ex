@@ -851,12 +851,26 @@ defmodule Phoenix.LiveView do
       temporary file for consumption. See the `Phoenix.LiveView.UploadWriter` docs
       for custom usage.
 
+    * `:validator` - An optional 1-arity function for performing custom validation
+      on each upload entry. The function receives the upload entry and must return
+      either `:ok` or `{:error, reason}`. When an error tuple is returned, the
+      entry is marked as failed and the error is exposed as
+      `{:validator_failure, reason}` via `upload_errors/2`.
+
   Raises when a previously allowed upload under the same name is still active.
 
   ## Examples
 
       allow_upload(socket, :avatar, accept: ~w(.jpg .jpeg), max_entries: 2)
       allow_upload(socket, :avatar, accept: :any)
+
+      allow_upload(socket, :avatar, validator: fn entry ->
+        if String.length(entry.client_name) > 100 do
+          {:error, :filename_too_long}
+        else
+          :ok
+        end
+      end)
 
   For consuming files automatically as they are uploaded, you can pair `auto_upload: true` with
   a custom progress function to consume the entries as they are completed. For example:

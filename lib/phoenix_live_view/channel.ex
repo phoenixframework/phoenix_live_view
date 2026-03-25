@@ -1045,6 +1045,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp reply(state, ref, status, payload) when is_binary(ref) do
+    payload = maybe_normalise_errors(payload)
     reply_ref = {state.socket.transport_pid, state.serializer, state.topic, ref, state.join_ref}
     Phoenix.Channel.reply(reply_ref, {status, payload})
     state
@@ -1706,5 +1707,9 @@ defmodule Phoenix.LiveView.Channel do
       %{} ->
         %{}
     end
+  end
+
+  defp maybe_normalise_errors(payload) do
+    Map.replace_lazy(payload, :errors, &Utils.jsonify/1)
   end
 end

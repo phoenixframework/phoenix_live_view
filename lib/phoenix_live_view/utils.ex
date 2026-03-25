@@ -588,4 +588,16 @@ defmodule Phoenix.LiveView.Utils do
       to
     end
   end
+
+  @doc """
+  Ensures that passed structure can be json encoded by replacing
+  keyword tuples with maps.
+  """
+  def jsonify(map) when is_map(map) do
+    Map.new(map, fn {key, value} -> {key, jsonify(value)} end)
+  end
+
+  def jsonify(list) when is_list(list), do: Enum.map(list, &jsonify/1)
+  def jsonify({key, value}), do: %{key => value}
+  def jsonify(other), do: other
 end
