@@ -1216,6 +1216,7 @@ defmodule Phoenix.Component do
   * `:not_accepted` - The entry does not match the `:accept` MIME types
   * `:external_client_failure` - When external upload fails
   * `{:writer_failure, reason}` - When the custom writer fails with `reason`
+  * `reason` - When the custom validator fails with `reason`
 
   ## Examples
 
@@ -1223,6 +1224,7 @@ defmodule Phoenix.Component do
   defp upload_error_to_string(:too_large), do: "The file is too large"
   defp upload_error_to_string(:not_accepted), do: "You have selected an unacceptable file type"
   defp upload_error_to_string(:external_client_failure), do: "Something went terribly wrong"
+  defp upload_error_to_string(:custom_validator_error), do: "Custom validation error"
   ```
 
   ```heex
