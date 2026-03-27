@@ -99,7 +99,14 @@ test("scoped colocated css works", async ({ page, browserName }) => {
 
 test("scoped colocated css lower bound inclusive/exclusive works", async ({
   page,
+  browserName,
 }) => {
+  // TODO: revisit when
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=1980526
+  // https://bugzilla.mozilla.org/show_bug.cgi?id=1914188
+  // are fixed.
+  test.skip(browserName === "firefox", "Currently broken");
+
   await page.goto("/colocated");
   await syncLV(page);
 
@@ -118,7 +125,7 @@ test("scoped colocated css lower bound inclusive/exclusive works", async ({
   await expect(inclusiveFlexItemsLocator).toHaveCount(3);
 
   for (const shouldFlex of await inclusiveFlexItemsLocator.all()) {
-    await expect(shouldFlex).toHaveCSS("flex", "1");
+    await expect(shouldFlex).toHaveCSS("flex", "1 1 0%");
   }
 
   const exclusiveFlexItemsLocator = page.locator('[data-test-inclusive="no"]');
@@ -126,6 +133,6 @@ test("scoped colocated css lower bound inclusive/exclusive works", async ({
   await expect(exclusiveFlexItemsLocator).toHaveCount(3);
 
   for (const shouldntFlex of await exclusiveFlexItemsLocator.all()) {
-    await expect(shouldntFlex).not().toHaveCSS("flex", "1");
+    await expect(shouldntFlex).toHaveCSS("flex", "0 1 auto");
   }
 });
