@@ -2319,8 +2319,8 @@ defmodule Phoenix.LiveView do
   ## Options
 
     * `:supervisor` - allows you to specify a `Task.Supervisor` to supervise the task.
-    * `:reset` - remove previous results during async operation when true. Possible values are
-      `true`, `false`, or a list of keys to reset. Defaults to `false`.
+    * `:reset` - A boolean to control whether to remove previous results during the async operation.
+      Defaults to `false`.
 
   ## Examples
 
