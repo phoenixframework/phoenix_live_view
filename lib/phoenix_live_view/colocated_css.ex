@@ -186,7 +186,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
 
   The `directives` needs to be a keyword list that supports the following options:
 
-    * `root_tag_attribute`: A `{key, value}` tuple that will be added a
+    * `root_tag_attribute`: A `{key, value}` tuple that will be added as
        an attribute to all "root tags" of the template defining the scoped CSS tag.
        See the section on root tags below for more information.
     * `tag_attribute`: A `{key, value}` tuple that will be added as an attribute to
