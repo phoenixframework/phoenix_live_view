@@ -1477,6 +1477,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         window.addEventListener("scroll", this.onScroll);
       }
     },
+    updated() {
+      if (!this.scrollContainer.isConnected) {
+        this.destroyed();
+        this.mounted();
+      }
+    },
     destroyed() {
       if (this.scrollContainer) {
         this.scrollContainer.removeEventListener("scroll", this.onScroll);
@@ -4146,6 +4152,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       dom_default.putPrivate(this.el, "view", this);
       this.id = this.el.id;
+      this.el.setAttribute(PHX_ROOT_ID, this.root.id);
       this.ref = 0;
       this.lastAckRef = null;
       this.childJoins = 0;
