@@ -71,7 +71,7 @@ test("scoped colocated css works", async ({ page, browserName }) => {
 
   await expect(blueLocator).toHaveCount(6);
 
-  for (const shouldBeBlue in blueLocator.all()) {
+  for (const shouldBeBlue of await blueLocator.all()) {
     await expect(shouldBeBlue).toHaveCSS("background-color", "rgb(0, 0, 255)");
   }
 
@@ -79,7 +79,7 @@ test("scoped colocated css works", async ({ page, browserName }) => {
 
   await expect(noneLocator).toHaveCount(5);
 
-  for (const shouldBeTransparent in noneLocator.all()) {
+  for (const shouldBeTransparent of await noneLocator.all()) {
     await expect(shouldBeTransparent).toHaveCSS(
       "background-color",
       "rgba(0, 0, 0, 0)",
@@ -109,7 +109,7 @@ test("scoped colocated css lower bound inclusive/exclusive works", async ({
 
   await expect(lowerBoundContainerLocator).toHaveCount(2);
 
-  for (const shouldBeFlex in lowerBoundContainerLocator.all()) {
+  for (const shouldBeFlex of await lowerBoundContainerLocator.all()) {
     await expect(shouldBeFlex).toHaveCSS("display", "flex");
   }
 
@@ -117,15 +117,15 @@ test("scoped colocated css lower bound inclusive/exclusive works", async ({
 
   await expect(inclusiveFlexItemsLocator).toHaveCount(3);
 
-  for (const shouldFlex in inclusiveFlexItemsLocator.all()) {
+  for (const shouldFlex of await inclusiveFlexItemsLocator.all()) {
     await expect(shouldFlex).toHaveCSS("flex", "1");
   }
 
-  const exclusiveFlexItemsLocator = page.locator('[data-test-inclusive="yes"]');
+  const exclusiveFlexItemsLocator = page.locator('[data-test-inclusive="no"]');
 
   await expect(exclusiveFlexItemsLocator).toHaveCount(3);
 
-  for (const shouldntFlex in exclusiveFlexItemsLocator.all()) {
+  for (const shouldntFlex of await exclusiveFlexItemsLocator.all()) {
     await expect(shouldntFlex).not().toHaveCSS("flex", "1");
   }
 });

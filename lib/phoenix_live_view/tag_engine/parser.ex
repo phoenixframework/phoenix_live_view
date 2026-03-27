@@ -707,7 +707,7 @@ defmodule Phoenix.LiveView.TagEngine.Parser do
        when type in [:tag_attribute, :root_tag_attribute] do
     throw_syntax_error!(
       """
-      expected {name, value} for :root_tag_attribute directive from macro component #{inspect(module)}, got: #{inspect(other)}
+      expected {name, value} for :#{type} directive from macro component #{inspect(module)}, got: #{inspect(other)}
 
       name must be a compile-time string, and value must be a compile-time string or true
       """,

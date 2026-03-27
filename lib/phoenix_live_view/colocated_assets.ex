@@ -13,10 +13,7 @@ defmodule Phoenix.LiveView.ColocatedAssets do
     defstruct [:filename, :data, :callback, :component]
   end
 
-  @callback build_manifests(colocated :: t()) :: list({binary(), binary()})
-  @callback finalize(target_directory :: String.t()) :: :ok
-
-  @optional_callbacks [finalize: 1]
+  @callback build_manifests(colocated :: list(t())) :: list({binary(), binary()})
 
   @doc """
   Extracts content into the colocated directory.
@@ -91,12 +88,12 @@ defmodule Phoenix.LiveView.ColocatedAssets do
     target_dir = target_dir()
     modules = subdirectories(target_dir)
 
-    Enum.flat_map(modules, fn module_folder ->
+    modules
+    |> Enum.flat_map(fn module_folder ->
       module = Module.concat([Path.basename(module_folder)])
       process_module(module_folder, module)
     end)
     |> Enum.group_by(fn {callback, _file} -> callback end, fn {_callback, file} -> file end)
-    |> Map.new()
   end
 
   defp process_module(module_folder, module) do

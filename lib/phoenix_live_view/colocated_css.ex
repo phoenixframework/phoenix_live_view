@@ -221,7 +221,7 @@ defmodule Phoenix.LiveView.ColocatedCSS do
   </.my_component>
   ```
   """
-  @callback transform(tag_name :: binary(), attrs :: map(), css :: binary(), meta :: keyword()) ::
+  @callback transform(tag_name :: binary(), attrs :: map(), css :: binary(), meta :: map()) ::
               {:ok, binary(), keyword()} | {:error, term()}
 
   defmacro __using__(_) do
@@ -244,13 +244,18 @@ defmodule Phoenix.LiveView.ColocatedCSS do
     validate_phx_version!()
 
     opts = Map.new(attributes)
-    {data, directives} = extract(opts, text_content, meta, module)
 
-    # we always drop colocated CSS from the rendered output
-    {:ok, "", data, directives}
+    case extract(opts, text_content, meta, module) do
+      {data, directives} ->
+        # we always drop colocated CSS from the rendered output
+        {:ok, "", data, directives}
+
+      nil ->
+        {:ok, ""}
+    end
   end
 
-  def __transform__(_ast, _meta) do
+  def __transform__(_ast, _meta, _module) do
     raise ArgumentError, "ColocatedCSS can only be used on style tags"
   end
 
@@ -269,26 +274,32 @@ defmodule Phoenix.LiveView.ColocatedCSS do
       line: meta.env.line
     }
 
-    {styles, directives} =
-      case module.transform("style", opts, text_content, transform_meta) do
-        {:ok, scoped_css, directives} when is_binary(scoped_css) and is_list(directives) ->
-          {scoped_css, directives}
+    case module.transform("style", opts, text_content, transform_meta) do
+      {:ok, styles, directives} when is_binary(styles) and is_list(directives) ->
+        filename = "#{meta.env.line}_#{hash(styles)}.css"
 
-        {:error, reason} ->
-          raise ArgumentError,
-                "#{inspect(module)} returned an error: #{inspect(reason)}"
+        data =
+          Phoenix.LiveView.ColocatedAssets.extract(
+            __MODULE__,
+            meta.env.module,
+            filename,
+            styles,
+            nil
+          )
 
-        other ->
-          raise ArgumentError,
-                "expected the ColocatedCSS implementation to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
-      end
+        {data, directives}
 
-    filename = "#{meta.env.line}_#{hash(styles)}.css"
+      {:error, reason} ->
+        IO.warn(
+          "ColocatedCSS module #{inspect(module)} returned an error, skipping: #{inspect(reason)}"
+        )
 
-    data =
-      Phoenix.LiveView.ColocatedAssets.extract(__MODULE__, meta.env.module, filename, styles, nil)
+        nil
 
-    {data, directives}
+      other ->
+        raise ArgumentError,
+              "expected the ColocatedCSS implementation to return {:ok, scoped_css, directives} or {:error, term}, got: #{inspect(other)}"
+    end
   end
 
   defp hash(string) do
