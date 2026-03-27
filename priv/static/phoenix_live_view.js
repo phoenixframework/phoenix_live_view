@@ -4207,6 +4207,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       dom_default.putPrivate(this.el, "view", this);
       this.id = this.el.id;
+      this.el.setAttribute(PHX_ROOT_ID, this.root.id);
       this.ref = 0;
       this.lastAckRef = null;
       this.childJoins = 0;
