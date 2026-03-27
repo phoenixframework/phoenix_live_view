@@ -846,10 +846,10 @@ defmodule Phoenix.LiveView do
     * `:auto_upload` - Instructs the client to upload the file automatically
       on file selection instead of waiting for form submits. Defaults to `false`.
 
-    * `:writer` - A module implementing the `Phoenix.LiveView.UploadWriter`
-      behaviour to use for writing the uploaded chunks. Defaults to writing to a
-      temporary file for consumption. See the `Phoenix.LiveView.UploadWriter` docs
-      for custom usage.
+    * `:writer` - A 3-arity anonymous function that returns a tuple with a module
+      implementing the `Phoenix.LiveView.UploadWriter` behaviour and its options to use for
+      writing the uploaded chunks. Defaults to writing to a temporary file for consumption.
+      See the `Phoenix.LiveView.UploadWriter` docs for custom usage.
 
   Raises when a previously allowed upload under the same name is still active.
 
