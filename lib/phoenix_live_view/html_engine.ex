@@ -175,16 +175,18 @@ defmodule Phoenix.LiveView.HTMLEngine do
   def class_attribute_encode(other),
     do: empty_attribute_encode(other)
 
-  defp class_attribute_list(value) do
-    value
-    |> Enum.flat_map(fn
-      nil -> []
-      false -> []
-      inner when is_list(inner) -> [class_attribute_list(inner)]
-      other -> [other]
-    end)
-    |> Enum.join(" ")
+  defp class_attribute_list(list), do: class_attribute_list(list, [])
+
+  defp class_attribute_list([], acc), do: acc
+  defp class_attribute_list([nil | t], acc), do: class_attribute_list(t, acc)
+  defp class_attribute_list([false | t], acc), do: class_attribute_list(t, acc)
+
+  defp class_attribute_list([h | t], acc) when is_list(h) do
+    class_attribute_list(t, class_attribute_list(h, acc))
   end
+
+  defp class_attribute_list([h | t], []), do: class_attribute_list(t, [to_string(h)])
+  defp class_attribute_list([h | t], acc), do: class_attribute_list(t, [acc, " ", to_string(h)])
 
   @doc false
   def empty_attribute_encode(nil), do: ""
