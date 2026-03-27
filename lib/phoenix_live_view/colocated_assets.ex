@@ -165,15 +165,17 @@ defmodule Phoenix.LiveView.ColocatedAssets do
            File.ln_s(relative_node_modules_path, Path.join(target_dir(), "node_modules")),
          false <- Keyword.get(global_settings(), :disable_symlink_warning, false) do
       disable_hint = """
-      If you don't use colocated hooks / js or you don't need to import files from "assets/node_modules"
-      in your hooks, you can simply disable this warning by setting
+      If you don't use colocated hooks / js / css or you don't need to import files from "assets/node_modules"
+      in your colocated assets, you can simply disable this warning by setting
 
           config :phoenix_live_view, :colocated_assets,
             disable_symlink_warning: true
       """
 
       IO.warn("""
-      Failed to symlink node_modules folder for Phoenix.LiveView.ColocatedJS: #{inspect(reason)}
+      Failed to symlink node_modules folder for colocated assets: #{inspect(reason)}
+
+      See the documentation for Phoenix.LiveView.ColocatedJS for details.
 
       On Windows, you can address this issue by starting your Windows terminal at least once
       with "Run as Administrator" and then running your Phoenix application.#{is_fallback && "\n\n" <> disable_hint}
@@ -237,7 +239,6 @@ defmodule Phoenix.LiveView.ColocatedAssets do
 
             config :phoenix_live_view, :colocated_assets, ...
 
-        instead.
         """)
     end
 
