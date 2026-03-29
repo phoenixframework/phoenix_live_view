@@ -153,6 +153,32 @@ defmodule Phoenix.LiveView.UploadConfigTest do
 
       assert %UploadConfig{max_file_size: 10_000_000} = socket.assigns.uploads.avatar
     end
+
+    test "raises when invalid :validator provided" do
+      assert_raise ArgumentError, ~r/invalid :validator value provided to allow_upload/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, validator: 0)
+      end
+
+      assert_raise ArgumentError, ~r/invalid :validator value provided to allow_upload/, fn ->
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, validator: "bad")
+      end
+
+      assert_raise ArgumentError, ~r/invalid :validator value provided to allow_upload/, fn ->
+        wrong_arity_fun = fn _, _ -> :ok end
+        LiveView.allow_upload(build_socket(), :avatar, accept: :any, validator: wrong_arity_fun)
+      end
+    end
+
+    test "supports optional :validator" do
+      socket =
+        LiveView.allow_upload(build_socket(), :avatar,
+          accept: :any,
+          validator: fn _ -> :ok end
+        )
+
+      %UploadConfig{validator: validator_fun} = socket.assigns.uploads.avatar
+      assert is_function(validator_fun, 1)
+    end
   end
 
   describe "disallow_upload/2" do
