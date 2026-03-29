@@ -179,14 +179,20 @@ defmodule Phoenix.LiveView.UploadChannelTest do
   end
 
   defp opts_for_allow_upload(opts) do
-    case Keyword.fetch(opts, :progress) do
-      {:ok, progress} ->
-        Keyword.put(opts, :progress, fn _, entry, socket ->
-          apply(__MODULE__, progress, [entry, socket])
-        end)
+    opts =
+      case Keyword.fetch(opts, :progress) do
+        {:ok, progress} ->
+          Keyword.put(opts, :progress, fn _, entry, socket ->
+            apply(__MODULE__, progress, [entry, socket])
+          end)
 
-      :error ->
-        opts
+        :error ->
+          opts
+      end
+
+    case Keyword.fetch(opts, :validator_response) do
+      {:ok, response} -> Keyword.put(opts, :validator, fn _ -> response end)
+      :error -> opts
     end
   end
 
@@ -404,6 +410,25 @@ defmodule Phoenix.LiveView.UploadChannelTest do
                |> render_change(avatar) =~ "entry_error::too_large"
 
         assert {:error, [[_ref, :too_large]]} = render_upload(avatar, "foo.jpeg")
+      end
+
+      @tag allow: [
+             max_entries: 1,
+             chunk_size: 20,
+             accept: :any,
+             max_file_size: 100,
+             validator_response: {:error, :custom_validation_error}
+           ]
+      test "render_change error with validator failure upload", %{lv: lv} do
+        avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "ok"}])
+
+        assert lv
+               |> form("form", user: %{})
+               |> render_change(avatar) =~
+                 "entry_error::custom_validation_error"
+
+        assert {:error, [[_ref, :custom_validation_error]]} =
+                 render_upload(avatar, "foo.jpeg")
       end
 
       @tag allow: [max_entries: 1, chunk_size: 20, accept: :any, auto_upload: true]

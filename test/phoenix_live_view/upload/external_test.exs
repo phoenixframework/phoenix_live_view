@@ -45,6 +45,12 @@ defmodule Phoenix.LiveView.UploadExternalTest do
           opts
       end
 
+    opts =
+      case Keyword.fetch(opts, :validator_response) do
+        {:ok, response} -> Keyword.put(opts, :validator, fn _ -> response end)
+        :error -> opts
+      end
+
     {:ok, lv} = mount_lv(fn socket -> Phoenix.LiveView.allow_upload(socket, :avatar, opts) end)
 
     {:ok, lv: lv}
@@ -81,7 +87,13 @@ defmodule Phoenix.LiveView.UploadExternalTest do
     assert render_upload(avatar, "foo1.jpeg", 1) =~ "relative path:some/path/to/foo1.jpeg"
   end
 
-  @tag allow: [max_entries: 2, chunk_size: 20, accept: :any, external: :preflight]
+  @tag allow: [
+         max_entries: 2,
+         chunk_size: 20,
+         accept: :any,
+         external: :preflight,
+         validator_response: :ok
+       ]
   test "external upload invokes preflight per entry", %{lv: lv} do
     avatar =
       file_input(lv, "form", :avatar, [
@@ -163,6 +175,28 @@ defmodule Phoenix.LiveView.UploadExternalTest do
 
     assert {:error, [[_, %{reason: :too_large}]]} = render_upload(avatar, "foo1.jpeg", 1)
     assert {:error, :not_allowed} = render_upload(avatar, "foo2.jpeg", 1)
+  end
+
+  @tag allow: [
+         max_entries: 1,
+         max_file_size: 100,
+         auto_upload: true,
+         accept: :any,
+         external: :preflight,
+         validator_response: {:error, :custom_validation_error}
+       ]
+  test "custom validator returns error", %{lv: lv} do
+    avatar = file_input(lv, "form", :avatar, [%{name: "foo.jpeg", content: "ok"}])
+
+    html =
+      lv
+      |> form("form", user: %{})
+      |> render_change(avatar)
+
+    assert html =~ "foo.jpeg:0%"
+
+    assert {:error, [[_, %{reason: :custom_validation_error}]]} =
+             render_upload(avatar, "foo.jpeg", 1)
   end
 
   def bad_preflight(%LiveView.UploadEntry{} = _entry, socket), do: {:ok, %{}, socket}
