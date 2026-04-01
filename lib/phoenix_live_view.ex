@@ -178,10 +178,9 @@ defmodule Phoenix.LiveView do
   to prevent unnecessary work like long running database operations from continuing
   when a user navigates away from the page. To do this, the LiveView process is
   linked to the process executing the function passed to `assign_async/4` /
-  `start_async/4`. Exits are caught, but only if they originate from the spawned
-  process itself. This means that if you link the spawned process to another,
-  third process and that process exits, all processes that are part of the link
-  chain exit too, including your LiveView.
+  `start_async/4`. LiveView will rescue/catch any error from the spawned
+  process but if that process is linked to another process which then crashes,
+  it will cause all linked processes in the chain to crash, including your LiveView.
 
   > ### Be aware of non-obvious links {: .warning}
   >
