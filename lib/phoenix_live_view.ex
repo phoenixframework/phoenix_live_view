@@ -182,10 +182,10 @@ defmodule Phoenix.LiveView do
   process but if that process is linked to another process which then crashes,
   it will cause all linked processes in the chain to crash, including your LiveView.
 
-  > ### Be aware of non-obvious links {: .warning}
+  > ### Common source of links {: .warning}
   >
-  > Avoid creating links to the async process if you want to ensure
-  > your LiveView is not affected by exits:
+  > One of the most common source of links in codebases is via
+  > the `Task` module:
   >
   > ```elixir
   > assign_async(socket, :org, fn ->
@@ -199,8 +199,8 @@ defmodule Phoenix.LiveView do
   >
   > Even if you're not directly calling `Task.async/1` in one of
   > LiveView's async functions, you might have a linking call
-  > somewhere deeper in a function you invoke, like `fetch_org!(...)`,
-  > so the link might not be obvious.
+  > somewhere deeper in a function you invoke, so the link
+  > may not obviously stand out.
 
   There are different ways to resolve this problem.
 
