@@ -172,6 +172,46 @@ defmodule Phoenix.LiveView do
   async operation, but you can also assign any value directly to the socket
   if you want to handle the state yourself.
 
+  ### A note on linked processes
+
+  LiveView ensures that any async operations stop when the LiveView itself exits
+  to prevent unnecessary work like long running database operations from continuing
+  when a user navigates away from the page. To do this, the LiveView process is
+  linked to the process executing the function passed to `assign_async/4` /
+  `start_async/4`. LiveView will rescue/catch any error from the spawned
+  process but if that process is linked to another process which then crashes,
+  it will cause all linked processes in the chain to crash, including your LiveView.
+
+  > ### Common source of links {: .warning}
+  >
+  > One of the most common source of links in codebases is via
+  > the `Task` module:
+  >
+  > ```elixir
+  > assign_async(socket, :org, fn ->
+  >   # Task.async links the new process to the caller!
+  >   ... = Task.async(fn -> raise "oops" end) |> Task.await()
+  > end)
+  > ```
+  >
+  > Because `Task.async/1` links the spawned process to the caller,
+  > if it exits for whatever reason, the LiveView will exit too.
+  >
+  > Even if you're not directly calling `Task.async/1` in one of
+  > LiveView's async functions, you might have a linking call
+  > somewhere deeper in a function you invoke, so the link
+  > may not obviously stand out.
+
+  There are different ways to resolve this problem.
+
+  1. Avoid exits in linked processes by rescuing exceptions / catching exits in calls
+     that should never crash your LiveView.
+  2. Don't link the processes by using a `Task.Supervisor` and `Task.Supervisor.async_nolink/3`
+     (be aware that this means those async processes will not stop executing when the LiveView exits!).
+  3. Trap exits in your LiveView by calling `Process.flag(:trap_exit, true)`. In general, trapping
+     exits should be avoided, as it changes how your LiveView reacts to all exits, not only
+     ones related to async operations.
+
   ## Endpoint configuration
 
   LiveView accepts the following configuration in your endpoint under
