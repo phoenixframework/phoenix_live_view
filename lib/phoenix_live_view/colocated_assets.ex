@@ -268,7 +268,7 @@ defmodule Phoenix.LiveView.ColocatedAssets do
               phoenix_live_view: [colocated_assets: ...]
             ]
 
-        in your mix.exs instead.
+        in your mix.exs project configuration.
         """)
     end
   end
