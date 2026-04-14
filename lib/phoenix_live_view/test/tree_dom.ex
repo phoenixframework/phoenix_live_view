@@ -405,7 +405,7 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
 
     appended_children =
       Enum.filter(appended_children, fn node ->
-        not is_binary(node) or (is_binary(node) and String.trim_leading(node) != "")
+        not is_binary(node) or String.trim_leading(node) != ""
       end)
 
     # to ensure correct DOM patching, all elements must have an ID
@@ -583,7 +583,7 @@ defmodule Phoenix.LiveViewTest.TreeDOM do
 
   defp normalize_tree(values, sort_attributes?, true) when is_list(values) do
     for value <- values,
-        not is_binary(value) or (is_binary(value) and String.trim(value) != ""),
+        not is_binary(value) or String.trim(value) != "",
         do: normalize_tree(value, sort_attributes?, true)
   end
 
