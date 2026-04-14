@@ -652,7 +652,7 @@ defmodule Phoenix.LiveView.Diff do
     {{diff, count, new_prints, pending, components, template}, _seen_keys} =
       Enum.reduce(
         entries,
-        {{diff, 0, new_prints, pending, components, template}, MapSet.new()},
+        {{diff, 0, new_prints, pending, components, template}, %{}},
         fn
           {key, vars, render},
           {{_diff, index, _new_prints, _pending, _components, _template} = acc, seen_keys} ->
@@ -662,11 +662,11 @@ defmodule Phoenix.LiveView.Diff do
                   # no need to check for duplicates if we use the index
                   {index, seen_keys}
 
-                MapSet.member?(seen_keys, key) ->
+                Map.has_key?(seen_keys, key) ->
                   raise "found duplicate key #{inspect(key)} in comprehension"
 
                 true ->
-                  {key, MapSet.put(seen_keys, key)}
+                  {key, Map.put(seen_keys, key, true)}
               end
 
             {process_keyed({key, vars, render}, previous_prints, changed?, stream?, acc),
