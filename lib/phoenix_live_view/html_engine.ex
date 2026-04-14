@@ -185,8 +185,8 @@ defmodule Phoenix.LiveView.HTMLEngine do
     class_attribute_list(t, class_attribute_list(h, acc))
   end
 
-  defp class_attribute_list([h | t], []), do: class_attribute_list(t, [to_string(h)])
-  defp class_attribute_list([h | t], acc), do: class_attribute_list(t, [acc, " ", to_string(h)])
+  defp class_attribute_list([h | t], []), do: class_attribute_list(t, to_string(h))
+  defp class_attribute_list([h | t], acc), do: class_attribute_list(t, [acc, ?\s, to_string(h)])
 
   @doc false
   def empty_attribute_encode(nil), do: ""
