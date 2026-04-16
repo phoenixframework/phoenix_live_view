@@ -689,7 +689,8 @@ export default class View {
 
     patch.after("updated", (el) => {
       if (updatedHookIds.has(el.id)) {
-        this.getHook(el).__updated();
+        const hook = this.getHook(el);
+        hook && hook.__updated();
       }
     });
 
