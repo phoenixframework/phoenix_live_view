@@ -62,7 +62,7 @@ defmodule Phoenix.LiveView.Diff do
     if !keyed or keyed[@keyed_count] == 0 do
       {[], components}
     else
-      keyed_to_iodata(0, keyed[@keyed_count], keyed, static, components, template, mapper, [])
+      keyed_to_iodata(keyed[@keyed_count] - 1, keyed, static, components, template, mapper, [])
     end
   end
 
@@ -82,15 +82,15 @@ defmodule Phoenix.LiveView.Diff do
     {binary, components}
   end
 
-  defp keyed_to_iodata(index, limit, keyed, static, components, template, mapper, acc)
-       when index < limit do
+  defp keyed_to_iodata(index, keyed, static, components, template, mapper, acc)
+       when index >= 0 do
     diff = Map.fetch!(keyed, index)
     {iodata, components} = to_iodata(Map.put(diff, @static, static), components, template, mapper)
-    keyed_to_iodata(index + 1, limit, keyed, static, components, template, mapper, [iodata | acc])
+    keyed_to_iodata(index - 1, keyed, static, components, template, mapper, [iodata | acc])
   end
 
-  defp keyed_to_iodata(_index, _limit, _keyed, _static, components, _template, _mapper, acc) do
-    {Enum.reverse(acc), components}
+  defp keyed_to_iodata(_index, _keyed, _static, components, _template, _mapper, acc) do
+    {acc, components}
   end
 
   defp one_to_iodata([last], _parts, _counter, acc, components, _template, _mapper) do
