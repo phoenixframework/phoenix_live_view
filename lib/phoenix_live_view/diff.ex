@@ -612,32 +612,59 @@ defmodule Phoenix.LiveView.Diff do
   end
 
   defp traverse_dynamic(dynamic, children, pending, components, template, changed?) do
-    Enum.reduce(dynamic, {0, %{}, children, pending, components, template}, fn
-      entry, {counter, diff, children, pending, components, template} ->
-        child = Map.get(children, counter)
+    traverse_dynamic(dynamic, 0, %{}, children, pending, components, template, changed?)
+  end
 
-        {serialized, child_fingerprint, pending, components, template} =
-          traverse(entry, child, pending, components, template, changed?)
+  defp traverse_dynamic(
+         [entry | entries],
+         counter,
+         diff,
+         children,
+         pending,
+         components,
+         template,
+         changed?
+       ) do
+    child = Map.get(children, counter)
 
-        # If serialized is nil, it means no changes.
-        # If it is an empty map, then it means it is a rendered struct
-        # that did not change, so we don't have to emit it either.
-        diff =
-          if serialized != nil and serialized != %{} do
-            Map.put(diff, counter, serialized)
-          else
-            diff
-          end
+    {serialized, child_fingerprint, pending, components, template} =
+      traverse(entry, child, pending, components, template, changed?)
 
-        children =
-          if child_fingerprint do
-            Map.put(children, counter, child_fingerprint)
-          else
-            Map.delete(children, counter)
-          end
+    # If serialized is nil, it means no changes.
+    # If it is an empty map, then it means it is a rendered struct
+    # that did not change, so we don't have to emit it either.
+    diff =
+      if serialized != nil and serialized != %{} do
+        Map.put(diff, counter, serialized)
+      else
+        diff
+      end
 
-        {counter + 1, diff, children, pending, components, template}
-    end)
+    children =
+      if child_fingerprint do
+        Map.put(children, counter, child_fingerprint)
+      else
+        if child do
+          Map.delete(children, counter)
+        else
+          children
+        end
+      end
+
+    traverse_dynamic(
+      entries,
+      counter + 1,
+      diff,
+      children,
+      pending,
+      components,
+      template,
+      changed?
+    )
+  end
+
+  defp traverse_dynamic([], counter, diff, children, pending, components, template, _changed?) do
+    {counter, diff, children, pending, components, template}
   end
 
   defp traverse_keyed(
