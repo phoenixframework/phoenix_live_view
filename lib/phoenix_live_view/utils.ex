@@ -265,10 +265,11 @@ defmodule Phoenix.LiveView.Utils do
   @doc """
   Annotates the changes with the event to be pushed.
 
-  By default, events are dispatched on the JavaScript side only after
-  the current patch is invoked. Therefore, if the LiveView
-  redirects, the events won't be invoked. If the `dispatch: :before` option
-  is passed, this event will be dispatched before patching the DOM.
+  By default, events are dispatched on the JavaScript side after
+  the current patch is invoked. If the LiveView redirects,
+  any pending events are dispatched before the redirection occurs.
+  If the `dispatch: :before` option is passed, this event will be
+  dispatched before patching the DOM.
   """
   def push_event(%Socket{} = socket, event, %{} = payload, opts) do
     opts = Keyword.validate!(opts, [:dispatch])

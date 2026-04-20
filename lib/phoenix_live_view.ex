@@ -810,8 +810,8 @@ defmodule Phoenix.LiveView do
   handling the given `event`. If you need to scope events, then
   this must be done by namespacing them.
 
-  Events pushed during `push_navigate` are currently discarded,
-  as the LiveView is immediately dismounted.
+  Events pushed during `push_navigate` (or any redirect) are sent to the
+  client before the redirection happens.
 
   ## Hook example
 
