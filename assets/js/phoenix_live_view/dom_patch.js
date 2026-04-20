@@ -153,6 +153,15 @@ export default class DOMPatch {
           if (isJoinPatch) {
             return node.id;
           }
+
+          // In case we are tracking clientside attributes,
+          // ensure that we use the original copy for the key.
+          // This ensures that morphdom doesn't replace nodes
+          // that have an ID attribute set by a third-party.
+          if (DOM.private(node, "phxAttrCopy")) {
+            node = DOM.private(node, "phxAttrCopy");
+          }
+
           return (
             node.id || (node.getAttribute && node.getAttribute(PHX_MAGIC_ID))
           );
