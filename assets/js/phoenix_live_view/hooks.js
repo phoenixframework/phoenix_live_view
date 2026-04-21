@@ -131,7 +131,6 @@ const isAtViewportTop = (el, scrollContainer) => {
   const rect = el.getBoundingClientRect();
   return (
     Math.ceil(rect.top) >= top(scrollContainer) &&
-    Math.ceil(rect.left) >= 0 &&
     Math.floor(rect.top) <= bottom(scrollContainer)
   );
 };
@@ -140,7 +139,6 @@ const isAtViewportBottom = (el, scrollContainer) => {
   const rect = el.getBoundingClientRect();
   return (
     Math.ceil(rect.bottom) >= top(scrollContainer) &&
-    Math.ceil(rect.left) >= 0 &&
     Math.floor(rect.bottom) <= bottom(scrollContainer)
   );
 };
@@ -149,7 +147,6 @@ const isWithinViewport = (el, scrollContainer) => {
   const rect = el.getBoundingClientRect();
   return (
     Math.ceil(rect.top) >= top(scrollContainer) &&
-    Math.ceil(rect.left) >= 0 &&
     Math.floor(rect.top) <= bottom(scrollContainer)
   );
 };
