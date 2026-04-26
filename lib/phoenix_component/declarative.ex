@@ -21,7 +21,9 @@ defmodule Phoenix.Component.Declarative do
   @globals ~w(
     accesskey
     alt
+    anchor
     autocapitalize
+    autocorrect
     autofocus
     class
     contenteditable
@@ -118,7 +120,9 @@ defmodule Phoenix.Component.Declarative do
     title
     translate
     type
+    virtualkeyboardpolicy
     width
+    writingsuggestions
     xml:base
     xml:lang
   )
