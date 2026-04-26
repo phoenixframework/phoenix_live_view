@@ -20,19 +20,16 @@ defmodule Phoenix.Component.Declarative do
   )
   @globals ~w(
     accesskey
-    alt
     anchor
     autocapitalize
     autocorrect
     autofocus
     class
     contenteditable
-    contextmenu
     dir
     draggable
     enterkeyhint
     exportparts
-    height
     hidden
     id
     inert
@@ -108,20 +105,15 @@ defmodule Phoenix.Component.Declarative do
     onvolumechange
     onwaiting
     part
-    placeholder
     popover
-    rel
     role
     slot
     spellcheck
     style
     tabindex
-    target
     title
     translate
-    type
     virtualkeyboardpolicy
-    width
     writingsuggestions
     xml:base
     xml:lang
