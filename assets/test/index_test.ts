@@ -1,13 +1,7 @@
-import {
-  LiveSocket,
-  isUsedInput,
-  getFileURLForUpload,
-  ViewHook,
-} from "phoenix_live_view";
+import { LiveSocket, isUsedInput, ViewHook } from "phoenix_live_view";
 import * as LiveSocket2 from "phoenix_live_view/live_socket";
 import ViewHook2 from "phoenix_live_view/view_hook";
 import DOM from "phoenix_live_view/dom";
-import LiveUploader from "phoenix_live_view/live_uploader";
 
 describe("Named Imports", () => {
   test("LiveSocket is equal to the actual LiveSocket", () => {
