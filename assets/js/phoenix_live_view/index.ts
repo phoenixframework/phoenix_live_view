@@ -351,6 +351,19 @@ function createHook(el: HTMLElement, callbacks: Hook): ViewHook {
   return hook;
 }
 
+/** Returns an object URL for the file matching the given upload ref,
+ * or `null` if no matching file is found.
+ *
+ * @param input - The file input element associated with the upload.
+ * @param uploadRef - The upload ref identifying the file entry.
+ *
+ * @example
+ *
+ * import { getFileURLForUpload } from "phoenix_live_view"
+ *
+ * let url = getFileURLForUpload(inputEl, uploadRef)
+ * if (url) { imgEl.src = url }
+ */
 function getFileURLForUpload(
   input: HTMLElement,
   uploadRef: string,
