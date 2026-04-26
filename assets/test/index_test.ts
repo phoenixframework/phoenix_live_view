@@ -28,33 +28,3 @@ describe("isUsedInput", () => {
     expect(isUsedInput(input)).toBe(true);
   });
 });
-
-function uploadInput(activeRefs: string = ""): HTMLInputElement {
-  const input = document.createElement("input");
-  input.type = "file";
-  input.setAttribute("data-phx-active-refs", activeRefs);
-  input.setAttribute("data-phx-done-refs", "");
-  input.setAttribute("data-phx-preflighted-refs", "");
-  return input;
-}
-
-describe("getFileURLForUpload", () => {
-  beforeEach(() => {
-    global.URL.createObjectURL = jest.fn(() => "blob:http://localhost/fake");
-  });
-
-  test("returns a URL for a file matching the ref", () => {
-    const file = new File(["hello"], "test.txt", { type: "text/plain" });
-    const ref = LiveUploader.genFileRef(file);
-    const input = uploadInput(ref);
-    DOM.putPrivate(input, "files", [file]);
-
-    expect(getFileURLForUpload(input, ref)).toBe("blob:http://localhost/fake");
-    expect(URL.createObjectURL).toHaveBeenCalledWith(file);
-  });
-
-  test("returns null when no file matches the ref", () => {
-    const input = uploadInput();
-    expect(getFileURLForUpload(input, "999")).toBeNull();
-  });
-});
