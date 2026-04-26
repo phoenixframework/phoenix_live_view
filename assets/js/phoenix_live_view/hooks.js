@@ -46,10 +46,8 @@ const Hooks = {
       this.inputEl = document.getElementById(
         this.el.getAttribute(PHX_UPLOAD_REF),
       );
-      LiveUploader.getEntryDataURL(this.inputEl, this.ref, (url) => {
-        this.url = url;
-        this.el.src = url;
-      });
+      this.url = LiveUploader.getEntryDataURL(this.inputEl, this.ref);
+      this.el.src = this.url;
     },
     destroyed() {
       URL.revokeObjectURL(this.url);

@@ -22,11 +22,12 @@ export default class LiveUploader {
     }
   }
 
-  static getEntryDataURL(inputEl, ref, callback) {
+  static getEntryDataURL(inputEl, ref) {
     const file = this.activeFiles(inputEl).find(
       (file) => this.genFileRef(file) === ref,
     );
-    callback(URL.createObjectURL(file));
+    if (!file) return null;
+    return URL.createObjectURL(file);
   }
 
   static hasUploadsInProgress(formEl) {

@@ -368,11 +368,7 @@ function getFileURLForUpload(
   input: HTMLElement,
   uploadRef: string,
 ): string | null {
-  const file = LiveUploader.activeFiles(input).find(
-    (file) => LiveUploader.genFileRef(file) == uploadRef,
-  );
-  if (!file) return null;
-  return URL.createObjectURL(file);
+  return LiveUploader.getEntryDataURL(input, uploadRef);
 }
 
 export {
