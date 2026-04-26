@@ -15,6 +15,7 @@ import { logError } from "./utils";
 import type { EncodedJS, LiveSocketJSCommands } from "./js_commands";
 import type { Hook, HooksOptions } from "./view_hook";
 import type { Socket as PhoenixSocket } from "phoenix";
+import LiveUploader from "./live_uploader";
 
 /**
  * Options for configuring the LiveSocket instance.
@@ -350,4 +351,23 @@ function createHook(el: HTMLElement, callbacks: Hook): ViewHook {
   return hook;
 }
 
-export { LiveSocket, isUsedInput, createHook, ViewHook, Hook, HooksOptions };
+function getFileURLForUpload(
+  input: HTMLElement,
+  uploadRef: string,
+): string | null {
+  const file = LiveUploader.activeFiles(input).find(
+    (file) => LiveUploader.genFileRef(file) == uploadRef,
+  );
+  if (!file) return null;
+  return URL.createObjectURL(file);
+}
+
+export {
+  LiveSocket,
+  isUsedInput,
+  createHook,
+  ViewHook,
+  Hook,
+  HooksOptions,
+  getFileURLForUpload,
+};
