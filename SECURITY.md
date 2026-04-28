@@ -12,8 +12,8 @@ LV version | Support
 
 ## Announcements
 
-[Security advisories will be published on GitHub](https://github.com/phoenixframework/phoenix/security).
+[Security advisories will be published on GitHub](https://github.com/phoenixframework/phoenix_live_view/security).
 
 ## Reporting a vulnerability
 
-[Please disclose security vulnerabilities privately via GitHub](https://github.com/phoenixframework/phoenix/security).
+[Please disclose security vulnerabilities privately via GitHub](https://github.com/phoenixframework/phoenix_live_view/security).
