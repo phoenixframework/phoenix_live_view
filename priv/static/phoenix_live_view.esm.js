@@ -1033,11 +1033,13 @@ var LiveUploader = class _LiveUploader {
       return file._phxRef;
     }
   }
-  static getEntryDataURL(inputEl, ref, callback) {
+  static getEntryDataURL(inputEl, ref) {
     const file = this.activeFiles(inputEl).find(
       (file2) => this.genFileRef(file2) === ref
     );
-    callback(URL.createObjectURL(file));
+    if (!file)
+      return null;
+    return URL.createObjectURL(file);
   }
   static hasUploadsInProgress(formEl) {
     let active = 0;
@@ -1264,10 +1266,8 @@ var Hooks = {
       this.inputEl = document.getElementById(
         this.el.getAttribute(PHX_UPLOAD_REF)
       );
-      LiveUploader.getEntryDataURL(this.inputEl, this.ref, (url) => {
-        this.url = url;
-        this.el.src = url;
-      });
+      this.url = LiveUploader.getEntryDataURL(this.inputEl, this.ref);
+      this.el.src = this.url;
     },
     destroyed() {
       URL.revokeObjectURL(this.url);
@@ -6975,10 +6975,14 @@ function createHook(el, callbacks) {
   dom_default.putCustomElHook(el, hook);
   return hook;
 }
+function getFileURLForUpload(input, uploadRef) {
+  return LiveUploader.getEntryDataURL(input, uploadRef);
+}
 export {
   LiveSocket2 as LiveSocket,
   ViewHook,
   createHook,
+  getFileURLForUpload,
   isUsedInput
 };
 //# sourceMappingURL=phoenix_live_view.esm.js.map
