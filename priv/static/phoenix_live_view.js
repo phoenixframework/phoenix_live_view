@@ -2359,6 +2359,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (isJoinPatch) {
               return node.id;
             }
+            if (dom_default.private(node, "clientsideIdAttribute")) {
+              return node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
+            }
             return node.id || node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
           },
           // skip indexing from children when container is stream
@@ -3719,6 +3722,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
       const newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
       const newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
+      if (sets.some(([attr, _val]) => attr === "id")) {
+        dom_default.putPrivate(el, "clientsideIdAttribute", true);
+      }
       dom_default.putSticky(el, "attrs", (currentEl) => {
         newRemoves.forEach((attr) => currentEl.removeAttribute(attr));
         newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val));
