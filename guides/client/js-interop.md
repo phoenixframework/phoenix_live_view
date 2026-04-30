@@ -479,5 +479,21 @@ The command interface returned by `js()` above offers the following functions:
 - `push(el, type, opts = {})` - pushes an event to the server. To target a LiveComponent by its ID, pass a separate `target` in the options. Options: `target`, `loading`, `page_loading`, `value`. For more details, see `Phoenix.LiveView.JS.push/1`.
 - `navigate(href, opts = {})` - sends a navigation event to the server and updates the browser's pushState history. Options: `replace`. For more details, see `Phoenix.LiveView.JS.navigate/1`.
 - `patch(href, opts = {})` - sends a patch event to the server and updates the browser's pushState history. Options: `replace`. For more details, see `Phoenix.LiveView.JS.patch/1`.
-- `exec(encodedJS)` - *only via Client hook `this.js()`*: executes encoded JavaScript in the context of the hook's root node. The encoded JS command should be constructed via `Phoenix.LiveView.JS` and is usually stored as an HTML attribute. Example: `this.js().exec(this.el.getAttribute('phx-remove'))`.
-- `exec(el, encodedJS)` - *only via `liveSocket.js()`*: executes encoded JavaScript in the context of any element.
+- `exec(encodedJS)` - *only via Client hook `this.js()`*: executes encoded JS command in the context of the hook's root node. The encoded JS command should be constructed via `Phoenix.LiveView.JS` and is usually stored as an HTML attribute. Example: `this.js().exec(this.el.getAttribute('phx-remove'))`.
+- `exec(el, encodedJS)` - *only via `liveSocket.js()`*: executes encoded JS command in the context of any element.
+
+### Client-side ID manipulation
+
+If you need to set element IDs from client-side JavaScript (for example, to auto-generate IDs for accessibility), you **must** use the `js().setAttribute()` method:
+
+```javascript
+Hooks.MyHook = {
+  mounted() {
+    this.js().setAttribute(this.el, "id", "my-generated-id")
+  }
+}
+```
+
+Setting IDs directly via `node.id = "..."` or other direct DOM manipulation methods will cause DOM patching issues. Always use `js().setAttribute()` instead.
+
+If the server has already assigned an ID to an element, you cannot replace it with a different ID from the client side. Client-side IDs should only be set on elements that have no server-assigned ID.
