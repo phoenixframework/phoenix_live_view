@@ -33,6 +33,8 @@ const pageChecks = async (page, ignoreJSErrors) => {
         .expect(unhandledErrors, "Detected an unhandled JavaScript Error!")
         .toEqual([]);
     }
+
+    await expect(page.locator("[data-phx-skip]")).toHaveCount(0);
   };
 
   return { cleanup };
