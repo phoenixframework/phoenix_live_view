@@ -127,22 +127,52 @@ defmodule Phoenix.Component.MacroComponent do
   #   other elements in the template outside of the macro component at compile-time. For example:
   #
   #   ```elixir
-  #   defmodule MyAppWeb.TagRootSampleComponent do
+  #   defmodule MyAppWeb.TagAttributesSampleComponent do
   #     @behaviour Phoenix.Component.MacroComponent
   #
   #     @impl true
   #     def transform(_ast, _meta) do
-  #       {:ok, "", %{}, [root_tag_attribute: {"phx-sample-one", "test"}, root_tag_attribute: {"phx-sample-two", true}]}
+  #       {:ok, "", %{}, [root_tag_attribute: {"phx-sample-one", "test"}, tag_attribute: {"phx-sample-two", true}]}
   #     end
   #   end
   #   ```
   #
   #   The following directives are currently supported:
   #
-  #   * `:root_tag_attribute` - A `{name, value}` tuple to apply as an attribute to all root tags during template compilation.
-  #     Requires that a global `:root_tag_attribute` is configured for the application. The attribute name must be a string and the attribute value must be a string or `true`.
-  #     May be provided multiple times to apply multiple attributes.
+  #   * `root_tag_attribute`: A `{key, value}` tuple that will be added as
+  #      an attribute to all "root tags" of the template during template compilation.
+  #      See the section on root tags below for more information.
+  #   * `tag_attribute`: A `{key, value}` tuple that will be added as an attribute to
+  #      all HTML tags in the template during template compilation.
   #
+  #   ## Root tags
+  #
+  #   In a HEEx template, all outermost tags are considered "root tags" and are
+  #   affected by the `root_tag_attribute` directive. If a template uses components,
+  #   the slots of those components are considered as root tags as well.
+  #
+  #   Here's an example showing which elements would be considered root tags:
+  #
+  #   ```heex
+  #   <div>                              <---- root tag
+  #     <span>Hello</span>               <---- not a root tag
+  #
+  #     <.my_component>
+  #       <p>World</p>                   <---- root tag
+  #     </.my_component>
+  #   </div>
+  #
+  #   <.my_component>
+  #     <span>World</span>               <---- root tag
+  #
+  #     <:a_named_slot>
+  #       <div>                          <---- root tag
+  #         Foo
+  #         <p>Bar</p>                   <---- not a root tag
+  #       </div>
+  #     </:a_named_slot>
+  #   </.my_component>
+  #   ```
 
   @type tag :: binary()
   @type attribute :: {binary(), Macro.t()}
@@ -151,7 +181,9 @@ defmodule Phoenix.Component.MacroComponent do
   @type tag_meta :: %{closing: :self | :void}
   @type heex_ast :: {tag(), attributes(), children(), tag_meta()} | binary()
   @type transform_meta :: %{env: Macro.Env.t()}
-  @type directive :: {:root_tag_attribute, {name :: String.t(), value :: String.t() | true}}
+  @type directive ::
+          {:root_tag_attribute, {key :: term(), value :: term()}}
+          | {:tag_attribute, {key :: term(), value :: term()}}
   @type directives :: [directive]
 
   @callback transform(heex_ast :: heex_ast(), meta :: transform_meta()) ::
