@@ -122,6 +122,13 @@ See the module documentation or `Phoenix.LiveViewTest` for more information.
   ```elixir
   attr :rest, :global, include: ~w(width height)
   ```
+* Allow setting `id` attributes clientside for accessibility with `this.js().setAttribute()` ([#4146](https://github.com/phoenixframework/phoenix_live_view/pull/4146))
+* Export `getFileURLForUpload` helper ([#4206](https://github.com/phoenixframework/phoenix_live_view/pull/4206))
+* Use `moveBefore` if available when reordering stream items ([#4212](https://github.com/phoenixframework/phoenix_live_view/issues/4212))
+
+### Bug fixes
+
+* Handle locks on skipped nodes ([#4209](https://github.com/phoenixframework/phoenix_live_view/issues/4209))
 
 ## v1.2.0-rc.0 (2026-04-23)
 
