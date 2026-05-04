@@ -648,23 +648,42 @@ export default class DOMPatch {
     }
 
     if (streamAt === 0) {
-      el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
+      this.moveOrInsertBefore(el.parentElement, el, el.parentElement.firstElementChild);
     } else if (streamAt > 0) {
       const children = Array.from(el.parentElement.children);
       const oldIndex = children.indexOf(el);
       if (streamAt >= children.length - 1) {
-        el.parentElement.appendChild(el);
+        this.moveOrInsertBefore(el.parentElement, el, null);
       } else {
         const sibling = children[streamAt];
         if (oldIndex > streamAt) {
-          el.parentElement.insertBefore(el, sibling);
+          this.moveOrInsertBefore(el.parentElement, el, sibling);
         } else {
-          el.parentElement.insertBefore(el, sibling.nextElementSibling);
+          this.moveOrInsertBefore(el.parentElement, el, sibling.nextElementSibling);
         }
       }
     }
 
     this.maybeLimitStream(el);
+  }
+
+  // Reorder a child within its parent. When supported, use the atomic
+  // moveBefore (https://developer.mozilla.org/en-US/docs/Web/API/Node/moveBefore)
+  // so connected custom elements (and other state-bearing nodes like iframes)
+  // are not disconnected and reconnected by the move. Falls back to
+  // insertBefore otherwise. Passing `ref === null` moves to the end.
+  // See also https://github.com/phoenixframework/phoenix_live_view/issues/4212.
+  moveOrInsertBefore(parent, child, ref) {
+    if (typeof parent.moveBefore === "function") {
+      try {
+        parent.moveBefore(child, ref);
+        return;
+      } catch {
+        // moveBefore can throw (e.g. HierarchyRequestError) in cases where
+        // an atomic move is not possible; fall back to insertBefore.
+      }
+    }
+    parent.insertBefore(child, ref);
   }
 
   maybeLimitStream(el) {
