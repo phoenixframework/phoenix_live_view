@@ -29,11 +29,12 @@ test("stream_insert with :at uses atomic moveBefore for the reorder", async ({
   // reconciliation can produce extra disconnect/connect cycles outside the
   // maybeReOrderStream path covered by this fix.
   await expect
-    .poll(async () =>
-      await page.evaluate(
-        () =>
-          window.__lvCustomElLog.filter((e) => e.type === "connected").length,
-      ),
+    .poll(
+      async () =>
+        await page.evaluate(
+          () =>
+            window.__lvCustomElLog.filter((e) => e.type === "connected").length,
+        ),
     )
     .toBeGreaterThanOrEqual(3);
 

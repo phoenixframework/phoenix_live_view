@@ -648,7 +648,11 @@ export default class DOMPatch {
     }
 
     if (streamAt === 0) {
-      this.moveOrInsertBefore(el.parentElement, el, el.parentElement.firstElementChild);
+      this.moveOrInsertBefore(
+        el.parentElement,
+        el,
+        el.parentElement.firstElementChild,
+      );
     } else if (streamAt > 0) {
       const children = Array.from(el.parentElement.children);
       const oldIndex = children.indexOf(el);
@@ -659,7 +663,11 @@ export default class DOMPatch {
         if (oldIndex > streamAt) {
           this.moveOrInsertBefore(el.parentElement, el, sibling);
         } else {
-          this.moveOrInsertBefore(el.parentElement, el, sibling.nextElementSibling);
+          this.moveOrInsertBefore(
+            el.parentElement,
+            el,
+            sibling.nextElementSibling,
+          );
         }
       }
     }
