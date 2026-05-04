@@ -1377,15 +1377,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   };
   var isAtViewportTop = (el, scrollContainer) => {
     const rect = el.getBoundingClientRect();
-    return Math.ceil(rect.top) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.top) <= bottom(scrollContainer);
+    return Math.ceil(rect.top) >= top(scrollContainer) && Math.floor(rect.top) <= bottom(scrollContainer);
   };
   var isAtViewportBottom = (el, scrollContainer) => {
     const rect = el.getBoundingClientRect();
-    return Math.ceil(rect.bottom) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.bottom) <= bottom(scrollContainer);
+    return Math.ceil(rect.bottom) >= top(scrollContainer) && Math.floor(rect.bottom) <= bottom(scrollContainer);
   };
   var isWithinViewport = (el, scrollContainer) => {
     const rect = el.getBoundingClientRect();
-    return Math.ceil(rect.top) >= top(scrollContainer) && Math.ceil(rect.left) >= 0 && Math.floor(rect.top) <= bottom(scrollContainer);
+    return Math.ceil(rect.top) >= top(scrollContainer) && Math.floor(rect.top) <= bottom(scrollContainer);
   };
   Hooks.InfiniteScroll = {
     mounted() {
@@ -1474,6 +1474,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.scrollContainer.addEventListener("scroll", this.onScroll);
       } else {
         window.addEventListener("scroll", this.onScroll);
+      }
+    },
+    updated() {
+      if (!this.scrollContainer.isConnected) {
+        this.destroyed();
+        this.mounted();
       }
     },
     destroyed() {
@@ -2282,7 +2288,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         afterphxChildAdded: [],
         aftertransitionsDiscarded: []
       };
-      this.withChildren = opts.withChildren || opts.undoRef || false;
+      this.withChildren = opts.withChildren || opts.undoRef !== void 0 || false;
       this.undoRef = opts.undoRef;
     }
     before(kind, callback) {
@@ -2321,6 +2327,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             targetContainer = clonedTree.querySelector(
               `[data-phx-component="${this.targetCID}"]`
             );
+            if (!targetContainer)
+              return;
           }
         }
       }
@@ -2348,6 +2356,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             if (isJoinPatch) {
               return node.id;
+            }
+            if (dom_default.private(node, "clientsideIdAttribute")) {
+              return node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
             }
             return node.id || node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
           },
@@ -2471,7 +2482,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               phxViewportBottom
             );
             dom_default.cleanChildNodes(toEl, phxUpdate);
+            const isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
+            const focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
             if (this.skipCIDSibling(toEl)) {
+              this.maybeCloneLockedElement(fromEl, isFocusedFormEl);
+              this.copyNestedPrivateLock(fromEl, toEl);
               this.maybeReOrderStream(fromEl);
               return false;
             }
@@ -2499,22 +2514,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             if (fromEl.type === "number" && fromEl.validity && fromEl.validity.badInput) {
               return false;
             }
-            const isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
-            const focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
-            if (fromEl.hasAttribute(PHX_REF_SRC)) {
-              const ref = new ElementRef(fromEl);
-              if (ref.lockRef && (!this.undoRef || !ref.isLockUndoneBy(this.undoRef))) {
-                dom_default.applyStickyOperations(fromEl);
-                const isLocked = fromEl.hasAttribute(PHX_REF_LOCK);
-                const clone2 = isLocked ? dom_default.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null;
-                if (clone2) {
-                  dom_default.putPrivate(fromEl, PHX_REF_LOCK, clone2);
-                  if (!isFocusedFormEl) {
-                    fromEl = clone2;
-                  }
-                }
-              }
-            }
+            fromEl = this.maybeCloneLockedElement(fromEl, isFocusedFormEl);
             if (dom_default.isPhxChild(toEl)) {
               const prevSession = fromEl.getAttribute(PHX_SESSION);
               dom_default.mergeAttrs(fromEl, toEl, { exclude: [PHX_STATIC] });
@@ -2525,13 +2525,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               dom_default.applyStickyOperations(fromEl);
               return false;
             }
-            if (this.undoRef && dom_default.private(toEl, PHX_REF_LOCK)) {
-              dom_default.putPrivate(
-                fromEl,
-                PHX_REF_LOCK,
-                dom_default.private(toEl, PHX_REF_LOCK)
-              );
-            }
+            this.copyNestedPrivateLock(fromEl, toEl);
             dom_default.copyPrivates(toEl, fromEl);
             if (dom_default.isPortalTemplate(toEl)) {
               portalCallbacks.push(() => this.teleport(toEl, morph));
@@ -2713,22 +2707,46 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return;
       }
       if (streamAt === 0) {
-        el.parentElement.insertBefore(el, el.parentElement.firstElementChild);
+        this.moveOrInsertBefore(
+          el.parentElement,
+          el,
+          el.parentElement.firstElementChild
+        );
       } else if (streamAt > 0) {
         const children = Array.from(el.parentElement.children);
         const oldIndex = children.indexOf(el);
         if (streamAt >= children.length - 1) {
-          el.parentElement.appendChild(el);
+          this.moveOrInsertBefore(el.parentElement, el, null);
         } else {
           const sibling = children[streamAt];
           if (oldIndex > streamAt) {
-            el.parentElement.insertBefore(el, sibling);
+            this.moveOrInsertBefore(el.parentElement, el, sibling);
           } else {
-            el.parentElement.insertBefore(el, sibling.nextElementSibling);
+            this.moveOrInsertBefore(
+              el.parentElement,
+              el,
+              sibling.nextElementSibling
+            );
           }
         }
       }
       this.maybeLimitStream(el);
+    }
+    // Reorder a child within its parent. When supported, use the atomic
+    // moveBefore (https://developer.mozilla.org/en-US/docs/Web/API/Node/moveBefore)
+    // so connected custom elements (and other state-bearing nodes like iframes)
+    // are not disconnected and reconnected by the move. Falls back to
+    // insertBefore otherwise. Passing `ref === null` moves to the end.
+    // See also https://github.com/phoenixframework/phoenix_live_view/issues/4212.
+    moveOrInsertBefore(parent, child, ref) {
+      if (typeof parent.moveBefore === "function") {
+        try {
+          parent.moveBefore(child, ref);
+          return;
+        } catch (e) {
+        }
+      }
+      parent.insertBefore(child, ref);
     }
     maybeLimitStream(el) {
       const { limit } = this.getStreamInsert(el);
@@ -2769,6 +2787,25 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     skipCIDSibling(el) {
       return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP);
+    }
+    maybeCloneLockedElement(fromEl, isFocusedFormEl) {
+      if (!fromEl.hasAttribute(PHX_REF_SRC))
+        return fromEl;
+      const ref = new ElementRef(fromEl);
+      if (ref.lockRef === null || this.undoRef !== void 0 && ref.isLockUndoneBy(this.undoRef)) {
+        return fromEl;
+      }
+      dom_default.applyStickyOperations(fromEl);
+      const clone2 = fromEl.hasAttribute(PHX_REF_LOCK) ? dom_default.private(fromEl, PHX_REF_LOCK) || fromEl.cloneNode(true) : null;
+      if (!clone2)
+        return fromEl;
+      dom_default.putPrivate(fromEl, PHX_REF_LOCK, clone2);
+      return isFocusedFormEl ? fromEl : clone2;
+    }
+    copyNestedPrivateLock(fromEl, toEl) {
+      if (this.undoRef === void 0 || !dom_default.private(toEl, PHX_REF_LOCK))
+        return;
+      dom_default.putPrivate(fromEl, PHX_REF_LOCK, dom_default.private(toEl, PHX_REF_LOCK));
     }
     targetCIDContainer(html) {
       if (!this.isCIDPatch()) {
@@ -3707,6 +3744,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const alteredAttrs = sets.map(([attr, _val]) => attr).concat(removes);
       const newSets = prevSets.filter(([attr, _val]) => !alteredAttrs.includes(attr)).concat(sets);
       const newRemoves = prevRemoves.filter((attr) => !alteredAttrs.includes(attr)).concat(removes);
+      if (sets.some(([attr, _val]) => attr === "id")) {
+        dom_default.putPrivate(el, "clientsideIdAttribute", true);
+      }
       dom_default.putSticky(el, "attrs", (currentEl) => {
         newRemoves.forEach((attr) => currentEl.removeAttribute(attr));
         newSets.forEach(([attr, val]) => currentEl.setAttribute(attr, val));
@@ -4611,7 +4651,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
       patch.after("updated", (el) => {
         if (updatedHookIds.has(el.id)) {
-          this.getHook(el).__updated();
+          const hook = this.getHook(el);
+          hook && hook.__updated();
         }
       });
       patch.after("discarded", (el) => {
