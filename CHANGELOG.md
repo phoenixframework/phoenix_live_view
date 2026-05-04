@@ -114,7 +114,7 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
-## v1.2.0-rc.1 (Unreleased)
+## v1.2.0-rc.1 (2026-05-04)
 
 ### Enhancements
 
