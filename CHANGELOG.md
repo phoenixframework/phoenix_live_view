@@ -114,6 +114,12 @@ by setting `phx-ignore-missing-id` or disable it globally with the `:missing_for
 
 See the module documentation or `Phoenix.LiveViewTest` for more information.
 
+## v1.2.0-rc.2 (2026-05-05)
+
+### Bug fixes
+
+* Ensure internal phx-viewport hook does not crash on update if no scroll container is used ([#4214](https://github.com/phoenixframework/phoenix_live_view/issues/4214))
+
 ## v1.2.0-rc.1 (2026-05-04)
 
 ### Enhancements
