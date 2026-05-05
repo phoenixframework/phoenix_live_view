@@ -262,7 +262,7 @@ Hooks.InfiniteScroll = {
   updated() {
     // Check if the scroll container still exists
     // https://github.com/phoenixframework/phoenix_live_view/issues/4169.
-    if (!this.scrollContainer.isConnected) {
+    if (this.scrollContainer && !this.scrollContainer.isConnected) {
       this.destroyed();
       this.mounted();
     }
