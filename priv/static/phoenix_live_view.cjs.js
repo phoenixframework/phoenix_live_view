@@ -1459,7 +1459,7 @@ Hooks.InfiniteScroll = {
     }
   },
   updated() {
-    if (!this.scrollContainer.isConnected) {
+    if (this.scrollContainer && !this.scrollContainer.isConnected) {
       this.destroyed();
       this.mounted();
     }

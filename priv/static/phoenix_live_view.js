@@ -1477,7 +1477,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
     },
     updated() {
-      if (!this.scrollContainer.isConnected) {
+      if (this.scrollContainer && !this.scrollContainer.isConnected) {
         this.destroyed();
         this.mounted();
       }
