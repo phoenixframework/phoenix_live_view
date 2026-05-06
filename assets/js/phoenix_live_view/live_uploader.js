@@ -91,7 +91,7 @@ export default class LiveUploader {
       DOM.updatePrivate(inputEl, "files", [], (existing) =>
         existing.concat(newFiles),
       );
-      inputEl.value = null;
+      inputEl.value = "";
     } else {
       // Reset inputEl files to align output with programmatic changes (i.e. drag and drop)
       if (dataTransfer && dataTransfer.files.length > 0) {

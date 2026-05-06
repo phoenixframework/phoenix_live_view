@@ -506,13 +506,14 @@ export default class DOMPatch {
       this.view.portalElementIds.forEach((id) => {
         const el = document.getElementById(id);
         if (el) {
-          const source = document.getElementById(
-            el.getAttribute(PHX_TELEPORTED_SRC),
-          );
-          if (!source) {
-            el.remove();
-            this.onNodeDiscarded(el);
-            this.view.dropPortalElementId(id);
+          const srcId = el.getAttribute(PHX_TELEPORTED_SRC);
+          if (srcId) {
+            const source = document.getElementById(srcId);
+            if (!source) {
+              el.remove();
+              this.onNodeDiscarded(el);
+              this.view.dropPortalElementId(id);
+            }
           }
         }
       });
@@ -696,15 +697,17 @@ export default class DOMPatch {
 
   maybeLimitStream(el) {
     const { limit } = this.getStreamInsert(el);
-    const children = limit !== null && Array.from(el.parentElement.children);
-    if (limit && limit < 0 && children.length > limit * -1) {
-      children
-        .slice(0, children.length + limit)
-        .forEach((child) => this.removeStreamChildElement(child));
-    } else if (limit && limit >= 0 && children.length > limit) {
-      children
-        .slice(limit)
-        .forEach((child) => this.removeStreamChildElement(child));
+    if (limit !== null) {
+      const children = Array.from(el.parentElement.children);
+      if (limit < 0 && children.length > limit * -1) {
+        children
+          .slice(0, children.length + limit)
+          .forEach((child) => this.removeStreamChildElement(child));
+      } else if (limit >= 0 && children.length > limit) {
+        children
+          .slice(limit)
+          .forEach((child) => this.removeStreamChildElement(child));
+      }
     }
   }
 
@@ -860,7 +863,7 @@ export default class DOMPatch {
       template.innerHTML = source;
       nonce = template.content
         .querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`)
-        .getAttribute("nonce");
+        ?.getAttribute("nonce");
     }
     const script = document.createElement("script");
     script.textContent = el.textContent;

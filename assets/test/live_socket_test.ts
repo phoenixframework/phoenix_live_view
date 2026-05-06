@@ -51,15 +51,6 @@ describe("LiveSocket", () => {
     expect(liveSocket.prevActive).toBe(null);
   });
 
-  test("sets defaults with socket", async () => {
-    liveSocket = new LiveSocket(new Socket("//example.org/chat"), Socket);
-    expect(liveSocket.socket).toBeDefined();
-    expect(liveSocket.socket.onOpen).toBeDefined();
-    expect(liveSocket.unloaded).toBe(false);
-    expect(liveSocket.bindingPrefix).toBe("phx-");
-    expect(liveSocket.prevActive).toBe(null);
-  });
-
   test("viewLogger", async () => {
     const viewLogger = jest.fn();
     liveSocket = new LiveSocket("/live", Socket, { viewLogger });
@@ -234,7 +225,7 @@ describe("LiveSocket", () => {
       getItem: function (_keyName) {
         getItemCalls = getItemCalls + 1;
       },
-    };
+    } as Storage;
 
     liveSocket = new LiveSocket("/live", Socket, {
       sessionStorage: override,

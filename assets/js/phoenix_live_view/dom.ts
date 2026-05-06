@@ -28,6 +28,13 @@ import {
 
 import { logError } from "./utils";
 
+type FormInputLike = HTMLElement & {
+  readonly form?: HTMLFormElement | null;
+  readonly type?: string;
+  readonly validity?: ValidityState;
+  readonly name?: string;
+};
+
 const DOM = {
   byId(id) {
     return document.getElementById(id) || logError(`no id found for ${id}`);
@@ -40,7 +47,11 @@ const DOM = {
     }
   },
 
-  all(node, query, callback) {
+  all(
+    node: Element | Document | DocumentFragment,
+    query: string,
+    callback?: (el: Element) => void,
+  ): Element[] {
     if (!node) {
       return [];
     }
@@ -57,7 +68,7 @@ const DOM = {
     return template.content.childElementCount;
   },
 
-  isUploadInput(el) {
+  isUploadInput(el): el is HTMLInputElement {
     return el.type === "file" && el.getAttribute(PHX_UPLOAD_REF) !== null;
   },
 
@@ -208,7 +219,7 @@ const DOM = {
       ).forEach((parent) => {
         parentCids.add(cid);
         this.all(parent, `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}]`)
-          .map((el) => parseInt(el.getAttribute(PHX_COMPONENT)))
+          .map((el) => parseInt(el.getAttribute(PHX_COMPONENT)!))
           .forEach((childCID) => childrenCids.add(childCID));
       });
     });
@@ -376,7 +387,7 @@ const DOM = {
     }
   },
 
-  triggerCycle(el, key, currentCycle) {
+  triggerCycle(el, key, currentCycle?) {
     const [cycle, trigger] = this.private(el, key);
     if (!currentCycle) {
       currentCycle = cycle;
@@ -491,7 +502,7 @@ const DOM = {
     return null;
   },
 
-  dispatchEvent(target, name, opts = {}) {
+  dispatchEvent(target, name, opts: { bubbles?: boolean; detail?: any } = {}) {
     let defaultBubble = true;
     const isUploadTarget =
       target.nodeName === "INPUT" && target.type === "file";
@@ -524,7 +535,11 @@ const DOM = {
   // merge attributes from source to target
   // if an element is ignored, we only merge data attributes
   // including removing data attributes that are no longer in the source
-  mergeAttrs(target, source, opts = {}) {
+  mergeAttrs(
+    target,
+    source,
+    opts: { exclude?: string[]; isIgnored?: boolean } = {},
+  ) {
     const exclude = new Set(opts.exclude || []);
     const isIgnored = opts.isIgnored;
     const sourceAttrs = source.attributes;
@@ -611,21 +626,27 @@ const DOM = {
     }
   },
 
-  isFormInput(el) {
-    if (el.localName && customElements.get(el.localName)) {
-      // Custom Elements may be form associated. This allows them
-      // to participate within a form's lifecycle, including form
-      // validity and form submissions.
-      // The spec for Form Associated custom elements requires the
-      // custom element's class to contain a static boolean value of `formAssociated`
-      // which identifies this class as allowed to associate to a form.
-      // See https://html.spec.whatwg.org/dev/custom-elements.html#custom-elements-face-example
-      // for details.
-      return customElements.get(el.localName)[`formAssociated`];
+  isFormInput(el: Element | EventTarget | null): el is FormInputLike {
+    if (!(el instanceof HTMLElement)) return false;
+    if (el.localName) {
+      const customEl = customElements.get(el.localName);
+      if (customEl) {
+        // Custom Elements may be form associated. This allows them
+        // to participate within a form's lifecycle, including form
+        // validity and form submissions.
+        // The spec for Form Associated custom elements requires the
+        // custom element's class to contain a static boolean value of `formAssociated`
+        // which identifies this class as allowed to associate to a form.
+        // See https://html.spec.whatwg.org/dev/custom-elements.html#custom-elements-face-example
+        // for details.
+        return (
+          (customEl as { formAssociated?: boolean }).formAssociated === true
+        );
+      }
     }
-
     return (
-      /^(?:input|select|textarea)$/i.test(el.tagName) && el.type !== "button"
+      /^(?:input|select|textarea)$/i.test(el.tagName) &&
+      (el as HTMLInputElement).type !== "button"
     );
   },
 
@@ -650,21 +671,22 @@ const DOM = {
     );
   },
 
-  cleanChildNodes(container, phxUpdate) {
+  cleanChildNodes(container: Element, phxUpdate: string) {
     if (
       DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])
     ) {
-      const toRemove = [];
+      const toRemove: Array<ChildNode> = [];
       container.childNodes.forEach((childNode) => {
-        if (!childNode.id) {
+        if (!("id" in childNode) || !childNode.id) {
           // Skip warning if it's an empty text node (e.g. a new-line)
           const isEmptyTextNode =
             childNode.nodeType === Node.TEXT_NODE &&
+            childNode.nodeValue &&
             childNode.nodeValue.trim() === "";
           if (!isEmptyTextNode && childNode.nodeType !== Node.COMMENT_NODE) {
             logError(
               "only HTML element tags with an id are allowed inside containers with phx-update.\n\n" +
-                `removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"\n\n`,
+                `removing illegal node: "${(("outerHTML" in childNode && (childNode.outerHTML as string)) || childNode.nodeValue || "").trim()}"\n\n`,
             );
           }
           toRemove.push(childNode);
@@ -674,7 +696,11 @@ const DOM = {
     }
   },
 
-  replaceRootContainer(container, tagName, attrs) {
+  replaceRootContainer(
+    container: HTMLElement,
+    tagName: string,
+    attrs: Record<string, string>,
+  ) {
     const retainedAttrs = new Set([
       "id",
       PHX_SESSION,
@@ -697,9 +723,12 @@ const DOM = {
       Object.keys(attrs).forEach((attr) =>
         newContainer.setAttribute(attr, attrs[attr]),
       );
-      retainedAttrs.forEach((attr) =>
-        newContainer.setAttribute(attr, container.getAttribute(attr)),
-      );
+      retainedAttrs.forEach((attr) => {
+        const value = container.getAttribute(attr);
+        if (value !== null) {
+          newContainer.setAttribute(attr, value);
+        }
+      });
       newContainer.innerHTML = container.innerHTML;
       container.replaceWith(newContainer);
       return newContainer;

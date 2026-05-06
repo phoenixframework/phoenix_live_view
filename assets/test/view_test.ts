@@ -681,7 +681,7 @@ describe("View + DOM", function () {
         '<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>';
       view.update({ s: [updatedHtml] }, []);
 
-      expect(liveSocket.socket.closeWasClean).toBe(true);
+      expect(liveSocket.socket["closeWasClean"]).toBe(true);
       expect(view.el.innerHTML).toBe(
         '<form id="form" phx-submit="submit" phx-trigger-action=""><input type="text"></form>',
       );
@@ -705,7 +705,7 @@ describe("View + DOM", function () {
         '<form id="form" phx-submit="submit" phx-trigger-action><input type="text"></form>';
       view.update({ s: [updatedHtml] }, []);
 
-      expect(liveSocket.socket.closeWasClean).toBe(true);
+      expect(liveSocket.socket["closeWasClean"]).toBe(true);
       expect(view.el.innerHTML).toBe(
         '<form id="form" phx-submit="submit" phx-trigger-action=""><input type="text"></form>',
       );
@@ -1591,8 +1591,8 @@ describe("View Hooks", function () {
   });
 
   test("dom hooks", async () => {
-    let fromHTML,
-      toHTML = null;
+    let fromHTML: string | null = null;
+    let toHTML: string | null = null;
     const liveSocket = new LiveSocket("/live", Socket, {
       dom: {
         onBeforeElUpdated(from, to) {

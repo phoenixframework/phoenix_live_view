@@ -21,7 +21,7 @@ export default class EntryUploader {
     }
     this.uploadChannel.leave();
     this.errored = true;
-    clearTimeout(this.chunkTimer);
+    this.chunkTimer != null && clearTimeout(this.chunkTimer);
     this.entry.error(reason);
   }
 
@@ -44,11 +44,11 @@ export default class EntryUploader {
       this.chunkSize + this.offset,
     );
     reader.onload = (e) => {
-      if (e.target.error === null) {
+      if (e.target?.error === null) {
         this.offset += /** @type {ArrayBuffer} */ (e.target.result).byteLength;
         this.pushChunk(/** @type {ArrayBuffer} */ (e.target.result));
       } else {
-        return logError("Read error: " + e.target.error);
+        return logError("Read error: " + e.target?.error);
       }
     };
     reader.readAsArrayBuffer(blob);

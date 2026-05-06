@@ -2,20 +2,21 @@
   "compilerOptions": {
     "target": "es2021",
     "module": "esnext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "allowJs": true,
     "checkJs": true,
     "noEmit": false,
     "strict": false,
+    "noImplicitAny": false,
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
-    "baseUrl": "./assets/js",
     "stripInternal": true,
     "paths": {
-      "*": ["*", "phoenix_live_view/*"]
+      "*": ["./assets/js/*", "./assets/js/phoenix_live_view/*"]
     },
     "declaration": true,
     "emitDeclarationOnly": true,
+    "rootDir": ".",
     "outDir": "./assets/js/types"
   },
   "include": [
