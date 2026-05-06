@@ -53,7 +53,8 @@
     "prettier": "3.5.3",
     "ts-jest": "^29.4.0",
     "typescript": "^5.8.3",
-    "typescript-eslint": "^8.34.0"
+    "typescript-eslint": "^8.34.0",
+    "typedoc": "^0.28.19"
   },
   "scripts": {
     "setup": "mix deps.get && npm install",
@@ -70,6 +71,7 @@
     "typecheck:tests": "tsc -p assets/test/tsconfig.json",
     "cover:merge": "node test/e2e/merge-coverage.js",
     "cover": "npm run test && npm run cover:merge",
-    "cover:report": "npx monocart show-report cover/merged-js/index.html"
+    "cover:report": "npx monocart show-report cover/merged-js/index.html",
+    "docs": "typedoc assets/js/phoenix_live_view/index.ts --readme none --html doc/js"
   }
 }

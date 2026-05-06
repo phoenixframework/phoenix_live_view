@@ -118,7 +118,10 @@ defmodule Phoenix.LiveView.MixProject do
   defp before_closing_body_tag(_), do: ""
 
   defp extras do
-    ["CHANGELOG.md"] ++
+    [
+      "CHANGELOG.md",
+      "JS Documentation": [url: "js/index.html"]
+    ] ++
       Path.wildcard("guides/*/*.md") ++
       Path.wildcard("guides/cheatsheets/*.cheatmd")
   end
@@ -187,6 +190,7 @@ defmodule Phoenix.LiveView.MixProject do
 
   defp aliases do
     [
+      docs: ["docs", &generate_js_docs/1],
       "assets.build": [
         "cmd npm run build",
         "esbuild module",
@@ -196,6 +200,12 @@ defmodule Phoenix.LiveView.MixProject do
       ],
       "assets.watch": ["cmd npm run build -- --watch", "esbuild module --watch"]
     ]
+  end
+
+  defp generate_js_docs(_) do
+    Mix.Task.run("app.start")
+    {_, 0} = System.cmd("npm", ["install"], into: IO.stream())
+    {_, 0} = System.cmd("npm", ["run", "docs"], into: IO.stream())
   end
 
   defp coverage_ignore_modules do
