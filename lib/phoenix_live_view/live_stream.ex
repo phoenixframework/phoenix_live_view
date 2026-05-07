@@ -102,13 +102,12 @@ defmodule Phoenix.LiveView.LiveStream do
         # before rendering; we also remove duplicates to only use the most recent
         # inserts, which, as the items are reversed, are first
         {inserts, _} =
-          for {id, _, _, _, _} = insert <- stream.inserts, reduce: {[], MapSet.new()} do
+          for {id, _, _, _, _} = insert <- stream.inserts, reduce: {[], %{}} do
             {inserts, ids} ->
-              if MapSet.member?(ids, id) do
+              case ids do
                 # skip duplicates
-                {inserts, ids}
-              else
-                {[insert | inserts], MapSet.put(ids, id)}
+                %{^id => true} -> {inserts, ids}
+                %{} -> {[insert | inserts], Map.put(ids, id, true)}
               end
           end
 
