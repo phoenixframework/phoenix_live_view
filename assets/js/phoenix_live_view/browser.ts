@@ -30,7 +30,7 @@ const Browser = {
     );
   },
 
-  pushState(kind, meta, to) {
+  pushState(kind: "replace" | "push", meta: { type: string; scroll?: number; id?: string; position?: number }, to?: string) {
     if (this.canPushState()) {
       if (to !== window.location.href) {
         if (meta.type == "redirect" && meta.scroll) {
@@ -57,32 +57,32 @@ const Browser = {
           }
         });
       }
-    } else {
+    } else if (to) {
       this.redirect(to);
     }
   },
 
-  setCookie(name, value, maxAgeSeconds) {
+  setCookie(name: string, value: string | number, maxAgeSeconds?: number) {
     const expires =
       typeof maxAgeSeconds === "number" ? ` max-age=${maxAgeSeconds};` : "";
     document.cookie = `${name}=${value};${expires} path=/`;
   },
 
-  getCookie(name) {
+  getCookie(name: string) {
     return document.cookie.replace(
       new RegExp(`(?:(?:^|.*;\s*)${name}\s*\=\s*([^;]*).*$)|^.*$`),
       "$1",
     );
   },
 
-  deleteCookie(name) {
+  deleteCookie(name: string) {
     document.cookie = `${name}=; max-age=-1; path=/`;
   },
 
   redirect(
-    toURL,
-    flash,
-    navigate = (url) => {
+    toURL: string,
+    flash: string | null = null,
+    navigate: (url: string) => void = (url) => {
       window.location.href = url;
     },
   ) {
