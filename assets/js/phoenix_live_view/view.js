@@ -2088,7 +2088,8 @@ export default class View {
       newForm.getAttribute(this.binding(PHX_AUTO_RECOVER)) ||
       newForm.getAttribute(this.binding("change"));
     const inputs = Array.from(oldForm.elements).filter(
-      (el) => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange),
+      (el) =>
+        DOM.isFormAssociated(el) && el.name && !el.hasAttribute(phxChange),
     );
     if (inputs.length === 0) {
       callback();

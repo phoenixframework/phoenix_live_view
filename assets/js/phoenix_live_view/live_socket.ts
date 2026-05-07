@@ -1605,11 +1605,11 @@ export default class LiveSocket {
           return;
         }
 
-        if (!DOM.isFormInput(e.target)) {
+        if (!DOM.isFormAssociated(e.target)) {
           return;
         }
 
-        const input = e.target; // FormInputLike
+        const input = e.target;
         const phxChange = this.binding("change");
         if (
           this.blockPhxChangeWhileComposing &&

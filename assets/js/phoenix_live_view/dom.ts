@@ -626,7 +626,19 @@ const DOM = {
     }
   },
 
-  isFormInput(el: Element | EventTarget | null): el is FormInputLike {
+  /**
+   * Returns true if the element is an input that can be focused and edited by the user,
+   * so we can skip patching it if it has focus.
+   */
+  isEditableInput(el: Element | EventTarget | null): el is FormInputLike {
+    return (
+      this.isFormAssociated(el) &&
+      !(el instanceof HTMLButtonElement) &&
+      !(el instanceof HTMLInputElement && el.type === "button")
+    );
+  },
+
+  isFormAssociated(el: Element | EventTarget | null): el is FormInputLike {
     if (!(el instanceof HTMLElement)) return false;
     if (el.localName) {
       const customEl = customElements.get(el.localName);
@@ -645,8 +657,10 @@ const DOM = {
       }
     }
     return (
-      /^(?:input|select|textarea)$/i.test(el.tagName) &&
-      (el as HTMLInputElement).type !== "button"
+      el instanceof HTMLInputElement ||
+      el instanceof HTMLSelectElement ||
+      el instanceof HTMLTextAreaElement ||
+      el instanceof HTMLButtonElement
     );
   },
 

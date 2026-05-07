@@ -327,7 +327,9 @@ export default class DOMPatch {
           );
           DOM.cleanChildNodes(toEl, phxUpdate);
           const isFocusedFormEl =
-            focused && fromEl.isSameNode(focused) && DOM.isFormInput(fromEl);
+            focused &&
+            fromEl.isSameNode(focused) &&
+            DOM.isEditableInput(fromEl);
           const focusedSelectChanged =
             isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
           if (this.skipCIDSibling(toEl)) {
