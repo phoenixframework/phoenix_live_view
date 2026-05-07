@@ -1683,8 +1683,7 @@ defmodule Phoenix.LiveView.Channel do
 
   defp all_async_pids(%{socket: %{private: private}, components: {components, _ids, _}}) do
     :maps.iterator(components)
-    |> collect_async_pids(collect_async_pids(private[:live_async], %{}))
-    |> Map.keys()
+    |> collect_async_pids(collect_async_pids(private[:live_async], []))
   end
 
   defp collect_async_pids(nil, acc), do: acc
@@ -1696,7 +1695,7 @@ defmodule Phoenix.LiveView.Channel do
   defp collect_async_pids(iterator, acc) do
     case :maps.next(iterator) do
       {_key, {_ref, pid, _kind}, iterator} ->
-        collect_async_pids(iterator, Map.put(acc, pid, true))
+        collect_async_pids(iterator, [pid | acc])
 
       {_cid, {_mod, _id, _assigns, private, _prints}, iterator} ->
         collect_async_pids(iterator, collect_async_pids(private[:live_async], acc))
