@@ -1,3 +1,5 @@
+import { type Socket } from "phoenix";
+
 import {
   BINDING_PREFIX,
   CONSECUTIVE_RELOADS,
@@ -49,8 +51,7 @@ import LiveUploader from "./live_uploader";
 import View from "./view";
 import JS from "./js";
 import jsCommands, { EncodedJS, LiveSocketJSCommands } from "./js_commands";
-import { type Socket } from "phoenix";
-import { HooksOptions } from "phoenix_live_view";
+import { HooksOptions } from "./view_hook";
 
 /**
  * Returns true if the given element was touched by a user.
@@ -247,15 +248,15 @@ export default class LiveSocket {
   private defaults: any;
   private prevActive: any;
   private silenced: boolean;
-  private main: any;
-  private outgoingMainEl: any;
-  private clickStartedAtTarget: any;
+  private main: View | null;
+  private outgoingMainEl: HTMLElement | null;
+  private clickStartedAtTarget: EventTarget | null;
   private linkRef: number;
-  private roots: any;
+  private roots: Record<string, View>;
   private href: string;
-  private pendingLink: any;
-  private currentLocation: any;
-  private hooks: any;
+  private pendingLink: string | null;
+  private currentLocation: Location;
+  private hooks: HooksOptions;
   private loaderTimeout: number;
   private reloadWithJitterTimer: ReturnType<typeof setTimeout> | null;
   private maxReloads: number;
@@ -267,18 +268,31 @@ export default class LiveSocket {
   private boundTopLevelEvents: boolean;
   private boundEventNames: Set<string>;
   private blockPhxChangeWhileComposing: boolean;
-  private serverCloseRef: any;
-  private domCallbacks: any;
-  private transitions: any;
+  private serverCloseRef: string | null;
+  private domCallbacks: {
+    jsQuerySelectorAll:
+      | ((
+          sourceEl: HTMLElement,
+          query: string,
+          defaultQuery: () => Element[],
+        ) => Element[])
+      | null;
+    onDocumentPatch?: (start: () => void) => void;
+    onPatchStart: (container: HTMLElement) => void;
+    onPatchEnd: (container: HTMLElement) => void;
+    onNodeAdded: (node: Node) => void;
+    onBeforeElUpdated: (fromEl: Element, toEl: Element) => void;
+  };
+  private transitions: TransitionSet;
   private currentHistoryPosition: number;
 
   /** @internal */
-  params: () => Record<string, unknown>;
+  params: (el: HTMLElement) => Record<string, unknown>;
   /** @internal */
   uploaders: any;
   /** @internal */
   disconnectedTimeout: number;
-  
+
   /**
    * Creates a new LiveSocket instance.
    */
@@ -508,7 +522,7 @@ export default class LiveSocket {
     // remove the socket close listener to avoid trying to handle
     // a server close event when it is actually caused by us disconnecting
     if (this.serverCloseRef) {
-      this.socket.off(this.serverCloseRef);
+      this.socket.off([this.serverCloseRef]);
       this.serverCloseRef = null;
     }
     this.socket.disconnect(callback);
@@ -651,8 +665,8 @@ export default class LiveSocket {
           `exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`,
         ]);
       }
-      if (this.hasPendingLink()) {
-        window.location = this.pendingLink;
+      if (this.pendingLink !== null) {
+        window.location.href = this.pendingLink;
       } else {
         window.location.reload();
       }
@@ -790,12 +804,15 @@ export default class LiveSocket {
     callback: ((linkRef: number) => void) | null = null,
     linkRef = this.setPendingLink(href),
   ) {
+    if (!this.main) {
+      return;
+    }
     const liveReferer = this.currentLocation.href;
-    this.outgoingMainEl = this.outgoingMainEl || this.main.el;
+    this.outgoingMainEl = this.outgoingMainEl || this.main!.el;
 
     const stickies = DOM.findPhxSticky(document) || [];
     const removeEls = DOM.all(
-      this.outgoingMainEl,
+      this.outgoingMainEl!,
       `[${this.binding("remove")}]`,
     ).filter((el) => !DOM.isChildOfAny(el, stickies));
 
@@ -812,7 +829,7 @@ export default class LiveSocket {
           // remove phx-remove els right before we replace the main element
           removeEls.forEach((el) => el.remove());
           stickies.forEach((el) => newMainEl.appendChild(el));
-          this.outgoingMainEl.replaceWith(newMainEl);
+          this.outgoingMainEl!.replaceWith(newMainEl);
           this.outgoingMainEl = null;
           callback && callback(linkRef);
           onDone();
@@ -1124,13 +1141,12 @@ export default class LiveSocket {
 
   /** @internal */
   commitPendingLink(linkRef) {
-    if (this.linkRef !== linkRef) {
+    if (this.linkRef !== linkRef || this.pendingLink === null) {
       return false;
-    } else {
-      this.href = this.pendingLink;
-      this.pendingLink = null;
-      return true;
     }
+    this.href = this.pendingLink;
+    this.pendingLink = null;
+    return true;
   }
 
   /** @internal */
@@ -1348,6 +1364,7 @@ export default class LiveSocket {
             this.maybeScroll(scroll);
           };
           if (
+            this.main &&
             this.main.isConnected() &&
             navType === "patch" &&
             id === this.main.id
@@ -1431,12 +1448,12 @@ export default class LiveSocket {
 
   /** @internal */
   pushHistoryPatch(e, href, linkState, targetEl) {
-    if (!this.isConnected() || !this.main.isMain()) {
+    if (!this.isConnected() || !(this.main && this.main.isMain())) {
       return Browser.redirect(href);
     }
 
     this.withPageLoading({ to: href, kind: "patch" }, (done) => {
-      this.main.pushLinkPatch(e, href, targetEl, (linkRef) => {
+      this.main!.pushLinkPatch(e, href, targetEl, (linkRef) => {
         this.historyPatch(href, linkState, linkRef);
         done();
       });
@@ -1463,7 +1480,7 @@ export default class LiveSocket {
       linkState,
       {
         type: "patch",
-        id: this.main.id,
+        id: this.main!.id,
         position: this.currentHistoryPosition,
       },
       href,
@@ -1481,7 +1498,7 @@ export default class LiveSocket {
     if (clickLoading) {
       targetEl.classList.add("phx-click-loading");
     }
-    if (!this.isConnected() || !this.main.isMain()) {
+    if (!this.isConnected() || !(this.main && this.main.isMain())) {
       return Browser.redirect(href, flash);
     }
 
@@ -1511,7 +1528,7 @@ export default class LiveSocket {
             linkState,
             {
               type: "redirect",
-              id: this.main.id,
+              id: this.main!.id,
               scroll: scroll,
               position: this.currentHistoryPosition,
             },
@@ -1591,23 +1608,17 @@ export default class LiveSocket {
 
     for (const type of ["change" as const, "input" as const]) {
       this.on(type, (e) => {
-        if (
-          e instanceof CustomEvent &&
-          (e.target instanceof HTMLInputElement ||
-            e.target instanceof HTMLSelectElement ||
-            e.target instanceof HTMLTextAreaElement) &&
-          e.target.form === undefined
-        ) {
+        if (!DOM.isFormAssociated(e.target)) {
+          return;
+        }
+
+        if (e instanceof CustomEvent && e.target.form === undefined) {
           // throw on invalid JS.dispatch target and noop if CustomEvent triggered outside JS.dispatch
-          if (e.detail && e.detail.dispatcher && e.target.form === undefined) {
+          if (e.detail && e.detail.dispatcher) {
             throw new Error(
               `dispatching a custom ${type} event is only supported on input elements inside a form`,
             );
           }
-          return;
-        }
-
-        if (!DOM.isFormAssociated(e.target)) {
           return;
         }
 
