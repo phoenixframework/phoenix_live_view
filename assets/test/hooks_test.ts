@@ -14,7 +14,9 @@ describe("InfiniteScroll", () => {
         mounted: jest.fn(),
       };
 
-      expect(() => Hooks.InfiniteScroll.updated.call(ctx)).not.toThrow();
+      expect(() =>
+        Hooks.InfiniteScroll.updated!.call(ctx as any),
+      ).not.toThrow();
       expect(ctx.destroyed).not.toHaveBeenCalled();
       expect(ctx.mounted).not.toHaveBeenCalled();
     });
@@ -27,7 +29,7 @@ describe("InfiniteScroll", () => {
         mounted: jest.fn(),
       };
 
-      Hooks.InfiniteScroll.updated.call(ctx);
+      Hooks.InfiniteScroll.updated!.call(ctx as any);
 
       expect(ctx.destroyed).toHaveBeenCalledTimes(1);
       expect(ctx.mounted).toHaveBeenCalledTimes(1);
@@ -42,7 +44,7 @@ describe("InfiniteScroll", () => {
         mounted: jest.fn(),
       };
 
-      Hooks.InfiniteScroll.updated.call(ctx);
+      Hooks.InfiniteScroll.updated!.call(ctx as any);
 
       expect(ctx.destroyed).not.toHaveBeenCalled();
       expect(ctx.mounted).not.toHaveBeenCalled();
