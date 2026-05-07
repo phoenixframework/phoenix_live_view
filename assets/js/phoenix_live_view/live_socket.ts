@@ -1141,11 +1141,13 @@ export default class LiveSocket {
 
   /** @internal */
   commitPendingLink(linkRef) {
-    if (this.linkRef !== linkRef || this.pendingLink === null) {
+    if (this.linkRef !== linkRef) {
       return false;
     }
-    this.href = this.pendingLink;
-    this.pendingLink = null;
+    if (this.pendingLink !== null) {
+      this.href = this.pendingLink;
+      this.pendingLink = null;
+    }
     return true;
   }
 
