@@ -12,6 +12,11 @@ export type CallbackRef = { event: string; callback: (payload: any) => any };
 
 export type PhxTarget = string | number | HTMLElement;
 
+/**
+ * Defines the lifecycle callbacks and custom methods for a LiveView hook.
+ *
+ * @category JavaScript Hooks
+ */
 export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * The DOM element that the hook is attached to.
@@ -133,7 +138,7 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * Removes a callback registered with `handleEvent`.
    *
-   * @param callbackRef - The reference to the callback to remove.
+   * @param ref - The reference to the callback to remove.
    */
   removeHandleEvent(ref: CallbackRef): void;
 
@@ -160,6 +165,11 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
 
 // based on https://github.com/DefinitelyTyped/DefinitelyTyped/blob/fac1aa75acdddbf4f1a95e98ee2297b54ce4b4c9/types/phoenix_live_view/hooks.d.ts#L26
 // licensed under MIT
+/**
+ * Defines the lifecycle callbacks and custom methods for a LiveView hook.
+ *
+ * @category JavaScript Hooks
+ */
 export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
   /**
    * The mounted callback.
@@ -236,6 +246,8 @@ export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
  * The `this` context within the hook methods (mounted, updated, custom methods, etc.)
  * will refer to the hook instance, providing access to `this.el`, `this.liveSocket`,
  * `this.pushEvent()`, etc., as well as any properties or methods defined on the subclass.
+ *
+ * @category JavaScript Hooks
  */
 export class ViewHook<E extends HTMLElement = HTMLElement>
   implements HookInterface<E>
@@ -251,16 +263,20 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
     return this.__liveSocket();
   }
 
+  /** @internal */
   static makeID() {
     return viewHookID++;
   }
+  /** @internal */
   static elementID(el: HTMLElement) {
     return DOM.private(el, HOOK_ID);
   }
+  /** @internal */
   static deadHook(el: HTMLElement) {
     return DOM.private(el, DEAD_HOOK) === true;
   }
 
+  /** @internal */
   constructor(view: View | null, el: E, callbacks?: Hook) {
     this.el = el;
     this.__attachView(view);
@@ -509,6 +525,9 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
   }
 }
 
+/**
+ * @category JavaScript Hooks
+ */
 export type HooksOptions = Record<string, typeof ViewHook | Hook<any, any>>;
 
 export default ViewHook;

@@ -1,0 +1,4 @@
+{
+  "plugin": ["typedoc-plugin-missing-exports"],
+  "excludeExternals": true
+}

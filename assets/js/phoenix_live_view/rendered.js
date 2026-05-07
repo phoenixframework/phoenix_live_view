@@ -119,6 +119,7 @@ export const modifyRoot = (html, attrs, clearInnerHTML) => {
   return [newHTML, beforeTag, afterTag];
 };
 
+/** @internal */
 export default class Rendered {
   static extract(diff) {
     const { [REPLY]: reply, [EVENTS]: events, [TITLE]: title } = diff;

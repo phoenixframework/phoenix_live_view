@@ -114,7 +114,8 @@ const JS = {
       if (eventType === "change") {
         let { newCid, _target } = args;
         _target =
-          _target || (DOM.isFormInput(sourceEl) ? sourceEl.name : undefined);
+          _target ||
+          (DOM.isFormAssociated(sourceEl) ? sourceEl.name : undefined);
         if (_target) {
           pushOpts._target = _target;
         }

@@ -78,6 +78,7 @@ export const prependFormDataKey = (key, prefix) => {
   return baseKey;
 };
 
+/** @internal */
 export default class View {
   static closestView(el) {
     const liveViewEl = el.closest(PHX_VIEW_SELECTOR);
@@ -179,7 +180,9 @@ export default class View {
   connectParams(liveReferer) {
     const params = this.liveSocket.params(this.el);
     const manifest = DOM.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`)
-      .map((node) => node.src || node.href)
+      .map(
+        (node) => ("src" in node && node.src) || ("href" in node && node.href),
+      )
       .filter((url) => typeof url === "string");
 
     if (manifest.length > 0) {
@@ -215,7 +218,7 @@ export default class View {
     if (this.parent) {
       delete this.root.children[this.parent.id][this.id];
     }
-    clearTimeout(this.loaderTimer);
+    this.loaderTimer != null && clearTimeout(this.loaderTimer);
     const onFinished = () => {
       callback();
       for (const id in this.viewHooks) {
@@ -245,7 +248,7 @@ export default class View {
   }
 
   showLoader(timeout) {
-    clearTimeout(this.loaderTimer);
+    this.loaderTimer != null && clearTimeout(this.loaderTimer);
     if (timeout) {
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout);
     } else {
@@ -263,8 +266,8 @@ export default class View {
   }
 
   hideLoader() {
-    clearTimeout(this.loaderTimer);
-    clearTimeout(this.disconnectedTimer);
+    this.loaderTimer != null && clearTimeout(this.loaderTimer);
+    this.disconnectedTimer != null && clearTimeout(this.disconnectedTimer);
     this.setContainerClasses(PHX_CONNECTED_CLASS);
     this.execAll(this.binding("connected"));
   }
@@ -678,10 +681,17 @@ export default class View {
     const template = document.createElement("template");
     template.innerHTML = html;
 
+    if (!template.content.firstElementChild) {
+      return;
+    }
+
     // we special case <.portal> here and teleport it into our temporary DOM for recovery
     // as we'd otherwise not find teleported forms
     DOM.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
-      template.content.firstElementChild.appendChild(
+      if (!(portalTemplate instanceof HTMLTemplateElement)) {
+        return;
+      }
+      template.content.firstElementChild?.appendChild(
         portalTemplate.content.firstElementChild,
       );
     });
@@ -749,7 +759,9 @@ export default class View {
     if (el.id === this.id) {
       return this;
     } else {
-      return this.children[el.getAttribute(PHX_PARENT_ID)]?.[el.id];
+      return (
+        this.children && this.children[el.getAttribute(PHX_PARENT_ID)]?.[el.id]
+      );
     }
   }
 
@@ -2076,7 +2088,8 @@ export default class View {
       newForm.getAttribute(this.binding(PHX_AUTO_RECOVER)) ||
       newForm.getAttribute(this.binding("change"));
     const inputs = Array.from(oldForm.elements).filter(
-      (el) => DOM.isFormInput(el) && el.name && !el.hasAttribute(phxChange),
+      (el) =>
+        DOM.isFormAssociated(el) && el.name && !el.hasAttribute(phxChange),
     );
     if (inputs.length === 0) {
       callback();
@@ -2187,6 +2200,7 @@ export default class View {
       document,
       `#${CSS.escape(this.id)} form[${phxChange}], [${PHX_TELEPORTED_REF}="${CSS.escape(this.id)}"] form[${phxChange}]`,
     )
+      .filter((form) => form instanceof HTMLFormElement)
       .filter((form) => form.id)
       .filter((form) => form.elements.length > 0)
       .filter(
@@ -2202,7 +2216,9 @@ export default class View {
         // and form.elements returns both the fieldset and the input separately.
         // Because the fieldset is disabled, the input should NOT be sent though.
         // We can only reliably serialize the form by cloning it fully.
-        const clonedForm = form.cloneNode(true);
+        const clonedForm = /** @type {HTMLFormElement} */ (
+          form.cloneNode(true)
+        );
         // we call morphdom to copy any special state
         // like the selected option of a <select> element;
         // any also copy over privates (which contain information about touched fields)

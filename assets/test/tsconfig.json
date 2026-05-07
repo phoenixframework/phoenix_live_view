@@ -5,7 +5,6 @@
     "allowJs": true,
     "checkJs": false,
     "resolveJsonModule": true,
-    "baseUrl": ".",
     "strict": true,
     "noImplicitAny": false,
     "paths": {
