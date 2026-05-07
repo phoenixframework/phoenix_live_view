@@ -1,4 +1,5 @@
 {
   "plugin": ["typedoc-plugin-missing-exports"],
-  "excludeExternals": true
+  "excludeExternals": true,
+  "collapseInternalModule": true
 }
