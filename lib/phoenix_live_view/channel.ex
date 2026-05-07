@@ -387,8 +387,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   def handle_call({@prefix, :async_pids}, _from, state) do
-    pids = state |> all_asyncs() |> Map.keys()
-    {:reply, {:ok, pids}, state}
+    {:reply, {:ok, all_async_pids(state)}, state}
   end
 
   def handle_call({@prefix, :fetch_upload_config, name, cid}, _from, state) do
@@ -1682,29 +1681,28 @@ defmodule Phoenix.LiveView.Channel do
 
   defp maybe_subscribe_to_live_reload(response), do: response
 
-  defp component_asyncs(state) do
-    %{components: {components, _ids, _}} = state
-
-    Enum.reduce(components, %{}, fn {cid, {_mod, _id, _assigns, private, _prints}}, acc ->
-      Map.merge(acc, socket_asyncs(private, cid))
-    end)
+  defp all_async_pids(%{socket: %{private: private}, components: {components, _ids, _}}) do
+    :maps.iterator(components)
+    |> collect_async_pids(collect_async_pids(private[:live_async], %{}))
+    |> Map.keys()
   end
 
-  defp all_asyncs(state) do
-    %{socket: socket} = state
+  defp collect_async_pids(nil, acc), do: acc
 
-    socket.private
-    |> socket_asyncs(nil)
-    |> Map.merge(component_asyncs(state))
+  defp collect_async_pids(ref_pids, acc) when is_map(ref_pids) do
+    collect_async_pids(:maps.iterator(ref_pids), acc)
   end
 
-  defp socket_asyncs(private, cid) do
-    case private do
-      %{live_async: ref_pids} ->
-        Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
+  defp collect_async_pids(iterator, acc) do
+    case :maps.next(iterator) do
+      {_key, {_ref, pid, _kind}, iterator} ->
+        collect_async_pids(iterator, Map.put(acc, pid, true))
 
-      %{} ->
-        %{}
+      {_cid, {_mod, _id, _assigns, private, _prints}, iterator} ->
+        collect_async_pids(iterator, collect_async_pids(private[:live_async], acc))
+
+      :none ->
+        acc
     end
   end
 end
