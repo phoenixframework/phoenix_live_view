@@ -303,8 +303,8 @@ export default class View {
     }
 
     if (isCid(phxTarget)) {
-      const targets = DOM.findComponentNodeList(this.id, phxTarget, dom);
-      if (targets.length === 0) {
+      const target = DOM.findComponent(this.id, phxTarget, dom);
+      if (!target) {
         logError(`no component found matching phx-target of ${phxTarget}`);
       } else {
         callback(this, parseInt(phxTarget));
@@ -521,7 +521,7 @@ export default class View {
       }
     }
     this.attachTrueDocEl();
-    const patch = new DOMPatch(this, this.el, this.id, html, streams, null);
+    const patch = new DOMPatch(this, this.el, html, streams, null);
     patch.markPrunableContentForRemoval();
     this.performPatch(patch, false, true);
     this.joinNewChildren();
@@ -579,7 +579,7 @@ export default class View {
 
     this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
 
-    patch.after("added", (el) => {
+    patch.afterAdded((el) => {
       this.liveSocket.triggerDOM("onNodeAdded", [el]);
       const phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
       const phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
@@ -590,7 +590,7 @@ export default class View {
       }
     });
 
-    patch.after("phxChildAdded", (el) => {
+    patch.afterPhxChildAdded((el) => {
       if (DOM.isPhxSticky(el)) {
         this.liveSocket.joinRootViews();
       } else {
@@ -598,7 +598,7 @@ export default class View {
       }
     });
 
-    patch.before("updated", (fromEl, toEl) => {
+    patch.beforeUpdated((fromEl, toEl) => {
       const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
         updatedHookIds.add(fromEl.id);
@@ -607,20 +607,20 @@ export default class View {
       JS.onBeforeElUpdated(fromEl, toEl);
     });
 
-    patch.after("updated", (el) => {
+    patch.afterUpdated((el) => {
       if (updatedHookIds.has(el.id)) {
         const hook = this.getHook(el);
         hook && hook.__updated();
       }
     });
 
-    patch.after("discarded", (el) => {
+    patch.afterDiscarded((el) => {
       if (el.nodeType === Node.ELEMENT_NODE) {
         removedEls.push(el);
       }
     });
 
-    patch.after("transitionsDiscarded", (els) =>
+    patch.afterTransitionsDiscarded((els) =>
       this.afterElementsRemoved(els, pruneCids),
     );
     patch.perform(isJoinPatch);
@@ -856,7 +856,7 @@ export default class View {
     } else if (!isEmpty(diff)) {
       this.liveSocket.time("full patch complete", () => {
         const [html, streams] = this.renderContainer(diff, "update");
-        const patch = new DOMPatch(this, this.el, this.id, html, streams, null);
+        const patch = new DOMPatch(this, this.el, html, streams, null);
         phxChildrenAdded = this.performPatch(patch, true);
       });
     }
@@ -883,7 +883,7 @@ export default class View {
   componentPatch(diff, cid) {
     if (isEmpty(diff)) return false;
     const { buffer: html, streams } = this.rendered.componentToString(cid);
-    const patch = new DOMPatch(this, this.el, this.id, html, streams, cid);
+    const patch = new DOMPatch(this, this.el, html, streams, cid);
     const childrenAdded = this.performPatch(patch, true);
     return childrenAdded;
   }
@@ -1344,7 +1344,7 @@ export default class View {
     elRef.maybeUndo(ref, phxEvent, (clonedTree) => {
       // we need to perform a full patch on unlocked elements
       // to perform all the necessary logic (like calling updated for hooks, etc.)
-      const patch = new DOMPatch(this, el, this.id, clonedTree, [], null, {
+      const patch = new DOMPatch(this, el, clonedTree, new Set(), null, {
         undoRef: ref,
       });
       const phxChildrenAdded = this.performPatch(patch, true);
@@ -2070,7 +2070,7 @@ export default class View {
 
   targetCtxElement(targetCtx) {
     if (isCid(targetCtx)) {
-      const [target] = DOM.findComponentNodeList(this.id, targetCtx);
+      const target = DOM.findComponent(this.id, targetCtx);
       return target;
     } else if (targetCtx) {
       return targetCtx;
@@ -2260,7 +2260,7 @@ export default class View {
 
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
-      return DOM.findComponentNodeList(this.id, cid).length === 0;
+      return DOM.findComponent(this.id, cid) === null;
     });
 
     const onError = (error) => {
@@ -2282,7 +2282,7 @@ export default class View {
             // See if any of the cids we wanted to destroy were added back,
             // if they were added back, we don't actually destroy them.
             let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
-              return DOM.findComponentNodeList(this.id, cid).length === 0;
+              return DOM.findComponent(this.id, cid) === null;
             });
 
             if (completelyDestroyCIDs.length > 0) {

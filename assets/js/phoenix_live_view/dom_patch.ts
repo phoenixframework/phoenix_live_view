@@ -20,61 +20,107 @@ import {
   PHX_RUNTIME_HOOK,
 } from "./constants";
 
-import { detectDuplicateIds, detectInvalidStreamInserts, isCid } from "./utils";
+import { detectDuplicateIds, detectInvalidStreamInserts } from "./utils";
 import ElementRef from "./element_ref";
 import DOM from "./dom";
 import DOMPostMorphRestorer from "./dom_post_morph_restorer";
 import morphdom from "morphdom";
+import View from "./view";
+import LiveSocket from "./live_socket";
+
+type Stream = Set<any>;
+type MorphdomOptions = Parameters<typeof morphdom>[2] & {
+  // morphdom's types are outdated
+  onBeforeElUpdated: (fromEl: Element, toEl: Element) => boolean | Element;
+};
+type BeforeUpdatedCallback = (fromEl: Element, toEl: Element) => void;
+type AfterAddedCallback = (el: Node) => void;
+type AfterUpdatedCallback = (el: Element) => void;
+type AfterPhxChildAddedCallback = (el: Element) => void;
+type AfterDiscardedCallback = (el: Node) => void;
+type AfterTransitionsDiscardedCallback = (els: Element[]) => void;
 
 export default class DOMPatch {
-  constructor(view, container, id, html, streams, targetCID, opts = {}) {
+  private view: View;
+  private liveSocket: LiveSocket;
+  private container: Element;
+  private rootID: string;
+  private html: string | Node;
+  private streams: Stream;
+  private streamInserts: Record<string, any>;
+  private streamComponentRestore: Record<string, any>;
+  private targetCID: number | null;
+  private pendingRemoves: any[];
+  private phxRemove: string;
+  private targetContainer: Element;
+  private beforeUpdatedCallbacks: BeforeUpdatedCallback[];
+  private afterAddedCallbacks: AfterAddedCallback[];
+  private afterUpdatedCallbacks: AfterUpdatedCallback[];
+  private afterPhxChildAddedCallbacks: AfterPhxChildAddedCallback[];
+  private afterDiscardedCallbacks: AfterDiscardedCallback[];
+  private afterTransitionsDiscardedCallbacks: AfterTransitionsDiscardedCallback[];
+  private withChildren: boolean;
+  private undoRef: number | null;
+
+  constructor(
+    view: View,
+    container: Element,
+    html: string | Node,
+    streams: Set<Stream>,
+    targetCID: number | null,
+    opts: { withChildren?: boolean; undoRef?: number } = {},
+  ) {
     this.view = view;
     this.liveSocket = view.liveSocket;
     this.container = container;
-    this.id = id;
     this.rootID = view.root.id;
     this.html = html;
     this.streams = streams;
     this.streamInserts = {};
     this.streamComponentRestore = {};
     this.targetCID = targetCID;
-    this.cidPatch = isCid(this.targetCID);
     this.pendingRemoves = [];
     this.phxRemove = this.liveSocket.binding("remove");
-    this.targetContainer = this.isCIDPatch()
-      ? this.targetCIDContainer(html)
+    // If we patch a component, we always pass a string
+    this.targetContainer = targetCID
+      ? DOM.getComponent(this.view.id, targetCID)
       : container;
-    this.callbacks = {
-      beforeadded: [],
-      beforeupdated: [],
-      beforephxChildAdded: [],
-      afteradded: [],
-      afterupdated: [],
-      afterdiscarded: [],
-      afterphxChildAdded: [],
-      aftertransitionsDiscarded: [],
-    };
+    this.beforeUpdatedCallbacks = [];
+    this.afterAddedCallbacks = [];
+    this.afterUpdatedCallbacks = [];
+    this.afterPhxChildAddedCallbacks = [];
+    this.afterDiscardedCallbacks = [];
+    this.afterTransitionsDiscardedCallbacks = [];
     // unlock patches pass undoRef and must morph the locked element itself, not
     // only its children. The first client ref is 0, so this must check for the
     // option's presence rather than truthiness.
     this.withChildren =
       opts.withChildren || opts.undoRef !== undefined || false;
-    this.undoRef = opts.undoRef;
+    this.undoRef = opts.undoRef ?? null;
   }
 
-  before(kind, callback) {
-    this.callbacks[`before${kind}`].push(callback);
-  }
-  after(kind, callback) {
-    this.callbacks[`after${kind}`].push(callback);
+  beforeUpdated(callback: BeforeUpdatedCallback) {
+    this.beforeUpdatedCallbacks.push(callback);
   }
 
-  trackBefore(kind, ...args) {
-    this.callbacks[`before${kind}`].forEach((callback) => callback(...args));
+  afterAdded(callback: AfterAddedCallback) {
+    this.afterAddedCallbacks.push(callback);
   }
 
-  trackAfter(kind, ...args) {
-    this.callbacks[`after${kind}`].forEach((callback) => callback(...args));
+  afterUpdated(callback: AfterUpdatedCallback) {
+    this.afterUpdatedCallbacks.push(callback);
+  }
+
+  afterPhxChildAdded(callback: AfterPhxChildAddedCallback) {
+    this.afterPhxChildAddedCallbacks.push(callback);
+  }
+
+  afterDiscarded(callback: AfterDiscardedCallback) {
+    this.afterDiscardedCallbacks.push(callback);
+  }
+
+  afterTransitionsDiscarded(callback: AfterTransitionsDiscardedCallback) {
+    this.afterTransitionsDiscardedCallbacks.push(callback);
   }
 
   markPrunableContentForRemoval() {
@@ -92,11 +138,7 @@ export default class DOMPatch {
     const { view, liveSocket, html, container } = this;
     let targetContainer = this.targetContainer;
 
-    if (this.isCIDPatch() && !this.targetContainer) {
-      return;
-    }
-
-    if (this.isCIDPatch()) {
+    if (this.targetCID) {
       // https://github.com/phoenixframework/phoenix_live_view/pull/3942
       // we need to ensure that no parent is locked
       const closestLock = targetContainer.closest(`[${PHX_REF_LOCK}]`);
@@ -126,23 +168,23 @@ export default class DOMPatch {
     const phxViewportTop = liveSocket.binding(PHX_VIEWPORT_TOP);
     const phxViewportBottom = liveSocket.binding(PHX_VIEWPORT_BOTTOM);
     const phxTriggerExternal = liveSocket.binding(PHX_TRIGGER_ACTION);
-    const added = [];
-    const updates = [];
-    const appendPrependUpdates = [];
+    const added: Array<Node> = [];
+    const updates: Array<Element> = [];
+    const appendPrependUpdates: Array<DOMPostMorphRestorer> = [];
 
     // as the portal target itself could be at the end of the DOM,
     // it may not be present while morphing previous parts;
     // therefore we apply all teleports after the morphing is done+
-    let portalCallbacks = [];
+    let portalCallbacks: Array<() => void> = [];
 
-    let externalFormTriggered = null;
+    let externalFormTriggered: Element | null = null;
 
     const morph = (
       targetContainer,
       source,
       withChildren = this.withChildren,
     ) => {
-      const morphCallbacks = {
+      const morphCallbacks: MorphdomOptions = {
         // normally, we are running with childrenOnly, as the patch HTML for a LV
         // does not include the LV attrs (data-phx-session, etc.)
         // when we are patching a live component, we do want to patch the root element as well;
@@ -150,6 +192,7 @@ export default class DOMPatch {
         childrenOnly:
           targetContainer.getAttribute(PHX_COMPONENT) === null && !withChildren,
         getNodeKey: (node) => {
+          if (!(node instanceof Element)) return null;
           if (DOM.isPhxDestroyed(node)) {
             return null;
           }
@@ -162,19 +205,17 @@ export default class DOMPatch {
           // If ID was touched by JavaScript hook, use PHX_MAGIC_ID for matching.
           // This ensures morphdom can match elements even when JS modifies their IDs.
           if (DOM.private(node, "clientsideIdAttribute")) {
-            return node.getAttribute && node.getAttribute(PHX_MAGIC_ID);
+            return node.getAttribute(PHX_MAGIC_ID);
           }
 
-          return (
-            node.id || (node.getAttribute && node.getAttribute(PHX_MAGIC_ID))
-          );
+          return node.id || node.getAttribute(PHX_MAGIC_ID);
         },
         // skip indexing from children when container is stream
         skipFromChildren: (from) => {
           return from.getAttribute(phxUpdate) === PHX_STREAM;
         },
         // tell morphdom how to add a child
-        addChild: (parent, child) => {
+        addChild: (parent: Element, child: Element) => {
           const { ref, streamAt } = this.getStreamInsert(child);
           if (ref === undefined) {
             return parent.appendChild(child);
@@ -191,7 +232,7 @@ export default class DOMPatch {
               const nonStreamChild = Array.from(parent.children).find(
                 (c) => !c.hasAttribute(PHX_STREAM_REF),
               );
-              parent.insertBefore(child, nonStreamChild);
+              parent.insertBefore(child, nonStreamChild ?? null);
             } else {
               parent.appendChild(child);
             }
@@ -201,6 +242,10 @@ export default class DOMPatch {
           }
         },
         onBeforeNodeAdded: (el) => {
+          if (!(el instanceof Element)) {
+            return el;
+          }
+
           // don't add update_only nodes if they did not already exist
           if (
             this.getStreamInsert(el)?.updateOnly &&
@@ -210,7 +255,6 @@ export default class DOMPatch {
           }
 
           DOM.maintainPrivateHooks(el, el, phxViewportTop, phxViewportBottom);
-          this.trackBefore("added", el);
 
           let morphedEl = el;
           // this is a stream item that was kept on reset, recursively morph it
@@ -223,9 +267,13 @@ export default class DOMPatch {
           return morphedEl;
         },
         onNodeAdded: (el) => {
-          if (el.getAttribute) {
-            this.maybeReOrderStream(el, true);
+          if (!(el instanceof Element)) {
+            added.push(el);
+            return;
           }
+
+          this.maybeReOrderStream(el, true);
+
           // phx-portal handling
           if (DOM.isPortalTemplate(el)) {
             portalCallbacks.push(() => this.teleport(el, morph));
@@ -247,19 +295,24 @@ export default class DOMPatch {
             (DOM.isPhxChild(el) && view.ownsElement(el)) ||
             (DOM.isPhxSticky(el) && view.ownsElement(el.parentNode))
           ) {
-            this.trackAfter("phxChildAdded", el);
+            this.trackAfterPhxChildAdded(el);
           }
 
           // data-phx-runtime-hook
           if (el.nodeName === "SCRIPT" && el.hasAttribute(PHX_RUNTIME_HOOK)) {
-            this.handleRuntimeHook(el, source);
+            this.handleRuntimeHook(el as HTMLScriptElement, source);
           }
 
           added.push(el);
         },
         onNodeDiscarded: (el) => this.onNodeDiscarded(el),
         onBeforeNodeDiscarded: (el) => {
-          if (el.getAttribute && el.getAttribute(PHX_PRUNE) !== null) {
+          // Non-element nodes can always be discarded
+          if (!(el instanceof Element)) {
+            return true;
+          }
+
+          if (el.getAttribute(PHX_PRUNE) !== null) {
             return true;
           }
           if (
@@ -274,7 +327,7 @@ export default class DOMPatch {
             return false;
           }
           // don't remove teleported elements
-          if (el.getAttribute && el.getAttribute(PHX_TELEPORTED_REF)) {
+          if (el.getAttribute(PHX_TELEPORTED_REF)) {
             return false;
           }
           if (this.maybePendingRemove(el)) {
@@ -288,11 +341,11 @@ export default class DOMPatch {
             // if the portal template itself is removed, remove the teleported element as well;
             // we also perform a check after morphdom is finished to catch parent removals
             const teleportedEl = document.getElementById(
-              el.content.firstElementChild.id,
+              el.content.firstElementChild?.id || "",
             );
             if (teleportedEl) {
               teleportedEl.remove();
-              morphCallbacks.onNodeDiscarded(teleportedEl);
+              morphCallbacks.onNodeDiscarded!(teleportedEl);
               this.view.dropPortalElementId(teleportedEl.id);
             }
           }
@@ -314,9 +367,9 @@ export default class DOMPatch {
             fromEl.isSameNode(targetContainer) &&
             fromEl.id !== toEl.id
           ) {
-            morphCallbacks.onNodeDiscarded(fromEl);
+            morphCallbacks.onNodeDiscarded!(fromEl);
             fromEl.replaceWith(toEl);
-            return morphCallbacks.onNodeAdded(toEl);
+            return morphCallbacks.onNodeAdded!(toEl);
           }
           DOM.syncPendingAttrs(fromEl, toEl);
           DOM.maintainPrivateHooks(
@@ -361,7 +414,7 @@ export default class DOMPatch {
             DOM.isIgnored(fromEl, phxUpdate) ||
             (fromEl.form && fromEl.form.isSameNode(externalFormTriggered))
           ) {
-            this.trackBefore("updated", fromEl, toEl);
+            this.trackBeforeUpdated(fromEl, toEl);
             DOM.mergeAttrs(fromEl, toEl, {
               isIgnored: DOM.isIgnored(fromEl, phxUpdate),
             });
@@ -421,7 +474,7 @@ export default class DOMPatch {
             fromEl.type !== "hidden" &&
             !focusedSelectChanged
           ) {
-            this.trackBefore("updated", fromEl, toEl);
+            this.trackBeforeUpdated(fromEl, toEl);
             DOM.mergeFocusedInput(fromEl, toEl);
             DOM.syncAttrsToProps(fromEl);
             updates.push(fromEl);
@@ -444,7 +497,7 @@ export default class DOMPatch {
 
             DOM.syncAttrsToProps(toEl);
             DOM.applyStickyOperations(toEl);
-            this.trackBefore("updated", fromEl, toEl);
+            this.trackBeforeUpdated(fromEl, toEl);
             return fromEl;
           }
         },
@@ -453,8 +506,7 @@ export default class DOMPatch {
       morphdom(targetContainer, source, morphCallbacks);
     };
 
-    this.trackBefore("added", container);
-    this.trackBefore("updated", container, container);
+    this.trackBeforeUpdated(container, container);
 
     liveSocket.time("morphdom", () => {
       this.streams.forEach(([ref, inserts, deleteIds, reset]) => {
@@ -547,8 +599,8 @@ export default class DOMPatch {
       DOM.restoreFocus(focused, selectionStart, selectionEnd),
     );
     DOM.dispatchEvent(document, "phx:update");
-    added.forEach((el) => this.trackAfter("added", el));
-    updates.forEach((el) => this.trackAfter("updated", el));
+    added.forEach((el) => this.trackAfterAdded(el));
+    updates.forEach((el) => this.trackAfterUpdated(el));
 
     this.transitionPendingRemoves();
 
@@ -578,15 +630,39 @@ export default class DOMPatch {
     return true;
   }
 
-  onNodeDiscarded(el) {
+  private trackBeforeUpdated(fromEl: Element, toEl: Element) {
+    this.beforeUpdatedCallbacks.forEach((cb) => cb(fromEl, toEl));
+  }
+
+  private trackAfterAdded(el: Node) {
+    this.afterAddedCallbacks.forEach((cb) => cb(el));
+  }
+
+  private trackAfterUpdated(el: Element) {
+    this.afterUpdatedCallbacks.forEach((cb) => cb(el));
+  }
+
+  private trackAfterPhxChildAdded(el: Element) {
+    this.afterPhxChildAddedCallbacks.forEach((cb) => cb(el));
+  }
+
+  private trackAfterDiscarded(el: Node) {
+    this.afterDiscardedCallbacks.forEach((cb) => cb(el));
+  }
+
+  private trackAfterTransitionsDiscarded(els: Element[]) {
+    this.afterTransitionsDiscardedCallbacks.forEach((cb) => cb(els));
+  }
+
+  private onNodeDiscarded(el) {
     // nested view handling
     if (DOM.isPhxChild(el) || DOM.isPhxSticky(el)) {
       this.liveSocket.destroyViewByEl(el);
     }
-    this.trackAfter("discarded", el);
+    this.trackAfterDiscarded(el);
   }
 
-  maybePendingRemove(node) {
+  private maybePendingRemove(node) {
     if (node.getAttribute && node.getAttribute(this.phxRemove) !== null) {
       this.pendingRemoves.push(node);
       return true;
@@ -595,7 +671,7 @@ export default class DOMPatch {
     }
   }
 
-  removeStreamChildElement(child, force = false) {
+  private removeStreamChildElement(child, force = false) {
     // make sure to only remove elements owned by the current view
     // see https://github.com/phoenixframework/phoenix_live_view/issues/3047
     // and https://github.com/phoenixframework/phoenix_live_view/issues/3681
@@ -617,18 +693,18 @@ export default class DOMPatch {
     }
   }
 
-  getStreamInsert(el) {
+  private getStreamInsert(el) {
     const insert = el.id ? this.streamInserts[el.id] : {};
     return insert || {};
   }
 
-  setStreamRef(el, ref) {
+  private setStreamRef(el, ref) {
     DOM.putSticky(el, PHX_STREAM_REF, (el) =>
       el.setAttribute(PHX_STREAM_REF, ref),
     );
   }
 
-  maybeReOrderStream(el, isNew) {
+  private maybeReOrderStream(el: Element, isNew = false) {
     const { ref, streamAt, reset } = this.getStreamInsert(el);
     if (streamAt === undefined) {
       return;
@@ -684,7 +760,7 @@ export default class DOMPatch {
   // are not disconnected and reconnected by the move. Falls back to
   // insertBefore otherwise. Passing `ref === null` moves to the end.
   // See also https://github.com/phoenixframework/phoenix_live_view/issues/4212.
-  moveOrInsertBefore(parent, child, ref) {
+  private moveOrInsertBefore(parent, child, ref) {
     if (typeof parent.moveBefore === "function") {
       try {
         parent.moveBefore(child, ref);
@@ -697,7 +773,7 @@ export default class DOMPatch {
     parent.insertBefore(child, ref);
   }
 
-  maybeLimitStream(el) {
+  private maybeLimitStream(el) {
     const { limit } = this.getStreamInsert(el);
     if (limit !== null) {
       const children = Array.from(el.parentElement.children);
@@ -713,7 +789,7 @@ export default class DOMPatch {
     }
   }
 
-  transitionPendingRemoves() {
+  private transitionPendingRemoves() {
     const { pendingRemoves, liveSocket } = this;
     if (pendingRemoves.length > 0) {
       liveSocket.transitionRemoves(pendingRemoves, () => {
@@ -724,12 +800,12 @@ export default class DOMPatch {
           }
           el.remove();
         });
-        this.trackAfter("transitionsDiscarded", pendingRemoves);
+        this.trackAfterTransitionsDiscarded(pendingRemoves);
       });
     }
   }
 
-  isChangedSelect(fromEl, toEl) {
+  private isChangedSelect(fromEl, toEl) {
     if (!(fromEl instanceof HTMLSelectElement) || fromEl.multiple) {
       return false;
     }
@@ -745,23 +821,19 @@ export default class DOMPatch {
     return !fromEl.isEqualNode(toEl);
   }
 
-  isCIDPatch() {
-    return this.cidPatch;
-  }
-
-  skipCIDSibling(el) {
+  private skipCIDSibling(el) {
     return el.nodeType === Node.ELEMENT_NODE && el.hasAttribute(PHX_SKIP);
   }
 
-  maybeCloneLockedElement(fromEl, isFocusedFormEl) {
+  private maybeCloneLockedElement(fromEl, isFocusedFormEl) {
     if (!fromEl.hasAttribute(PHX_REF_SRC)) return fromEl;
 
     const ref = new ElementRef(fromEl);
-    // Only perform the clone step while the element remains locked. lockRef can
-    // be 0 for the first event, so compare against null/undefined explicitly.
+    // Only perform the clone step while the element remains locked. lockRef and
+    // undoRef can be 0 for the first event, so compare against null explicitly.
     if (
       ref.lockRef === null ||
-      (this.undoRef !== undefined && ref.isLockUndoneBy(this.undoRef))
+      (this.undoRef !== null && ref.isLockUndoneBy(this.undoRef))
     ) {
       return fromEl;
     }
@@ -776,36 +848,21 @@ export default class DOMPatch {
     return isFocusedFormEl ? fromEl : clone;
   }
 
-  copyNestedPrivateLock(fromEl, toEl) {
+  private copyNestedPrivateLock(fromEl, toEl) {
     // During unlock morphs, toEl may be the private clone that accumulated a
     // nested locked subtree. Copy that private clone back to fromEl before the
     // outer unlock finishes so the nested element can apply its own ack later.
-    // undoRef can be 0, so presence is checked with undefined.
-    if (this.undoRef === undefined || !DOM.private(toEl, PHX_REF_LOCK)) return;
+    // undoRef can be 0, so presence is checked against null.
+    if (this.undoRef === null || !DOM.private(toEl, PHX_REF_LOCK)) return;
 
     DOM.putPrivate(fromEl, PHX_REF_LOCK, DOM.private(toEl, PHX_REF_LOCK));
   }
 
-  targetCIDContainer(html) {
-    if (!this.isCIDPatch()) {
-      return;
-    }
-    const [first, ...rest] = DOM.findComponentNodeList(
-      this.view.id,
-      this.targetCID,
-    );
-    if (rest.length === 0 && DOM.childNodeLength(html) === 1) {
-      return first;
-    } else {
-      return first && first.parentNode;
-    }
-  }
-
-  indexOf(parent, child) {
+  private indexOf(parent, child) {
     return Array.from(parent.children).indexOf(child);
   }
 
-  teleport(el, morph) {
+  private teleport(el, morph) {
     const targetSelector = el.getAttribute(PHX_PORTAL);
     const portalContainer = document.querySelector(targetSelector);
     if (!portalContainer) {
@@ -855,17 +912,17 @@ export default class DOMPatch {
     this.view.pushPortalElementId(toTeleport.id);
   }
 
-  handleRuntimeHook(el, source) {
+  private handleRuntimeHook(el: HTMLScriptElement, source: string) {
     // usually, scripts are not executed when morphdom adds them to the DOM
     // we special case runtime colocated hooks
-    const name = el.getAttribute(PHX_RUNTIME_HOOK);
+    const name = el.getAttribute(PHX_RUNTIME_HOOK)!;
     let nonce = el.hasAttribute("nonce") ? el.getAttribute("nonce") : null;
     if (el.hasAttribute("nonce")) {
       const template = document.createElement("template");
       template.innerHTML = source;
       nonce = template.content
         .querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`)
-        ?.getAttribute("nonce");
+        ?.getAttribute("nonce") ?? null;
     }
     const script = document.createElement("script");
     script.textContent = el.textContent;

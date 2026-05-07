@@ -5,16 +5,26 @@ import DOM from "./dom";
 export default class DOMPostMorphRestorer {
   private containerId: string;
   private updateType: "append" | "prepend";
-  private elementsToModify: { elementId: string; previousElementId: string | null }[];
+  private elementsToModify: {
+    elementId: string;
+    previousElementId: string | null;
+  }[];
   private elementIdsToAdd: string[];
 
-  constructor(containerBefore: HTMLElement, containerAfter: HTMLElement, updateType: "append" | "prepend") {
+  constructor(
+    containerBefore: Element,
+    containerAfter: Element,
+    updateType: "append" | "prepend",
+  ) {
     const idsBefore = new Set();
     const idsAfter = new Set(
       [...containerAfter.children].map((child) => child.id),
     );
 
-    const elementsToModify: Array<{ elementId: string; previousElementId: string | null }> = [];
+    const elementsToModify: Array<{
+      elementId: string;
+      previousElementId: string | null;
+    }> = [];
 
     Array.from(containerBefore.children).forEach((child) => {
       if (child.id) {

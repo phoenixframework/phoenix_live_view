@@ -39,7 +39,7 @@ function performPatch(view, container, htmlString) {
   const tempDiv = document.createElement("div");
   tempDiv.innerHTML = htmlString;
 
-  const domPatch = new DOMPatch(view, container, view.id, tempDiv, [], null);
+  const domPatch = new DOMPatch(view, container, tempDiv, new Set(), null);
   domPatch.perform(false);
 }
 

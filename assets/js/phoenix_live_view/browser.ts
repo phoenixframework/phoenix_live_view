@@ -30,7 +30,11 @@ const Browser = {
     );
   },
 
-  pushState(kind: "replace" | "push", meta: { type: string; scroll?: number; id?: string; position?: number }, to?: string) {
+  pushState(
+    kind: "replace" | "push",
+    meta: { type: string; scroll?: number; id?: string; position?: number },
+    to?: string,
+  ) {
     if (this.canPushState()) {
       if (to !== window.location.href) {
         if (meta.type == "redirect" && meta.scroll) {

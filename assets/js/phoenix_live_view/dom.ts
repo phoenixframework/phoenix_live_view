@@ -87,11 +87,20 @@ const DOM = {
     );
   },
 
-  findComponentNodeList(viewId, cid, doc = document) {
-    return this.all(
-      doc,
+  findComponent(viewId: string, cid: number, doc = document): Element | null {
+    return doc.querySelector(
       `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
     );
+  },
+
+  getComponent(viewId: string, cid: number, doc = document): Element {
+    const el = this.findComponent(viewId, cid, doc);
+    if (!el) {
+      throw new Error(
+        `no component found matching viewId ${viewId} and cid ${cid}`,
+      );
+    }
+    return el;
   },
 
   isPhxDestroyed(node) {
@@ -481,7 +490,7 @@ const DOM = {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
   },
 
-  isPortalTemplate(el) {
+  isPortalTemplate(el): el is HTMLTemplateElement {
     return el.tagName === "TEMPLATE" && el.hasAttribute(PHX_PORTAL);
   },
 
@@ -603,7 +612,7 @@ const DOM = {
     }
   },
 
-  hasSelectionRange(el) {
+  hasSelectionRange(el): el is HTMLInputElement | HTMLTextAreaElement {
     return (
       el.setSelectionRange && (el.type === "text" || el.type === "textarea")
     );

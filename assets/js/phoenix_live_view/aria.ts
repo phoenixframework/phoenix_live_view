@@ -1,5 +1,8 @@
 const ARIA = {
-  anyOf(instance: unknown, classes: (new (...args: any[]) => unknown)[]): boolean {
+  anyOf(
+    instance: unknown,
+    classes: (new (...args: any[]) => unknown)[],
+  ): boolean {
     return classes.some((name) => instance instanceof name);
   },
 
