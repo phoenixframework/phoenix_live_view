@@ -37,7 +37,7 @@ var LiveView = (() => {
   // js/phoenix_live_view/index.ts
   var phoenix_live_view_exports = {};
   __export(phoenix_live_view_exports, {
-    LiveSocket: () => LiveSocket2,
+    LiveSocket: () => LiveSocket,
     ViewHook: () => ViewHook,
     createHook: () => createHook,
     getFileURLForUpload: () => getFileURLForUpload,
@@ -186,7 +186,7 @@ var LiveView = (() => {
       }
       this.uploadChannel.leave();
       this.errored = true;
-      clearTimeout(this.chunkTimer);
+      this.chunkTimer != null && clearTimeout(this.chunkTimer);
       this.entry.error(reason);
     }
     upload() {
@@ -203,7 +203,8 @@ var LiveView = (() => {
         this.chunkSize + this.offset
       );
       reader.onload = (e) => {
-        if (e.target.error === null) {
+        var _a, _b;
+        if (((_a = e.target) == null ? void 0 : _a.error) === null) {
           this.offset += /** @type {ArrayBuffer} */
           e.target.result.byteLength;
           this.pushChunk(
@@ -211,7 +212,7 @@ var LiveView = (() => {
             e.target.result
           );
         } else {
-          return logError("Read error: " + e.target.error);
+          return logError("Read error: " + ((_b = e.target) == null ? void 0 : _b.error));
         }
       };
       reader.readAsArrayBuffer(blob);
@@ -396,7 +397,7 @@ var LiveView = (() => {
   };
   var browser_default = Browser;
 
-  // js/phoenix_live_view/dom.js
+  // js/phoenix_live_view/dom.ts
   var DOM = {
     byId(id) {
       return document.getElementById(id) || logError(`no id found for ${id}`);
@@ -836,11 +837,23 @@ var LiveView = (() => {
         focused.setSelectionRange(selectionStart, selectionEnd);
       }
     },
-    isFormInput(el) {
-      if (el.localName && customElements.get(el.localName)) {
-        return customElements.get(el.localName)[`formAssociated`];
+    /**
+     * Returns true if the element is an input that can be focused and edited by the user,
+     * so we can skip patching it if it has focus.
+     */
+    isEditableInput(el) {
+      return this.isFormAssociated(el) && !(el instanceof HTMLButtonElement) && !(el instanceof HTMLInputElement && el.type === "button");
+    },
+    isFormAssociated(el) {
+      if (!(el instanceof HTMLElement))
+        return false;
+      if (el.localName) {
+        const customEl = customElements.get(el.localName);
+        if (customEl) {
+          return customEl.formAssociated === true;
+        }
       }
-      return /^(?:input|select|textarea)$/i.test(el.tagName) && el.type !== "button";
+      return el instanceof HTMLInputElement || el instanceof HTMLSelectElement || el instanceof HTMLTextAreaElement || el instanceof HTMLButtonElement;
     },
     syncAttrsToProps(el) {
       if (el instanceof HTMLInputElement && CHECKABLE_INPUTS.indexOf(el.type.toLocaleLowerCase()) >= 0) {
@@ -857,13 +870,13 @@ var LiveView = (() => {
       if (DOM.isPhxUpdate(container, phxUpdate, ["append", "prepend", PHX_STREAM])) {
         const toRemove = [];
         container.childNodes.forEach((childNode) => {
-          if (!childNode.id) {
-            const isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue.trim() === "";
+          if (!("id" in childNode) || !childNode.id) {
+            const isEmptyTextNode = childNode.nodeType === Node.TEXT_NODE && childNode.nodeValue && childNode.nodeValue.trim() === "";
             if (!isEmptyTextNode && childNode.nodeType !== Node.COMMENT_NODE) {
               logError(
                 `only HTML element tags with an id are allowed inside containers with phx-update.
 
-removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
+removing illegal node: "${("outerHTML" in childNode && childNode.outerHTML || childNode.nodeValue || "").trim()}"
 
 `
               );
@@ -891,9 +904,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         Object.keys(attrs).forEach(
           (attr) => newContainer.setAttribute(attr, attrs[attr])
         );
-        retainedAttrs.forEach(
-          (attr) => newContainer.setAttribute(attr, container.getAttribute(attr))
-        );
+        retainedAttrs.forEach((attr) => {
+          const value = container.getAttribute(attr);
+          if (value !== null) {
+            newContainer.setAttribute(attr, value);
+          }
+        });
         newContainer.innerHTML = container.innerHTML;
         container.replaceWith(newContainer);
         return newContainer;
@@ -1145,7 +1161,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           [],
           (existing) => existing.concat(newFiles)
         );
-        inputEl.value = null;
+        inputEl.value = "";
       } else {
         if (dataTransfer && dataTransfer.files.length > 0) {
           inputEl.files = dataTransfer.files;
@@ -2484,7 +2500,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               phxViewportBottom
             );
             dom_default.cleanChildNodes(toEl, phxUpdate);
-            const isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isFormInput(fromEl);
+            const isFocusedFormEl = focused && fromEl.isSameNode(focused) && dom_default.isEditableInput(fromEl);
             const focusedSelectChanged = isFocusedFormEl && this.isChangedSelect(fromEl, toEl);
             if (this.skipCIDSibling(toEl)) {
               this.maybeCloneLockedElement(fromEl, isFocusedFormEl);
@@ -2600,13 +2616,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         this.view.portalElementIds.forEach((id) => {
           const el = document.getElementById(id);
           if (el) {
-            const source = document.getElementById(
-              el.getAttribute(PHX_TELEPORTED_SRC)
-            );
-            if (!source) {
-              el.remove();
-              this.onNodeDiscarded(el);
-              this.view.dropPortalElementId(id);
+            const srcId = el.getAttribute(PHX_TELEPORTED_SRC);
+            if (srcId) {
+              const source = document.getElementById(srcId);
+              if (!source) {
+                el.remove();
+                this.onNodeDiscarded(el);
+                this.view.dropPortalElementId(id);
+              }
             }
           }
         });
@@ -2752,11 +2769,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     maybeLimitStream(el) {
       const { limit } = this.getStreamInsert(el);
-      const children = limit !== null && Array.from(el.parentElement.children);
-      if (limit && limit < 0 && children.length > limit * -1) {
-        children.slice(0, children.length + limit).forEach((child) => this.removeStreamChildElement(child));
-      } else if (limit && limit >= 0 && children.length > limit) {
-        children.slice(limit).forEach((child) => this.removeStreamChildElement(child));
+      if (limit !== null) {
+        const children = Array.from(el.parentElement.children);
+        if (limit < 0 && children.length > limit * -1) {
+          children.slice(0, children.length + limit).forEach((child) => this.removeStreamChildElement(child));
+        } else if (limit >= 0 && children.length > limit) {
+          children.slice(limit).forEach((child) => this.removeStreamChildElement(child));
+        }
       }
     }
     transitionPendingRemoves() {
@@ -2862,12 +2881,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.view.pushPortalElementId(toTeleport.id);
     }
     handleRuntimeHook(el, source) {
+      var _a;
       const name = el.getAttribute(PHX_RUNTIME_HOOK);
       let nonce = el.hasAttribute("nonce") ? el.getAttribute("nonce") : null;
       if (el.hasAttribute("nonce")) {
         const template = document.createElement("template");
         template.innerHTML = source;
-        nonce = template.content.querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`).getAttribute("nonce");
+        nonce = (_a = template.content.querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`)) == null ? void 0 : _a.getAttribute("nonce");
       }
       const script = document.createElement("script");
       script.textContent = el.textContent;
@@ -3389,7 +3409,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
         if (eventType === "change") {
           let { newCid, _target } = args;
-          _target = _target || (dom_default.isFormInput(sourceEl) ? sourceEl.name : void 0);
+          _target = _target || (dom_default.isFormAssociated(sourceEl) ? sourceEl.name : void 0);
           if (_target) {
             pushOpts._target = _target;
           }
@@ -3935,15 +3955,19 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     get liveSocket() {
       return this.__liveSocket();
     }
+    /** @internal */
     static makeID() {
       return viewHookID++;
     }
+    /** @internal */
     static elementID(el) {
       return dom_default.private(el, HOOK_ID);
     }
+    /** @internal */
     static deadHook(el) {
       return dom_default.private(el, DEAD_HOOK) === true;
     }
+    /** @internal */
     constructor(view, el, callbacks) {
       this.el = el;
       this.__attachView(view);
@@ -4238,7 +4262,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
     connectParams(liveReferer) {
       const params = this.liveSocket.params(this.el);
-      const manifest = dom_default.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`).map((node) => node.src || node.href).filter((url) => typeof url === "string");
+      const manifest = dom_default.all(document, `[${this.binding(PHX_TRACK_STATIC)}]`).map(
+        (node) => "src" in node && node.src || "href" in node && node.href
+      ).filter((url) => typeof url === "string");
       if (manifest.length > 0) {
         params["_track_static"] = manifest;
       }
@@ -4268,7 +4294,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (this.parent) {
         delete this.root.children[this.parent.id][this.id];
       }
-      clearTimeout(this.loaderTimer);
+      this.loaderTimer != null && clearTimeout(this.loaderTimer);
       const onFinished = () => {
         callback();
         for (const id in this.viewHooks) {
@@ -4290,7 +4316,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.el.classList.add(...classes);
     }
     showLoader(timeout) {
-      clearTimeout(this.loaderTimer);
+      this.loaderTimer != null && clearTimeout(this.loaderTimer);
       if (timeout) {
         this.loaderTimer = setTimeout(() => this.showLoader(), timeout);
       } else {
@@ -4308,8 +4334,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       );
     }
     hideLoader() {
-      clearTimeout(this.loaderTimer);
-      clearTimeout(this.disconnectedTimer);
+      this.loaderTimer != null && clearTimeout(this.loaderTimer);
+      this.disconnectedTimer != null && clearTimeout(this.disconnectedTimer);
       this.setContainerClasses(PHX_CONNECTED_CLASS);
       this.execAll(this.binding("connected"));
     }
@@ -4643,8 +4669,15 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const oldForms = this.root.formsForRecovery;
       const template = document.createElement("template");
       template.innerHTML = html;
+      if (!template.content.firstElementChild) {
+        return;
+      }
       dom_default.all(template.content, `[${PHX_PORTAL}]`).forEach((portalTemplate) => {
-        template.content.firstElementChild.appendChild(
+        var _a;
+        if (!(portalTemplate instanceof HTMLTemplateElement)) {
+          return;
+        }
+        (_a = template.content.firstElementChild) == null ? void 0 : _a.appendChild(
           portalTemplate.content.firstElementChild
         );
       });
@@ -4689,7 +4722,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       if (el.id === this.id) {
         return this;
       } else {
-        return (_a = this.children[el.getAttribute(PHX_PARENT_ID)]) == null ? void 0 : _a[el.id];
+        return this.children && ((_a = this.children[el.getAttribute(PHX_PARENT_ID)]) == null ? void 0 : _a[el.id]);
       }
     }
     destroyDescendent(id) {
@@ -5764,7 +5797,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       const phxTarget = newForm.getAttribute(this.binding("target")) || newForm;
       const phxEvent = newForm.getAttribute(this.binding(PHX_AUTO_RECOVER)) || newForm.getAttribute(this.binding("change"));
       const inputs = Array.from(oldForm.elements).filter(
-        (el) => dom_default.isFormInput(el) && el.name && !el.hasAttribute(phxChange)
+        (el) => dom_default.isFormAssociated(el) && el.name && !el.hasAttribute(phxChange)
       );
       if (inputs.length === 0) {
         callback();
@@ -5839,10 +5872,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       return dom_default.all(
         document,
         `#${CSS.escape(this.id)} form[${phxChange}], [${PHX_TELEPORTED_REF}="${CSS.escape(this.id)}"] form[${phxChange}]`
-      ).filter((form) => form.id).filter((form) => form.elements.length > 0).filter(
+      ).filter((form) => form instanceof HTMLFormElement).filter((form) => form.id).filter((form) => form.elements.length > 0).filter(
         (form) => form.getAttribute(this.binding(PHX_AUTO_RECOVER)) !== "ignore"
       ).map((form) => {
-        const clonedForm = form.cloneNode(true);
+        const clonedForm = (
+          /** @type {HTMLFormElement} */
+          form.cloneNode(true)
+        );
         morphdom_esm_default(clonedForm, form, {
           onBeforeElUpdated: (fromEl, toEl) => {
             dom_default.copyPrivates(fromEl, toEl);
@@ -5934,9 +5970,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
     }
   };
 
-  // js/phoenix_live_view/live_socket.js
+  // js/phoenix_live_view/live_socket.ts
   var isUsedInput = (el) => dom_default.isUsedInput(el);
   var LiveSocket = class {
+    /**
+     * Creates a new LiveSocket instance.
+     */
     constructor(url, phxSocket, opts = {}) {
       this.unloaded = false;
       if (!phxSocket || phxSocket.constructor.name === "Object") {
@@ -5950,7 +5989,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       this.socket = new phxSocket(url, opts);
       this.bindingPrefix = opts.bindingPrefix || BINDING_PREFIX;
-      this.opts = opts;
       this.params = closure(opts.params || {});
       this.viewLogger = opts.viewLogger;
       this.metadataCallbacks = opts.metadata || {};
@@ -5991,7 +6029,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         opts.dom || {}
       );
       this.transitions = new TransitionSet();
-      this.currentHistoryPosition = parseInt(this.sessionStorage.getItem(PHX_LV_HISTORY_POSITION)) || 0;
+      this.currentHistoryPosition = parseInt(this.sessionStorage.getItem(PHX_LV_HISTORY_POSITION) || "0") || 0;
       window.addEventListener("pagehide", (_e) => {
         this.unloaded = true;
       });
@@ -6002,47 +6040,94 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
     }
     // public
+    /**
+     * Returns the version of the LiveView client.
+     */
     version() {
       return "1.2.0-rc.2";
     }
+    /**
+     * Returns true if profiling is enabled. See `enableProfiling` and `disableProfiling`.
+     */
     isProfileEnabled() {
       return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
     }
+    /**
+     * Returns true if debugging is enabled. See `enableDebug` and `disableDebug`.
+     */
     isDebugEnabled() {
       return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true";
     }
+    /**
+     * Returns true if debugging is disabled. See `enableDebug` and `disableDebug`.
+     */
     isDebugDisabled() {
       return this.sessionStorage.getItem(PHX_LV_DEBUG) === "false";
     }
+    /**
+     * Enables debugging.
+     *
+     * When debugging is enabled, the LiveView client will log debug information to the console.
+     * See [Debugging client events](https://hexdocs.pm/phoenix_live_view/js-interop.html#debugging-client-events) for more information.
+     */
     enableDebug() {
       this.sessionStorage.setItem(PHX_LV_DEBUG, "true");
     }
+    /**
+     * Enables profiling.
+     *
+     * When profiling is enabled, the LiveView client will log profiling information to the console.
+     */
     enableProfiling() {
       this.sessionStorage.setItem(PHX_LV_PROFILE, "true");
     }
+    /**
+     * Disables debugging.
+     */
     disableDebug() {
       this.sessionStorage.setItem(PHX_LV_DEBUG, "false");
     }
+    /**
+     * Disables profiling.
+     */
     disableProfiling() {
       this.sessionStorage.removeItem(PHX_LV_PROFILE);
     }
+    /**
+     * Enables latency simulation.
+     *
+     * When latency simulation is enabled, the LiveView client will add a delay to requests and responses from the server.
+     * See [Simulating Latency](https://hexdocs.pm/phoenix_live_view/js-interop.html#simulating-latency) for more information.
+     */
     enableLatencySim(upperBoundMs) {
       this.enableDebug();
       console.log(
         "latency simulator enabled for the duration of this browser session. Call disableLatencySim() to disable"
       );
-      this.sessionStorage.setItem(PHX_LV_LATENCY_SIM, upperBoundMs);
+      this.sessionStorage.setItem(PHX_LV_LATENCY_SIM, upperBoundMs.toString());
     }
+    /**
+     * Disables latency simulation.
+     */
     disableLatencySim() {
       this.sessionStorage.removeItem(PHX_LV_LATENCY_SIM);
     }
+    /**
+     * Returns the current latency simulation upper bound.
+     */
     getLatencySim() {
       const str = this.sessionStorage.getItem(PHX_LV_LATENCY_SIM);
       return str ? parseInt(str) : null;
     }
+    /**
+     * Returns the Phoenix Socket instance.
+     */
     getSocket() {
       return this.socket;
     }
+    /**
+     * Connects to the LiveView server.
+     */
     connect() {
       if (window.location.hostname === "localhost" && !this.isDebugDisabled()) {
         this.enableDebug();
@@ -6065,23 +6150,29 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         document.addEventListener("DOMContentLoaded", () => doConnect());
       }
     }
+    /**
+     * Disconnects from the LiveView server.
+     */
     disconnect(callback) {
-      clearTimeout(this.reloadWithJitterTimer);
+      this.reloadWithJitterTimer != null && clearTimeout(this.reloadWithJitterTimer);
       if (this.serverCloseRef) {
-        this.socket.off(this.serverCloseRef);
+        this.socket.off([this.serverCloseRef]);
         this.serverCloseRef = null;
       }
       this.socket.disconnect(callback);
     }
+    /**
+     * Can be used to replace the transport used by the underlying Phoenix Socket.
+     */
     replaceTransport(transport) {
-      clearTimeout(this.reloadWithJitterTimer);
+      this.reloadWithJitterTimer != null && clearTimeout(this.reloadWithJitterTimer);
       this.socket.replaceTransport(transport);
       this.connect();
     }
     /**
-     * @param {HTMLElement} el
-     * @param {import("./js_commands").EncodedJS} encodedJS
-     * @param {string | null} [eventType]
+     * Executes an encoded JS command, targeting the given element.
+     *
+     * See [`Phoenix.LiveView.JS`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.JS.html) for more information.
      */
     execJS(el, encodedJS, eventType = null) {
       const e = new CustomEvent("phx:exec", { detail: { sourceElement: el } });
@@ -6091,12 +6182,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
      * Returns an object with methods to manipulate the DOM and execute JavaScript.
      * The applied changes integrate with server DOM patching.
      *
-     * @returns {import("./js_commands").LiveSocketJSCommands}
+     * See [JavaScript interoperability](https://hexdocs.pm/phoenix_live_view/js-interop.html) for more information.
      */
     js() {
       return js_commands_default(this, "js");
     }
     // private
+    /** @internal */
     unload() {
       if (this.unloaded) {
         return;
@@ -6108,9 +6200,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.destroyAllViews();
       this.disconnect();
     }
+    /** @internal */
     triggerDOM(kind, args) {
       this.domCallbacks[kind](...args);
     }
+    /** @internal */
     time(name, func) {
       if (!this.isProfileEnabled() || !console.time) {
         return func();
@@ -6120,6 +6214,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       console.timeEnd(name);
       return result;
     }
+    /** @internal */
     log(view, kind, msgCallback) {
       if (this.viewLogger) {
         const [msg, obj] = msgCallback();
@@ -6129,16 +6224,20 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         debug(view, kind, msg, obj);
       }
     }
+    /** @internal */
     requestDOMUpdate(callback) {
       this.transitions.after(callback);
     }
+    /** @internal */
     asyncTransition(promise) {
       this.transitions.addAsyncTransition(promise);
     }
+    /** @internal */
     transition(time, onStart, onDone = function() {
     }) {
       this.transitions.addTransition(time, onStart, onDone);
     }
+    /** @internal */
     onChannel(channel, event, cb) {
       channel.on(event, (data) => {
         const latency = this.getLatencySim();
@@ -6149,8 +6248,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
+    /** @internal */
     reloadWithJitter(view, log) {
-      clearTimeout(this.reloadWithJitterTimer);
+      this.reloadWithJitterTimer != null && clearTimeout(this.reloadWithJitterTimer);
       this.disconnect();
       const minMs = this.reloadJitterMin;
       const maxMs = this.reloadJitterMax;
@@ -6178,22 +6278,25 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             `exceeded ${this.maxReloads} consecutive reloads. Entering failsafe mode`
           ]);
         }
-        if (this.hasPendingLink()) {
-          window.location = this.pendingLink;
+        if (this.pendingLink !== null) {
+          window.location.href = this.pendingLink;
         } else {
           window.location.reload();
         }
       }, afterMs);
     }
+    /** @internal */
     getHookDefinition(name) {
       if (!name) {
         return;
       }
       return this.maybeInternalHook(name) || this.hooks[name] || this.maybeRuntimeHook(name);
     }
+    /** @internal */
     maybeInternalHook(name) {
       return name && name.startsWith("Phoenix.") && hooks_default[name.split(".")[1]];
     }
+    /** @internal */
     maybeRuntimeHook(name) {
       const runtimeHook = document.querySelector(
         `script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`
@@ -6215,21 +6318,27 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         runtimeHook
       );
     }
+    /** @internal */
     isUnloaded() {
       return this.unloaded;
     }
+    /** @internal */
     isConnected() {
       return this.socket.isConnected();
     }
+    /** @internal */
     getBindingPrefix() {
       return this.bindingPrefix;
     }
+    /** @internal */
     binding(kind) {
       return `${this.getBindingPrefix()}${kind}`;
     }
+    /** @internal */
     channel(topic, params) {
       return this.socket.channel(topic, params);
     }
+    /** @internal */
     joinDeadView() {
       const body = document.body;
       if (body && !this.isPhxView(body) && !this.isPhxView(document.firstElementChild)) {
@@ -6246,6 +6355,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       }
     }
+    /** @internal */
     joinRootViews() {
       let rootsFound = false;
       dom_default.all(
@@ -6267,6 +6377,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       );
       return rootsFound;
     }
+    /** @internal */
     redirect(to, flash, reloadToken) {
       if (reloadToken) {
         browser_default.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
@@ -6274,7 +6385,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.unload();
       browser_default.redirect(to, flash);
     }
+    /** @internal */
     replaceMain(href, flash, callback = null, linkRef = this.setPendingLink(href)) {
+      if (!this.main) {
+        return;
+      }
       const liveReferer = this.currentLocation.href;
       this.outgoingMainEl = this.outgoingMainEl || this.main.el;
       const stickies = dom_default.findPhxSticky(document) || [];
@@ -6301,6 +6416,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
+    /** @internal */
     transitionRemoves(elements, callback) {
       const removeAttr = this.binding("remove");
       const silenceEvents = (e) => {
@@ -6322,14 +6438,17 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         callback && callback();
       });
     }
+    /** @internal */
     isPhxView(el) {
       return el.getAttribute && el.getAttribute(PHX_SESSION) !== null;
     }
+    /** @internal */
     newRootView(el, flash, liveReferer) {
       const view = new View(el, this, null, flash, liveReferer);
       this.roots[view.id] = view;
       return view;
     }
+    /** @internal */
     owner(childEl, callback) {
       let view;
       const viewEl = dom_default.closestViewEl(childEl);
@@ -6343,9 +6462,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       return view && callback ? callback(view) : view;
     }
+    /** @internal */
     withinOwners(childEl, callback) {
       this.owner(childEl, (view) => callback(view, childEl));
     }
+    /** @internal */
     getViewByEl(el) {
       const rootId = el.getAttribute(PHX_ROOT_ID);
       return maybe(
@@ -6353,9 +6474,11 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         (root) => root.getDescendentByEl(el)
       );
     }
+    /** @internal */
     getRootById(id) {
       return this.roots[id];
     }
+    /** @internal */
     destroyAllViews() {
       for (const id in this.roots) {
         this.roots[id].destroy();
@@ -6363,6 +6486,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       this.main = null;
     }
+    /** @internal */
     destroyViewByEl(el) {
       const root = this.getRootById(el.getAttribute(PHX_ROOT_ID));
       if (root && root.id === el.id) {
@@ -6372,28 +6496,30 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         root.destroyDescendent(el.id);
       }
     }
+    /** @internal */
     getActiveElement() {
       return document.activeElement;
     }
+    /** @internal */
     dropActiveElement(view) {
       if (this.prevActive && view.ownsElement(this.prevActive)) {
         this.prevActive = null;
       }
     }
+    /** @internal */
     restorePreviouslyActiveFocus() {
       if (this.prevActive && this.prevActive !== document.body && this.prevActive instanceof HTMLElement) {
         this.prevActive.focus();
       }
     }
+    /** @internal */
     blurActiveElement() {
       this.prevActive = this.getActiveElement();
       if (this.prevActive !== document.body && this.prevActive instanceof HTMLElement) {
         this.prevActive.blur();
       }
     }
-    /**
-     * @param {{dead?: boolean}} [options={}]
-     */
+    /** @internal */
     bindTopLevelEvents({ dead } = {}) {
       if (this.boundTopLevelEvents) {
         return;
@@ -6440,7 +6566,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         { blur: "focusout", focus: "focusin" },
         (e, type, view, targetEl, phxEvent, phxTarget) => {
           if (!phxTarget) {
-            const data = __spreadValues({ key: e.key }, this.eventMeta(type, e, targetEl));
+            const data = __spreadValues({}, this.eventMeta(type, e, targetEl));
             js_default.exec(e, type, phxEvent, view, targetEl, ["push", { data }]);
           }
         }
@@ -6490,6 +6616,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           return;
         }
         this.js().removeClass(dropzone, PHX_DROP_TARGET_ACTIVE_CLASS);
+        if (!e.dataTransfer) {
+          return;
+        }
         const dropTargetId = dropzone.getAttribute(this.binding(PHX_DROP_TARGET));
         const dropTarget = dropTargetId && document.getElementById(dropTargetId);
         const files = Array.from(e.dataTransfer.files || []);
@@ -6511,47 +6640,67 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         uploadTarget.dispatchEvent(new Event("input", { bubbles: true }));
       });
     }
+    /** @internal */
     eventMeta(eventName, e, targetEl) {
       const callback = this.metadataCallbacks[eventName];
       return callback ? callback(e, targetEl) : {};
     }
+    /** @internal */
     setPendingLink(href) {
       this.linkRef++;
       this.pendingLink = href;
       this.resetReloadStatus();
       return this.linkRef;
     }
-    // anytime we are navigating or connecting, drop reload cookie in case
-    // we issue the cookie but the next request was interrupted and the server never dropped it
+    /**
+     * @internal
+     * anytime we are navigating or connecting, drop reload cookie in case
+     * we issue the cookie but the next request was interrupted and the server never dropped it
+     */
     resetReloadStatus() {
       browser_default.deleteCookie(PHX_RELOAD_STATUS);
     }
+    /** @internal */
     commitPendingLink(linkRef) {
       if (this.linkRef !== linkRef) {
         return false;
-      } else {
+      }
+      if (this.pendingLink !== null) {
         this.href = this.pendingLink;
         this.pendingLink = null;
-        return true;
       }
+      return true;
     }
+    /** @internal */
     getHref() {
       return this.href;
     }
+    /** @internal */
     hasPendingLink() {
       return !!this.pendingLink;
     }
+    /** @internal */
     bind(events, callback) {
       for (const event in events) {
         const browserEventName = events[event];
         this.on(browserEventName, (e) => {
           const binding = this.binding(event);
           const windowBinding = this.binding(`window-${event}`);
-          const targetPhxEvent = e.target.getAttribute && e.target.getAttribute(binding);
+          const targetPhxEvent = e.target instanceof Element && e.target.getAttribute(binding);
+          if (!(e.target instanceof Element)) {
+            return;
+          }
           if (targetPhxEvent) {
             this.debounce(e.target, e, browserEventName, () => {
               this.withinOwners(e.target, (view) => {
-                callback(e, event, view, e.target, targetPhxEvent, null);
+                callback(
+                  e,
+                  event,
+                  view,
+                  e.target,
+                  targetPhxEvent,
+                  null
+                );
               });
             });
           } else {
@@ -6559,7 +6708,14 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               const phxEvent = el.getAttribute(windowBinding);
               this.debounce(el, e, browserEventName, () => {
                 this.withinOwners(el, (view) => {
-                  callback(e, event, view, el, phxEvent, "window");
+                  callback(
+                    e,
+                    event,
+                    view,
+                    el,
+                    phxEvent,
+                    "window"
+                  );
                 });
               });
             });
@@ -6567,10 +6723,12 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       }
     }
+    /** @internal */
     bindClicks() {
       this.on("mousedown", (e) => this.clickStartedAtTarget = e.target);
       this.bindClick("click", "click");
     }
+    /** @internal */
     bindClick(eventName, bindingName) {
       const click = this.binding(bindingName);
       window.addEventListener(
@@ -6583,7 +6741,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
           target = closestPhxBinding(e.target, click);
           this.dispatchClickAway(e, clickStartedAtTarget);
           this.clickStartedAtTarget = null;
-          const phxEvent = target && target.getAttribute(click);
+          if (!target) {
+            return;
+          }
+          const phxEvent = target.getAttribute(click);
           if (!phxEvent) {
             if (dom_default.isNewPageClick(e, window.location)) {
               this.unload();
@@ -6608,6 +6769,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         false
       );
     }
+    /** @internal */
     dispatchClickAway(e, clickStartedAt) {
       const phxClickAway = this.binding("click-away");
       const portal = clickStartedAt.closest(`[${PHX_TELEPORTED_SRC}]`);
@@ -6638,6 +6800,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
+    /** @internal */
     bindNav() {
       if (!browser_default.canPushState()) {
         return;
@@ -6647,7 +6810,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       }
       let scrollTimer = null;
       window.addEventListener("scroll", (_e) => {
-        clearTimeout(scrollTimer);
+        scrollTimer != null && clearTimeout(scrollTimer);
         scrollTimer = setTimeout(() => {
           browser_default.updateCurrentState(
             (state) => Object.assign(state, { scroll: window.scrollY })
@@ -6681,7 +6844,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             const callback = () => {
               this.maybeScroll(scroll);
             };
-            if (this.main.isConnected() && navType === "patch" && id === this.main.id) {
+            if (this.main && this.main.isConnected() && navType === "patch" && id === this.main.id) {
               this.main.pushLinkPatch(event, href, null, callback);
             } else {
               this.replaceMain(href, null, callback);
@@ -6724,6 +6887,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         false
       );
     }
+    /** @internal */
     maybeScroll(scroll) {
       if (typeof scroll === "number") {
         requestAnimationFrame(() => {
@@ -6731,19 +6895,23 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       }
     }
+    /** @internal */
     dispatchEvent(event, payload = {}) {
       dom_default.dispatchEvent(window, `phx:${event}`, { detail: payload });
     }
+    /** @internal */
     dispatchEvents(events) {
       events.forEach(([event, payload]) => this.dispatchEvent(event, payload));
     }
+    /** @internal */
     withPageLoading(info, callback) {
       dom_default.dispatchEvent(window, "phx:page-loading-start", { detail: info });
       const done = () => dom_default.dispatchEvent(window, "phx:page-loading-stop", { detail: info });
       return callback ? callback(done) : done;
     }
+    /** @internal */
     pushHistoryPatch(e, href, linkState, targetEl) {
-      if (!this.isConnected() || !this.main.isMain()) {
+      if (!this.isConnected() || !(this.main && this.main.isMain())) {
         return browser_default.redirect(href);
       }
       this.withPageLoading({ to: href, kind: "patch" }, (done) => {
@@ -6753,6 +6921,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       });
     }
+    /** @internal */
     historyPatch(href, linkState, linkRef = this.setPendingLink(href)) {
       if (!this.commitPendingLink(linkRef)) {
         return;
@@ -6777,12 +6946,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
       this.registerNewLocation(window.location);
     }
+    /** @internal */
     historyRedirect(e, href, linkState, flash, targetEl) {
       const clickLoading = targetEl && e.isTrusted && e.type !== "popstate";
       if (clickLoading) {
         targetEl.classList.add("phx-click-loading");
       }
-      if (!this.isConnected() || !this.main.isMain()) {
+      if (!this.isConnected() || !(this.main && this.main.isMain())) {
         return browser_default.redirect(href, flash);
       }
       if (/^\/$|^\/[^\/]+.*$/.test(href)) {
@@ -6823,6 +6993,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         });
       });
     }
+    /** @internal */
     registerNewLocation(newLocation) {
       const { pathname, search } = this.currentLocation;
       if (pathname + search === newLocation.pathname + newLocation.search) {
@@ -6832,10 +7003,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         return true;
       }
     }
+    /** @internal */
     bindForms() {
       let iterations = 0;
       let externalFormSubmitted = false;
       this.on("submit", (e) => {
+        if (!(e.target instanceof HTMLFormElement))
+          return;
         const phxSubmit = e.target.getAttribute(this.binding("submit"));
         const phxChange = e.target.getAttribute(this.binding("change"));
         if (!externalFormSubmitted && phxChange && !phxSubmit) {
@@ -6853,6 +7027,8 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
       this.on("submit", (e) => {
+        if (!(e.target instanceof HTMLFormElement))
+          return;
         const phxEvent = e.target.getAttribute(this.binding("submit"));
         if (!phxEvent) {
           if (dom_default.isUnloadableFormSubmit(e)) {
@@ -6871,7 +7047,10 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       });
       for (const type of ["change", "input"]) {
         this.on(type, (e) => {
-          if (e instanceof CustomEvent && (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement || e.target instanceof HTMLTextAreaElement) && e.target.form === void 0) {
+          if (!dom_default.isFormAssociated(e.target)) {
+            return;
+          }
+          if (e instanceof CustomEvent && e.target.form === void 0) {
             if (e.detail && e.detail.dispatcher) {
               throw new Error(
                 `dispatching a custom ${type} event is only supported on input elements inside a form`
@@ -6879,9 +7058,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
             }
             return;
           }
-          const phxChange = this.binding("change");
           const input = e.target;
-          if (this.blockPhxChangeWhileComposing && e.isComposing) {
+          const phxChange = this.binding("change");
+          if (this.blockPhxChangeWhileComposing && e instanceof InputEvent && e.isComposing) {
             const key = `composition-listener-${type}`;
             if (!dom_default.private(input, key)) {
               dom_default.putPrivate(input, key, true);
@@ -6921,7 +7100,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
               dom_default.putPrivate(input, PHX_HAS_FOCUSED, true);
               js_default.exec(e, "change", phxEvent, view, input, [
                 "push",
-                { _target: e.target.name, dispatcher }
+                { _target: input.name, dispatcher }
               ]);
             });
           });
@@ -6930,7 +7109,9 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
       this.on("reset", (e) => {
         const form = e.target;
         dom_default.resetForm(form);
-        const input = Array.from(form.elements).find((el) => el.type === "reset");
+        const input = Array.from(form.elements).find(
+          (el) => "type" in el && el.type === "reset"
+        );
         if (input) {
           window.requestAnimationFrame(() => {
             input.dispatchEvent(
@@ -6940,6 +7121,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
+    /** @internal */
     debounce(el, event, eventType, callback) {
       if (eventType === "blur" || eventType === "focusout") {
         return callback();
@@ -6964,11 +7146,13 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         );
       });
     }
+    /** @internal */
     silenceEvents(callback) {
       this.silenced = true;
       callback();
       this.silenced = false;
     }
+    /** @internal */
     on(event, callback) {
       this.boundEventNames.add(event);
       window.addEventListener(event, (e) => {
@@ -6977,6 +7161,7 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
         }
       });
     }
+    /** @internal */
     jsQuerySelectorAll(sourceEl, query, defaultQuery) {
       const all = this.domCallbacks.jsQuerySelectorAll;
       return all ? all(sourceEl, query, defaultQuery) : defaultQuery();
@@ -7038,7 +7223,6 @@ removing illegal node: "${(childNode.outerHTML || childNode.nodeValue).trim()}"
   };
 
   // js/phoenix_live_view/index.ts
-  var LiveSocket2 = LiveSocket;
   function createHook(el, callbacks) {
     let existingHook = dom_default.getCustomElHook(el);
     if (existingHook) {
