@@ -239,10 +239,9 @@ export interface LiveSocketOptions {
 
 export default class LiveSocket {
   socket: Socket;
+
   private unloaded = false;
   private bindingPrefix: string;
-  /** @internal */
-  params: () => Record<string, unknown>;
   private viewLogger: any;
   private metadataCallbacks: any;
   private defaults: any;
@@ -257,11 +256,7 @@ export default class LiveSocket {
   private pendingLink: any;
   private currentLocation: any;
   private hooks: any;
-  /** @internal */
-  uploaders: any;
   private loaderTimeout: number;
-  /** @internal */
-  disconnectedTimeout: number;
   private reloadWithJitterTimer: ReturnType<typeof setTimeout> | null;
   private maxReloads: number;
   private reloadJitterMin: number;
@@ -277,6 +272,13 @@ export default class LiveSocket {
   private transitions: any;
   private currentHistoryPosition: number;
 
+  /** @internal */
+  params: () => Record<string, unknown>;
+  /** @internal */
+  uploaders: any;
+  /** @internal */
+  disconnectedTimeout: number;
+  
   /**
    * Creates a new LiveSocket instance.
    */
