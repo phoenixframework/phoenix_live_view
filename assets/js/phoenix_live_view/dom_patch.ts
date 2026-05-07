@@ -832,7 +832,7 @@ export default class DOMPatch {
     // Only perform the clone step while the element remains locked. lockRef and
     // undoRef can be 0 for the first event, so compare against null explicitly.
     if (
-      ref.lockRef === null ||
+      !fromEl.hasAttribute(PHX_REF_LOCK) ||
       (this.undoRef !== null && ref.isLockUndoneBy(this.undoRef))
     ) {
       return fromEl;
@@ -920,9 +920,10 @@ export default class DOMPatch {
     if (el.hasAttribute("nonce")) {
       const template = document.createElement("template");
       template.innerHTML = source;
-      nonce = template.content
-        .querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`)
-        ?.getAttribute("nonce") ?? null;
+      nonce =
+        template.content
+          .querySelector(`script[${PHX_RUNTIME_HOOK}="${CSS.escape(name)}"]`)
+          ?.getAttribute("nonce") ?? null;
     }
     const script = document.createElement("script");
     script.textContent = el.textContent;
