@@ -3,13 +3,18 @@ import { maybe } from "./utils";
 import DOM from "./dom";
 
 export default class DOMPostMorphRestorer {
-  constructor(containerBefore, containerAfter, updateType) {
+  private containerId: string;
+  private updateType: "append" | "prepend";
+  private elementsToModify: { elementId: string; previousElementId: string | null }[];
+  private elementIdsToAdd: string[];
+
+  constructor(containerBefore: HTMLElement, containerAfter: HTMLElement, updateType: "append" | "prepend") {
     const idsBefore = new Set();
     const idsAfter = new Set(
       [...containerAfter.children].map((child) => child.id),
     );
 
-    const elementsToModify = [];
+    const elementsToModify: Array<{ elementId: string; previousElementId: string | null }> = [];
 
     Array.from(containerBefore.children).forEach((child) => {
       if (child.id) {
