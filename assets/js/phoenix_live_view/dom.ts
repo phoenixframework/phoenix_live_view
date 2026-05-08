@@ -28,16 +28,29 @@ import {
 
 import { logError } from "./utils";
 
-type FormInputLike = HTMLElement & {
+export type FormInputLike = HTMLElement & {
   readonly form?: HTMLFormElement | null;
   readonly type?: string;
   readonly validity?: ValidityState;
   readonly name?: string;
 };
 
+export type QueryableNode = Element | Document | DocumentFragment;
+
 const DOM = {
   byId(id) {
     return document.getElementById(id) || logError(`no id found for ${id}`);
+  },
+
+  elementFromTarget(target: EventTarget): Element | null {
+    if (!(target instanceof Node)) {
+      return null;
+    }
+    if (target.nodeType === Node.ELEMENT_NODE) {
+      return target as Element;
+    } else {
+      return target.parentElement;
+    }
   },
 
   removeClass(el, className) {
@@ -48,7 +61,7 @@ const DOM = {
   },
 
   all(
-    node: Element | Document | DocumentFragment,
+    node: QueryableNode | null,
     query: string,
     callback?: (el: Element) => void,
   ): Element[] {
@@ -76,7 +89,7 @@ const DOM = {
     return inputEl.hasAttribute("data-phx-auto-upload");
   },
 
-  findUploadInputs(node) {
+  findUploadInputs(node): HTMLInputElement[] {
     const formId = node.id;
     const inputsOutsideForm = this.all(
       document,
@@ -84,14 +97,31 @@ const DOM = {
     );
     return this.all(node, `input[type="file"][${PHX_UPLOAD_REF}]`).concat(
       inputsOutsideForm,
+    ) as HTMLInputElement[];
+  },
+
+  findComponent(
+    viewId: string,
+    cid: string | number,
+    doc: QueryableNode = document,
+  ): Element | null {
+    return doc.querySelector(
+      `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
     );
   },
 
-  findComponentNodeList(viewId, cid, doc = document) {
-    return this.all(
-      doc,
-      `[${PHX_VIEW_REF}="${viewId}"][${PHX_COMPONENT}="${cid}"]`,
-    );
+  getComponent(
+    viewId: string,
+    cid: number,
+    doc: QueryableNode = document,
+  ): Element {
+    const el = this.findComponent(viewId, cid, doc);
+    if (!el) {
+      throw new Error(
+        `no component found matching viewId ${viewId} and cid ${cid}`,
+      );
+    }
+    return el;
   },
 
   isPhxDestroyed(node) {
@@ -481,7 +511,7 @@ const DOM = {
     return this.isPhxChild(el) ? el : this.all(el, `[${PHX_PARENT_ID}]`)[0];
   },
 
-  isPortalTemplate(el) {
+  isPortalTemplate(el): el is HTMLTemplateElement {
     return el.tagName === "TEMPLATE" && el.hasAttribute(PHX_PORTAL);
   },
 
@@ -603,7 +633,7 @@ const DOM = {
     }
   },
 
-  hasSelectionRange(el) {
+  hasSelectionRange(el): el is HTMLInputElement | HTMLTextAreaElement {
     return (
       el.setSelectionRange && (el.type === "text" || el.type === "textarea")
     );
@@ -711,7 +741,7 @@ const DOM = {
   },
 
   replaceRootContainer(
-    container: HTMLElement,
+    container: Element,
     tagName: string,
     attrs: Record<string, string>,
   ) {

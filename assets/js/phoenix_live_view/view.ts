@@ -1,3 +1,5 @@
+import { Channel } from "phoenix";
+
 import {
   BEFORE_UNLOAD_LOADER_TIMEOUT,
   CHECKABLE_INPUTS,
@@ -55,7 +57,7 @@ import {
 } from "./utils";
 
 import Browser from "./browser";
-import DOM from "./dom";
+import DOM, { FormInputLike, QueryableNode } from "./dom";
 import ElementRef from "./element_ref";
 import DOMPatch from "./dom_patch";
 import LiveUploader from "./live_uploader";
@@ -64,6 +66,7 @@ import { ViewHook } from "./view_hook";
 import JS from "./js";
 
 import morphdom from "morphdom";
+import LiveSocket from "./live_socket";
 
 export const prependFormDataKey = (key, prefix) => {
   const isArray = key.endsWith("[]");
@@ -85,7 +88,45 @@ export default class View {
     return liveViewEl ? DOM.private(liveViewEl, "view") : null;
   }
 
-  constructor(el, liveSocket, parentView, flash, liveReferer) {
+  liveSocket: LiveSocket;
+  id: string;
+  el: Element;
+  isDead: boolean;
+  root: View;
+  portalElementIds: Set<string>;
+  private channel: Channel;
+  private rendered: Rendered | null;
+  private flash: string | null;
+  private parent: View | null;
+  private ref: number;
+  private lastAckRef: number | null;
+  private childJoins: number;
+  private loaderTimer: ReturnType<typeof setTimeout> | null;
+  private disconnectedTimer: ReturnType<typeof setTimeout> | null;
+  private pendingDiffs: any[];
+  private redirect: boolean;
+  private href: string | null;
+  private joinCount: number;
+  private joinAttempts: number;
+  private joinPending: boolean;
+  private destroyed: boolean;
+  private joinCallback: (onDone?: () => void) => void;
+  private stopCallback: () => void;
+  private pendingJoinOps: any[];
+  private viewHooks: Record<string, ViewHook>;
+  private formSubmits: any[];
+  private children: Record<string, Record<string, View>> | null;
+  private pendingForms: Set<string>;
+  private formsForRecovery: Record<string, HTMLFormElement>;
+
+  constructor(
+    el: Element,
+    liveSocket: LiveSocket,
+    parentView: View | null,
+    flash: string | null = null,
+    liveReferer: string | null = null,
+  ) {
+    this.rendered = null;
     this.isDead = false;
     this.liveSocket = liveSocket;
     this.flash = flash;
@@ -147,7 +188,7 @@ export default class View {
     this.viewHooks = {};
     this.formSubmits = [];
     this.children = this.parent ? null : {};
-    this.root.children[this.id] = {};
+    this.root.children![this.id] = {};
     this.formsForRecovery = {};
     this.channel = this.liveSocket.channel(`lv:${this.id}`, () => {
       const url = this.href && this.expandURL(this.href);
@@ -157,7 +198,7 @@ export default class View {
         params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash,
+        flash: this.flash ?? undefined,
         sticky: this.el.hasAttribute(PHX_STICKY),
       };
     });
@@ -190,21 +231,22 @@ export default class View {
     }
     params["_mounts"] = this.joinCount;
     params["_mount_attempts"] = this.joinAttempts;
-    params["_live_referer"] = liveReferer;
+    params["_live_referer"] = liveReferer ?? undefined;
     this.joinAttempts++;
 
     return params;
   }
 
   isConnected() {
-    return this.channel.canPush();
+    // TODO: canPush is private in phoenix
+    return (this.channel as any).canPush();
   }
 
-  getSession() {
-    return this.el.getAttribute(PHX_SESSION);
+  getSession(): string {
+    return this.el.getAttribute(PHX_SESSION)!;
   }
 
-  getStatic() {
+  getStatic(): string | null {
     const val = this.el.getAttribute(PHX_STATIC);
     return val === "" ? null : val;
   }
@@ -214,9 +256,9 @@ export default class View {
     this.destroyPortalElements();
     this.destroyed = true;
     DOM.deletePrivate(this.el, "view");
-    delete this.root.children[this.id];
+    delete this.root.children![this.id];
     if (this.parent) {
-      delete this.root.children[this.parent.id][this.id];
+      delete this.root.children![this.parent.id][this.id];
     }
     this.loaderTimer != null && clearTimeout(this.loaderTimer);
     const onFinished = () => {
@@ -247,7 +289,7 @@ export default class View {
     this.el.classList.add(...classes);
   }
 
-  showLoader(timeout) {
+  showLoader(timeout?: number) {
     this.loaderTimer != null && clearTimeout(this.loaderTimer);
     if (timeout) {
       this.loaderTimer = setTimeout(() => this.showLoader(), timeout);
@@ -261,7 +303,7 @@ export default class View {
 
   execAll(binding) {
     DOM.all(this.el, `[${binding}]`, (el) =>
-      this.liveSocket.execJS(el, el.getAttribute(binding)),
+      this.liveSocket.execJS(el, el.getAttribute(binding)!),
     );
   }
 
@@ -292,7 +334,7 @@ export default class View {
   //  * a CID (Component ID), then we first search the component's element in the DOM
   //  * a selector, then we search the selector in the DOM and call the callback
   //    for each element found with the corresponding owner view
-  withinTargets(phxTarget, callback, dom = document) {
+  withinTargets(phxTarget, callback, dom: QueryableNode = document) {
     // in the form recovery case we search in a template fragment instead of
     // the real dom, therefore we optionally pass dom and viewEl
 
@@ -303,11 +345,14 @@ export default class View {
     }
 
     if (isCid(phxTarget)) {
-      const targets = DOM.findComponentNodeList(this.id, phxTarget, dom);
-      if (targets.length === 0) {
+      const target = DOM.findComponent(this.id, phxTarget, dom);
+      if (!target) {
         logError(`no component found matching phx-target of ${phxTarget}`);
       } else {
-        callback(this, parseInt(phxTarget));
+        callback(
+          this,
+          typeof phxTarget === "number" ? phxTarget : parseInt(phxTarget),
+        );
       }
     } else {
       const targets = Array.from(dom.querySelectorAll(phxTarget));
@@ -467,7 +512,11 @@ export default class View {
   }
 
   attachTrueDocEl() {
-    this.el = DOM.byId(this.id);
+    const el = DOM.byId(this.id);
+    if (!el) {
+      throw new Error("unable to find root element for view");
+    }
+    this.el = el;
     this.el.setAttribute(PHX_ROOT_ID, this.root.id);
   }
 
@@ -521,7 +570,7 @@ export default class View {
       }
     }
     this.attachTrueDocEl();
-    const patch = new DOMPatch(this, this.el, this.id, html, streams, null);
+    const patch = new DOMPatch(this, this.el, html, streams, null);
     patch.markPrunableContentForRemoval();
     this.performPatch(patch, false, true);
     this.joinNewChildren();
@@ -573,13 +622,13 @@ export default class View {
   }
 
   performPatch(patch, pruneCids, isJoinPatch = false) {
-    const removedEls = [];
+    const removedEls: Array<Element> = [];
     let phxChildrenAdded = false;
     const updatedHookIds = new Set();
 
     this.liveSocket.triggerDOM("onPatchStart", [patch.targetContainer]);
 
-    patch.after("added", (el) => {
+    patch.afterAdded((el) => {
       this.liveSocket.triggerDOM("onNodeAdded", [el]);
       const phxViewportTop = this.binding(PHX_VIEWPORT_TOP);
       const phxViewportBottom = this.binding(PHX_VIEWPORT_BOTTOM);
@@ -590,7 +639,7 @@ export default class View {
       }
     });
 
-    patch.after("phxChildAdded", (el) => {
+    patch.afterPhxChildAdded((el) => {
       if (DOM.isPhxSticky(el)) {
         this.liveSocket.joinRootViews();
       } else {
@@ -598,7 +647,7 @@ export default class View {
       }
     });
 
-    patch.before("updated", (fromEl, toEl) => {
+    patch.beforeUpdated((fromEl, toEl) => {
       const hook = this.triggerBeforeUpdateHook(fromEl, toEl);
       if (hook) {
         updatedHookIds.add(fromEl.id);
@@ -607,20 +656,20 @@ export default class View {
       JS.onBeforeElUpdated(fromEl, toEl);
     });
 
-    patch.after("updated", (el) => {
+    patch.afterUpdated((el) => {
       if (updatedHookIds.has(el.id)) {
         const hook = this.getHook(el);
         hook && hook.__updated();
       }
     });
 
-    patch.after("discarded", (el) => {
+    patch.afterDiscarded((el) => {
       if (el.nodeType === Node.ELEMENT_NODE) {
         removedEls.push(el);
       }
     });
 
-    patch.after("transitionsDiscarded", (els) =>
+    patch.afterTransitionsDiscarded((els) =>
       this.afterElementsRemoved(els, pruneCids),
     );
     patch.perform(isJoinPatch);
@@ -631,7 +680,7 @@ export default class View {
   }
 
   afterElementsRemoved(elements, pruneCids) {
-    const destroyedCIDs = [];
+    const destroyedCIDs: Array<number> = [];
     elements.forEach((parent) => {
       const components = DOM.all(
         parent,
@@ -692,18 +741,18 @@ export default class View {
         return;
       }
       template.content.firstElementChild?.appendChild(
-        portalTemplate.content.firstElementChild,
+        portalTemplate.content.firstElementChild!,
       );
     });
 
     // because we work with a template element, we must manually copy the attributes
     // otherwise the owner / target helpers don't work properly
-    const rootEl = template.content.firstElementChild;
+    const rootEl = template.content.firstElementChild!;
     rootEl.id = this.id;
     rootEl.setAttribute(PHX_ROOT_ID, this.root.id);
     rootEl.setAttribute(PHX_SESSION, this.getSession());
-    rootEl.setAttribute(PHX_STATIC, this.getStatic());
-    rootEl.setAttribute(PHX_PARENT_ID, this.parent ? this.parent.id : null);
+    rootEl.setAttribute(PHX_STATIC, this.getStatic() ?? "");
+    this.parent && rootEl.setAttribute(PHX_PARENT_ID, this.parent.id);
 
     // we go over all form elements in the new HTML for the LV
     // and look for old forms in the `formsForRecovery` object;
@@ -711,7 +760,7 @@ export default class View {
     const formsToRecover =
       // we go over all forms in the new DOM; because this is only the HTML for the current
       // view, we can be sure that all forms are owned by this view:
-      DOM.all(template.content, "form")
+      (DOM.all(template.content, "form") as HTMLFormElement[])
         // only recover forms that have an id and are in the old DOM
         .filter((newForm) => newForm.id && oldForms[newForm.id])
         // abandon forms we already tried to recover to prevent looping a failed state
@@ -739,7 +788,7 @@ export default class View {
       this.pushFormRecovery(
         oldForm,
         newForm,
-        template.content.firstElementChild,
+        template.content.firstElementChild!,
         () => {
           this.pendingForms.delete(newForm.id);
           // we only call the callback once all forms have been recovered
@@ -752,7 +801,7 @@ export default class View {
   }
 
   getChildById(id) {
-    return this.root.children[this.id][id];
+    return this.root.children![this.id][id];
   }
 
   getDescendentByEl(el) {
@@ -779,7 +828,7 @@ export default class View {
     const child = this.getChildById(el.id);
     if (!child) {
       const view = new View(el, this.liveSocket, this);
-      this.root.children[this.id][view.id] = view;
+      this.root.children![this.id][view.id] = view;
       view.join();
       this.childJoins++;
       return true;
@@ -830,22 +879,22 @@ export default class View {
       return false;
     }
 
-    this.rendered.mergeDiff(diff);
+    this.rendered!.mergeDiff(diff);
     let phxChildrenAdded = false;
 
     // When the diff only contains component diffs, then walk components
     // and patch only the parent component containers found in the diff.
     // Otherwise, patch entire LV container.
-    if (this.rendered.isComponentOnlyDiff(diff)) {
+    if (this.rendered!.isComponentOnlyDiff(diff)) {
       this.liveSocket.time("component patch complete", () => {
         const parentCids = DOM.findExistingParentCIDs(
           this.id,
-          this.rendered.componentCIDs(diff),
+          this.rendered!.componentCIDs(diff),
         );
         parentCids.forEach((parentCID) => {
           if (
             this.componentPatch(
-              this.rendered.getComponent(diff, parentCID),
+              this.rendered!.getComponent(diff, parentCID),
               parentCID,
             )
           ) {
@@ -856,7 +905,7 @@ export default class View {
     } else if (!isEmpty(diff)) {
       this.liveSocket.time("full patch complete", () => {
         const [html, streams] = this.renderContainer(diff, "update");
-        const patch = new DOMPatch(this, this.el, this.id, html, streams, null);
+        const patch = new DOMPatch(this, this.el, html, streams, null);
         phxChildrenAdded = this.performPatch(patch, true);
       });
     }
@@ -874,16 +923,16 @@ export default class View {
       const tag = this.el.tagName;
       // Don't skip any component in the diff nor any marked as pruned
       // (as they may have been added back)
-      const cids = diff ? this.rendered.componentCIDs(diff) : null;
-      const { buffer: html, streams } = this.rendered.toString(cids);
+      const cids = diff ? this.rendered!.componentCIDs(diff) : null;
+      const { buffer: html, streams } = this.rendered!.toString(cids);
       return [`<${tag}>${html}</${tag}>`, streams];
     });
   }
 
   componentPatch(diff, cid) {
     if (isEmpty(diff)) return false;
-    const { buffer: html, streams } = this.rendered.componentToString(cid);
-    const patch = new DOMPatch(this, this.el, this.id, html, streams, cid);
+    const { buffer: html, streams } = this.rendered!.componentToString(cid);
+    const patch = new DOMPatch(this, this.el, html, streams, cid);
     const childrenAdded = this.performPatch(patch, true);
     return childrenAdded;
   }
@@ -996,7 +1045,7 @@ export default class View {
   }
 
   eachChild(callback) {
-    const children = this.root.children[this.id] || {};
+    const children = this.root.children![this.id] || {};
     for (const id in children) {
       callback(this.getChildById(id));
     }
@@ -1061,11 +1110,16 @@ export default class View {
       : to;
   }
 
-  /**
-   * @param {{to: string, flash?: string, reloadToken?: string}} redirect
-   */
-  onRedirect({ to, flash, reloadToken }) {
-    this.liveSocket.redirect(to, flash, reloadToken);
+  onRedirect({
+    to,
+    flash,
+    reloadToken,
+  }: {
+    to: string;
+    flash?: string | null;
+    reloadToken?: string;
+  }) {
+    this.liveSocket.redirect(to, flash ?? null, reloadToken ?? null);
   }
 
   isDestroyed() {
@@ -1076,12 +1130,7 @@ export default class View {
     this.isDead = true;
   }
 
-  joinPush() {
-    this.joinPush = this.joinPush || this.channel.join();
-    return this.joinPush;
-  }
-
-  join(callback) {
+  join(callback?) {
     this.showLoader(this.liveSocket.loaderTimeout);
     this.bindChannel();
     if (this.isMain()) {
@@ -1109,7 +1158,7 @@ export default class View {
         resp,
       ]);
       this.onRedirect({
-        to: this.liveSocket.main.href,
+        to: this.liveSocket.main!.href!,
         reloadToken: resp.token,
       });
       return;
@@ -1118,7 +1167,7 @@ export default class View {
         "unauthorized live_redirect. Falling back to page request",
         resp,
       ]);
-      this.onRedirect({ to: this.liveSocket.main.href, flash: this.flash });
+      this.onRedirect({ to: this.liveSocket.main!.href!, flash: this.flash });
       return;
     }
     if (resp.redirect || resp.live_redirect) {
@@ -1242,7 +1291,11 @@ export default class View {
     });
   }
 
-  pushWithReply(refGenerator, event, payload) {
+  pushWithReply(
+    refGenerator,
+    event,
+    payload,
+  ): Promise<{ resp: any; reply: any; ref: number | null }> {
     if (!this.isConnected()) {
       return Promise.reject(new Error("no connection"));
     }
@@ -1315,7 +1368,7 @@ export default class View {
     });
   }
 
-  undoRefs(ref, phxEvent, onlyEls) {
+  undoRefs(ref, phxEvent, onlyEls?) {
     if (!this.isConnected()) {
       return;
     } // exit if external form triggered
@@ -1344,7 +1397,7 @@ export default class View {
     elRef.maybeUndo(ref, phxEvent, (clonedTree) => {
       // we need to perform a full patch on unlocked elements
       // to perform all the necessary logic (like calling updated for hooks, etc.)
-      const patch = new DOMPatch(this, el, this.id, clonedTree, [], null, {
+      const patch = new DOMPatch(this, el, clonedTree, new Set(), null, {
         undoRef: ref,
       });
       const phxChildrenAdded = this.performPatch(patch, true);
@@ -1361,7 +1414,12 @@ export default class View {
     return this.el.id;
   }
 
-  putRef(elements, phxEvent, eventType, opts = {}) {
+  putRef(
+    elements: Array<{ el: Element; lock: boolean; loading: boolean }>,
+    phxEvent: string | null,
+    eventType: string,
+    opts: { [key: string]: any } = {},
+  ) {
     const newRef = this.ref++;
     const disableWith = this.binding(PHX_DISABLE_WITH);
     if (opts.loading) {
@@ -1377,10 +1435,10 @@ export default class View {
       }
       el.setAttribute(PHX_REF_SRC, this.refSrc());
       if (loading) {
-        el.setAttribute(PHX_REF_LOADING, newRef);
+        el.setAttribute(PHX_REF_LOADING, newRef.toString());
       }
       if (lock) {
-        el.setAttribute(PHX_REF_LOCK, newRef);
+        el.setAttribute(PHX_REF_LOCK, newRef.toString());
       }
 
       if (
@@ -1408,7 +1466,7 @@ export default class View {
       const disableText = el.getAttribute(disableWith);
       if (disableText !== null) {
         if (!el.getAttribute(PHX_DISABLE_WITH_RESTORE)) {
-          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent);
+          el.setAttribute(PHX_DISABLE_WITH_RESTORE, el.textContent || "");
         }
         if (disableText !== "") {
           el.textContent = disableText;
@@ -1416,7 +1474,8 @@ export default class View {
         // PHX_DISABLED could have already been set in disableForm
         el.setAttribute(
           PHX_DISABLED,
-          el.getAttribute(PHX_DISABLED) || el.disabled,
+          el.getAttribute(PHX_DISABLED) ||
+            ("disabled" in el ? String(el.disabled) : ""),
         );
         el.setAttribute("disabled", "");
       }
@@ -1485,12 +1544,12 @@ export default class View {
     return this.lastAckRef !== null && this.lastAckRef >= ref;
   }
 
-  componentID(el) {
+  componentID(el): number | null {
     const cid = el.getAttribute && el.getAttribute(PHX_COMPONENT);
     return cid ? parseInt(cid) : null;
   }
 
-  targetComponentID(target, targetCtx, opts = {}) {
+  targetComponentID(target, targetCtx, opts: { [key: string]: any } = {}) {
     if (isCid(targetCtx)) {
       return targetCtx;
     }
@@ -1498,7 +1557,9 @@ export default class View {
     const cidOrSelector =
       opts.target || target.getAttribute(this.binding("target"));
     if (isCid(cidOrSelector)) {
-      return parseInt(cidOrSelector);
+      return typeof cidOrSelector === "number"
+        ? cidOrSelector
+        : parseInt(cidOrSelector);
     } else if (targetCtx && (cidOrSelector !== null || opts.target)) {
       return this.closestComponentID(targetCtx);
     } else {
@@ -1533,7 +1594,12 @@ export default class View {
     }
   }
 
-  pushHookEvent(el, targetCtx, event, payload) {
+  pushHookEvent(
+    el,
+    targetCtx,
+    event,
+    payload,
+  ): Promise<{ reply: any; ref: number }> {
     if (!this.isConnected()) {
       this.log("hook", () => [
         "unable to push hook event. LiveView not connected",
@@ -1556,7 +1622,10 @@ export default class View {
       event: event,
       value: payload,
       cid: this.closestComponentID(targetCtx),
-    }).then(({ resp: _resp, reply, ref }) => ({ reply, ref }));
+    }).then(
+      ({ resp: _resp, reply, ref }) =>
+        ({ reply, ref }) as { reply: any; ref: number },
+    );
   }
 
   extractMeta(el, meta, value) {
@@ -1595,7 +1664,11 @@ export default class View {
     return meta;
   }
 
-  serializeForm(form, opts, onlyNames = []) {
+  serializeForm(
+    form: HTMLFormElement,
+    opts: { [key: string]: any } = {},
+    onlyNames: string[] = [],
+  ) {
     const { submitter } = opts;
 
     // We must inject the submitter in the order that it exists in the DOM
@@ -1617,7 +1690,7 @@ export default class View {
     }
 
     const formData = new FormData(form);
-    const toRemove = [];
+    const toRemove: string[] = [];
 
     formData.forEach((val, key, _index) => {
       if (val instanceof File) {
@@ -1632,6 +1705,10 @@ export default class View {
 
     const { inputsUnused, onlyHiddenInputs } = Array.from(form.elements).reduce(
       (acc, input) => {
+        if (!DOM.isFormAssociated(input)) {
+          return acc;
+        }
+
         const { inputsUnused, onlyHiddenInputs } = acc;
         const key = input.name;
         if (!key) {
@@ -1696,9 +1773,17 @@ export default class View {
     return params.toString();
   }
 
-  pushEvent(type, el, targetCtx, phxEvent, meta, opts = {}, onReply) {
+  pushEvent(
+    type,
+    el,
+    targetCtx,
+    phxEvent,
+    meta,
+    opts: { [key: string]: any } = {},
+    onReply?,
+  ) {
     this.pushWithReply(
-      (maybePayload) =>
+      (maybePayload?) =>
         this.putRef([{ el, loading: true, lock: true }], phxEvent, type, {
           ...opts,
           payload: maybePayload?.payload,
@@ -1730,7 +1815,7 @@ export default class View {
     });
   }
 
-  pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback) {
+  pushInput(inputEl, targetCtx, forceCid, phxEvent, opts, callback?) {
     if (!inputEl.form) {
       throw new Error("form events require the input to be inside a form");
     }
@@ -1739,7 +1824,7 @@ export default class View {
     const cid = isCid(forceCid)
       ? forceCid
       : this.targetComponentID(inputEl.form, targetCtx, opts);
-    const refGenerator = (maybePayload) => {
+    const refGenerator = (maybePayload?) => {
       return this.putRef(
         [
           { el: inputEl, loading: true, lock: true },
@@ -1752,7 +1837,7 @@ export default class View {
     };
     let formData;
     const meta = this.extractMeta(inputEl.form, {}, opts.value);
-    const serializeOpts = {};
+    const serializeOpts: { submitter?: HTMLButtonElement } = {};
     if (inputEl instanceof HTMLButtonElement) {
       serializeOpts.submitter = inputEl;
     }
@@ -1853,7 +1938,7 @@ export default class View {
     );
   }
 
-  disableForm(formEl, phxEvent, opts = {}) {
+  disableForm(formEl: HTMLFormElement, phxEvent: string, opts = {}) {
     const filterIgnored = (el) => {
       const userIgnored = closestPhxBinding(
         el,
@@ -1867,45 +1952,56 @@ export default class View {
     const filterDisables = (el) => {
       return el.hasAttribute(this.binding(PHX_DISABLE_WITH));
     };
-    const filterButton = (el) => el.tagName == "BUTTON";
+    const filterButton = (el): el is HTMLButtonElement =>
+      el.tagName == "BUTTON";
 
-    const filterInput = (el) =>
-      ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
+    const filterInput = (el): el is HTMLInputElement | HTMLTextAreaElement =>
+      ["INPUT", "TEXTAREA"].includes(el.tagName);
+
+    const filterSelects = (el): el is HTMLSelectElement =>
+      el.tagName === "SELECT";
 
     const formElements = Array.from(formEl.elements);
     const disables = formElements.filter(filterDisables);
     const buttons = formElements.filter(filterButton).filter(filterIgnored);
     const inputs = formElements.filter(filterInput).filter(filterIgnored);
+    const selects = formElements.filter(filterSelects).filter(filterIgnored);
 
     buttons.forEach((button) => {
-      button.setAttribute(PHX_DISABLED, button.disabled);
+      button.setAttribute(PHX_DISABLED, button.disabled.toString());
       button.disabled = true;
     });
     inputs.forEach((input) => {
-      input.setAttribute(PHX_READONLY, input.readOnly);
+      input.setAttribute(PHX_READONLY, input.readOnly.toString());
       input.readOnly = true;
-      if (input.files) {
-        input.setAttribute(PHX_DISABLED, input.disabled);
+      if (input instanceof HTMLInputElement && input.files) {
+        input.setAttribute(PHX_DISABLED, input.disabled.toString());
         input.disabled = true;
       }
+    });
+    selects.forEach((select) => {
+      select.setAttribute(PHX_DISABLED, select.disabled.toString());
+      select.disabled = true;
     });
     const formEls = disables
       .concat(buttons)
       .concat(inputs)
+      .concat(selects)
       .map((el) => {
         return { el, loading: true, lock: true };
       });
 
     // we reverse the order so form children are already locked by the time
     // the form is locked
-    const els = [{ el: formEl, loading: true, lock: false }]
-      .concat(formEls)
-      .reverse();
+    const els = [
+      { el: formEl, loading: true, lock: false },
+      ...formEls,
+    ].reverse();
     return this.putRef(els, phxEvent, "submit", opts);
   }
 
   pushFormSubmit(formEl, targetCtx, phxEvent, submitter, opts, onReply) {
-    const refGenerator = (maybePayload) =>
+    const refGenerator = (maybePayload?) =>
       this.disableForm(formEl, phxEvent, {
         ...opts,
         form: formEl,
@@ -2070,7 +2166,7 @@ export default class View {
 
   targetCtxElement(targetCtx) {
     if (isCid(targetCtx)) {
-      const [target] = DOM.findComponentNodeList(this.id, targetCtx);
+      const target = DOM.findComponent(this.id, targetCtx);
       return target;
     } else if (targetCtx) {
       return targetCtx;
@@ -2079,7 +2175,12 @@ export default class View {
     }
   }
 
-  pushFormRecovery(oldForm, newForm, templateDom, callback) {
+  pushFormRecovery(
+    oldForm: HTMLFormElement,
+    newForm: HTMLFormElement,
+    templateDom: Element | DocumentFragment,
+    callback: () => void,
+  ) {
     // we are only recovering forms inside the current view, therefore it is safe to
     // skip withinOwners here and always use this when referring to the view
     const phxChange = this.binding("change");
@@ -2090,7 +2191,7 @@ export default class View {
     const inputs = Array.from(oldForm.elements).filter(
       (el) =>
         DOM.isFormAssociated(el) && el.name && !el.hasAttribute(phxChange),
-    );
+    ) as Array<FormInputLike>;
     if (inputs.length === 0) {
       callback();
       return;
@@ -2150,7 +2251,8 @@ export default class View {
             "click",
           )
       : null;
-    const fallback = () => this.liveSocket.redirect(window.location.href);
+    const fallback = () =>
+      this.liveSocket.redirect(window.location.href, null, null);
     const url = href.startsWith("/")
       ? `${location.protocol}//${location.host}${href}`
       : href;
@@ -2216,16 +2318,14 @@ export default class View {
         // and form.elements returns both the fieldset and the input separately.
         // Because the fieldset is disabled, the input should NOT be sent though.
         // We can only reliably serialize the form by cloning it fully.
-        const clonedForm = /** @type {HTMLFormElement} */ (
-          form.cloneNode(true)
-        );
+        const clonedForm = form.cloneNode(true) as HTMLFormElement;
         // we call morphdom to copy any special state
         // like the selected option of a <select> element;
         // any also copy over privates (which contain information about touched fields)
         morphdom(clonedForm, form, {
           onBeforeElUpdated: (fromEl, toEl) => {
             DOM.copyPrivates(fromEl, toEl);
-            if (fromEl.getAttribute("form") === form.id) {
+            if (fromEl.getAttribute("form") === form.id && fromEl.parentNode) {
               // In case the form contains an element with form="id" pointing
               // to the form itself, firefox still associates the element with the
               // original form element. This is not fixed by removing the parameter,
@@ -2243,7 +2343,7 @@ export default class View {
           `[form="${CSS.escape(form.id)}"]`,
         );
         Array.from(externalElements).forEach((el) => {
-          const clonedEl = /** @type {HTMLElement} */ (el.cloneNode(true));
+          const clonedEl = el.cloneNode(true) as Element;
           morphdom(clonedEl, el);
           DOM.copyPrivates(clonedEl, el);
           // See https://github.com/phoenixframework/phoenix_live_view/issues/4021
@@ -2260,7 +2360,7 @@ export default class View {
 
   maybePushComponentsDestroyed(destroyedCIDs) {
     let willDestroyCIDs = destroyedCIDs.filter((cid) => {
-      return DOM.findComponentNodeList(this.id, cid).length === 0;
+      return DOM.findComponent(this.id, cid) === null;
     });
 
     const onError = (error) => {
@@ -2272,7 +2372,7 @@ export default class View {
     if (willDestroyCIDs.length > 0) {
       // we must reset the render change tracking for cids that
       // could be added back from the server so we don't skip them
-      willDestroyCIDs.forEach((cid) => this.rendered.resetRender(cid));
+      willDestroyCIDs.forEach((cid) => this.rendered!.resetRender(cid));
 
       this.pushWithReply(null, "cids_will_destroy", { cids: willDestroyCIDs })
         .then(() => {
@@ -2282,7 +2382,7 @@ export default class View {
             // See if any of the cids we wanted to destroy were added back,
             // if they were added back, we don't actually destroy them.
             let completelyDestroyCIDs = willDestroyCIDs.filter((cid) => {
-              return DOM.findComponentNodeList(this.id, cid).length === 0;
+              return DOM.findComponent(this.id, cid) === null;
             });
 
             if (completelyDestroyCIDs.length > 0) {
@@ -2290,7 +2390,7 @@ export default class View {
                 cids: completelyDestroyCIDs,
               })
                 .then(({ resp }) => {
-                  this.rendered.pruneCIDs(resp.cids);
+                  this.rendered!.pruneCIDs(resp.cids);
                 })
                 .catch(onError);
             }
@@ -2313,7 +2413,7 @@ export default class View {
     DOM.putPrivate(form, PHX_HAS_SUBMITTED, true);
     const inputs = Array.from(form.elements);
     inputs.forEach((input) => DOM.putPrivate(input, PHX_HAS_SUBMITTED, true));
-    this.liveSocket.blurActiveElement(this);
+    this.liveSocket.blurActiveElement();
     this.pushFormSubmit(form, targetCtx, phxEvent, submitter, opts, () => {
       this.liveSocket.restorePreviouslyActiveFocus();
     });

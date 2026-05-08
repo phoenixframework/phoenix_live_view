@@ -18,7 +18,7 @@ describe("utils", () => {
         <span id="innerContent">This is a button</span>
       </button>
       `);
-      const element = global.document.querySelector("#innerContent");
+      const element = global.document.querySelector("#innerContent")!;
       const parent = global.document.querySelector("#button");
       expect(closestPhxBinding(element, "phx-click")).toBe(parent);
     });
@@ -29,7 +29,7 @@ describe("utils", () => {
         <span id="innerContent">This is a button</span>
       </button>
       `);
-      const element = global.document.querySelector("#innerContent");
+      const element = global.document.querySelector("#innerContent")!;
       expect(closestPhxBinding(element, "phx-click")).toBe(null);
     });
   });

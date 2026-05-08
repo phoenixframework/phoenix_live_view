@@ -6,89 +6,12 @@ import {
   PHX_VIEWPORT_OVERRUN_TARGET,
 } from "./constants";
 
+import type { Hook } from "./view_hook";
+
 import LiveUploader from "./live_uploader";
 import ARIA from "./aria";
 
-const Hooks = {
-  LiveFileUpload: {
-    activeRefs() {
-      return this.el.getAttribute(PHX_ACTIVE_ENTRY_REFS);
-    },
-
-    preflightedRefs() {
-      return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
-    },
-
-    mounted() {
-      this.js().ignoreAttributes(this.el, ["value"]);
-      this.preflightedWas = this.preflightedRefs();
-    },
-
-    updated() {
-      const newPreflights = this.preflightedRefs();
-      if (this.preflightedWas !== newPreflights) {
-        this.preflightedWas = newPreflights;
-        if (newPreflights === "") {
-          this.__view().cancelSubmit(this.el.form);
-        }
-      }
-
-      if (this.activeRefs() === "") {
-        this.el.value = null;
-      }
-      this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
-    },
-  },
-
-  LiveImgPreview: {
-    mounted() {
-      this.ref = this.el.getAttribute("data-phx-entry-ref");
-      this.inputEl = document.getElementById(
-        this.el.getAttribute(PHX_UPLOAD_REF),
-      );
-      this.url = LiveUploader.getEntryDataURL(this.inputEl, this.ref);
-      this.el.src = this.url;
-    },
-    destroyed() {
-      URL.revokeObjectURL(this.url);
-    },
-  },
-  FocusWrap: {
-    mounted() {
-      this.focusStart = this.el.firstElementChild;
-      this.focusEnd = this.el.lastElementChild;
-      this.focusStart.addEventListener("focus", (e) => {
-        if (!e.relatedTarget || !this.el.contains(e.relatedTarget)) {
-          // Handle focus entering from outside (e.g. Tab when body is focused)
-          // https://github.com/phoenixframework/phoenix_live_view/issues/3636
-          const nextFocus = e.target.nextElementSibling;
-          ARIA.attemptFocus(nextFocus) || ARIA.focusFirst(nextFocus);
-        } else {
-          ARIA.focusLast(this.el);
-        }
-      });
-      this.focusEnd.addEventListener("focus", (e) => {
-        if (!e.relatedTarget || !this.el.contains(e.relatedTarget)) {
-          // Handle focus entering from outside (e.g. Shift+Tab when body is focused)
-          // https://github.com/phoenixframework/phoenix_live_view/issues/3636
-          const nextFocus = e.target.previousElementSibling;
-          ARIA.attemptFocus(nextFocus) || ARIA.focusLast(nextFocus);
-        } else {
-          ARIA.focusFirst(this.el);
-        }
-      });
-      // only try to change the focus if it is not already inside
-      if (!this.el.contains(document.activeElement)) {
-        this.el.addEventListener("phx:show-end", () => this.el.focus());
-        if (window.getComputedStyle(this.el).display !== "none") {
-          ARIA.focusFirst(this.el);
-        }
-      }
-    },
-  },
-};
-
-const findScrollContainer = (el) => {
+const findScrollContainer = (el): HTMLElement | null => {
   // the scroll event won't be fired on the html/body element even if overflow is set
   // therefore we return null to instead listen for scroll events on document
   if (["HTML", "BODY"].indexOf(el.nodeName.toUpperCase()) >= 0) return null;
@@ -97,7 +20,7 @@ const findScrollContainer = (el) => {
   return findScrollContainer(el.parentElement);
 };
 
-const scrollTop = (scrollContainer) => {
+const scrollTop = (scrollContainer: HTMLElement | null) => {
   if (scrollContainer) {
     return scrollContainer.scrollTop;
   } else {
@@ -105,7 +28,7 @@ const scrollTop = (scrollContainer) => {
   }
 };
 
-const bottom = (scrollContainer) => {
+const bottom = (scrollContainer: HTMLElement | null) => {
   if (scrollContainer) {
     return scrollContainer.getBoundingClientRect().bottom;
   } else {
@@ -115,7 +38,7 @@ const bottom = (scrollContainer) => {
   }
 };
 
-const top = (scrollContainer) => {
+const top = (scrollContainer: HTMLElement | null) => {
   if (scrollContainer) {
     return scrollContainer.getBoundingClientRect().top;
   } else {
@@ -125,7 +48,7 @@ const top = (scrollContainer) => {
   }
 };
 
-const isAtViewportTop = (el, scrollContainer) => {
+const isAtViewportTop = (el: Element, scrollContainer: HTMLElement | null) => {
   const rect = el.getBoundingClientRect();
   return (
     Math.ceil(rect.top) >= top(scrollContainer) &&
@@ -133,7 +56,10 @@ const isAtViewportTop = (el, scrollContainer) => {
   );
 };
 
-const isAtViewportBottom = (el, scrollContainer) => {
+const isAtViewportBottom = (
+  el: Element,
+  scrollContainer: HTMLElement | null,
+) => {
   const rect = el.getBoundingClientRect();
   return (
     Math.ceil(rect.bottom) >= top(scrollContainer) &&
@@ -141,7 +67,7 @@ const isAtViewportBottom = (el, scrollContainer) => {
   );
 };
 
-const isWithinViewport = (el, scrollContainer) => {
+const isWithinViewport = (el: Element, scrollContainer: HTMLElement | null) => {
   const rect = el.getBoundingClientRect();
   return (
     Math.ceil(rect.top) >= top(scrollContainer) &&
@@ -149,13 +75,18 @@ const isWithinViewport = (el, scrollContainer) => {
   );
 };
 
-Hooks.InfiniteScroll = {
+const InfiniteScroll: Hook<
+  {
+    scrollContainer: HTMLElement | null;
+  },
+  HTMLElement
+> = {
   mounted() {
     this.scrollContainer = findScrollContainer(this.el);
     let scrollBefore = scrollTop(this.scrollContainer);
     let topOverran = false;
     const throttleInterval = 500;
-    let pendingOp = null;
+    let pendingOp: (() => void) | null = null;
 
     const onTopOverrun = this.throttle(
       throttleInterval,
@@ -208,7 +139,7 @@ Hooks.InfiniteScroll = {
       },
     );
 
-    this.onScroll = (_e) => {
+    this.onScroll = (_e: Event) => {
       const scrollNow = scrollTop(this.scrollContainer);
 
       if (pendingOp) {
@@ -239,12 +170,14 @@ Hooks.InfiniteScroll = {
       if (
         topEvent &&
         isScrollingUp &&
+        firstChild &&
         isAtViewportTop(firstChild, this.scrollContainer)
       ) {
         onFirstChildAtTop(topEvent, firstChild);
       } else if (
         bottomEvent &&
         isScrollingDown &&
+        lastChild &&
         isAtViewportBottom(lastChild, this.scrollContainer)
       ) {
         onLastChildAtBottom(bottomEvent, lastChild);
@@ -263,8 +196,8 @@ Hooks.InfiniteScroll = {
     // Check if the scroll container still exists
     // https://github.com/phoenixframework/phoenix_live_view/issues/4169.
     if (this.scrollContainer && !this.scrollContainer.isConnected) {
-      this.destroyed();
-      this.mounted();
+      this.destroyed!();
+      this.mounted!();
     }
   },
 
@@ -319,4 +252,88 @@ Hooks.InfiniteScroll = {
     return rect;
   },
 };
+
+const LiveFileUpload: Hook<object, HTMLInputElement> = {
+  activeRefs() {
+    return this.el.getAttribute(PHX_ACTIVE_ENTRY_REFS);
+  },
+
+  preflightedRefs() {
+    return this.el.getAttribute(PHX_PREFLIGHTED_REFS);
+  },
+
+  mounted() {
+    this.js().ignoreAttributes(this.el, ["value"]);
+    this.preflightedWas = this.preflightedRefs();
+  },
+
+  updated() {
+    const newPreflights = this.preflightedRefs();
+    if (this.preflightedWas !== newPreflights) {
+      this.preflightedWas = newPreflights;
+      if (newPreflights === "") {
+        this.__view().cancelSubmit(this.el.form);
+      }
+    }
+
+    if (this.activeRefs() === "") {
+      this.el.value = "";
+    }
+    this.el.dispatchEvent(new CustomEvent(PHX_LIVE_FILE_UPDATED));
+  },
+};
+
+const LiveImgPreview: Hook<object, HTMLImageElement> = {
+  mounted() {
+    this.ref = this.el.getAttribute("data-phx-entry-ref");
+    this.inputEl = document.getElementById(
+      this.el.getAttribute(PHX_UPLOAD_REF)!,
+    );
+    this.url = LiveUploader.getEntryDataURL(this.inputEl, this.ref);
+    this.el.src = this.url;
+  },
+  destroyed() {
+    URL.revokeObjectURL(this.url);
+  },
+};
+
+const Hooks: Record<string, Hook<any, any>> = {
+  LiveFileUpload,
+  LiveImgPreview,
+  FocusWrap: {
+    mounted() {
+      this.focusStart = this.el.firstElementChild;
+      this.focusEnd = this.el.lastElementChild;
+      this.focusStart.addEventListener("focus", (e) => {
+        if (!e.relatedTarget || !this.el.contains(e.relatedTarget)) {
+          // Handle focus entering from outside (e.g. Tab when body is focused)
+          // https://github.com/phoenixframework/phoenix_live_view/issues/3636
+          const nextFocus = e.target.nextElementSibling;
+          ARIA.attemptFocus(nextFocus) || ARIA.focusFirst(nextFocus);
+        } else {
+          ARIA.focusLast(this.el);
+        }
+      });
+      this.focusEnd.addEventListener("focus", (e) => {
+        if (!e.relatedTarget || !this.el.contains(e.relatedTarget)) {
+          // Handle focus entering from outside (e.g. Shift+Tab when body is focused)
+          // https://github.com/phoenixframework/phoenix_live_view/issues/3636
+          const nextFocus = e.target.previousElementSibling;
+          ARIA.attemptFocus(nextFocus) || ARIA.focusLast(nextFocus);
+        } else {
+          ARIA.focusFirst(this.el);
+        }
+      });
+      // only try to change the focus if it is not already inside
+      if (!this.el.contains(document.activeElement)) {
+        this.el.addEventListener("phx:show-end", () => this.el.focus());
+        if (window.getComputedStyle(this.el).display !== "none") {
+          ARIA.focusFirst(this.el);
+        }
+      }
+    },
+  },
+  InfiniteScroll,
+};
+
 export default Hooks;

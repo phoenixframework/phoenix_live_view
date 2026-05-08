@@ -2,9 +2,9 @@ import { PHX_VIEW_SELECTOR } from "./constants";
 
 import EntryUploader from "./entry_uploader";
 
-export const logError = (msg, obj) => console.error && console.error(msg, obj);
+export const logError = (msg, obj?) => console.error && console.error(msg, obj);
 
-export const isCid = (cid) => {
+export const isCid = (cid): cid is number | string => {
   const type = typeof cid;
   return type === "number" || (type === "string" && /^(0|[1-9]\d*)$/.test(cid));
 };
@@ -47,7 +47,7 @@ export const debug = (view, kind, msg, obj) => {
 };
 
 // wraps value in closure or returns closure
-export const closure = (val) =>
+export const closure = (val?) =>
   typeof val === "function"
     ? val
     : function () {
@@ -58,12 +58,17 @@ export const clone = (obj) => {
   return JSON.parse(JSON.stringify(obj));
 };
 
-export const closestPhxBinding = (el, binding, borderEl) => {
+export const closestPhxBinding = (
+  startEl: Element,
+  binding: string,
+  borderEl?: Element,
+) => {
+  let el: Element | null = startEl;
   do {
-    if (el.matches(`[${binding}]`) && !el.disabled) {
+    if (el.matches(`[${binding}]`) && !("disabled" in el && el.disabled)) {
       return el;
     }
-    el = el.parentElement || el.parentNode;
+    el = el.parentElement;
   } while (
     el !== null &&
     el.nodeType === 1 &&

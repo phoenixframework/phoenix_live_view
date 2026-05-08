@@ -241,8 +241,8 @@ describe("DOM", () => {
     });
   });
 
-  describe("findComponentNodeList", () => {
-    test("returns nodes with cid ID (except indirect children)", () => {
+  describe("findComponent", () => {
+    test("returns node with cid ID (except indirect children)", () => {
       const view = tag("div", { id: "foo" }, "");
       let component1 = tag(
         "div",
@@ -250,11 +250,6 @@ describe("DOM", () => {
         "Hello",
       );
       let component2 = tag(
-        "div",
-        { "data-phx-component": 0, "data-phx-view": "foo" },
-        "World",
-      );
-      let component3 = tag(
         "div",
         { "data-phx-session": "123" },
         `
@@ -264,15 +259,11 @@ describe("DOM", () => {
       document.body.appendChild(view);
       view.appendChild(component1);
       view.appendChild(component2);
-      view.appendChild(component3);
 
-      expect(DOM.findComponentNodeList("foo", 0, document)).toEqual([
-        component1,
-        component2,
-      ]);
+      expect(DOM.findComponent("foo", 0, document)).toEqual(component1);
     });
 
-    test("returns empty list with no matching cid", () => {
+    test("returns null with no matching cid", () => {
       const view = tag("div", { id: "foo" }, "");
       let component1 = tag(
         "div",
@@ -281,7 +272,7 @@ describe("DOM", () => {
       );
       document.body.appendChild(view);
       view.appendChild(component1);
-      expect(DOM.findComponentNodeList("bar", 123)).toEqual([]);
+      expect(DOM.findComponent("bar", 123)).toEqual(null);
     });
   });
 

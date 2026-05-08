@@ -494,7 +494,12 @@ export class ViewHook<E extends HTMLElement = HTMLElement>
         },
       );
       const promises = targetPair.map(({ view, targetCtx }) => {
-        return view.pushHookEvent(this.el, targetCtx, event, payload || {});
+        return view.pushHookEvent(
+          this.el,
+          targetCtx,
+          event,
+          payload || {},
+        ) as Promise<{ reply: any; ref: number }>;
       });
       return Promise.allSettled(promises);
     }
