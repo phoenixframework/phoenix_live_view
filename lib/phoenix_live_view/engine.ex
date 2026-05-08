@@ -692,7 +692,8 @@ defmodule Phoenix.LiveView.Engine do
 
   defp changed_assigns(assigns) do
     checks =
-      for {{changed_var, key}, _} <- assigns, not nested_and_parent_is_checked?(key, assigns) do
+      for {{changed_var, key}, _} <- assigns,
+          not nested_and_parent_is_checked?(changed_var, key, assigns) do
         changed = Macro.var(changed_var, __MODULE__)
 
         case key do
@@ -736,19 +737,29 @@ defmodule Phoenix.LiveView.Engine do
   # @foo.bar or @foo, we don't need to check for @foo.bar.baz.
 
   # If there is no nesting, then we are not nesting.
-  defp nested_and_parent_is_checked?([_], _assigns),
+  defp nested_and_parent_is_checked?(_changed_var, [_], _assigns),
     do: false
 
   # Otherwise, we convert @foo.bar.baz into [:baz, :bar, :foo], discard :baz,
   # and then check if [:foo, :bar] and then [:foo] is in it.
-  defp nested_and_parent_is_checked?(keys, assigns),
-    do: parent_is_checked?(tl(Enum.reverse(keys)), assigns)
+  defp nested_and_parent_is_checked?(changed_var, keys, assigns),
+    do: parent_is_checked?(changed_var, tl(Enum.reverse(keys)), assigns)
 
-  defp parent_is_checked?([], _assigns),
+  defp parent_is_checked?(_changed_var, [], _assigns),
     do: false
 
-  defp parent_is_checked?(rest, assigns),
-    do: Map.has_key?(assigns, Enum.reverse(rest)) or parent_is_checked?(tl(rest), assigns)
+  defp parent_is_checked?(changed_var, rest, assigns),
+    do:
+      Map.has_key?(assigns, {changed_var, Enum.reverse(rest)}) or
+        parent_is_checked?(changed_var, tl(rest), assigns)
+
+  defp put_changed_assign(assigns, changed_var, key) do
+    if nested_and_parent_is_checked?(changed_var, key, assigns) do
+      assigns
+    else
+      Map.put(assigns, {changed_var, key}, true)
+    end
+  end
 
   ## Component keys change tracking
 
@@ -1025,7 +1036,7 @@ defmodule Phoenix.LiveView.Engine do
        )
        when is_atom(name) and is_atom(context) and is_map_key(map, name) and type != :tainted do
     if map[name] == :change_track do
-      {expr, vars, Map.put(assigns, {:vars_changed, [name | nest]}, true)}
+      {expr, vars, put_changed_assign(assigns, :vars_changed, [name | nest])}
     else
       analyze(expr, vars, assigns, caller)
     end
@@ -1035,7 +1046,7 @@ defmodule Phoenix.LiveView.Engine do
   defp analyze_assign({:@, meta, [{name, _, context}]}, vars, assigns, _caller, nest)
        when is_atom(name) and is_atom(context) do
     expr = {{:., meta, [@assigns_var, name]}, [no_parens: true] ++ meta, []}
-    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
+    {expr, vars, put_changed_assign(assigns, :changed, [name | nest])}
   end
 
   # assigns.name
@@ -1047,7 +1058,7 @@ defmodule Phoenix.LiveView.Engine do
          nest
        )
        when is_atom(name) and args in [[], nil] do
-    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
+    {expr, vars, put_changed_assign(assigns, :changed, [name | nest])}
   end
 
   # assigns[:name]
@@ -1059,7 +1070,7 @@ defmodule Phoenix.LiveView.Engine do
          nest
        )
        when is_atom(name) and is_access(access) do
-    {expr, vars, Map.put(assigns, {:changed, [name | nest]}, true)}
+    {expr, vars, put_changed_assign(assigns, :changed, [name | nest])}
   end
 
   # Maybe: assigns.foo[:bar]
@@ -1138,7 +1149,7 @@ defmodule Phoenix.LiveView.Engine do
         {expr, {:tainted, map}, assigns}
 
       %{^name => :change_track} ->
-        {expr, vars, Map.put(assigns, {:vars_changed, [name]}, true)}
+        {expr, vars, put_changed_assign(assigns, :vars_changed, [name])}
 
       _ ->
         {expr, {:restricted, map}, assigns}
@@ -1149,7 +1160,7 @@ defmodule Phoenix.LiveView.Engine do
        when is_atom(name) do
     cond do
       Map.get(map, name) == :change_track ->
-        {expr, {type, map}, Map.put(assigns, {:vars_changed, [name]}, true)}
+        {expr, {type, map}, put_changed_assign(assigns, :vars_changed, [name])}
 
       Keyword.get(meta, :change_track) ->
         # this is a variable inside the left-hand side of a keyed for expression;
