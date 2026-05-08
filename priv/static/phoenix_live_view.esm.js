@@ -5999,19 +5999,19 @@ var LiveSocket = class {
     return "1.2.0-rc.2";
   }
   /**
-   * Returns true if profiling is enabled. See `enableProfiling` and `disableProfiling`.
+   * Returns true if profiling is enabled. See {@link enableProfiling} and {@link disableProfiling}.
    */
   isProfileEnabled() {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
   }
   /**
-   * Returns true if debugging is enabled. See `enableDebug` and `disableDebug`.
+   * Returns true if debugging is enabled. See {@link enableDebug} and {@link disableDebug}.
    */
   isDebugEnabled() {
     return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true";
   }
   /**
-   * Returns true if debugging is disabled. See `enableDebug` and `disableDebug`.
+   * Returns true if debugging is disabled. See {@link enableDebug} and {@link disableDebug}.
    */
   isDebugDisabled() {
     return this.sessionStorage.getItem(PHX_LV_DEBUG) === "false";
