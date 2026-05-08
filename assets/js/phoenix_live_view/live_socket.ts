@@ -92,7 +92,7 @@ export interface LiveSocketOptions {
   /**
    * Callbacks for LiveView hooks.
    *
-   * See [Client hooks via `phx-hook`](https://hexdocs.pm/phoenix_live_view/js-interop.html#client-hooks-via-phx-hook) for more information.
+   * See [Client hooks via `phx-hook`](../../js-interop.html#client-hooks-via-phx-hook) for more information.
    */
   hooks?: HooksOptions;
   /** Callbacks for LiveView uploaders. */
@@ -419,7 +419,7 @@ export default class LiveSocket {
    * Enables debugging.
    *
    * When debugging is enabled, the LiveView client will log debug information to the console.
-   * See [Debugging client events](https://hexdocs.pm/phoenix_live_view/js-interop.html#debugging-client-events) for more information.
+   * See [Debugging client events](../../js-interop.html#debugging-client-events) for more information.
    */
   enableDebug(): void {
     this.sessionStorage.setItem(PHX_LV_DEBUG, "true");
@@ -452,7 +452,7 @@ export default class LiveSocket {
    * Enables latency simulation.
    *
    * When latency simulation is enabled, the LiveView client will add a delay to requests and responses from the server.
-   * See [Simulating Latency](https://hexdocs.pm/phoenix_live_view/js-interop.html#simulating-latency) for more information.
+   * See [Simulating Latency](../../js-interop.html#simulating-latency) for more information.
    */
   enableLatencySim(upperBoundMs: number): void {
     this.enableDebug();
@@ -541,7 +541,7 @@ export default class LiveSocket {
   /**
    * Executes an encoded JS command, targeting the given element.
    *
-   * See [`Phoenix.LiveView.JS`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.JS.html) for more information.
+   * See [`Phoenix.LiveView.JS`](../../Phoenix.LiveView.JS.html) for more information.
    */
   execJS(
     el: HTMLElement,
@@ -556,7 +556,7 @@ export default class LiveSocket {
    * Returns an object with methods to manipulate the DOM and execute JavaScript.
    * The applied changes integrate with server DOM patching.
    *
-   * See [JavaScript interoperability](https://hexdocs.pm/phoenix_live_view/js-interop.html) for more information.
+   * See [JavaScript interoperability](../../js-interop.html) for more information.
    */
   js(): LiveSocketJSCommands {
     return jsCommands(this, "js");
