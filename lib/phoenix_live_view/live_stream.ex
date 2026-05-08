@@ -101,7 +101,8 @@ defmodule Phoenix.LiveView.LiveStream do
         # the inserts are stored in reverse insert order, so we need to reverse them
         # before rendering; we also remove duplicates to only use the most recent
         # inserts, which, as the items are reversed, are first
-        do_reduce(uniq_inserts(stream.inserts, [], %{}), acc, fun)
+        inserts = uniq_inserts(stream.inserts, [], %{})
+        do_reduce(inserts, acc, fun)
       else
         raise ArgumentError, """
         streams can only be consumed directly by a for comprehension.
