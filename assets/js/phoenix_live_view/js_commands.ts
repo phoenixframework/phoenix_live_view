@@ -17,29 +17,29 @@ type BaseOpts = {
   /**
    * The CSS transition classes to set.
    * Accepts a string of classes or a 3-tuple like:
-   * `["ease-out duration-300", "opacity-0", "opacity-100"]`
+   * `["ease-out duration-300", "opacity-0", "opacity-100"]`.
    */
   transition?: Transition;
-  /** The transition duration in milliseconds. Defaults 200. */
+  /** The transition duration in milliseconds. Defaults to `200`. */
   time?: number;
-  /** Whether to block UI during transition. Defaults `true`. */
+  /** Whether to block UI during transition. Defaults to `true`. */
   blocking?: boolean;
 };
 
 type ShowOpts = BaseOpts & {
-  /** The CSS display value to set. Defaults "block". */
+  /** The CSS display value to set. Defaults to `"block"`. */
   display?: string;
 };
 
 type ToggleOpts = {
-  /** The CSS display value to set. Defaults "block". */
+  /** The CSS display value to set. Defaults to `"block"`. */
   display?: string;
   /**
    * The CSS transition classes for showing.
    * Accepts either the string of classes to apply when toggling in, or
    * a 3-tuple containing the transition class, the class to apply
    * to start the transition, and the ending transition class, such as:
-   * `["ease-out duration-300", "opacity-0", "opacity-100"]`
+   * `["ease-out duration-300", "opacity-0", "opacity-100"]`.
    */
   in?: Transition;
   /**
@@ -47,7 +47,7 @@ type ToggleOpts = {
    * Accepts either string of classes to apply when toggling out, or
    * a 3-tuple containing the transition class, the class to apply
    * to start the transition, and the ending transition class, such as:
-   * `["ease-out duration-300", "opacity-100", "opacity-0"]`
+   * `["ease-out duration-300", "opacity-100", "opacity-0"]`.
    */
   out?: Transition;
   /** The transition duration in milliseconds. */
