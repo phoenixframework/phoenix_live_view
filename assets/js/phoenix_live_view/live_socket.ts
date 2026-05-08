@@ -162,7 +162,7 @@ export interface LiveSocketOptions {
    * An optional Storage compatible object
    * Useful when LiveView won't have access to `localStorage`.
    *
-   * See `sessionStorage` for an example.
+   * See {@link sessionStorage} for an example.
    */
   localStorage?: Storage;
   /**
@@ -395,21 +395,21 @@ export default class LiveSocket {
   }
 
   /**
-   * Returns true if profiling is enabled. See `enableProfiling` and `disableProfiling`.
+   * Returns true if profiling is enabled. See {@link enableProfiling} and {@link disableProfiling}.
    */
   isProfileEnabled(): boolean {
     return this.sessionStorage.getItem(PHX_LV_PROFILE) === "true";
   }
 
   /**
-   * Returns true if debugging is enabled. See `enableDebug` and `disableDebug`.
+   * Returns true if debugging is enabled. See {@link enableDebug} and {@link disableDebug}.
    */
   isDebugEnabled(): boolean {
     return this.sessionStorage.getItem(PHX_LV_DEBUG) === "true";
   }
 
   /**
-   * Returns true if debugging is disabled. See `enableDebug` and `disableDebug`.
+   * Returns true if debugging is disabled. See {@link enableDebug} and {@link disableDebug}.
    */
   isDebugDisabled(): boolean {
     return this.sessionStorage.getItem(PHX_LV_DEBUG) === "false";
