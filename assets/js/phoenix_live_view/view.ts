@@ -198,7 +198,7 @@ export default class View {
         params: this.connectParams(liveReferer),
         session: this.getSession(),
         static: this.getStatic(),
-        flash: this.flash,
+        flash: this.flash ?? undefined,
         sticky: this.el.hasAttribute(PHX_STICKY),
       };
     });
@@ -231,7 +231,7 @@ export default class View {
     }
     params["_mounts"] = this.joinCount;
     params["_mount_attempts"] = this.joinAttempts;
-    params["_live_referer"] = liveReferer;
+    params["_live_referer"] = liveReferer ?? undefined;
     this.joinAttempts++;
 
     return params;

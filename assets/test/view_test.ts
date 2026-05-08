@@ -1178,7 +1178,7 @@ describe("View", function () {
     const el = liveViewDOM();
     const view = simulateJoinedView(el, liveSocket);
     expect(view.liveSocket).toBe(liveSocket);
-    expect(view["parent"]).toBeUndefined();
+    expect(view["parent"]).toBe(null);
     expect(view.el).toBe(el);
     expect(view.id).toEqual("container");
     expect(view.getSession).toBeDefined();
