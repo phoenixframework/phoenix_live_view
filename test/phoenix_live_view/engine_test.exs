@@ -459,6 +459,24 @@ defmodule Phoenix.LiveView.EngineTest do
       assert changed(template, %{foo: "a"}, %{}) == [["a", "a", "a"]]
       assert changed(template, %{foo: "a"}, %{foo: true}) == [["a", "a", "a"]]
     end
+
+    test "short-circuits checks when parent is already checked" do
+      template = "<%= @foo && @foo.bar.baz.qux %>"
+      quoted = EEx.compile_string(template, file: __ENV__.file, engine: Engine)
+      code = Macro.to_string(quoted)
+
+      refute code =~ "nested_changed_assign",
+             "expected short-circuiting of @foo checks, got: #{code}"
+    end
+
+    test "short-circuits checks when parent is already checked (vars_changed)" do
+      template = "<%= for foo <- @bar do %><%= foo && foo.bar.baz.qux %><% end %>"
+      quoted = EEx.compile_string(template, file: __ENV__.file, engine: Engine)
+      code = Macro.to_string(quoted)
+
+      refute code =~ "nested_changed_assign",
+             "expected short-circuiting of foo checks, got: #{code}"
+    end
   end
 
   describe "if" do
