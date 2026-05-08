@@ -46,14 +46,14 @@ export interface HookInterface<E extends HTMLElement = HTMLElement> {
   /**
    * The updated callback.
    *
-   * Called when the element has been updated in the DOM by the server
+   * Called when the element has been updated in the DOM by the server.
    */
   updated?: () => void;
 
   /**
    * The destroyed callback.
    *
-   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely
+   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely.
    */
   destroyed?: () => void;
 
@@ -189,14 +189,14 @@ export interface Hook<T = object, E extends HTMLElement = HTMLElement> {
   /**
    * The updated callback.
    *
-   * Called when the element has been updated in the DOM by the server
+   * Called when the element has been updated in the DOM by the server.
    */
   updated?: (this: T & HookInterface<E>) => void;
 
   /**
    * The destroyed callback.
    *
-   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely
+   * Called when the element has been removed from the page, either by a parent update, or by the parent being removed entirely.
    */
   destroyed?: (this: T & HookInterface<E>) => void;
 

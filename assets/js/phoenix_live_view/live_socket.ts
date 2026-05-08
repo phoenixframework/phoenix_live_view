@@ -68,9 +68,9 @@ export interface LiveSocketOptions {
    * Defaults for phx-debounce and phx-throttle.
    */
   defaults?: {
-    /** The millisecond phx-debounce time. Defaults 300 */
+    /** The millisecond phx-debounce time. Defaults to `300`. */
     debounce?: number;
-    /** The millisecond phx-throttle time. Defaults 300 */
+    /** The millisecond phx-throttle time. Defaults to `300`. */
     throttle?: number;
   };
   /**
@@ -86,7 +86,7 @@ export interface LiveSocketOptions {
   /**
    * The optional prefix to use for all phx DOM annotations.
    *
-   * Defaults to "phx-".
+   * Defaults to `"phx-"`.
    */
   bindingPrefix?: string;
   /**
@@ -144,8 +144,8 @@ export interface LiveSocketOptions {
     ) => object;
   };
   /**
-   * An optional Storage compatible object
-   * Useful when LiveView won't have access to `sessionStorage`. For example, This could
+   * An optional Storage-compatible object.
+   * Useful when LiveView won't have access to `sessionStorage`. For example, this could
    * happen if a site loads a cross-domain LiveView in an iframe.
    *
    * Example usage:
@@ -159,7 +159,7 @@ export interface LiveSocketOptions {
    */
   sessionStorage?: Storage;
   /**
-   * An optional Storage compatible object
+   * An optional Storage-compatible object.
    * Useful when LiveView won't have access to `localStorage`.
    *
    * See `sessionStorage` for an example.
@@ -298,7 +298,7 @@ export default class LiveSocket {
    */
   constructor(
     /**
-     * The string WebSocket endpoint, ie, `"wss://example.com/live"`, `"/live"` (inherited host & protocol)
+     * The WebSocket endpoint URL, e.g., `"wss://example.com/live"`, or `"/live"` to inherit the host and protocol.
      */
     url: string,
     /**
