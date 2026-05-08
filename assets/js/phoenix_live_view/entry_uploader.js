@@ -30,7 +30,7 @@ export default class EntryUploader {
     this.uploadChannel
       .join()
       .receive("ok", (_data) => this.readNextChunk())
-      .receive("error", (reason) => this.error(reason));
+      .receive("error", ({ reason }) => this.error(reason));
   }
 
   isDone() {
