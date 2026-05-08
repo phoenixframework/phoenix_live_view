@@ -57,8 +57,8 @@ describe("View + DOM", function () {
     const view = simulateJoinedView(el, liveSocket);
     view.update(updateDiff, []);
 
-    expect(view.el.firstChild.tagName).toBe("H2");
-    expect(view.rendered!.get()).toEqual(updateDiff);
+    expect(view.el.firstChild!["tagName"]).toBe("H2");
+    expect(view["rendered"]!.get()).toEqual(updateDiff);
   });
 
   test("applyDiff with empty title uses default if present", async () => {
@@ -78,8 +78,8 @@ describe("View + DOM", function () {
       view.update(diff, events),
     );
 
-    expect(view.el.firstChild.tagName).toBe("H2");
-    expect(view.rendered!.get()).toEqual(updateDiff);
+    expect(view.el.firstChild!["tagName"]).toBe("H2");
+    expect(view["rendered"]!.get()).toEqual(updateDiff);
 
     await new Promise(requestAnimationFrame);
     expect(document.title).toBe("Foo");
@@ -109,8 +109,8 @@ describe("View + DOM", function () {
       view.update(diff, events),
     );
 
-    expect(view.el.firstChild.tagName).toBe("H2");
-    expect(view.rendered!.get()).toEqual(updateDiff);
+    expect(view.el.firstChild!["tagName"]).toBe("H2");
+    expect(view["rendered"]!.get()).toEqual(updateDiff);
 
     await new Promise(requestAnimationFrame);
     expect(document.title).toBe("Foo");
@@ -146,7 +146,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushWithReply(
       null,
@@ -182,7 +182,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushWithReply(
       null,
@@ -220,7 +220,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushEvent("keyup", input, el, "click", {});
   });
@@ -250,7 +250,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushEvent("click", input, el, "toggle_me", {});
   });
@@ -282,7 +282,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushEvent("click", input, el, "toggle_me", {});
   });
@@ -315,7 +315,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushEvent("click", input, el, "toggle_me", {});
   });
@@ -348,7 +348,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushInput(input, el, null, "validate", { _target: input.name });
   });
@@ -389,7 +389,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
     const optValue = { nested: { command_value: "command", array: [1, 2] } };
     view.pushInput(input, el, null, "validate", {
       _target: input.name,
@@ -426,7 +426,7 @@ describe("View + DOM", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view["channel"] as unknown) = channelStub;
 
     view.pushInput(input, el, null, "validate", { _target: input.name });
   });
@@ -436,7 +436,7 @@ describe("View + DOM", function () {
     liveSocket = new LiveSocket("/live", Socket);
 
     html = '<form id="my-form" phx-change="cg"><input name="foo"></form>';
-    view = new View(liveViewDOM(html), liveSocket);
+    view = new View(liveViewDOM(html), liveSocket, null, null, null);
     expect(view.joinCount).toBe(0);
     expect(Object.keys(view.getFormsForRecovery()).length).toBe(0);
 
@@ -448,23 +448,23 @@ describe("View + DOM", function () {
 
     html =
       '<form phx-change="cg" phx-auto-recover="ignore"><input name="foo"></form>';
-    view = new View(liveViewDOM(html), liveSocket);
+    view = new View(liveViewDOM(html), liveSocket, null, null, null);
     view.joinCount = 2;
     expect(Object.keys(view.getFormsForRecovery()).length).toBe(0);
 
     html = '<form><input name="foo"></form>';
-    view = new View(liveViewDOM(), liveSocket);
+    view = new View(liveViewDOM(), liveSocket, null, null, null);
     view.joinCount = 2;
     expect(Object.keys(view.getFormsForRecovery()).length).toBe(0);
 
     html = '<form phx-change="cg"></form>';
-    view = new View(liveViewDOM(html), liveSocket);
+    view = new View(liveViewDOM(html), liveSocket, null, null, null);
     view.joinCount = 2;
     expect(Object.keys(view.getFormsForRecovery()).length).toBe(0);
 
     html =
       '<form id=\'my-form\' phx-change=\'[["push",{"event":"update","target":1}]]\'><input name="foo" /></form>';
-    view = new View(liveViewDOM(html), liveSocket);
+    view = new View(liveViewDOM(html), liveSocket, null, null, null);
     view.joinCount = 1;
     const newForms = view.getFormsForRecovery();
     expect(Object.keys(newForms).length).toBe(1);
@@ -494,8 +494,8 @@ describe("View + DOM", function () {
           };
         },
       };
-      view.channel = channelStub;
-      view.submitForm(form, form, { target: form });
+      (view["channel"] as unknown) = channelStub;
+      view.submitForm(form, form, "submit", null, { target: form });
     });
 
     test("payload includes phx-value and JS command value", function () {
@@ -533,11 +533,11 @@ describe("View + DOM", function () {
           };
         },
       };
-      view.channel = channelStub;
+      (view["channel"] as unknown) = channelStub;
       const opts = {
         value: { nested: { command_value: "command", array: [1, 2] } },
       };
-      view.submitForm(form, form, { target: form }, undefined, opts);
+      view.submitForm(form, form, "submit", undefined, opts);
     });
 
     test("payload includes submitter when name is provided", function () {
@@ -597,8 +597,8 @@ describe("View + DOM", function () {
         },
       };
 
-      view.channel = channelStub;
-      view.submitForm(form, form, { target: form }, btn, opts);
+      (view["channel"] as unknown) = channelStub;
+      view.submitForm(form, form, "submit", btn, opts);
     }
 
     test("disables elements after submission", function () {
@@ -609,7 +609,7 @@ describe("View + DOM", function () {
       const view = simulateJoinedView(el, liveSocket);
       stubChannel(view);
 
-      view.submitForm(form, form, { target: form });
+      view.submitForm(form, form, "submit", null, { target: form });
       expect(DOM.private(form, "phx-has-submitted")).toBeTruthy();
       Array.from(form.elements).forEach((input) => {
         expect(DOM.private(input, "phx-has-submitted")).toBeTruthy();
@@ -636,7 +636,7 @@ describe("View + DOM", function () {
       const view = simulateJoinedView(el, liveSocket);
       stubChannel(view);
 
-      view.submitForm(form, form, { target: form });
+      view.submitForm(form, form, "submit", null, { target: form });
       expect(DOM.private(form, "phx-has-submitted")).toBeTruthy();
       expect(form.classList.contains("phx-submit-loading")).toBeTruthy();
       expect(el.querySelector("button")!.dataset.phxDisabled).toBeTruthy();
@@ -980,20 +980,24 @@ describe("View + DOM", function () {
         view.update(diff, events),
       );
 
-      expect(view.el.firstChild.tagName).toBe("DETAILS");
-      expect(view.el.firstChild.open).toBe(false);
-      view.el.firstChild.open = true;
-      view.el.firstChild.setAttribute("data-foo", "bar");
+      expect(view.el.firstChild!["tagName"]).toBe("DETAILS");
+      expect(view.el.firstChild!["open"]).toBe(false);
+      view.el.firstChild!["open"] = true;
+      (view.el.firstChild! as HTMLElement).setAttribute("data-foo", "bar");
 
       // now update, the HTML patch would normally reset the open attribute
       view.applyDiff("update", { "1": "1" }, ({ diff, events }) =>
         view.update(diff, events),
       );
       // open is ignored, so it is kept as is
-      expect(view.el.firstChild.open).toBe(true);
+      expect(view.el.firstChild!["open"]).toBe(true);
       // foo is not ignored, so it is reset
-      expect(view.el.firstChild.getAttribute("data-foo")).toBe(null);
-      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-foo"),
+      ).toBe(null);
+      expect(view.el.firstChild!.textContent!.replace(/\s+/g, "")).toEqual(
+        "A1",
+      );
     });
 
     test("ignore_attributes skips boolean attributes on update when not set", () => {
@@ -1014,20 +1018,24 @@ describe("View + DOM", function () {
         view.update(diff, events),
       );
 
-      expect(view.el.firstChild.tagName).toBe("DETAILS");
-      expect(view.el.firstChild.open).toBe(true);
-      view.el.firstChild.open = false;
-      view.el.firstChild.setAttribute("data-foo", "bar");
+      expect(view.el.firstChild!["tagName"]).toBe("DETAILS");
+      expect(view.el.firstChild!["open"]).toBe(true);
+      view.el.firstChild!["open"] = false;
+      (view.el.firstChild! as HTMLElement).setAttribute("data-foo", "bar");
 
       // now update, the HTML patch would normally reset the open attribute
       view.applyDiff("update", { "1": "1" }, ({ diff, events }) =>
         view.update(diff, events),
       );
       // open is ignored, so it is kept as is
-      expect(view.el.firstChild.open).toBe(false);
+      expect(view.el.firstChild!["open"]).toBe(false);
       // foo is not ignored, so it is reset
-      expect(view.el.firstChild.getAttribute("data-foo")).toBe(null);
-      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-foo"),
+      ).toBe(null);
+      expect(view.el.firstChild!.textContent!.replace(/\s+/g, "")).toEqual(
+        "A1",
+      );
     });
 
     test("ignore_attributes wildcard", () => {
@@ -1050,25 +1058,38 @@ describe("View + DOM", function () {
         view.update(diff, events),
       );
 
-      expect(view.el.firstChild.tagName).toBe("DETAILS");
-      expect(view.el.firstChild.open).toBe(false);
-      view.el.firstChild.open = true;
-      view.el.firstChild.setAttribute("data-foo", "bar");
-      view.el.firstChild.setAttribute("data-other", "also kept");
+      expect(view.el.firstChild!["tagName"]).toBe("DETAILS");
+      expect(view.el.firstChild!["open"]).toBe(false);
+      view.el.firstChild!["open"] = true;
+      (view.el.firstChild! as HTMLElement).setAttribute("data-foo", "bar");
+      (view.el.firstChild! as HTMLElement).setAttribute(
+        "data-other",
+        "also kept",
+      );
       // apply diff
       view.applyDiff(
         "update",
         { "1": 'data-foo="foo" data-bar="bar" data-new="new"', "2": "1" },
         ({ diff, events }) => view.update(diff, events),
       );
-      expect(view.el.firstChild.open).toBe(true);
-      expect(view.el.firstChild.getAttribute("data-foo")).toBe("bar");
-      expect(view.el.firstChild.getAttribute("data-bar")).toBe("bar");
-      expect(view.el.firstChild.getAttribute("data-other")).toBe("also kept");
-      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+      expect(view.el.firstChild!["open"]).toBe(true);
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-foo"),
+      ).toBe("bar");
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-bar"),
+      ).toBe("bar");
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-other"),
+      ).toBe("also kept");
+      expect(view.el.firstChild!.textContent!.replace(/\s+/g, "")).toEqual(
+        "A1",
+      );
 
       // Not added for being ignored
-      expect(view.el.firstChild.getAttribute("data-new")).toBe(null);
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-new"),
+      ).toBe(null);
     });
 
     test("ignore_attributes *", () => {
@@ -1091,27 +1112,42 @@ describe("View + DOM", function () {
         view.update(diff, events),
       );
 
-      expect(view.el.firstChild.tagName).toBe("DETAILS");
-      expect(view.el.firstChild.open).toBe(false);
-      view.el.firstChild.open = true;
-      view.el.firstChild.setAttribute("data-foo", "bar");
-      view.el.firstChild.setAttribute("data-other", "also kept");
-      view.el.firstChild.setAttribute("something", "else");
+      expect(view.el.firstChild!["tagName"]).toBe("DETAILS");
+      expect(view.el.firstChild!["open"]).toBe(false);
+      view.el.firstChild!["open"] = true;
+      (view.el.firstChild! as HTMLElement).setAttribute("data-foo", "bar");
+      (view.el.firstChild! as HTMLElement).setAttribute(
+        "data-other",
+        "also kept",
+      );
+      (view.el.firstChild! as HTMLElement).setAttribute("something", "else");
       // apply diff
       view.applyDiff(
         "update",
         { "1": 'data-foo="foo" data-bar="bar" data-new="new"', "2": "1" },
         ({ diff, events }) => view.update(diff, events),
       );
-      expect(view.el.firstChild.open).toBe(true);
-      expect(view.el.firstChild.getAttribute("data-foo")).toBe("bar");
-      expect(view.el.firstChild.getAttribute("data-bar")).toBe("bar");
-      expect(view.el.firstChild.getAttribute("something")).toBe("else");
-      expect(view.el.firstChild.getAttribute("data-other")).toBe("also kept");
-      expect(view.el.firstChild.textContent.replace(/\s+/g, "")).toEqual("A1");
+      expect(view.el.firstChild!["open"]).toBe(true);
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-foo"),
+      ).toBe("bar");
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-bar"),
+      ).toBe("bar");
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("something"),
+      ).toBe("else");
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-other"),
+      ).toBe("also kept");
+      expect(
+        (view.el.firstChild! as HTMLElement).textContent!.replace(/\s+/g, ""),
+      ).toEqual("A1");
 
       // Not added for being ignored
-      expect(view.el.firstChild.getAttribute("data-new")).toBe(null);
+      expect(
+        (view.el.firstChild! as HTMLElement).getAttribute("data-new"),
+      ).toBe(null);
     });
   });
 });
@@ -1142,12 +1178,12 @@ describe("View", function () {
     const el = liveViewDOM();
     const view = simulateJoinedView(el, liveSocket);
     expect(view.liveSocket).toBe(liveSocket);
-    expect(view.parent).toBeUndefined();
+    expect(view["parent"]).toBeUndefined();
     expect(view.el).toBe(el);
     expect(view.id).toEqual("container");
     expect(view.getSession).toBeDefined();
-    expect(view.channel).toBeDefined();
-    expect(view.loaderTimer).toBeDefined();
+    expect(view["channel"]).toBeDefined();
+    expect(view["loaderTimer"]).toBeDefined();
   });
 
   test("binding", async () => {
@@ -1233,10 +1269,10 @@ describe("View", function () {
   test("sends _track_static and _mounts on params", () => {
     liveSocket = new LiveSocket("/live", Socket);
     const el = liveViewDOM();
-    const view = new View(el, liveSocket);
+    const view = new View(el, liveSocket, null, null, null);
     stubChannel(view);
 
-    expect(view.channel.params()).toEqual({
+    expect((view["channel"] as any).params()).toEqual({
       flash: undefined,
       params: { _mounts: 0, _mount_attempts: 0, _live_referer: undefined },
       session: "abc123",
@@ -1252,7 +1288,7 @@ describe("View", function () {
     el.innerHTML += '<img src="/img/tracked.png" phx-track-static>';
     el.innerHTML += '<img src="/img/untracked.png">';
 
-    expect(view.channel.params()).toEqual({
+    expect((view["channel"] as any).params()).toEqual({
       flash: undefined,
       session: "abc123",
       static: null,
@@ -1370,8 +1406,8 @@ describe("View Hooks", function () {
       },
       liveview_version,
     });
-    expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT");
-    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("TEST MOUNT");
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
 
     view.update(
       {
@@ -1381,18 +1417,20 @@ describe("View Hooks", function () {
       [],
     );
     expect(upcaseBeforeUpdate).toBe(true);
-    expect(view.el.firstChild.innerHTML).toBe("test update updated");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe(
+      "test update updated",
+    );
 
     view.showLoader();
-    expect(view.el.firstChild.innerHTML).toBe("disconnected");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("disconnected");
 
     view.triggerReconnected();
-    expect(view.el.firstChild.innerHTML).toBe("connected");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("connected");
 
     view.update({ s: ["<div></div>"], fingerprint: 123 }, []);
     expect(upcaseWasDestroyed).toBe(true);
     expect(hookLiveSocket).toBeDefined();
-    expect(Object.keys(view.viewHooks)).toEqual([]);
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
   });
 
   test("class based hook", async () => {
@@ -1434,8 +1472,8 @@ describe("View Hooks", function () {
       },
       liveview_version,
     });
-    expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT");
-    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("TEST MOUNT");
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
 
     view.update(
       {
@@ -1445,18 +1483,20 @@ describe("View Hooks", function () {
       [],
     );
     expect(upcaseBeforeUpdate).toBe(true);
-    expect(view.el.firstChild.innerHTML).toBe("test update updated");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe(
+      "test update updated",
+    );
 
     view.showLoader();
-    expect(view.el.firstChild.innerHTML).toBe("disconnected");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("disconnected");
 
     view.triggerReconnected();
-    expect(view.el.firstChild.innerHTML).toBe("connected");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("connected");
 
     view.update({ s: ["<div></div>"], fingerprint: 123 }, []);
     expect(upcaseWasDestroyed).toBe(true);
     expect(hookLiveSocket).toBeDefined();
-    expect(Object.keys(view.viewHooks)).toEqual([]);
+    expect(Object.keys(view["viewHooks"])).toEqual([]);
   });
 
   test("createHook", (done) => {
@@ -1505,7 +1545,7 @@ describe("View Hooks", function () {
       },
       liveview_version,
     });
-    expect(view.el.firstChild.innerHTML).toBe("test mount");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("test mount");
 
     view.destroy();
 
@@ -1573,13 +1613,13 @@ describe("View Hooks", function () {
 
     const recorderHook = view.getHook(view.el.querySelector("#rec"));
     const fileEl = view.el.querySelector("#uploads0");
-    const dispatchEventSpy = jest.spyOn(fileEl, "dispatchEvent");
+    const dispatchEventSpy = jest.spyOn(fileEl as any, "dispatchEvent");
 
     const contents = { hello: "world" };
     const blob = new Blob([JSON.stringify(contents, null, 2)], {
       type: "application/json",
     });
-    recorderHook.upload("doc", [blob]);
+    recorderHook.upload("doc", [blob] as unknown as FileList);
 
     expect(dispatchEventSpy).toHaveBeenCalledWith(
       new CustomEvent("track-uploads", {
@@ -1608,12 +1648,12 @@ describe("View Hooks", function () {
       rendered: { s: ["<div>initial</div>"], fingerprint: 123 },
       liveview_version,
     });
-    expect(view.el.firstChild.innerHTML).toBe("initial");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("initial");
 
     view.update({ s: ["<div>updated</div>"], fingerprint: 123 }, []);
     expect(fromHTML).toBe("initial");
     expect(toHTML).toBe("updated");
-    expect(view.el.firstChild.innerHTML).toBe("updated");
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("updated");
   });
 
   test("can overwrite property", async () => {
@@ -1643,8 +1683,8 @@ describe("View Hooks", function () {
       },
       liveview_version,
     });
-    expect(view.el.firstChild.innerHTML).toBe("TEST MOUNT");
-    expect(Object.keys(view.viewHooks)).toHaveLength(1);
+    expect((view.el.firstChild! as HTMLElement).innerHTML).toBe("TEST MOUNT");
+    expect(Object.keys(view["viewHooks"])).toHaveLength(1);
 
     expect(customHandleEventCalled).toBe(false);
     view.update(
@@ -1711,7 +1751,7 @@ describe("View + Component", function () {
     const targetCtx = el.querySelector(".form-wrapper");
 
     const view = simulateJoinedView(el, liveSocket);
-    const input = view.el.querySelector("input[id=plus]");
+    const input = view.el.querySelector("input[id=plus]")!;
     const channelStub = {
       leave() {
         return {
@@ -1733,10 +1773,10 @@ describe("View + Component", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view as any).channel = channelStub;
 
     input.addEventListener("phx:push:myevent", (e) => {
-      const { ref, lockComplete, loadingComplete } = e.detail;
+      const { ref, lockComplete, loadingComplete } = e["detail"];
       expect(ref).toBe(0);
       expect(e.target).toBe(input);
       loadingComplete.then((detail) => {
@@ -1750,7 +1790,7 @@ describe("View + Component", function () {
       });
     });
     input.addEventListener("phx:push", (e) => {
-      const { lock, unlock, lockComplete } = e.detail;
+      const { lock, unlock, lockComplete } = e["detail"];
       expect(typeof lock).toBe("function");
       expect(view.el.getAttribute("data-phx-ref-lock")).toBe(null);
       // lock accepts unlock function to fire, which will done() the test
@@ -1827,11 +1867,13 @@ describe("View + Component", function () {
         };
       },
     };
-    view.channel = channelStub;
+    (view as any).channel = channelStub;
 
-    const first_name = view.el.querySelector("#first_name");
-    const last_name = view.el.querySelector("#last_name");
-    view.channel.nextValidate(
+    const first_name = view.el.querySelector(
+      "#first_name",
+    )! as HTMLInputElement;
+    const last_name = view.el.querySelector("#last_name")! as HTMLInputElement;
+    (view as any).channel.nextValidate(
       { "user[first_name]": null, "user[last_name]": null },
       { _target: "user[first_name]" },
     );
@@ -1841,7 +1883,7 @@ describe("View + Component", function () {
       _target: first_name.name,
     });
     window.requestAnimationFrame(() => {
-      view.channel.nextValidate(
+      (view as any).channel.nextValidate(
         { "user[first_name]": null, "user[last_name]": null },
         { _target: "user[last_name]" },
       );
@@ -1950,7 +1992,7 @@ describe("View + Component", function () {
       const el = rootContainer(content);
       const view = simulateJoinedView(el, liveSocket);
 
-      view.undoRefs(1);
+      view.undoRefs(1, "");
       expect(el.innerHTML).toBe(
         `
         <span></span>
@@ -1963,7 +2005,7 @@ describe("View + Component", function () {
       `.trim(),
       );
 
-      view.undoRefs(38);
+      view.undoRefs(38, "");
       expect(el.innerHTML).toBe(
         `
         <span></span>
@@ -1993,7 +2035,7 @@ describe("View + Component", function () {
       el.appendChild(fromEl);
       const view = simulateJoinedView(el, liveSocket);
 
-      view.undoRefs(1);
+      view.undoRefs(1, "");
       expect(el.innerHTML).toBe('<span class="new">world</span>');
     });
 
@@ -2032,12 +2074,12 @@ describe("View + Component", function () {
       const toEl = tag("span", { id: "myhook", "phx-hook": "MyHook" }, "world");
       DOM.putPrivate(el.querySelector("#myhook"), "data-phx-ref-lock", toEl);
 
-      view.undoRefs(1);
+      view.undoRefs(1, "");
 
       expect(el.querySelector("#myhook")!.outerHTML).toBe(
         '<span id="myhook" phx-hook="MyHook" data-phx-ref-src="container" data-phx-ref-lock="2" data-phx-ref-loading="1">Hello</span>',
       );
-      view.undoRefs(2);
+      view.undoRefs(2, "");
       expect(el.querySelector("#myhook")!.outerHTML).toBe(
         '<span id="myhook" phx-hook="MyHook">world</span>',
       );

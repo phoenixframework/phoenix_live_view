@@ -241,15 +241,17 @@ export interface LiveSocketOptions {
 export default class LiveSocket {
   socket: Socket;
 
-  private unloaded = false;
+  /** @internal */
+  unloaded = false;
   private bindingPrefix: string;
   private viewLogger: any;
   private metadataCallbacks: any;
   private defaults: any;
   private prevActive: any;
   private silenced: boolean;
-  private main: View | null;
-  private outgoingMainEl: HTMLElement | null;
+  /** @internal */
+  main: View | null;
+  private outgoingMainEl: Element | null;
   private clickStartedAtTarget: EventTarget | null;
   private linkRef: number;
   private roots: Record<string, View>;
@@ -257,19 +259,22 @@ export default class LiveSocket {
   private pendingLink: string | null;
   private currentLocation: Location;
   private hooks: HooksOptions;
-  private loaderTimeout: number;
+  /** @internal */
+  loaderTimeout: number;
   private reloadWithJitterTimer: ReturnType<typeof setTimeout> | null;
   private maxReloads: number;
   private reloadJitterMin: number;
   private reloadJitterMax: number;
   private failsafeJitter: number;
-  private localStorage: Storage;
+  /** @internal */
+  localStorage: Storage;
   private sessionStorage: Storage;
   private boundTopLevelEvents: boolean;
   private boundEventNames: Set<string>;
   private blockPhxChangeWhileComposing: boolean;
   private serverCloseRef: string | null;
-  private domCallbacks: {
+  /** @internal */
+  domCallbacks: {
     jsQuerySelectorAll:
       | ((
           sourceEl: HTMLElement,
@@ -284,10 +289,11 @@ export default class LiveSocket {
     onBeforeElUpdated: (fromEl: Element, toEl: Element) => void;
   };
   private transitions: TransitionSet;
-  private currentHistoryPosition: number;
+  /** @internal */
+  currentHistoryPosition: number;
 
   /** @internal */
-  params: (el: HTMLElement) => Record<string, unknown>;
+  params: (el: Element) => Record<string, unknown>;
   /** @internal */
   uploaders: any;
   /** @internal */
@@ -544,7 +550,7 @@ export default class LiveSocket {
    * See [`Phoenix.LiveView.JS`](https://hexdocs.pm/phoenix_live_view/Phoenix.LiveView.JS.html) for more information.
    */
   execJS(
-    el: HTMLElement,
+    el: Element,
     encodedJS: EncodedJS,
     eventType: string | null = null,
   ): void {
@@ -789,7 +795,7 @@ export default class LiveSocket {
   }
 
   /** @internal */
-  redirect(to, flash, reloadToken) {
+  redirect(to: string, flash: string | null, reloadToken: string | null) {
     if (reloadToken) {
       Browser.setCookie(PHX_RELOAD_STATUS, reloadToken, 60);
     }
@@ -800,7 +806,7 @@ export default class LiveSocket {
   /** @internal */
   replaceMain(
     href: string,
-    flash: any,
+    flash: string | null,
     callback: ((linkRef: number) => void) | null = null,
     linkRef = this.setPendingLink(href),
   ) {
@@ -878,8 +884,8 @@ export default class LiveSocket {
   }
 
   /** @internal */
-  owner(childEl, callback?) {
-    let view;
+  owner(childEl: Element, callback?: (view: View) => any) {
+    let view: View;
     const viewEl = DOM.closestViewEl(childEl);
     if (viewEl) {
       // it can happen that we find a view that is already destroyed;
@@ -891,7 +897,7 @@ export default class LiveSocket {
         // there's no owner and we should not do fall back
         return null;
       }
-      view = this.main;
+      view = this.main!;
     }
     return view && callback ? callback(view) : view;
   }
@@ -1036,10 +1042,11 @@ export default class LiveSocket {
     );
     this.on("dragover", (e) => e.preventDefault());
     this.on("dragenter", (e) => {
-      const dropzone = closestPhxBinding(
-        e.target,
-        this.binding(PHX_DROP_TARGET),
-      );
+      let target = e.target && DOM.elementFromTarget(e.target);
+      if (!target) {
+        return;
+      }
+      const dropzone = closestPhxBinding(target, this.binding(PHX_DROP_TARGET));
 
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
@@ -1050,10 +1057,11 @@ export default class LiveSocket {
       }
     });
     this.on("dragleave", (e) => {
-      const dropzone = closestPhxBinding(
-        e.target,
-        this.binding(PHX_DROP_TARGET),
-      );
+      let target = e.target && DOM.elementFromTarget(e.target);
+      if (!target) {
+        return;
+      }
+      const dropzone = closestPhxBinding(target, this.binding(PHX_DROP_TARGET));
 
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
@@ -1072,12 +1080,13 @@ export default class LiveSocket {
       }
     });
     this.on("drop", (e) => {
+      let target = e.target && DOM.elementFromTarget(e.target);
+      if (!target) {
+        return;
+      }
       e.preventDefault();
 
-      const dropzone = closestPhxBinding(
-        e.target,
-        this.binding(PHX_DROP_TARGET),
-      );
+      const dropzone = closestPhxBinding(target, this.binding(PHX_DROP_TARGET));
       if (!dropzone || !(dropzone instanceof HTMLElement)) {
         return;
       }
@@ -1104,7 +1113,7 @@ export default class LiveSocket {
       dropTarget.dispatchEvent(new Event("input", { bubbles: true }));
     });
     this.on(PHX_TRACK_UPLOADS, (e) => {
-      const uploadTarget = e.target;
+      const uploadTarget = e.target && DOM.elementFromTarget(e.target);
       if (!DOM.isUploadInput(uploadTarget)) {
         return;
       }
@@ -1221,23 +1230,26 @@ export default class LiveSocket {
   /** @internal */
   bindClicks() {
     this.on("mousedown", (e) => (this.clickStartedAtTarget = e.target));
-    this.bindClick("click", "click");
+    this.bindClick();
   }
 
   /** @internal */
-  bindClick(eventName, bindingName) {
-    const click = this.binding(bindingName);
+  bindClick() {
+    const click = this.binding("click");
     window.addEventListener(
-      eventName,
+      "click",
       (e) => {
-        let target: HTMLElement | null = null;
+        let target = e.target && DOM.elementFromTarget(e.target);
+        if (!target) {
+          return;
+        }
         // a synthetic click event (detail 0) will not have caused a mousedown event,
         // therefore the clickStartedAtTarget is stale
-        if (e.detail === 0) this.clickStartedAtTarget = e.target;
-        const clickStartedAtTarget = this.clickStartedAtTarget || e.target;
+        if (e.detail === 0) this.clickStartedAtTarget = target;
+        const clickStartedAtTarget = this.clickStartedAtTarget || target;
         // when searching the target for the click event, we always want to
         // use the actual event target, see #3372
-        target = closestPhxBinding(e.target, click);
+        target = closestPhxBinding(target, click);
         this.dispatchClickAway(e, clickStartedAtTarget);
         this.clickStartedAtTarget = null;
 
@@ -1382,7 +1394,14 @@ export default class LiveSocket {
     window.addEventListener(
       "click",
       (e) => {
-        const target = closestPhxBinding(e.target, PHX_LIVE_LINK);
+        let el = e.target && DOM.elementFromTarget(e.target);
+        if (!el) {
+          return;
+        }
+        const target = closestPhxBinding(
+          el,
+          PHX_LIVE_LINK,
+        ) as HTMLAnchorElement | null;
         const type = target && target.getAttribute(PHX_LIVE_LINK);
         if (!type || !this.isConnected() || !this.main || DOM.wantsNewTab(e)) {
           return;
@@ -1390,11 +1409,16 @@ export default class LiveSocket {
 
         // When wrapping an SVG element in an anchor tag, the href can be an SVGAnimatedString
         const href =
-          target.href instanceof SVGAnimatedString
-            ? target.href.baseVal
+          (target.href as unknown) instanceof SVGAnimatedString
+            ? (target.href as unknown as SVGAnimatedString).baseVal
             : target.href;
 
         const linkState = target.getAttribute(PHX_LINK_STATE);
+        if (linkState !== "replace" && linkState !== "push") {
+          throw new Error(
+            `expected ${PHX_LINK_STATE} to be "replace" or "push", got: ${linkState}`,
+          );
+        }
         e.preventDefault();
         e.stopImmediatePropagation(); // do not bubble click to regular phx-click bindings
         if (this.pendingLink === href) {
@@ -1495,7 +1519,13 @@ export default class LiveSocket {
   }
 
   /** @internal */
-  historyRedirect(e, href, linkState, flash, targetEl) {
+  historyRedirect(
+    e: Event,
+    href: string,
+    linkState: "replace" | "push",
+    flash: string | null,
+    targetEl?: Element | null,
+  ) {
     const clickLoading = targetEl && e.isTrusted && e.type !== "popstate";
     if (clickLoading) {
       targetEl.classList.add("phx-click-loading");
