@@ -61,7 +61,7 @@ defmodule Phoenix.LiveView.Route do
     query_params = if query, do: Plug.Conn.Query.decode(query), else: %{}
 
     split_path =
-      for segment <- String.split(path || "", "/"), segment != "", do: URI.decode(segment)
+      for segment <- String.split(path || "", "/", trim: true), do: URI.decode(segment)
 
     route_path = strip_segments(endpoint.script_name(), split_path) || split_path
 
