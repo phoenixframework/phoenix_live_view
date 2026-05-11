@@ -745,10 +745,9 @@ defmodule Phoenix.LiveView.Diff do
       Map.fetch!(previous_prints, key)
 
     vars_changed =
-      Enum.reduce(new_vars, Map.put(previous_vars, :__changed__, %{}), fn
-        {key, value}, acc ->
-          Phoenix.Component.assign(acc, key, value)
-      end)
+      previous_vars
+      |> Map.put(:__changed__, %{})
+      |> Phoenix.Component.assign(new_vars)
       |> Map.fetch!(:__changed__)
 
     {_counter, child_diff, child_prints, pending, components, template} =
