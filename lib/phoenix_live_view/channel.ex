@@ -1685,9 +1685,11 @@ defmodule Phoenix.LiveView.Channel do
   defp component_asyncs(state) do
     %{components: {components, _ids, _}} = state
 
-    Enum.reduce(components, %{}, fn {cid, {_mod, _id, _assigns, private, _prints}}, acc ->
-      Map.merge(acc, socket_asyncs(private, cid))
-    end)
+    for {cid, {_mod, _id, _assigns, %{live_async: ref_pids}, _prints}} <- components,
+        {key, {ref, pid, kind}} <- ref_pids,
+        into: %{} do
+      {pid, {key, ref, cid, kind}}
+    end
   end
 
   defp all_asyncs(state) do
@@ -1698,13 +1700,9 @@ defmodule Phoenix.LiveView.Channel do
     |> Map.merge(component_asyncs(state))
   end
 
-  defp socket_asyncs(private, cid) do
-    case private do
-      %{live_async: ref_pids} ->
-        Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
-
-      %{} ->
-        %{}
-    end
+  defp socket_asyncs(%{live_async: ref_pids}, cid) do
+    Map.new(ref_pids, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
   end
+
+  defp socket_asyncs(%{}, _cid), do: %{}
 end
