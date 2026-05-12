@@ -1183,7 +1183,7 @@ defmodule Phoenix.Component.Declarative do
 
           # slot with attributes
           _ ->
-            slot_attr_defs = Enum.into(attrs, %{}, &{&1.name, &1})
+            slot_attr_defs = Map.new(attrs, &{&1.name, &1})
             required_attrs = for {attr_name, %{required: true}} <- slot_attr_defs, do: attr_name
 
             for %{attrs: slot_attrs, line: slot_line, root: false} <- slot_values,

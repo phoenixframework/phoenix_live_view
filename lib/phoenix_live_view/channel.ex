@@ -1558,7 +1558,7 @@ defmodule Phoenix.LiveView.Channel do
   end
 
   defp delete_components(state, cids) do
-    upload_cids = Enum.into(state.upload_names, MapSet.new(), fn {_name, {_ref, cid}} -> cid end)
+    upload_cids = MapSet.new(state.upload_names, fn {_name, {_ref, cid}} -> cid end)
 
     Enum.flat_map_reduce(cids, state, fn cid, acc ->
       {deleted_cids, new_components} = Diff.delete_component(cid, acc.components)
@@ -1701,7 +1701,7 @@ defmodule Phoenix.LiveView.Channel do
   defp socket_asyncs(private, cid) do
     case private do
       %{live_async: ref_pids} ->
-        Enum.into(ref_pids, %{}, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
+        Map.new(ref_pids, fn {key, {ref, pid, kind}} -> {pid, {key, ref, cid, kind}} end)
 
       %{} ->
         %{}

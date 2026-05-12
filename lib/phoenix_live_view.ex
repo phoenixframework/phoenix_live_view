@@ -1503,7 +1503,7 @@ defmodule Phoenix.LiveView do
   def send_update(pid \\ self(), module_or_cid, assigns)
 
   def send_update(pid, module, assigns) when is_atom(module) and is_pid(pid) do
-    assigns = Enum.into(assigns, %{})
+    assigns = Map.new(assigns)
 
     id =
       assigns[:id] ||
@@ -1513,7 +1513,7 @@ defmodule Phoenix.LiveView do
   end
 
   def send_update(pid, %Phoenix.LiveComponent.CID{} = cid, assigns) when is_pid(pid) do
-    assigns = Enum.into(assigns, %{})
+    assigns = Map.new(assigns)
 
     Phoenix.LiveView.Channel.send_update(pid, cid, assigns)
   end
@@ -1547,14 +1547,14 @@ defmodule Phoenix.LiveView do
 
   def send_update_after(pid, %Phoenix.LiveComponent.CID{} = cid, assigns, time_in_milliseconds)
       when is_integer(time_in_milliseconds) and is_pid(pid) do
-    assigns = Enum.into(assigns, %{})
+    assigns = Map.new(assigns)
 
     Phoenix.LiveView.Channel.send_update_after(pid, cid, assigns, time_in_milliseconds)
   end
 
   def send_update_after(pid, module, assigns, time_in_milliseconds)
       when is_atom(module) and is_integer(time_in_milliseconds) and is_pid(pid) do
-    assigns = Enum.into(assigns, %{})
+    assigns = Map.new(assigns)
 
     id =
       assigns[:id] ||
