@@ -409,7 +409,8 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition `:in` and `:out` classes.
       Defaults to #{@default_transition_time}.
     * `:display` - An optional display value to set when toggling in. Defaults
-      to `"block"`.
+      to `"block"`, except for table rows and cells, which default to `"table-row"`
+      and `"table-cell"`.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
 
   When the toggle is complete on the client, a `phx:show-start` or `phx:hide-start`, and
@@ -467,7 +468,9 @@ defmodule Phoenix.LiveView.JS do
     * `:time` - The time in milliseconds to apply the transition from `:transition`.
       Defaults to #{@default_transition_time}.
     * `:blocking` - A boolean flag to block the UI during the transition. Defaults `true`.
-    * `:display` - An optional display value to set when showing. Defaults to `"block"`.
+    * `:display` - An optional display value to set when showing. Defaults to
+      `"block"`, except for table rows and cells, which default to `"table-row"`
+      and `"table-cell"`.
 
   During the process, the following events will be dispatched to the shown elements:
 
