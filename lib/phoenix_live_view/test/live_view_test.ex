@@ -1896,7 +1896,7 @@ defmodule Phoenix.LiveViewTest do
   Performs a live redirect from one LiveView to another.
 
   When redirecting between two LiveViews of the same `live_session`,
-  mounts the new LiveView and shutsdown the previous one, which
+  mounts the new LiveView and shuts down the previous one, which
   mimics general browser live navigation behaviour.
 
   When attempting to navigate from a LiveView of a different

@@ -187,7 +187,7 @@ defmodule Phoenix.LiveView.TagEngine.Compiler do
             # This handles the case where the start expression is immediately followed
             # by a middle expression, since we don't want to generate
             # case @status do __EEX__(0); :connecting -> __EEX__(1) ...
-            # (we nened to skip adding the first placeholder)
+            # (we need to skip adding the first placeholder)
             # and instead generate
             # case @status do :connecting -> __EEX__(0); ...
             {quoted, acc_expr <> newlines <> " " <> clause_expr, clause_line}

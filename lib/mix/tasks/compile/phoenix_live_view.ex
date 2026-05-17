@@ -20,9 +20,9 @@ defmodule Mix.Tasks.Compile.PhoenixLiveView do
       {:noop, diagnostics} ->
         {:noop, diagnostics}
 
-      {status, dignostics} ->
+      {status, diagnostics} ->
         compile()
-        {status, dignostics}
+        {status, diagnostics}
     end)
 
     :noop
