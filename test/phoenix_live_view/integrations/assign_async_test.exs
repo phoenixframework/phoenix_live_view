@@ -32,6 +32,15 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
       assert render(lv)
     end
 
+    test "keyword list return", %{conn: conn} do
+      {:ok, lv, _html} = live(conn, "/assign_async?test=bad_keyword")
+
+      assert render_async(lv) =~
+               "expected assign_async to return {:ok, map} of\\nassigns for [:data] or {:error, reason}, got: {:ok, [data: 123]}"
+
+      assert render(lv)
+    end
+
     test "valid return", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=ok")
       assert render_async(lv) =~ "data: 123"
@@ -222,7 +231,9 @@ defmodule Phoenix.LiveView.AssignAsyncTest do
 
     test "valid return", %{conn: conn} do
       {:ok, lv, _html} = live(conn, "/assign_async?test=sup_ok")
-      assert render_async(lv) =~ "data: 123"
+      html = render_async(lv)
+      assert html =~ "data: 123"
+      refute html =~ "expected assign_async to return"
     end
 
     test "raise during execution", %{conn: conn} do
