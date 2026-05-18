@@ -40,13 +40,17 @@ defmodule Phoenix.LiveViewTest.Support.AssignAsyncLive do
     {:ok, assign_async(socket, :data, fn -> {:ok, %{bad: 123}} end)}
   end
 
+  def mount(%{"test" => "bad_keyword"}, _session, socket) do
+    {:ok, assign_async(socket, :data, fn -> {:ok, data: 123} end)}
+  end
+
   def mount(%{"test" => "ok"}, _session, socket) do
     {:ok, assign_async(socket, :data, fn -> {:ok, %{data: 123}} end)}
   end
 
   def mount(%{"test" => "sup_ok"}, _session, socket) do
     {:ok,
-     assign_async(socket, :data, fn -> {:ok, data: 123} end, supervisor: TestAsyncSupervisor)}
+     assign_async(socket, :data, fn -> {:ok, %{data: 123}} end, supervisor: TestAsyncSupervisor)}
   end
 
   def mount(%{"test" => "raise"}, _session, socket) do
